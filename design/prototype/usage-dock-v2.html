@@ -1,0 +1,818 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>UsageDock — Apple Ecosystem Prototype</title>
+  <style>
+    :root {
+      --canvas: #eef1f5;
+      --ink: #101522;
+      --subtle-ink: #687080;
+      --bg: #090d14;
+      --surface: #121823;
+      --surface-2: #1a2230;
+      --surface-3: #202b3b;
+      --border: #2c3748;
+      --text: #f4f6f9;
+      --secondary: #a0a8b7;
+      --muted: #6f7989;
+      --claude: #d97757;
+      --codex: #4b9cfb;
+      --success: #57d19a;
+      --warning: #ffb554;
+      --danger: #ff6b6b;
+      --purple: #8b7cf6;
+      --shadow: 0 26px 70px rgba(19, 28, 43, .20), 0 3px 12px rgba(19, 28, 43, .12);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      background: var(--canvas);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .board {
+      width: 2980px;
+      min-height: 1120px;
+      margin: 0 auto;
+      padding: 48px;
+      background:
+        radial-gradient(circle at 16% 0%, rgba(75, 156, 251, .10), transparent 25%),
+        radial-gradient(circle at 82% 8%, rgba(217, 119, 87, .10), transparent 23%),
+        var(--canvas);
+    }
+
+    .board-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-bottom: 30px;
+    }
+
+    .board-header h1 {
+      margin: 0;
+      font-size: 34px;
+      line-height: 1.12;
+      letter-spacing: -.7px;
+    }
+
+    .board-header p {
+      margin: 8px 0 0;
+      color: var(--subtle-ink);
+      font-size: 15px;
+    }
+
+    .version {
+      padding: 9px 13px;
+      border: 1px solid rgba(20, 27, 40, .10);
+      border-radius: 999px;
+      color: #4d5666;
+      background: rgba(255,255,255,.58);
+      font-size: 12px;
+      font-weight: 650;
+      letter-spacing: .06em;
+    }
+
+    .screens {
+      display: grid;
+      grid-template-columns: 380px 1320px 393px 560px;
+      gap: 32px;
+      align-items: start;
+    }
+
+    .artboard-label {
+      margin: 0 0 11px 2px;
+      color: #4d5665;
+      font-size: 12px;
+      font-weight: 750;
+      letter-spacing: .11em;
+    }
+
+    .device {
+      position: relative;
+      overflow: hidden;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 85% -10%, rgba(75, 156, 251, .10), transparent 30%),
+        var(--bg);
+      border: 1px solid rgba(23, 31, 44, .92);
+      box-shadow: var(--shadow);
+    }
+
+    .popover {
+      height: 780px;
+      border-radius: 22px;
+      padding: 19px;
+    }
+
+    .desktop {
+      height: 860px;
+      border-radius: 22px;
+    }
+
+    .iphone {
+      height: 852px;
+      border-radius: 46px;
+      border: 6px solid #111722;
+      box-shadow: 0 26px 70px rgba(19, 28, 43, .24);
+    }
+
+    .widgets {
+      height: 500px;
+      border-radius: 24px;
+      padding: 24px;
+    }
+
+    .row { display: flex; align-items: center; }
+    .between { justify-content: space-between; }
+    .stack { display: flex; flex-direction: column; }
+    .muted { color: var(--secondary); }
+    .tiny { font-size: 10px; }
+    .caption { font-size: 11px; }
+    .body { font-size: 13px; }
+    .semibold { font-weight: 650; }
+    .bold { font-weight: 760; }
+    .mono { font-variant-numeric: tabular-nums; }
+
+    .icon-button {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(255,255,255,.06);
+      border-radius: 50%;
+      background: var(--surface-2);
+      color: var(--text);
+      font-size: 17px;
+    }
+
+    .popover-title {
+      font-size: 19px;
+      font-weight: 720;
+      letter-spacing: -.25px;
+    }
+
+    .risk-strip {
+      margin-top: 14px;
+      padding: 11px 13px;
+      border: 1px solid rgba(87, 209, 154, .22);
+      border-radius: 13px;
+      background: rgba(87, 209, 154, .10);
+    }
+
+    .risk-strip strong { color: var(--success); font-size: 13px; }
+
+    .quota-card {
+      margin-top: 12px;
+      padding: 13px;
+      border: 1px solid var(--border);
+      border-radius: 15px;
+      background: linear-gradient(180deg, rgba(255,255,255,.022), transparent), var(--surface);
+      box-shadow: 0 10px 28px rgba(0,0,0,.16);
+    }
+
+    .provider {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 690;
+    }
+
+    .provider img {
+      width: 22px;
+      height: 22px;
+      object-fit: cover;
+      border-radius: 5px;
+    }
+
+    .plan-pill {
+      padding: 4px 8px;
+      border-radius: 8px;
+      background: var(--surface-2);
+      color: var(--secondary);
+      font-size: 9px;
+      font-weight: 750;
+      letter-spacing: .08em;
+    }
+
+    .quota-window { margin-top: 11px; }
+    .quota-window + .quota-window {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+    }
+
+    .quota-value { font-size: 14px; font-weight: 760; }
+    .progress {
+      height: 6px;
+      margin-top: 7px;
+      overflow: hidden;
+      border-radius: 99px;
+      background: #242e3d;
+    }
+    .progress > span {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+    }
+    .claude-fill { background: linear-gradient(90deg, #d97757, #f0a071); }
+    .codex-fill { background: linear-gradient(90deg, #4b9cfb, #78b6ff); }
+
+    .quota-meta {
+      margin-top: 6px;
+      color: var(--secondary);
+      font-size: 10px;
+    }
+
+    .local-card {
+      margin-top: 12px;
+      padding: 11px 13px;
+      border-radius: 13px;
+      background: var(--surface-2);
+    }
+
+    .popover-footer {
+      margin-top: 13px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+      font-size: 11px;
+    }
+    .link { color: #76b5ff; font-weight: 620; }
+
+    /* macOS dashboard */
+    .window-toolbar {
+      height: 63px;
+      display: grid;
+      grid-template-columns: 220px 1fr auto;
+      align-items: center;
+      padding: 0 22px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(18, 24, 35, .82);
+      backdrop-filter: blur(20px);
+    }
+
+    .traffic { display: flex; gap: 8px; }
+    .traffic i { width: 12px; height: 12px; border-radius: 50%; }
+    .traffic i:nth-child(1) { background:#ff5f57; }
+    .traffic i:nth-child(2) { background:#febc2e; }
+    .traffic i:nth-child(3) { background:#28c840; }
+
+    .window-title { text-align: center; font-size: 13px; font-weight: 650; }
+    .toolbar-actions { display:flex; align-items:center; gap:10px; }
+    .toolbar-chip {
+      padding: 7px 11px;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      background: var(--surface-2);
+      color: var(--secondary);
+      font-size: 11px;
+    }
+
+    .dashboard-shell {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      height: calc(100% - 63px);
+    }
+
+    .sidebar {
+      padding: 22px 14px;
+      border-right: 1px solid var(--border);
+      background: rgba(16, 22, 32, .88);
+    }
+    .brand-lockup {
+      display:flex; align-items:center; gap:10px;
+      padding: 0 10px 18px;
+      font-size: 15px; font-weight: 720;
+    }
+    .brand-mark {
+      width: 27px; height: 27px; display:grid; place-items:center;
+      border-radius: 8px;
+      background: linear-gradient(145deg, var(--codex), var(--purple));
+      box-shadow: 0 8px 20px rgba(75,156,251,.22);
+      font-size: 12px; font-weight: 800;
+    }
+    .nav-section {
+      margin: 14px 10px 7px;
+      color: var(--muted);
+      font-size: 9px;
+      font-weight: 720;
+      letter-spacing: .12em;
+    }
+    .nav-item {
+      height: 36px;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      margin: 2px 0;
+      padding: 0 12px;
+      border-radius: 9px;
+      color: var(--secondary);
+      font-size: 12px;
+      font-weight: 550;
+    }
+    .nav-item.active {
+      color: var(--text);
+      background: var(--surface-2);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.025);
+    }
+    .nav-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+    .active .nav-dot { background: var(--codex); box-shadow: 0 0 0 4px rgba(75,156,251,.10); }
+    .sidebar-footer {
+      position:absolute;
+      left:14px; bottom:18px; width:191px;
+      padding: 11px;
+      border:1px solid var(--border);
+      border-radius:11px;
+      background:var(--surface);
+    }
+
+    .main {
+      padding: 27px 28px;
+      overflow: hidden;
+    }
+    .main-title h2 {
+      margin: 0;
+      font-size: 25px;
+      letter-spacing: -.35px;
+    }
+    .main-title p { margin: 5px 0 0; color: var(--secondary); font-size: 12px; }
+
+    .kpis {
+      display:grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 13px;
+      margin-top: 20px;
+    }
+    .kpi {
+      min-height: 96px;
+      padding: 14px 15px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--surface);
+    }
+    .kpi .label { color: var(--secondary); font-size: 10px; }
+    .kpi .number { margin-top: 9px; font-size: 23px; font-weight: 760; letter-spacing: -.3px; }
+    .kpi .delta { margin-top: 5px; color: var(--success); font-size: 10px; }
+    .kpi .delta.warn { color: var(--warning); }
+
+    .dashboard-grid {
+      display:grid;
+      grid-template-columns: 1.58fr .92fr;
+      gap: 14px;
+      margin-top: 14px;
+    }
+    .panel {
+      border: 1px solid var(--border);
+      border-radius: 15px;
+      background: var(--surface);
+      overflow: hidden;
+    }
+    .panel-head {
+      padding: 14px 15px 10px;
+      display:flex; align-items:flex-start; justify-content:space-between;
+    }
+    .panel-title { font-size: 12px; font-weight: 680; }
+    .panel-sub { margin-top: 3px; color: var(--secondary); font-size: 9px; }
+    .legend { display:flex; gap:12px; color:var(--secondary); font-size:9px; }
+    .legend span::before {
+      content:""; display:inline-block; width:7px; height:7px; margin-right:5px; border-radius:50%;
+    }
+    .legend .lg-codex::before { background:var(--codex); }
+    .legend .lg-claude::before { background:var(--claude); }
+    .trend-chart { height: 214px; padding: 0 14px 12px; }
+    .chart-svg { width:100%; height:100%; overflow:visible; }
+    .gridline { stroke:#263142; stroke-width:1; }
+    .axis-label { fill:#778296; font-size:9px; }
+    .area-codex { fill:url(#blueArea); }
+    .area-claude { fill:url(#orangeArea); }
+    .line-codex { fill:none; stroke:var(--codex); stroke-width:2.5; }
+    .line-claude { fill:none; stroke:var(--claude); stroke-width:2.5; }
+
+    .quota-summary { padding: 0 15px 13px; }
+    .quota-summary .summary-row + .summary-row { margin-top: 13px; }
+    .summary-row .provider img { width:18px; height:18px; }
+    .mini-progress { height:5px; margin-top:7px; border-radius:99px; background:#263142; overflow:hidden; }
+    .mini-progress span { display:block; height:100%; border-radius:inherit; }
+    .summary-foot { margin-top: 14px; padding-top: 11px; border-top: 1px solid var(--border); color:var(--secondary); font-size:9px; }
+
+    .lower-grid {
+      display:grid;
+      grid-template-columns: 1.15fr .85fr;
+      gap:14px;
+      margin-top:14px;
+    }
+    .heatmap { padding: 0 15px 14px; }
+    .heatmap-grid {
+      display:grid;
+      grid-template-columns: repeat(18, 1fr);
+      gap:4px;
+      margin-top:5px;
+    }
+    .heatmap-grid i {
+      aspect-ratio:1;
+      border-radius:3px;
+      background:#1d2836;
+    }
+    .heatmap-grid i:nth-child(5n) { background:rgba(75,156,251,.36); }
+    .heatmap-grid i:nth-child(7n) { background:rgba(75,156,251,.62); }
+    .heatmap-grid i:nth-child(13n) { background:rgba(217,119,87,.70); }
+    .heatmap-grid i:nth-child(17n) { background:rgba(139,124,246,.72); }
+    .provider-split { padding: 0 15px 14px; }
+    .donut-row { display:flex; align-items:center; gap:20px; }
+    .donut {
+      width:112px; height:112px; border-radius:50%;
+      background:conic-gradient(var(--codex) 0 52%, var(--claude) 52% 86%, var(--purple) 86% 100%);
+      position:relative;
+    }
+    .donut::after {
+      content:"$24.86"; position:absolute; inset:17px; display:grid; place-items:center;
+      border-radius:50%; background:var(--surface); color:var(--text); font-size:16px; font-weight:740;
+    }
+    .split-list { flex:1; }
+    .split-item { display:flex; justify-content:space-between; margin:9px 0; color:var(--secondary); font-size:10px; }
+    .split-item strong { color:var(--text); }
+
+    /* iPhone */
+    .dynamic-island {
+      position:absolute; top:10px; left:50%; transform:translateX(-50%);
+      width:120px; height:32px; border-radius:20px; background:#000;
+    }
+    .ios-status {
+      height:52px;
+      padding: 17px 20px 0;
+      font-size:11px;
+      font-weight:650;
+    }
+    .ios-content { padding: 10px 17px 90px; }
+    .ios-title h2 { margin:0; font-size:30px; letter-spacing:-.7px; }
+    .ios-title p { margin:5px 0 0; color:var(--secondary); font-size:11px; }
+    .ios-risk {
+      margin-top:17px;
+      padding:15px;
+      border:1px solid rgba(87,209,154,.22);
+      border-radius:18px;
+      background:linear-gradient(135deg,rgba(87,209,154,.15),rgba(75,156,251,.06));
+    }
+    .ios-risk .big { margin-top:5px; font-size:20px; font-weight:760; }
+    .ios-provider {
+      margin-top:11px;
+      padding:13px;
+      border:1px solid var(--border);
+      border-radius:17px;
+      background:var(--surface);
+    }
+    .ios-provider .progress { margin-top:10px; height:7px; }
+    .ios-metrics { display:grid; grid-template-columns:repeat(2,1fr); gap:9px; margin-top:11px; }
+    .ios-metric { padding:11px; border-radius:14px; background:var(--surface); border:1px solid var(--border); }
+    .ios-metric strong { display:block; margin-top:5px; font-size:17px; }
+    .sparkline { margin-top:11px; height:88px; padding:11px; border-radius:16px; background:var(--surface); border:1px solid var(--border); }
+    .tabbar {
+      position:absolute; left:13px; right:13px; bottom:13px; height:67px;
+      display:flex; align-items:center; justify-content:space-around;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:26px;
+      background:rgba(30,39,53,.88);
+      backdrop-filter:blur(24px);
+      box-shadow:0 12px 35px rgba(0,0,0,.32);
+    }
+    .tab { width:64px; text-align:center; color:var(--muted); font-size:9px; }
+    .tab b { display:block; margin-bottom:4px; font-size:17px; font-weight:500; }
+    .tab.active { color:#82bdff; }
+
+    /* Widgets */
+    .widget-title { margin:0 0 6px; font-size:20px; letter-spacing:-.25px; }
+    .widget-sub { color:var(--secondary); font-size:11px; }
+    .widget-grid {
+      display:grid;
+      grid-template-columns:170px 1fr;
+      gap:16px;
+      margin-top:22px;
+      align-items:start;
+    }
+    .widget {
+      border:1px solid rgba(255,255,255,.08);
+      background:
+        radial-gradient(circle at 100% 0%,rgba(75,156,251,.18),transparent 42%),
+        linear-gradient(145deg,#192231,#101620);
+      box-shadow:0 18px 40px rgba(0,0,0,.25);
+    }
+    .widget.small { width:170px; height:170px; padding:15px; border-radius:34px; }
+    .widget.medium { height:170px; padding:16px; border-radius:34px; }
+    .widget-logo { display:flex; align-items:center; gap:7px; font-size:11px; font-weight:700; }
+    .widget-mark { width:21px;height:21px;display:grid;place-items:center;border-radius:7px;background:linear-gradient(145deg,var(--codex),var(--purple));font-size:9px; }
+    .widget-risk { margin-top:15px; color:var(--success); font-size:11px; font-weight:700; }
+    .widget-number { margin-top:3px; font-size:29px; font-weight:780; letter-spacing:-1px; }
+    .ring-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:14px; }
+    .ring-card { padding:10px; border-radius:18px; background:rgba(255,255,255,.045); }
+    .ring-card .provider { font-size:11px; }
+    .ring-card .provider img { width:17px;height:17px; }
+    .ring-card strong { display:block; margin-top:8px; font-size:22px; }
+    .ring-card .mini-progress { margin-top:7px; }
+    .lock-widgets { display:flex; gap:12px; margin-top:16px; }
+    .lock-widget {
+      width:132px; height:66px; padding:10px 12px; border-radius:19px;
+      border:1px solid rgba(255,255,255,.08); background:rgba(255,255,255,.055);
+    }
+  </style>
+</head>
+<body>
+  <main class="board" id="prototype-board">
+    <header class="board-header">
+      <div>
+        <h1>UsageDock — Apple 全生态用量监测</h1>
+        <p>额度风险优先 · 本地统计 · 跨设备一致体验</p>
+      </div>
+      <div class="version">V2 CONCEPT · JUL 2026</div>
+    </header>
+
+    <section class="screens">
+      <div>
+        <div class="artboard-label">MACOS · MENU BAR POPOVER</div>
+        <article class="device popover" id="popover">
+          <div class="row between">
+            <div>
+              <div class="popover-title">UsageDock</div>
+              <div class="caption muted">刚刚更新 · 数据留在本机</div>
+            </div>
+            <div class="icon-button">↻</div>
+          </div>
+
+          <div class="risk-strip row between">
+            <div class="stack">
+              <span class="tiny muted">当前额度风险</span>
+              <strong>LOW · 使用节奏健康</strong>
+            </div>
+            <span class="body bold mono">最低剩余 44%</span>
+          </div>
+
+          <div class="quota-card">
+            <div class="row between">
+              <div class="provider">
+                <img src="../../Sources/UsageDock/Resources/claude.png" alt="">
+                Claude
+              </div>
+              <span class="plan-pill">MAX</span>
+            </div>
+            <div class="quota-window">
+              <div class="row between body"><span>5 小时窗口</span><span class="quota-value mono">剩余 82%</span></div>
+              <div class="progress"><span class="claude-fill" style="width:82%"></span></div>
+              <div class="quota-meta mono">↻&nbsp; 重置还有 2:14:18</div>
+            </div>
+            <div class="quota-window">
+              <div class="row between body"><span>7 天窗口</span><span class="quota-value mono">剩余 61%</span></div>
+              <div class="progress"><span class="claude-fill" style="width:61%"></span></div>
+              <div class="quota-meta">↻&nbsp; 周一 09:00 重置</div>
+            </div>
+          </div>
+
+          <div class="quota-card">
+            <div class="row between">
+              <div class="provider">
+                <img src="../../Sources/UsageDock/Resources/openai.png" alt="">
+                Codex
+              </div>
+              <span class="plan-pill">PLUS</span>
+            </div>
+            <div class="quota-window">
+              <div class="row between body"><span>5 小时窗口</span><span class="quota-value mono">剩余 68%</span></div>
+              <div class="progress"><span class="codex-fill" style="width:68%"></span></div>
+              <div class="quota-meta mono">↻&nbsp; 重置还有 3:28:42</div>
+            </div>
+            <div class="quota-window">
+              <div class="row between body"><span>7 天窗口</span><span class="quota-value mono">剩余 44%</span></div>
+              <div class="progress"><span class="codex-fill" style="width:44%"></span></div>
+              <div class="quota-meta">↻&nbsp; 周日 17:00 重置</div>
+            </div>
+          </div>
+
+          <div class="local-card">
+            <div class="row between">
+              <span class="body semibold">今日本地统计</span>
+              <strong class="body mono">$1.84</strong>
+            </div>
+            <div class="row between caption muted" style="margin-top:7px">
+              <span>Claude 428K · Codex 312K</span>
+              <span class="mono">740K tokens</span>
+            </div>
+          </div>
+
+          <div class="popover-footer row between">
+            <span class="link">打开 Dashboard</span>
+            <span class="muted">设置 · 退出</span>
+          </div>
+        </article>
+      </div>
+
+      <div>
+        <div class="artboard-label">MACOS · DASHBOARD</div>
+        <article class="device desktop" id="dashboard">
+          <div class="window-toolbar">
+            <div class="traffic"><i></i><i></i><i></i></div>
+            <div class="window-title">UsageDock</div>
+            <div class="toolbar-actions">
+              <span class="toolbar-chip">最近 30 天</span>
+              <span class="icon-button" style="width:31px;height:31px">↻</span>
+            </div>
+          </div>
+          <div class="dashboard-shell">
+            <aside class="sidebar" style="position:relative">
+              <div class="brand-lockup"><span class="brand-mark">U</span> UsageDock</div>
+              <div class="nav-section">MONITOR</div>
+              <div class="nav-item active"><span class="nav-dot"></span>Overview</div>
+              <div class="nav-item"><span class="nav-dot"></span>Limits</div>
+              <div class="nav-item"><span class="nav-dot"></span>Trends</div>
+              <div class="nav-item"><span class="nav-dot"></span>Devices</div>
+              <div class="nav-section">SYSTEM</div>
+              <div class="nav-item"><span class="nav-dot"></span>Data Sources</div>
+              <div class="nav-item"><span class="nav-dot"></span>Settings</div>
+              <div class="sidebar-footer">
+                <div class="tiny muted">同步状态</div>
+                <div class="row" style="gap:7px;margin-top:5px">
+                  <span class="nav-dot" style="background:var(--success)"></span>
+                  <span class="caption semibold">全部数据源正常</span>
+                </div>
+              </div>
+            </aside>
+
+            <section class="main">
+              <div class="main-title row between">
+                <div><h2>Overview</h2><p>掌握额度风险、使用趋势与预估成本</p></div>
+                <div class="caption muted mono">更新于 10:42:16</div>
+              </div>
+
+              <div class="kpis">
+                <div class="kpi"><div class="label">今日 Tokens</div><div class="number mono">740K</div><div class="delta">↓ 8% vs 昨日</div></div>
+                <div class="kpi"><div class="label">今日预估成本</div><div class="number mono">$1.84</div><div class="delta">↓ 12% vs 昨日</div></div>
+                <div class="kpi"><div class="label">本月累计</div><div class="number mono">$24.86</div><div class="delta warn">预算已使用 62%</div></div>
+                <div class="kpi"><div class="label">最低可用额度</div><div class="number mono">44%</div><div class="delta">LOW RISK</div></div>
+              </div>
+
+              <div class="dashboard-grid">
+                <div class="panel">
+                  <div class="panel-head">
+                    <div><div class="panel-title">Tokens 使用趋势</div><div class="panel-sub">按服务商统计 · 最近 30 天</div></div>
+                    <div class="legend"><span class="lg-codex">Codex</span><span class="lg-claude">Claude</span></div>
+                  </div>
+                  <div class="trend-chart">
+                    <svg class="chart-svg" viewBox="0 0 650 190" preserveAspectRatio="none">
+                      <defs>
+                        <linearGradient id="blueArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4b9cfb" stop-opacity=".24"/><stop offset="1" stop-color="#4b9cfb" stop-opacity="0"/></linearGradient>
+                        <linearGradient id="orangeArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d97757" stop-opacity=".20"/><stop offset="1" stop-color="#d97757" stop-opacity="0"/></linearGradient>
+                      </defs>
+                      <line class="gridline" x1="42" y1="25" x2="640" y2="25"/><line class="gridline" x1="42" y1="70" x2="640" y2="70"/><line class="gridline" x1="42" y1="115" x2="640" y2="115"/><line class="gridline" x1="42" y1="160" x2="640" y2="160"/>
+                      <text class="axis-label" x="0" y="29">1.2M</text><text class="axis-label" x="8" y="74">800K</text><text class="axis-label" x="8" y="119">400K</text><text class="axis-label" x="27" y="164">0</text>
+                      <path class="area-codex" d="M42,140 C95,116 120,131 165,95 S245,64 285,86 S355,117 405,72 S490,55 530,81 S595,49 640,60 L640,160 L42,160 Z"/>
+                      <path class="area-claude" d="M42,128 C90,134 125,102 165,119 S238,87 285,101 S355,77 405,96 S475,69 530,91 S595,76 640,83 L640,160 L42,160 Z"/>
+                      <path class="line-codex" d="M42,140 C95,116 120,131 165,95 S245,64 285,86 S355,117 405,72 S490,55 530,81 S595,49 640,60"/>
+                      <path class="line-claude" d="M42,128 C90,134 125,102 165,119 S238,87 285,101 S355,77 405,96 S475,69 530,91 S595,76 640,83"/>
+                      <text class="axis-label" x="43" y="181">6/19</text><text class="axis-label" x="190" y="181">6/26</text><text class="axis-label" x="340" y="181">7/03</text><text class="axis-label" x="490" y="181">7/10</text><text class="axis-label" x="610" y="181">今天</text>
+                    </svg>
+                  </div>
+                </div>
+
+                <div class="panel">
+                  <div class="panel-head"><div><div class="panel-title">官方额度</div><div class="panel-sub">距重置前的可用比例</div></div><span class="plan-pill">LIVE</span></div>
+                  <div class="quota-summary">
+                    <div class="summary-row">
+                      <div class="row between"><div class="provider"><img src="../../Sources/UsageDock/Resources/claude.png" alt="">Claude</div><strong class="body mono">61%</strong></div>
+                      <div class="mini-progress"><span class="claude-fill" style="width:61%"></span></div>
+                      <div class="row between tiny muted" style="margin-top:6px"><span>7 天窗口</span><span>周一 09:00</span></div>
+                    </div>
+                    <div class="summary-row">
+                      <div class="row between"><div class="provider"><img src="../../Sources/UsageDock/Resources/openai.png" alt="">Codex</div><strong class="body mono">44%</strong></div>
+                      <div class="mini-progress"><span class="codex-fill" style="width:44%"></span></div>
+                      <div class="row between tiny muted" style="margin-top:6px"><span>7 天窗口</span><span>周日 17:00</span></div>
+                    </div>
+                    <div class="summary-foot row between"><span>风险等级</span><strong style="color:var(--success)">LOW</strong></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="lower-grid">
+                <div class="panel">
+                  <div class="panel-head"><div><div class="panel-title">使用热力图</div><div class="panel-sub">过去 18 周 · 颜色越深表示用量越高</div></div><span class="tiny muted">周一 → 周日</span></div>
+                  <div class="heatmap"><div class="heatmap-grid">
+                    <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+                    <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+                    <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+                    <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+                    <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+                  </div></div>
+                </div>
+                <div class="panel">
+                  <div class="panel-head"><div><div class="panel-title">服务商占比</div><div class="panel-sub">本月预估成本构成</div></div></div>
+                  <div class="provider-split">
+                    <div class="donut-row">
+                      <div class="donut"></div>
+                      <div class="split-list">
+                        <div class="split-item"><span>Codex</span><strong>52%</strong></div>
+                        <div class="split-item"><span>Claude</span><strong>34%</strong></div>
+                        <div class="split-item"><span>其他</span><strong>14%</strong></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+        </article>
+      </div>
+
+      <div>
+        <div class="artboard-label">IPHONE · OVERVIEW</div>
+        <article class="device iphone" id="iphone">
+          <div class="dynamic-island"></div>
+          <div class="ios-status row between"><span>10:42</span><span>5G&nbsp;&nbsp;▰</span></div>
+          <div class="ios-content">
+            <div class="ios-title">
+              <h2>Overview</h2>
+              <p>UsageDock · 刚刚更新</p>
+            </div>
+            <div class="ios-risk">
+              <div class="row between tiny muted"><span>当前额度风险</span><span>全部数据源正常</span></div>
+              <div class="big">LOW · 最低剩余 44%</div>
+              <div class="caption muted" style="margin-top:5px">按当前节奏，预计可以安全使用到下次重置。</div>
+            </div>
+
+            <div class="ios-provider">
+              <div class="row between"><div class="provider"><img src="../../Sources/UsageDock/Resources/claude.png" alt="">Claude</div><strong class="body mono">61%</strong></div>
+              <div class="progress"><span class="claude-fill" style="width:61%"></span></div>
+              <div class="row between tiny muted" style="margin-top:7px"><span>7 天窗口</span><span>周一 09:00 重置</span></div>
+            </div>
+            <div class="ios-provider">
+              <div class="row between"><div class="provider"><img src="../../Sources/UsageDock/Resources/openai.png" alt="">Codex</div><strong class="body mono">44%</strong></div>
+              <div class="progress"><span class="codex-fill" style="width:44%"></span></div>
+              <div class="row between tiny muted" style="margin-top:7px"><span>7 天窗口</span><span>周日 17:00 重置</span></div>
+            </div>
+
+            <div class="ios-metrics">
+              <div class="ios-metric"><span class="tiny muted">今日 Tokens</span><strong class="mono">740K</strong></div>
+              <div class="ios-metric"><span class="tiny muted">预估成本</span><strong class="mono">$1.84</strong></div>
+            </div>
+
+            <div class="sparkline">
+              <div class="row between"><span class="caption semibold">7 天趋势</span><span class="tiny muted">↓ 8%</span></div>
+              <svg viewBox="0 0 330 55" style="width:100%;height:58px;margin-top:4px">
+                <defs><linearGradient id="iosLine" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4b9cfb" stop-opacity=".28"/><stop offset="1" stop-color="#4b9cfb" stop-opacity="0"/></linearGradient></defs>
+                <path d="M2,44 C45,43 48,16 90,27 S145,45 176,19 S230,13 260,28 S303,9 328,13 L328,54 L2,54Z" fill="url(#iosLine)"/>
+                <path d="M2,44 C45,43 48,16 90,27 S145,45 176,19 S230,13 260,28 S303,9 328,13" fill="none" stroke="#4b9cfb" stroke-width="2.4"/>
+              </svg>
+            </div>
+          </div>
+          <nav class="tabbar">
+            <div class="tab active"><b>◉</b>Overview</div>
+            <div class="tab"><b>◫</b>Limits</div>
+            <div class="tab"><b>⌁</b>Trends</div>
+            <div class="tab"><b>⚙︎</b>Settings</div>
+          </nav>
+        </article>
+      </div>
+
+      <div>
+        <div class="artboard-label">WIDGETKIT · HOME SCREEN</div>
+        <article class="device widgets" id="widgets">
+          <h2 class="widget-title">At-a-glance</h2>
+          <div class="widget-sub">不用打开 App，也能判断今天还能用多少。</div>
+          <div class="widget-grid">
+            <div class="widget small">
+              <div class="widget-logo"><span class="widget-mark">U</span>UsageDock</div>
+              <div class="widget-risk">LOW RISK</div>
+              <div class="widget-number mono">44%</div>
+              <div class="caption muted">最低可用额度</div>
+              <div class="mini-progress"><span class="codex-fill" style="width:44%"></span></div>
+            </div>
+            <div class="widget medium">
+              <div class="row between">
+                <div class="widget-logo"><span class="widget-mark">U</span>UsageDock</div>
+                <span class="tiny muted">刚刚更新</span>
+              </div>
+              <div class="ring-row">
+                <div class="ring-card">
+                  <div class="provider"><img src="../../Sources/UsageDock/Resources/claude.png" alt="">Claude</div>
+                  <strong class="mono">61%</strong>
+                  <div class="mini-progress"><span class="claude-fill" style="width:61%"></span></div>
+                </div>
+                <div class="ring-card">
+                  <div class="provider"><img src="../../Sources/UsageDock/Resources/openai.png" alt="">Codex</div>
+                  <strong class="mono">44%</strong>
+                  <div class="mini-progress"><span class="codex-fill" style="width:44%"></span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="lock-widgets">
+            <div class="lock-widget"><div class="tiny muted">今日 Tokens</div><div class="body bold mono" style="margin-top:5px">740K</div></div>
+            <div class="lock-widget"><div class="tiny muted">下次重置</div><div class="body bold mono" style="margin-top:5px">2:14:18</div></div>
+            <div class="lock-widget"><div class="tiny muted">本月成本</div><div class="body bold mono" style="margin-top:5px">$24.86</div></div>
+          </div>
+        </article>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
