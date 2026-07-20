@@ -349,3 +349,69 @@ The window/toolbar showed "Token Remain" a second time above the content.
   (strings + UI + state removed) and the new behavior is unit-tested.
 - Notifications are best-effort: if the user has not granted notification
   authorization the window-open alert silently no-ops (same as the feed path).
+
+---
+
+# Follow-up 3 — Codex Radar removed (2026-07-20)
+
+User decision: the community "24h 重置概率" prediction (from Follow-up 2 above) is
+not trustworthy enough to surface, so the entire Codex Radar integration was
+deleted. The feature was **added then removed** — this section supersedes the
+"Codex \"24h 重置概率\" — community data source" subsection above; the app makes
+**no** outbound calls to codexradar.com anymore and there is no remaining
+`radar` / `CodexRadar` reference anywhere in `Sources/` or `Tests/`.
+
+## Deleted files
+- `Sources/UsageDock/Services/CodexRadarService.swift` (fetch + parse + model).
+- `Sources/UsageDock/Services/CodexRadarCache.swift` (disk cache).
+- `Sources/UsageDock/Views/Components/CodexRadarBadge.swift` (inline badge).
+- `Tests/UsageDockTests/CodexRadarServiceTests.swift` (the 6 radar tests).
+
+## Wiring removed
+- `Stores/UsageStore.swift`: dropped `@Published codexRadar` /
+  `codexRadarEnabled`, the cache/service/notifier lets, both UserDefaults keys
+  (`codexRadarEnabled`, `codexRadarNotifiedOpenedAt`), the `lastRadarRefresh`
+  cadence field, the ~10-min `refreshCodexRadar` task, the window-open
+  local-notification path (`notifyIfRadarWindowOpened`, deduped on
+  `window.opened_at`), and the `setCodexRadarEnabled` toggle API.
+- `Support/UsageInsights.swift`: removed the `codexRadar` stored property and
+  init parameter.
+- `Services/FeedNotificationService.swift`: removed the generic
+  `notify(identifier:title:subtitle:body:url:)` method (its only caller was the
+  radar window-open alert); the feed's `notify(post:)` path is untouched.
+
+## UI removed
+- `Views/Popover/PopoverQuotaWidget.swift`: dropped the `codexRadar` param and
+  the badge under the Codex quota row.
+- `Views/Dashboard/OverviewSection.swift`: dropped the `codexRadar` param on
+  `OfficialQuotaRow` and the badge under the Codex official-quota row.
+- `Views/Dashboard/DataSourcesSection.swift`: removed the entire `Codex 雷达`
+  data-source row + `启用 Codex 雷达` toggle (`CodexRadarSourceRow` struct), and
+  the codexradar.com privacy-copy line; the `store` dependency (only used by
+  that row) was dropped from the view and its `DashboardView` call site.
+- `Views/UsageMenuView.swift` / `Views/Dashboard/DashboardView.swift`: stopped
+  passing `store.codexRadar` into `PopoverQuotaWidget` / `UsageInsights`.
+
+## Localization
+- No radar strings existed in the `.lproj` files or `L10n.swift` — the badge and
+  row used inline zh-Hans literals, so there was nothing to remove from the 17
+  locales or the `LocalizationTests` `requiredKeys` list.
+
+## Persisted data
+- Removed the orphaned on-disk cache
+  `~/Library/Caches/com.jamesli.usagedock/codex-radar-cache.json` (the filename
+  `CodexRadarCache` wrote) so no stale radar payload survives the feature.
+
+## Verification
+- `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift build` → clean.
+- `DEVELOPER_DIR=… swift test` → **53 tests in 9 suites pass** (was 58; −6 radar,
+  and the earlier "58" also counted a since-diverged local baseline — no
+  failures either way).
+- `bash ./script/build_and_run.sh --verify` → exit 0 (app launches, stays up).
+- `grep -rn 'radar\|Radar\|重置概率\|codexradar\|CodexRadar' Sources/ Tests/` →
+  zero hits.
+- Screenshots recaptured via `screencapture -l <windowID>` against the running
+  app: `popover-pixel.png` (Codex card now shows only "7天窗口 · 剩余 9%", no
+  probability badge) and `dashboard-pixel.png` (官方额度 Codex row shows only
+  "7天窗口 · 9%" + reset time, no probability badge). Both confirm the badge is
+  gone from both Codex surfaces.
