@@ -1,0 +1,195 @@
+name: TokenRemain
+
+options:
+  bundleIdPrefix: com.jamesli
+  deploymentTarget:
+    iOS: "18.0"
+    watchOS: "11.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: false
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    GENERATE_INFOPLIST_FILE: YES
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    # Ad-hoc local signing: no team ID is needed for the simulator gates, but
+    # signing must stay ENABLED — with it off the App Group entitlement is never
+    # applied, the shared container is never provisioned, and the app and its
+    # widget extension silently fall back to separate private directories.
+    CODE_SIGN_STYLE: Manual
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGNING_REQUIRED: YES
+    CODE_SIGNING_ALLOWED: YES
+    DEVELOPMENT_TEAM: ""
+
+packages:
+  TokenRemainKit:
+    path: Packages/TokenRemainKit
+
+targets:
+  # ---------------------------------------------------------------- iOS app
+  TokenRemain:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+      # Compiled into the app too (not just the extension) so the screenshot-only
+      # WidgetGalleryView renders the exact shipping widget views for capture.
+      - path: Widgets/TRWidgetViews.swift
+    dependencies:
+      - package: TokenRemainKit
+      - sdk: WidgetKit.framework
+      - target: TokenRemainWidgets
+        embed: true
+      - target: TokenRemainWatch
+        embed: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.jamesli.tokenremain
+        PRODUCT_NAME: Token Remain
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIUserInterfaceStyle: Dark
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+        CODE_SIGN_ENTITLEMENTS: SupportFiles/TokenRemain.entitlements
+    info:
+      path: SupportFiles/TokenRemain-Info.plist
+      properties:
+        CFBundleDisplayName: Token Remain
+        NSSupportsLiveActivities: true
+        NSSupportsLiveActivitiesFrequentUpdates: false
+        CFBundleURLTypes:
+          - CFBundleURLName: com.jamesli.tokenremain
+            CFBundleTypeRole: Editor
+            CFBundleURLSchemes: [tokenremain]
+
+  # -------------------------------------------------- iOS widget extension
+  TokenRemainWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Widgets
+    dependencies:
+      - package: TokenRemainKit
+      - sdk: WidgetKit.framework
+      - sdk: SwiftUI.framework
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.jamesli.tokenremain.widgets
+        PRODUCT_NAME: TokenRemainWidgets
+        CODE_SIGN_ENTITLEMENTS: SupportFiles/TokenRemainWidgets.entitlements
+    info:
+      path: SupportFiles/TokenRemainWidgets-Info.plist
+      properties:
+        CFBundleDisplayName: Token Remain
+        NSSupportsLiveActivities: true
+        NSSupportsLiveActivitiesFrequentUpdates: false
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+
+  # ------------------------------------------------------------ watchOS app
+  TokenRemainWatch:
+    type: application
+    platform: watchOS
+    sources:
+      - path: WatchApp
+    dependencies:
+      - package: TokenRemainKit
+      - target: TokenRemainWatchWidgets
+        embed: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.jamesli.tokenremain.watchkitapp
+        PRODUCT_NAME: Token Remain
+        INFOPLIST_KEY_WKCompanionAppBundleIdentifier: com.jamesli.tokenremain
+        INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp: NO
+        CODE_SIGN_ENTITLEMENTS: SupportFiles/TokenRemainWatch.entitlements
+    info:
+      path: SupportFiles/TokenRemainWatch-Info.plist
+      properties:
+        CFBundleDisplayName: Token Remain
+        WKApplication: true
+        WKCompanionAppBundleIdentifier: com.jamesli.tokenremain
+
+  # ------------------------------------------ watchOS widget extension
+  TokenRemainWatchWidgets:
+    type: app-extension
+    platform: watchOS
+    sources:
+      - path: WatchWidgets
+    dependencies:
+      - package: TokenRemainKit
+      - sdk: WidgetKit.framework
+      - sdk: SwiftUI.framework
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.jamesli.tokenremain.watchkitapp.widgets
+        PRODUCT_NAME: TokenRemainWatchWidgets
+        CODE_SIGN_ENTITLEMENTS: SupportFiles/TokenRemainWatchWidgets.entitlements
+    info:
+      path: SupportFiles/TokenRemainWatchWidgets-Info.plist
+      properties:
+        CFBundleDisplayName: Token Remain
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+
+  # --------------------------------------------------------------- UI tests
+  TokenRemainUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: UITests
+    dependencies:
+      - target: TokenRemain
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.jamesli.tokenremain.uitests
+        TEST_TARGET_NAME: TokenRemain
+
+schemes:
+  TokenRemain:
+    build:
+      targets:
+        TokenRemain: all
+        TokenRemainWidgets: all
+        TokenRemainWatch: all
+        TokenRemainWatchWidgets: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - TokenRemainUITests
+
+  # Lets the watch app and its complications be built against the watchOS SDK
+  # on their own, independently of the iPhone app that embeds them.
+  TokenRemainWatch:
+    build:
+      targets:
+        TokenRemainWatch: all
+        TokenRemainWatchWidgets: all
+    run:
+      config: Debug
+
+  TokenRemainUITests:
+    build:
+      targets:
+        TokenRemain: all
+        TokenRemainUITests: [test]
+    test:
+      config: Debug
+      targets:
+        - TokenRemainUITests
+
+  TokenRemainKit:
+    build:
+      targets:
+        TokenRemain: [test]
+    test:
+      config: Debug
+      targets:
+        - package: TokenRemainKit/TokenRemainKitTests

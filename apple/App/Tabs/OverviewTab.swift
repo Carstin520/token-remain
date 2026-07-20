@@ -1,0 +1,352 @@
+import SwiftUI
+import TokenRemainKit
+
+struct OverviewTab: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ScaledMetric(relativeTo: .largeTitle) private var heroSize: CGFloat = 64
+
+    /// The hero numeral scales with Dynamic Type. The cap is a guard against
+    /// pathological scale factors, set above the AX5 value so it never truncates
+    /// growth in practice — the card reflows instead.
+    private var cappedHeroSize: CGFloat { min(heroSize, 128) }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 12) {
+                    wordmark
+                    if model.snapshot.isEmpty {
+                        NotConnectedCard()
+                    } else {
+                        riskHero
+                        ForEach(ProviderQuota.Provider.allCases, id: \.self) { provider in
+                            if let lead = model.insights.leadWindow(for: provider) {
+                                providerCard(provider: provider, lead: lead)
+                            }
+                        }
+                        // Two half-width cards side by side, stacking vertically at
+                        // accessibility sizes so neither one clips its text.
+                        if dynamicTypeSize.isAccessibilitySize {
+                            countdownCard
+                            trendCard
+                        } else {
+                            HStack(alignment: .top, spacing: 12) {
+                                countdownCard
+                                trendCard
+                            }
+                        }
+                        ctaRow
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 24)
+            }
+            .background(TRTheme.ink)
+            .navigationTitle(TRL10n.t("tab.overview"))
+        }
+    }
+
+    private var wordmark: some View {
+        TRAdaptiveRow {
+            PixelRobot(remainingPercent: model.insights.minRemainingPercent, size: 26)
+                .accessibilityHidden(true)
+            Text("Token Remain")
+                .font(.system(.headline, design: .monospaced))
+                .foregroundStyle(TRTheme.text)
+            Spacer()
+            if model.snapshot.isDemo { DemoChip(expandsHitTarget: true) }
+        }
+        .padding(.top, 4)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Token Remain")
+    }
+
+    // MARK: - Risk hero
+
+    private var riskHero: some View {
+        let now = Date()
+        let risk = model.insights.riskLevel(at: now)
+        let lasts = model.insights.willLastUntilReset(at: now)
+        return PixelCard {
+            TRAdaptiveRow(spacing: 12) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(TRL10n.t("overview.risk.caption"))
+                        .font(.caption)
+                        .foregroundStyle(TRTheme.textDim)
+                    HStack(spacing: 6) {
+                        PixelBadge(
+                            risk.badge,
+                            accent: TRTheme.riskAccent(risk),
+                            filled: TRTheme.riskIsFilled(risk)
+                        )
+                        .accessibilityIdentifier("tr.overview.riskBadge")
+                        if !risk.glyph.isEmpty {
+                            Text(risk.glyph)
+                                .font(.system(.caption, design: .monospaced))
+                                .foregroundStyle(TRTheme.riskAccent(risk))
+                        }
+                    }
+                    Text(TRL10n.t("overview.min_remaining"))
+                        .font(.caption)
+                        .foregroundStyle(TRTheme.textDim)
+                        .padding(.top, 4)
+                    TRValue(model.entry(at: now).heroText, size: cappedHeroSize)
+                        .foregroundStyle(TRTheme.text)
+                        .accessibilityIdentifier("tr.overview.hero")
+                    HStack(spacing: 5) {
+                        PixelCheck(lasts ? .checked : .warn, accent: lasts ? TRTheme.cyan : TRTheme.violet)
+                        Text(model.insights.paceLine(at: now))
+                            .font(.footnote)
+                            .foregroundStyle(TRTheme.textDim)
+                    }
+                }
+                Spacer(minLength: 0)
+                VStack(alignment: .trailing, spacing: 10) {
+                    Text(model.snapshot.isDemo
+                        ? TRL10n.t("origin.demo.status")
+                        : TRL10n.t("origin.none.status"))
+                        .font(.caption)
+                        .foregroundStyle(TRTheme.textDim)
+                    PixelRobot(remainingPercent: model.insights.minRemainingPercent, size: 96)
+                        .accessibilityHidden(true)
+                }
+            }
+        }
+        .trGlassCard(enabled: model.glassEnabled)
+        .accessibilityElement(children: .ignore)
+        .accessibilityIdentifier("tr.overview.riskHero")
+        .accessibilityLabel(heroAccessibilityLabel(risk: risk, now: now))
+    }
+
+    private func heroAccessibilityLabel(risk: RiskLevel, now: Date) -> String {
+        var parts = [
+            "\(TRL10n.t("overview.risk.caption"))\(risk.headline)",
+            "\(TRL10n.t("overview.min_remaining")) \(model.entry(at: now).heroText)",
+            model.insights.paceLine(at: now)
+        ]
+        if model.snapshot.isDemo { parts.append(TRL10n.t("demo.a11y")) }
+        return parts.joined(separator: "，")
+    }
+
+    // MARK: - Provider cards
+
+    private func providerCard(provider: ProviderQuota.Provider, lead: UsageInsights.Window) -> some View {
+        let now = Date()
+        let others = model.insights.windows(for: provider).filter { $0.id != lead.id }
+        return PixelCard {
+            VStack(alignment: .leading, spacing: 8) {
+                TRAdaptiveRow {
+                    ProviderGlyph(provider: provider, size: 18)
+                    Text(provider.shortName)
+                        .font(.system(.headline, design: .monospaced))
+                        .foregroundStyle(TRTheme.text)
+                    Spacer()
+                    TRValue(UsageFormatting.percent(lead.remainingPercent.rounded()), size: 20, maxSize: 34)
+                        .foregroundStyle(TRTheme.text)
+                }
+                SegmentBar(remainingPercent: lead.remainingPercent, accent: TRTheme.accent(for: provider))
+                TRAdaptiveRow {
+                    Text(UsageFormatting.windowName(minutes: lead.windowMinutes))
+                        .font(.caption)
+                        .foregroundStyle(TRTheme.textDim)
+                    Spacer(minLength: 0)
+                    Text(resetFooter(for: lead, now: now))
+                        .font(.caption)
+                        .foregroundStyle(TRTheme.textDim)
+                }
+                // Claude's second window rides along as a secondary line.
+                ForEach(others) { other in
+                    TRAdaptiveRow {
+                        Text(UsageFormatting.windowName(minutes: other.windowMinutes))
+                            .font(.caption)
+                            .foregroundStyle(TRTheme.textMute)
+                        Spacer(minLength: 0)
+                        Text(UsageFormatting.percent(other.remainingPercent.rounded()))
+                            .font(.system(.caption2, design: .monospaced).monospacedDigit())
+                            .foregroundStyle(TRTheme.textDim)
+                    }
+                }
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityIdentifier("tr.overview.provider.\(provider.rawValue)")
+        .accessibilityLabel(
+            "\(provider.shortName)，\(UsageFormatting.windowName(minutes: lead.windowMinutes))，"
+            + "\(TRL10n.t("overview.min_remaining")) \(UsageFormatting.percent(lead.remainingPercent.rounded()))"
+        )
+    }
+
+    private func resetFooter(for window: UsageInsights.Window, now: Date) -> String {
+        guard let resetsAt = window.resetsAt else { return TRL10n.t("limits.reset.unknown") }
+        return UsageFormatting.resetDescription(to: resetsAt, now: now)
+    }
+
+    // MARK: - Countdown & trend
+
+    private var countdownCard: some View {
+        PixelCard(padding: 12) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(TRL10n.t("overview.reset.card"))
+                    .font(.caption)
+                    .foregroundStyle(TRTheme.textDim)
+                if let reset = model.insights.soonestReset {
+                    // Ticks only while foregrounded; nothing schedules work in the model.
+                    TimelineView(.periodic(from: .now, by: 1)) { context in
+                        TRValue(UsageFormatting.shortCountdown(to: reset, now: context.date), size: 26, maxSize: 40)
+                            .foregroundStyle(TRTheme.cyan)
+                    }
+                    Text(UsageFormatting.absoluteReset(reset))
+                        .font(.caption)
+                        .foregroundStyle(TRTheme.textDim)
+                } else {
+                    Text(TRL10n.t("limits.reset.unknown"))
+                        .font(.footnote)
+                        .foregroundStyle(TRTheme.textDim)
+                }
+                if model.liveActivityState == .active {
+                    RecordingDot(animated: !reduceMotion)
+                }
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(countdownAccessibilityLabel)
+    }
+
+    private var countdownAccessibilityLabel: String {
+        guard let reset = model.insights.soonestReset else { return TRL10n.t("limits.reset.unknown") }
+        return "\(TRL10n.t("overview.reset.card")) \(UsageFormatting.durationUntil(reset, now: Date()))"
+    }
+
+    private var trendCard: some View {
+        let values = model.history.suffix(48).map(\.minRemainingPercent)
+        return PixelCard(padding: 12) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(TRL10n.t("overview.trend.card"))
+                    .font(.caption)
+                    .foregroundStyle(TRTheme.textDim)
+                if values.count >= 2 {
+                    DottedSparkline(values: Array(values))
+                        .frame(height: 44)
+                } else {
+                    Text(TRL10n.t("overview.trend.empty"))
+                        .font(.caption)
+                        .foregroundStyle(TRTheme.textMute)
+                        .frame(height: 44, alignment: .center)
+                }
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(
+            values.count >= 2
+                ? "\(TRL10n.t("overview.trend.card"))，\(TRL10n.f("trends.meta.points", values.count))"
+                : TRL10n.t("overview.trend.empty")
+        )
+    }
+
+    private var ctaRow: some View {
+        Button {
+            model.openConstrainingWindow()
+        } label: {
+            HStack {
+                Text(TRL10n.t("overview.cta"))
+                    .font(.system(.body, design: .monospaced))
+                Spacer()
+                Image(systemName: "chevron.right")
+            }
+            .foregroundStyle(TRTheme.indigo)
+            .padding(14)
+            .frame(maxWidth: .infinity)
+            .background(TRTheme.surface, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .strokeBorder(TRTheme.indigoDim, lineWidth: 1)
+            }
+        }
+        .buttonStyle(.plain)
+        .trGlassCard(enabled: model.glassEnabled)
+        .accessibilityIdentifier("tr.overview.cta")
+    }
+}
+
+/// The `.none` origin card. It states plainly what a real source would require and
+/// shows no percentages at all.
+struct NotConnectedCard: View {
+    var body: some View {
+        PixelCard {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 12) {
+                    PixelRobot(remainingPercent: 0, size: 56)
+                        .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(TRL10n.t("origin.none.title"))
+                            .font(.system(.headline, design: .monospaced))
+                            .foregroundStyle(TRTheme.text)
+                        Text(TRL10n.t("risk.summary.unknown"))
+                            .font(.caption)
+                            .foregroundStyle(TRTheme.textDim)
+                    }
+                }
+                Text(TRL10n.t("origin.none.body"))
+                    .font(.footnote)
+                    .foregroundStyle(TRTheme.textDim)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityIdentifier("tr.overview.emptyState")
+        .accessibilityLabel("\(TRL10n.t("origin.none.title"))。\(TRL10n.t("origin.none.body"))")
+    }
+}
+
+/// The design's pulsing `REC` dot, shown only while a Live Activity is running.
+struct RecordingDot: View {
+    let animated: Bool
+    @State private var bright = false
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Rectangle()
+                .fill(TRTheme.violet)
+                .frame(width: 5, height: 5)
+                .opacity(bright ? 1 : 0.35)
+            Text("REC")
+                .font(.system(size: 9, design: .monospaced).weight(.semibold))
+                .foregroundStyle(TRTheme.violet)
+        }
+        .onAppear {
+            guard animated else {
+                bright = true
+                return
+            }
+            withAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true)) {
+                bright = true
+            }
+        }
+        .accessibilityElement()
+        .accessibilityLabel(TRL10n.t("settings.liveactivity.active"))
+    }
+}
+
+#Preview("Overview · concept") {
+    OverviewTab()
+        .environment(AppModel(arguments: ["-tr-demo", "concept"]))
+        .preferredColorScheme(.dark)
+}
+
+/// Content-level DEMO marker for tabs without their own wordmark row. It lives in
+/// scrollable content rather than the nav bar so it scales with Dynamic Type.
+struct DemoHeaderRow: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        if model.snapshot.isDemo {
+            HStack {
+                Spacer()
+                DemoChip(expandsHitTarget: true)
+            }
+        }
+    }
+}

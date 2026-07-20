@@ -1,0 +1,10 @@
+# The Xcode project is generated from project.yml — never committed.
+*.xcodeproj
+*.xcworkspace
+DerivedData/
+build/
+.build/
+xcuserdata/
+*.xcuserstate
+.swiftpm/
+Screenshots/
