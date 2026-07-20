@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Bordered dark surface used as the base container for popover cards and
-/// Dashboard panels. Keeps corner radius, border and background consistent.
+/// Shared panel surface. macOS 26 uses native Liquid Glass; older systems keep
+/// the existing bordered dark card.
 struct DashboardCard<Content: View>: View {
     var padding: CGFloat = 14
     var cornerRadius: CGFloat = 15
@@ -12,11 +12,11 @@ struct DashboardCard<Content: View>: View {
         content()
             .padding(padding)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(background, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .strokeBorder(DashboardTheme.border, lineWidth: 1)
+            .usageDockGlassSurface(
+                cornerRadius: cornerRadius,
+                fallbackBackground: background
             )
+            .pixelTicks(cornerRadius: cornerRadius)
     }
 }
 
@@ -51,19 +51,16 @@ extension PanelHeader where Accessory == EmptyView {
     }
 }
 
-/// Small uppercase pill (plan name, LIVE badge, status tag).
+/// Small uppercase pill (plan name, LIVE badge, status tag). Now rendered with
+/// the shared pixel-tech `PixelBadge` chrome so every meta tag reads as one
+/// system. `background` is retained for source compatibility with existing call
+/// sites; the pixel chip derives its own fill from `color`.
 struct TagPill: View {
     let text: String
     var color: Color = DashboardTheme.secondaryText
     var background: Color = DashboardTheme.surface2
 
     var body: some View {
-        Text(text.uppercased())
-            .font(.system(size: 9, weight: .bold))
-            .tracking(0.8)
-            .foregroundStyle(color)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        PixelBadge(text: text, color: color)
     }
 }

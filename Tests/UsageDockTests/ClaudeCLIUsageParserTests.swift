@@ -29,7 +29,10 @@ struct ClaudeCLIUsageParserTests {
         #expect(quota.primary.windowMinutes == 300)
         #expect(quota.secondary?.windowMinutes == 10_080)
         #expect(quota.primary.resetsAt != nil)
-        #expect(quota.secondary?.resetsAt != nil)
+        #expect(
+            quota.secondary?.resetsAt
+                == ISO8601DateFormatter().date(from: "2026-07-24T05:00:00Z")
+        )
     }
 
     @Test("Converts remaining percentages to used percentages")

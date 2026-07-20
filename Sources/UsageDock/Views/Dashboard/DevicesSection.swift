@@ -32,7 +32,7 @@ struct DevicesSection: View {
                     EmptyStateView(
                         icon: "laptopcomputer.and.iphone",
                         title: "跨设备同步即将到来",
-                        message: "UsageDock 目前仅监测这台 Mac 上的本地数据。跨设备一览需要伴侣 App 与同步能力，尚未实现，因此不会显示其他并不存在的设备。"
+                        message: "Token Remain 目前仅监测这台 Mac 上的本地数据。跨设备一览需要伴侣 App 与同步能力，尚未实现，因此不会显示其他并不存在的设备。"
                     )
                 }
                 .frame(maxWidth: .infinity)

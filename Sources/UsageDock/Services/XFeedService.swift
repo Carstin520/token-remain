@@ -29,7 +29,7 @@ struct XFeedService: Sendable {
         accounts: [AIFeedAccount],
         tier: AIFeedTier,
         startTime: Date,
-        maxResults: Int = AIFeedCollectionPolicy.maxPostsPerTier
+        maxResults: Int = AIFeedCollectionPolicy.maxPrimaryPostsPerDay
     ) async throws -> [AIFeedPost] {
         let url = try Self.searchURL(
             accounts: accounts,

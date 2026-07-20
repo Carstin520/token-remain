@@ -7,8 +7,8 @@ struct AIFeedSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             SectionTitleHeader(
-                title: DashboardSection.aiFeed.title,
-                subtitle: DashboardSection.aiFeed.subtitle,
+                title: "AI Feed",
+                subtitle: "与你的额度和工作流直接相关的精选更新",
                 trailing: updatedText
             )
 
@@ -91,7 +91,7 @@ struct AIFeedSection: View {
                 .labelsHidden()
                 .toggleStyle(.switch)
                 .controlSize(.small)
-                .tint(DashboardTheme.codex)
+                .tint(DashboardTheme.violet)
                 .accessibilityLabel("重要动态通知")
             }
         }

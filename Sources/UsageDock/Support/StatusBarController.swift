@@ -7,6 +7,7 @@ final class StatusBarController: NSObject {
     private let store: UsageStore
     private let feedStore: AIFeedStore
     private let launchAtLogin: LaunchAtLoginManager
+    private let popoverLayout = PopoverLayoutStore()
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private let popover = NSPopover()
     private var cancellables = Set<AnyCancellable>()
@@ -18,7 +19,9 @@ final class StatusBarController: NSObject {
 #if DEBUG
     private lazy var popoverPreviewController = PopoverPreviewWindowController(
         store: store,
+        feedStore: feedStore,
         launchAtLogin: launchAtLogin,
+        layout: popoverLayout,
         onOpenDashboard: { [weak self] section in
             self?.openDashboard(section)
         }
@@ -37,7 +40,9 @@ final class StatusBarController: NSObject {
         popover.contentViewController = NSHostingController(
             rootView: UsageMenuView(
                 store: store,
+                feedStore: feedStore,
                 launchAtLogin: launchAtLogin,
+                layout: popoverLayout,
                 onOpenDashboard: { [weak self] section in
                     self?.openDashboard(section)
                 }
@@ -48,8 +53,8 @@ final class StatusBarController: NSObject {
             button.target = self
             button.action = #selector(togglePopover)
             button.sendAction(on: [.leftMouseUp])
-            button.imagePosition = .imageOnly
-            button.imageScaling = .scaleNone
+            button.imagePosition = .noImage
+            button.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
         }
 
         Publishers.CombineLatest(store.$claude, store.$codex)
@@ -57,7 +62,15 @@ final class StatusBarController: NSObject {
             .sink { [weak self] _, _ in self?.updateStatusImage() }
             .store(in: &cancellables)
 
+        NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.updateStatusImage() }
+            .store(in: &cancellables)
+
         updateStatusImage()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self] in
+            self?.updateStatusImage()
+        }
         store.start()
         feedStore.start()
     }
@@ -67,7 +80,9 @@ final class StatusBarController: NSObject {
         if popover.isShown {
             popover.performClose(nil)
         } else {
+            popoverLayout.prepareForPresentation()
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+            Task { await store.refresh(forceCCUsage: false, forceClaude: false) }
         }
     }
 
@@ -76,15 +91,21 @@ final class StatusBarController: NSObject {
         dashboardController.show(section: section)
     }
 
-    /// Opens the dashboard when the app is launched with the development-only
-    /// `--open-dashboard` argument. Normal menu-bar launches remain unchanged.
-    func openDashboardForPreview(section: DashboardSection = .overview) {
+    /// Opens the primary desktop window from app launch, Dock reopen, or menu UI.
+    func showDashboard(section: DashboardSection = .overview) {
         openDashboard(section)
+    }
+
+    /// Opens the dashboard when the app is launched with the development-only
+    /// `--open-dashboard` argument.
+    func openDashboardForPreview(section: DashboardSection = .overview) {
+        showDashboard(section: section)
     }
 
     /// Opens the menu popover for visual QA when launched with
     /// `--open-popover`. Regular launches still wait for a status-item click.
     func openPopoverForPreview() {
+        popoverLayout.prepareForPresentation()
 #if DEBUG
         popoverPreviewController.show()
 #else
@@ -94,49 +115,45 @@ final class StatusBarController: NSObject {
     }
 
     private func updateStatusImage() {
-        let height: CGFloat = 18
         let iconSize: CGFloat = 13
-        let gap: CGFloat = 4
-        let separator = " · "
-        let font = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .regular)
+        let font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
         let attributes: [NSAttributedString.Key: Any] = [
             .font: font,
-            .foregroundColor: NSColor.black
+            .foregroundColor: NSColor.labelColor
         ]
-        let claudeText = NSAttributedString(string: store.claudeRemainingText, attributes: attributes)
-        let separatorText = NSAttributedString(string: separator, attributes: attributes)
-        let codexText = NSAttributedString(string: store.codexRemainingText, attributes: attributes)
-        let width = iconSize + gap + claudeText.size().width
-            + separatorText.size().width + iconSize + gap + codexText.size().width
+        let title = NSMutableAttributedString()
+        title.append(statusIcon(.claude, size: iconSize))
+        title.append(NSAttributedString(string: " \(store.claudeRemainingText) · ", attributes: attributes))
+        title.append(statusIcon(.codex, size: iconSize))
+        title.append(NSAttributedString(string: " \(store.codexRemainingText)", attributes: attributes))
 
-        let image = NSImage(size: NSSize(width: ceil(width), height: height))
-        image.lockFocus()
-        defer { image.unlockFocus() }
+        let state = TokenRemainLogoState.resolve(remainingPercent: store.aggregateRemainingPercent)
+        statusItem.button?.image = nil
+        statusItem.button?.attributedTitle = title
+        statusItem.isVisible = true
+        NSApp.applicationIconImage = state.image()
 
-        var x: CGFloat = 0
-        drawIcon(.claude, at: NSRect(x: x, y: (height - iconSize) / 2, width: iconSize, height: iconSize))
-        x += iconSize + gap
-        draw(claudeText, x: &x, height: height)
-        draw(separatorText, x: &x, height: height)
-        drawIcon(.codex, at: NSRect(x: x, y: (height - iconSize) / 2, width: iconSize, height: iconSize))
-        x += iconSize + gap
-        draw(codexText, x: &x, height: height)
-
-        image.isTemplate = true
-        statusItem.button?.image = image
-        statusItem.button?.toolTip = "Claude 剩余 \(store.claudeRemainingText)；Codex 剩余 \(store.codexRemainingText)"
-        statusItem.length = ceil(width) + 8
+        let insights = UsageInsights(claude: store.claude, codex: store.codex, daily: nil)
+        statusItem.button?.toolTip = [
+            "Token Remain · \(state.accessibilityDescription)",
+            insights.decisionHeadline(),
+            "Claude 剩余 \(store.claudeRemainingText)",
+            "Codex 剩余 \(store.codexRemainingText)"
+        ].joined(separator: "；")
+        statusItem.length = ceil(title.size().width) + 8
     }
 
-    private func draw(_ text: NSAttributedString, x: inout CGFloat, height: CGFloat) {
-        let size = text.size()
-        text.draw(at: NSPoint(x: x, y: (height - size.height) / 2))
-        x += size.width
-    }
+    private func statusIcon(
+        _ provider: ProviderQuota.Provider,
+        size: CGFloat
+    ) -> NSAttributedString {
+        let image = BrandIcon.image(for: provider).copy() as! NSImage
+        image.size = NSSize(width: size, height: size)
+        image.isTemplate = provider == .claude
 
-    private func drawIcon(_ provider: ProviderQuota.Provider, at rect: NSRect) {
-        let source = BrandIcon.image(for: provider).copy() as! NSImage
-        source.isTemplate = false
-        source.draw(in: rect, from: .zero, operation: .sourceOver, fraction: 1)
+        let attachment = NSTextAttachment()
+        attachment.attachmentCell = NSTextAttachmentCell(imageCell: image)
+        attachment.bounds = NSRect(x: 0, y: -2, width: size, height: size)
+        return NSAttributedString(attachment: attachment)
     }
 }

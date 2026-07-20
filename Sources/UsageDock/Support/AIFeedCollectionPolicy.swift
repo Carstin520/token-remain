@@ -1,10 +1,12 @@
 import Foundation
 
 enum AIFeedCollectionPolicy {
-    static let maxPostsPerTier = 50
+    static let maxPrimaryPostsPerDay = 50
+    static let maxRotatingPostsPerDay = 25
     static let fetchResultsPerTier = 100
     static let rotatingAccountLimit = 5
     static let minimumRotatingRelevanceScore = 40
+    static let maxNormalPostsPerAuthor = 3
 
     static var shanghaiCalendar: Calendar {
         var calendar = Calendar(identifier: .gregorian)
@@ -40,7 +42,7 @@ enum AIFeedCollectionPolicy {
     static func selectRotating(
         from posts: [AIFeedPost],
         maxAccounts: Int = rotatingAccountLimit,
-        maxPosts: Int = maxPostsPerTier,
+        maxPosts: Int = maxRotatingPostsPerDay,
         now: Date = Date()
     ) -> RotationSelection {
         let rotatingPosts = posts.filter { $0.tier == .rotating }
@@ -110,6 +112,65 @@ enum AIFeedCollectionPolicy {
         }
     }
 
+    static func curateForDisplay(
+        _ posts: [AIFeedPost],
+        now: Date = Date(),
+        maxNormalPostsPerAuthor: Int = maxNormalPostsPerAuthor
+    ) -> [AIFeedPost] {
+        var normalCounts: [String: Int] = [:]
+        return sortForRecommendation(posts, now: now).filter { post in
+            if post.priority != .normal { return true }
+            if post.tier == .rotating,
+               topicRelevanceScore(for: post.text) < minimumRotatingRelevanceScore {
+                return false
+            }
+
+            let username = post.username.lowercased()
+            let currentCount = normalCounts[username, default: 0]
+            guard currentCount < maxNormalPostsPerAuthor else { return false }
+            normalCounts[username] = currentCount + 1
+            return true
+        }
+    }
+
+    /// Ranks already-curated posts for the compact "Trending" surfaces.
+    ///
+    /// Recommendation ranking answers "what matters?", while this score answers
+    /// "what is breaking out now?". Engagement is converted to age-adjusted
+    /// velocity and capped so large accounts cannot overwhelm relevance or
+    /// critical usage/service events.
+    static func sortForTrending(
+        _ posts: [AIFeedPost],
+        now: Date = Date()
+    ) -> [AIFeedPost] {
+        curateForDisplay(posts, now: now).sorted {
+            let lhsScore = trendingScore(for: $0, now: now)
+            let rhsScore = trendingScore(for: $1, now: now)
+            if lhsScore != rhsScore { return lhsScore > rhsScore }
+            if $0.createdAt != $1.createdAt { return $0.createdAt > $1.createdAt }
+            return $0.id < $1.id
+        }
+    }
+
+    static func trendingScore(for post: AIFeedPost, now: Date = Date()) -> Int {
+        let ageHours = max(0.5, now.timeIntervalSince(post.createdAt) / 3_600)
+        let engagement = Double(max(0, engagementScore(for: post)))
+        let velocity = (engagement + 1) / pow(ageHours, 0.8)
+        let momentumScore = min(2_500, Int(log2(velocity + 1) * 240))
+
+        let priorityScore: Int
+        switch post.priority {
+        case .tokenReset: priorityScore = 1_800
+        case .majorUpdate: priorityScore = 900
+        case .normal: priorityScore = 0
+        }
+
+        let relevanceScore = max(0, topicRelevanceScore(for: post.text)) * 4
+        let freshnessScore = max(0, 360 - Int(ageHours * 12))
+        let sourceScore = post.tier == .primary ? 50 : 0
+        return momentumScore + priorityScore + relevanceScore + freshnessScore + sourceScore
+    }
+
     static func recommendationScore(for post: AIFeedPost, now: Date = Date()) -> Int {
         let priorityScore: Int
         switch post.priority {
@@ -165,7 +226,8 @@ enum AIFeedCollectionPolicy {
         existing: [AIFeedPost],
         fetched: [AIFeedPost],
         dayStart: Date,
-        maxPostsPerTier: Int = maxPostsPerTier
+        maxPrimaryPosts: Int = maxPrimaryPostsPerDay,
+        maxRotatingPosts: Int = maxRotatingPostsPerDay
     ) -> [AIFeedPost] {
         var byID: [String: AIFeedPost] = [:]
         for post in existing where post.createdAt >= dayStart {
@@ -176,10 +238,14 @@ enum AIFeedCollectionPolicy {
         }
 
         return AIFeedTier.allCases.flatMap { tier in
-            AIFeedPost.sortedForDisplay(
+            let maxPosts = switch tier {
+            case .primary: maxPrimaryPosts
+            case .rotating: maxRotatingPosts
+            }
+            return AIFeedPost.sortedForDisplay(
                 byID.values.filter { $0.tier == tier }
             )
-            .prefix(maxPostsPerTier)
+            .prefix(maxPosts)
         }
     }
 

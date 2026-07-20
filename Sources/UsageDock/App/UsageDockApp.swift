@@ -9,8 +9,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusBarController: StatusBarController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // This is intentionally a menu-bar-only utility: no Dock icon or main window.
-        NSApp.setActivationPolicy(.accessory)
+        // Token Remain is a desktop app with a persistent Dashboard and a
+        // companion menu-bar status item.
+        NSApp.setActivationPolicy(.regular)
         statusBarController = StatusBarController(
             store: store,
             feedStore: feedStore,
@@ -30,18 +31,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
-        if arguments.contains("--open-dashboard") || arguments.contains("--open-ai-feed") {
+        // Dev/QA hook: jump straight to a named dashboard section (rawValue),
+        // e.g. `--open-section trends`. Mirrors the other launch-preview flags.
+        if let sectionIndex = arguments.firstIndex(of: "--open-section"),
+           arguments.indices.contains(sectionIndex + 1),
+           let section = DashboardSection(rawValue: arguments[sectionIndex + 1]) {
             DispatchQueue.main.async { [weak self] in
-                let section: DashboardSection = arguments.contains("--open-ai-feed") ? .aiFeed : .overview
-                self?.statusBarController?.openDashboardForPreview(section: section)
+                self?.statusBarController?.showDashboard(section: section)
             }
-        }
-
-        if arguments.contains("--open-popover") {
+        } else if arguments.contains("--open-dashboard") || arguments.contains("--open-ai-feed") {
+            DispatchQueue.main.async { [weak self] in
+                self?.statusBarController?.showDashboard(section: .overview)
+            }
+        } else if arguments.contains("--open-popover") {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
                 self?.statusBarController?.openPopoverForPreview()
             }
+        } else {
+            DispatchQueue.main.async { [weak self] in
+                self?.statusBarController?.showDashboard(section: .overview)
+            }
         }
+    }
+
+    func applicationShouldHandleReopen(
+        _ sender: NSApplication,
+        hasVisibleWindows flag: Bool
+    ) -> Bool {
+        statusBarController?.showDashboard(section: .overview)
+        return true
+    }
+
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        false
     }
 }
 

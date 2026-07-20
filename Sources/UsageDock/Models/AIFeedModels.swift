@@ -6,8 +6,8 @@ enum AIFeedTier: String, Codable, Hashable, Sendable, CaseIterable {
 
     var title: String {
         switch self {
-        case .primary: return "第一梯队"
-        case .rotating: return "第二梯队"
+        case .primary: return L10n.text("feed.tier.primary")
+        case .rotating: return L10n.text("feed.tier.rotating")
         }
     }
 }
@@ -27,9 +27,9 @@ enum AIFeedPriority: String, Codable, Hashable, Sendable {
 
     var title: String {
         switch self {
-        case .tokenReset: return "额度 / Token"
-        case .majorUpdate: return "重大更新"
-        case .normal: return "动态"
+        case .tokenReset: return L10n.text("feed.priority.token")
+        case .majorUpdate: return L10n.text("feed.priority.update")
+        case .normal: return L10n.text("feed.priority.normal")
         }
     }
 }

@@ -7,7 +7,32 @@
   <key>CFBundleIdentifier</key>
   <string>com.jamesli.usagedock</string>
   <key>CFBundleName</key>
-  <string>UsageDock</string>
+  <string>Token Remain</string>
+  <key>CFBundleDisplayName</key>
+  <string>Token Remain</string>
+  <key>CFBundleDevelopmentRegion</key>
+  <string>en</string>
+  <key>CFBundleLocalizations</key>
+  <array>
+    <string>en</string>
+    <string>zh-Hans</string>
+    <string>zh-Hant</string>
+    <string>ja</string>
+    <string>ko</string>
+    <string>es</string>
+    <string>fr</string>
+    <string>de</string>
+    <string>pt-BR</string>
+    <string>it</string>
+    <string>ru</string>
+    <string>ar</string>
+    <string>hi</string>
+    <string>tr</string>
+    <string>vi</string>
+    <string>id</string>
+  </array>
+  <key>CFBundleIconFile</key>
+  <string>TokenRemain.icns</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleShortVersionString</key>
@@ -15,7 +40,7 @@
   <key>LSMinimumSystemVersion</key>
   <string>14.0</string>
   <key>LSUIElement</key>
-  <true/>
+  <false/>
   <key>NSPrincipalClass</key>
   <string>NSApplication</string>
 </dict>

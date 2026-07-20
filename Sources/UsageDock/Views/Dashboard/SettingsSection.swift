@@ -29,7 +29,7 @@ struct SettingsSection: View {
                         }
                     }
                     .toggleStyle(.switch)
-                    .tint(DashboardTheme.codex)
+                    .tint(DashboardTheme.violet)
 
                     if let error = launchAtLogin.errorMessage {
                         Label(error, systemImage: "exclamationmark.triangle.fill")
@@ -54,7 +54,7 @@ struct SettingsSection: View {
                         Button {
                             launchAtLogin.restart()
                         } label: {
-                            Label("重启 UsageDock", systemImage: "arrow.clockwise.circle")
+                            Label("重启 Token Remain", systemImage: "arrow.clockwise.circle")
                         }
 
                         Spacer()
@@ -65,7 +65,7 @@ struct SettingsSection: View {
                             Label("退出", systemImage: "power")
                         }
                     }
-                    .buttonStyle(.bordered)
+                    .usageDockActionButtonStyle()
                     .controlSize(.large)
                 }
             }
@@ -98,6 +98,6 @@ struct SettingsSection: View {
 
     private var appVersion: String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
-        return version.map { "UsageDock \($0)" } ?? "UsageDock"
+        return version.map { "Token Remain \($0)" } ?? "Token Remain"
     }
 }

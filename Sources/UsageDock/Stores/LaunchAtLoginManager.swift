@@ -26,7 +26,7 @@ final class LaunchAtLoginManager: ObservableObject {
                 }
                 isEnabled = SMAppService.mainApp.status == .enabled
                 if enabled && !isEnabled {
-                    errorMessage = "请在“系统设置 → 通用 → 登录项”中允许 UsageDock"
+                    errorMessage = "请在“系统设置 → 通用 → 登录项”中允许 Token Remain"
                 }
             } catch {
                 isEnabled = previousValue
@@ -45,7 +45,7 @@ final class LaunchAtLoginManager: ObservableObject {
                 )
                 NSApplication.shared.terminate(nil)
             } catch {
-                errorMessage = "无法重启 UsageDock：\(error.localizedDescription)"
+                errorMessage = "无法重启 Token Remain：\(error.localizedDescription)"
             }
         }
     }

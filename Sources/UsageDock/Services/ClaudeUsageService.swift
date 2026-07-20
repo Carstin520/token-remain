@@ -130,31 +130,14 @@ enum ClaudeCLIUsageParser {
     }
 
     private static func parseResetDate(_ description: String, now: Date, calendar sourceCalendar: Calendar) -> Date? {
-        var calendar = sourceCalendar
-        calendar.timeZone = .current
+        let calendar = sourceCalendar
         let compact = description
             .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
             .trimmingCharacters(in: .whitespacesAndNewlines)
 
-        if let match = firstMatch(#"\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b"#, in: compact),
-           let hourText = capture(1, from: match, in: compact) {
-            var hour = Int(hourText) ?? 0
-            let minute = capture(2, from: match, in: compact).flatMap(Int.init) ?? 0
-            let meridiem = capture(3, from: match, in: compact)?.lowercased()
-            if meridiem == "pm", hour < 12 { hour += 12 }
-            if meridiem == "am", hour == 12 { hour = 0 }
-
-            var components = calendar.dateComponents([.year, .month, .day], from: now)
-            components.hour = hour
-            components.minute = minute
-            components.second = 0
-            guard var date = calendar.date(from: components) else { return nil }
-            if date <= now {
-                date = calendar.date(byAdding: .day, value: 1, to: date) ?? date
-            }
-            return date
-        }
-
+        // Parse the more specific month/day form first. A value such as
+        // "Jul 24 at 1pm" also contains a valid time-only substring; matching
+        // that first would silently turn the weekly reset into tomorrow at 1pm.
         if let match = firstMatch(
             #"\b([A-Za-z]{3,9})\s+(\d{1,2})(?:\s+at\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?)?\b"#,
             in: compact
@@ -176,6 +159,25 @@ enum ClaudeCLIUsageParser {
             guard var date = calendar.date(from: components) else { return nil }
             if date <= now {
                 date = calendar.date(byAdding: .year, value: 1, to: date) ?? date
+            }
+            return date
+        }
+
+        if let match = firstMatch(#"\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b"#, in: compact),
+           let hourText = capture(1, from: match, in: compact) {
+            var hour = Int(hourText) ?? 0
+            let minute = capture(2, from: match, in: compact).flatMap(Int.init) ?? 0
+            let meridiem = capture(3, from: match, in: compact)?.lowercased()
+            if meridiem == "pm", hour < 12 { hour += 12 }
+            if meridiem == "am", hour == 12 { hour = 0 }
+
+            var components = calendar.dateComponents([.year, .month, .day], from: now)
+            components.hour = hour
+            components.minute = minute
+            components.second = 0
+            guard var date = calendar.date(from: components) else { return nil }
+            if date <= now {
+                date = calendar.date(byAdding: .day, value: 1, to: date) ?? date
             }
             return date
         }

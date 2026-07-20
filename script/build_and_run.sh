@@ -2,34 +2,41 @@
 set -euo pipefail
 
 MODE="${1:-run}"
-APP_NAME="UsageDock"
+APP_NAME="Token Remain"
+EXECUTABLE_NAME="UsageDock"
 BUNDLE_ID="com.jamesli.usagedock"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DIST_DIR="$ROOT_DIR/dist"
 APP_BUNDLE="$DIST_DIR/$APP_NAME.app"
 INSTALL_DIR="${USAGEDOCK_INSTALL_DIR:-/Users/jamesli/Applications}"
 INSTALLED_APP="$INSTALL_DIR/$APP_NAME.app"
+LEGACY_INSTALLED_APP="$INSTALL_DIR/UsageDock.app"
 LOCAL_FEED_CONFIG="$ROOT_DIR/Config/UsageDockFeed.local.plist"
 APP_CONTENTS="$APP_BUNDLE/Contents"
 APP_MACOS="$APP_CONTENTS/MacOS"
 APP_RESOURCES="$APP_CONTENTS/Resources"
-APP_BINARY="$APP_MACOS/$APP_NAME"
+APP_BINARY="$APP_MACOS/$EXECUTABLE_NAME"
 # A stable signature lets macOS retain the user's "Always Allow" choice for
 # the Claude Code keychain item across UsageDock rebuilds.
 SIGNING_IDENTITY="${USAGEDOCK_SIGNING_IDENTITY:-}"
 
-pkill -x "$APP_NAME" >/dev/null 2>&1 || true
+pkill -x "$EXECUTABLE_NAME" >/dev/null 2>&1 || true
 cd "$ROOT_DIR"
 swift build
 BUILD_DIR="$(swift build --show-bin-path)"
-BUILD_BINARY="$BUILD_DIR/$APP_NAME"
+BUILD_BINARY="$BUILD_DIR/$EXECUTABLE_NAME"
 
 rm -rf "$APP_BUNDLE"
 mkdir -p "$APP_MACOS" "$APP_RESOURCES"
 cp "$BUILD_BINARY" "$APP_BINARY"
 cp "$ROOT_DIR/Resources/Info.plist" "$APP_CONTENTS/Info.plist"
 cp "$ROOT_DIR/Sources/UsageDock/Resources/claude.png" "$APP_RESOURCES/claude.png"
-cp "$ROOT_DIR/Sources/UsageDock/Resources/openai.png" "$APP_RESOURCES/openai.png"
+cp "$ROOT_DIR/Sources/UsageDock/Resources/TokenRemain.icns" "$APP_RESOURCES/TokenRemain.icns"
+# Localized strings live in the app bundle so SwiftUI and NSLocalizedString
+# automatically follow the system language or the per-app macOS language.
+for localization in "$ROOT_DIR/Sources/UsageDock/Localization/"*.lproj; do
+  cp -R "$localization" "$APP_RESOURCES/"
+done
 chmod +x "$APP_BINARY"
 
 if [[ -z "$SIGNING_IDENTITY" ]]; then
@@ -38,7 +45,7 @@ if [[ -z "$SIGNING_IDENTITY" ]]; then
     | head -n 1)"
 fi
 if [[ -z "$SIGNING_IDENTITY" ]]; then
-  echo "UsageDock needs an Apple Development signing identity to preserve Keychain approval." >&2
+  echo "Token Remain needs an Apple Development signing identity to preserve Keychain approval." >&2
   exit 1
 fi
 # Finder/File Provider metadata can be copied onto a local bundle and invalidate
@@ -56,11 +63,13 @@ done
 # app bundles inside File Provider-backed development folders, while the
 # installed path also gives Keychain and notification permissions a stable home.
 mkdir -p "$INSTALL_DIR"
+rm -rf "$INSTALLED_APP"
 /usr/bin/ditto "$APP_BUNDLE" "$INSTALLED_APP"
 for attribute in com.apple.FinderInfo com.apple.fileprovider.fpfs#P com.apple.macl com.apple.provenance; do
   /usr/bin/xattr -dr "$attribute" "$INSTALLED_APP" 2>/dev/null || true
 done
 /usr/bin/codesign --verify --deep --strict "$INSTALLED_APP"
+rm -rf "$LEGACY_INSTALLED_APP"
 
 open_app() {
   local open_arguments=()
@@ -76,11 +85,11 @@ case "$MODE" in
     open_app
     ;;
   --debug|debug)
-    lldb -- "$INSTALLED_APP/Contents/MacOS/$APP_NAME"
+    lldb -- "$INSTALLED_APP/Contents/MacOS/$EXECUTABLE_NAME"
     ;;
   --logs|logs)
     open_app
-    /usr/bin/log stream --info --style compact --predicate "process == '$APP_NAME'"
+    /usr/bin/log stream --info --style compact --predicate "process == '$EXECUTABLE_NAME'"
     ;;
   --telemetry|telemetry)
     open_app
@@ -89,7 +98,7 @@ case "$MODE" in
   --verify|verify)
     open_app
     sleep 2
-    pgrep -x "$APP_NAME" >/dev/null
+    pgrep -x "$EXECUTABLE_NAME" >/dev/null
     ;;
   *)
     echo "usage: $0 [run|--debug|--logs|--telemetry|--verify]" >&2

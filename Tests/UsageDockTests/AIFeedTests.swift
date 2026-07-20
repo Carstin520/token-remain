@@ -196,7 +196,88 @@ struct AIFeedTests {
         #expect(selection.usernames.contains("thsottiaux"))
     }
 
-    @Test("Daily collection retains at most 50 posts per tier")
+    @Test("Display curation filters noise and limits one-author flooding")
+    func displayCurationAddsDiversity() {
+        let now = Date(timeIntervalSince1970: 2_000_000_000)
+        let muskPosts = (0..<5).map { index in
+            makePost(
+                id: "musk-\(index)",
+                username: "elonmusk",
+                createdAt: now.addingTimeInterval(Double(-index)),
+                likes: 10_000 - index,
+                tier: .rotating,
+                text: "Grok coding model update \(index)"
+            )
+        }
+        let noise = makePost(
+            id: "noise",
+            username: "elonmusk",
+            createdAt: now,
+            likes: 100_000,
+            tier: .rotating,
+            text: "Yes"
+        )
+        let other = makePost(
+            id: "other",
+            username: "simonw",
+            createdAt: now,
+            tier: .rotating,
+            text: "Claude API context window update"
+        )
+
+        let curated = AIFeedCollectionPolicy.curateForDisplay(
+            muskPosts + [noise, other],
+            now: now
+        )
+
+        #expect(curated.filter { $0.username == "elonmusk" }.count == 3)
+        #expect(!curated.contains { $0.id == "noise" })
+        #expect(curated.contains { $0.id == "other" })
+    }
+
+    @Test("Trending combines momentum with critical-event importance")
+    func trendingBalancesMomentumAndImportance() {
+        let now = Date(timeIntervalSince1970: 2_000_000_000)
+        let viral = makePost(
+            id: "viral",
+            username: "simonw",
+            createdAt: now.addingTimeInterval(-1_800),
+            likes: 50_000,
+            reposts: 10_000,
+            replies: 2_000,
+            tier: .rotating,
+            text: "New Claude coding model benchmark"
+        )
+        let reset = makePost(
+            id: "reset",
+            username: "thsottiaux",
+            createdAt: now.addingTimeInterval(-21_600),
+            likes: 12,
+            reposts: 3,
+            replies: 1,
+            tier: .primary,
+            text: "Enjoy reset usage limits for all paid users for Codex.",
+            priority: .tokenReset
+        )
+        let noise = makePost(
+            id: "noise",
+            username: "elonmusk",
+            createdAt: now,
+            likes: 1_000_000,
+            reposts: 100_000,
+            tier: .rotating,
+            text: "Yes"
+        )
+
+        let trending = AIFeedCollectionPolicy.sortForTrending(
+            [viral, reset, noise],
+            now: now
+        )
+
+        #expect(trending.map(\.id) == ["reset", "viral"])
+    }
+
+    @Test("Daily collection applies tier-specific retention caps")
     func dailyCollectionCapsEachTier() {
         let dayStart = Date(timeIntervalSince1970: 2_000_000_000)
         let primary = (0..<55).map { index in
@@ -230,9 +311,9 @@ struct AIFeedTests {
             dayStart: dayStart
         )
 
-        #expect(merged.count == 100)
+        #expect(merged.count == 75)
         #expect(merged.filter { $0.tier == .primary }.count == 50)
-        #expect(merged.filter { $0.tier == .rotating }.count == 50)
+        #expect(merged.filter { $0.tier == .rotating }.count == 25)
         #expect(!merged.contains { $0.id == "old" })
     }
 

@@ -11,7 +11,7 @@ enum RiskLevel {
     case unknown
 
     /// Thresholds are expressed on remaining percentage (0…100).
-    init(minRemainingPercent: Double?) {
+    init(minRemainingPercent: Double?, projectedRunOut: Bool = false) {
         guard let remaining = minRemainingPercent else {
             self = .unknown
             return
@@ -19,6 +19,7 @@ enum RiskLevel {
         switch remaining {
         case ..<10: self = .high
         case ..<30: self = .medium
+        case _ where projectedRunOut: self = .medium
         default: self = .low
         }
     }
@@ -26,9 +27,9 @@ enum RiskLevel {
     /// Short uppercase badge, e.g. `LOW`.
     var badge: String {
         switch self {
-        case .low: return "LOW"
-        case .medium: return "MEDIUM"
-        case .high: return "HIGH"
+        case .low: return L10n.text("risk.badge.low")
+        case .medium: return L10n.text("risk.badge.medium")
+        case .high: return L10n.text("risk.badge.high")
         case .unknown: return "—"
         }
     }
@@ -36,29 +37,26 @@ enum RiskLevel {
     /// One-line headline shown next to the badge.
     var headline: String {
         switch self {
-        case .low: return "使用节奏健康"
-        case .medium: return "注意用量节奏"
-        case .high: return "额度即将耗尽"
-        case .unknown: return "等待官方额度"
+        case .low: return L10n.text("risk.headline.low")
+        case .medium: return L10n.text("risk.headline.medium")
+        case .high: return L10n.text("risk.headline.high")
+        case .unknown: return L10n.text("risk.headline.unknown")
         }
     }
 
     /// Fuller sentence for surfaces with more room.
     var summary: String {
         switch self {
-        case .low: return "按当前节奏，额度充足，可以安心使用到下次重置。"
-        case .medium: return "部分窗口额度偏低，建议放缓用量或关注重置时间。"
-        case .high: return "额度即将耗尽，请谨慎使用，必要时等待窗口重置。"
-        case .unknown: return "尚未读取到官方额度快照，稍后将自动重试。"
+        case .low: return L10n.text("risk.summary.low")
+        case .medium: return L10n.text("risk.summary.medium")
+        case .high: return L10n.text("risk.summary.high")
+        case .unknown: return L10n.text("risk.summary.unknown")
         }
     }
 
+    /// Tint mapping lives in `DashboardTheme.riskAccent` so the palette owns the
+    /// three-color status language; `RiskLevel` keeps only its threshold logic.
     var tint: Color {
-        switch self {
-        case .low: return DashboardTheme.success
-        case .medium: return DashboardTheme.warning
-        case .high: return DashboardTheme.danger
-        case .unknown: return DashboardTheme.secondaryText
-        }
+        DashboardTheme.riskAccent(for: self)
     }
 }

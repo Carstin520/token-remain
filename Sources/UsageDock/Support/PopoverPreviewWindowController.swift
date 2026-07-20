@@ -8,13 +8,17 @@ import SwiftUI
 final class PopoverPreviewWindowController: NSWindowController {
     init(
         store: UsageStore,
+        feedStore: AIFeedStore,
         launchAtLogin: LaunchAtLoginManager,
+        layout: PopoverLayoutStore,
         onOpenDashboard: @escaping (DashboardSection) -> Void
     ) {
         let hosting = NSHostingController(
             rootView: UsageMenuView(
                 store: store,
+                feedStore: feedStore,
                 launchAtLogin: launchAtLogin,
+                layout: layout,
                 onOpenDashboard: onOpenDashboard
             )
         )
@@ -26,9 +30,19 @@ final class PopoverPreviewWindowController: NSWindowController {
             defer: false
         )
         window.contentViewController = hosting
-        window.title = "UsageDock Popover Preview"
+        window.title = "Token Remain Popover Preview"
         window.appearance = NSAppearance(named: .darkAqua)
-        window.backgroundColor = NSColor(srgbRed: 0x09 / 255, green: 0x0D / 255, blue: 0x14 / 255, alpha: 1)
+        if #available(macOS 26.0, *) {
+            window.isOpaque = false
+            window.backgroundColor = .clear
+        } else {
+            window.backgroundColor = NSColor(
+                srgbRed: 0x09 / 255,
+                green: 0x0D / 255,
+                blue: 0x14 / 255,
+                alpha: 1
+            )
+        }
         window.isReleasedWhenClosed = false
         window.setContentSize(NSSize(width: 380, height: 720))
         window.center()

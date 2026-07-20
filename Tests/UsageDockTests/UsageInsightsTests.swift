@@ -20,12 +20,60 @@ struct UsageInsightsTests {
         #expect(insights.constrainingWindow?.windowMinutes == 10_080)
     }
 
+    @Test("Summary identifies the provider behind the lowest remaining quota")
+    func constrainingProviderIsExplicit() {
+        let claude = ProviderQuota(
+            provider: .claude,
+            primary: QuotaWindow(usedPercent: 4, windowMinutes: 300, resetsAt: nil),
+            secondary: QuotaWindow(usedPercent: 15, windowMinutes: 10_080, resetsAt: nil),
+            planName: nil,
+            capturedAt: .now
+        )
+        let codex = ProviderQuota(
+            provider: .codex,
+            primary: QuotaWindow(usedPercent: 62, windowMinutes: 10_080, resetsAt: nil),
+            secondary: nil,
+            planName: nil,
+            capturedAt: .now
+        )
+        let insights = UsageInsights(claude: claude, codex: codex, daily: nil)
+
+        #expect(insights.constrainingWindow?.provider == .codex)
+        #expect(insights.constrainingWindow?.remainingPercent == 38)
+    }
+
     @Test("Medium and low thresholds map to remaining percentage bands")
     func riskThresholds() {
         #expect(RiskLevel(minRemainingPercent: nil) == .unknown)
         #expect(RiskLevel(minRemainingPercent: 5) == .high)
         #expect(RiskLevel(minRemainingPercent: 25) == .medium)
         #expect(RiskLevel(minRemainingPercent: 60) == .low)
+        #expect(RiskLevel(minRemainingPercent: 60, projectedRunOut: true) == .medium)
+    }
+
+    @Test("Projected run-out elevates risk before remaining quota is low")
+    func projectedRunOutElevatesRisk() throws {
+        let now = Date(timeIntervalSince1970: 2_000_000)
+        let week: TimeInterval = 7 * 24 * 60 * 60
+        let codex = ProviderQuota(
+            provider: .codex,
+            primary: QuotaWindow(
+                usedPercent: 40,
+                windowMinutes: 10_080,
+                resetsAt: now.addingTimeInterval(week * 0.9)
+            ),
+            secondary: nil,
+            planName: "pro",
+            capturedAt: now
+        )
+        let insights = UsageInsights(claude: nil, codex: codex, daily: nil)
+        let assessment = try #require(insights.paceAssessment(at: now))
+
+        #expect(insights.minRemainingPercent == 60)
+        #expect(insights.riskLevel(at: now) == .medium)
+        #expect(assessment.window.provider == .codex)
+        #expect(assessment.pace.estimatedRunOutAt == now.addingTimeInterval(90_720))
+        #expect(insights.decisionHeadline(at: now) == "当前节奏可能提前用尽")
     }
 
     @Test("Today's totals and provider split come from ccusage agents")
@@ -46,6 +94,7 @@ struct UsageInsightsTests {
         #expect(insights.providerUsage.first?.id == "claude")
         #expect(insights.providerUsage.first?.provider == .claude)
         #expect(insights.providerUsage.map { insights.tokenShare(for: $0) } == [75, 25])
+        #expect(insights.providerUsage.map { insights.costShare(for: $0) } == [2.0 / 3.0 * 100, 1.0 / 3.0 * 100])
     }
 
     @Test("No quota yields an unknown, empty state instead of fabricated data")
@@ -70,6 +119,7 @@ struct UsageInsightsTests {
 
         let provider = try #require(insights.providerUsage.first)
         #expect(insights.tokenShare(for: provider) == 0)
+        #expect(insights.costShare(for: provider) == 0)
     }
 
     @Test("Last updated is the most recent capture across sources")

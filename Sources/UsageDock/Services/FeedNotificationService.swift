@@ -20,7 +20,7 @@ final class FeedNotificationService: NSObject, UNUserNotificationCenterDelegate,
 
     func notify(post: AIFeedPost) async {
         let content = UNMutableNotificationContent()
-        content.title = post.priority == .tokenReset ? "UsageDock · Token / 额度更新" : "UsageDock · AI 重大更新"
+        content.title = post.priority == .tokenReset ? "Token Remain · Token / 额度更新" : "Token Remain · AI 重大更新"
         content.subtitle = "\(post.displayName) · @\(post.username)"
         content.body = post.text.truncated(to: 180)
         content.sound = .default
@@ -61,4 +61,3 @@ private extension String {
         return String(prefix(limit - 1)) + "…"
     }
 }
-

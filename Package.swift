@@ -11,7 +11,7 @@ let package = Package(
         .executableTarget(
             name: "UsageDock",
             path: "Sources/UsageDock",
-            exclude: ["Resources"]
+            exclude: ["Resources", "Localization"]
         ),
         .testTarget(
             name: "UsageDockTests",

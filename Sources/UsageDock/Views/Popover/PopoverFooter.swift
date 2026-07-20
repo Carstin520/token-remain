@@ -14,36 +14,22 @@ struct PopoverFooter: View {
             Button {
                 onOpenDashboard(.overview)
             } label: {
-                Text("打开 Dashboard")
+                Text(L10n.text("action.open_dashboard"))
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(DashboardTheme.link)
             }
             .buttonStyle(.plain)
-            .help("打开独立的 UsageDock Dashboard 窗口")
-
-            Text("·")
-                .font(.system(size: 11))
-                .foregroundStyle(DashboardTheme.mutedText)
-
-            Button {
-                onOpenDashboard(.aiFeed)
-            } label: {
-                Text("AI Feed")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(DashboardTheme.link)
-            }
-            .buttonStyle(.plain)
-            .help("查看 AI 领袖动态与重大更新")
+            .help(L10n.text("action.open_dashboard_help"))
 
             Spacer()
 
             Menu {
-                Toggle("登录时自动启动", isOn: launchAtLoginBinding)
+                Toggle(L10n.text("action.launch_at_login"), isOn: launchAtLoginBinding)
                 Divider()
-                Button("打开 Dashboard 设置") { onOpenDashboard(.settings) }
-                Button("重启 UsageDock") { launchAtLogin.restart() }
+                Button(L10n.text("action.open_dashboard_settings")) { onOpenDashboard(.settings) }
+                Button(L10n.text("action.restart_app")) { launchAtLogin.restart() }
             } label: {
-                Text("设置")
+                Text(L10n.text("action.settings"))
                     .font(.system(size: 11))
                     .foregroundStyle(DashboardTheme.secondaryText)
             }
@@ -58,12 +44,12 @@ struct PopoverFooter: View {
             Button {
                 NSApplication.shared.terminate(nil)
             } label: {
-                Text("退出")
+                Text(L10n.text("action.quit"))
                     .font(.system(size: 11))
                     .foregroundStyle(DashboardTheme.secondaryText)
             }
             .buttonStyle(.plain)
-            .help("退出 UsageDock")
+            .help(L10n.text("action.quit_app"))
         }
     }
 

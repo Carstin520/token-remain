@@ -22,7 +22,7 @@ enum UsageFormatting {
         let minutes = (remaining % 3_600) / 60
         let seconds = remaining % 60
 
-        if days > 0 { return "\(days)天 \(hours)小时 \(minutes)分" }
+        if days > 0 { return L10n.format("duration.days_hours_minutes", days, hours, minutes) }
         if hours > 0 { return String(format: "%02d:%02d:%02d", hours, minutes, seconds) }
         return String(format: "%02d:%02d", minutes, seconds)
     }
@@ -31,24 +31,44 @@ enum UsageFormatting {
     /// the window resets within a day, otherwise an absolute weekday/date + time.
     static func resetDescription(to date: Date, now: Date = .now) -> String {
         let interval = date.timeIntervalSince(now)
-        if interval <= 0 { return "正在重置" }
+        if interval <= 0 { return L10n.text("reset.in_progress") }
         if interval < 86_400 {
-            return "重置还有 " + countdown(to: date, now: now)
+            return L10n.format("reset.countdown", countdown(to: date, now: now))
         }
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "zh_CN")
-        formatter.dateFormat = interval < 7 * 86_400 ? "EEE HH:mm" : "M月d日 HH:mm"
-        return formatter.string(from: date) + " 重置"
+        let style = interval < 7 * 86_400
+            ? Date.FormatStyle.dateTime.weekday(.abbreviated).hour().minute()
+            : Date.FormatStyle.dateTime.month(.abbreviated).day().hour().minute()
+        return L10n.format("reset.on", date.formatted(style.locale(.current)))
+    }
+
+    static func durationUntil(_ date: Date, now: Date = .now) -> String {
+        let remaining = max(0, Int(date.timeIntervalSince(now)))
+        let days = remaining / 86_400
+        let hours = (remaining % 86_400) / 3_600
+        let minutes = (remaining % 3_600) / 60
+
+        if days > 0 { return L10n.format("duration.days_hours", days, hours) }
+        if hours > 0 { return L10n.format("duration.hours_minutes", hours, minutes) }
+        if minutes > 0 { return L10n.format("duration.minutes", minutes) }
+        return L10n.text("duration.less_than_minute")
+    }
+
+    static func freshnessDescription(since date: Date, now: Date = .now) -> String {
+        let age = max(0, now.timeIntervalSince(date))
+        if age < 60 { return L10n.text("freshness.just_now") }
+        if age < 3_600 { return L10n.format("freshness.minutes", Int(age / 60)) }
+        if age < 86_400 { return L10n.format("freshness.hours", Int(age / 3_600)) }
+        return L10n.format("freshness.days", Int(age / 86_400))
     }
 
     static func windowName(minutes: Int) -> String {
         switch minutes {
-        case 300: return "5 小时"
-        case 10_080: return "7 天"
+        case 300: return L10n.format("duration.hours", 5)
+        case 10_080: return L10n.format("duration.days", 7)
         default:
-            if minutes % 1_440 == 0 { return "\(minutes / 1_440) 天" }
-            if minutes % 60 == 0 { return "\(minutes / 60) 小时" }
-            return "\(minutes) 分钟"
+            if minutes % 1_440 == 0 { return L10n.format("duration.days", minutes / 1_440) }
+            if minutes % 60 == 0 { return L10n.format("duration.hours", minutes / 60) }
+            return L10n.format("duration.minutes", minutes)
         }
     }
 }

@@ -4,7 +4,6 @@ import SwiftUI
 /// prototype's MONITOR / SYSTEM sections.
 enum DashboardSection: String, CaseIterable, Identifiable, Hashable {
     case overview
-    case aiFeed
     case limits
     case trends
     case devices
@@ -17,11 +16,18 @@ enum DashboardSection: String, CaseIterable, Identifiable, Hashable {
         case monitor = "MONITOR"
         case system = "SYSTEM"
         var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .monitor: return L10n.text("nav.group.monitor")
+            case .system: return L10n.text("nav.group.system")
+            }
+        }
     }
 
     var group: Group {
         switch self {
-        case .overview, .aiFeed, .limits, .trends, .devices: return .monitor
+        case .overview, .limits, .trends, .devices: return .monitor
         case .dataSources, .settings: return .system
         }
     }
@@ -29,33 +35,30 @@ enum DashboardSection: String, CaseIterable, Identifiable, Hashable {
     /// Sidebar / navigation title.
     var title: String {
         switch self {
-        case .overview: return "Overview"
-        case .aiFeed: return "AI Feed"
-        case .limits: return "Limits"
-        case .trends: return "Trends"
-        case .devices: return "Devices"
-        case .dataSources: return "Data Sources"
-        case .settings: return "Settings"
+        case .overview: return L10n.text("nav.overview")
+        case .limits: return L10n.text("nav.limits")
+        case .trends: return L10n.text("nav.trends")
+        case .devices: return L10n.text("nav.devices")
+        case .dataSources: return L10n.text("nav.data_sources")
+        case .settings: return L10n.text("nav.settings")
         }
     }
 
     /// Detail-view subtitle describing the section's purpose.
     var subtitle: String {
         switch self {
-        case .overview: return "掌握额度风险、今日用量与预估成本"
-        case .aiFeed: return "与你的额度和工作流直接相关的精选更新"
-        case .limits: return "Claude 与 Codex 官方额度窗口明细"
-        case .trends: return "跨天使用趋势（正在采集历史数据）"
-        case .devices: return "本机与未来跨设备监测"
-        case .dataSources: return "数据来源状态与隐私说明"
-        case .settings: return "启动项、刷新与应用操作"
+        case .overview: return L10n.text("section.overview.subtitle")
+        case .limits: return L10n.text("section.limits.subtitle")
+        case .trends: return L10n.text("section.trends.subtitle")
+        case .devices: return L10n.text("section.devices.subtitle")
+        case .dataSources: return L10n.text("section.data_sources.subtitle")
+        case .settings: return L10n.text("section.settings.subtitle")
         }
     }
 
     var systemImage: String {
         switch self {
         case .overview: return "square.grid.2x2"
-        case .aiFeed: return "dot.radiowaves.left.and.right"
         case .limits: return "gauge.with.dots.needle.50percent"
         case .trends: return "chart.line.uptrend.xyaxis"
         case .devices: return "laptopcomputer.and.iphone"

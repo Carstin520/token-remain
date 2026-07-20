@@ -66,7 +66,7 @@ struct DataSourcesSection: View {
                 VStack(alignment: .leading, spacing: 10) {
                     PanelHeader(title: "隐私")
                     RoadmapList(items: [
-                        "所有数据留在本机，UsageDock 不做任何上传。",
+                        "本机用量数据全部留在本地，Token Remain 不做任何上传。",
                         "不读取或修改 Claude Code 的钥匙串凭证；认证由 Claude Code 自行处理。",
                         "Codex 数据来自本地会话文件的服务端快照。",
                         "ccusage 成本是 API 标价估算，不等于订阅账单。",
@@ -116,8 +116,7 @@ private struct SourceHealthRow: View {
                     .foregroundStyle(present ? DashboardTheme.success : DashboardTheme.mutedText)
                 if let capturedAt {
                     Text(capturedAt.formatted(date: .omitted, time: .shortened))
-                        .font(.system(size: 10))
-                        .monospacedDigit()
+                        .numericFont(10)
                         .foregroundStyle(DashboardTheme.mutedText)
                 }
             }

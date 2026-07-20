@@ -11,11 +11,18 @@ struct UsageInsights {
     let claude: ProviderQuota?
     let codex: ProviderQuota?
     let daily: DailyUsage?
+    let history: DailyUsageHistory?
 
-    init(claude: ProviderQuota?, codex: ProviderQuota?, daily: DailyUsage?) {
+    init(
+        claude: ProviderQuota?,
+        codex: ProviderQuota?,
+        daily: DailyUsage?,
+        history: DailyUsageHistory? = nil
+    ) {
         self.claude = claude
         self.codex = codex
         self.daily = daily
+        self.history = history
     }
 
     // MARK: - Quota windows
@@ -24,8 +31,14 @@ struct UsageInsights {
         let id: String
         let provider: ProviderQuota.Provider
         let windowMinutes: Int
+        let usedPercent: Double
         let remainingPercent: Double
         let resetsAt: Date?
+    }
+
+    struct PaceAssessment {
+        let window: Window
+        let pace: UsagePace
     }
 
     /// Every official window currently known, in provider then primary→secondary order.
@@ -45,6 +58,7 @@ struct UsageInsights {
             id: "\(provider.rawValue)-\(slot)-\(source.windowMinutes)",
             provider: provider,
             windowMinutes: source.windowMinutes,
+            usedPercent: min(100, max(0, source.usedPercent)),
             remainingPercent: min(100, max(0, 100 - source.usedPercent)),
             resetsAt: source.resetsAt
         )
@@ -64,7 +78,64 @@ struct UsageInsights {
     }
 
     var riskLevel: RiskLevel {
-        RiskLevel(minRemainingPercent: minRemainingPercent)
+        riskLevel(at: .now)
+    }
+
+    func riskLevel(at now: Date) -> RiskLevel {
+        RiskLevel(
+            minRemainingPercent: minRemainingPercent,
+            projectedRunOut: paceAssessment(at: now) != nil
+        )
+    }
+
+    func pace(for window: Window, at now: Date = .now) -> UsagePace? {
+        UsagePace(
+            window: QuotaWindow(
+                usedPercent: window.usedPercent,
+                windowMinutes: window.windowMinutes,
+                resetsAt: window.resetsAt
+            ),
+            now: now
+        )
+    }
+
+    /// The earliest projected depletion among windows that will not last until
+    /// reset at the current average pace.
+    func paceAssessment(at now: Date = .now) -> PaceAssessment? {
+        windows
+            .compactMap { window -> PaceAssessment? in
+                guard let pace = pace(for: window, at: now),
+                      !pace.willLastUntilReset,
+                      pace.estimatedRunOutAt != nil
+                else {
+                    return nil
+                }
+                return PaceAssessment(window: window, pace: pace)
+            }
+            .min {
+                ($0.pace.estimatedRunOutAt ?? .distantFuture)
+                    < ($1.pace.estimatedRunOutAt ?? .distantFuture)
+            }
+    }
+
+    func decisionHeadline(at now: Date = .now) -> String {
+        if paceAssessment(at: now) != nil {
+            return L10n.text("risk.headline.projected_runout")
+        }
+        return riskLevel(at: now).headline
+    }
+
+    func decisionSummary(at now: Date = .now) -> String {
+        guard let assessment = paceAssessment(at: now),
+              let runOutAt = assessment.pace.estimatedRunOutAt
+        else {
+            return riskLevel(at: now).summary
+        }
+
+        let provider = assessment.window.provider == .claude ? "Claude" : "Codex"
+        let window = UsageFormatting.windowName(minutes: assessment.window.windowMinutes)
+        let duration = UsageFormatting.durationUntil(runOutAt, now: now)
+        return L10n.format("risk.summary.projected_runout", provider, window, duration)
     }
 
     /// The soonest upcoming reset among all windows that report one.
@@ -111,6 +182,14 @@ struct UsageInsights {
     func tokenShare(for usage: ProviderUsage) -> Double {
         guard let totalTokens, totalTokens > 0 else { return 0 }
         return Double(usage.tokens) / Double(totalTokens) * 100
+    }
+
+    /// One provider's share of today's estimated API-priced cost, expressed as
+    /// 0...100. This is the only unit encoded by the combined donut chart;
+    /// token totals remain explicit labels beside each provider.
+    func costShare(for usage: ProviderUsage) -> Double {
+        guard let totalCost, totalCost > 0 else { return 0 }
+        return usage.cost / totalCost * 100
     }
 
     // MARK: - Freshness

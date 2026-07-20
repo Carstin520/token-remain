@@ -5,9 +5,8 @@ import SwiftUI
 /// window glue in the app; it is deliberately isolated so the rest of the
 /// Dashboard stays pure SwiftUI.
 ///
-/// The app remains a menu-bar-first `.accessory` agent: opening the Dashboard
-/// activates the app and fronts the window without switching to a regular
-/// Dock-resident activation policy.
+/// Token Remain is a regular Dock-resident desktop app. The menu-bar status
+/// item is a companion surface, while this controller owns the primary window.
 @MainActor
 final class DashboardWindowController: NSWindowController {
     private let navigator = DashboardNavigator()
@@ -29,11 +28,24 @@ final class DashboardWindowController: NSWindowController {
             defer: false
         )
         window.contentViewController = hosting
-        window.title = "UsageDock"
+        // Keep the real window title for Mission Control, the window switcher and
+        // accessibility, but hide the in-titlebar text: the sidebar brand lockup
+        // already shows "Token Remain", so the visible title would be a duplicate.
+        window.title = "Token Remain"
         window.titlebarAppearsTransparent = true
-        window.titleVisibility = .visible
+        window.titleVisibility = .hidden
         window.appearance = NSAppearance(named: .darkAqua)
-        window.backgroundColor = NSColor(srgbRed: 0x09 / 255, green: 0x0D / 255, blue: 0x14 / 255, alpha: 1)
+        if #available(macOS 26.0, *) {
+            window.isOpaque = false
+            window.backgroundColor = .clear
+        } else {
+            window.backgroundColor = NSColor(
+                srgbRed: 0x09 / 255,
+                green: 0x0D / 255,
+                blue: 0x14 / 255,
+                alpha: 1
+            )
+        }
         window.isReleasedWhenClosed = false
         window.minSize = NSSize(width: 960, height: 640)
         window.setContentSize(NSSize(width: 1180, height: 760))
@@ -48,8 +60,8 @@ final class DashboardWindowController: NSWindowController {
         fatalError("init(coder:) is not supported")
     }
 
-    /// Shows the Dashboard, optionally jumping to a specific section, and brings
-    /// it to the front even though the app is a menu-bar accessory.
+    /// Shows the Dashboard, optionally jumping to a specific section, and
+    /// brings the desktop app to the front.
     func show(section: DashboardSection? = nil) {
         if let section {
             navigator.selection = section
@@ -57,5 +69,9 @@ final class DashboardWindowController: NSWindowController {
         NSApp.activate(ignoringOtherApps: true)
         showWindow(nil)
         window?.makeKeyAndOrderFront(nil)
+        // Re-assert after SwiftUI configures its toolbar, which can otherwise
+        // flip the document title back to visible. The title *property* stays
+        // "Token Remain" for Mission Control / the window switcher.
+        window?.titleVisibility = .hidden
     }
 }

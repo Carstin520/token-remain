@@ -4,9 +4,11 @@ macOS 菜单栏常驻用量助手，同时展示：
 
 - Claude Code 官方 5 小时 / 7 天剩余额度与重置倒计时
 - Codex 主账户最近服务端 rate-limit 快照；按服务端实际提供的窗口显示（当前可能只提供 7 天）
+- 基于真实窗口进度与官方重置时间判断当前节奏能否持续到重置，并在可能提前用尽时给出预计可用时长
 - ccusage 统计的 Claude Code / Codex 今日 token 与估算 API 成本
 - AI Feed 聚合 Tibor Blaho、Sam Altman、Claude、Anthropic、OpenAI 与 Elon Musk 的 X 动态
 - 自动置顶 Token / 额度重置和重大模型更新，并通过 macOS 本地通知提醒
+- macOS 26 使用系统 Liquid Glass、原生侧栏与玻璃按钮；macOS 14/15 自动回退到原有深色卡片样式
 
 ## 数据与隐私
 
@@ -14,7 +16,7 @@ macOS 菜单栏常驻用量助手，同时展示：
 - Codex 数据来自 `~/.codex` 会话文件中的服务端 rate-limit 快照；没有额外上传。
 - ccusage 通过 `npx --yes ccusage@latest` 读取本地日志。成本是 API 标价估算，不等于订阅账单。
 - Claude 限额成功读取后会缓存到 `~/Library/Caches/com.jamesli.usagedock/`；Claude Code 暂时不可用时继续显示最近有效值。
-- 菜单栏的刷新按钮会立即刷新 ccusage、Codex 与 Claude。UsageDock 不会自行调用 Claude OAuth 续期接口，因此不会与 Claude Code 争用 refresh token 或触发第三方续期限流。
+- 打开菜单栏面板会触发一次非阻塞的轻量刷新；刷新按钮则会立即刷新 ccusage、Codex 与 Claude。UsageDock 不会自行调用 Claude OAuth 续期接口，因此不会与 Claude Code 争用 refresh token 或触发第三方续期限流。
 - AI Feed 使用用户自己的 X API Bearer Token；Token 仅保存在 macOS 钥匙串。公开帖子快照和已读 ID 缓存在本机，不写入日志。
 
 ## AI Feed

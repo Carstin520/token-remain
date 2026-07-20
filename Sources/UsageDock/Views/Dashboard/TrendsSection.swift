@@ -1,10 +1,16 @@
 import SwiftUI
 
-/// Dashboard Trends: UsageDock only persists the latest snapshot today, so this
-/// deliberately shows an honest empty state plus the single real data point we
-/// can prove (today's snapshot) — never a fabricated multi-day curve.
+/// Dashboard Trends: a real stacked daily bar chart backed by ccusage's
+/// `daily --by-agent` history. When fewer than two days of history exist we keep
+/// an honest "accumulating by day" empty state rather than fabricate a curve.
 struct TrendsSection: View {
     let insights: UsageInsights
+
+    /// Real per-day history, oldest-first; nil / <2 days ⇒ honest empty state.
+    private var trendDays: [DailyUsageHistory.Day]? {
+        guard let days = insights.history?.days, days.count >= 2 else { return nil }
+        return days
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -13,12 +19,16 @@ struct TrendsSection: View {
                 subtitle: DashboardSection.trends.subtitle
             )
 
-            DashboardCard {
-                EmptyStateView(
-                    icon: "chart.line.uptrend.xyaxis",
-                    title: "历史趋势正在积累中",
-                    message: "UsageDock 目前只保存最新的用量快照，尚未按天累积 token 历史，因此这里不会展示虚构的多日曲线。持续运行后，本地快照会逐步积累成真实趋势。"
-                )
+            if let trendDays {
+                UsageTrendCard(days: trendDays, capturedAt: insights.history?.capturedAt)
+            } else {
+                DashboardCard {
+                    EmptyStateView(
+                        icon: "chart.bar.xaxis",
+                        title: "趋势数据按日累积中",
+                        message: "每日用量趋势需要至少两天的本地历史。你每天使用 Claude Code / Codex 后,ccusage 会按日累积 token 与成本,凑齐后这里会自动显示真实的堆叠柱状趋势,绝不虚构曲线。"
+                    )
+                }
             }
 
             HStack(alignment: .top, spacing: 14) {
@@ -58,8 +68,6 @@ struct TrendsSection: View {
             VStack(alignment: .leading, spacing: 14) {
                 PanelHeader(title: "规划中", subtitle: "趋势相关的产品方向")
                 RoadmapList(items: [
-                    "本地按天累积用量快照",
-                    "最近 30 天 Token 使用趋势曲线",
                     "按周使用热力图",
                     "服务商成本占比的历史变化",
                     "接近额度上限时的用量提醒"

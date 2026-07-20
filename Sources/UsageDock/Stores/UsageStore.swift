@@ -6,6 +6,7 @@ final class UsageStore: ObservableObject {
     @Published private(set) var claude: ProviderQuota?
     @Published private(set) var codex: ProviderQuota?
     @Published private(set) var daily: DailyUsage?
+    @Published private(set) var history: DailyUsageHistory?
     @Published private(set) var isRefreshing = false
     @Published private(set) var errorMessage: String?
 
@@ -14,6 +15,7 @@ final class UsageStore: ObservableObject {
     private var lastClaudeAttempt: Date?
     private var claudeRetryAfter: Date?
     private let quotaCache = QuotaCache()
+    private let historyCache = DailyHistoryCache()
     private let logger = Logger(subsystem: "com.jamesli.usagedock", category: "UsageRefresh")
     private let claudeRetryAfterKey = "claudeRetryAfter"
 
@@ -25,12 +27,28 @@ final class UsageStore: ObservableObject {
         remainingText(for: codex)
     }
 
+    /// The logo follows the most constrained available provider so the visual
+    /// warning is never more optimistic than the quota cards below it.
+    var aggregateRemainingPercent: Double? {
+        Self.aggregateRemainingPercent(from: [claude, codex])
+    }
+
+    static func aggregateRemainingPercent(from quotas: [ProviderQuota?]) -> Double? {
+        let values = quotas.compactMap { $0 }.flatMap { quota in
+            [quota.primary, quota.secondary].compactMap { $0 }.map { window in
+                min(max(100 - window.usedPercent, 0), 100)
+            }
+        }
+        return values.min()
+    }
+
     init() {
         if let cached = quotaCache.load() {
             claude = cached.claude
             codex = cached.codex
             lastClaudeAttempt = cached.claude?.capturedAt
         }
+        history = historyCache.load()
         claudeRetryAfter = UserDefaults.standard.object(forKey: claudeRetryAfterKey) as? Date
         Task { @MainActor [weak self] in
             self?.start()
@@ -102,7 +120,15 @@ final class UsageStore: ObservableObject {
             } catch {
                 errors.append("ccusage: \(error.localizedDescription)")
             }
+            do {
+                let fetched = try await CCUsageService().fetchHistory(days: 30)
+                history = fetched
+                historyCache.save(fetched)
+            } catch {
+                errors.append("ccusage 历史: \(error.localizedDescription)")
+            }
         }
+
         errorMessage = errors.isEmpty ? nil : errors.joined(separator: "\n")
     }
 

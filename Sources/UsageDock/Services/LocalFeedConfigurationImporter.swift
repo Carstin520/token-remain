@@ -18,7 +18,7 @@ struct LocalFeedConfigurationImporter: Sendable {
             case .emptyToken:
                 return "工程配置文件中的 XBearerToken 为空"
             case .unreadableFile:
-                return "无法读取工程中的 UsageDockFeed.local.plist"
+                return "无法读取本地 AI Feed 配置文件"
             }
         }
     }

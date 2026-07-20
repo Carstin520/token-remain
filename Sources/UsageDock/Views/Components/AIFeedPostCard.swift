@@ -22,7 +22,7 @@ struct AIFeedPostCard: View {
                                 .foregroundStyle(DashboardTheme.mutedText)
                         }
                         Text(post.createdAt, style: .relative)
-                            .font(.system(size: 10))
+                            .numericFont(10)
                             .foregroundStyle(DashboardTheme.mutedText)
                     }
 
@@ -56,11 +56,14 @@ struct AIFeedPostCard: View {
             }
             .padding(15)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(DashboardTheme.surface, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 13, style: .continuous)
-                    .strokeBorder(borderColor, lineWidth: post.priority == .normal ? 1 : 1.5)
+            .usageDockGlassSurface(
+                cornerRadius: 13,
+                tint: glassTint,
+                interactive: true,
+                fallbackBackground: DashboardTheme.surface,
+                fallbackBorder: borderColor
             )
+            .pixelTicks(cornerRadius: 13)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("\(post.displayName)：\(post.text)")
@@ -94,6 +97,14 @@ struct AIFeedPostCard: View {
         }
     }
 
+    private var glassTint: Color? {
+        switch post.priority {
+        case .tokenReset: return DashboardTheme.warning.opacity(0.16)
+        case .majorUpdate: return DashboardTheme.purple.opacity(0.16)
+        case .normal: return nil
+        }
+    }
+
     private var priorityBadge: some View {
         Label(post.priority.title, systemImage: post.priority == .tokenReset ? "gauge.with.dots.needle.67percent" : "bolt.fill")
             .font(.system(size: 9, weight: .bold))
@@ -108,7 +119,7 @@ struct AIFeedPostCard: View {
 
     private func metric(icon: String, value: Int) -> some View {
         Label(UsageFormatting.compactNumber(Int64(value)), systemImage: icon)
-            .font(.system(size: 10))
+            .numericFont(10)
             .foregroundStyle(DashboardTheme.secondaryText)
     }
 }

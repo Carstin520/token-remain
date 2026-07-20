@@ -80,7 +80,7 @@ final class AIFeedStore: ObservableObject {
     }
 
     var recommendedPosts: [AIFeedPost] {
-        AIFeedCollectionPolicy.sortForRecommendation(posts)
+        AIFeedCollectionPolicy.curateForDisplay(posts)
     }
 
     var importantPosts: [AIFeedPost] {
@@ -89,6 +89,10 @@ final class AIFeedStore: ObservableObject {
 
     var morePosts: [AIFeedPost] {
         recommendedPosts.filter { $0.priority == .normal }
+    }
+
+    var topStories: [AIFeedPost] {
+        Array(AIFeedCollectionPolicy.sortForTrending(posts).prefix(2))
     }
 
     var requiresBearerToken: Bool {
@@ -200,6 +204,7 @@ final class AIFeedStore: ObservableObject {
             let dayKey = AIFeedCollectionPolicy.dayKey(for: now)
             var rotatingWarning: String?
             var selectedUsernames: [String] = []
+            var shouldReplaceRotatingCache = false
             switch FeedConfiguration.delivery {
             case .directXAPI:
                 guard let token = try? tokenStore.read(), !token.isEmpty else {
@@ -215,8 +220,10 @@ final class AIFeedStore: ObservableObject {
                 fetched = result.posts
                 selectedUsernames = result.selectedRotatingUsernames
                 rotatingWarning = result.rotatingWarning
+                shouldReplaceRotatingCache = result.rotatingWarning == nil
             case .curatedAPI(let endpoint):
                 fetched = try await CuratedFeedService(endpoint: endpoint).fetch()
+                shouldReplaceRotatingCache = true
                 selectedUsernames = Array(
                     Set(
                         fetched
@@ -230,8 +237,11 @@ final class AIFeedStore: ObservableObject {
                 !seenIDs.contains($0.id) && $0.priority != .normal
             }
 
+            let retainedPosts = shouldReplaceRotatingCache
+                ? posts.filter { $0.tier != .rotating }
+                : posts
             posts = AIFeedCollectionPolicy.mergeDaily(
-                existing: posts,
+                existing: retainedPosts,
                 fetched: fetched,
                 dayStart: dayStart
             )

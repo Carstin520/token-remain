@@ -21,7 +21,12 @@ struct DashboardView: View {
     @ObservedObject var navigator: DashboardNavigator
 
     private var insights: UsageInsights {
-        UsageInsights(claude: store.claude, codex: store.codex, daily: store.daily)
+        UsageInsights(
+            claude: store.claude,
+            codex: store.codex,
+            daily: store.daily,
+            history: store.history
+        )
     }
 
     var body: some View {
@@ -32,10 +37,17 @@ struct DashboardView: View {
             detail
         }
         .navigationSplitViewStyle(.balanced)
+        // Remove the toolbar title text: the sidebar brand lockup is the only
+        // visible "Token Remain". The NSWindow keeps its `title` property (for
+        // Mission Control / the window switcher / accessibility); this only drops
+        // the duplicated in-toolbar text, keeping the sidebar toggle intact.
+        // `.toolbar(removing: .title)` needs macOS 15+; pre-15 relies on the
+        // window's `titleVisibility = .hidden` set in DashboardWindowController.
+        .modifier(HideToolbarTitle())
         .frame(minWidth: 920, minHeight: 620)
-        .background(DashboardTheme.canvas)
+        .background { UsageDockCanvasBackground() }
         .preferredColorScheme(.dark)
-        .tint(DashboardTheme.codex)
+        .tint(DashboardTheme.violet)
         .task { store.start() }
     }
 
@@ -48,45 +60,65 @@ struct DashboardView: View {
                 .padding(.top, 18)
                 .padding(.bottom, 10)
 
-            List(selection: sidebarSelection) {
-                ForEach(DashboardSection.Group.allCases) { group in
-                    Section(group.rawValue) {
-                        ForEach(DashboardSection.sections(in: group)) { section in
-                            Label(section.title, systemImage: section.systemImage)
-                                .font(.system(size: 12))
-                                .tag(section)
+            // Custom nav list: SwiftUI `.tint` does not recolor the macOS
+            // NSTableView sidebar selection (it follows the system accent), so
+            // selection is rendered here as an explicit violet capsule to stay
+            // on the pixel-tech brand.
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    ForEach(DashboardSection.Group.allCases) { group in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(group.title)
+                                .font(.system(size: 10, weight: .semibold))
+                                .tracking(0.6)
+                                .foregroundStyle(DashboardTheme.mutedText)
+                                .padding(.horizontal, 10)
+                                .padding(.bottom, 3)
+                            ForEach(DashboardSection.sections(in: group)) { section in
+                                sidebarRow(section)
+                            }
                         }
                     }
                 }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
             }
-            .listStyle(.sidebar)
-            .scrollContentBackground(.hidden)
 
             syncFooter
                 .padding(14)
         }
-        .background(DashboardTheme.canvas)
+        .usageDockSidebarBackground()
     }
 
-    private var sidebarSelection: Binding<DashboardSection?> {
-        Binding(
-            get: { navigator.selection },
-            set: { if let value = $0 { navigator.selection = value } }
-        )
+    /// One sidebar row with an explicit violet selection capsule and white
+    /// (HIG-style) selected-label text, replacing the system-blue highlight.
+    private func sidebarRow(_ section: DashboardSection) -> some View {
+        let isSelected = navigator.selection == section
+        return Button {
+            navigator.selection = section
+        } label: {
+            Label(section.title, systemImage: section.systemImage)
+                .font(.system(size: 12, weight: isSelected ? .semibold : .regular))
+                .foregroundStyle(isSelected ? Color.white : DashboardTheme.secondaryText)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .fill(isSelected ? DashboardTheme.violet : Color.clear)
+                )
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
 
     private var brandLockup: some View {
         HStack(spacing: 10) {
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(LinearGradient(colors: [DashboardTheme.codex, DashboardTheme.purple], startPoint: .topLeading, endPoint: .bottomTrailing))
-                .frame(width: 27, height: 27)
-                .overlay(
-                    Text("U")
-                        .font(.system(size: 13, weight: .heavy))
-                        .foregroundStyle(.white)
-                )
-            Text("UsageDock")
-                .font(.system(size: 15, weight: .bold))
+            TokenRemainLogo(remainingPercent: store.aggregateRemainingPercent)
+                .frame(width: 32, height: 32)
+            Text("Token Remain")
+                .wordmarkFont(15)
                 .foregroundStyle(DashboardTheme.text)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -111,7 +143,8 @@ struct DashboardView: View {
                             .foregroundStyle(DashboardTheme.secondaryText)
                     }
                 }
-                .buttonStyle(.plain)
+                .usageDockRoundControlStyle()
+                .buttonBorderShape(.circle)
                 .disabled(store.isRefreshing)
                 .help("立即刷新所有数据源")
                 .accessibilityLabel("刷新")
@@ -120,11 +153,7 @@ struct DashboardView: View {
         }
         .padding(11)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(DashboardTheme.surface, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 11, style: .continuous)
-                .strokeBorder(DashboardTheme.border, lineWidth: 1)
-        )
+        .usageDockGlassSurface(cornerRadius: 11)
     }
 
     private var syncColor: Color {
@@ -134,30 +163,37 @@ struct DashboardView: View {
     }
 
     private var syncText: String {
-        if store.errorMessage != nil { return "部分数据源异常" }
-        if insights.lastUpdated == nil { return "正在读取数据…" }
-        return "全部数据源正常"
+        if store.errorMessage != nil { return L10n.text("sync.partial_error") }
+        if insights.lastUpdated == nil { return L10n.text("sync.loading") }
+        return L10n.text("sync.healthy")
     }
 
     // MARK: - Detail
 
     private var detail: some View {
         ScrollView {
-            sectionContent
-                .padding(28)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            UsageDockGlassGroup(spacing: 16) {
+                sectionContent
+                    .padding(28)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
-        .background(DashboardTheme.canvas)
-        .navigationTitle("UsageDock")
+        .background { UsageDockCanvasBackground() }
+        // No `.navigationTitle` here: the sidebar brand lockup is the only
+        // visible "Token Remain". The NSWindow keeps its title property (set in
+        // DashboardWindowController) for Mission Control / the window switcher,
+        // while `titleVisibility = .hidden` suppresses the duplicate titlebar text.
     }
 
     @ViewBuilder
     private var sectionContent: some View {
         switch navigator.selection {
         case .overview:
-            OverviewSection(insights: insights, errorMessage: store.errorMessage)
-        case .aiFeed:
-            AIFeedSection(store: feedStore)
+            OverviewSection(
+                insights: insights,
+                feedStore: feedStore,
+                errorMessage: store.errorMessage
+            )
         case .limits:
             LimitsSection(insights: insights)
         case .trends:
@@ -178,4 +214,16 @@ struct DashboardView: View {
 
 private extension String {
     var nonEmpty: String? { isEmpty ? nil : self }
+}
+
+/// Drops the duplicated toolbar title on macOS 15+ (the user runs macOS 26);
+/// pre-15 falls back to the window's hidden `titleVisibility`.
+private struct HideToolbarTitle: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(macOS 15.0, *) {
+            content.toolbar(removing: .title)
+        } else {
+            content
+        }
+    }
 }

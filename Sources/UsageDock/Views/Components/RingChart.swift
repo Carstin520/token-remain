@@ -56,8 +56,7 @@ struct RingChart: View {
                 if let centerText {
                     VStack(spacing: 0) {
                         Text(centerText)
-                            .font(.system(size: centerTextSize, weight: .semibold, design: .rounded))
-                            .monospacedDigit()
+                            .numericFont(centerTextSize, .semibold)
                             .foregroundStyle(DashboardTheme.text)
 
                         if let centerCaption {

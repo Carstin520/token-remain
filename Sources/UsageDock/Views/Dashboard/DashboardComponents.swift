@@ -20,8 +20,7 @@ struct SectionTitleHeader: View {
             Spacer(minLength: 12)
             if let trailing {
                 Text(trailing)
-                    .font(.system(size: 12))
-                    .monospacedDigit()
+                    .numericFont(12)
                     .foregroundStyle(DashboardTheme.mutedText)
             }
         }
@@ -95,7 +94,7 @@ struct InfoRow: View {
                 .foregroundStyle(DashboardTheme.secondaryText)
             Spacer(minLength: 12)
             Text(value)
-                .font(.system(size: 12, weight: .medium))
+                .numericFont(12, .medium)
                 .foregroundStyle(valueColor)
                 .multilineTextAlignment(.trailing)
         }
