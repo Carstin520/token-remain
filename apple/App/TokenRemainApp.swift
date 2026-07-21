@@ -58,6 +58,10 @@ struct RootView: View {
                 SettingsTab()
             }
         }
+        // Identity layer: the selected tab is tinted Robot Violet (scoped to the tab
+        // bar so the indigo action tint elsewhere is unchanged). A per-item neon glow
+        // isn't exposed by the system tab bar API, so this is tint-only.
+        .tint(TRTheme.violet)
         .accessibilityIdentifier("tr.root.tabs")
     }
 }

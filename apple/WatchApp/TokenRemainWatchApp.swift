@@ -60,7 +60,7 @@ struct WatchCornerGaugePreview: View {
             )
             // The curved bezel label (rendered straight here — the real curving is
             // applied by the on-face complication renderer).
-            Text("AI 用量 · \(TRL10n.t("overview.min_remaining")) \(entry.heroText)")
+            Text("\(TRL10n.t("mark.ai_usage")) · \(TRL10n.t("overview.min_remaining")) \(entry.heroText)")
                 .font(.system(size: 12, design: .monospaced).monospacedDigit())
                 .foregroundStyle(TRTheme.text)
             // The same mark at its true ~26pt corner-content size, for honesty.
@@ -70,7 +70,7 @@ struct WatchCornerGaugePreview: View {
                     innerRemaining: entry.remainingPercent(for: .codex) ?? entry.minRemainingPercent ?? 0,
                     size: 26
                 )
-                Text("真实角标尺寸")
+                Text(TRL10n.t("gallery.corner.actual"))
                     .font(.system(size: 9, design: .monospaced))
                     .foregroundStyle(TRTheme.textMute)
             }
@@ -205,11 +205,12 @@ struct WatchOverviewPage: View {
             Text(TRL10n.t("overview.min_remaining"))
                 .font(.system(size: 10, design: .monospaced))
                 .foregroundStyle(TRTheme.textDim)
-            Text(hero)
-                .trValue(size: 38)
-                .foregroundStyle(TRTheme.text)
-                .minimumScaleFactor(0.5)
-                .lineLimit(1)
+            // Cyberpunk experiment: dot-matrix hero % with a violet neon bloom. At
+            // 34pt the 5×7 dots stay crisp on the watch (well above the ~20pt floor);
+            // revert by restoring `Text(hero).trValue(size: 38)`.
+            PixelDigitText(hero, size: 34, color: TRTheme.text)
+                .neonGlow(TRTheme.violet)
+                .accessibilityHidden(true)
             WatchPaceLine(lasts: lasts, risk: risk)
             Divider().overlay(TRTheme.border)
             ForEach(ProviderQuota.Provider.allCases, id: \.self) { provider in
@@ -251,7 +252,7 @@ struct WatchProviderPage: View {
                     .foregroundStyle(TRTheme.text)
                 Spacer(minLength: 0)
                 if let plan = quota?.planName {
-                    PixelBadge(plan, accent: accent)
+                    PixelBadge(plan, accent: accent).neonGlow(accent, intensity: 0.5)
                 }
                 if snapshot.isDemo { DemoChip(compact: true) }
             }
@@ -315,11 +316,15 @@ struct WatchWindowBlock: View {
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundStyle(TRTheme.textDim)
                 Spacer(minLength: 0)
+                // Display-layer judgement: kept SF Mono (16pt, dual-window density is
+                // below the ~20pt dot-matrix floor on the watch) with a subtle accent glow.
                 Text(UsageFormatting.percent(window.remainingPercent.rounded()))
                     .font(.system(size: 16, design: .monospaced).monospacedDigit().weight(.semibold))
                     .foregroundStyle(TRTheme.text)
+                    .neonGlow(accent, intensity: 0.4)
             }
             SegmentBar(remainingPercent: window.remainingPercent, accent: accent, segments: 12, height: 5)
+                .neonGlow(accent, intensity: 0.35)
             Text(resetLine)
                 .font(.system(size: 9, design: .monospaced))
                 .foregroundStyle(TRTheme.textMute)
@@ -448,6 +453,7 @@ struct WatchRiskBadge: View {
         .padding(.horizontal, 6)
         .padding(.vertical, 2)
         .background(TRTheme.riskSemantic(risk), in: RoundedRectangle(cornerRadius: 3))
+        .neonGlow(TRTheme.riskSemantic(risk), intensity: 0.4)
         .accessibilityHidden(true)
     }
 }
@@ -488,6 +494,7 @@ struct WatchProviderMiniRow: View {
                 .frame(width: 44, alignment: .leading)
             SegmentBar(remainingPercent: window.remainingPercent,
                        accent: TRTheme.accent(for: provider), segments: 8, height: 4)
+                .neonGlow(TRTheme.accent(for: provider), intensity: 0.35)
             Text(UsageFormatting.percent(window.remainingPercent.rounded()))
                 .font(.system(size: 11, design: .monospaced).monospacedDigit())
                 .foregroundStyle(TRTheme.text)

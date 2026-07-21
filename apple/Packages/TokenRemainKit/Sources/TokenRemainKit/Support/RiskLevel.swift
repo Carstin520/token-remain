@@ -24,15 +24,12 @@ public enum RiskLevel: String, Sendable, CaseIterable {
         }
     }
 
-    /// Short uppercase badge, e.g. `LOW`. Deliberately not localized — the
-    /// design renders these as pixel caps in every language.
+    /// Short risk badge rendered as pixel caps, localized to the system language
+    /// (`低/中/高` · `LOW/MED/HIGH`, `—` when unknown). Routes through the same
+    /// `risk.short.*` keys the watch badge and home-widget `RiskBadge` use, so every
+    /// surface reads in one language — no other-language remnant in the hero chip.
     public var badge: String {
-        switch self {
-        case .low: return "LOW"
-        case .medium: return "MED"
-        case .high: return "HIGH"
-        case .unknown: return "—"
-        }
+        TRL10n.t("risk.short.\(rawValue)")
     }
 
     /// Non-colour differentiator, so risk never depends on hue alone.

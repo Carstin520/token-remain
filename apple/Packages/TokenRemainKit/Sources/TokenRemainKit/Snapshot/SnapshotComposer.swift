@@ -12,10 +12,10 @@ public enum DemoScenario: String, CaseIterable, Codable, Sendable, Identifiable 
 
     public var displayName: String {
         switch self {
-        case .concept: return TRL10n.current == .zhHans ? "设计稿" : "Concept"
-        case .deficitPace: return TRL10n.current == .zhHans ? "超预算节奏" : "Deficit pace"
-        case .critical: return TRL10n.current == .zhHans ? "额度告急" : "Critical"
-        case .freshReset: return TRL10n.current == .zhHans ? "刚刚重置" : "Fresh reset"
+        case .concept: return TRL10n.t("scenario.concept")
+        case .deficitPace: return TRL10n.t("scenario.deficit")
+        case .critical: return TRL10n.t("scenario.critical")
+        case .freshReset: return TRL10n.t("scenario.freshreset")
         }
     }
 }

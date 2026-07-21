@@ -64,8 +64,8 @@ struct TRWatchRemainGauge: Widget {
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(entry.watchAccessibilityLabel)
         }
-        .configurationDisplayName("Token Remain · 剩余环")
-        .description("Claude + Codex remaining rings")
+        .configurationDisplayName(TRL10n.t("widget.name.rings"))
+        .description(TRL10n.t("widget.desc.rings"))
         .supportedFamilies([.accessoryCircular])
     }
 }
@@ -95,8 +95,8 @@ struct TRWatchResetCountdown: Widget {
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(entry.watchAccessibilityLabel)
         }
-        .configurationDisplayName("Token Remain · Reset")
-        .description("Next quota reset")
+        .configurationDisplayName(TRL10n.t("widget.name.reset"))
+        .description(TRL10n.t("widget.desc.reset"))
         .supportedFamilies([.accessoryCircular])
     }
 }
@@ -116,7 +116,7 @@ struct TRWatchStatusRobot: Widget {
             .accessibilityLabel(entry.watchAccessibilityLabel)
         }
         .configurationDisplayName("Token Remain")
-        .description("Quota status")
+        .description(TRL10n.t("widget.desc.status"))
         .supportedFamilies([.accessoryCircular])
     }
 }
@@ -136,7 +136,7 @@ struct TRWatchCorner: Widget {
                         size: 26
                     )
                     .widgetLabel {
-                        Text("AI 用量 · \(TRL10n.t("overview.min_remaining")) \(entry.heroText)")
+                        Text("\(TRL10n.t("mark.ai_usage")) · \(TRL10n.t("overview.min_remaining")) \(entry.heroText)")
                             .font(.system(.caption2, design: .monospaced).monospacedDigit())
                     }
                 } else {
@@ -147,8 +147,8 @@ struct TRWatchCorner: Widget {
             .trWatchContainer()
             .accessibilityLabel(entry.watchAccessibilityLabel)
         }
-        .configurationDisplayName("Token Remain · 角标")
-        .description("AI usage · minimum remaining")
+        .configurationDisplayName(TRL10n.t("widget.name.corner"))
+        .description(TRL10n.t("widget.desc.corner"))
         .supportedFamilies([.accessoryCorner])
     }
 }
@@ -213,7 +213,7 @@ struct TRWatchRectangular: Widget {
             .accessibilityLabel(entry.watchAccessibilityLabel)
         }
         .configurationDisplayName("Token Remain")
-        .description("Minimum remaining quota")
+        .description(TRL10n.t("widget.desc.min"))
         .supportedFamilies([.accessoryRectangular])
     }
 }
@@ -230,8 +230,8 @@ struct TRWatchInline: Widget {
                 .trWatchContainer()
                 .accessibilityLabel(entry.watchAccessibilityLabel)
         }
-        .configurationDisplayName("Token Remain · 单行")
-        .description("Minimum remaining quota")
+        .configurationDisplayName(TRL10n.t("widget.name.inline"))
+        .description(TRL10n.t("widget.desc.min"))
         .supportedFamilies([.accessoryInline])
     }
 }

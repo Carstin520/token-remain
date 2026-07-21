@@ -261,8 +261,8 @@ struct TRRectangularView: View {
                 HStack(spacing: 8) {
                     VStack(alignment: .leading, spacing: 2) {
                         HStack(spacing: 4) {
-                            // AI-usage eyebrow, then the min-remaining hero.
-                            Text("AI 用量")
+                            // AI-usage marker, then the min-remaining hero.
+                            Text(TRL10n.t("mark.ai_usage"))
                                 .font(.system(size: 9, design: .monospaced))
                                 .foregroundStyle(TRTheme.textDim)
                             Text(TRL10n.t("overview.min_remaining"))

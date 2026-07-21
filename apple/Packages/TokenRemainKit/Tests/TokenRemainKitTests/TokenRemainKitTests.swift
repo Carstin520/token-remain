@@ -104,7 +104,11 @@ struct RiskLevelTests {
     func glyphs() {
         #expect(RiskLevel.medium.glyph == "!")
         #expect(RiskLevel.high.glyph == "‼")
-        #expect(RiskLevel.low.badge == "LOW")
+        // The badge is localized: it routes through the `risk.short.*` keys rather
+        // than a hardcoded English cap, so the hero chip follows the system language.
+        #expect(RiskLevel.low.badge == TRL10n.t("risk.short.low"))
+        #expect(TRL10n.t("risk.short.low", language: .zhHans) == "低")
+        #expect(TRL10n.t("risk.short.low", language: .en) == "LOW")
     }
 }
 
@@ -489,20 +493,40 @@ struct UsageFormattingTests {
 
 @Suite("Localization")
 struct TRL10nTests {
-    @Test("Every key resolves in both languages with no empty strings")
+    @Test("Every key carries a non-empty value in BOTH zh-Hans and en")
     func complete() {
-        for key in TRL10n.table.keys {
+        #expect(!TRL10n.table.isEmpty)
+        for (key, entry) in TRL10n.table {
+            // Guard against a key that was added in only one language, or left as an
+            // empty placeholder — either would leak the raw key / a blank into the UI.
+            #expect(!entry.zh.isEmpty, "missing zh-Hans value for \(key)")
+            #expect(!entry.en.isEmpty, "missing en value for \(key)")
             #expect(!TRL10n.t(key, language: .zhHans).isEmpty)
             #expect(!TRL10n.t(key, language: .en).isEmpty)
         }
     }
 
-    @Test("Language resolution prefers zh, then en, then defaults to zh")
+    @Test("Language resolution matches zh / en and otherwise falls back to English")
     func resolution() {
         #expect(TRL10n.resolve(["zh-Hans-CN", "en-US"]) == .zhHans)
         #expect(TRL10n.resolve(["en-US", "zh-Hans"]) == .en)
-        #expect(TRL10n.resolve(["fr-FR"]) == .zhHans)
-        #expect(TRL10n.resolve([]) == .zhHans)
+        #expect(TRL10n.resolve(["zh"]) == .zhHans)
+        #expect(TRL10n.resolve(["en"]) == .en)
+        // An unsupported system language resolves to the English base, never Chinese.
+        #expect(TRL10n.resolve(["fr-FR"]) == .en)
+        #expect(TRL10n.resolve([]) == .en)
+    }
+
+    @Test("The kit bundle advertises both localizations so it follows the system")
+    func bundleLocalizations() {
+        // `Bundle.module.preferredLocalizations` is the primary resolution signal;
+        // it only reflects the system language if the bundle declares both languages.
+        // Bundle localization identifiers can come back region-cased or lowercased
+        // depending on the platform (e.g. "zh-hans" on macOS), and `resolve` matches
+        // case-insensitively, so compare in lower case.
+        let declared = Set(Bundle.module.localizations.map { $0.lowercased() })
+        #expect(declared.contains("en"))
+        #expect(declared.contains("zh-hans"))
     }
 }
 
@@ -633,6 +657,22 @@ struct CodexGlyphGeometryTests {
     @Test("The gradient runs violet → blue in three stops")
     func gradientStops() {
         #expect(CodexGlyphGeometry.gradientColors.count == 3)
+    }
+}
+
+// MARK: - Cyberpunk dot-matrix numerals (hero experiment)
+
+@Suite("Dot-matrix numerals")
+struct PixelDigitTextTests {
+    @Test("Every hero/countdown character has a well-formed 5×7 pattern")
+    func glyphCoverage() {
+        // The minimal set the hero % and reset countdown need.
+        for character in "0123456789%:." {
+            let pattern = PixelDigitText.glyphs[character]
+            #expect(pattern?.count == 7, "\(character) must have 7 rows")
+            #expect(pattern?.allSatisfy { $0.count == 5 } == true, "\(character) rows must be 5 wide")
+            #expect(pattern?.contains { $0.contains("1") } == true, "\(character) must light some dots")
+        }
     }
 }
 

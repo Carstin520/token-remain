@@ -19,7 +19,7 @@ struct TRHeroWidget: Widget {
                 .trWidgetContainer()
         }
         .configurationDisplayName("Token Remain")
-        .description("Minimum remaining quota")
+        .description(TRL10n.t("widget.desc.min"))
         .supportedFamilies([.systemSmall])
     }
 }
@@ -31,8 +31,8 @@ struct TRProvidersWidget: Widget {
                 .widgetURL(TRRoute.limits.url)
                 .trWidgetContainer()
         }
-        .configurationDisplayName("Token Remain · Quota")
-        .description("Claude and Codex quota")
+        .configurationDisplayName(TRL10n.t("widget.name.quota"))
+        .description(TRL10n.t("widget.desc.quota"))
         .supportedFamilies([.systemMedium])
     }
 }
@@ -45,7 +45,7 @@ struct TRInlineWidget: Widget {
                 .trWidgetContainer()
         }
         .configurationDisplayName("Token Remain")
-        .description("Minimum remaining quota")
+        .description(TRL10n.t("widget.desc.min"))
         .supportedFamilies([.accessoryInline])
     }
 }
@@ -57,8 +57,8 @@ struct TRCircularWidget: Widget {
                 .widgetURL(TRRoute.overview.url)
                 .trWidgetContainer()
         }
-        .configurationDisplayName("Token Remain · %")
-        .description("Minimum remaining quota")
+        .configurationDisplayName(TRL10n.t("widget.name.percent"))
+        .description(TRL10n.t("widget.desc.min"))
         .supportedFamilies([.accessoryCircular])
     }
 }
@@ -70,8 +70,8 @@ struct TRResetCircularWidget: Widget {
                 .widgetURL(TRRoute.limits.url)
                 .trWidgetContainer()
         }
-        .configurationDisplayName("Token Remain · Reset")
-        .description("Next quota reset")
+        .configurationDisplayName(TRL10n.t("widget.name.reset"))
+        .description(TRL10n.t("widget.desc.reset"))
         .supportedFamilies([.accessoryCircular])
     }
 }
@@ -84,7 +84,7 @@ struct TRRectangularWidget: Widget {
                 .trWidgetContainer()
         }
         .configurationDisplayName("Token Remain")
-        .description("Minimum remaining quota")
+        .description(TRL10n.t("widget.desc.min"))
         .supportedFamilies([.accessoryRectangular])
     }
 }

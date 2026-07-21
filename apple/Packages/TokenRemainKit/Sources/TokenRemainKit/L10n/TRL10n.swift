@@ -9,12 +9,19 @@ import Foundation
 public enum TRL10n {
     public enum Language: String, Sendable { case zhHans, en }
 
-    public static let current: Language = resolve(Locale.preferredLanguages)
+    /// The UI language, resolved once per process from the system.
+    ///
+    /// Resolution follows the system language automatically: `-AppleLanguages` launch
+    /// overrides, the per-app language (Settings › Token Remain › Language) and the
+    /// device language all flow through the two signals scanned by `resolve`, so the
+    /// whole interface switches with the system without any in-app language control.
+    public static let current: Language = resolve()
 
     /// The `Locale` that matches the resolved UI language, so dates (weekday names,
     /// month names) render in the same language as the rest of the interface rather
     /// than following the device region. Without this, a zh-Hans UI on an en device
-    /// would render "Fri" instead of "周五".
+    /// would render "Fri" instead of "周五". Keyed off the same `current` resolution
+    /// as every string, so a language and its dates never disagree.
     public static var locale: Locale {
         switch current {
         case .zhHans: return Locale(identifier: "zh_Hans")
@@ -22,13 +29,27 @@ public enum TRL10n {
         }
     }
 
-    static func resolve(_ preferred: [String]) -> Language {
+    /// Resolves the UI language from the system.
+    ///
+    /// The primary signal is `Locale.preferredLanguages` — the user's ordered language
+    /// preference, which honours the device language, the per-app language override
+    /// (Settings › Token Remain › Language) and the `-AppleLanguages` launch argument
+    /// alike. `Bundle.module.preferredLocalizations` (the kit bundle's own `en` +
+    /// `zh-Hans`, intersected with the user's languages) follows as a corroborating
+    /// fallback. Both are per-process, so a widget or watch extension resolves in
+    /// exactly the language its host process was launched in.
+    ///
+    /// Unmatched system languages fall back to English (the kit's base localization)
+    /// rather than defaulting to Chinese. `preferred` is injectable for tests.
+    static func resolve(
+        _ preferred: [String] = Locale.preferredLanguages + Bundle.module.preferredLocalizations
+    ) -> Language {
         for code in preferred {
             let lower = code.lowercased()
             if lower.hasPrefix("zh") { return .zhHans }
             if lower.hasPrefix("en") { return .en }
         }
-        return .zhHans
+        return .en
     }
 
     public static func t(_ key: String) -> String { t(key, language: current) }
@@ -225,6 +246,35 @@ public enum TRL10n {
         "robot.10": Entry("额度即将耗尽，焦虑", "Nearly exhausted — anxious"),
         "robot.0": Entry("额度已耗尽", "Quota exhausted"),
         "robot.a11y.waiting": Entry("Token Remain，等待额度数据", "Token Remain, waiting for quota data"),
-        "robot.a11y.value": Entry("Token Remain，剩余 %1$d%%，%2$@", "Token Remain, %1$d%% remaining, %2$@")
+        "robot.a11y.value": Entry("Token Remain，剩余 %1$d%%，%2$@", "Token Remain, %1$d%% remaining, %2$@"),
+
+        // Shared "AI usage" marker (widgets / complications). Not a proper noun — a
+        // plain label that must switch with the language.
+        "mark.ai_usage": Entry("AI 用量", "AI usage"),
+
+        // Demo scenario names (Settings scenario picker)
+        "scenario.concept": Entry("设计稿", "Concept"),
+        "scenario.deficit": Entry("超预算节奏", "Deficit pace"),
+        "scenario.critical": Entry("额度告急", "Critical"),
+        "scenario.freshreset": Entry("刚刚重置", "Fresh reset"),
+
+        // Screenshot/gallery tooling label
+        "gallery.corner.actual": Entry("真实角标尺寸", "Actual corner size"),
+
+        // Widget & complication gallery metadata (display name + description). These
+        // are rendered by each widget's `body`, so they resolve per widget-process
+        // language just like every other string.
+        "widget.name.quota": Entry("Token Remain · 额度", "Token Remain · Quota"),
+        "widget.name.percent": Entry("Token Remain · 百分比", "Token Remain · %"),
+        "widget.name.reset": Entry("Token Remain · 重置", "Token Remain · Reset"),
+        "widget.name.rings": Entry("Token Remain · 剩余环", "Token Remain · Remaining rings"),
+        "widget.name.corner": Entry("Token Remain · 角标", "Token Remain · Corner"),
+        "widget.name.inline": Entry("Token Remain · 单行", "Token Remain · Inline"),
+        "widget.desc.min": Entry("最低剩余额度", "Minimum remaining quota"),
+        "widget.desc.reset": Entry("下次额度重置", "Next quota reset"),
+        "widget.desc.quota": Entry("Claude 与 Codex 额度", "Claude and Codex quota"),
+        "widget.desc.rings": Entry("Claude + Codex 剩余环", "Claude + Codex remaining rings"),
+        "widget.desc.status": Entry("额度状态", "Quota status"),
+        "widget.desc.corner": Entry("AI 用量 · 最低剩余", "AI usage · minimum remaining")
     ]
 }

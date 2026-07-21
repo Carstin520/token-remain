@@ -10,6 +10,7 @@ struct LimitsTab: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(spacing: 12) {
+                        CyberPageHeader(title: TRL10n.t("tab.limits"))
                         DemoHeaderRow()
                         if model.snapshot.isEmpty {
                             NotConnectedCard()
@@ -25,6 +26,7 @@ struct LimitsTab: View {
                         }
                     }
                     .padding(.horizontal, 16)
+                    .padding(.top, 4)
                     .padding(.bottom, 24)
                 }
                 .background(TRTheme.ink)
@@ -39,7 +41,7 @@ struct LimitsTab: View {
                     proxy.scrollTo(anchor, anchor: .center)
                 }
             }
-            .navigationTitle(TRL10n.t("tab.limits"))
+            .toolbar(.hidden, for: .navigationBar)
         }
     }
 }
@@ -61,11 +63,14 @@ struct WindowDetailCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 header
                 SegmentBar(remainingPercent: window.remainingPercent, accent: accent)
+                    .neonGlow(accent, intensity: 0.4)
                 paceSection(pace: pace, now: now)
                 Divider().overlay(TRTheme.border)
                 resetSection(now: now)
             }
         }
+        // Structure layer: scanlines + faint neon border in the provider accent (key card).
+        .cyberCard(border: accent)
         .overlay {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .strokeBorder(TRTheme.indigo, lineWidth: highlighted && pulse ? 2 : 0)
@@ -95,8 +100,14 @@ struct WindowDetailCard: View {
                 .font(.system(.subheadline, design: .monospaced))
                 .foregroundStyle(TRTheme.text)
             Spacer(minLength: 0)
-            TRValue(UsageFormatting.percent(window.remainingPercent.rounded()), size: 28, maxSize: 72)
-                .foregroundStyle(TRTheme.text)
+            // Display layer: dot-matrix window hero % with a neon bloom in the
+            // provider accent (violet Claude / cyan Codex).
+            CyberValue(
+                UsageFormatting.percent(window.remainingPercent.rounded()),
+                size: 30,
+                color: TRTheme.text,
+                glow: accent
+            )
         }
     }
 
@@ -110,6 +121,7 @@ struct WindowDetailCard: View {
                     metric(TRL10n.t("limits.pace.delta"), signed(pace.deltaPercent))
                     Spacer(minLength: 0)
                     PixelBadge(statusLabel(pace.status), accent: statusAccent(pace.status))
+                        .neonGlow(statusAccent(pace.status), intensity: 0.5)
                 }
                 if let runOut = pace.estimatedRunOutAt {
                     // Always phrased as an estimate — never as a fact.
@@ -166,14 +178,21 @@ struct WindowDetailCard: View {
                 .font(.caption)
                 .foregroundStyle(TRTheme.textDim)
             if let resetsAt = window.resetsAt {
-                Text(UsageFormatting.resetDescription(to: resetsAt, now: now))
+                let description = UsageFormatting.resetDescription(to: resetsAt, now: now)
+                let absolute = UsageFormatting.absoluteReset(resetsAt)
+                Text(description)
                     .font(.system(.footnote, design: .monospaced))
                     .foregroundStyle(TRTheme.text)
                     .fixedSize(horizontal: false, vertical: true)
-                Text(UsageFormatting.absoluteReset(resetsAt))
-                    .font(.caption)
-                    .foregroundStyle(TRTheme.textDim)
-                    .fixedSize(horizontal: false, vertical: true)
+                // For far resets `resetDescription` already reads "周五 12:37 重置", so the
+                // absolute clock line would just repeat it — only show it when it adds
+                // information (e.g. the near-reset countdown case "重置还有 02:38").
+                if !description.contains(absolute) {
+                    Text(absolute)
+                        .font(.caption)
+                        .foregroundStyle(TRTheme.textDim)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             } else {
                 // Claude can report a fresh window before it knows the next reset.
                 // That stays unknown rather than being invented.

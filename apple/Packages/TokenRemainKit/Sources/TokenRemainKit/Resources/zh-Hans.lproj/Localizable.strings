@@ -1,0 +1,6 @@
+/* Marker resource. The kit's user-facing strings live in the pure-Swift `TRL10n`
+   table, not here — these localized bundles exist only so that
+   `Bundle.module.preferredLocalizations` reports `en` and `zh-Hans`, which drives
+   `TRL10n.resolve` to follow the system language across the app, widget and watch
+   processes alike. */
+"tr.locale" = "zh-Hans";

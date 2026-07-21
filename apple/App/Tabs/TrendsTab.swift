@@ -17,6 +17,7 @@ struct TrendsTab: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 12) {
+                    CyberPageHeader(title: TRL10n.t("tab.trends"))
                     DemoHeaderRow()
                     if window.count < 2 {
                         emptyState
@@ -27,10 +28,11 @@ struct TrendsTab: View {
                     }
                 }
                 .padding(.horizontal, 16)
+                .padding(.top, 4)
                 .padding(.bottom, 24)
             }
             .background(TRTheme.ink)
-            .navigationTitle(TRL10n.t("tab.trends"))
+            .toolbar(.hidden, for: .navigationBar)
         }
     }
 
@@ -46,6 +48,7 @@ struct TrendsTab: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
+        .cyberCard()
         .accessibilityElement(children: .ignore)
         .accessibilityIdentifier("tr.trends.emptyState")
         .accessibilityLabel(TRL10n.t("trends.empty"))
@@ -78,8 +81,10 @@ struct TrendsTab: View {
                     AxisValueLabel().foregroundStyle(TRTheme.textDim)
                 } }
                 .frame(height: 160)
+                .neonGlow(TRTheme.violet, intensity: 0.35)
             }
         }
+        .cyberCard()
         .accessibilityIdentifier("tr.trends.minChart")
         .accessibilityLabel(TRL10n.t("trends.title.min"))
     }
@@ -111,9 +116,11 @@ struct TrendsTab: View {
                     AxisValueLabel().foregroundStyle(TRTheme.textDim)
                 } }
                 .frame(height: 160)
+                .neonGlow(TRTheme.cyan, intensity: 0.3)
                 legend
             }
         }
+        .cyberCard()
         .accessibilityIdentifier("tr.trends.providerChart")
         .accessibilityLabel(TRL10n.t("trends.title.provider"))
     }
@@ -157,6 +164,7 @@ struct TrendsTab: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
+        .cyberCard()
         .accessibilityIdentifier("tr.trends.metadata")
     }
 }

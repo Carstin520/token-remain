@@ -17,6 +17,7 @@ struct OverviewTab: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 12) {
+                    CyberPageHeader(title: TRL10n.t("tab.overview"))
                     wordmark
                     if model.snapshot.isEmpty {
                         NotConnectedCard()
@@ -42,10 +43,13 @@ struct OverviewTab: View {
                     }
                 }
                 .padding(.horizontal, 16)
+                .padding(.top, 4)
                 .padding(.bottom, 24)
             }
             .background(TRTheme.ink)
-            .navigationTitle(TRL10n.t("tab.overview"))
+            // Identity layer: the custom CyberPageHeader replaces the system large
+            // title (tab bar still labels the tab; nav bar hidden to avoid a duplicate).
+            .toolbar(.hidden, for: .navigationBar)
         }
     }
 
@@ -53,11 +57,13 @@ struct OverviewTab: View {
         TRAdaptiveRow {
             PixelRobot(remainingPercent: model.insights.minRemainingPercent, size: 26)
                 .accessibilityHidden(true)
-            Text("Token Remain")
-                .font(.system(.headline, design: .monospaced))
-                .foregroundStyle(TRTheme.text)
+            // Cyberpunk experiment: static chromatic-aberration ghosts behind the
+            // wordmark (see Cyberpunk.swift — revert by restoring the plain Text).
+            ChromaticText("Token Remain", font: .system(.headline, design: .monospaced))
             Spacer()
-            if model.snapshot.isDemo { DemoChip(expandsHitTarget: true) }
+            if model.snapshot.isDemo {
+                DemoChip(expandsHitTarget: true).neonGlow(TRTheme.indigo, intensity: 0.5)
+            }
         }
         .padding(.top, 4)
         .accessibilityElement(children: .contain)
@@ -82,6 +88,7 @@ struct OverviewTab: View {
                             accent: TRTheme.riskAccent(risk),
                             filled: TRTheme.riskIsFilled(risk)
                         )
+                        .neonGlow(TRTheme.riskAccent(risk), intensity: 0.5)
                         .accessibilityIdentifier("tr.overview.riskBadge")
                         if !risk.glyph.isEmpty {
                             Text(risk.glyph)
@@ -93,8 +100,12 @@ struct OverviewTab: View {
                         .font(.caption)
                         .foregroundStyle(TRTheme.textDim)
                         .padding(.top, 4)
-                    TRValue(model.entry(at: now).heroText, size: cappedHeroSize)
-                        .foregroundStyle(TRTheme.text)
+                    // Cyberpunk experiment: dot-matrix hero numerals with a violet
+                    // neon bloom (text-white hero → violet-tinted glow). Accessibility
+                    // is set explicitly so the "tr.overview.hero" / "46%" contract holds.
+                    PixelDigitText(model.entry(at: now).heroText, size: cappedHeroSize, color: TRTheme.text)
+                        .neonGlow(TRTheme.violet)
+                        .accessibilityLabel(model.entry(at: now).heroText)
                         .accessibilityIdentifier("tr.overview.hero")
                     HStack(spacing: 5) {
                         PixelCheck(lasts ? .checked : .warn, accent: lasts ? TRTheme.cyan : TRTheme.violet)
@@ -115,6 +126,9 @@ struct OverviewTab: View {
                 }
             }
         }
+        // Cyberpunk structure layer: scanlines + a faint neon border in the risk
+        // accent (key card). Revert by removing this modifier.
+        .cyberCard(border: TRTheme.riskAccent(risk))
         .trGlassCard(enabled: model.glassEnabled)
         .accessibilityElement(children: .ignore)
         .accessibilityIdentifier("tr.overview.riskHero")
@@ -147,7 +161,9 @@ struct OverviewTab: View {
                     TRValue(UsageFormatting.percent(lead.remainingPercent.rounded()), size: 20, maxSize: 34)
                         .foregroundStyle(TRTheme.text)
                 }
+                // Cyberpunk experiment: subtle neon bloom on the hero-surface meters.
                 SegmentBar(remainingPercent: lead.remainingPercent, accent: TRTheme.accent(for: provider))
+                    .neonGlow(TRTheme.accent(for: provider), intensity: 0.4)
                 TRAdaptiveRow {
                     Text(UsageFormatting.windowName(minutes: lead.windowMinutes))
                         .font(.caption)
@@ -171,6 +187,7 @@ struct OverviewTab: View {
                 }
             }
         }
+        .cyberCard()
         .accessibilityElement(children: .ignore)
         .accessibilityIdentifier("tr.overview.provider.\(provider.rawValue)")
         .accessibilityLabel(
@@ -195,8 +212,15 @@ struct OverviewTab: View {
                 if let reset = model.insights.soonestReset {
                     // Ticks only while foregrounded; nothing schedules work in the model.
                     TimelineView(.periodic(from: .now, by: 1)) { context in
-                        TRValue(UsageFormatting.shortCountdown(to: reset, now: context.date), size: 26, maxSize: 40)
-                            .foregroundStyle(TRTheme.cyan)
+                        // Cyberpunk experiment: dot-matrix countdown in cyan with a
+                        // matching neon bloom.
+                        PixelDigitText(
+                            UsageFormatting.shortCountdown(to: reset, now: context.date),
+                            size: 28,
+                            color: TRTheme.cyan
+                        )
+                        .neonGlow(TRTheme.cyan)
+                        .accessibilityHidden(true)
                     }
                     Text(UsageFormatting.absoluteReset(reset))
                         .font(.caption)
@@ -211,6 +235,7 @@ struct OverviewTab: View {
                 }
             }
         }
+        .cyberCard()
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(countdownAccessibilityLabel)
     }
@@ -238,6 +263,7 @@ struct OverviewTab: View {
                 }
             }
         }
+        .cyberCard()
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
             values.count >= 2
@@ -295,6 +321,7 @@ struct NotConnectedCard: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
+        .cyberCard()
         .accessibilityElement(children: .ignore)
         .accessibilityIdentifier("tr.overview.emptyState")
         .accessibilityLabel("\(TRL10n.t("origin.none.title"))。\(TRL10n.t("origin.none.body"))")
@@ -345,7 +372,7 @@ struct DemoHeaderRow: View {
         if model.snapshot.isDemo {
             HStack {
                 Spacer()
-                DemoChip(expandsHitTarget: true)
+                DemoChip(expandsHitTarget: true).neonGlow(TRTheme.indigo, intensity: 0.5)
             }
         }
     }

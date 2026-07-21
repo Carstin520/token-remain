@@ -7,16 +7,23 @@ struct SettingsTab: View {
     var body: some View {
         @Bindable var model = model
         NavigationStack {
-            Form {
-                sourceSection($model)
-                liveActivitySection
-                widgetsSection
-                watchSection
-                aboutSection
+            VStack(spacing: 0) {
+                // Identity layer only — the controls below stay native (body layer).
+                CyberPageHeader(title: TRL10n.t("tab.settings"))
+                    .padding(.horizontal, 20)
+                    .padding(.top, 4)
+                    .padding(.bottom, 6)
+                Form {
+                    sourceSection($model)
+                    liveActivitySection
+                    widgetsSection
+                    watchSection
+                    aboutSection
+                }
+                .scrollContentBackground(.hidden)
             }
-            .scrollContentBackground(.hidden)
             .background(TRTheme.ink)
-            .navigationTitle(TRL10n.t("tab.settings"))
+            .toolbar(.hidden, for: .navigationBar)
         }
     }
 

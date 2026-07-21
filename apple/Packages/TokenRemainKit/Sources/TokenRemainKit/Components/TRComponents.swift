@@ -533,8 +533,8 @@ public struct MiniDualArc: View {
     private let size: CGFloat
 
     /// The 270° gauge sweep, leaving a 90° gap centred at the bottom.
-    private static let startDegrees = 135.0
-    private static let sweepDegrees = 270.0
+    private nonisolated static let startDegrees = 135.0
+    private nonisolated static let sweepDegrees = 270.0
 
     public init(
         outerRemaining: Double,
@@ -550,7 +550,8 @@ public struct MiniDualArc: View {
         self.size = size
     }
 
-    private func arc(center: CGPoint, radius: CGFloat, fraction: Double) -> Path {
+    // `nonisolated static` so it can be called from the nonisolated Canvas closure.
+    private nonisolated static func arc(center: CGPoint, radius: CGFloat, fraction: Double) -> Path {
         var path = Path()
         let clamped = max(0.02, min(1, fraction))
         path.addArc(
@@ -575,12 +576,12 @@ public struct MiniDualArc: View {
 
                 func draw(_ radius: CGFloat, _ remaining: Double, _ color: Color) {
                     context.stroke(
-                        arc(center: center, radius: radius, fraction: 1),
+                        Self.arc(center: center, radius: radius, fraction: 1),
                         with: .color(TRTheme.track),
                         style: StrokeStyle(lineWidth: width, lineCap: .round)
                     )
                     context.stroke(
-                        arc(center: center, radius: radius, fraction: remaining / 100),
+                        Self.arc(center: center, radius: radius, fraction: remaining / 100),
                         with: .color(color),
                         style: StrokeStyle(lineWidth: width, lineCap: .round)
                     )
