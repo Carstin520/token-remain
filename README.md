@@ -3,7 +3,11 @@
 macOS 菜单栏常驻用量助手，同时展示：
 
 - Claude Code 官方 5 小时 / 7 天剩余额度与重置倒计时
-- Codex 主账户最近服务端 rate-limit 快照；按服务端实际提供的窗口显示（当前可能只提供 7 天）
+- Codex 主账户实时 5 小时 / 7 天剩余额度（服务端接口直查，离线时回退最近本地快照）
+- Cursor 月度账期剩余额度与重置倒计时（服务端接口直查）
+- Grok（xAI）周池剩余额度（只读 Grok CLI 凭证直查）
+- Z.ai GLM Coding Plan 会话 / 周窗口剩余额度（用户 API Key，存本机钥匙串）
+- Copilot 月度 Credits（只读本机 GitHub 登录）、Devin 日/周配额、OpenRouter 预充积分（用户 API Key）、Antigravity 配额池（只读本机登录态）、OpenCode Go 套餐（本地数据库扫描估算，纯本地）
 - 基于真实窗口进度与官方重置时间判断当前节奏能否持续到重置，并在可能提前用尽时给出预计可用时长
 - ccusage 统计的 Claude Code / Codex 今日 token 与估算 API 成本
 - AI Feed 聚合 Tibor Blaho、Sam Altman、Claude、Anthropic、OpenAI 与 Elon Musk 的 X 动态
@@ -12,8 +16,13 @@ macOS 菜单栏常驻用量助手，同时展示：
 
 ## 数据与隐私
 
-- UsageDock 不再读取或修改 Claude Code 的钥匙串凭证。Claude 限额由本机 Claude Code 在隔离的伪终端中执行 `/usage` 后解析；认证与 token 续期始终由 Claude Code 自己处理。
-- Codex 数据来自 `~/.codex` 会话文件中的服务端 rate-limit 快照；没有额外上传。
+- Claude 限额主路径为官方 oauth/usage 接口直查：只读 Claude Code 已有的 OAuth access token（`~/.claude/.credentials.json` 文件优先，钥匙串兜底），绝不刷新 token、绝不写回凭证，因此不会与 Claude Code 争用 refresh token 或触发第三方续期限流。凭证缺失、过期或被拒时自动降级为在隔离伪终端中执行 `/usage` 解析——探针会让 Claude Code 自行完成续期，下一轮直查即恢复。
+- Codex 限额主路径为服务端实时接口直查：只读 `~/.codex/auth.json` 中 Codex CLI 已有的 access token（同样不续期、不写回），可同时拿到 5 小时与 7 天窗口。未登录或 token 过期时降级为 `~/.codex` 会话文件中的 rate-limit 快照；没有额外上传。
+- Cursor 月度额度同样只读 Cursor IDE 自己维护的 access token（`state.vscdb` 只读查询，钥匙串兜底），绝不使用 refresh token 代刷——代刷可能触发认证服务器的轮换检测并危及 Cursor 的登录态。因此 Cursor 长时间未运行导致 token 过期时数据会暂停更新，卡片会保留最近数据并提示“打开一次 Cursor 应用即可恢复额度刷新”。
+- Grok（xAI）只读 `~/.grok/auth.json` 中 Grok CLI 已有的凭证查询周池额度，同样绝不代刷；凭证过期时提示“运行一次 grok 即可恢复”。
+- Z.ai（GLM Coding Plan）是唯一需要手动接入的服务：在 Dashboard「数据源」页粘贴一次 API Key（也支持 `ZAI_API_KEY` 环境变量或 `~/.config/zai/key.json`），Key 仅保存在 macOS 钥匙串。
+- 除 Z.ai 外全部自动接入：登录对应工具即自动读取本机凭证，无需任何配置；未接入的服务在额度卡片与「数据源」页显示具体接入指引。
+- 首次启动有 onboarding：自动检测本机已安装的 AI 编码工具并预勾选，确认后开始追踪；之后在「额度」页可随时增删——「添加应用」卡片加入新服务，卡片右键停止追踪。选择保存在本地，菜单栏与弹窗同步跟随。
 - ccusage 通过 `npx --yes ccusage@latest` 读取本地日志。成本是 API 标价估算，不等于订阅账单。
 - Claude 限额成功读取后会缓存到 `~/Library/Caches/com.jamesli.usagedock/`；Claude Code 暂时不可用时继续显示最近有效值。
 - 打开菜单栏面板会触发一次非阻塞的轻量刷新；刷新按钮则会立即刷新 ccusage、Codex 与 Claude。UsageDock 不会自行调用 Claude OAuth 续期接口，因此不会与 Claude Code 争用 refresh token 或触发第三方续期限流。
