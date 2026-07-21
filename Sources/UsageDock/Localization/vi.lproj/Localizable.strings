@@ -10,7 +10,7 @@
 "nav.data_sources" = "Nguồn dữ liệu";
 "nav.settings" = "Cài đặt";
 "section.overview.subtitle" = "Rủi ro hạn mức, mức dùng hôm nay và chi phí ước tính";
-"section.limits.subtitle" = "Cửa sổ hạn mức chính thức của Claude và Codex";
+"section.limits.subtitle" = "Cửa sổ hạn mức chính thức của các công cụ lập trình AI";
 "section.trends.subtitle" = "Mức dùng theo thời gian · ccusage cục bộ";
 "section.devices.subtitle" = "Máy Mac này và giám sát đa thiết bị trong tương lai";
 "section.data_sources.subtitle" = "Trạng thái nguồn dữ liệu và quyền riêng tư";
@@ -105,3 +105,12 @@
 "feed.important_updates" = "Cập nhật quan trọng";
 "feed.view_all" = "Xem tất cả";
 "feed.open_x_hint" = "Mở bài đăng gốc trên X";
+
+/* Spend tiles & extra usage (OpenUsage-style) */
+"usage.spend_today" = "Hôm nay";
+"usage.spend_yesterday" = "Hôm qua";
+"usage.spend_last30" = "30 ngày qua";
+"usage.trend" = "Xu hướng sử dụng";
+"quota.extra_usage" = "Sử dụng thêm";
+"quota.spent" = "Đã dùng %@";
+"duration.total" = "Tổng";

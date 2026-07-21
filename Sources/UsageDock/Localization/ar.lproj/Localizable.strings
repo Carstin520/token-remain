@@ -10,7 +10,7 @@
 "nav.data_sources" = "مصادر البيانات";
 "nav.settings" = "الإعدادات";
 "section.overview.subtitle" = "مخاطر الحصة واستخدام اليوم والتكلفة المقدرة";
-"section.limits.subtitle" = "نوافذ الحصة الرسمية لـ Claude وCodex";
+"section.limits.subtitle" = "نوافذ الحصة الرسمية لأدوات الترميز بالذكاء الاصطناعي";
 "section.trends.subtitle" = "الاستخدام عبر الزمن · ccusage المحلي";
 "section.devices.subtitle" = "هذا الـ Mac والمراقبة المستقبلية بين الأجهزة";
 "section.data_sources.subtitle" = "حالة المصادر والخصوصية";
@@ -105,3 +105,12 @@
 "feed.important_updates" = "تحديثات مهمة";
 "feed.view_all" = "عرض الكل";
 "feed.open_x_hint" = "فتح المنشور الأصلي على X";
+
+/* Spend tiles & extra usage (OpenUsage-style) */
+"usage.spend_today" = "اليوم";
+"usage.spend_yesterday" = "أمس";
+"usage.spend_last30" = "آخر 30 يومًا";
+"usage.trend" = "اتجاه الاستخدام";
+"quota.extra_usage" = "استخدام إضافي";
+"quota.spent" = "تم إنفاق %@";
+"duration.total" = "الإجمالي";

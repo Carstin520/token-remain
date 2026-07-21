@@ -10,7 +10,7 @@
 "nav.data_sources" = "Sumber data";
 "nav.settings" = "Pengaturan";
 "section.overview.subtitle" = "Risiko kuota, penggunaan hari ini, dan perkiraan biaya";
-"section.limits.subtitle" = "Jendela kuota resmi Claude dan Codex";
+"section.limits.subtitle" = "Jendela kuota resmi semua alat coding AI Anda";
 "section.trends.subtitle" = "Penggunaan dari waktu ke waktu · ccusage lokal";
 "section.devices.subtitle" = "Mac ini dan pemantauan lintas perangkat mendatang";
 "section.data_sources.subtitle" = "Status sumber data dan privasi";
@@ -105,3 +105,12 @@
 "feed.important_updates" = "Pembaruan penting";
 "feed.view_all" = "Lihat semua";
 "feed.open_x_hint" = "Buka posting asli di X";
+
+/* Spend tiles & extra usage (OpenUsage-style) */
+"usage.spend_today" = "Hari ini";
+"usage.spend_yesterday" = "Kemarin";
+"usage.spend_last30" = "30 hari terakhir";
+"usage.trend" = "Tren penggunaan";
+"quota.extra_usage" = "Penggunaan ekstra";
+"quota.spent" = "%@ terpakai";
+"duration.total" = "Total";

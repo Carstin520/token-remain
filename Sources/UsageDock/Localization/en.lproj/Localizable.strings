@@ -10,7 +10,7 @@
 "nav.data_sources" = "Data Sources";
 "nav.settings" = "Settings";
 "section.overview.subtitle" = "Quota risk, today's usage, and estimated cost";
-"section.limits.subtitle" = "Official Claude and Codex quota windows";
+"section.limits.subtitle" = "Official quota windows across your AI coding tools";
 "section.trends.subtitle" = "Usage over time · local ccusage";
 "section.devices.subtitle" = "This Mac and future cross-device monitoring";
 "section.data_sources.subtitle" = "Data-source status and privacy";
@@ -131,3 +131,12 @@
 "feed.important_updates" = "Important updates";
 "feed.view_all" = "View all";
 "feed.open_x_hint" = "Open the original post on X";
+
+/* Spend tiles & extra usage (OpenUsage-style) */
+"usage.spend_today" = "Today";
+"usage.spend_yesterday" = "Yesterday";
+"usage.spend_last30" = "Last 30 Days";
+"usage.trend" = "Usage Trend";
+"quota.extra_usage" = "Extra Usage";
+"quota.spent" = "%@ spent";
+"duration.total" = "Total";

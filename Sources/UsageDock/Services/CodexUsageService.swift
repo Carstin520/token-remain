@@ -1,7 +1,35 @@
 import Foundation
+import OSLog
 
 struct CodexUsageService {
-    func fetch() async throws -> ProviderQuota {
+    /// 主路径:wham/usage API 直查(只读 auth.json,实时的 5 小时 + 7 天窗口)。
+    /// 未登录/token 过期/网络失败时降级本地会话快照——离线可用,但只在
+    /// Codex 产生服务端事件时更新,可能滞后或缺少部分窗口。
+    ///
+    /// `preferAPI: false` 只扫本地快照,供 UsageStore 的分钟级轮次在两次
+    /// API 直查之间补新,避免每分钟都打服务端接口。
+    func fetch(preferAPI: Bool = true) async throws -> ProviderQuota {
+        guard preferAPI else {
+            return try await fetchFromLocalSnapshots()
+        }
+        let logger = Logger(subsystem: "com.jamesli.usagedock", category: "CodexUsage")
+        do {
+            let quota = try await CodexAPIUsageService().fetch()
+            logger.info("Codex quota served by wham/usage API")
+            return quota
+        } catch let apiError {
+            logger.info("Codex API path failed (\(apiError.localizedDescription, privacy: .public)); falling back to local snapshots")
+            do {
+                return try await fetchFromLocalSnapshots()
+            } catch {
+                // 两条路径都失败时,API 侧的原因(未登录/过期/HTTP 状态)
+                // 比"找不到快照"更能指导用户下一步动作。
+                throw apiError
+            }
+        }
+    }
+
+    func fetchFromLocalSnapshots() async throws -> ProviderQuota {
         let home = FileManager.default.homeDirectoryForCurrentUser
         return try await Self.fetch(from: [
             home.appending(path: ".codex/sessions"),

@@ -10,7 +10,7 @@
 "nav.data_sources" = "資料來源";
 "nav.settings" = "設定";
 "section.overview.subtitle" = "掌握額度風險、今日用量與預估成本";
-"section.limits.subtitle" = "Claude 與 Codex 官方額度視窗明細";
+"section.limits.subtitle" = "AI 編碼工具官方額度視窗明細";
 "section.trends.subtitle" = "跨日使用趨勢 · 本地 ccusage";
 "section.devices.subtitle" = "本機與未來跨裝置監測";
 "section.data_sources.subtitle" = "資料來源狀態與隱私說明";
@@ -96,3 +96,12 @@
 "feed.important_updates" = "精選重要動態";
 "feed.view_all" = "查看全部";
 "feed.open_x_hint" = "在 X 開啟原始貼文";
+
+/* Spend tiles & extra usage (OpenUsage-style) */
+"usage.spend_today" = "今日";
+"usage.spend_yesterday" = "昨日";
+"usage.spend_last30" = "近 30 天";
+"usage.trend" = "用量趨勢";
+"quota.extra_usage" = "額外用量";
+"quota.spent" = "已花 %@";
+"duration.total" = "累計";

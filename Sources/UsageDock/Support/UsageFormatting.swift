@@ -7,6 +7,14 @@ enum UsageFormatting {
             : String(format: "%.1f%%", value)
     }
 
+    /// OpenUsage 式紧凑美元:千元以下保留两位小数($118.90),
+    /// 千元以上收缩为 $2.5K / $1.2M,消费瓦片一眼可比。
+    static func compactUSD(_ value: Double) -> String {
+        if value >= 1_000_000 { return String(format: "$%.1fM", value / 1_000_000) }
+        if value >= 1_000 { return String(format: "$%.1fK", value / 1_000) }
+        return String(format: "$%.2f", value)
+    }
+
     static func compactNumber(_ value: Int64) -> String {
         let number = Double(value)
         if number >= 1_000_000_000 { return String(format: "%.2fB", number / 1_000_000_000) }
@@ -63,6 +71,8 @@ enum UsageFormatting {
 
     static func windowName(minutes: Int) -> String {
         switch minutes {
+        // 0 哨兵 = 无滚动窗口的累计额度(如 OpenRouter 预充积分)。
+        case ...0: return L10n.text("duration.total")
         case 300: return L10n.format("duration.hours", 5)
         case 10_080: return L10n.format("duration.days", 7)
         default:

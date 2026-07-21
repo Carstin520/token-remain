@@ -8,21 +8,43 @@ import SwiftUI
 /// need multi-day history (trends, heat maps) are expected to render an honest
 /// empty state rather than call into this type for data it cannot provide.
 struct UsageInsights {
-    let claude: ProviderQuota?
-    let codex: ProviderQuota?
+    /// 各 provider 当前快照,键缺失即无数据。
+    let quotasByProvider: [ProviderQuota.Provider: ProviderQuota]
     let daily: DailyUsage?
     let history: DailyUsageHistory?
 
     init(
         claude: ProviderQuota?,
         codex: ProviderQuota?,
+        cursor: ProviderQuota? = nil,
+        grok: ProviderQuota? = nil,
+        zai: ProviderQuota? = nil,
+        others: [ProviderQuota] = [],
         daily: DailyUsage?,
         history: DailyUsageHistory? = nil
     ) {
-        self.claude = claude
-        self.codex = codex
+        var map: [ProviderQuota.Provider: ProviderQuota] = [:]
+        for quota in [claude, codex, cursor, grok, zai].compactMap({ $0 }) + others {
+            map[quota.provider] = quota
+        }
+        quotasByProvider = map
         self.daily = daily
         self.history = history
+    }
+
+    var claude: ProviderQuota? { quotasByProvider[.claude] }
+    var codex: ProviderQuota? { quotasByProvider[.codex] }
+    var cursor: ProviderQuota? { quotasByProvider[.cursor] }
+    var grok: ProviderQuota? { quotasByProvider[.grok] }
+    var zai: ProviderQuota? { quotasByProvider[.zai] }
+
+    func quota(for provider: ProviderQuota.Provider) -> ProviderQuota? {
+        quotasByProvider[provider]
+    }
+
+    /// 全部直查 provider 的现有快照,固定顺序。
+    var quotas: [ProviderQuota] {
+        ProviderQuota.Provider.displayOrder.compactMap { quotasByProvider[$0] }
     }
 
     // MARK: - Quota windows
@@ -44,7 +66,7 @@ struct UsageInsights {
     /// Every official window currently known, in provider then primary→secondary order.
     var windows: [Window] {
         var result: [Window] = []
-        for quota in [claude, codex].compactMap({ $0 }) {
+        for quota in quotas {
             result.append(window(quota.primary, provider: quota.provider, slot: "primary"))
             if let secondary = quota.secondary {
                 result.append(window(secondary, provider: quota.provider, slot: "secondary"))
@@ -132,7 +154,7 @@ struct UsageInsights {
             return riskLevel(at: now).summary
         }
 
-        let provider = assessment.window.provider == .claude ? "Claude" : "Codex"
+        let provider = assessment.window.provider.displayName
         let window = UsageFormatting.windowName(minutes: assessment.window.windowMinutes)
         let duration = UsageFormatting.durationUntil(runOutAt, now: now)
         return L10n.format("risk.summary.projected_runout", provider, window, duration)
@@ -192,12 +214,56 @@ struct UsageInsights {
         return usage.cost / totalCost * 100
     }
 
+    // MARK: - Spend tiles (Today / Yesterday / Last 30 Days)
+
+    struct SpendTile: Identifiable {
+        let id: String
+        let labelKey: String
+        let cost: Double
+        let tokens: Int64
+    }
+
+    /// OpenUsage 式消费瓦片:今日取 `daily`(最鲜),昨日与近 30 天取
+    /// `history`。没有对应数据的瓦片直接缺席,不渲染零值占位。
+    func spendTiles(now: Date = .now, calendar: Calendar = .current) -> [SpendTile] {
+        var tiles: [SpendTile] = []
+        if let daily, !daily.agents.isEmpty {
+            tiles.append(SpendTile(
+                id: "today",
+                labelKey: "usage.spend_today",
+                cost: daily.agents.reduce(0) { $0 + $1.estimatedCost },
+                tokens: daily.agents.reduce(0) { $0 + $1.tokens }
+            ))
+        }
+        guard let history, !history.days.isEmpty else { return tiles }
+        if let yesterday = calendar.date(byAdding: .day, value: -1, to: calendar.startOfDay(for: now)),
+           let day = history.days.first(where: { calendar.isDate($0.date, inSameDayAs: yesterday) }) {
+            tiles.append(SpendTile(
+                id: "yesterday",
+                labelKey: "usage.spend_yesterday",
+                cost: day.totalCost,
+                tokens: day.totalTokens
+            ))
+        }
+        tiles.append(SpendTile(
+            id: "last30",
+            labelKey: "usage.spend_last30",
+            cost: history.days.reduce(0) { $0 + $1.totalCost },
+            tokens: history.days.reduce(0) { $0 + $1.totalTokens }
+        ))
+        return tiles
+    }
+
+    /// 近 30 天逐日 token 总量(旧→新),供卡片内迷你趋势条使用。
+    var dailyTokenTrend: [Double] {
+        history?.days.map { Double($0.totalTokens) } ?? []
+    }
+
     // MARK: - Freshness
 
     /// Most recent capture time across every live source.
     var lastUpdated: Date? {
-        [claude?.capturedAt, codex?.capturedAt, daily?.capturedAt]
-            .compactMap { $0 }
+        (quotas.map(\.capturedAt) + [daily?.capturedAt].compactMap { $0 })
             .max()
     }
 
@@ -215,15 +281,15 @@ struct UsageInsights {
         switch agentID.lowercased() {
         case "claude": return .claude
         case "codex": return .codex
+        case "cursor": return .cursor
+        case "grok": return .grok
+        case "zai", "z.ai": return .zai
         default: return nil
         }
     }
 
     static func color(for agentID: String) -> Color {
-        switch provider(for: agentID) {
-        case .claude: return DashboardTheme.claude
-        case .codex: return DashboardTheme.codex
-        case .none: return DashboardTheme.purple
-        }
+        guard let provider = provider(for: agentID) else { return DashboardTheme.purple }
+        return DashboardTheme.accent(for: provider)
     }
 }

@@ -10,7 +10,7 @@
 "nav.data_sources" = "डेटा स्रोत";
 "nav.settings" = "सेटिंग्स";
 "section.overview.subtitle" = "कोटा जोखिम, आज का उपयोग और अनुमानित लागत";
-"section.limits.subtitle" = "Claude और Codex की आधिकारिक कोटा विंडो";
+"section.limits.subtitle" = "आपके AI कोडिंग टूल की आधिकारिक कोटा विंडो";
 "section.trends.subtitle" = "समय के साथ उपयोग · लोकल ccusage";
 "section.devices.subtitle" = "यह Mac और भावी क्रॉस-डिवाइस निगरानी";
 "section.data_sources.subtitle" = "डेटा स्रोत स्थिति और गोपनीयता";
@@ -105,3 +105,12 @@
 "feed.important_updates" = "महत्वपूर्ण अपडेट";
 "feed.view_all" = "सभी देखें";
 "feed.open_x_hint" = "X पर मूल पोस्ट खोलें";
+
+/* Spend tiles & extra usage (OpenUsage-style) */
+"usage.spend_today" = "आज";
+"usage.spend_yesterday" = "कल";
+"usage.spend_last30" = "पिछले 30 दिन";
+"usage.trend" = "उपयोग रुझान";
+"quota.extra_usage" = "अतिरिक्त उपयोग";
+"quota.spent" = "%@ खर्च";
+"duration.total" = "कुल";
