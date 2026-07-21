@@ -5,8 +5,8 @@ import Testing
 
 /// WCAG contrast guarantees for the pixel-tech "Token Remain" palette. Value-
 /// bearing text (`text`, `secondaryText`) must stay legible on `surface`; the
-/// three brand accents must also clear the 4.5:1 body-text threshold so a
-/// remaining-% or badge rendered in an accent stays readable.
+/// provider accents must clear the 3:1 non-text component threshold against
+/// both the card surface and the unfilled progress track.
 @Suite("Theme contrast")
 struct ThemeContrastTests {
     /// WCAG 2.x relative luminance of a SwiftUI color, resolved in sRGB.
@@ -39,10 +39,43 @@ struct ThemeContrastTests {
         #expect(contrast(DashboardTheme.secondaryText, DashboardTheme.surface) >= 4.5)
     }
 
-    @Test("Both brand accents clear WCAG AA on surface")
-    func accentContrast() {
-        #expect(contrast(DashboardTheme.violet, DashboardTheme.surface) >= 4.5)
-        #expect(contrast(DashboardTheme.cyan, DashboardTheme.surface) >= 4.5)
+    private func components(_ color: Color) -> (Double, Double, Double) {
+        let ns = NSColor(color).usingColorSpace(.sRGB) ?? .black
+        return (Double(ns.redComponent), Double(ns.greenComponent), Double(ns.blueComponent))
+    }
+
+    private func colorsMatch(_ lhs: Color, _ rhs: Color) -> Bool {
+        let l = components(lhs)
+        let r = components(rhs)
+        return abs(l.0 - r.0) < 0.001
+            && abs(l.1 - r.1) < 0.001
+            && abs(l.2 - r.2) < 0.001
+    }
+
+    @Test("Every provider quota accent is visible on the dark meter")
+    func providerAccentContrast() {
+        for provider in ProviderQuota.Provider.displayOrder {
+            let accent = DashboardTheme.accent(for: provider)
+            #expect(contrast(accent, DashboardTheme.surface) >= 3.0)
+            #expect(contrast(accent, DashboardTheme.track) >= 3.0)
+            #expect(!colorsMatch(accent, DashboardTheme.danger))
+        }
+    }
+
+    @Test("Only critically low quota switches a provider meter to red")
+    func lowQuotaUsesDangerRed() {
+        #expect(colorsMatch(
+            DashboardTheme.quotaAccent(for: .claude, remainingPercent: 9.9),
+            DashboardTheme.danger
+        ))
+        #expect(colorsMatch(
+            DashboardTheme.quotaAccent(for: .claude, remainingPercent: 10),
+            DashboardTheme.claudeAccent
+        ))
+        #expect(colorsMatch(
+            DashboardTheme.quotaAccent(for: .codex, remainingPercent: 100),
+            DashboardTheme.codexAccent
+        ))
     }
 
     /// Semantic status colors are UI components (badges/glyphs) always paired

@@ -207,7 +207,14 @@ private struct OfficialQuotaRow: View {
                     .numericFont(13, .bold)
                     .foregroundStyle(DashboardTheme.text)
             }
-            SegmentBar(value: window.remainingPercent / 100, accent: DashboardTheme.accent(for: window.provider), height: 5)
+            SegmentBar(
+                value: window.remainingPercent / 100,
+                accent: DashboardTheme.quotaAccent(
+                    for: window.provider,
+                    remainingPercent: window.remainingPercent
+                ),
+                height: 5
+            )
             HStack {
                 Text(UsageFormatting.windowName(minutes: window.windowMinutes) + "窗口")
                     .font(.system(size: 10))

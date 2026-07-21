@@ -6,8 +6,9 @@ import SwiftUI
 /// pixel-tech, low-contrast robot visual language on an ink ground.
 ///
 /// Two color roles are kept deliberately separate:
-/// - **Brand identity / accents** use violet + cyan (Claude, Codex, links,
-///   selection, meta badges, segment bars, pixel chrome).
+/// - **Product accents** use violet + cyan (links, selection, meta badges,
+///   pixel chrome).
+/// - **Provider identity** uses a distinct categorical palette for quota bars.
 /// - **Semantic status** uses conventional green / amber / red so a warning
 ///   looks like a warning — always paired with a glyph + text label, never
 ///   color alone.
@@ -28,61 +29,67 @@ enum DashboardTheme {
     static let secondaryText = Color(hex: 0x8B97AB)
     static let mutedText = Color(hex: 0x55617A)
 
-    // Color 1 — violet: robot, Claude accent, primary accent, LOW risk
+    // Color 1 — violet: robot and primary product accent
     static let violet = Color(hex: 0x8F7BF2)
     static let violetDim = Color(hex: 0x5B4FB0)
 
-    // Color 2 — cyan: Codex accent, countdowns, confirmations / on-track
+    // Color 2 — cyan: links, countdowns and product chrome
     static let cyan = Color(hex: 0x3ECFE0)
     static let cyanDim = Color(hex: 0x2B8FA0)
 
-    // Provider-slot extensions (slots 3–5) — reserved identity colors for future
-    // usage sources. Values are CVD-validated on the dark surface; do not alter.
-    static let indigo = Color(hex: 0x2F5FD0)
-    static let indigoDim = Color(hex: 0x24479C)
-    static let magenta = Color(hex: 0xD95FB8)
-    static let magentaDim = Color(hex: 0xA2478A)
-    static let olive = Color(hex: 0x7DA342)
-    static let oliveDim = Color(hex: 0x5D7A31)
+    // Provider quota palette. Red is deliberately absent: it is reserved for
+    // a critically low remaining quota. Claude and Codex retain their requested
+    // identity colors; the rest span cool blue/violet/cyan/teal/green plus a
+    // high-luminance yellow so adjacent cards remain easy to distinguish.
+    static let claudeAccent = Color(hex: 0xD97757)      // Anthropic orange
+    static let codexAccent = Color(hex: 0x3578F6)       // Codex deep blue
+    static let cursorAccent = Color(hex: 0xA78BFA)      // violet
+    static let copilotAccent = Color(hex: 0x22D3EE)     // cyan
+    static let devinAccent = Color(hex: 0x2DD4BF)       // teal
+    static let grokAccent = Color(hex: 0xFACC15)        // yellow
+    static let openrouterAccent = Color(hex: 0x94A3B8)  // slate
+    static let antigravityAccent = Color(hex: 0x60A5FA) // sky blue
+    static let opencodeAccent = Color(hex: 0x34D399)    // green
+    static let zaiAccent = Color(hex: 0xA3E635)         // lime
 
     // MARK: - Provider color slots (reserved)
 
     /// Ordered identity palette for usage-source providers, CVD-validated on the
     /// dark `surface`. Assignment rules — these are load-bearing, not stylistic:
     ///
-    /// - A newly onboarded provider takes the **next free slot in order**
-    ///   (slot 1 → Claude, slot 2 → Codex are already spoken for).
     /// - A slot's color follows the entity **permanently**: once a provider owns
     ///   a slot it keeps it, and slots are **never re-assigned** when the visible
     ///   subset of providers changes (filtering, hiding, or reordering must not
     ///   shuffle colors).
-    /// - Semantic green / amber / red are **never** used as a provider color —
-    ///   those stay reserved for status.
+    /// - Semantic red is **never** used as a normal provider color — it stays
+    ///   reserved for critically low quota.
     /// - A provider color must **always be paired with a glyph + text label**
     ///   (icon + name); color alone never identifies a provider.
     ///
-    /// Slot order: 1 violet (Claude), 2 cyan (Codex), 3 indigo, 4 magenta,
-    /// 5 olive. `providerSlotsDim` holds the matching muted variants at the same
-    /// indices (resting segments / strokes).
-    static let providerSlots: [Color] = [violet, cyan, indigo, magenta, olive]
+    /// Historical chart slots remain stable for cached Claude/Codex series.
+    static let providerSlots: [Color] = [
+        claudeAccent, codexAccent, cursorAccent, grokAccent, zaiAccent
+    ]
 
     /// Muted variant for each entry in `providerSlots`, index-aligned.
-    static let providerSlotsDim: [Color] = [violetDim, cyanDim, indigoDim, magentaDim, oliveDim]
+    static let providerSlotsDim: [Color] = [
+        Color(hex: 0xA85D45), Color(hex: 0x295EC2), Color(hex: 0x725FB0),
+        Color(hex: 0xA18416), Color(hex: 0x6D9924)
+    ]
 
     // MARK: - Official provider brand marks (glyph tint only)
 
     /// Official brand colors used ONLY for the provider identity glyph (the
     /// starburst / terminal-prompt marks in `BrandIcon`). These are deliberately
-    /// separate from the accent system: quota bars, selection, and pixel chrome
-    /// stay violet/cyan — only the logo glyph carries the vendor's own color.
+    /// named separately from the categorical quota palette even when the current
+    /// Claude/Codex values intentionally match their meter identity colors.
     static let claudeBrand = Color(hex: 0xD97757)   // Anthropic coral
-    static let codexBrand = Color(hex: 0x4B9CFB)    // Codex blue
+    static let codexBrand = codexAccent             // Codex deep blue
 
-    // MARK: - Brand identity (violet / cyan)
+    // MARK: - Brand identity
 
-    /// Provider identity — the confirmed mobile brand: Claude = violet, Codex = cyan.
-    static let claude = violet
-    static let codex = cyan
+    static let claude = claudeAccent
+    static let codex = codexAccent
     /// Primary brand accent.
     static let purple = violet
     /// Links use the cyan accent.
@@ -100,7 +107,27 @@ enum DashboardTheme {
 
     /// The flat accent color for a provider's segment bars and glyphs.
     static func accent(for provider: ProviderQuota.Provider) -> Color {
-        provider == .claude ? violet : cyan
+        switch provider {
+        case .claude: return claudeAccent
+        case .codex: return codexAccent
+        case .cursor: return cursorAccent
+        case .grok: return grokAccent
+        case .zai: return zaiAccent
+        case .copilot: return copilotAccent
+        case .devin: return devinAccent
+        case .openrouter: return openrouterAccent
+        case .antigravity: return antigravityAccent
+        case .opencode: return opencodeAccent
+        }
+    }
+
+    /// Quota meters reserve red for the same critical threshold as `RiskLevel`.
+    /// At 10% and above, the provider's stable identity color is restored.
+    static func quotaAccent(
+        for provider: ProviderQuota.Provider,
+        remainingPercent: Double
+    ) -> Color {
+        remainingPercent < 10 ? danger : accent(for: provider)
     }
 
     /// Risk tint uses conventional semantic status colors: LOW = green,

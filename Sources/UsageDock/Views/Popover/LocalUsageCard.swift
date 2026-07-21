@@ -6,6 +6,7 @@ struct LocalUsageCard: View {
     let insights: UsageInsights
     @ObservedObject var layout: PopoverLayoutStore
     @Binding var draggingWidget: PopoverWidget?
+    var allowsDragging = true
 
     @State private var hoveredProviderID: String?
 
@@ -25,6 +26,7 @@ struct LocalUsageCard: View {
                     isExpanded: true,
                     isPinned: false,
                     draggingWidget: $draggingWidget,
+                    dragPreview: dragPreview,
                     onToggleExpanded: {},
                     onTogglePinned: {},
                     onHide: { withAnimation(.snappy) { layout.hide(.localUsage) } },
@@ -33,8 +35,11 @@ struct LocalUsageCard: View {
                 ) {
                     if let totalCost = insights.totalCost {
                         Text(L10n.usd(totalCost))
-                            .numericFont(12, .bold)
+                            .numericFont(15, .bold)
                             .foregroundStyle(DashboardTheme.text)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                            .layoutPriority(1)
                     }
                 }
 
@@ -53,7 +58,7 @@ struct LocalUsageCard: View {
                                         color: UsageInsights.color(for: $0.id)
                                     )
                                 },
-                                lineWidth: 7,
+                                lineWidth: 10,
                                 centerText: ringCenterText,
                                 centerCaption: hoveredEntry == nil ? nil : L10n.text("usage.api_cost"),
                                 centerTextSize: 9,
@@ -84,6 +89,8 @@ struct LocalUsageCard: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
+
+                spendTilesSection
             }
             // RingChart is backed by GeometryReader. Keep the popover widget at
             // its intrinsic content height so the surrounding glass container
@@ -94,11 +101,64 @@ struct LocalUsageCard: View {
         .accessibilityElement(children: .contain)
     }
 
-    private var ringCenterText: String? {
-        if let hoveredEntry {
-            return L10n.usd(hoveredEntry.cost)
+    private var dragPreview: (() -> AnyView)? {
+        guard allowsDragging else { return nil }
+        return {
+            AnyView(
+                LocalUsageCard(
+                    insights: insights,
+                    layout: layout,
+                    draggingWidget: .constant(nil),
+                    allowsDragging: false
+                )
+                .frame(width: 348)
+                .preferredColorScheme(.dark)
+            )
         }
-        return insights.totalCost.map { L10n.usd($0) }
+    }
+
+    /// OpenUsage 式消费瓦片(今日/昨日/近 30 天)+ 迷你用量趋势条。
+    @ViewBuilder
+    private var spendTilesSection: some View {
+        let tiles = insights.spendTiles()
+        let trend = insights.dailyTokenTrend
+        if !tiles.isEmpty || trend.count >= 2 {
+            Divider().overlay(DashboardTheme.border)
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(tiles) { tile in
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(L10n.text(tile.labelKey))
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(DashboardTheme.secondaryText)
+                        Spacer(minLength: 8)
+                        Text("\(UsageFormatting.compactUSD(tile.cost)) · \(UsageFormatting.compactNumber(tile.tokens)) tokens")
+                            .numericFont(11)
+                            .foregroundStyle(DashboardTheme.text)
+                    }
+                    .frame(height: 17)
+                    .accessibilityElement(children: .combine)
+                }
+
+                if trend.count >= 2 {
+                    HStack(alignment: .bottom, spacing: 8) {
+                        Text(L10n.text("usage.trend"))
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(DashboardTheme.secondaryText)
+                        Spacer(minLength: 8)
+                        MiniBarChart(values: trend)
+                            .frame(maxWidth: 170)
+                            .frame(height: 22)
+                    }
+                    .padding(.top, 2)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(L10n.text("usage.trend"))
+                }
+            }
+        }
+    }
+
+    private var ringCenterText: String? {
+        hoveredEntry.map { L10n.usd($0.cost) }
     }
 
     private func providerRow(_ entry: UsageInsights.ProviderUsage) -> some View {

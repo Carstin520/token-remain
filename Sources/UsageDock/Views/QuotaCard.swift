@@ -6,6 +6,11 @@ import SwiftUI
 struct QuotaCard: View {
     let provider: ProviderQuota.Provider
     let quota: ProviderQuota?
+    /// Provider 级状态说明(如 Cursor 登录过期的恢复提示)。
+    var notice: String?
+    /// Dashboard 额度页传入此绑定后，卡片顶部成为拖拽把手。
+    var draggingProvider: Binding<ProviderQuota.Provider?>?
+    @State private var measuredWidth: CGFloat = 420
 
     var body: some View {
         DashboardCard(padding: 13) {
@@ -18,6 +23,10 @@ struct QuotaCard: View {
                         Divider().overlay(DashboardTheme.border)
                         QuotaWindowRow(window: secondary, provider: provider)
                     }
+                    if let extraUsage = quota.extraUsage {
+                        Divider().overlay(DashboardTheme.border)
+                        ExtraUsageRow(extraUsage: extraUsage)
+                    }
                     TimelineView(.periodic(from: .now, by: 60)) { context in
                         let isStale = context.date.timeIntervalSince(quota.capturedAt) >= 600
                         Label {
@@ -29,7 +38,7 @@ struct QuotaCard: View {
                         .font(.system(size: 10))
                         .foregroundStyle(isStale ? DashboardTheme.warning : DashboardTheme.mutedText)
                     }
-                } else {
+                } else if notice == nil {
                     HStack(spacing: 8) {
                         ProgressView().controlSize(.small)
                         Text("正在读取官方额度…")
@@ -38,24 +47,96 @@ struct QuotaCard: View {
                     }
                     .frame(maxWidth: .infinity, minHeight: 40, alignment: .leading)
                 }
+
+                if let notice {
+                    Label(notice, systemImage: "moon.zzz.fill")
+                        .font(.system(size: 11))
+                        .foregroundStyle(DashboardTheme.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
         }
         .accessibilityElement(children: .contain)
+        .background {
+            GeometryReader { proxy in
+                Color.clear
+                    .onAppear { measuredWidth = proxy.size.width }
+                    .onChange(of: proxy.size.width) { _, newWidth in
+                        measuredWidth = newWidth
+                    }
+            }
+        }
     }
 
     private var header: some View {
-        HStack(spacing: 8) {
+        let content = HStack(spacing: 8) {
             BrandIcon(provider: provider)
                 .foregroundStyle(DashboardTheme.text)
                 .frame(width: 20, height: 20)
-            Text(provider == .claude ? "Claude" : "Codex")
+            Text(provider.displayName)
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(DashboardTheme.text)
             Spacer()
             if let plan = quota?.planName, !plan.isEmpty {
                 TagPill(text: plan)
             }
+            if draggingProvider != nil {
+                Image(systemName: "line.3.horizontal")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(DashboardTheme.mutedText)
+                    .accessibilityHidden(true)
+            }
         }
+        .frame(maxWidth: .infinity, minHeight: 22)
+        .contentShape(Rectangle())
+
+        return Group {
+            if let draggingProvider {
+                content
+                    .onDrag {
+                        draggingProvider.wrappedValue = provider
+                        return NSItemProvider(object: provider.rawValue as NSString)
+                    } preview: {
+                        QuotaCard(
+                            provider: provider,
+                            quota: quota,
+                            notice: notice,
+                            draggingProvider: nil
+                        )
+                        .frame(width: measuredWidth)
+                        .preferredColorScheme(.dark)
+                    }
+                    .help("长按并拖动卡片顶部可调整位置")
+                    .accessibilityHint("长按并拖动可调整卡片位置")
+            } else {
+                content
+            }
+        }
+    }
+}
+
+/// 订阅之外的按量消费行(OpenUsage 的 "Extra Usage $X spent" 式样)。
+/// 有月度上限时显示 "已花 / 上限"。
+struct ExtraUsageRow: View {
+    let extraUsage: ExtraUsage
+
+    private var valueText: String {
+        let spent = L10n.format("quota.spent", UsageFormatting.compactUSD(extraUsage.spentUSD))
+        guard let limit = extraUsage.monthlyLimitUSD else { return spent }
+        return "\(spent) / \(UsageFormatting.compactUSD(limit))"
+    }
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(L10n.text("quota.extra_usage"))
+                .font(.system(size: 12))
+                .foregroundStyle(DashboardTheme.secondaryText)
+            Spacer(minLength: 8)
+            Text(valueText)
+                .numericFont(12, .semibold)
+                .foregroundStyle(DashboardTheme.text)
+        }
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -90,7 +171,13 @@ struct QuotaWindowRow: View {
                         .foregroundStyle(DashboardTheme.text)
                 }
 
-                SegmentBar(value: remainingPercent / 100, accent: DashboardTheme.accent(for: provider))
+                SegmentBar(
+                    value: remainingPercent / 100,
+                    accent: DashboardTheme.quotaAccent(
+                        for: provider,
+                        remainingPercent: remainingPercent
+                    )
+                )
 
                 if showsDetails {
                     HStack(spacing: 5) {
@@ -119,7 +206,7 @@ struct QuotaWindowRow: View {
         .accessibilityLabel(
             L10n.format(
                 "quota.window_accessibility",
-                provider == .claude ? "Claude" : "Codex",
+                provider.displayName,
                 UsageFormatting.windowName(minutes: window.windowMinutes)
             )
         )
