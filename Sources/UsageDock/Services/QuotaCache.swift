@@ -4,6 +4,14 @@ struct QuotaCache: Sendable {
     struct Snapshot: Codable, Sendable {
         var claude: ProviderQuota?
         var codex: ProviderQuota?
+        var cursor: ProviderQuota?
+        var grok: ProviderQuota?
+        var zai: ProviderQuota?
+        var copilot: ProviderQuota?
+        var devin: ProviderQuota?
+        var openrouter: ProviderQuota?
+        var antigravity: ProviderQuota?
+        var opencode: ProviderQuota?
     }
 
     private let url: URL

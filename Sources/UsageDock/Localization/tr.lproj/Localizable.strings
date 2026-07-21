@@ -10,7 +10,7 @@
 "nav.data_sources" = "Veri kaynakları";
 "nav.settings" = "Ayarlar";
 "section.overview.subtitle" = "Kota riski, bugünkü kullanım ve tahmini maliyet";
-"section.limits.subtitle" = "Resmî Claude ve Codex kota pencereleri";
+"section.limits.subtitle" = "Yapay zekâ kodlama araçlarının resmî kota pencereleri";
 "section.trends.subtitle" = "Zaman içinde kullanım · yerel ccusage";
 "section.devices.subtitle" = "Bu Mac ve gelecekte aygıtlar arası izleme";
 "section.data_sources.subtitle" = "Veri kaynağı durumu ve gizlilik";
@@ -105,3 +105,12 @@
 "feed.important_updates" = "Önemli güncellemeler";
 "feed.view_all" = "Tümünü göster";
 "feed.open_x_hint" = "X'teki özgün gönderiyi aç";
+
+/* Spend tiles & extra usage (OpenUsage-style) */
+"usage.spend_today" = "Bugün";
+"usage.spend_yesterday" = "Dün";
+"usage.spend_last30" = "Son 30 Gün";
+"usage.trend" = "Kullanım eğilimi";
+"quota.extra_usage" = "Ek kullanım";
+"quota.spent" = "%@ harcandı";
+"duration.total" = "Toplam";

@@ -10,7 +10,7 @@
 "nav.data_sources" = "Источники данных";
 "nav.settings" = "Настройки";
 "section.overview.subtitle" = "Риск квоты, использование сегодня и оценка стоимости";
-"section.limits.subtitle" = "Официальные окна квот Claude и Codex";
+"section.limits.subtitle" = "Официальные окна квот ваших ИИ-инструментов";
 "section.trends.subtitle" = "Использование во времени · локальный ccusage";
 "section.devices.subtitle" = "Этот Mac и будущий мониторинг между устройствами";
 "section.data_sources.subtitle" = "Состояние источников и конфиденциальность";
@@ -105,3 +105,12 @@
 "feed.important_updates" = "Важные обновления";
 "feed.view_all" = "Показать все";
 "feed.open_x_hint" = "Открыть исходную публикацию в X";
+
+/* Spend tiles & extra usage (OpenUsage-style) */
+"usage.spend_today" = "Сегодня";
+"usage.spend_yesterday" = "Вчера";
+"usage.spend_last30" = "Последние 30 дней";
+"usage.trend" = "Тренд использования";
+"quota.extra_usage" = "Доп. расход";
+"quota.spent" = "%@ потрачено";
+"duration.total" = "Всего";

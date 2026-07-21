@@ -1,5 +1,6 @@
 import Darwin
 import Foundation
+import OSLog
 
 struct ClaudeUsageService {
     enum ServiceError: LocalizedError, Sendable {
@@ -7,6 +8,7 @@ struct ClaudeUsageService {
         case cliTimedOut
         case cliLaunchFailed(String)
         case invalidUsageOutput
+        case rateLimited(retryAfterSeconds: Int?)
 
         var errorDescription: String? {
             switch self {
@@ -18,13 +20,42 @@ struct ClaudeUsageService {
                 return "无法启动 Claude Code 用量探针：\(detail)"
             case .invalidUsageOutput:
                 return "Claude Code 未返回可识别的 5 小时 / 7 天用量"
+            case .rateLimited(let seconds):
+                if let seconds {
+                    return "Claude 用量接口限流，约 \(max(1, Int((Double(seconds) / 60).rounded(.up)))) 分钟后自动重试"
+                }
+                return "Claude 用量接口限流，稍后自动重试"
             }
         }
 
-        var retryDelay: TimeInterval { 300 }
+        var retryDelay: TimeInterval {
+            if case .rateLimited(let seconds) = self, let seconds {
+                return max(60, TimeInterval(seconds))
+            }
+            return 300
+        }
     }
 
+    /// 主路径:oauth/usage API 直查(只读 Claude Code 凭证,秒级返回)。
+    /// 凭证缺失/过期/被拒或响应异常时降级 PTY `/usage` 探针——探针会让
+    /// Claude Code 自行完成续期,下一轮 API 直查即可恢复。
+    /// 服务端明确限流(429)时不降级:PTY 的 /usage 走同一个接口,
+    /// 换个马甲重试只会延长限流。
     func fetch() async throws -> ProviderQuota {
+        let logger = Logger(subsystem: "com.jamesli.usagedock", category: "ClaudeUsage")
+        do {
+            let quota = try await ClaudeOAuthUsageService().fetch()
+            logger.info("Claude quota served by oauth/usage API")
+            return quota
+        } catch let error as ClaudeOAuthUsageService.APIError {
+            if case .rateLimited(let seconds) = error {
+                throw ServiceError.rateLimited(retryAfterSeconds: seconds)
+            }
+            logger.info("Claude API path unavailable (\(error.localizedDescription, privacy: .public)); falling back to PTY probe")
+        } catch {
+            // 网络层错误(离线、超时)同样交给 PTY 兜底。
+            logger.info("Claude API path failed (\(error.localizedDescription, privacy: .public)); falling back to PTY probe")
+        }
         let output = try await ClaudeCLIUsageProbe.run()
         return try ClaudeCLIUsageParser.parse(output)
     }

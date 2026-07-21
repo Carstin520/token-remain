@@ -10,7 +10,7 @@
 "nav.data_sources" = "Datenquellen";
 "nav.settings" = "Einstellungen";
 "section.overview.subtitle" = "Kontingentrisiko, heutige Nutzung und geschätzte Kosten";
-"section.limits.subtitle" = "Offizielle Kontingentfenster von Claude und Codex";
+"section.limits.subtitle" = "Offizielle Kontingentfenster deiner KI-Coding-Tools";
 "section.trends.subtitle" = "Nutzung im Zeitverlauf · lokales ccusage";
 "section.devices.subtitle" = "Dieser Mac und künftige geräteübergreifende Überwachung";
 "section.data_sources.subtitle" = "Status der Datenquellen und Datenschutz";
@@ -105,3 +105,12 @@
 "feed.important_updates" = "Wichtige Updates";
 "feed.view_all" = "Alle anzeigen";
 "feed.open_x_hint" = "Originalbeitrag auf X öffnen";
+
+/* Spend tiles & extra usage (OpenUsage-style) */
+"usage.spend_today" = "Heute";
+"usage.spend_yesterday" = "Gestern";
+"usage.spend_last30" = "Letzte 30 Tage";
+"usage.trend" = "Nutzungstrend";
+"quota.extra_usage" = "Zusatznutzung";
+"quota.spent" = "%@ ausgegeben";
+"duration.total" = "Gesamt";

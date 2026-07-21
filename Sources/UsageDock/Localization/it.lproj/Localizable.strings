@@ -10,7 +10,7 @@
 "nav.data_sources" = "Origini dati";
 "nav.settings" = "Impostazioni";
 "section.overview.subtitle" = "Rischio quota, utilizzo odierno e costo stimato";
-"section.limits.subtitle" = "Finestre quota ufficiali di Claude e Codex";
+"section.limits.subtitle" = "Finestre quota ufficiali dei tuoi strumenti di coding AI";
 "section.trends.subtitle" = "Utilizzo nel tempo · ccusage locale";
 "section.devices.subtitle" = "Questo Mac e futuro monitoraggio tra dispositivi";
 "section.data_sources.subtitle" = "Stato delle origini e privacy";
@@ -105,3 +105,12 @@
 "feed.important_updates" = "Aggiornamenti importanti";
 "feed.view_all" = "Vedi tutto";
 "feed.open_x_hint" = "Apri il post originale su X";
+
+/* Spend tiles & extra usage (OpenUsage-style) */
+"usage.spend_today" = "Oggi";
+"usage.spend_yesterday" = "Ieri";
+"usage.spend_last30" = "Ultimi 30 giorni";
+"usage.trend" = "Trend di utilizzo";
+"quota.extra_usage" = "Utilizzo extra";
+"quota.spent" = "%@ spesi";
+"duration.total" = "Totale";

@@ -10,7 +10,7 @@
 "nav.data_sources" = "Fontes de dados";
 "nav.settings" = "Ajustes";
 "section.overview.subtitle" = "Risco de cota, uso de hoje e custo estimado";
-"section.limits.subtitle" = "Janelas de cota oficiais do Claude e Codex";
+"section.limits.subtitle" = "Janelas de cota oficiais das suas ferramentas de codificação com IA";
 "section.trends.subtitle" = "Uso ao longo do tempo · ccusage local";
 "section.devices.subtitle" = "Este Mac e futuro monitoramento entre dispositivos";
 "section.data_sources.subtitle" = "Status das fontes e privacidade";
@@ -105,3 +105,12 @@
 "feed.important_updates" = "Atualizações importantes";
 "feed.view_all" = "Ver tudo";
 "feed.open_x_hint" = "Abrir a publicação original no X";
+
+/* Spend tiles & extra usage (OpenUsage-style) */
+"usage.spend_today" = "Hoje";
+"usage.spend_yesterday" = "Ontem";
+"usage.spend_last30" = "Últimos 30 dias";
+"usage.trend" = "Tendência de uso";
+"quota.extra_usage" = "Uso extra";
+"quota.spent" = "%@ gastos";
+"duration.total" = "Total";

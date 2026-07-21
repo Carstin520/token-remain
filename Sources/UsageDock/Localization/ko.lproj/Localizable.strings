@@ -10,7 +10,7 @@
 "nav.data_sources" = "데이터 소스";
 "nav.settings" = "설정";
 "section.overview.subtitle" = "한도 위험, 오늘 사용량 및 예상 비용";
-"section.limits.subtitle" = "Claude 및 Codex 공식 한도 창";
+"section.limits.subtitle" = "AI 코딩 도구의 공식 한도 윈도우";
 "section.trends.subtitle" = "기간별 사용 추세 · 로컬 ccusage";
 "section.devices.subtitle" = "이 Mac과 향후 기기 간 모니터링";
 "section.data_sources.subtitle" = "데이터 소스 상태 및 개인정보 보호";
@@ -105,3 +105,12 @@
 "feed.important_updates" = "중요 업데이트";
 "feed.view_all" = "모두 보기";
 "feed.open_x_hint" = "X에서 원문 게시물 열기";
+
+/* Spend tiles & extra usage (OpenUsage-style) */
+"usage.spend_today" = "오늘";
+"usage.spend_yesterday" = "어제";
+"usage.spend_last30" = "최근 30일";
+"usage.trend" = "사용 추이";
+"quota.extra_usage" = "추가 사용";
+"quota.spent" = "%@ 사용";
+"duration.total" = "누적";

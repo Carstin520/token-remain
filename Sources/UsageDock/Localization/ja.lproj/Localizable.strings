@@ -10,7 +10,7 @@
 "nav.data_sources" = "データソース";
 "nav.settings" = "設定";
 "section.overview.subtitle" = "上限リスク、今日の使用量、推定コスト";
-"section.limits.subtitle" = "Claude と Codex の公式上限ウィンドウ";
+"section.limits.subtitle" = "AI コーディングツールの公式上限ウィンドウ";
 "section.trends.subtitle" = "日別の使用推移 · ローカル ccusage";
 "section.devices.subtitle" = "この Mac と将来のデバイス間モニタリング";
 "section.data_sources.subtitle" = "データソースの状態とプライバシー";
@@ -105,3 +105,12 @@
 "feed.important_updates" = "重要な更新";
 "feed.view_all" = "すべて表示";
 "feed.open_x_hint" = "X で元の投稿を開く";
+
+/* Spend tiles & extra usage (OpenUsage-style) */
+"usage.spend_today" = "今日";
+"usage.spend_yesterday" = "昨日";
+"usage.spend_last30" = "過去30日";
+"usage.trend" = "使用トレンド";
+"quota.extra_usage" = "追加利用";
+"quota.spent" = "%@ 使用";
+"duration.total" = "累計";
