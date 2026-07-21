@@ -19,17 +19,32 @@ struct DashboardView: View {
     @ObservedObject var feedStore: AIFeedStore
     @ObservedObject var launchAtLogin: LaunchAtLoginManager
     @ObservedObject var navigator: DashboardNavigator
+    @ObservedObject var tracked: TrackedProvidersStore = .shared
 
     private var insights: UsageInsights {
         UsageInsights(
             claude: store.claude,
             codex: store.codex,
+            cursor: store.cursor,
+            grok: store.grok,
+            zai: store.zai,
+            others: [store.copilot, store.devin, store.openrouter, store.antigravity, store.opencode]
+                .compactMap { $0 },
             daily: store.daily,
             history: store.history
         )
     }
 
     var body: some View {
+        if tracked.hasCompletedOnboarding {
+            dashboardBody
+        } else {
+            OnboardingView(tracked: tracked)
+                .frame(minWidth: 920, minHeight: 620)
+        }
+    }
+
+    private var dashboardBody: some View {
         NavigationSplitView {
             sidebar
                 .navigationSplitViewColumnWidth(min: 200, ideal: 220, max: 244)
@@ -195,13 +210,14 @@ struct DashboardView: View {
                 errorMessage: store.errorMessage
             )
         case .limits:
-            LimitsSection(insights: insights)
+            LimitsSection(insights: insights, notices: store.providerNotices)
         case .trends:
             TrendsSection(insights: insights)
         case .devices:
             DevicesSection(insights: insights)
         case .dataSources:
             DataSourcesSection(
+                store: store,
                 insights: insights,
                 feedStore: feedStore,
                 errorMessage: store.errorMessage

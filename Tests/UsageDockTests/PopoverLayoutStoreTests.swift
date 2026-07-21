@@ -9,8 +9,9 @@ struct PopoverLayoutStoreTests {
         let defaults = testDefaults()
         let store = PopoverLayoutStore(defaults: defaults)
 
-        #expect(store.visibleWidgets == [.claude, .codex, .localUsage, .aiFeed])
-        #expect(store.availableWidgets.isEmpty)
+        // 主流三家之外的 provider 挂件首次出现默认隐藏,由 "+" 菜单按需添加。
+        #expect(store.visibleWidgets == [.claude, .codex, .cursor, .localUsage, .aiFeed])
+        #expect(store.availableWidgets == PopoverLayoutStore.defaultOrder.filter(PopoverLayoutStore.defaultHidden.contains))
         #expect(PopoverWidget.aiFeed.title == "AI动态")
     }
 
@@ -35,11 +36,11 @@ struct PopoverLayoutStoreTests {
         let store = PopoverLayoutStore(defaults: defaults)
 
         store.hide(.localUsage)
-        #expect(store.visibleWidgets == [.claude, .codex, .aiFeed])
-        #expect(store.availableWidgets == [.localUsage])
+        #expect(store.visibleWidgets == [.claude, .codex, .cursor, .aiFeed])
+        #expect(Set(store.availableWidgets) == PopoverLayoutStore.defaultHidden.union([.localUsage]))
 
         store.show(.localUsage)
-        #expect(store.visibleWidgets == [.claude, .codex, .localUsage, .aiFeed])
+        #expect(store.visibleWidgets == [.claude, .codex, .cursor, .localUsage, .aiFeed])
     }
 
     @Test("Order and pinned expansion survive a new store")
@@ -50,9 +51,31 @@ struct PopoverLayoutStoreTests {
         store.togglePinned(.codex)
 
         store = PopoverLayoutStore(defaults: defaults)
-        #expect(store.visibleWidgets == [.aiFeed, .claude, .codex, .localUsage])
+        #expect(store.visibleWidgets == [.aiFeed, .claude, .codex, .cursor, .localUsage])
         #expect(store.isPinned(.codex))
         #expect(store.isExpanded(.codex))
+    }
+
+    @Test("Dragging across an adjacent widget swaps into its current slot")
+    func dragMovesIntoDestinationSlot() {
+        let store = PopoverLayoutStore(defaults: testDefaults())
+
+        store.move(.claude, to: .codex)
+
+        #expect(Array(store.order.prefix(3)) == [.codex, .claude, .cursor])
+    }
+
+    @Test("A newly shown default-hidden widget stays visible across stores")
+    func defaultHiddenWidgetStaysVisibleOnceShown() {
+        let defaults = testDefaults()
+        var store = PopoverLayoutStore(defaults: defaults)
+        store.show(.grok)
+        #expect(store.visibleWidgets.contains(.grok))
+
+        // 用户显示过一次后,该决定持久化——新 store 不再强制隐藏。
+        store = PopoverLayoutStore(defaults: defaults)
+        #expect(store.visibleWidgets.contains(.grok))
+        #expect(Set(store.availableWidgets) == PopoverLayoutStore.defaultHidden.subtracting([.grok]))
     }
 
     @Test("Collapsing a pinned widget unpins it in one action")

@@ -9,6 +9,7 @@ struct UsageMenuView: View {
     @ObservedObject var feedStore: AIFeedStore
     @ObservedObject var launchAtLogin: LaunchAtLoginManager
     @ObservedObject var layout: PopoverLayoutStore
+    @ObservedObject var tracked: TrackedProvidersStore = .shared
     /// Opens (and fronts) the Dashboard window on a given section.
     let onOpenDashboard: (DashboardSection) -> Void
 
@@ -16,7 +17,17 @@ struct UsageMenuView: View {
     @State private var draggingWidget: PopoverWidget?
 
     private var insights: UsageInsights {
-        UsageInsights(claude: store.claude, codex: store.codex, daily: store.daily)
+        UsageInsights(
+            claude: store.claude,
+            codex: store.codex,
+            cursor: store.cursor,
+            grok: store.grok,
+            zai: store.zai,
+            others: [store.copilot, store.devin, store.openrouter, store.antigravity, store.opencode]
+                .compactMap { $0 },
+            daily: store.daily,
+            history: store.history
+        )
     }
 
     /// Cap the popover to the visible screen so long content scrolls instead of
@@ -40,9 +51,12 @@ struct UsageMenuView: View {
 
                     RiskStrip(insights: insights)
 
-                    ForEach(layout.visibleWidgets) { widget in
+                    ForEach(layout.visibleWidgets.filter(isTracked)) { widget in
                         widgetView(widget)
-                            .opacity(draggingWidget == widget ? 0.62 : 1)
+                            // Keep the widget's layout slot but render it empty;
+                            // the explicit drag preview carries the whole card.
+                            .opacity(draggingWidget == widget ? 0 : 1)
+                            .animation(.easeOut(duration: 0.12), value: draggingWidget)
                             .onDrop(
                                 of: [.plainText],
                                 delegate: PopoverWidgetDropDelegate(
@@ -86,17 +100,13 @@ struct UsageMenuView: View {
     @ViewBuilder
     private func widgetView(_ widget: PopoverWidget) -> some View {
         switch widget {
-        case .claude:
+        case .claude, .codex, .cursor, .grok, .zai,
+             .copilot, .devin, .openrouter, .antigravity, .opencode:
+            let provider = widget.provider!
             PopoverQuotaWidget(
-                provider: .claude,
-                quota: store.claude,
-                layout: layout,
-                draggingWidget: $draggingWidget
-            )
-        case .codex:
-            PopoverQuotaWidget(
-                provider: .codex,
-                quota: store.codex,
+                provider: provider,
+                quota: store.quotaValue(for: provider),
+                notice: store.providerNotices[provider],
                 layout: layout,
                 draggingWidget: $draggingWidget
             )
@@ -136,13 +146,19 @@ struct UsageMenuView: View {
         }
     }
 
+    /// 未追踪的 provider 挂件既不显示,也不进 "+" 菜单;追踪管理在
+    /// Dashboard「额度」页统一进行。
+    private func isTracked(_ widget: PopoverWidget) -> Bool {
+        widget.provider.map(tracked.isEnabled) ?? true
+    }
+
     private var addWidgetMenu: some View {
         Menu {
-            if layout.availableWidgets.isEmpty {
+            if layout.availableWidgets.filter(isTracked).isEmpty {
                 Button(L10n.text("widget.all_visible")) {}
                     .disabled(true)
             } else {
-                ForEach(layout.availableWidgets) { widget in
+                ForEach(layout.availableWidgets.filter(isTracked)) { widget in
                     Button {
                         withAnimation(.snappy) {
                             layout.show(widget)

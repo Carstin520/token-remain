@@ -3,11 +3,15 @@ import SwiftUI
 struct PopoverQuotaWidget: View {
     let provider: ProviderQuota.Provider
     let quota: ProviderQuota?
+    /// Provider 级状态说明(如 Cursor 登录过期的恢复提示),数据仍在时
+    /// 跟随在窗口行之后,无数据时替代加载态。
+    var notice: String?
     @ObservedObject var layout: PopoverLayoutStore
     @Binding var draggingWidget: PopoverWidget?
+    var allowsDragging = true
 
     private var widget: PopoverWidget {
-        provider == .claude ? .claude : .codex
+        PopoverWidget.allCases.first { $0.provider == provider } ?? .claude
     }
 
     private var isExpanded: Bool {
@@ -41,6 +45,7 @@ struct PopoverQuotaWidget: View {
                     isExpanded: isExpanded,
                     isPinned: layout.isPinned(widget),
                     draggingWidget: $draggingWidget,
+                    dragPreview: dragPreview,
                     onToggleExpanded: { withAnimation(.snappy) { layout.toggleExpanded(widget) } },
                     onTogglePinned: { layout.togglePinned(widget) },
                     onHide: { withAnimation(.snappy) { layout.hide(widget) } },
@@ -65,8 +70,17 @@ struct PopoverQuotaWidget: View {
                             Divider().overlay(DashboardTheme.border)
                             QuotaWindowRow(window: window, provider: provider)
                         }
+                        if let extraUsage = quota.extraUsage {
+                            Divider().overlay(DashboardTheme.border)
+                            ExtraUsageRow(extraUsage: extraUsage)
+                        }
                         freshnessRow(quota)
                     }
+                    if let notice {
+                        noticeRow(notice)
+                    }
+                } else if let notice {
+                    noticeRow(notice)
                 } else {
                     HStack(spacing: 8) {
                         ProgressView().controlSize(.small)
@@ -78,6 +92,31 @@ struct PopoverQuotaWidget: View {
             }
         }
         .accessibilityElement(children: .contain)
+    }
+
+    private var dragPreview: (() -> AnyView)? {
+        guard allowsDragging else { return nil }
+        return {
+            AnyView(
+                PopoverQuotaWidget(
+                    provider: provider,
+                    quota: quota,
+                    notice: notice,
+                    layout: layout,
+                    draggingWidget: .constant(nil),
+                    allowsDragging: false
+                )
+                .frame(width: 348)
+                .preferredColorScheme(.dark)
+            )
+        }
+    }
+
+    private func noticeRow(_ notice: String) -> some View {
+        Label(notice, systemImage: "moon.zzz.fill")
+            .font(.system(size: 11))
+            .foregroundStyle(DashboardTheme.secondaryText)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     private func freshnessRow(_ quota: ProviderQuota) -> some View {

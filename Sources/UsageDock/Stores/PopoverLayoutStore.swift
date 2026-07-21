@@ -4,6 +4,14 @@ import Foundation
 enum PopoverWidget: String, CaseIterable, Codable, Identifiable {
     case claude
     case codex
+    case cursor
+    case grok
+    case zai
+    case copilot
+    case devin
+    case openrouter
+    case antigravity
+    case opencode
     case localUsage
     case aiFeed
 
@@ -11,10 +19,9 @@ enum PopoverWidget: String, CaseIterable, Codable, Identifiable {
 
     var title: String {
         switch self {
-        case .claude: return "Claude"
-        case .codex: return "Codex"
         case .localUsage: return L10n.text("widget.local_usage")
         case .aiFeed: return L10n.text("widget.ai_feed")
+        default: return provider?.displayName ?? rawValue
         }
     }
 
@@ -22,6 +29,14 @@ enum PopoverWidget: String, CaseIterable, Codable, Identifiable {
         switch self {
         case .claude: return "sparkles"
         case .codex: return "circle.hexagongrid"
+        case .cursor: return "cursorarrow"
+        case .grok: return "bolt"
+        case .zai: return "z.square"
+        case .copilot: return "airpodsmax"
+        case .devin: return "hexagon"
+        case .openrouter: return "arrow.triangle.branch"
+        case .antigravity: return "arrow.up.forward"
+        case .opencode: return "terminal"
         case .localUsage: return "chart.donut"
         case .aiFeed: return "newspaper"
         }
@@ -29,6 +44,23 @@ enum PopoverWidget: String, CaseIterable, Codable, Identifiable {
 
     var supportsExpansion: Bool {
         self != .localUsage
+    }
+
+    /// 挂件对应的额度 provider;本地用量与 AI Feed 挂件为 nil。
+    var provider: ProviderQuota.Provider? {
+        switch self {
+        case .claude: return .claude
+        case .codex: return .codex
+        case .cursor: return .cursor
+        case .grok: return .grok
+        case .zai: return .zai
+        case .copilot: return .copilot
+        case .devin: return .devin
+        case .openrouter: return .openrouter
+        case .antigravity: return .antigravity
+        case .opencode: return .opencode
+        case .localUsage, .aiFeed: return nil
+        }
     }
 }
 
@@ -40,7 +72,16 @@ enum PopoverWidget: String, CaseIterable, Codable, Identifiable {
 /// is presented.
 final class PopoverLayoutStore: ObservableObject {
     static let defaultsKey = "tokenRemain.popoverLayout.v1"
-    static let defaultOrder: [PopoverWidget] = [.claude, .codex, .localUsage, .aiFeed]
+    static let defaultOrder: [PopoverWidget] = [
+        .claude, .codex, .cursor, .copilot, .devin,
+        .grok, .openrouter, .antigravity, .opencode, .zai,
+        .localUsage, .aiFeed
+    ]
+    /// 首次出现时默认隐藏的挂件:主流三家之外的 provider 面向少数用户,
+    /// 通过 "+" 菜单一键添加,不给其他用户增加弹窗长度。
+    static let defaultHidden: Set<PopoverWidget> = [
+        .grok, .zai, .copilot, .devin, .openrouter, .antigravity, .opencode
+    ]
 
     @Published private(set) var order: [PopoverWidget]
     @Published private(set) var hiddenWidgets: Set<PopoverWidget>
@@ -66,7 +107,13 @@ final class PopoverLayoutStore: ObservableObject {
         let loadedPinned = Set((persisted?.pinned ?? []).compactMap(PopoverWidget.init(rawValue:)))
             .intersection(Set(Self.defaultOrder.filter(\.supportsExpansion)))
         order = Self.mergedOrder(persisted?.order ?? [])
+        // 该布局从未见过的挂件(known 兜底为持久化的 order)若在默认隐藏
+        // 名单里,则以隐藏状态出现——老用户升级后弹窗不变长,新挂件从
+        // "+" 菜单按需添加;一旦用户显示过,决定就持久化,不再强制隐藏。
+        let known = Set((persisted?.known ?? persisted?.order ?? []).compactMap(PopoverWidget.init(rawValue:)))
+        let newlyIntroduced = Self.defaultHidden.subtracting(known)
         hiddenWidgets = Set((persisted?.hidden ?? []).compactMap(PopoverWidget.init(rawValue:)))
+            .union(persisted == nil ? Self.defaultHidden : newlyIntroduced)
         pinnedWidgets = loadedPinned
         expandedWidgets = loadedPinned
     }
@@ -139,6 +186,20 @@ final class PopoverLayoutStore: ObservableObject {
         save()
     }
 
+    /// Drag-and-drop reordering uses the destination's current slot. Crossing
+    /// an adjacent widget therefore moves that widget into the empty source
+    /// slot immediately, matching the familiar Home Screen interaction.
+    func move(_ widget: PopoverWidget, to destination: PopoverWidget) {
+        guard widget != destination,
+              order.contains(widget),
+              let destinationIndex = order.firstIndex(of: destination)
+        else { return }
+
+        order.removeAll { $0 == widget }
+        order.insert(widget, at: min(destinationIndex, order.count))
+        save()
+    }
+
     func moveUp(_ widget: PopoverWidget) {
         let visible = visibleWidgets
         guard let index = visible.firstIndex(of: widget), index > 0 else { return }
@@ -159,7 +220,8 @@ final class PopoverLayoutStore: ObservableObject {
         let payload = PersistedLayout(
             order: order.map(\.rawValue),
             hidden: Self.defaultOrder.filter(hiddenWidgets.contains).map(\.rawValue),
-            pinned: Self.defaultOrder.filter(pinnedWidgets.contains).map(\.rawValue)
+            pinned: Self.defaultOrder.filter(pinnedWidgets.contains).map(\.rawValue),
+            known: PopoverWidget.allCases.map(\.rawValue)
         )
         guard let data = try? JSONEncoder().encode(payload) else { return }
         defaults.set(data, forKey: Self.defaultsKey)
@@ -175,5 +237,8 @@ final class PopoverLayoutStore: ObservableObject {
         let order: [String]
         let hidden: [String]
         let pinned: [String]
+        /// 该布局见过的全部挂件;老版本无此字段(nil),以 order 兜底判断
+        /// 新挂件,保证默认隐藏只对"第一次出现"生效。
+        let known: [String]?
     }
 }

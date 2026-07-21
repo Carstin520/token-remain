@@ -6,6 +6,10 @@ struct PopoverWidgetHeader<Summary: View>: View {
     let isExpanded: Bool
     let isPinned: Bool
     @Binding var draggingWidget: PopoverWidget?
+    /// A complete, non-interactive rendering of the widget. Keeping this
+    /// separate from the header makes the full card follow the pointer while
+    /// the header remains the only drag handle.
+    let dragPreview: (() -> AnyView)?
     let onToggleExpanded: () -> Void
     let onTogglePinned: () -> Void
     let onHide: () -> Void
@@ -14,6 +18,38 @@ struct PopoverWidgetHeader<Summary: View>: View {
     @ViewBuilder let summary: () -> Summary
 
     var body: some View {
+        Group {
+            if let dragPreview {
+                headerContent
+                    .onDrag {
+                        draggingWidget = widget
+                        return NSItemProvider(object: widget.rawValue as NSString)
+                    } preview: {
+                        dragPreview()
+                    }
+            } else {
+                headerContent
+            }
+        }
+        .help(L10n.text("widget.drag_help"))
+        .contextMenu {
+            if widget.supportsExpansion {
+                Button(isPinned ? L10n.text("widget.stop_keep_expanded") : L10n.text("widget.keep_expanded"), action: onTogglePinned)
+                Button(isExpanded ? L10n.text("widget.collapse") : L10n.text("widget.expand"), action: onToggleExpanded)
+                Divider()
+            }
+            Button(L10n.text("widget.move_up"), action: onMoveUp)
+            Button(L10n.text("widget.move_down"), action: onMoveDown)
+            Divider()
+            Button(role: .destructive, action: onHide) {
+                Label(L10n.format("widget.remove_named", widget.title), systemImage: "trash")
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityHint(L10n.text("widget.drag_accessibility"))
+    }
+
+    private var headerContent: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 7) {
                 if widget.supportsExpansion {
@@ -42,40 +78,15 @@ struct PopoverWidgetHeader<Summary: View>: View {
         }
         .frame(height: 20, alignment: .top)
         .contentShape(Rectangle())
-        .onDrag {
-            draggingWidget = widget
-            return NSItemProvider(object: widget.rawValue as NSString)
-        }
-        .help(L10n.text("widget.drag_help"))
-        .contextMenu {
-            if widget.supportsExpansion {
-                Button(isPinned ? L10n.text("widget.stop_keep_expanded") : L10n.text("widget.keep_expanded"), action: onTogglePinned)
-                Button(isExpanded ? L10n.text("widget.collapse") : L10n.text("widget.expand"), action: onToggleExpanded)
-                Divider()
-            }
-            Button(L10n.text("widget.move_up"), action: onMoveUp)
-            Button(L10n.text("widget.move_down"), action: onMoveDown)
-            Divider()
-            Button(role: .destructive, action: onHide) {
-                Label(L10n.format("widget.remove_named", widget.title), systemImage: "trash")
-            }
-        }
-        .accessibilityElement(children: .contain)
-        .accessibilityHint(L10n.text("widget.drag_accessibility"))
     }
 
     @ViewBuilder
     private var widgetIcon: some View {
-        switch widget {
-        case .claude:
-            BrandIcon(provider: .claude)
+        if let provider = widget.provider {
+            BrandIcon(provider: provider)
                 .foregroundStyle(DashboardTheme.text)
                 .frame(width: 20, height: 20)
-        case .codex:
-            BrandIcon(provider: .codex)
-                .foregroundStyle(DashboardTheme.text)
-                .frame(width: 20, height: 20)
-        case .localUsage, .aiFeed:
+        } else {
             Image(systemName: widget.systemImage)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(widget == .aiFeed ? DashboardTheme.purple : DashboardTheme.codex)
@@ -135,7 +146,7 @@ struct PopoverWidgetDropDelegate: DropDelegate {
     func dropEntered(info: DropInfo) {
         guard let draggingWidget, draggingWidget != destination else { return }
         withAnimation(.snappy(duration: 0.2)) {
-            layout.move(draggingWidget, before: destination)
+            layout.move(draggingWidget, to: destination)
         }
     }
 
