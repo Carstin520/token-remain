@@ -32,11 +32,14 @@ TestFlight, paid-storefront, or notarized-release acceptance run.
 Observed on the release workstation on 2026-07-23:
 
 - one valid `Apple Development` identity;
-- no valid `Developer ID Application` identity;
+- one valid `Developer ID Application: Dongheng Li (84397AQ22Y)` identity,
+  with its private key available locally and certificate expiry on 2027-02-01;
+- one valid `Apple Distribution: Dongheng Li (84397AQ22Y)` identity, with its
+  private key available locally and certificate expiry on 2027-07-23;
 - development provisioning profiles exist for the iPhone, iPhone Widget,
   Watch app, and Watch Widget identifiers;
-- no Apple Distribution identity, App Store distribution profiles, or macOS
-  Developer ID provisioning profile was found;
+- no App Store distribution profiles or macOS Developer ID provisioning
+  profile was found;
 - no notarytool credential profile was supplied to this task.
 
 Therefore no Developer ID archive, notarization submission, stapling, App Store
