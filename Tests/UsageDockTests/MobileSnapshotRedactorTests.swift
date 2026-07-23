@@ -173,6 +173,7 @@ struct MobileSnapshotRedactorTests {
         let identifiers = ProviderQuota.Provider.displayOrder.map(MobileSnapshotRedactor.stableID)
         #expect(Set(identifiers).count == ProviderQuota.Provider.displayOrder.count)
         #expect(identifiers.allSatisfy(SyncedProviderID.isWellFormed))
+        #expect(Set(identifiers) == SyncedProviderID.supportedOnCurrentMobile)
     }
 
     @Test("Outgoing percentages are bounded and lifetime is capped")
