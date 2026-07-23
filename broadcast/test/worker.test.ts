@@ -62,6 +62,46 @@ describe("TokenRemain broadcast worker", () => {
     });
   });
 
+  it("records only an aggregate Mac download count before redirecting", async () => {
+    const first = await exports.default.fetch(new Request(
+      "https://broadcast.test/v1/downloads/macos",
+      { redirect: "manual" },
+    ));
+    expect(first.status).toBe(302);
+    expect(first.headers.get("location")).toBe(
+      "https://github.com/Carstin520/token-remain/releases/latest/download/TokenRemain.dmg",
+    );
+    expect(first.headers.get("cache-control")).toBe("no-store");
+
+    const second = await exports.default.fetch(new Request(
+      "https://broadcast.test/v1/downloads/macos",
+      { redirect: "manual" },
+    ));
+    expect(second.status).toBe(302);
+
+    const stats = await exports.default.fetch(
+      "https://broadcast.test/v1/downloads/stats",
+    );
+    expect(stats.status).toBe(200);
+    expect(stats.headers.get("access-control-allow-origin")).toBe(
+      "https://tokenremain.jamescarstin520.chatgpt.site",
+    );
+    await expect(stats.json()).resolves.toMatchObject({
+      macos: {
+        totalDownloads: 2,
+      },
+    });
+
+    const schema = await env.DB.prepare(
+      "PRAGMA table_info(download_counters)",
+    ).all<{ name: string }>();
+    expect(schema.results.map((column) => column.name)).toEqual([
+      "asset",
+      "total_count",
+      "updated_at",
+    ]);
+  });
+
   it("publishes an authenticated item through the public feed contract", async () => {
     const payload = {
       id: "1900000000000000001",

@@ -28,6 +28,15 @@ npm run dev
 `GET http://127.0.0.1:8787/health` and
 `GET http://127.0.0.1:8787/v1/ai-feed` work without external credentials.
 
+The public website uses two additional credential-free endpoints:
+
+- `GET /v1/downloads/macos` increments one anonymous aggregate counter and
+  redirects to the current notarized GitHub Release DMG.
+- `GET /v1/downloads/stats` returns the public aggregate Mac download count.
+
+The counter stores only one integer and its update time. It does not store IP
+addresses, device identifiers, user agents, cookies, or per-download events.
+
 ## Production bindings
 
 Provision these Cloudflare resources before deployment:
