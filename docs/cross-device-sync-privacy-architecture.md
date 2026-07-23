@@ -40,7 +40,7 @@
 - iPhone / Widget 共享 `SnapshotStore` 和 `UsageSnapshot`；真实来源为 `.macSync`，首次启动仍为 `.none`。
 - iPhone → Watch 已使用 `WatchConnectivity.updateApplicationContext`，符合“最新值覆盖”的需求。
 - CloudKit Private Database、AES-256-GCM envelope、同步 Keychain、重放防护和静默通知入口均已接入。
-- 独立 Broadcast Worker、D1 公开 Feed、匿名设备注册、按时区每日摘要和 Apple 客户端直连路径已实现；Cloudflare / X / APNs 生产凭证仍待配置。
+- 独立 Broadcast Worker、D1 公开 Feed、匿名设备注册、按时区每日摘要和 Apple 客户端直连路径已实现；Cloudflare、X 与 APNs 生产凭证均已配置。macOS Developer ID 正式包已经携带 Production APNs entitlement 并通过 Apple 公证。
 
 发布前仍必须解决：
 

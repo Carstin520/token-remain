@@ -15,6 +15,14 @@ X API 凭证和内容筛选全部留在 TokenRemain Broadcast Worker。Apple 客
 - iOS / iPadOS：同名 Xcode build setting
 - 运行时读取的 Info.plist 键：`TokenRemainBroadcastBaseURL`
 
+## 官网 DMG 下载统计
+
+- `GET /v1/downloads/macos`：只把 `macos_dmg` 的匿名聚合计数加一，然后
+  `302` 跳转到 GitHub Release 的 `TokenRemain.dmg`。
+- `GET /v1/downloads/stats`：向官网公开累计下载次数。
+- D1 只保存一个累计整数和最后更新时间；不保存 IP、User-Agent、设备标识、
+  Cookie 或逐次下载事件。
+
 ## GET /v1/ai-feed
 
 响应：

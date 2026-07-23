@@ -131,6 +131,8 @@ nav .links a:hover{color:var(--text);text-decoration:none}
 .req-line .sep{color:var(--text-mute)}
 .releases-hint{font-size:13px;color:var(--text-mute);margin-top:10px}
 .releases-hint a{color:var(--cyan-dim)}
+.download-count{display:inline-flex;align-items:center;gap:6px;margin-left:8px;color:var(--cyan-dim)}
+.download-count::before{content:"·";color:var(--line)}
 
 /* ============ 3D stage ============ */
 .stage-wrap{perspective:1300px;perspective-origin:60% 40%;min-width:0;display:flex;justify-content:center}
@@ -403,7 +405,7 @@ footer.site .disclaimer{
   <nav>
     <span class="wordmark">Token<em>Remain</em></span>
     <span class="links">
-      <a href="#download" data-i18n="nav-dl">In development</a>
+      <a href="#download" data-i18n="nav-dl">Download</a>
       <a href="#screens" data-i18n="nav-screens">Screens</a>
       <a href="#providers" data-i18n="nav-providers">Providers</a>
       <a href="#privacy" data-i18n="nav-privacy">Privacy</a>
@@ -418,7 +420,7 @@ footer.site .disclaimer{
   <!-- ================= hero ================= -->
   <header class="hero" id="download">
     <div>
-      <span class="badge"><span class="dot"></span>Development preview · macOS · Menu&nbsp;Bar · Quota&nbsp;HUD</span>
+      <span class="badge"><span class="dot"></span>Public Mac release · macOS · Menu&nbsp;Bar · Quota&nbsp;HUD</span>
       <h1 data-i18n="h-h1">Your AI quotas,<br><span class="accent">right in the menu bar</span>.</h1>
       <p class="sub" data-i18n="h-sub">
         Remaining quota and reset countdowns for <strong>Claude Code, Codex, Cursor, Grok, GLM</strong>
@@ -426,9 +428,9 @@ footer.site .disclaimer{
         Provider credentials stay on your Mac. If you enable Apple-device sync, only an allowlisted AES-256-GCM encrypted quota snapshot moves through your own iCloud account.
       </p>
       <div class="cta-row">
-        <span class="btn btn-primary" aria-disabled="true">
-          <span data-i18n="h-dl">In development — download coming later</span>
-        </span>
+        <a id="macDownloadButton" class="btn btn-primary" href="https://tokenremain-broadcast.jamescarstin520.workers.dev/v1/downloads/macos">
+          <span data-i18n="h-dl">Download for Mac</span>
+        </a>
         <a class="btn btn-ghost" href="https://github.com/Carstin520/token-remain" rel="noopener">
           <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 .2a8 8 0 0 0-2.5 15.6c.4.1.5-.2.5-.4v-1.4c-2.2.5-2.7-1-2.7-1-.4-.9-.9-1.2-.9-1.2-.7-.5.1-.5.1-.5.8.1 1.2.9 1.2.9.7 1.2 1.9.9 2.4.7 0-.5.3-.9.5-1.1-1.8-.2-3.7-.9-3.7-4a3 3 0 0 1 .8-2.1c0-.2-.3-1 .1-2.1 0 0 .7-.2 2.2.8a7.5 7.5 0 0 1 4 0c1.5-1 2.2-.8 2.2-.8.4 1.1.1 1.9.1 2.1a3 3 0 0 1 .8 2.1c0 3.1-1.9 3.8-3.7 4 .3.3.6.8.6 1.5v2.2c0 .2.1.5.5.4A8 8 0 0 0 8 .2z"/></svg>
           <span data-i18n="h-gh">GitHub Repo</span>
@@ -437,9 +439,9 @@ footer.site .disclaimer{
       <p class="req-line">
         <span>macOS 14+</span><span class="sep">·</span>
         <span>Apple Silicon (arm64)</span><span class="sep">·</span>
-        <span data-i18n="h-req3">public build coming later</span>
+        <span data-i18n="h-req3">Version 1.0.0 · Apple notarized</span>
       </p>
-      <p class="releases-hint" data-i18n="h-hint">TokenRemain is still under active development. No public DMG is available yet; follow progress on GitHub.</p>
+      <p class="releases-hint"><span data-i18n="h-hint">Signed with Developer ID and notarized by Apple.</span><span class="download-count" id="downloadCount">Total downloads: —</span></p>
     </div>
 
     <!-- ============ 3D stage · real popover screenshot ============ -->
@@ -570,12 +572,12 @@ footer.site .disclaimer{
         <p data-i18n="pr2d">Manually added API keys (Z.ai, OpenRouter…) are stored only in the macOS Keychain — never in source, bundles or logs.</p>
       </div>
       <div class="priv ticked">
-        <div class="row"><span class="ck">✓</span><h3 data-i18n="pr3t">No servers of ours</h3></div>
-        <p data-i18n="pr3d">Quota queries go straight to each provider's official API. TokenRemain runs no credential relay; optional Apple-device sync uses your private iCloud database.</p>
+        <div class="row"><span class="ck">✓</span><h3 data-i18n="pr3t">No credential relay</h3></div>
+        <p data-i18n="pr3d">Quota queries go straight to each provider's official API. The public feed, push service, and aggregate download counter never receive provider credentials; optional Apple-device sync uses your private iCloud database.</p>
       </div>
       <div class="priv ticked">
-        <div class="row"><span class="ck">✓</span><h3 data-i18n="pr4t">No tracking, no analytics</h3></div>
-        <p data-i18n="pr4d">No telemetry, no ads, no analytics SDK.</p>
+        <div class="row"><span class="ck">✓</span><h3 data-i18n="pr4t">No behavioral tracking</h3></div>
+        <p data-i18n="pr4d">No telemetry, ads, cookies, or analytics SDK. The website keeps only one anonymous aggregate Mac download count.</p>
       </div>
       <div class="priv ticked">
         <div class="row"><span class="ck">✓</span><h3 data-i18n="pr5t">No account required</h3></div>
@@ -592,16 +594,16 @@ footer.site .disclaimer{
   <section id="limits">
     <div class="split">
     <div>
-    <p class="eyebrow">Current Build</p>
-    <h2 data-i18n="lm-h2">Known limits of the development preview</h2>
-    <p class="lede" data-i18n="lm-lede">TokenRemain is still being developed and is not a finished public release. These limits are deliberate trade-offs — data safety always outranks feature coverage.</p>
+    <p class="eyebrow">Current Release</p>
+    <h2 data-i18n="lm-h2">Known limits of the Mac release</h2>
+    <p class="lede" data-i18n="lm-lede">The notarized Mac release is available now. These limits are deliberate trade-offs — data safety always outranks feature coverage.</p>
     </div>
     <div class="limit-card ticked">
       <div class="head"><span class="sym">!</span><span data-i18n="lm-head">Known limitations</span></div>
       <ul>
         <li><span class="k" data-i18n="lmk1">CHIP</span><span data-i18n="lm1"><strong>Apple Silicon (arm64) only</strong> — no Intel builds yet.</span></li>
         <li><span class="k" data-i18n="lmk2">OS</span><span data-i18n="lm2">Requires <strong>macOS 14 Sonoma or later</strong>; macOS 26 gets native Liquid Glass, 14/15 fall back to the dark card style.</span></li>
-        <li><span class="k" data-i18n="lmk3">DIST</span><span data-i18n="lm3"><strong>No public DMG is available yet.</strong> This website is a development preview, not a release announcement.</span></li>
+        <li><span class="k" data-i18n="lmk3">DIST</span><span data-i18n="lm3"><strong>The public DMG is Developer ID signed and Apple notarized.</strong> It is currently distributed outside the Mac App Store.</span></li>
         <li><span class="k" data-i18n="lmk4">DEPS</span><span data-i18n="lm4">Direct quota queries need the <strong>matching tools signed in on this Mac</strong> (Claude Code, Codex CLI, Cursor…); services that aren't signed in show setup hints. Z.ai is the only one that needs a pasted API key.</span></li>
         <li><span class="k" data-i18n="lmk5">EST</span><span data-i18n="lm5">Cost figures are <strong>API list-price estimates</strong>, not your subscription bill; when a credential expires, data pauses and the app tells you how to recover.</span></li>
       </ul>
@@ -640,19 +642,19 @@ footer.site .disclaimer{
   <!-- ================= release ================= -->
   <section>
     <p class="eyebrow">Release</p>
-    <h2 data-i18n="in-h2">What happens before download</h2>
+    <h2 data-i18n="in-h2">Download and install</h2>
     <div class="steps">
       <div class="step">
-        <h3 data-i18n="st1t">Development is in progress</h3>
-        <p data-i18n="st1d">Core product, privacy, signing, and cross-device behavior are still being completed and verified.</p>
+        <h3 data-i18n="st1t">Download the notarized DMG</h3>
+        <p data-i18n="st1d">Use the official button above. The download is signed with Developer ID and notarized by Apple.</p>
       </div>
       <div class="step">
-        <h3 data-i18n="st2t">A public release will be announced</h3>
-        <p data-i18n="st2d">The website and GitHub repository will link to the official build only after it is ready for public use.</p>
+        <h3 data-i18n="st2t">Move TokenRemain to Applications</h3>
+        <p data-i18n="st2d">Open the DMG and drag TokenRemain into the Applications shortcut.</p>
       </div>
       <div class="step">
-        <h3 data-i18n="st3t">Install once it is available</h3>
-        <p data-i18n="st3d">Until then, there is no public DMG to download. Follow the repository for verified release updates.</p>
+        <h3 data-i18n="st3t">Open and choose your providers</h3>
+        <p data-i18n="st3d">Launch TokenRemain from Applications, choose the local tools you use, and optionally enable Apple-device sync and daily AI feed notifications.</p>
       </div>
     </div>
   </section>
@@ -690,11 +692,11 @@ footer.site .disclaimer{
 <script>
 /* ---------- i18n: English inline (default), Chinese dictionary ---------- */
 var ZH={
-  "nav-dl":"开发中","nav-screens":"界面","nav-providers":"支持的服务","nav-privacy":"隐私","nav-policy":"隐私政策","nav-support":"支持","nav-limits":"限制",
+  "nav-dl":"下载","nav-screens":"界面","nav-providers":"支持的服务","nav-privacy":"隐私","nav-policy":"隐私政策","nav-support":"支持","nav-limits":"限制",
   "h-h1":"你的 AI 额度，<br><span class=\"accent\">常驻菜单栏</span>。",
   "h-sub":"一处看全 <strong>Claude Code、Codex、Cursor、Grok、GLM</strong> 等 <strong>18+ 服务</strong>的剩余额度与重置倒计时。Provider 凭证始终留在 Mac；启用 Apple 设备同步后，只有经过白名单过滤并使用 AES-256-GCM 加密的额度快照会通过你自己的 iCloud 账户传输。",
-  "h-dl":"开发中，稍后开放下载","h-gh":"GitHub 仓库","h-req3":"公开版本稍后提供",
-  "h-hint":"TokenRemain 仍在开发中，当前没有公开 DMG；可在 GitHub 查看进展。",
+  "h-dl":"下载 Mac 版","h-gh":"GitHub 仓库","h-req3":"版本 1.0.0 · Apple 已公证",
+  "h-hint":"使用 Developer ID 签名并通过 Apple 公证。",
   "chip-grok":"Grok 周池",
   "s-h2":"三块屏幕，同一套像素语言",
   "s-lede":"菜单栏弹窗在上方已经见过——下面全部是<strong style=\"color:var(--text)\">正在运行的最新版实机截图</strong>：桌面 Dashboard、iPhone 版与桌面小组件。",
@@ -721,16 +723,16 @@ var ZH={
   "pipe-n1":"本机已有凭证","pipe-a1":"─ 只读 ─▶","pipe-n2":"各服务官方接口","pipe-n3":"本地渲染 · 本地缓存",
   "pr1t":"凭证只读，绝不代刷","pr1d":"只读各工具自己维护的 access token，绝不触碰 refresh token、绝不写回——不与 Claude Code / Cursor 争用登录态。",
   "pr2t":"Key 只进钥匙串","pr2d":"手动接入的 API Key（Z.ai、OpenRouter 等）只存 macOS 钥匙串，不进源码、包体或日志。",
-  "pr3t":"没有我们的凭证中转服务器","pr3d":"额度直查直连各服务官方接口；TokenRemain 不运行凭证中转服务，可选的 Apple 设备同步使用你自己的 iCloud 私有数据库。",
-  "pr4t":"无追踪、无分析","pr4d":"不埋点、不上报、没有广告 SDK。",
+  "pr3t":"不设凭证中转","pr3d":"额度直查直连各服务官方接口；公开 Feed、推送服务和聚合下载计数绝不接收 Provider 凭证，可选的 Apple 设备同步使用你自己的 iCloud 私有数据库。",
+  "pr4t":"无行为追踪","pr4d":"不埋点、无广告、无 Cookie、没有分析 SDK；官网只保留一个匿名的 Mac 累计下载整数。",
   "pr5t":"无需注册账户","pr5d":"不需要为 TokenRemain 注册任何账号——登录本机已有工具即自动接入。",
   "pr6t":"本地缓存，可选加密同步","pr6d":"Mac 缓存与成本统计留在本机；只有你主动启用同步时，经过白名单过滤的加密展示快照才会进入你的 iCloud 私有数据库。",
-  "lm-h2":"开发预览阶段的已知限制",
-  "lm-lede":"TokenRemain 仍在开发中，尚未形成可公开发布的完成版本。以下限制是刻意的取舍——数据安全永远排在功能覆盖前面。",
+  "lm-h2":"Mac 正式版的已知限制",
+  "lm-lede":"已公证的 Mac 版本现已开放下载。以下限制是刻意的取舍——数据安全永远排在功能覆盖前面。",
   "lm-head":"已知限制",
   "lmk1":"芯片","lm1":"<strong>仅支持 Apple Silicon（arm64）</strong>，Intel Mac 暂不提供构建。",
   "lmk2":"系统","lm2":"需要 <strong>macOS 14 Sonoma 或更高</strong>；macOS 26 可启用原生 Liquid Glass 样式，14/15 自动回退深色卡片。",
-  "lmk3":"分发","lm3":"<strong>当前没有公开 DMG。</strong> 本网站是开发预览，不代表产品已经发布。",
+  "lmk3":"分发","lm3":"<strong>公开 DMG 已使用 Developer ID 签名并通过 Apple 公证。</strong> 当前通过 Mac App Store 之外的官网渠道分发。",
   "lmk4":"依赖","lm4":"额度直查依赖<strong>本机已登录的对应工具</strong>（Claude Code、Codex CLI、Cursor 等）；未登录的服务会显示接入指引。Z.ai 是唯一需要手动粘贴 API Key 的服务。",
   "lmk5":"估算","lm5":"成本数字是 <strong>API 标价估算</strong>，不等于订阅账单；部分服务凭证过期时数据会暂停更新并提示恢复方法。",
   "ft-h2":"把节奏握在手里",
@@ -738,10 +740,10 @@ var ZH={
   "ft2t":"菜单栏与浮窗","ft2d":"菜单栏显示哪些应用自选；刷新 1/5/15/30 分钟或仅手动；桌面浮窗跨空间常驻。",
   "ft3t":"今日成本估算","ft3d":"ccusage 统计今日 token 与估算 API 成本，按服务商拆分，全部本地计算。",
   "ft4t":"AI 动态聚合","ft4d":"额度重置、速率限制变化与重大模型更新自动置顶并触发 macOS 本地通知。",
-  "in-h2":"开放下载前还要完成什么",
-  "st1t":"产品仍在开发","st1d":"核心功能、隐私、签名与跨设备行为仍在完成和验证中。",
-  "st2t":"准备好后再正式发布","st2d":"只有完成公开使用所需的验证后，官网与 GitHub 才会提供官方构建链接。",
-  "st3t":"发布后再安装","st3d":"当前没有可公开下载的 DMG；可关注 GitHub 获取经过验证的发布进展。",
+  "in-h2":"下载与安装",
+  "st1t":"下载已公证 DMG","st1d":"使用页面顶部的官方下载按钮。安装包已使用 Developer ID 签名并通过 Apple 公证。",
+  "st2t":"拖入“应用程序”","st2d":"打开 DMG，把 TokenRemain 拖到“应用程序”快捷方式。",
+  "st3t":"打开并选择 Provider","st3d":"从“应用程序”启动 TokenRemain，选择你使用的本地工具，并按需启用 Apple 设备同步与每日 AI 动态通知。",
   "rp-h2":"源码全部公开",
   "rp-p":"凭证怎么读、数据去了哪，代码里一行行可查。Issue 与 PR 都欢迎。<br><code>github.com/Carstin520/token-remain</code>",
   "rp-btn":"打开仓库",
@@ -765,6 +767,7 @@ var TITLES={en:"TokenRemain — Your AI quota, always in the menu bar",zh:"Token
     document.title=TITLES[l]||TITLES.en;
     btn.textContent=l==='zh'?'EN':'中文';
     store(l);
+    renderDownloadCount();
   }
   var param=new URLSearchParams(location.search).get('lang');
   var lang=(param==='zh'||param==='en')?param:(load()||'en');
@@ -772,6 +775,29 @@ var TITLES={en:"TokenRemain — Your AI quota, always in the menu bar",zh:"Token
   btn.addEventListener('click',function(){
     apply(document.documentElement.lang==='en'?'zh':'en');
   });
+})();
+
+/* ---------- privacy-preserving aggregate download count ---------- */
+var downloadTotal=null;
+function renderDownloadCount(){
+  var el=document.getElementById('downloadCount');
+  if(!el)return;
+  var zh=document.documentElement.lang==='zh-CN';
+  if(downloadTotal==null){
+    el.textContent=zh?'累计下载：—':'Total downloads: —';
+    return;
+  }
+  el.textContent=(zh?'累计下载：':'Total downloads: ')+downloadTotal.toLocaleString(zh?'zh-CN':'en-US');
+}
+(function(){
+  fetch('https://tokenremain-broadcast.jamescarstin520.workers.dev/v1/downloads/stats')
+    .then(function(response){if(!response.ok)throw new Error('stats unavailable');return response.json()})
+    .then(function(payload){
+      var value=payload&&payload.macos&&payload.macos.totalDownloads;
+      if(Number.isSafeInteger(value)&&value>=0)downloadTotal=value;
+      renderDownloadCount();
+    })
+    .catch(function(){renderDownloadCount()});
 })();
 
 /* ---------- 14-segment minibars (featured provider cards) ---------- */

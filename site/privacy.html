@@ -55,6 +55,7 @@
         <section>
           <h2>Notifications</h2>
           <p>Sync does not require notification permission. Notification permission is requested only when the user enables an alerting feature. CloudKit silent notifications are system delivery hints and do not display provider data in a notification banner.</p>
+          <p>If the user enables the daily public AI feed notification, TokenRemain registers a random installation identifier, device-generated revocation key, APNs device token, platform, locale, time zone, and notification preference with the TokenRemain broadcast service. It receives no Provider credential or TokenRemain account identity and uses these fields only to deliver or revoke the requested notification.</p>
         </section>
         <section>
           <h2>Purchases and Apple services</h2>
@@ -64,11 +65,13 @@
         <section>
           <h2>Analytics, tracking, and provider services</h2>
           <p>TokenRemain includes no developer-operated advertising or analytics SDK, does not sell user data, and does not combine TokenRemain data with other companies' data for advertising.</p>
+          <p>The website download endpoint keeps only one aggregate Mac download count and its last-update time. It does not store an IP address, device identifier, user agent, cookie, or per-download event. GitHub and Cloudflare may process ordinary delivery logs under their own terms.</p>
           <p>Provider requests are governed by the selected provider's privacy policy. The Mac sends only what is required to authenticate and retrieve the provider's quota response.</p>
         </section>
         <section>
           <h2>Retention and deletion</h2>
           <p>Local caches and settings remain until the user removes them or the operating system clears eligible cache data. Cloud sync keeps the current encrypted snapshot and limited operational metadata in TokenRemain's private CloudKit zone.</p>
+          <p>An active public-feed notification registration remains until the user disables notifications or the service invalidates the APNs token. Disabling the feature sends the locally held revocation key to deactivate that installation.</p>
           <p>Users can disconnect sync and remove TokenRemain's private CloudKit data and dedicated sync key without deleting provider credentials or Mac-local quota history. If iCloud Keychain encrypted data is reset, prior synchronized records may no longer be decryptable.</p>
         </section>
         <section>
@@ -125,6 +128,7 @@
         <section>
           <h2>通知</h2>
           <p>同步不以通知授权为前置。只有用户主动启用提醒功能时才请求通知权限。CloudKit 静默通知只是系统变更提示，不会在通知横幅中显示 Provider 数据。</p>
+          <p>用户启用每日公开 AI 动态通知后，TokenRemain 会向广播服务登记随机安装标识、设备生成的撤销密钥、APNs device token、平台、语言、时区与通知偏好。服务不会收到 Provider 凭证或 TokenRemain 账号身份，只使用这些字段发送或撤销用户请求的通知。</p>
         </section>
         <section>
           <h2>购买与 Apple 服务</h2>
@@ -134,11 +138,13 @@
         <section>
           <h2>分析、跟踪与 Provider 服务</h2>
           <p>TokenRemain 不包含开发者运营的广告或分析 SDK，不出售用户数据，也不会把 TokenRemain 数据与其他公司的数据结合用于广告。</p>
+          <p>官网下载端点只保存一个 Mac 累计下载整数及最后更新时间，不保存 IP、设备标识、User-Agent、Cookie 或逐次下载事件。GitHub 与 Cloudflare 可能依据其各自条款处理普通的内容分发日志。</p>
           <p>Provider 请求受所选 Provider 的隐私政策约束。Mac 只发送完成认证与获取额度响应所必需的信息。</p>
         </section>
         <section>
           <h2>保留与删除</h2>
           <p>本地缓存与设置会保留到用户移除，或操作系统清理符合条件的缓存。Cloud 同步只在 TokenRemain 的 CloudKit 私有区域保存当前加密快照和有限的运行元数据。</p>
+          <p>公开 Feed 通知注册会保留到用户关闭通知，或服务判定 APNs token 已失效。用户关闭该功能时，客户端使用本地保存的撤销密钥停用对应安装。</p>
           <p>用户可断开同步并移除 TokenRemain 的 CloudKit 私有数据与专用同步密钥，不影响 Provider 凭证或 Mac 本地额度历史。如果 iCloud Keychain 加密数据被重置，旧同步记录可能无法再解密。</p>
         </section>
         <section>

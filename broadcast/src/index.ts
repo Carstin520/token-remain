@@ -1,4 +1,5 @@
 import { registerDevice, unregisterDevice } from "./devices";
+import { getDownloadStats, redirectToMacDownload } from "./downloads";
 import { getFeed, publishAdminItem } from "./feed";
 import { errorResponse, json } from "./http";
 import { consumePushBatch } from "./push";
@@ -33,6 +34,12 @@ export default {
       }
       if (request.method === "GET" && url.pathname === "/v1/ai-feed") {
         return await getFeed(env);
+      }
+      if (request.method === "GET" && url.pathname === "/v1/downloads/macos") {
+        return await redirectToMacDownload(env);
+      }
+      if (request.method === "GET" && url.pathname === "/v1/downloads/stats") {
+        return await getDownloadStats(env);
       }
       if (request.method === "POST" && url.pathname === "/v1/devices/register") {
         return await registerDevice(request, env);

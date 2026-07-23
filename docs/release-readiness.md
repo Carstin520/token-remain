@@ -16,9 +16,9 @@ unsandboxed Developer ID Mac download.
 | Privacy manifests | Present and plist-valid in all four exported executable bundles | Validate App Store Connect's processed privacy report |
 | StoreKit configuration | Not applicable | The app is paid upfront; there is no IAP product |
 | StoreKit Sandbox purchase | Not applicable | Paid storefront checkout is outside the app and is not simulated by TestFlight |
-| Developer ID package | Current HEAD `10754b6` is G2-signed with Production entitlements; the preceding release candidate was notarized, stapled, and Gatekeeper-accepted | Notarize the final HEAD, download it through the customer HTTPS path, and complete the Mac acceptance matrix |
+| Developer ID package | Commit `f223643` is G2-signed with Production CloudKit/APNs entitlements; its App and DMG are notarized, stapled, Gatekeeper-accepted, and byte-verified through the public GitHub Release path | Complete a clean-customer Mac acceptance run |
 | CloudKit Production | Release entitlements are configured; the final zero-index/private-role deployment diff has been verified | Obtain explicit owner approval, deploy the reviewed schema, then test Production with release builds |
-| APNs Production | Release build setting is configured in code | Verify the distribution-signed entitlement and silent push on TestFlight |
+| APNs Production | The public macOS build carries `aps-environment=production`; the APNs token credential and broadcast Worker have passed production authentication checks | Regenerate APNs-enabled iOS distribution profiles and verify delivery through TestFlight |
 | Foreground freshness | Timing instrumentation and simulator paths pass | Collect real Mac + iPhone samples and meet p50/p95/max gates |
 | App Store Connect | App record, pricing, storefronts, metadata, content rights, age rating, privacy draft, review notes, and manual release are configured as recorded below | Supply public URLs/contact/legal details, publish privacy, upload/process a build, and complete account compliance |
 | Review approval | Not submitted | Submit only after every blocking row below passes |
@@ -46,10 +46,10 @@ Observed on the release workstation on 2026-07-23:
   Distribution certificate, disable `get-task-allow`, and authorize the shared
   App Group;
 - Apple-issued Developer ID profile
-  `TokenRemain macOS Developer ID Production` exists for
+  `TokenRemain macOS Developer ID Production APNs` exists for
   `com.jamesli.usagedock`, authorizes CloudKit Production and
-  `84397AQ22Y.*` Keychain groups, embeds the G2 certificate, applies to all
-  devices, and expires on 2044-07-18;
+  `84397AQ22Y.*` Keychain groups plus APNs Production, embeds the G2
+  certificate, applies to all devices, and expires on 2044-07-18;
 - the `tokenremain-notary` notarytool credential profile is stored in the
   login Keychain; its secret is not stored in this repository.
 
@@ -78,6 +78,16 @@ Strict signature validation passed. The bundle is arm64, uses Hardened Runtime
 and a secure timestamp, carries CloudKit `Production`, and contains only the
 exact sync Keychain group. This newer candidate is local signing evidence, not
 notarization or customer-download proof.
+
+Commit `f223643` was rebuilt after enabling Push Notifications for
+`com.jamesli.usagedock`. Apple accepted App submission
+`8c94259f-e14a-4124-8732-955f588a842e` and DMG submission
+`e89e99f3-db8e-4c10-a5ca-26240e2d2404`. Both artifacts were stapled and
+accepted by Gatekeeper as `Notarized Developer ID`. The final arm64 DMG is
+published as GitHub Release asset `TokenRemain.dmg`, is 10,403,721 bytes, and
+has SHA-256
+`92832512abb02ef1daf7b93394872cf56c438b0b375cd13d096b29f162e4bb9f`.
+A fresh HTTPS download of that public asset matched the byte count and digest.
 
 ## Developer ID Mac release
 
@@ -352,11 +362,16 @@ The signed-in App Store Connect session established the following state on
 - Simplified Chinese promotional text, description, and keywords saved;
 - review notes saved, `Sign-in required` disabled, and
   `Manually release this version` selected;
-- App Privacy saved as `Data Not Collected`, consistent with the current
-  no-analytics/no-ad/no-developer-server code path, but not yet published.
+- App Privacy is currently saved as `Data Not Collected` but not published.
+  It must be re-evaluated before submission because optional public-feed
+  notifications now register an APNs device token and operational locale/time
+  zone with the broadcast service. The app still contains no ads or behavioral
+  analytics SDK.
 - public product, support, and privacy-policy pages deployed at
   `https://tokenremain.jamescarstin520.chatgpt.site`, with English and
-  Simplified Chinese URLs saved in App Store Connect;
+  Simplified Chinese URLs saved in App Store Connect; the public Mac button
+  resolves through an aggregate-only D1 counter to the notarized GitHub Release
+  DMG.
 - copyright `2026 Dongheng Li` and App Review contact Dongheng Li,
   `+1 2177786869`, `jamescarstin520@gmail.com` saved.
 
