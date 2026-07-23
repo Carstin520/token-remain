@@ -2,14 +2,20 @@
 import PackageDescription
 
 let package = Package(
-    name: "UsageDock",
+    name: "TokenRemain",
     platforms: [.macOS(.v14)],
     products: [
         .executable(name: "UsageDock", targets: ["UsageDock"])
     ],
+    dependencies: [
+        .package(path: "apple/Packages/TokenRemainKit")
+    ],
     targets: [
         .executableTarget(
             name: "UsageDock",
+            dependencies: [
+                .product(name: "TokenRemainSyncKit", package: "TokenRemainKit")
+            ],
             path: "Sources/UsageDock",
             exclude: ["Resources", "Localization"]
         ),
