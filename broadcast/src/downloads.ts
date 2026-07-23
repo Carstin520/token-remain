@@ -4,7 +4,6 @@ import type { Env } from "./types";
 const MACOS_ASSET = "macos_dmg";
 const MACOS_DOWNLOAD_URL =
   "https://github.com/Carstin520/token-remain/releases/latest/download/TokenRemain.dmg";
-const PUBLIC_SITE_ORIGIN = "https://tokenremain.jamescarstin520.chatgpt.site";
 
 export async function redirectToMacDownload(env: Env): Promise<Response> {
   const now = new Date().toISOString();
@@ -45,7 +44,7 @@ export async function getDownloadStats(env: Env): Promise<Response> {
     },
     {
       headers: {
-        "access-control-allow-origin": PUBLIC_SITE_ORIGIN,
+        "access-control-allow-origin": "*",
         "cache-control": "public, max-age=60",
       },
     },

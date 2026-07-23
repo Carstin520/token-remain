@@ -83,9 +83,7 @@ describe("TokenRemain broadcast worker", () => {
       "https://broadcast.test/v1/downloads/stats",
     );
     expect(stats.status).toBe(200);
-    expect(stats.headers.get("access-control-allow-origin")).toBe(
-      "https://tokenremain.jamescarstin520.chatgpt.site",
-    );
+    expect(stats.headers.get("access-control-allow-origin")).toBe("*");
     await expect(stats.json()).resolves.toMatchObject({
       macos: {
         totalDownloads: 2,
