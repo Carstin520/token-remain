@@ -1,8 +1,9 @@
 # TokenRemain App Store metadata draft
 
-The English and Simplified Chinese copy, public URLs, copyright, and review
-contact values were entered in App Store Connect on 2026-07-23. This source
-remains the canonical reference for later edits.
+The English and Simplified Chinese copy and subtitles, public URLs, categories,
+content-rights declaration, copyright, and review contact values were entered
+in App Store Connect on 2026-07-23. This source remains the canonical reference
+for later edits.
 
 ## English (U.S.)
 
@@ -111,6 +112,8 @@ AI,额度,Claude,Codex,Cursor,用量,小组件,手表,开发者,趋势
 
 - Primary category: **Developer Tools**
 - Secondary category: **Productivity**
+- Content rights: **Yes — the app has the necessary rights to its third-party
+  content**
 - Age rating: **13+** in 171 storefronts, **16+** in two storefronts, and
   **15+** in Korea based on the questionnaire completed on 2026-07-23
 - English Support URL:
@@ -135,11 +138,11 @@ AI,额度,Claude,Codex,Cursor,用量,小组件,手表,开发者,趋势
   <https://github.com/Carstin520/token-remain/releases/latest/download/TokenRemain.dmg>
   (must be replaced or verified against the final notarized release artifact)
 
-## Owner confirmations before entry
+## Final verification before submission
 
-1. Confirm the subtitle, categories, and localized copy.
-2. Confirm the provider trademarks shown in metadata/screenshots are accurate
-   compatibility references and that required content rights are held.
-3. Recheck that every public URL still resolves from an unauthenticated
+1. Reconfirm that provider trademarks shown in metadata/screenshots remain
+   accurate compatibility references under the saved content-rights
+   declaration.
+2. Recheck that every public URL still resolves from an unauthenticated
    connection before final submission.
-4. Verify all feature statements against the exact uploaded build.
+3. Verify all feature statements against the exact uploaded build.

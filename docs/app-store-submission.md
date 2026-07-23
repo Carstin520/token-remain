@@ -137,6 +137,10 @@ actual embedded build, not a design mock.
   privacy pages;
 - copyright `2026 Dongheng Li` and App Review contact Dongheng Li,
   `+1 2177786869`, `jamescarstin520@gmail.com` are saved;
+- English subtitle `AI quota, always in view` and Simplified Chinese subtitle
+  `AI 编码额度，随时掌握` are saved;
+- primary category `Developer Tools`, secondary category `Productivity`, and
+  the confirmed third-party content-rights declaration are saved;
 - Paid Apps Agreement, banking, tax, education/business distribution, and
   Family Sharing confirmation;
 - Digital Services Act identity/trader status;

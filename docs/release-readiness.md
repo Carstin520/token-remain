@@ -270,6 +270,8 @@ The signed-in App Store Connect session established the following state on
   reports `Available on App Release` rather than an ICP error;
 - primary category `Developer Tools`, secondary category `Productivity`, and
   content rights declared for the selected third-party provider/X content;
+- English subtitle `AI quota, always in view` and Simplified Chinese subtitle
+  `AI 编码额度，随时掌握` saved;
 - current age questionnaire result: `13+` in 171 storefronts, `16+` in two
   storefronts, and `15+` in Korea;
 - English promotional text, description, and keywords saved;
