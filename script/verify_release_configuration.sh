@@ -14,6 +14,16 @@ cd "$ROOT_DIR"
 /usr/bin/grep -Fq 'ICLOUD_CONTAINER_ENVIRONMENT: Production' apple/project.yml
 [[ "$(/usr/bin/grep -Fc 'TARGETED_DEVICE_FAMILY: "1"' apple/project.yml)" == "2" ]]
 
+# Export compliance is still an explicit Account Holder gate. Until the
+# CryptoKit AES-GCM determination is confirmed in App Store Connect, the source
+# configuration must not silently claim either exempt or non-exempt status.
+if /usr/bin/grep -Eq \
+  'ITSAppUsesNonExemptEncryption|ITSEncryptionExportComplianceCode|INFOPLIST_KEY_ITSAppUsesNonExemptEncryption' \
+  apple/project.yml apple/SupportFiles/TokenRemain-Info.plist; then
+  echo "error: export-compliance Info.plist state was set before the recorded Account Holder determination" >&2
+  exit 1
+fi
+
 for manifest in \
   apple/App/PrivacyInfo.xcprivacy \
   apple/Widgets/PrivacyInfo.xcprivacy \
@@ -29,4 +39,5 @@ done
 /bin/bash -n script/package_developer_id_release.sh
 /bin/bash -n script/package_app_store_release.sh
 
-echo "release configuration verified: paid iOS + production Apple capabilities + Developer ID packaging guardrails"
+echo "pre-upload release configuration verified: paid iOS + production Apple capabilities + Developer ID packaging guardrails"
+echo "external gate remains: confirm CryptoKit export compliance before setting the release Info.plist key and uploading"
