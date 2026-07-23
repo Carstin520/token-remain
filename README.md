@@ -1,54 +1,170 @@
-# UsageDock
+<div align="center">
 
-macOS 菜单栏常驻用量助手，同时展示：
+<img src="apple/App/Assets.xcassets/AppIcon.appiconset/AppIcon.png" width="128" alt="TokenRemain" />
 
-- Claude Code 官方 5 小时 / 7 天剩余额度与重置倒计时
-- Codex 主账户实时 5 小时 / 7 天剩余额度（服务端接口直查，离线时回退最近本地快照）
-- Cursor 月度账期剩余额度与重置倒计时（服务端接口直查）
-- Grok（xAI）周池剩余额度（只读 Grok CLI 凭证直查）
-- Z.ai GLM Coding Plan 会话 / 周窗口剩余额度（用户 API Key，存本机钥匙串）
-- Copilot 月度 Credits（只读本机 GitHub 登录）、Devin 日/周配额、OpenRouter 预充积分（用户 API Key）、Antigravity 配额池（只读本机登录态）、OpenCode Go 套餐（本地数据库扫描估算，纯本地）
-- token-monitor 兼容层（共 18 家）：DeepSeek 余额（API Key）、Kimi 会话/周窗口（API Key 或 kimi-auth Cookie）、MiniMax Coding Plan 5h/周（API Key）、MiMo Code 月度 token 池（Cookie）、Qoder Credits（Cookie）、Kiro（kiro-cli /usage 报告解析）、火山引擎 Coding Plan（AK:SK 签名直查）、Ollama 会话/周（session Cookie）
-- 基于真实窗口进度与官方重置时间判断当前节奏能否持续到重置，并在可能提前用尽时给出预计可用时长
-- ccusage 统计的 Claude Code / Codex 今日 token 与估算 API 成本
-- AI Feed 由 TokenRemain 广播服务统一分发产品方的公开 X 动态
-- 每日通过 APNs 向已允许通知的 macOS 与 iPhone / iPad 用户发送摘要，重大更新可即时推送
-- macOS 26 使用系统 Liquid Glass、原生侧栏与玻璃按钮；macOS 14/15 自动回退到原有深色卡片样式
+# TokenRemain
 
-## 数据与隐私
+**你的 AI 用量额度，常驻在 Mac 菜单栏**
 
-- Claude 限额主路径为官方 oauth/usage 接口直查：只读 Claude Code 已有的 OAuth access token（`~/.claude/.credentials.json` 文件优先，钥匙串兜底），绝不刷新 token、绝不写回凭证，因此不会与 Claude Code 争用 refresh token 或触发第三方续期限流。凭证缺失、过期或被拒时自动降级为在隔离伪终端中执行 `/usage` 解析——探针会让 Claude Code 自行完成续期，下一轮直查即恢复。
-- Codex 限额主路径为服务端实时接口直查：只读 `~/.codex/auth.json` 中 Codex CLI 已有的 access token（同样不续期、不写回），可同时拿到 5 小时与 7 天窗口。未登录或 token 过期时降级为 `~/.codex` 会话文件中的 rate-limit 快照；没有额外上传。
-- Cursor 月度额度同样只读 Cursor IDE 自己维护的 access token（`state.vscdb` 只读查询，钥匙串兜底），绝不使用 refresh token 代刷——代刷可能触发认证服务器的轮换检测并危及 Cursor 的登录态。因此 Cursor 长时间未运行导致 token 过期时数据会暂停更新，卡片会保留最近数据并提示“打开一次 Cursor 应用即可恢复额度刷新”。
-- Grok（xAI）只读 `~/.grok/auth.json` 中 Grok CLI 已有的凭证查询周池额度，同样绝不代刷；凭证过期时提示“运行一次 grok 即可恢复”。
-- Z.ai（GLM Coding Plan）是唯一需要手动接入的服务：在 Dashboard「数据源」页粘贴一次 API Key（也支持 `ZAI_API_KEY` 环境变量或 `~/.config/zai/key.json`），Key 仅保存在 macOS 钥匙串。
-- 除 Z.ai 外全部自动接入：登录对应工具即自动读取本机凭证，无需任何配置；未接入的服务在额度卡片与「数据源」页显示具体接入指引。
-- 首次启动有 onboarding：自动检测本机已安装的 AI 编码工具并预勾选，确认后开始追踪；之后在「额度」页可随时增删——「添加应用」卡片加入新服务，卡片右键停止追踪。选择保存在本地，菜单栏与弹窗同步跟随。
-- 显示与刷新可自定义（「设置」页）：菜单栏文字显示哪些应用自选（任意追踪中的 provider）；额度直查频率 1/5/15/30 分钟或仅手动；可开启置顶的桌面浮窗（跨空间常驻、位置记忆）。
-- ccusage 通过 `npx --yes ccusage@latest` 读取本地日志。成本是 API 标价估算，不等于订阅账单。
-- Claude 限额成功读取后会缓存到 `~/Library/Caches/com.jamesli.usagedock/`；Claude Code 暂时不可用时继续显示最近有效值。
-- 打开菜单栏面板会触发一次非阻塞的轻量刷新；刷新按钮则会立即刷新 ccusage、Codex 与 Claude。UsageDock 不会自行调用 Claude OAuth 续期接口，因此不会与 Claude Code 争用 refresh token 或触发第三方续期限流。
-- AI Feed 客户端不接受、读取或保存用户的 X API 凭证。产品方的 X 与 APNs 凭证只保存在 Cloudflare Worker Secret 中；Apple 客户端只接收公开精选内容和 APNs 通知。
+一个地方查看 Claude Code、Codex、Cursor、Grok、GLM 等 **18+** 家 AI 编码工具的剩余额度、重置倒计时与今日成本。凭证只留在本机，绝不刷新、绝不上传。
 
-## AI Feed
+<img src="site/assets/menubar.png" width="220" alt="菜单栏中的剩余额度" />
 
-`broadcast/` 是 Cloudflare Workers + D1 + Queues 后端。第一梯队每十分钟收集 `btibor91`、`sama`、`claudeai`、`AnthropicAI`、`OpenAI`、`karpathy` 的原帖，合计每天最多 30 条；第二梯队每小时从其他活跃 AI 账号中按互动热度、账号影响力和时效选取原帖，合计每天最多 20 条。两层都排除回复、转帖和引用帖。服务公开提供 `GET /v1/ai-feed`，并按设备时区每天发送一次 APNs 摘要。用户无需账号，也不会看到 X API 配置入口；设备注册只使用随机安装 ID、设备生成的撤销密钥和 APNs device token。
+<br/>
 
-macOS 与 iOS 生产构建默认连接 `https://tokenremain-broadcast.jamescarstin520.workers.dev`，也可在开发/预览环境用 `TOKENREMAIN_BROADCAST_BASE_URL` 覆盖。X、APNs 私钥与后台管理令牌均不得写入客户端、源码或 Info.plist。完整链路和接口见 `docs/curated-feed-contract.md` 与 `broadcast/README.md`。
+![macOS](https://img.shields.io/badge/macOS-14%2B_Sonoma-000?logo=apple&logoColor=white)
+![Apple Silicon](https://img.shields.io/badge/Apple_Silicon-arm64-7C5CFF)
+![Companion](https://img.shields.io/badge/iPhone_·_Widgets_·_Watch-1F2933?logo=apple&logoColor=white)
+![Notarized](https://img.shields.io/badge/Apple-Notarized-34C759?logo=apple&logoColor=white)
+![Version](https://img.shields.io/badge/version-1.0.0-22D3EE)
 
-## 本地运行
+[官网 / 下载](https://tokenremain.jamescarstin520.chatgpt.site) · [隐私政策](https://tokenremain.jamescarstin520.chatgpt.site/privacy.html) · [支持](https://tokenremain.jamescarstin520.chatgpt.site/support.html) · [问题反馈](https://github.com/Carstin520/token-remain/issues)
+
+</div>
+
+---
+
+> **TokenRemain** 是对外品牌名，`UsageDock` 是仓库内部代号（下载文件名为 `TokenRemain.dmg`）。
+> 应用为菜单栏专用，不显示 Dock 图标；所有百分比与进度条都表示**剩余**额度。
+
+## ✨ 能做什么
+
+- 🧭 **统一额度面板** — Claude Code / Codex 的官方 5 小时 · 7 天窗口与重置倒计时，Cursor 月度账期，Grok 周池，GLM 会话/周窗口……全部并排展示。
+- ⏱️ **节奏预测** — 结合真实窗口进度与官方重置时间，判断当前节奏能否撑到重置；可能提前用尽时给出预计可用时长。
+- 💰 **今日成本** — ccusage 在本地统计 Claude Code / Codex 今日 token 与按 API 标价估算的成本（非订阅账单）。
+- 📱 **跨 Apple 设备** — Mac 是唯一真实数据来源；开启同步后，仅一份加密的展示快照经你自己的 iCloud 私有库送到 iPhone / Home Screen 小组件 / Watch。
+- 📡 **AI Feed** — 服务端精选 Anthropic、OpenAI 等官方账号的公开动态，重大更新触发本机通知。
+- 🪟 **随手可见** — 菜单栏文字自选显示哪些应用、桌面浮窗跨空间置顶、刷新频率 1/5/15/30 分钟或仅手动。
+- 🎨 **原生质感** — macOS 26 使用系统 Liquid Glass 与原生侧栏；macOS 14/15 自动回退深色卡片样式。
+
+## 📸 实机截图
+
+> 以下均为最新构建的真实截图。
+
+### macOS
+
+<table>
+  <tr>
+    <td align="center" width="62%">
+      <img src="site/assets/dashboard.jpg" alt="Dashboard 概览" /><br/>
+      <sub><b>Dashboard · 概览</b> — 今日用量与成本按 provider 拆分，右侧是官方额度进度与风险提示</sub>
+    </td>
+    <td align="center" width="38%">
+      <img src="site/assets/popover.png" alt="菜单栏弹窗" /><br/>
+      <sub><b>菜单栏弹窗</b> — 一眼看完最紧张的窗口、今日成本与 AI 动态</sub>
+    </td>
+  </tr>
+</table>
+
+### iPhone 与 Home Screen 小组件
+
+<table>
+  <tr>
+    <td align="center" width="25%">
+      <img src="site/assets/phone-overview.jpg" alt="iPhone 概览" /><br/>
+      <sub><b>iPhone · 概览</b><br/>来自 Mac 的加密快照</sub>
+    </td>
+    <td align="center" width="25%">
+      <img src="site/assets/phone-trends.jpg" alt="iPhone 趋势" /><br/>
+      <sub><b>iPhone · 趋势</b><br/>30 天真实历史</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="site/assets/widget-m.png" alt="中号小组件" /><br/>
+      <img src="site/assets/widget-s.png" width="150" alt="小号小组件" /><br/>
+      <sub><b>桌面小组件</b> — 最低剩余、逐 provider 进度条与重置倒计时</sub>
+    </td>
+  </tr>
+</table>
+
+## 🔌 支持接入的应用
+
+大多数服务**登录即自动接入**：TokenRemain 只读取本机已存在的凭证，无需额外登录、绝不刷新 token。每张卡片都会标注数据来源；未接入的服务会显示具体接入指引。
+
+### 原生 Provider（10 家）
+
+| 应用 | 接入方式 | 说明 |
+| :-- | :-- | :-- |
+| **Claude Code** | 🟢 自动 | 官方 5 小时 / 7 天窗口与重置倒计时；`oauth/usage` 直查，凭证异常时降级 PTY 探针 |
+| **Codex** | 🟢 自动 | 主账户实时 5 小时 / 7 天窗口；服务端直查 + 本地快照兜底；节奏偏快给出提前用尽 ETA |
+| **Cursor** | 🟢 自动 | 月度账期额度与重置倒计时；只读 `state.vscdb` |
+| **Grok**（xAI）| 🟢 自动 | 周池剩余额度；只读 Grok CLI 凭证 |
+| **GitHub Copilot** | 🟢 自动 | 月度 Credits；只读本机 GitHub 登录 |
+| **Devin** | 🟢 自动 | 日 / 周配额 |
+| **Antigravity** | 🟢 自动 | 配额池；只读本机登录态 |
+| **OpenCode** | 💾 纯本地 | Go 套餐用量，本地数据库扫描估算，完全离线 |
+| **Z.ai**（GLM Coding Plan）| 🔑 API Key | 会话 / 周窗口；Key 仅存 macOS 钥匙串 |
+| **OpenRouter** | 🔑 API Key | 预充积分余额 |
+
+> 🟢 **自动** = 登录对应工具即接入 · 🔑 **API Key** = 需粘贴一次密钥（存钥匙串）· 💾 **纯本地** = 只扫描本地文件，不联网
+
+### token-monitor 兼容层（8 家）
+
+| 应用 | 接入方式 | | 应用 | 接入方式 |
+| :-- | :-- | :-- | :-- | :-- |
+| **DeepSeek** | API Key | | **Qoder** | Cookie |
+| **Kimi** | API Key / kimi-auth Cookie | | **Kiro** | `kiro-cli /usage` 解析 |
+| **MiniMax** | API Key | | **火山引擎**（Volcengine）| AK:SK 签名 |
+| **MiMo Code** | Cookie | | **Ollama** | session Cookie |
+
+## 🔒 数据与隐私
+
+> 隐私不是一句承诺，而是架构本身 —— 下面每一条都能在源码里核对。
+
+```
+你机器上已有的凭证 ──只读──▶ 各服务商官方 API ──▶ 本地渲染并缓存
+```
+
+- **只读凭证，绝不刷新** — 读取各工具自己维护的 access token（Claude Code 走 `oauth/usage` 直查，`~/.claude/.credentials.json` 优先、钥匙串兜底；Codex 读 `~/.codex/auth.json`；Cursor 只读 `state.vscdb`；Grok 读 `~/.grok/auth.json`）。**从不刷新、从不写回**，因此不会与工具争用 refresh token，也不会触发续期限流。凭证缺失/过期时自动降级（如 Claude 的隔离 PTY `/usage` 解析、Codex 的会话 rate-limit 快照），恢复后下一轮直查即回正。
+- **手动密钥进钥匙串** — Z.ai、OpenRouter 等手动接入的 API Key 只存 macOS 钥匙串，绝不写入源码、构建产物或日志。Z.ai 也支持 `ZAI_API_KEY` 环境变量或 `~/.config/zai/key.json`。
+- **不做凭证中转** — 额度查询直连各服务商官方 API；AI Feed、推送服务与匿名下载计数**从不接触** provider 凭证。
+- **不做行为追踪** — 无遥测、广告、cookie、分析 SDK；官网只保留一个匿名的 Mac 下载总数。
+- **无需账号** — 你从不注册 TokenRemain，本机工具已登录即可。
+- **缓存与统计留在本地** — Mac 缓存与成本统计只在本地（`~/Library/Caches/com.jamesli.usagedock/`）；只有开启同步后，一份加密的展示快照才进入你自己的 iCloud 私有库。
+
+## 📡 AI Feed
+
+`broadcast/` 是 Cloudflare Workers + D1 + Queues 后端。第一梯队每十分钟收集 `AnthropicAI`、`OpenAI`、`claudeai`、`sama`、`karpathy`、`btibor91` 的原帖（每天最多 30 条）；第二梯队每小时按互动热度、账号影响力与时效从其他活跃 AI 账号选取原帖（每天最多 20 条）。两层都排除回复、转帖与引用帖。
+
+服务公开提供 `GET /v1/ai-feed`，并按设备时区每天发送一次 APNs 摘要。用户无需账号，也看不到任何 X API 配置入口；设备注册只用随机安装 ID、设备生成的撤销密钥与 APNs device token。X、APNs 私钥与后台令牌只存在 Cloudflare Worker Secret 中，绝不写入客户端或源码。完整链路见 [`docs/curated-feed-contract.md`](docs/curated-feed-contract.md) 与 [`broadcast/README.md`](broadcast/README.md)。
+
+## 🚀 本地运行
+
+菜单栏 App（内部代号 UsageDock）：
 
 ```bash
 bash ./script/build_and_run.sh --verify
 ```
 
-应用为菜单栏专用，因此不会显示 Dock 图标。顶部栏使用 Claude / OpenAI 图标，所有百分比和进度条均表示剩余额度。Codex 快照每分钟检查一次；Claude 官方额度与 ccusage 每五分钟更新一次。
+构建完成后安装到 `~/Applications/UsageDock.app`。「登录时自动启动」使用 macOS 原生登录项管理（默认关闭，可在菜单中开启）。
 
-菜单栏展开面板内提供“登录时自动启动”开关，使用 macOS 原生登录项管理；旧版 LaunchAgent 不再使用。
+多平台工程（TokenRemain 的 Mac / iPhone / Watch App 与桌面小组件）见 `apple/TokenRemain.xcodeproj`，用 Xcode 打开即可。生产构建默认连接 `https://tokenremain-broadcast.jamescarstin520.workers.dev`，可用 `TOKENREMAIN_BROADCAST_BASE_URL` 覆盖。
 
-## 当前安装位置
+## 📁 仓库结构
 
-- 应用：`~/Applications/UsageDock.app`
-- 登录启动：默认关闭，可在菜单中按需打开
+| 目录 | 内容 |
+| :-- | :-- |
+| `Sources/UsageDock/` · `Package.swift` | SwiftPM 菜单栏 App（内部代号 UsageDock） |
+| `apple/` | Xcode 多平台工程：TokenRemain 的 Mac / iPhone / Watch App 与小组件 |
+| `broadcast/` | Cloudflare Workers AI Feed 后端（D1 + Queues + APNs） |
+| `site/` | 官网、隐私政策与支持页 |
+| `docs/` | 发布、隐私与架构文档 |
+| `design/` | 品牌、色板（`design/palette.md`）与 UI 源 |
+| `script/` | 构建、打包与校验脚本 |
 
-# token-remain
+## 📦 当前发布
+
+- **平台**：macOS 14 Sonoma 及以上，仅 Apple Silicon（arm64），暂无 Intel 构建。
+- **分发**：公开 DMG 已 Developer ID 签名并经 Apple 公证，目前在 Mac App Store 之外分发；iPhone App Store 产品在开发与发布验证完成后再公布。
+- **成本口径**：成本为 API 标价估算，不等于订阅账单；凭证过期时数据会暂停并提示恢复方式。
+
+---
+
+<div align="center">
+<sub>
+
+TokenRemain 是独立应用，与 Anthropic、OpenAI、Anysphere、xAI、GitHub、智谱 AI 或任何服务商均无隶属、背书或赞助关系；服务名称与标识仅用于标示你可选择接入的服务。
+
+发布者与支持联系人：Dongheng Li · jamescarstin520@gmail.com · © 2026
+
+</sub>
+</div>
