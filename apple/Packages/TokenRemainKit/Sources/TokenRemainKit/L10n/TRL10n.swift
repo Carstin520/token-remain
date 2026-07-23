@@ -12,7 +12,7 @@ public enum TRL10n {
     /// The UI language, resolved once per process from the system.
     ///
     /// Resolution follows the system language automatically: `-AppleLanguages` launch
-    /// overrides, the per-app language (Settings › Token Remain › Language) and the
+    /// overrides, the per-app language (Settings › TokenRemain › Language) and the
     /// device language all flow through the two signals scanned by `resolve`, so the
     /// whole interface switches with the system without any in-app language control.
     public static let current: Language = resolve()
@@ -33,7 +33,7 @@ public enum TRL10n {
     ///
     /// The primary signal is `Locale.preferredLanguages` — the user's ordered language
     /// preference, which honours the device language, the per-app language override
-    /// (Settings › Token Remain › Language) and the `-AppleLanguages` launch argument
+    /// (Settings › TokenRemain › Language) and the `-AppleLanguages` launch argument
     /// alike. `Bundle.module.preferredLocalizations` (the kit bundle's own `en` +
     /// `zh-Hans`, intersected with the user's languages) follows as a corroborating
     /// fallback. Both are per-process, so a widget or watch extension resolves in
@@ -118,11 +118,14 @@ public enum TRL10n {
         ),
         "origin.demo.status": Entry("全部数据源正常", "All sources nominal"),
         "origin.none.status": Entry("未连接数据源", "No data source"),
+        "origin.macsync.status": Entry("来自 Mac 的加密快照", "Encrypted snapshot from Mac"),
+        "origin.macsync.freshness": Entry("来自 Mac · %@", "From Mac · %@"),
+        "origin.macsync.expired": Entry("Mac 数据已过期", "Mac data expired"),
         "demo.chip": Entry("演示", "DEMO"),
         "demo.a11y": Entry("演示数据", "Demo data"),
         "privacy.statement": Entry(
-            "Token Remain 不联网、不存储任何凭证。",
-            "Token Remain never connects to the network and stores no credentials."
+            "默认仅在本机处理。Mac 同步只把白名单额度快照写入应用层加密的 iCloud 私有数据库；每日 Token/费用历史需在 Mac 单独授权，provider 凭证永不上传。",
+            "Processing is local by default. Mac sync writes only an allowlisted quota snapshot into your app-layer-encrypted private iCloud database; daily token/cost history needs separate Mac authorization, and provider credentials are never uploaded."
         ),
 
         // Tabs
@@ -138,10 +141,33 @@ public enum TRL10n {
         "overview.pace.runout": Entry("预计 %@ 后用尽", "Runs out in %@"),
         "overview.reset.card": Entry("重置还有", "Resets in"),
         "overview.trend.card": Entry("7 天趋势", "7-day trend"),
-        "overview.trend.empty": Entry("暂无本机历史", "No on-device history yet"),
+        "overview.trend.empty": Entry("暂无每日用量历史", "No daily usage history yet"),
         "overview.cta": Entry("查看最紧张窗口", "View tightest window"),
+        "overview.provider.hint": Entry("轻点查看该数据源的窗口详情", "Tap for this source's window details"),
+        "overview.today.today": Entry("今日", "Today"),
+        "overview.today.yesterday": Entry("昨日", "Yesterday"),
+        "overview.today.recent": Entry("近 %d 天", "Last %d days"),
+        "overview.today.trend": Entry("用量趋势", "Usage trend"),
+        "overview.today.cost.a11y": Entry("今日用量，估算成本 %@ 美元", "Today's usage, estimated cost %@ US dollars"),
+        "overview.widget.manage": Entry("管理概览组件", "Manage overview widgets"),
+        "overview.widget.visible": Entry("正在显示", "Shown"),
+        "overview.widget.add": Entry("添加组件", "Add widget"),
+        "overview.widget.all.visible": Entry("所有组件均已显示", "All widgets are shown"),
+        "overview.widget.hide": Entry("隐藏组件", "Hide widget"),
+        "overview.widget.move": Entry("移动组件", "Move widget"),
+        "overview.widget.move.up": Entry("上移", "Move up"),
+        "overview.widget.move.down": Entry("下移", "Move down"),
+        "overview.widget.options": Entry("组件选项", "Widget options"),
+        "overview.widget.expand": Entry("展开窗口", "Expand windows"),
+        "overview.widget.collapse": Entry("收起窗口", "Collapse windows"),
+        "overview.feed.title": Entry("精选 X 动态", "Curated X posts"),
+        "overview.feed.empty": Entry("Mac 正在筛选公开 X 动态；有真实内容后会加密同步到这里。", "Mac is curating public X posts. Real posts will appear here after encrypted sync."),
+        "overview.feed.freshness": Entry("Mac 筛选于 %@", "Curated on Mac %@"),
+        "overview.feed.open.hint": Entry("在 X 中打开这条公开动态", "Open this public post on X"),
 
         // Limits
+        "limits.window.caption": Entry("官方额度窗口", "Official quota window"),
+        "limits.freshness": Entry("官方数据更新于 %@", "Official data updated %@"),
         "limits.pace.expected": Entry("预算用量", "Budgeted use"),
         "limits.pace.actual": Entry("实际用量", "Actual use"),
         "limits.pace.delta": Entry("偏差", "Delta"),
@@ -155,22 +181,46 @@ public enum TRL10n {
         "limits.empty": Entry("没有可显示的额度窗口。", "No quota windows to show."),
 
         // Trends
+        "trends.title.usage": Entry("每日用量趋势", "Daily usage trend"),
+        "trends.subtitle.usage": Entry("Claude + Codex 堆叠 · 来自 Mac 本地 ccusage", "Claude + Codex stacked · local Mac ccusage"),
+        "trends.range": Entry("范围", "Range"),
+        "trends.metric": Entry("指标", "Metric"),
+        "trends.metric.tokens": Entry("Tokens", "Tokens"),
+        "trends.metric.cost": Entry("费用", "Cost"),
+        "trends.readout.latest": Entry("最新一天", "Latest day"),
+        "trends.readout.selected": Entry("已选", "Selected"),
+        "trends.readout.a11y": Entry("%1$@，Claude %2$@，Codex %3$@", "%1$@, Claude %2$@, Codex %3$@"),
+        "trends.value.tokens.a11y": Entry("%@ Tokens", "%@ tokens"),
+        "trends.value.cost.a11y": Entry("估算费用 %@ 美元", "Estimated cost %@ US dollars"),
+        "trends.totals.title": Entry("近 %d 天合计", "%d-day total"),
+        "trends.totals.combined": Entry("合计", "Total"),
+        "trends.empty.title": Entry("每日历史积累中", "Daily history is accumulating"),
+        "trends.meta.days": Entry("已同步 %d 天真实历史", "%d days of real history synced"),
+        "trends.meta.captured": Entry("Mac 最近采集 %@", "Last captured on Mac %@"),
+        "trends.chart.a11y": Entry("%d 天堆叠柱状图，指标 %@", "%d-day stacked bar chart, metric %@"),
+        "trends.privacy": Entry(
+            "历史只含 Claude / Codex 的按日 Token 与估算费用；不含账号、提示词、项目、会话或逐请求明细。",
+            "History contains only daily Claude/Codex tokens and estimated cost; no accounts, prompts, projects, sessions, or request-level details."
+        ),
         "trends.title.min": Entry("最低剩余（按天）", "Lowest remaining (daily)"),
         "trends.title.provider": Entry("各数据源剩余", "Remaining by source"),
         "trends.meta.points": Entry("记录点数 %d", "%d recorded points"),
         "trends.meta.earliest": Entry("最早记录 %@", "Earliest record %@"),
         "trends.empty": Entry(
-            "iPhone 端没有独立数据源，趋势只记录本机看到过的快照。",
-            "iPhone has no independent data source; trends only record snapshots this device has actually seen."
+            "需要 Mac 至少积累两天 ccusage 历史，并在桌面端单独开启“同步每日 Token / 费用历史”。这里不会用额度快照虚构曲线。",
+            "At least two days of Mac ccusage history are required, with Daily Token/Cost History explicitly enabled on Mac. Quota snapshots are never turned into an invented curve."
         ),
 
         // Settings
         "settings.section.source": Entry("数据源", "Data source"),
         "settings.origin.row": Entry("当前来源", "Current origin"),
         "settings.demo.toggle": Entry("演示模式", "Demo Mode"),
+        "settings.macsync.toggle": Entry("从 Mac 安全同步", "Secure sync from Mac"),
+        "settings.macsync.refresh": Entry("立即从 iCloud 拉取", "Pull from iCloud now"),
+        "settings.macsync.confirm": Entry("确认改用这台 Mac", "Confirm this Mac as source"),
         "settings.demo.footer": Entry(
-            "演示模式使用确定性示例数据，所有界面都会显示「演示」标记。关闭后，小组件、实时活动与手表都会回到「未连接」状态。",
-            "Demo Mode uses deterministic sample data and marks every surface as DEMO. Turning it off returns widgets, Live Activity and the watch to the not-connected state."
+            "Mac 同步使用 iCloud 私有数据库和应用层加密；每日 Token/费用历史需在 Mac 单独授权，provider 凭证永不上传。演示模式只使用确定性示例数据。",
+            "Mac sync uses your private iCloud database plus app-layer encryption; daily token/cost history needs separate Mac authorization, and provider credentials are never uploaded. Demo Mode uses deterministic sample data only."
         ),
         "settings.scenario": Entry("演示场景", "Demo scenario"),
         "settings.section.liveactivity": Entry("实时活动", "Live Activity"),
@@ -178,11 +228,12 @@ public enum TRL10n {
         "settings.liveactivity.stop": Entry("停止实时活动", "Stop Live Activity"),
         "settings.liveactivity.active": Entry("运行中", "Running"),
         "settings.liveactivity.inactive": Entry("未运行", "Not running"),
-        "settings.liveactivity.denied": Entry("系统已关闭实时活动权限，请在「设置 › Token Remain」中开启。", "Live Activities are disabled for this app in iOS Settings."),
+        "settings.liveactivity.denied": Entry("系统已关闭实时活动权限，请在「设置 › TokenRemain」中开启。", "Live Activities are disabled for this app in iOS Settings."),
         "settings.liveactivity.needsdemo": Entry("实时活动只显示演示数据，请先打开演示模式。", "Live Activity only shows demo data — turn on Demo Mode first."),
+        "settings.liveactivity.needssource": Entry("连接 Mac 同步或打开演示模式后才能开始。", "Connect Mac sync or enable Demo Mode first."),
         "settings.section.widgets": Entry("小组件", "Widgets"),
-        "settings.widgets.home": Entry("长按主屏幕空白处 › 编辑 › 添加小组件 › Token Remain", "Touch and hold the Home Screen › Edit › Add Widget › Token Remain"),
-        "settings.widgets.lock": Entry("锁定屏幕 › 自定义 › 添加小组件 › Token Remain", "Lock Screen › Customize › Add Widgets › Token Remain"),
+        "settings.widgets.home": Entry("长按主屏幕空白处 › 编辑 › 添加小组件 › TokenRemain", "Touch and hold the Home Screen › Edit › Add Widget › TokenRemain"),
+        "settings.widgets.lock": Entry("锁定屏幕 › 自定义 › 添加小组件 › TokenRemain", "Lock Screen › Customize › Add Widgets › TokenRemain"),
         "settings.widgets.control": Entry("设置 › 操作按钮 › 控制 › 刷新额度", "Settings › Action Button › Controls › Refresh quota"),
         "settings.section.watch": Entry("Apple Watch", "Apple Watch"),
         "settings.watch.paired": Entry("已配对", "Paired"),
@@ -199,7 +250,7 @@ public enum TRL10n {
         "intent.refresh.title": Entry("刷新额度", "Refresh quota"),
         "intent.refresh.done": Entry("已刷新 · 最低 %@", "Refreshed · lowest %@"),
         "intent.refresh.none": Entry("未连接数据源", "No data source connected"),
-        "intent.open.title": Entry("查看 Token Remain", "Open Token Remain"),
+        "intent.open.title": Entry("查看 TokenRemain", "Open TokenRemain"),
         "intent.startla.title": Entry("开始实时活动", "Start Live Activity"),
         "intent.stopla.title": Entry("停止实时活动", "Stop Live Activity"),
         "intent.startla.done": Entry("实时活动已开始", "Live Activity started"),
@@ -231,7 +282,7 @@ public enum TRL10n {
         "watch.plan": Entry("套餐 %@", "%@ plan"),
         "watch.page.overview": Entry("概览", "Overview"),
         "watch.waiting": Entry("等待 iPhone 同步", "Waiting for iPhone sync"),
-        "watch.waiting.body": Entry("在 iPhone 上打开 Token Remain 即可同步最新快照。", "Open Token Remain on iPhone to sync the latest snapshot."),
+        "watch.waiting.body": Entry("在 iPhone 上打开 TokenRemain 即可同步最新快照。", "Open TokenRemain on iPhone to sync the latest snapshot."),
 
         // Robot moods (ported descriptions)
         "robot.100": Entry("额度充足，兴奋", "Plenty of quota — excited"),
@@ -245,8 +296,8 @@ public enum TRL10n {
         "robot.20": Entry("额度很低，晕厥", "Very low quota — dizzy"),
         "robot.10": Entry("额度即将耗尽，焦虑", "Nearly exhausted — anxious"),
         "robot.0": Entry("额度已耗尽", "Quota exhausted"),
-        "robot.a11y.waiting": Entry("Token Remain，等待额度数据", "Token Remain, waiting for quota data"),
-        "robot.a11y.value": Entry("Token Remain，剩余 %1$d%%，%2$@", "Token Remain, %1$d%% remaining, %2$@"),
+        "robot.a11y.waiting": Entry("TokenRemain，等待额度数据", "TokenRemain, waiting for quota data"),
+        "robot.a11y.value": Entry("TokenRemain，剩余 %1$d%%，%2$@", "TokenRemain, %1$d%% remaining, %2$@"),
 
         // Shared "AI usage" marker (widgets / complications). Not a proper noun — a
         // plain label that must switch with the language.
@@ -264,12 +315,12 @@ public enum TRL10n {
         // Widget & complication gallery metadata (display name + description). These
         // are rendered by each widget's `body`, so they resolve per widget-process
         // language just like every other string.
-        "widget.name.quota": Entry("Token Remain · 额度", "Token Remain · Quota"),
-        "widget.name.percent": Entry("Token Remain · 百分比", "Token Remain · %"),
-        "widget.name.reset": Entry("Token Remain · 重置", "Token Remain · Reset"),
-        "widget.name.rings": Entry("Token Remain · 剩余环", "Token Remain · Remaining rings"),
-        "widget.name.corner": Entry("Token Remain · 角标", "Token Remain · Corner"),
-        "widget.name.inline": Entry("Token Remain · 单行", "Token Remain · Inline"),
+        "widget.name.quota": Entry("TokenRemain · 额度", "TokenRemain · Quota"),
+        "widget.name.percent": Entry("TokenRemain · 百分比", "TokenRemain · %"),
+        "widget.name.reset": Entry("TokenRemain · 重置", "TokenRemain · Reset"),
+        "widget.name.rings": Entry("TokenRemain · 剩余环", "TokenRemain · Remaining rings"),
+        "widget.name.corner": Entry("TokenRemain · 角标", "TokenRemain · Corner"),
+        "widget.name.inline": Entry("TokenRemain · 单行", "TokenRemain · Inline"),
         "widget.desc.min": Entry("最低剩余额度", "Minimum remaining quota"),
         "widget.desc.reset": Entry("下次额度重置", "Next quota reset"),
         "widget.desc.quota": Entry("Claude 与 Codex 额度", "Claude and Codex quota"),

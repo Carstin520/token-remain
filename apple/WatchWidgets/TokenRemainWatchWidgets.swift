@@ -41,13 +41,13 @@ struct TRWatchRemainGauge: Widget {
         StaticConfiguration(kind: "TRWatchRemainGauge", provider: WatchTimelineProvider()) { entry in
             Group {
                 if entry.hasNumbers {
-                    // Watch-face surface: brand-coloured meters (Claude coral, Codex
-                    // blue) so the ring reads as "AI usage" at a glance.
+                    // Meters carry the muted provider accents (terracotta / steel
+                    // blue) — brand colour stays on logos, per the desktop rule.
                     ActivityRings(
                         outerRemaining: entry.remainingPercent(for: .claude) ?? entry.minRemainingPercent ?? 0,
                         innerRemaining: entry.remainingPercent(for: .codex) ?? entry.minRemainingPercent ?? 0,
-                        outerColor: TRTheme.claudeBrand,
-                        innerColor: TRTheme.codexBrand,
+                        outerColor: TRTheme.claudeAccent,
+                        innerColor: TRTheme.codexAccent,
                         lineWidth: nil,
                         centerLabel: entry.heroText
                     )
@@ -115,7 +115,7 @@ struct TRWatchStatusRobot: Widget {
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(entry.watchAccessibilityLabel)
         }
-        .configurationDisplayName("Token Remain")
+        .configurationDisplayName("TokenRemain")
         .description(TRL10n.t("widget.desc.status"))
         .supportedFamilies([.accessoryCircular])
     }
@@ -175,6 +175,11 @@ struct TRWatchRectangular: Widget {
                                 if entry.isDemo {
                                     Text("D̸").font(.system(size: 8, design: .monospaced))
                                 }
+                                if entry.isStale {
+                                    Text(TRL10n.t("liveactivity.stale"))
+                                        .font(.system(size: 7, design: .monospaced))
+                                        .foregroundStyle(TRTheme.textDim)
+                                }
                             }
                             HStack(spacing: 4) {
                                 Text(entry.heroText)
@@ -212,7 +217,7 @@ struct TRWatchRectangular: Widget {
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(entry.watchAccessibilityLabel)
         }
-        .configurationDisplayName("Token Remain")
+        .configurationDisplayName("TokenRemain")
         .description(TRL10n.t("widget.desc.min"))
         .supportedFamilies([.accessoryRectangular])
     }
@@ -226,6 +231,7 @@ struct TRWatchInline: Widget {
             // "AI 46% · 可持续到重置" — AI-usage marker, min %, pace verdict.
             Text(entry.hasNumbers
                 ? "AI \(entry.isDemo ? "D̸ " : "")\(entry.heroText) · \(entry.paceLine)"
+                    + (entry.isStale ? " · \(TRL10n.t("liveactivity.stale"))" : "")
                 : TRL10n.t("origin.none.status"))
                 .trWatchContainer()
                 .accessibilityLabel(entry.watchAccessibilityLabel)
@@ -238,10 +244,13 @@ struct TRWatchInline: Widget {
 
 extension TREntry {
     var watchAccessibilityLabel: String {
-        guard hasNumbers else { return TRL10n.t("watch.waiting") }
+        guard hasNumbers else {
+            return isExpired ? TRL10n.t("origin.macsync.expired") : TRL10n.t("watch.waiting")
+        }
         var parts = ["\(TRL10n.t("overview.min_remaining")) \(heroText)", paceLine]
         parts.append(TRL10n.f("watch.provenance", UsageFormatting.freshnessDescription(since: generatedAt, now: date)))
         if isDemo { parts.append(TRL10n.t("demo.a11y")) }
+        if isStale { parts.append(TRL10n.t("liveactivity.stale")) }
         return parts.joined(separator: "，")
     }
 }

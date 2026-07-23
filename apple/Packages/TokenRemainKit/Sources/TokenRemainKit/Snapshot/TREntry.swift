@@ -34,6 +34,8 @@ public struct TREntry: Sendable, Equatable {
     public let date: Date
     public let origin: SnapshotOrigin
     public let generatedAt: Date
+    public let isStale: Bool
+    public let isExpired: Bool
     public let minRemainingPercent: Double?
     public let risk: RiskLevel
     public let providers: [ProviderLine]
@@ -62,19 +64,23 @@ public struct TREntry: Sendable, Equatable {
         date = now
         origin = snapshot.origin
         generatedAt = snapshot.generatedAt
-        if snapshot.origin == .none {
+        isStale = snapshot.isMacSyncStale(at: now)
+        isExpired = snapshot.isMacSyncExpired(at: now)
+        if snapshot.origin == .none || isExpired {
             minRemainingPercent = nil
             risk = .unknown
             providers = []
             soonestReset = nil
             willLastUntilReset = true
-            paceLine = TRL10n.t("origin.none.status")
+            paceLine = isExpired
+                ? TRL10n.t("origin.macsync.expired")
+                : TRL10n.t("origin.none.status")
             runOutAt = nil
             return
         }
         minRemainingPercent = insights.minRemainingPercent
         risk = insights.riskLevel(at: now)
-        providers = ProviderQuota.Provider.allCases.compactMap { provider in
+        let allProviderLines = ProviderQuota.Provider.allCases.compactMap { provider -> ProviderLine? in
             guard let lead = insights.leadWindow(for: provider) else { return nil }
             return ProviderLine(
                 id: lead.id,
@@ -84,6 +90,10 @@ public struct TREntry: Sendable, Equatable {
                 resetsAt: lead.resetsAt
             )
         }
+        // Widgets and Live Activities are intentionally dense. Keep the first
+        // two stable provider slots (Claude/Codex when available) while the
+        // in-app Limits page renders the full set.
+        providers = Array(allProviderLines.prefix(2))
         soonestReset = insights.soonestReset
         let assessment = insights.paceAssessment(at: now)
         willLastUntilReset = assessment == nil

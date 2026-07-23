@@ -16,7 +16,11 @@ struct TokenRemainLiveActivity: Widget {
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
                     VStack(alignment: .leading, spacing: 3) {
-                        PixelRobot(remainingPercent: context.state.minRemainingPercent, size: 24)
+                        TokenRemainHeadLogo(
+                            claudeRemaining: context.state.remainingPercent(for: .claude),
+                            codexRemaining: context.state.remainingPercent(for: .codex),
+                            size: 24
+                        )
                             .accessibilityHidden(true)
                         HStack(spacing: 2) {
                             if context.state.isDemo {
@@ -90,7 +94,11 @@ struct TokenRemainLiveActivity: Widget {
                     .accessibilityLabel(TRL10n.t("intent.refresh.title"))
                 }
             } compactLeading: {
-                PixelRobot(remainingPercent: context.state.minRemainingPercent, size: 18)
+                TokenRemainHeadLogo(
+                    claudeRemaining: context.state.remainingPercent(for: .claude),
+                    codexRemaining: context.state.remainingPercent(for: .codex),
+                    size: 18
+                )
                     .accessibilityHidden(true)
             } compactTrailing: {
                 HStack(spacing: 2) {
@@ -104,7 +112,11 @@ struct TokenRemainLiveActivity: Widget {
                     .font(.system(size: 13, design: .monospaced).monospacedDigit())
                     .accessibilityLabel("\(TRL10n.t("overview.min_remaining")) \(context.state.heroText)")
             } minimal: {
-                PixelRobot(remainingPercent: context.state.minRemainingPercent, size: 16)
+                TokenRemainHeadLogo(
+                    claudeRemaining: context.state.remainingPercent(for: .claude),
+                    codexRemaining: context.state.remainingPercent(for: .codex),
+                    size: 16
+                )
                     .accessibilityLabel("\(TRL10n.t("overview.min_remaining")) \(context.state.heroText)")
             }
             .widgetURL(TRRoute.overview.url)
@@ -120,19 +132,23 @@ struct TokenRemainLiveActivity: Widget {
     }
 
     private func isStale(_ state: TokenRemainActivityAttributes.ContentState) -> Bool {
-        Date().timeIntervalSince(state.generatedAt) > 3_600
+        state.isStale(at: Date())
     }
 }
 
 struct LockScreenLiveActivityView: View {
     let state: TokenRemainActivityAttributes.ContentState
 
-    private var isStale: Bool { Date().timeIntervalSince(state.generatedAt) > 3_600 }
+    private var isStale: Bool { state.isStale(at: Date()) }
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
-                PixelRobot(remainingPercent: state.minRemainingPercent, size: 34)
+                TokenRemainHeadLogo(
+                    claudeRemaining: state.remainingPercent(for: .claude),
+                    codexRemaining: state.remainingPercent(for: .codex),
+                    size: 34
+                )
                     .accessibilityHidden(true)
                 Text(TRL10n.t("overview.min_remaining"))
                     .font(.system(size: 9, design: .monospaced))
@@ -186,5 +202,11 @@ struct LockScreenLiveActivityView: View {
         if state.isDemo { parts.append(TRL10n.t("demo.a11y")) }
         if isStale { parts.append(TRL10n.t("liveactivity.stale")) }
         return parts.joined(separator: "，")
+    }
+}
+
+private extension TokenRemainActivityAttributes.ContentState {
+    func remainingPercent(for provider: ProviderQuota.Provider) -> Double? {
+        providers.first { $0.provider == provider }?.remainingPercent
     }
 }

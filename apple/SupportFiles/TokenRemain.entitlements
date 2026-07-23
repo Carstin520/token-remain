@@ -2,9 +2,35 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- CloudKit is enabled only for the iPhone main app. Runtime code must use
+	     CKContainer.privateCloudDatabase; this entitlement does not grant a
+	     public or shared data path. -->
+	<key>com.apple.developer.icloud-container-identifiers</key>
+	<array>
+		<string>iCloud.com.jamesli.tokenremain</string>
+	</array>
+	<!-- CKContainer uses this entitlement to select the Development or Production
+	     database. XcodeGen supplies the value per build configuration. -->
+	<key>com.apple.developer.icloud-container-environment</key>
+	<string>$(ICLOUD_CONTAINER_ENVIRONMENT)</string>
+	<key>com.apple.developer.icloud-services</key>
+	<array>
+		<string>CloudKit</string>
+	</array>
+	<!-- Xcode expands APS_ENVIRONMENT by configuration: development for Debug,
+	     production for Release. The provisioning profile must authorize the
+	     matching value before a device/archive build can sign. -->
+	<key>aps-environment</key>
+	<string>$(APS_ENVIRONMENT)</string>
 	<key>com.apple.security.application-groups</key>
 	<array>
 		<string>group.com.jamesli.tokenremain</string>
+	</array>
+	<!-- Main-app only: the synchronizable AES key. Provider credentials are not
+	     stored under this access group and extensions do not receive it. -->
+	<key>keychain-access-groups</key>
+	<array>
+		<string>$(AppIdentifierPrefix)com.jamesli.tokenremain.sync</string>
 	</array>
 </dict>
 </plist>

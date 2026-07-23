@@ -3,6 +3,16 @@ import Foundation
 import WidgetKit
 #endif
 
+enum SnapshotFileProtection {
+    static var writeOptions: Data.WritingOptions {
+        #if os(iOS) || os(watchOS)
+        [.atomic, .completeFileProtectionUntilFirstUserAuthentication]
+        #else
+        .atomic
+        #endif
+    }
+}
+
 public enum AppGroup {
     public static let identifier = "group.com.jamesli.tokenremain"
 
@@ -50,7 +60,9 @@ public struct SnapshotStore: Sendable {
     public func write(_ snapshot: UsageSnapshot) {
         guard let data = try? snapshot.encoded() else { return }
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        try? data.write(to: fileURL, options: .atomic)
+        // Select Data Protection as part of the atomic file creation/replacement
+        // instead of applying it in a second, failure-prone metadata operation.
+        try? data.write(to: fileURL, options: SnapshotFileProtection.writeOptions)
         // Cheap change token so widgets can detect a new snapshot without a file read.
         defaults.set(snapshot.generatedAt.timeIntervalSince1970, forKey: Self.stampKey)
     }

@@ -380,9 +380,65 @@ public struct ProviderGlyph: View {
                         )
                     )
                 }
+            default:
+                Image(systemName: provider.systemImage)
+                    .resizable()
+                    .scaledToFit()
+                    .foregroundStyle(TRTheme.brandColor(for: provider))
             }
         }
         .frame(width: size, height: size)
+        .accessibilityHidden(true)
+    }
+}
+
+// MARK: - Ring gauge (single, centred)
+
+/// A single centred ring meter — the watch's primary gauge since the 2026-07-22
+/// centre-focused redesign (block SegmentBars pushed content to the display's
+/// edges; a ring puts the value at the optical centre). The ring encodes
+/// **remaining** (0…100), stroked in a muted provider accent over the track;
+/// whatever matters most (hero %, captions) lives inside the ring.
+public struct RingGauge<Center: View>: View {
+    private let remaining: Double
+    private let accent: Color
+    private let lineWidthRatio: CGFloat
+    private let center: Center
+
+    public init(
+        remaining: Double,
+        accent: Color,
+        lineWidthRatio: CGFloat = 0.10,
+        @ViewBuilder center: () -> Center
+    ) {
+        self.remaining = remaining
+        self.accent = accent
+        self.lineWidthRatio = lineWidthRatio
+        self.center = center()
+    }
+
+    public var body: some View {
+        GeometryReader { geo in
+            let side = min(geo.size.width, geo.size.height)
+            let width = side * lineWidthRatio
+            let diameter = side - width
+            let fraction = max(0, min(1, remaining / 100))
+            ZStack {
+                Circle()
+                    .stroke(TRTheme.track, lineWidth: width)
+                    .frame(width: diameter, height: diameter)
+                Circle()
+                    // Any non-zero remaining keeps a visible sliver lit.
+                    .trim(from: 0, to: max(remaining > 0 ? 0.02 : 0, fraction))
+                    .stroke(accent, style: StrokeStyle(lineWidth: width, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                    .frame(width: diameter, height: diameter)
+                center
+                    .frame(width: diameter - width * 2)
+            }
+            .frame(width: side, height: side)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
         .accessibilityHidden(true)
     }
 }
@@ -470,10 +526,9 @@ public struct ActivityRings: View {
 
 // MARK: - Robot-head mark (vector, template-safe)
 
-/// A simplified single-colour robot head — antenna, stroked head, two eye blocks.
-/// Drawn as vector geometry so it stays crisp below ~10pt where the bitmap
-/// `PixelRobot` matrix muddies, and renders correctly as a template in the Lock
-/// Screen / watch-face vibrant modes. Signals "AI" at complication centre sizes.
+/// A simplified single-colour Orbit mark for sizes below the 16×16 pixel matrix.
+/// The top antenna, round-octagonal shell, side nodes, visor, and bottom stabilizer
+/// preserve the same silhouette in Lock Screen and watch-face vibrant modes.
 public struct RobotHeadGlyph: View {
     private let size: CGFloat
     private let color: Color
@@ -488,27 +543,47 @@ public struct RobotHeadGlyph: View {
             let w = canvasSize.width
             let h = canvasSize.height
             let stroke = max(1, w * 0.08)
-            // Antenna.
+
+            // Antenna and square signal cap.
             var antenna = Path()
-            antenna.move(to: CGPoint(x: w * 0.5, y: h * 0.30))
-            antenna.addLine(to: CGPoint(x: w * 0.5, y: h * 0.15))
-            context.stroke(antenna, with: .color(color), style: StrokeStyle(lineWidth: stroke, lineCap: .round))
+            antenna.move(to: CGPoint(x: w * 0.5, y: h * 0.24))
+            antenna.addLine(to: CGPoint(x: w * 0.5, y: h * 0.12))
+            context.stroke(antenna, with: .color(color), style: StrokeStyle(lineWidth: stroke, lineCap: .square))
             context.fill(
-                Path(ellipseIn: CGRect(x: w * 0.42, y: h * 0.06, width: w * 0.16, height: w * 0.16)),
+                Path(CGRect(x: w * 0.43, y: h * 0.04, width: w * 0.14, height: h * 0.12)),
                 with: .color(color)
             )
-            // Head.
-            let head = CGRect(x: w * 0.18, y: h * 0.30, width: w * 0.64, height: h * 0.50)
+
+            // Rounded-square shell matching the 2026-07-22 pixel-head redesign.
+            let shell = CGRect(x: w * 0.20, y: h * 0.24, width: w * 0.60, height: h * 0.58)
             context.stroke(
-                Path(roundedRect: head, cornerRadius: w * 0.14),
+                Path(roundedRect: shell, cornerRadius: w * 0.10),
                 with: .color(color),
                 lineWidth: stroke
             )
-            // Eyes.
-            let eyeW = w * 0.14, eyeH = h * 0.14, eyeY = h * 0.47
-            for x in [w * 0.31, w * 0.55] {
+            // Side signal ears.
+            for x in [w * 0.06, w * 0.82] {
                 context.fill(
-                    Path(roundedRect: CGRect(x: x, y: eyeY, width: eyeW, height: eyeH), cornerRadius: 1),
+                    Path(CGRect(x: x, y: h * 0.44, width: w * 0.12, height: h * 0.18)),
+                    with: .color(color)
+                )
+            }
+            // Little feet.
+            for x in [w * 0.30, w * 0.58] {
+                context.fill(
+                    Path(CGRect(x: x, y: h * 0.82, width: w * 0.12, height: h * 0.12)),
+                    with: .color(color)
+                )
+            }
+
+            // Large inset visor and square eyes — the visor stays the dominant
+            // feature so mood eye-shapes remain legible at complication sizes.
+            let visor = CGRect(x: w * 0.28, y: h * 0.36, width: w * 0.44, height: h * 0.30)
+            context.stroke(Path(visor), with: .color(color), lineWidth: stroke)
+            let eyeSize = max(1, w * 0.09)
+            for x in [w * 0.375, w * 0.535] {
+                context.fill(
+                    Path(CGRect(x: x, y: h * 0.465, width: eyeSize, height: eyeSize)),
                     with: .color(color)
                 )
             }
@@ -521,10 +596,10 @@ public struct RobotHeadGlyph: View {
 // MARK: - Mini dual arc (AI-usage corner mark)
 
 /// A compact "AI usage" mark: two concentric ~270° arcs (outer = Claude, inner =
-/// Codex) around a small robot head. On watch-face/lock complications the arcs carry
-/// the vendors' **brand** colours (Claude coral, Codex blue) so the mark reads as AI
-/// usage at a glance; the two radii keep them distinguishable when hue flattens in
-/// vibrant rendering. Drawn in a single `Canvas` for crisp small-size output.
+/// Codex) around a small robot head. The arcs are *meters*, so they carry the muted
+/// provider accents (terracotta / steel blue) — brand colour stays on logos only;
+/// the two radii keep them distinguishable when hue flattens in vibrant rendering.
+/// Drawn in a single `Canvas` for crisp small-size output.
 public struct MiniDualArc: View {
     private let outerRemaining: Double
     private let innerRemaining: Double
@@ -539,8 +614,8 @@ public struct MiniDualArc: View {
     public init(
         outerRemaining: Double,
         innerRemaining: Double,
-        outerColor: Color = TRTheme.claudeBrand,
-        innerColor: Color = TRTheme.codexBrand,
+        outerColor: Color = TRTheme.claudeAccent,
+        innerColor: Color = TRTheme.codexAccent,
         size: CGFloat = 28
     ) {
         self.outerRemaining = outerRemaining

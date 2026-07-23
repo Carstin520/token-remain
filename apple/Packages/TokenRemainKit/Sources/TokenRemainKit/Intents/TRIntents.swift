@@ -45,7 +45,7 @@ public enum TRRoute: String, Sendable, CaseIterable {
 public enum TRTabEntity: String, AppEnum {
     case overview, limits, trends, settings
 
-    public static var typeDisplayRepresentation: TypeDisplayRepresentation { "Token Remain Tab" }
+    public static var typeDisplayRepresentation: TypeDisplayRepresentation { "TokenRemain Tab" }
 
     // The AppIntents metadata processor extracts these at build time, so they must
     // be static literals rather than runtime lookups.
@@ -61,13 +61,14 @@ public enum TRTabEntity: String, AppEnum {
     public var route: TRRoute { TRRoute(rawValue: rawValue) ?? .overview }
 }
 
-/// Recomposes the snapshot at the current instant, persists it to the App Group,
-/// reloads widgets and updates a running Live Activity. Runs entirely in-process —
-/// there is nothing to fetch, because there is no source to fetch from.
+/// Refreshes the current local presentation snapshot, persists it to the App
+/// Group, reloads widgets and updates a running Live Activity. A Mac-synced
+/// snapshot is read back unchanged; this intent never composes replacement
+/// values for an external data source.
 public struct RefreshSnapshotIntent: AppIntent {
     public static var title: LocalizedStringResource { "Refresh quota" }
     public static var description: IntentDescription {
-        IntentDescription("Recompose the Token Remain snapshot and refresh every surface.")
+        IntentDescription("Recompose the TokenRemain snapshot and refresh every surface.")
     }
     public static var openAppWhenRun: Bool { false }
 
@@ -76,13 +77,19 @@ public struct RefreshSnapshotIntent: AppIntent {
     public func perform() async throws -> some IntentResult & ProvidesDialog {
         let now = Date()
         let settings = TRSettingsStore.shared
-        let snapshot = SnapshotComposer.compose(
-            origin: settings.origin,
-            scenario: settings.demoScenario,
-            now: now
-        )
+        let snapshot: UsageSnapshot
+        if settings.origin == .macSync {
+            snapshot = SnapshotStore.shared.read().flatMap { $0.origin == .macSync ? $0 : nil }
+                ?? UsageSnapshot(origin: .macSync, generatedAt: now, providers: [], dailyTokens: nil)
+        } else {
+            snapshot = SnapshotComposer.compose(
+                origin: settings.origin,
+                scenario: settings.demoScenario,
+                now: now
+            )
+        }
         SnapshotStore.shared.write(snapshot)
-        if snapshot.origin == .demo {
+        if snapshot.origin != .none {
             SnapshotHistoryStore.shared.append(snapshot)
         }
         WidgetReload.all()
@@ -104,7 +111,7 @@ public struct RefreshSnapshotIntent: AppIntent {
 }
 
 public struct OpenTabIntent: AppIntent {
-    public static var title: LocalizedStringResource { "Open Token Remain" }
+    public static var title: LocalizedStringResource { "Open TokenRemain" }
     public static var openAppWhenRun: Bool { true }
 
     @Parameter(title: "Tab")

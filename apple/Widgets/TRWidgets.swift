@@ -18,9 +18,10 @@ struct TRHeroWidget: Widget {
                 .widgetURL(TRRoute.overview.url)
                 .trWidgetContainer()
         }
-        .configurationDisplayName("Token Remain")
+        .configurationDisplayName("TokenRemain")
         .description(TRL10n.t("widget.desc.min"))
         .supportedFamilies([.systemSmall])
+        .contentMarginsDisabled()
     }
 }
 
@@ -34,6 +35,7 @@ struct TRProvidersWidget: Widget {
         .configurationDisplayName(TRL10n.t("widget.name.quota"))
         .description(TRL10n.t("widget.desc.quota"))
         .supportedFamilies([.systemMedium])
+        .contentMarginsDisabled()
     }
 }
 
@@ -44,7 +46,7 @@ struct TRInlineWidget: Widget {
                 .widgetURL(TRRoute.overview.url)
                 .trWidgetContainer()
         }
-        .configurationDisplayName("Token Remain")
+        .configurationDisplayName("TokenRemain")
         .description(TRL10n.t("widget.desc.min"))
         .supportedFamilies([.accessoryInline])
     }
@@ -83,7 +85,7 @@ struct TRRectangularWidget: Widget {
                 .widgetURL(TRRoute.overview.url)
                 .trWidgetContainer()
         }
-        .configurationDisplayName("Token Remain")
+        .configurationDisplayName("TokenRemain")
         .description(TRL10n.t("widget.desc.min"))
         .supportedFamilies([.accessoryRectangular])
     }
@@ -99,7 +101,7 @@ struct TRRefreshControl: ControlWidget {
             }
         }
         // ControlWidget metadata is extracted at build time, so these stay literals.
-        .displayName("Token Remain")
+        .displayName("TokenRemain")
         .description("Refresh quota")
     }
 }

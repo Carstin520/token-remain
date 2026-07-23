@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import TokenRemainKit
+import TokenRemainSyncKit
 #if canImport(ActivityKit)
 import ActivityKit
 #endif
@@ -9,6 +10,16 @@ enum LiveActivityState: Equatable {
     case inactive
     case active
     case denied
+}
+
+enum MobileSyncState: Equatable {
+    case off
+    case pulling
+    case waitingForMac
+    case waitingForKey
+    case synced(Date)
+    case sourceChangeRequiresConfirmation(MobileSyncSourceCandidate)
+    case failed(MobileSyncFailure)
 }
 
 /// Owns app state and orchestrates the one-way flow:
@@ -20,7 +31,10 @@ enum LiveActivityState: Equatable {
 final class AppModel {
     private(set) var snapshot: UsageSnapshot
     private(set) var history: [SnapshotHistoryPoint]
+    private(set) var dailyUsageHistory: SyncedDailyUsageHistory?
+    private(set) var curatedFeed: SyncedCuratedFeed?
     var liveActivityState: LiveActivityState = .inactive
+    private(set) var mobileSyncState: MobileSyncState = .off
 
     /// Router state, driven by the URL scheme, widgets and `OpenTabIntent`.
     var route: TRRoute = .overview
@@ -33,18 +47,38 @@ final class AppModel {
     private let settings = TRSettingsStore.shared
     private let store = SnapshotStore.shared
     private let historyStore = SnapshotHistoryStore.shared
+    private let dailyUsageHistoryStore = MobileDailyUsageHistoryStore.shared
+    private let curatedFeedStore = MobileCuratedFeedStore.shared
     private let watchSync = WatchSyncEngine()
+    private var mobileSync: MobileSyncClient { .shared }
+    private var isApplyingSyncedSnapshot = false
 
     var origin: SnapshotOrigin {
         didSet {
             guard origin != oldValue else { return }
             settings.origin = origin
-            if origin == .none {
+            switch origin {
+            case .none:
                 historyStore.clearDemoPoints()
+                dailyUsageHistoryStore.clear()
+                dailyUsageHistory = nil
+                curatedFeedStore.clear()
+                curatedFeed = nil
                 endLiveActivity()
-            } else {
+            case .demo:
                 historyStore.seedDemo(scenario: demoScenario, now: Date())
+                dailyUsageHistoryStore.clear()
+                dailyUsageHistory = Self.demoDailyUsageHistory(scenario: demoScenario, now: Date())
+                curatedFeedStore.clear()
+                curatedFeed = nil
+            case .macSync:
+                // Switching away from a fixture removes its synthetic history;
+                // the verified Mac snapshot is appended by `install(snapshot:)`.
+                historyStore.clearDemoPoints()
+                dailyUsageHistory = dailyUsageHistoryStore.load()
+                curatedFeed = curatedFeedStore.load()
             }
+            guard !isApplyingSyncedSnapshot else { return }
             refresh()
         }
     }
@@ -55,6 +89,7 @@ final class AppModel {
             settings.demoScenario = demoScenario
             if origin == .demo {
                 historyStore.seedDemo(scenario: demoScenario, now: Date())
+                dailyUsageHistory = Self.demoDailyUsageHistory(scenario: demoScenario, now: Date())
             }
             refresh()
         }
@@ -64,6 +99,8 @@ final class AppModel {
         get { origin == .demo }
         set { origin = newValue ? .demo : .none }
     }
+
+    var isMacSyncEnabled: Bool { origin == .macSync }
 
     init(arguments: [String] = ProcessInfo.processInfo.arguments) {
         glassEnabled = !arguments.contains("-tr-force-legacy-chrome")
@@ -84,6 +121,8 @@ final class AppModel {
         demoScenario = launchScenario ?? TRSettingsStore.shared.demoScenario
         snapshot = .empty(now: Date())
         history = []
+        dailyUsageHistory = nil
+        curatedFeed = nil
 
         settings.origin = resolvedOrigin
         settings.demoScenario = demoScenario
@@ -91,6 +130,19 @@ final class AppModel {
             historyStore.clearDemoPoints()
         } else if launchScenario != nil {
             historyStore.seedDemo(scenario: demoScenario, now: Date())
+        }
+        switch resolvedOrigin {
+        case .macSync:
+            dailyUsageHistory = dailyUsageHistoryStore.load()
+            curatedFeed = curatedFeedStore.load()
+        case .demo:
+            dailyUsageHistory = Self.demoDailyUsageHistory(scenario: demoScenario, now: Date())
+            curatedFeedStore.clear()
+            curatedFeed = nil
+        case .none:
+            dailyUsageHistoryStore.clear()
+            curatedFeedStore.clear()
+            curatedFeed = nil
         }
         // `-tr-route <tab>` pins the initial tab for deterministic screenshots.
         if let index = arguments.firstIndex(of: "-tr-route"), index + 1 < arguments.count,
@@ -100,6 +152,7 @@ final class AppModel {
         refresh()
         watchSync.activate()
         refreshLiveActivityState()
+        mobileSyncState = resolvedOrigin == .macSync ? .waitingForMac : .off
     }
 
     static func launchScenario(in arguments: [String]) -> DemoScenario? {
@@ -113,18 +166,195 @@ final class AppModel {
 
     func entry(at now: Date) -> TREntry { TREntry(snapshot: snapshot, now: now) }
 
-    /// Recompose from the current origin/scenario and fan the result out to every surface.
+    /// Recompose demo/empty state, or preserve the verified Mac snapshot, then
+    /// fan the resulting value out to every local presentation surface.
     func refresh(now: Date = Date()) {
-        let composed = SnapshotComposer.compose(origin: origin, scenario: demoScenario, now: now)
-        snapshot = composed
-        store.write(composed)
-        if composed.origin != .none {
-            historyStore.append(composed)
+        if origin == .macSync {
+            var preserved: UsageSnapshot
+            if snapshot.origin == .macSync {
+                preserved = snapshot
+            } else if let stored = store.read(), stored.origin == .macSync {
+                preserved = stored
+            } else {
+                // A persisted `.macSync` preference with no verified payload must
+                // remain an honest empty state rather than falling back to demo.
+                preserved = UsageSnapshot(origin: .macSync, generatedAt: now, providers: [], dailyTokens: nil)
+            }
+            if now.timeIntervalSince(preserved.generatedAt) > UsageSnapshot.macSyncHardExpiry {
+                preserved = UsageSnapshot(
+                    origin: .macSync,
+                    generatedAt: preserved.generatedAt,
+                    providers: [],
+                    dailyTokens: nil
+                )
+            }
+            install(snapshot: preserved, now: now)
+            return
+        }
+
+        install(
+            snapshot: SnapshotComposer.compose(origin: origin, scenario: demoScenario, now: now),
+            now: now
+        )
+    }
+
+    /// Applies a snapshot that has already passed CloudKit and AES-GCM protocol
+    /// validation. This method never receives credentials, ciphertext, or raw
+    /// provider errors: its only responsibility is local read-only fan-out.
+    func applySyncedSnapshot(_ source: MobileUsageSnapshot, now: Date = Date()) {
+        // A delayed background result must not silently re-enable a user-disabled
+        // sync setting.
+        guard origin == .macSync else { return }
+        let adapted = MobileSnapshotAdapter.usageSnapshot(from: source)
+
+        // Changing the persisted origin normally triggers `refresh()`. Suppress
+        // that intermediate refresh so the adapted snapshot is fanned out once.
+        isApplyingSyncedSnapshot = true
+        origin = .macSync
+        isApplyingSyncedSnapshot = false
+        settings.origin = .macSync // Covers a repeated `.macSync` assignment.
+
+        dailyUsageHistoryStore.replace(with: source.dailyUsageHistory, now: now)
+        dailyUsageHistory = dailyUsageHistoryStore.load(now: now)
+        curatedFeedStore.replace(with: source.curatedFeed, now: now)
+        curatedFeed = curatedFeedStore.load(now: now)
+        install(snapshot: adapted, now: now)
+        mobileSyncState = .synced(source.generatedAt)
+    }
+
+    func setMacSyncEnabled(_ enabled: Bool) {
+        if enabled {
+            origin = .macSync
+            mobileSyncState = .waitingForMac
+            Task { await pullMacSync() }
+        } else if origin == .macSync {
+            isApplyingSyncedSnapshot = true
+            origin = .none
+            isApplyingSyncedSnapshot = false
+            settings.origin = .none
+            clearSyncedLocalData(now: Date())
+            mobileSyncState = .off
+            Task { await mobileSync.resetReplayState() }
+        }
+    }
+
+    @discardableResult
+    func pullMacSync(
+        confirmedSource: MobileSyncSourceCandidate? = nil,
+        now: Date = Date()
+    ) async -> Bool {
+        guard origin == .macSync else {
+            mobileSyncState = .off
+            return false
+        }
+        mobileSyncState = .pulling
+        let outcome = await mobileSync.pull(
+            confirmedSourceChange: confirmedSource?.marker,
+            now: now
+        )
+        guard origin == .macSync else {
+            mobileSyncState = .off
+            return false
+        }
+        switch outcome {
+        case .updated(let source):
+            applySyncedSnapshot(source, now: now)
+            return true
+        case .noChange(let reason):
+            switch reason {
+            case .noRemoteSnapshot:
+                clearSyncedLocalData(now: now)
+                mobileSyncState = .waitingForMac
+            case .duplicate, .olderSequence:
+                mobileSyncState = snapshot.origin == .macSync && !snapshot.isEmpty
+                    ? .synced(snapshot.generatedAt)
+                    : .waitingForMac
+            }
+            return false
+        case .requiresSourceConfirmation(let candidate):
+            mobileSyncState = .sourceChangeRequiresConfirmation(candidate)
+            return false
+        case .failed(.syncKeyUnavailable):
+            mobileSyncState = .waitingForKey
+            return false
+        case .failed(let failure):
+            mobileSyncState = .failed(failure)
+            return false
+        }
+    }
+
+    func acceptPendingMacSource() {
+        guard case .sourceChangeRequiresConfirmation(let candidate) = mobileSyncState else {
+            return
+        }
+        Task { await pullMacSync(confirmedSource: candidate) }
+    }
+
+    /// Clears every decrypted mobile copy while keeping the user's sync opt-in
+    /// unchanged so a later authenticated Mac snapshot can repopulate it.
+    func handleRemoteSyncCleared(now: Date = Date()) {
+        guard origin == .macSync else { return }
+        clearSyncedLocalData(now: now)
+        mobileSyncState = .waitingForMac
+    }
+
+    private func clearSyncedLocalData(now: Date) {
+        snapshot = .empty(now: now)
+        store.clear()
+        historyStore.clear()
+        dailyUsageHistoryStore.clear()
+        curatedFeedStore.clear()
+        history = []
+        dailyUsageHistory = nil
+        curatedFeed = nil
+        WidgetReload.all()
+        watchSync.push(snapshot)
+        endLiveActivity()
+    }
+
+    /// The only local fan-out path for newly composed or verified snapshots.
+    func install(snapshot: UsageSnapshot, now: Date = Date()) {
+        self.snapshot = snapshot
+        store.write(snapshot)
+        if snapshot.origin != .none {
+            historyStore.append(snapshot)
         }
         history = historyStore.load()
         WidgetReload.all()
-        watchSync.push(composed)
+        watchSync.push(snapshot)
         updateLiveActivity(now: now)
+    }
+
+    private static func demoDailyUsageHistory(
+        scenario: DemoScenario,
+        now: Date
+    ) -> SyncedDailyUsageHistory {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.locale = Locale(identifier: "en_US_POSIX")
+        calendar.timeZone = .current
+        let start = calendar.startOfDay(for: now)
+        let scenarioScale: Double = switch scenario {
+        case .concept: 1.0
+        case .freshReset: 0.65
+        case .deficitPace: 1.18
+        case .critical: 1.35
+        }
+        let days = (-13...0).compactMap { offset -> SyncedDailyUsageDay? in
+            guard let date = calendar.date(byAdding: .day, value: offset, to: start) else { return nil }
+            let components = calendar.dateComponents([.year, .month, .day], from: date)
+            guard let year = components.year, let month = components.month, let day = components.day else { return nil }
+            let key = String(format: "%04d-%02d-%02d", year, month, day)
+            let position = Double(offset + 14)
+            let wave = 0.72 + Double((offset + 14) % 5) * 0.11
+            return SyncedDailyUsageDay(
+                day: key,
+                claudeTokens: Int64(8_400_000 * scenarioScale * wave),
+                claudeCost: 18.5 * scenarioScale * wave,
+                codexTokens: Int64(5_700_000 * scenarioScale * (0.8 + position * 0.018)),
+                codexCost: 12.4 * scenarioScale * (0.8 + position * 0.018)
+            )
+        }
+        return SyncedDailyUsageHistory(days: days, capturedAt: now)
     }
 
     /// The Overview CTA and widget deep links land here.

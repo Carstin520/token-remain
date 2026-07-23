@@ -16,18 +16,29 @@ let package = Package(
         .macOS(.v14)
     ],
     products: [
-        .library(name: "TokenRemainKit", targets: ["TokenRemainKit"])
+        .library(name: "TokenRemainKit", targets: ["TokenRemainKit"]),
+        // Resource-free cross-device protocol. The macOS app can depend on this
+        // product without importing iPhone UI models or asset catalogs.
+        .library(name: "TokenRemainSyncKit", targets: ["TokenRemainSyncKit"])
     ],
     targets: [
+        .target(name: "TokenRemainSyncKit"),
         .target(
             name: "TokenRemainKit",
             resources: [
                 // The Claude identity mark is the vendor's bundled starburst artwork,
                 // copied from the desktop package and rendered as a template image so
                 // it can be tinted coral (palette.md rule 0).
-                .process("Resources/Media.xcassets")
+                .process("Resources/Media.xcassets"),
+                // Head-only 3D pixel-pet expressions. Provider meters remain
+                // code-drawn so live quota changes do not require new artwork.
+                .process("Resources/HeadLogoStates"),
+                // Full-body expressions are reserved for the app's overview
+                // hero; widgets continue to use the compact head-only mark.
+                .process("Resources/FullBodyLogoStates")
             ]
         ),
-        .testTarget(name: "TokenRemainKitTests", dependencies: ["TokenRemainKit"])
+        .testTarget(name: "TokenRemainKitTests", dependencies: ["TokenRemainKit"]),
+        .testTarget(name: "TokenRemainSyncKitTests", dependencies: ["TokenRemainSyncKit"])
     ]
 )

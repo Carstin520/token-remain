@@ -7,19 +7,22 @@ public enum SnapshotOrigin: String, Codable, Sendable {
     case demo
     /// No source connected — surfaces render honest empty states.
     case none
-    // future (NOT implemented): case synced
+    /// A verified, read-only snapshot received from the user's Mac.
+    case macSync
 }
 
 /// The single serialization contract shared by the App Group, WatchConnectivity,
 /// history and previews.
 public struct UsageSnapshot: Codable, Sendable, Equatable {
     public static let currentSchemaVersion = 1
+    public static let macSyncStaleInterval: TimeInterval = 10 * 60
+    public static let macSyncHardExpiry: TimeInterval = 24 * 60 * 60
 
     public let schemaVersion: Int
     public let origin: SnapshotOrigin
     public let generatedAt: Date
     public let providers: [ProviderQuota]
-    /// Demo-only. Always nil in `.none`.
+    /// Demo-only. Always nil for `.none` and `.macSync`.
     public let dailyTokens: [AgentTokens]?
 
     public init(
@@ -37,6 +40,16 @@ public struct UsageSnapshot: Codable, Sendable, Equatable {
     }
 
     public var isDemo: Bool { origin == .demo }
+
+    public func isMacSyncStale(at now: Date) -> Bool {
+        origin == .macSync
+            && now.timeIntervalSince(generatedAt) > Self.macSyncStaleInterval
+    }
+
+    public func isMacSyncExpired(at now: Date) -> Bool {
+        origin == .macSync
+            && now.timeIntervalSince(generatedAt) > Self.macSyncHardExpiry
+    }
 
     /// True when the snapshot carries no renderable numbers.
     public var isEmpty: Bool { origin == .none || providers.isEmpty }

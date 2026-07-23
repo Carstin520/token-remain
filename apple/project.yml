@@ -16,15 +16,13 @@ settings:
     CURRENT_PROJECT_VERSION: "1"
     GENERATE_INFOPLIST_FILE: YES
     ENABLE_USER_SCRIPT_SANDBOXING: YES
-    # Ad-hoc local signing: no team ID is needed for the simulator gates, but
-    # signing must stay ENABLED — with it off the App Group entitlement is never
-    # applied, the shared container is never provisioned, and the app and its
-    # widget extension silently fall back to separate private directories.
-    CODE_SIGN_STYLE: Manual
-    CODE_SIGN_IDENTITY: "-"
+    # Automatic development signing is required for device builds so the
+    # CloudKit, App Group, push, and Keychain entitlements are authorized by
+    # Apple-issued provisioning profiles. Simulator builds continue to work.
+    CODE_SIGN_STYLE: Automatic
     CODE_SIGNING_REQUIRED: YES
     CODE_SIGNING_ALLOWED: YES
-    DEVELOPMENT_TEAM: ""
+    DEVELOPMENT_TEAM: "84397AQ22Y"
 
 packages:
   TokenRemainKit:
@@ -42,6 +40,10 @@ targets:
       - path: Widgets/TRWidgetViews.swift
     dependencies:
       - package: TokenRemainKit
+      # The resource-free cross-device protocol product. CloudKit integration
+      # remains in the main app target; widgets and watch targets never import it.
+      - package: TokenRemainKit
+        product: TokenRemainSyncKit
       - sdk: WidgetKit.framework
       - target: TokenRemainWidgets
         embed: true
@@ -50,18 +52,28 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.jamesli.tokenremain
-        PRODUCT_NAME: Token Remain
+        PRODUCT_NAME: TokenRemain
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIUserInterfaceStyle: Dark
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
         CODE_SIGN_ENTITLEMENTS: SupportFiles/TokenRemain.entitlements
+      configs:
+        Debug:
+          APS_ENVIRONMENT: development
+          ICLOUD_CONTAINER_ENVIRONMENT: Development
+        Release:
+          APS_ENVIRONMENT: production
+          ICLOUD_CONTAINER_ENVIRONMENT: Production
     info:
       path: SupportFiles/TokenRemain-Info.plist
       properties:
-        CFBundleDisplayName: Token Remain
+        CFBundleDisplayName: TokenRemain
         NSSupportsLiveActivities: true
         NSSupportsLiveActivitiesFrequentUpdates: false
+        # CloudKit zone subscriptions use content-available pushes only; no
+        # quota data is ever carried in an APNs payload.
+        UIBackgroundModes: [remote-notification]
         CFBundleURLTypes:
           - CFBundleURLName: com.jamesli.tokenremain
             CFBundleTypeRole: Editor
@@ -85,7 +97,7 @@ targets:
     info:
       path: SupportFiles/TokenRemainWidgets-Info.plist
       properties:
-        CFBundleDisplayName: Token Remain
+        CFBundleDisplayName: TokenRemain
         NSSupportsLiveActivities: true
         NSSupportsLiveActivitiesFrequentUpdates: false
         NSExtension:
@@ -104,14 +116,17 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.jamesli.tokenremain.watchkitapp
-        PRODUCT_NAME: Token Remain
+        # Keep the bundle product path distinct from the containing iOS app;
+        # CFBundleDisplayName below remains the user-facing "TokenRemain".
+        PRODUCT_NAME: TokenRemainWatch
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         INFOPLIST_KEY_WKCompanionAppBundleIdentifier: com.jamesli.tokenremain
         INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp: NO
         CODE_SIGN_ENTITLEMENTS: SupportFiles/TokenRemainWatch.entitlements
     info:
       path: SupportFiles/TokenRemainWatch-Info.plist
       properties:
-        CFBundleDisplayName: Token Remain
+        CFBundleDisplayName: TokenRemain
         WKApplication: true
         WKCompanionAppBundleIdentifier: com.jamesli.tokenremain
 
@@ -133,7 +148,7 @@ targets:
     info:
       path: SupportFiles/TokenRemainWatchWidgets-Info.plist
       properties:
-        CFBundleDisplayName: Token Remain
+        CFBundleDisplayName: TokenRemain
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
 
@@ -150,6 +165,19 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.jamesli.tokenremain.uitests
         TEST_TARGET_NAME: TokenRemain
 
+  TokenRemainAppTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: AppTests
+    dependencies:
+      - target: TokenRemain
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.jamesli.tokenremain.tests
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/TokenRemain.app/TokenRemain"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+
 schemes:
   TokenRemain:
     build:
@@ -163,6 +191,7 @@ schemes:
     test:
       config: Debug
       targets:
+        - TokenRemainAppTests
         - TokenRemainUITests
 
   # Lets the watch app and its complications be built against the watchOS SDK

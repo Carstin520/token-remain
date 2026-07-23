@@ -1,13 +1,15 @@
-# Token Remain — Apple platform build
+# TokenRemain — Apple platform build
 
-A locally buildable iPhone + Apple Watch implementation of the confirmed "Token Remain"
+A locally buildable iPhone + Apple Watch implementation of the confirmed "TokenRemain"
 concept. Everything in this subtree is self-contained: `apple/project.yml` is the only
 project file, and `TokenRemain.xcodeproj` is generated and git-ignored.
 
-**Honest by construction.** The iPhone has no Claude Code or Codex quota source, so the
-app never fabricates one. Every surface renders either an explicit "未连接数据源" state or
-clearly-labelled deterministic **demo** data. There is no networking, no keychain, and no
-credential of any kind anywhere in this subtree.
+**Honest by construction.** The iPhone never reads Claude/Codex credentials. It renders an
+explicit empty state, clearly-labelled deterministic demo data, or an authenticated `.macSync`
+snapshot pulled from the user's CloudKit Private Database. The shared AES-256 key lives in a
+dedicated synchronizable Keychain access group; provider credentials remain Mac-only. Widgets
+and Watch targets receive only the already-validated App Group / WatchConnectivity snapshot and
+do not link CloudKit or the sync-key module.
 
 ## Requirements
 
@@ -35,8 +37,7 @@ xcodebuild -project TokenRemain.xcodeproj -scheme TokenRemain \
 xcodebuild -project TokenRemain.xcodeproj -scheme TokenRemainWatch \
   -destination 'platform=watchOS Simulator,name=Apple Watch Series 11 (46mm)' build
 
-# 4 — unit tests (59 Swift Testing cases: pace, risk, insights, codec,
-#     determinism, history, robot moods, formatting, routing, WCAG contrast)
+# 4 — unit tests (presentation, storage, protocol, encryption and replay suites)
 xcodebuild test -project TokenRemain.xcodeproj -scheme TokenRemainKit \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
 
@@ -55,7 +56,7 @@ xcodebuild test -project TokenRemain.xcodeproj -scheme TokenRemainUITests \
 xcrun simctl install booted \
   "$(xcodebuild -project TokenRemain.xcodeproj -scheme TokenRemain \
       -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
-      -showBuildSettings 2>/dev/null | awk -F'= ' '/ BUILT_PRODUCTS_DIR/{print $2; exit}')/Token Remain.app"
+      -showBuildSettings 2>/dev/null | awk -F'= ' '/ BUILT_PRODUCTS_DIR/{print $2; exit}')/TokenRemain.app"
 
 # honest empty state
 xcrun simctl launch booted com.jamesli.tokenremain -tr-origin-none
@@ -88,7 +89,7 @@ apple/
   WatchApp/                    watchOS glance (view-only) + WatchConnectivity receiver
   WatchWidgets/                watchOS complications + Smart Stack card
   UITests/                     XCUITest suite
-  SupportFiles/                per-target App Group entitlements
+  SupportFiles/                least-privilege per-target App Group / CloudKit entitlements
   Screenshots/                 captured simulator evidence (git-ignored)
 ```
 

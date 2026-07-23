@@ -65,7 +65,7 @@ public struct SnapshotHistoryStore: Sendable {
     public func save(_ points: [SnapshotHistoryPoint]) {
         guard let data = try? UsageSnapshot.encoder.encode(points) else { return }
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        try? data.write(to: fileURL, options: .atomic)
+        try? data.write(to: fileURL, options: SnapshotFileProtection.writeOptions)
     }
 
     @discardableResult

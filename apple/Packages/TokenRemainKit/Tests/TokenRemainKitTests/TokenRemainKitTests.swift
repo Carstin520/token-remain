@@ -150,6 +150,15 @@ struct UsageInsightsTests {
         #expect(claude.remainingPercent == 85)
     }
 
+    @Test("A provider's compact default is its shortest bounded session")
+    func shortestWindow() throws {
+        let claude = try #require(insights.shortestWindow(for: .claude))
+        #expect(claude.windowMinutes == 300)
+
+        let codex = try #require(insights.shortestWindow(for: .codex))
+        #expect(codex.windowMinutes == 10_080)
+    }
+
     @Test("Unknown reset stays unknown rather than being invented")
     func unknownReset() throws {
         let fresh = SnapshotComposer.demo(scenario: .freshReset, now: now).insights
@@ -343,6 +352,10 @@ struct SnapshotHistoryTests {
         #expect(appended.count == 1)
         #expect(store.load().first?.minRemainingPercent == 46)
         #expect(store.clearDemoPoints().isEmpty)
+
+        #if os(iOS) || os(watchOS)
+        #expect(SnapshotFileProtection.writeOptions.contains(.completeFileProtectionUntilFirstUserAuthentication))
+        #endif
     }
 
     @Test("An empty snapshot contributes no history point")
@@ -368,6 +381,10 @@ struct SnapshotStoreTests {
         let snapshot = SnapshotComposer.demo(scenario: .concept, now: now)
         store.write(snapshot)
         #expect(store.read() == snapshot)
+
+        #if os(iOS) || os(watchOS)
+        #expect(SnapshotFileProtection.writeOptions.contains(.completeFileProtectionUntilFirstUserAuthentication))
+        #endif
 
         store.clear()
         #expect(store.read() == nil)
@@ -411,15 +428,15 @@ struct RobotMoodTests {
         #expect(descriptions.allSatisfy { !$0.isEmpty })
     }
 
-    @Test("Eleven states collapse to exactly five drawn faces")
-    func fiveFaces() {
-        #expect(Set(RobotMoodState.allCases.map(\.face)).count == 5)
-        // The design's 46% robot wears the flat-bar face.
-        #expect(RobotMoodState.resolve(remainingPercent: 46).face == .neutral)
+    @Test("Every quota state keeps a distinct drawn face")
+    func elevenFaces() {
+        #expect(Set(RobotMoodState.allCases.map(\.face)).count == 11)
+        #expect(RobotMoodState.resolve(remainingPercent: 100).face == .excitedStars)
+        #expect(RobotMoodState.resolve(remainingPercent: 46).face == .neutralDashes)
         #expect(RobotMoodState.resolve(remainingPercent: 0).face == .offline)
     }
 
-    @Test("Every face produces a well-formed 16×12 matrix with visible eyes")
+    @Test("Every face produces a well-formed 16×16 matrix with visible eyes")
     func matrixShape() {
         for face in RobotFace.allCases {
             let grid = PixelRobot.matrix(face: face)
@@ -431,6 +448,24 @@ struct RobotMoodTests {
             }
             #expect(eyes.count >= 4)
         }
+    }
+
+    @Test("The shared matrix uses the canonical Orbit silhouette")
+    func orbitSilhouette() {
+        // 2026-07-22 redesign: rounded-square head, side signal ears at the
+        // outer columns, a 10×5 visor plate with a full margin around the 8×3
+        // eye window, and little feet on rows 13–14.
+        let grid = PixelRobot.matrix(face: .neutralDashes)
+        #expect(PixelRobot.columns == 16)
+        #expect(PixelRobot.rows == 16)
+        #expect(grid[0][7] == .cap)
+        #expect(grid[7][0] == .signal)
+        #expect(grid[7][1] == .body)
+        #expect(grid[5][4] == .plate)   // visor margin row above the eyes
+        #expect(grid[9][11] == .plate)  // visor margin row below the eyes
+        #expect(grid[11][5] == .bodyDim) // mouth slot
+        #expect(grid[14][4] == .bodyDim) // foot shadow
+        #expect(grid[15][6] == .empty)
     }
 }
 

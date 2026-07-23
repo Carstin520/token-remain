@@ -28,6 +28,11 @@ public enum SnapshotComposer {
         switch origin {
         case .none: return .empty(now: now)
         case .demo: return demo(scenario: scenario, now: now)
+        case .macSync:
+            // Composition has no authority to invent, refresh, or overwrite
+            // Mac-synchronized values. AppModel and RefreshSnapshotIntent preserve
+            // the already verified App Group snapshot instead.
+            return UsageSnapshot(origin: .macSync, generatedAt: now, providers: [], dailyTokens: nil)
         }
     }
 

@@ -4,22 +4,26 @@ import Foundation
 /// Ported from `Support/UsageInsights.swift` with all SwiftUI/colour helpers removed
 /// and `now` promoted to an explicit parameter everywhere.
 public struct UsageInsights: Sendable, Equatable {
-    public let claude: ProviderQuota?
-    public let codex: ProviderQuota?
+    public let providers: [ProviderQuota]
     public let dailyTokens: [AgentTokens]?
 
+    public var claude: ProviderQuota? { providers.first { $0.provider == .claude } }
+    public var codex: ProviderQuota? { providers.first { $0.provider == .codex } }
+
     public init(claude: ProviderQuota?, codex: ProviderQuota?, dailyTokens: [AgentTokens]?) {
-        self.claude = claude
-        self.codex = codex
+        self.providers = [claude, codex].compactMap { $0 }
+        self.dailyTokens = dailyTokens
+    }
+
+    public init(providers: [ProviderQuota], dailyTokens: [AgentTokens]?) {
+        self.providers = ProviderQuota.Provider.allCases.compactMap { provider in
+            providers.first { $0.provider == provider }
+        }
         self.dailyTokens = dailyTokens
     }
 
     public init(snapshot: UsageSnapshot) {
-        self.init(
-            claude: snapshot.providers.first { $0.provider == .claude },
-            codex: snapshot.providers.first { $0.provider == .codex },
-            dailyTokens: snapshot.dailyTokens
-        )
+        self.init(providers: snapshot.providers, dailyTokens: snapshot.dailyTokens)
     }
 
     // MARK: - Quota windows
@@ -45,7 +49,7 @@ public struct UsageInsights: Sendable, Equatable {
     /// Every official window currently known, in provider then primary→secondary order.
     public var windows: [Window] {
         var result: [Window] = []
-        for quota in [claude, codex].compactMap({ $0 }) {
+        for quota in providers {
             result.append(window(quota.primary, provider: quota.provider, slot: "primary"))
             if let secondary = quota.secondary {
                 result.append(window(secondary, provider: quota.provider, slot: "secondary"))
@@ -61,6 +65,19 @@ public struct UsageInsights: Sendable, Equatable {
     /// The window a provider card should lead with: its scarcest one.
     public func leadWindow(for provider: ProviderQuota.Provider) -> Window? {
         windows(for: provider).min { $0.remainingPercent < $1.remainingPercent }
+    }
+
+    /// The provider window shown by default on compact Overview surfaces. A
+    /// bounded short session is more immediately actionable than a weekly or
+    /// lifetime window; zero denotes an unbounded/lifetime window and sorts last.
+    public func shortestWindow(for provider: ProviderQuota.Provider) -> Window? {
+        windows(for: provider).min {
+            normalizedDuration($0.windowMinutes) < normalizedDuration($1.windowMinutes)
+        }
+    }
+
+    private func normalizedDuration(_ minutes: Int) -> Int {
+        minutes > 0 ? minutes : .max
     }
 
     private func window(_ source: QuotaWindow, provider: ProviderQuota.Provider, slot: String) -> Window {
@@ -161,6 +178,6 @@ public struct UsageInsights: Sendable, Equatable {
 
     /// Most recent capture time across every source in the snapshot.
     public var lastUpdated: Date? {
-        [claude?.capturedAt, codex?.capturedAt].compactMap { $0 }.max()
+        providers.map(\.capturedAt).max()
     }
 }

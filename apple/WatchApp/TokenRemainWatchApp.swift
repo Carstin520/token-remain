@@ -94,8 +94,8 @@ struct WatchComplicationGallery: View {
             ActivityRings(
                 outerRemaining: entry.remainingPercent(for: .claude) ?? entry.minRemainingPercent ?? 0,
                 innerRemaining: entry.remainingPercent(for: .codex) ?? entry.minRemainingPercent ?? 0,
-                outerColor: TRTheme.claudeBrand,
-                innerColor: TRTheme.codexBrand,
+                outerColor: TRTheme.claudeAccent,
+                innerColor: TRTheme.codexAccent,
                 centerLabel: entry.heroText
             )
             .frame(width: 52, height: 52)
@@ -149,8 +149,9 @@ struct WatchGlanceView: View {
     @State private var selection: Int = WatchLaunchSeed.initialPage()
 
     var body: some View {
-        if receiver.snapshot.isEmpty {
-            WatchEmptyView()
+        let entry = TREntry(snapshot: receiver.snapshot, now: Date())
+        if !entry.hasNumbers {
+            WatchEmptyView(status: entry.paceLine)
         } else {
             TabView(selection: $selection) {
                 WatchOverviewPage(snapshot: receiver.snapshot).tag(0)
@@ -165,11 +166,13 @@ struct WatchGlanceView: View {
 }
 
 struct WatchEmptyView: View {
+    var status: String = TRL10n.t("watch.waiting")
+
     var body: some View {
         VStack(spacing: 8) {
             PixelRobot(remainingPercent: 0, size: 48)
                 .accessibilityHidden(true)
-            Text(TRL10n.t("watch.waiting"))
+            Text(status)
                 .font(.system(.headline, design: .monospaced))
                 .foregroundStyle(TRTheme.text)
             Text(TRL10n.t("watch.waiting.body"))
@@ -185,6 +188,9 @@ struct WatchEmptyView: View {
 
 // MARK: - Page 1 · Overview
 
+/// Centre-focused (2026-07-22 redesign): the watch reads from the middle out.
+/// One big ring carries the hero value at the optical centre; the risk badge sits
+/// above it and the per-provider chips below — nothing hugs the display's edges.
 struct WatchOverviewPage: View {
     let snapshot: UsageSnapshot
 
@@ -193,47 +199,74 @@ struct WatchOverviewPage: View {
         let insights = snapshot.insights
         let risk = insights.riskLevel(at: now)
         let lasts = insights.willLastUntilReset(at: now)
-        let hero = TREntry(snapshot: snapshot, now: now).heroText
-        VStack(alignment: .leading, spacing: 5) {
-            HStack(spacing: 6) {
+        let entry = TREntry(snapshot: snapshot, now: now)
+        let hero = entry.heroText
+        // The ring is a meter, so it carries the constraining provider's muted
+        // identity accent — the same colour-follows-entity rule as the desktop.
+        let accent = insights.constrainingWindow.map { TRTheme.accent(for: $0.provider) }
+            ?? TRTheme.violet
+        VStack(spacing: 5) {
+            HStack(spacing: 5) {
                 WatchRiskBadge(risk: risk)
                 if snapshot.isDemo { DemoChip(compact: true) }
-                Spacer(minLength: 0)
-                PixelRobot(remainingPercent: insights.minRemainingPercent, size: 22)
-                    .accessibilityHidden(true)
+                if entry.isStale { WatchStaleChip() }
             }
-            Text(TRL10n.t("overview.min_remaining"))
-                .font(.system(size: 10, design: .monospaced))
-                .foregroundStyle(TRTheme.textDim)
-            // Cyberpunk experiment: dot-matrix hero % with a violet neon bloom. At
-            // 34pt the 5×7 dots stay crisp on the watch (well above the ~20pt floor);
-            // revert by restoring `Text(hero).trValue(size: 38)`.
-            PixelDigitText(hero, size: 34, color: TRTheme.text)
-                .neonGlow(TRTheme.violet)
-                .accessibilityHidden(true)
-            WatchPaceLine(lasts: lasts, risk: risk)
-            Divider().overlay(TRTheme.border)
-            ForEach(ProviderQuota.Provider.allCases, id: \.self) { provider in
-                if let lead = insights.leadWindow(for: provider) {
-                    WatchProviderMiniRow(provider: provider, window: lead)
+            RingGauge(remaining: insights.minRemainingPercent ?? 0, accent: accent) {
+                VStack(spacing: 0) {
+                    Text(hero)
+                        .font(.system(size: 26, design: .monospaced).monospacedDigit().weight(.semibold))
+                        .foregroundStyle(TRTheme.text)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
+                    Text(TRL10n.t("overview.min_remaining"))
+                        .font(.system(size: 9, design: .monospaced))
+                        .foregroundStyle(TRTheme.textDim)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
                 }
             }
-            Spacer(minLength: 0)
+            .frame(width: 100, height: 100)
+            WatchPaceLine(lasts: lasts, risk: risk)
+            HStack(spacing: 14) {
+                ForEach(entry.providers.map(\.provider), id: \.self) { provider in
+                    if let lead = insights.leadWindow(for: provider) {
+                        WatchProviderChip(provider: provider, window: lead)
+                    }
+                }
+            }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityElement(children: .ignore)
         .accessibilityIdentifier("tr.watch.overview")
-        .accessibilityLabel(
-            "\(TRL10n.t("overview.risk.caption"))\(risk.headline)，"
-            + "\(TRL10n.t("overview.min_remaining")) \(hero)，"
-            + (lasts ? TRL10n.t("pace.short.ok") : TRL10n.t("pace.short.early"))
-            + (snapshot.isDemo ? "，\(TRL10n.t("demo.a11y"))" : "")
-        )
+        .accessibilityLabel(overviewAccessibilityLabel(
+            risk: risk,
+            lasts: lasts,
+            hero: hero,
+            isStale: entry.isStale
+        ))
+    }
+
+    private func overviewAccessibilityLabel(
+        risk: RiskLevel,
+        lasts: Bool,
+        hero: String,
+        isStale: Bool
+    ) -> String {
+        var parts = [
+            "\(TRL10n.t("overview.risk.caption"))\(risk.headline)",
+            "\(TRL10n.t("overview.min_remaining")) \(hero)",
+            lasts ? TRL10n.t("pace.short.ok") : TRL10n.t("pace.short.early")
+        ]
+        if snapshot.isDemo { parts.append(TRL10n.t("demo.a11y")) }
+        if isStale { parts.append(TRL10n.t("liveactivity.stale")) }
+        return parts.joined(separator: "，")
     }
 }
 
 // MARK: - Page 2 & 3 · Provider detail
 
+/// Centre-focused: the provider's *tightest* window is the one big centred ring;
+/// any longer window collapses to a single quiet line beneath it.
 struct WatchProviderPage: View {
     let snapshot: UsageSnapshot
     let provider: ProviderQuota.Provider
@@ -241,28 +274,65 @@ struct WatchProviderPage: View {
     var body: some View {
         let now = Date()
         let insights = snapshot.insights
+        let entry = TREntry(snapshot: snapshot, now: now)
         let windows = insights.windows(for: provider)
+            .sorted { $0.windowMinutes < $1.windowMinutes }
         let quota = provider == .claude ? insights.claude : insights.codex
         let accent = TRTheme.accent(for: provider)
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 6) {
-                ProviderGlyph(provider: provider, size: 18)
+        VStack(spacing: 4) {
+            HStack(spacing: 5) {
+                ProviderGlyph(provider: provider, size: 17)
                 Text(provider.shortName)
                     .font(.system(size: 15, design: .monospaced).weight(.semibold))
                     .foregroundStyle(TRTheme.text)
-                Spacer(minLength: 0)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
                 if let plan = quota?.planName {
-                    PixelBadge(plan, accent: accent).neonGlow(accent, intensity: 0.5)
+                    PixelBadge(plan, accent: accent)
                 }
                 if snapshot.isDemo { DemoChip(compact: true) }
+                if entry.isStale { WatchStaleChip() }
             }
             if windows.isEmpty {
                 Text(TRL10n.t("limits.reset.unknown"))
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundStyle(TRTheme.textDim)
             } else {
-                ForEach(windows) { window in
-                    WatchWindowBlock(window: window, accent: accent, now: now)
+                let lead = windows[0]
+                RingGauge(remaining: lead.remainingPercent, accent: accent) {
+                    VStack(spacing: 0) {
+                        Text(UsageFormatting.percent(lead.remainingPercent.rounded()))
+                            .font(.system(size: 24, design: .monospaced).monospacedDigit().weight(.semibold))
+                            .foregroundStyle(TRTheme.text)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
+                        Text(UsageFormatting.windowName(minutes: lead.windowMinutes))
+                            .font(.system(size: 9, design: .monospaced))
+                            .foregroundStyle(TRTheme.textDim)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                    }
+                }
+                .frame(width: 90, height: 90)
+                Text(resetLine(for: lead, now: now))
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundStyle(TRTheme.textMute)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                ForEach(windows.dropFirst()) { window in
+                    HStack(spacing: 4) {
+                        Text(UsageFormatting.windowName(minutes: window.windowMinutes))
+                            .foregroundStyle(TRTheme.textDim)
+                        Text(UsageFormatting.percent(window.remainingPercent.rounded()))
+                            .foregroundStyle(TRTheme.text)
+                        Text("·")
+                            .foregroundStyle(TRTheme.textMute)
+                        Text(resetLine(for: window, now: now))
+                            .foregroundStyle(TRTheme.textMute)
+                    }
+                    .font(.system(size: 11, design: .monospaced).monospacedDigit())
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.65)
                 }
                 if let assessment = insights.paceAssessment(at: now),
                    assessment.window.provider == provider,
@@ -284,12 +354,16 @@ struct WatchProviderPage: View {
                     }
                 }
             }
-            Spacer(minLength: 0)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityElement(children: .ignore)
         .accessibilityIdentifier("tr.watch.provider.\(provider.rawValue)")
         .accessibilityLabel(providerAccessibilityLabel(windows: windows, now: now))
+    }
+
+    private func resetLine(for window: UsageInsights.Window, now: Date) -> String {
+        guard let resetsAt = window.resetsAt else { return TRL10n.t("limits.reset.unknown") }
+        return UsageFormatting.resetDescription(to: resetsAt, now: now)
     }
 
     private func providerAccessibilityLabel(windows: [UsageInsights.Window], now: Date) -> String {
@@ -299,43 +373,10 @@ struct WatchProviderPage: View {
                 + UsageFormatting.percent(window.remainingPercent.rounded()))
         }
         if snapshot.isDemo { parts.append(TRL10n.t("demo.a11y")) }
-        return parts.joined(separator: "，")
-    }
-}
-
-/// One window inside a provider page: title + big remaining %, meter, reset line.
-struct WatchWindowBlock: View {
-    let window: UsageInsights.Window
-    let accent: Color
-    let now: Date
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(UsageFormatting.windowName(minutes: window.windowMinutes))
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundStyle(TRTheme.textDim)
-                Spacer(minLength: 0)
-                // Display-layer judgement: kept SF Mono (16pt, dual-window density is
-                // below the ~20pt dot-matrix floor on the watch) with a subtle accent glow.
-                Text(UsageFormatting.percent(window.remainingPercent.rounded()))
-                    .font(.system(size: 16, design: .monospaced).monospacedDigit().weight(.semibold))
-                    .foregroundStyle(TRTheme.text)
-                    .neonGlow(accent, intensity: 0.4)
-            }
-            SegmentBar(remainingPercent: window.remainingPercent, accent: accent, segments: 12, height: 5)
-                .neonGlow(accent, intensity: 0.35)
-            Text(resetLine)
-                .font(.system(size: 9, design: .monospaced))
-                .foregroundStyle(TRTheme.textMute)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
+        if TREntry(snapshot: snapshot, now: now).isStale {
+            parts.append(TRL10n.t("liveactivity.stale"))
         }
-    }
-
-    private var resetLine: String {
-        guard let resetsAt = window.resetsAt else { return TRL10n.t("limits.reset.unknown") }
-        return UsageFormatting.resetDescription(to: resetsAt, now: now)
+        return parts.joined(separator: "，")
     }
 }
 
@@ -348,52 +389,59 @@ struct WatchTodayPage: View {
     var body: some View {
         let now = Date()
         let insights = snapshot.insights
-        VStack(alignment: .leading, spacing: 5) {
-            HStack(spacing: 6) {
+        let entry = TREntry(snapshot: snapshot, now: now)
+        // Centre-focused like the other pages: title and totals centred, the
+        // per-provider split as short centred rows, provenance at the bottom.
+        VStack(spacing: 6) {
+            HStack(spacing: 5) {
                 Text(TRL10n.t("today.title"))
                     .font(.system(size: 14, design: .monospaced).weight(.semibold))
                     .foregroundStyle(TRTheme.text)
-                Spacer(minLength: 0)
                 if snapshot.isDemo { DemoChip(compact: true) }
+                if entry.isStale { WatchStaleChip() }
             }
             if let total = insights.totalTokens, let cost = insights.totalCost {
-                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                HStack(alignment: .firstTextBaseline, spacing: 14) {
                     todayMetric(TRL10n.t("today.tokens"), UsageFormatting.compactNumber(total), color: TRTheme.text)
                     todayMetric(TRL10n.t("today.cost"), String(format: "$%.2f", cost), color: TRTheme.text)
                 }
-                .padding(.top, 1)
-                ForEach(insights.dailyTokens ?? []) { agent in
-                    todaySplitRow(agent)
+                // Split rows span the page width — centring the *stack* must not
+                // squeeze the rows themselves (long names like "Antigravity"
+                // stay on one line and scale down instead of wrapping).
+                VStack(spacing: 3) {
+                    ForEach(insights.dailyTokens ?? []) { agent in
+                        todaySplitRow(agent)
+                    }
                 }
             } else {
                 Text(TRL10n.t("today.empty"))
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundStyle(TRTheme.textDim)
             }
-            Divider().overlay(TRTheme.border)
             Text(snapshot.isDemo ? TRL10n.t("today.source.demo") : TRL10n.t("privacy.statement"))
                 .font(.system(size: 9, design: .monospaced))
                 .foregroundStyle(TRTheme.textDim)
+                .multilineTextAlignment(.center)
                 .lineLimit(2)
                 .minimumScaleFactor(0.8)
             Text(TRL10n.f("watch.provenance", UsageFormatting.freshnessDescription(since: snapshot.generatedAt, now: now)))
                 .font(.system(size: 9, design: .monospaced))
                 .foregroundStyle(TRTheme.textMute)
-            Spacer(minLength: 0)
+                .multilineTextAlignment(.center)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityElement(children: .ignore)
         .accessibilityIdentifier("tr.watch.today")
         .accessibilityLabel(todayAccessibilityLabel(insights: insights, now: now))
     }
 
     private func todayMetric(_ caption: String, _ value: String, color: Color) -> some View {
-        VStack(alignment: .leading, spacing: 1) {
+        VStack(spacing: 1) {
             Text(caption)
-                .font(.system(size: 9, design: .monospaced))
+                .font(.system(size: 10, design: .monospaced))
                 .foregroundStyle(TRTheme.textDim)
             Text(value)
-                .font(.system(size: 17, design: .monospaced).monospacedDigit().weight(.semibold))
+                .font(.system(size: 19, design: .monospaced).monospacedDigit().weight(.semibold))
                 .foregroundStyle(color)
                 .minimumScaleFactor(0.6)
                 .lineLimit(1)
@@ -407,14 +455,16 @@ struct WatchTodayPage: View {
                 .fill(TRTheme.accent(for: provider))
                 .frame(width: 6, height: 6)
             Text(provider.shortName)
-                .font(.system(size: 10, design: .monospaced))
+                .font(.system(size: 12, design: .monospaced))
                 .foregroundStyle(TRTheme.textDim)
-            Spacer(minLength: 0)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+            Spacer(minLength: 4)
             Text(UsageFormatting.compactNumber(agent.tokens))
-                .font(.system(size: 10, design: .monospaced).monospacedDigit())
+                .font(.system(size: 12, design: .monospaced).monospacedDigit())
                 .foregroundStyle(TRTheme.text)
             Text(String(format: "$%.2f", agent.estimatedCost))
-                .font(.system(size: 10, design: .monospaced).monospacedDigit())
+                .font(.system(size: 12, design: .monospaced).monospacedDigit())
                 .foregroundStyle(TRTheme.textDim)
         }
         .accessibilityHidden(true)
@@ -430,6 +480,9 @@ struct WatchTodayPage: View {
         }
         parts.append(TRL10n.f("watch.provenance", UsageFormatting.freshnessDescription(since: snapshot.generatedAt, now: now)))
         if snapshot.isDemo { parts.append(TRL10n.t("demo.a11y")) }
+        if TREntry(snapshot: snapshot, now: now).isStale {
+            parts.append(TRL10n.t("liveactivity.stale"))
+        }
         return parts.joined(separator: "，")
     }
 }
@@ -458,6 +511,17 @@ struct WatchRiskBadge: View {
     }
 }
 
+struct WatchStaleChip: View {
+    var body: some View {
+        Text(TRL10n.t("liveactivity.stale"))
+            .font(.system(size: 8, design: .monospaced).weight(.semibold))
+            .foregroundStyle(TRTheme.violet)
+            .lineLimit(1)
+            .minimumScaleFactor(0.55)
+            .accessibilityHidden(true)
+    }
+}
+
 /// The pace judgement line: pixel glyph + semantic colour + text label.
 struct WatchPaceLine: View {
     let lasts: Bool
@@ -480,25 +544,25 @@ struct WatchPaceLine: View {
     }
 }
 
-/// Compact provider row on the Overview page: glyph + name + meter + %.
-struct WatchProviderMiniRow: View {
+/// Compact provider chip on the Overview page: a tiny ring + glyph + %. Sits in a
+/// centred row beneath the hero ring instead of stretching edge to edge.
+struct WatchProviderChip: View {
     let provider: ProviderQuota.Provider
     let window: UsageInsights.Window
 
     var body: some View {
-        HStack(spacing: 6) {
-            ProviderGlyph(provider: provider, size: 13)
-            Text(provider.shortName)
-                .font(.system(size: 11, design: .monospaced))
-                .foregroundStyle(TRTheme.text)
-                .frame(width: 44, alignment: .leading)
-            SegmentBar(remainingPercent: window.remainingPercent,
-                       accent: TRTheme.accent(for: provider), segments: 8, height: 4)
-                .neonGlow(TRTheme.accent(for: provider), intensity: 0.35)
+        HStack(spacing: 4) {
+            RingGauge(
+                remaining: window.remainingPercent,
+                accent: TRTheme.accent(for: provider),
+                lineWidthRatio: 0.14
+            ) {
+                ProviderGlyph(provider: provider, size: 11)
+            }
+            .frame(width: 24, height: 24)
             Text(UsageFormatting.percent(window.remainingPercent.rounded()))
-                .font(.system(size: 11, design: .monospaced).monospacedDigit())
+                .font(.system(size: 13, design: .monospaced).monospacedDigit())
                 .foregroundStyle(TRTheme.text)
-                .frame(width: 38, alignment: .trailing)
         }
         .accessibilityHidden(true)
     }

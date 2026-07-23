@@ -7,48 +7,223 @@ import WidgetKit
 /// The 4×4-pixel demo mark used on every non-app surface.
 struct WidgetDemoMark: View {
     var body: some View {
-        Text("D̸")
-            .font(.system(size: 9, design: .monospaced).weight(.bold))
-            .foregroundStyle(TRTheme.indigo)
-            .accessibilityElement()
-            .accessibilityLabel(TRL10n.t("demo.a11y"))
+        DemoChip(compact: true)
+    }
+}
+
+struct WidgetStaleMark: View {
+    var body: some View {
+        Text(TRL10n.t("liveactivity.stale"))
+            .font(.system(size: 8, design: .monospaced).weight(.semibold))
+            .foregroundStyle(TRTheme.violet)
+            .lineLimit(1)
+            .minimumScaleFactor(0.6)
+            .accessibilityHidden(true)
     }
 }
 
 /// Honest `.none` state for every widget family: robot offline, no numbers.
 struct WidgetEmptyView: View {
     var compact = false
+    var status: String? = nil
+
+    private var resolvedStatus: String {
+        status ?? TRL10n.t("origin.none.status")
+    }
 
     var body: some View {
         VStack(spacing: 4) {
-            PixelRobot(remainingPercent: 0, size: compact ? 24 : 40)
+            TokenRemainHeadLogo(
+                claudeRemaining: 0,
+                codexRemaining: 0,
+                size: compact ? 24 : 40
+            )
                 .accessibilityHidden(true)
-            Text(TRL10n.t("origin.none.status"))
+            Text(resolvedStatus)
                 .font(.system(size: compact ? 9 : 11, design: .monospaced))
                 .foregroundStyle(TRTheme.textDim)
                 .multilineTextAlignment(.center)
                 .minimumScaleFactor(0.6)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(TRL10n.t("origin.none.title"))
+        .accessibilityLabel(resolvedStatus)
     }
 }
 
-/// Pace-line colour shared by the home widgets: green when it lasts, red at high
-/// risk, amber otherwise — always paired with the `PixelCheck` shape + a text label.
-private func paceColor(lasts: Bool, risk: RiskLevel) -> Color {
-    lasts ? TRTheme.success : (risk == .high ? TRTheme.danger : TRTheme.warning)
+/// Match the app Overview hero: cyan confirms the current pace lasts until reset;
+/// violet calls attention to a projected run-out. Shape + text still carry meaning.
+private func paceColor(lasts: Bool) -> Color {
+    lasts ? TRTheme.cyan : TRTheme.violet
+}
+
+/// Full-bleed home-widget surface. Home widgets opt out of WidgetKit's default
+/// margins, then own one consistent inset and the same graphite / scanline /
+/// pixel-corner treatment as the app's Overview hero card.
+private struct WidgetSurface<Content: View>: View {
+    let content: Content
+
+    init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+    }
+
+    var body: some View {
+        content
+            .padding(12)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .background(TRTheme.surface)
+            .overlay { ScanlineOverlay(spacing: 3, opacity: 0.025) }
+            .overlay {
+                RoundedRectangle(cornerRadius: 21, style: .continuous)
+                    .strokeBorder(TRTheme.violet.opacity(0.34), lineWidth: 1)
+            }
+            .overlay { WidgetCornerChrome() }
+            .clipShape(RoundedRectangle(cornerRadius: 21, style: .continuous))
+    }
+}
+
+private struct WidgetCornerChrome: View {
+    var body: some View {
+        Canvas(rendersAsynchronously: false) { context, size in
+            let color = TRTheme.border
+            let inset: CGFloat = 7
+            let arm: CGFloat = 4
+            let thickness: CGFloat = 1
+
+            func fill(_ rect: CGRect) {
+                context.fill(Path(rect), with: .color(color))
+            }
+
+            fill(CGRect(x: inset, y: inset, width: arm, height: thickness))
+            fill(CGRect(x: inset, y: inset, width: thickness, height: arm))
+            fill(CGRect(x: size.width - inset - arm, y: inset, width: arm, height: thickness))
+            fill(CGRect(x: size.width - inset - thickness, y: inset, width: thickness, height: arm))
+
+            for row in 0..<2 {
+                for column in 0..<2 {
+                    fill(CGRect(
+                        x: size.width - inset - 7 + CGFloat(column) * 3,
+                        y: size.height - inset - 7 + CGFloat(row) * 3,
+                        width: 1.5,
+                        height: 1.5
+                    ))
+                }
+            }
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
+private struct WidgetHeader: View {
+    let entry: TREntry
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Text("TokenRemain")
+                .font(.system(size: 10, design: .monospaced).weight(.semibold))
+                .foregroundStyle(TRTheme.text)
+            Spacer(minLength: 2)
+            if entry.isStale { WidgetStaleMark() }
+            if entry.isDemo { WidgetDemoMark() }
+            WidgetRiskMark(risk: entry.risk)
+        }
+        .frame(height: 16)
+    }
+}
+
+/// The same outlined/filled risk treatment used by the app's Overview hero.
+private struct WidgetRiskMark: View {
+    let risk: RiskLevel
+
+    var body: some View {
+        HStack(spacing: 2) {
+            PixelBadge(
+                risk.badge,
+                accent: TRTheme.riskAccent(risk),
+                filled: TRTheme.riskIsFilled(risk)
+            )
+            if !risk.glyph.isEmpty {
+                Text(risk.glyph)
+                    .font(.system(size: 8, design: .monospaced).weight(.bold))
+                    .foregroundStyle(TRTheme.riskAccent(risk))
+            }
+        }
+        .accessibilityHidden(true)
+    }
+}
+
+private struct WidgetProviderMeter: View {
+    let line: TREntry.ProviderLine
+    var compact = false
+
+    var body: some View {
+        VStack(spacing: compact ? 2 : 3) {
+            HStack(spacing: 4) {
+                ProviderGlyph(provider: line.provider, size: compact ? 10 : 12)
+                if !compact {
+                    Text(line.displayName)
+                        .font(.system(size: 10, design: .monospaced).weight(.medium))
+                        .foregroundStyle(TRTheme.text)
+                }
+                Spacer(minLength: 2)
+                Text(UsageFormatting.percent(line.remainingPercent.rounded()))
+                    .font(.system(size: compact ? 9 : 10, design: .monospaced).monospacedDigit().weight(.semibold))
+                    .foregroundStyle(TRTheme.text)
+            }
+            SegmentBar(
+                remainingPercent: line.remainingPercent,
+                accent: TRTheme.accent(for: line.provider),
+                segments: compact ? 9 : 12,
+                height: compact ? 3 : 4
+            )
+        }
+    }
+}
+
+private struct WidgetResetLine: View {
+    let entry: TREntry
+    var compact = false
+
+    var body: some View {
+        HStack(spacing: 4) {
+            PixelCheck(
+                entry.willLastUntilReset ? .checked : .warn,
+                size: compact ? 7 : 8,
+                accent: paceColor(lasts: entry.willLastUntilReset)
+            )
+            Text(TRL10n.t("overview.reset.card"))
+                .font(.system(size: compact ? 8 : 9, design: .monospaced))
+                .foregroundStyle(TRTheme.textDim)
+            if let reset = entry.soonestReset {
+                Text(reset, style: .timer)
+                    .font(.system(size: compact ? 9 : 11, design: .monospaced).monospacedDigit().weight(.semibold))
+                    .foregroundStyle(TRTheme.cyan)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+            } else {
+                Text(TRL10n.t("limits.reset.unknown"))
+                    .font(.system(size: compact ? 8 : 9, design: .monospaced))
+                    .foregroundStyle(TRTheme.textMute)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+            }
+            Spacer(minLength: 0)
+        }
+    }
 }
 
 extension TREntry {
     /// One composed VoiceOver sentence, reused across widgets and complications.
     var accessibilitySummary: String {
-        guard hasNumbers else { return TRL10n.t("origin.none.title") }
+        guard hasNumbers else {
+            return isExpired ? TRL10n.t("origin.macsync.expired") : TRL10n.t("origin.none.title")
+        }
         var parts = ["\(TRL10n.t("overview.min_remaining")) \(heroText)", paceLine]
         if let soonestReset {
             parts.append(TRL10n.f("reset.countdown", UsageFormatting.durationUntil(soonestReset, now: date)))
         }
         if isDemo { parts.append(TRL10n.t("demo.a11y")) }
+        if isStale { parts.append(TRL10n.t("liveactivity.stale")) }
         return parts.joined(separator: "，")
     }
 }
@@ -59,30 +234,47 @@ struct TRHeroView: View {
     let entry: TREntry
 
     var body: some View {
-        Group {
+        WidgetSurface {
             if entry.hasNumbers {
-                VStack(spacing: 6) {
-                    HStack {
-                        PixelRobot(remainingPercent: entry.minRemainingPercent, size: 34)
-                            .accessibilityHidden(true)
-                        Spacer()
-                        if entry.isDemo { WidgetDemoMark() }
+                VStack(alignment: .leading, spacing: 0) {
+                    WidgetHeader(entry: entry)
+
+                    HStack(alignment: .center, spacing: 4) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(TRL10n.t("overview.min_remaining"))
+                                .font(.system(size: 8, design: .monospaced))
+                                .foregroundStyle(TRTheme.textDim)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+                            PixelDigitText(entry.heroText, size: 36, color: TRTheme.text)
+                                .neonGlow(TRTheme.violet, intensity: 0.75)
+                        }
+                        Spacer(minLength: 0)
+                        TokenRemainHeadLogo(
+                            claudeRemaining: entry.remainingPercent(for: .claude),
+                            codexRemaining: entry.remainingPercent(for: .codex),
+                            size: 58
+                        )
+                        .accessibilityHidden(true)
                     }
-                    Text(entry.heroText)
-                        .trValue(size: 34)
-                        .foregroundStyle(TRTheme.cyan)
-                        .minimumScaleFactor(0.5)
-                        .lineLimit(1)
-                    HStack(spacing: 5) {
-                        RiskBadge(entry.risk)
-                        PixelCheck(entry.willLastUntilReset ? .checked : .warn,
-                                   size: 10,
-                                   accent: paceColor(lasts: entry.willLastUntilReset, risk: entry.risk))
-                        Spacer()
+                    .frame(height: 58)
+                    .padding(.top, 2)
+
+                    Spacer(minLength: 3)
+
+                    VStack(spacing: 4) {
+                        ForEach(entry.providers) { line in
+                            WidgetProviderMeter(line: line, compact: true)
+                        }
                     }
+
+                    Spacer(minLength: 3)
+                    WidgetResetLine(entry: entry, compact: true)
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             } else {
-                WidgetEmptyView()
+                WidgetEmptyView(compact: true, status: entry.paceLine)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
         .accessibilityElement(children: .ignore)
@@ -96,82 +288,64 @@ struct TRProvidersView: View {
     let entry: TREntry
 
     var body: some View {
-        Group {
+        WidgetSurface {
             if entry.hasNumbers {
-                HStack(alignment: .top, spacing: 14) {
-                    // Left column: robot mood, min-remaining hero, semantic risk badge.
-                    VStack(alignment: .leading, spacing: 5) {
-                        PixelRobot(remainingPercent: entry.minRemainingPercent, size: 30)
-                            .accessibilityHidden(true)
-                        Text(TRL10n.t("overview.min_remaining"))
-                            .font(.system(size: 9, design: .monospaced))
-                            .foregroundStyle(TRTheme.textDim)
-                        Text(entry.heroText)
-                            .trValue(size: 30)
-                            .foregroundStyle(TRTheme.cyan)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.5)
-                        RiskBadge(entry.risk, compact: true)
-                    }
-                    .frame(width: 92, alignment: .leading)
+                VStack(alignment: .leading, spacing: 8) {
+                    WidgetHeader(entry: entry)
 
-                    // Right column: provider rows, reset countdown, pace verdict.
-                    VStack(alignment: .leading, spacing: 7) {
-                        HStack {
-                            Spacer()
-                            if entry.isDemo { WidgetDemoMark() }
-                        }
-                        .frame(height: entry.isDemo ? nil : 0)
-                        ForEach(entry.providers) { line in
-                            VStack(alignment: .leading, spacing: 3) {
-                                HStack(spacing: 6) {
-                                    ProviderGlyph(provider: line.provider, size: 13)
-                                    Text(line.displayName)
-                                        .font(.system(.footnote, design: .monospaced))
-                                        .foregroundStyle(TRTheme.text)
-                                    Spacer()
-                                    Text(UsageFormatting.percent(line.remainingPercent.rounded()))
-                                        .font(.system(.footnote, design: .monospaced).monospacedDigit())
-                                        .foregroundStyle(TRTheme.text)
-                                }
-                                SegmentBar(
-                                    remainingPercent: line.remainingPercent,
-                                    accent: TRTheme.accent(for: line.provider),
-                                    segments: 14,
-                                    height: 5
-                                )
-                            }
-                        }
-                        Spacer(minLength: 0)
-                        HStack(spacing: 6) {
-                            Text(TRL10n.t("overview.reset.card"))
+                    HStack(spacing: 10) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(TRL10n.t("overview.min_remaining"))
                                 .font(.system(size: 9, design: .monospaced))
                                 .foregroundStyle(TRTheme.textDim)
-                            if let reset = entry.soonestReset {
-                                Text(reset, style: .timer)
-                                    .font(.system(size: 13, design: .monospaced).monospacedDigit().weight(.semibold))
-                                    .foregroundStyle(TRTheme.cyan)
+                            PixelDigitText(entry.heroText, size: 40, color: TRTheme.text)
+                                .neonGlow(TRTheme.violet, intensity: 0.75)
+                            HStack(spacing: 4) {
+                                PixelCheck(
+                                    entry.willLastUntilReset ? .checked : .warn,
+                                    size: 8,
+                                    accent: paceColor(lasts: entry.willLastUntilReset)
+                                )
+                                Text(entry.paceLine)
+                                    .font(.system(size: 9, design: .monospaced))
+                                    .foregroundStyle(paceColor(lasts: entry.willLastUntilReset))
                                     .lineLimit(1)
-                                    .minimumScaleFactor(0.5)
-                            } else {
-                                Text(TRL10n.t("limits.reset.unknown"))
-                                    .font(.system(size: 10, design: .monospaced))
-                                    .foregroundStyle(TRTheme.textDim)
+                                    .minimumScaleFactor(0.55)
                             }
                         }
-                        HStack(spacing: 4) {
-                            PixelCheck(entry.willLastUntilReset ? .checked : .warn, size: 9,
-                                       accent: paceColor(lasts: entry.willLastUntilReset, risk: entry.risk))
-                            Text(entry.paceLine)
-                                .font(.system(size: 10, design: .monospaced))
-                                .foregroundStyle(paceColor(lasts: entry.willLastUntilReset, risk: entry.risk))
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.6)
+                        .frame(width: 104, alignment: .leading)
+
+                        Rectangle()
+                            .fill(TRTheme.border)
+                            .frame(width: 1, height: 92)
+
+                        TokenRemainHeadLogo(
+                            claudeRemaining: entry.remainingPercent(for: .claude),
+                            codexRemaining: entry.remainingPercent(for: .codex),
+                            size: 76
+                        )
+                        .accessibilityHidden(true)
+                        .frame(width: 76)
+
+                        Rectangle()
+                            .fill(TRTheme.border)
+                            .frame(width: 1, height: 92)
+
+                        VStack(alignment: .leading, spacing: 6) {
+                            ForEach(entry.providers) { line in
+                                WidgetProviderMeter(line: line)
+                            }
+                            Spacer(minLength: 0)
+                            WidgetResetLine(entry: entry)
                         }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                     }
+                    .frame(maxHeight: .infinity)
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             } else {
-                WidgetEmptyView()
+                WidgetEmptyView(status: entry.paceLine)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
         .accessibilityElement(children: .ignore)
@@ -186,12 +360,21 @@ struct TRInlineView: View {
 
     var body: some View {
         if entry.hasNumbers {
-            Text("AI \(entry.isDemo ? "D̸ " : "")\(entry.heroText) · \(entry.paceLine)")
+            Text(inlineText)
                 .accessibilityLabel(entry.accessibilitySummary)
         } else {
             Text(TRL10n.t("origin.none.status"))
                 .accessibilityLabel(TRL10n.t("origin.none.title"))
         }
+    }
+
+    private var inlineText: String {
+        let reset = entry.soonestReset.map {
+            UsageFormatting.shortCountdown(to: $0, now: entry.date)
+        } ?? "—"
+        return "\(entry.heroText) · \(reset)"
+            + (entry.isDemo ? " · D̸" : "")
+            + (entry.isStale ? " · \(TRL10n.t("liveactivity.stale"))" : "")
     }
 }
 
@@ -203,19 +386,23 @@ struct TRCircularView: View {
             if entry.hasNumbers {
                 // Same double-ring design as the watch complication so the two
                 // surfaces read identically: outer Claude, inner Codex, min % centre.
-                // Lock Screen is a face-like surface → brand-coloured meters.
+                // Meters carry the muted provider accents; brand colour stays on logos.
                 ActivityRings(
                     outerRemaining: entry.remainingPercent(for: .claude) ?? entry.minRemainingPercent ?? 0,
                     innerRemaining: entry.remainingPercent(for: .codex) ?? entry.minRemainingPercent ?? 0,
-                    outerColor: TRTheme.claudeBrand,
-                    innerColor: TRTheme.codexBrand,
+                    outerColor: TRTheme.claudeAccent,
+                    innerColor: TRTheme.codexAccent,
                     centerLabel: entry.heroText
                 )
                 .padding(1)
             } else {
                 ZStack {
                     AccessoryWidgetBackground()
-                    PixelRobot(remainingPercent: 0, size: 30, monochrome: true)
+                    TokenRemainHeadLogo(
+                        claudeRemaining: 0,
+                        codexRemaining: 0,
+                        size: 30
+                    )
                         .accessibilityHidden(true)
                 }
             }
@@ -258,52 +445,67 @@ struct TRRectangularView: View {
     var body: some View {
         Group {
             if entry.hasNumbers {
-                HStack(spacing: 8) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        HStack(spacing: 4) {
-                            // AI-usage marker, then the min-remaining hero.
-                            Text(TRL10n.t("mark.ai_usage"))
-                                .font(.system(size: 9, design: .monospaced))
-                                .foregroundStyle(TRTheme.textDim)
-                            Text(TRL10n.t("overview.min_remaining"))
-                                .font(.system(size: 9, design: .monospaced))
-                            Text(entry.heroText)
-                                .font(.system(size: 17, design: .monospaced).monospacedDigit().weight(.semibold))
-                            if entry.isDemo {
-                                Text("D̸").font(.system(size: 9, design: .monospaced))
-                            }
-                            Spacer(minLength: 0)
-                        }
-                        if let reset = entry.soonestReset {
-                            Text("\(TRL10n.f("reset.countdown", UsageFormatting.shortCountdown(to: reset, now: entry.date))) · \(UsageFormatting.absoluteReset(reset))")
-                                .font(.system(size: 10, design: .monospaced))
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.6)
-                        }
-                        // Provider mini-bars — brand colours on this Lock Screen surface
-                        // (Claude coral, Codex blue), each already labelled by its glyph.
+                HStack(spacing: 6) {
+                    TokenRemainHeadLogo(
+                        claudeRemaining: entry.remainingPercent(for: .claude),
+                        codexRemaining: entry.remainingPercent(for: .codex),
+                        size: 30
+                    )
+                    .accessibilityHidden(true)
+
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(TRL10n.t("overview.min_remaining"))
+                            .font(.system(size: 7, design: .monospaced))
+                            .foregroundStyle(TRTheme.textDim)
+                        Text(entry.heroText)
+                            .font(.system(size: 15, design: .monospaced).monospacedDigit().weight(.bold))
+                        WidgetRiskMark(risk: entry.risk)
+                    }
+                    .frame(width: 38, alignment: .leading)
+
+                    Rectangle()
+                        .fill(TRTheme.border)
+                        .frame(width: 1, height: 48)
+
+                    VStack(alignment: .leading, spacing: 3) {
                         ForEach(entry.providers) { line in
-                            HStack(spacing: 5) {
-                                ProviderGlyph(provider: line.provider, size: 10)
+                            HStack(spacing: 3) {
+                                ProviderGlyph(provider: line.provider, size: 8)
                                 SegmentBar(
                                     remainingPercent: line.remainingPercent,
-                                    accent: TRTheme.brandColor(for: line.provider),
-                                    segments: 10,
-                                    height: 3
+                                    accent: TRTheme.accent(for: line.provider),
+                                    segments: 8,
+                                    height: 2.5
                                 )
                                 Text(UsageFormatting.percent(line.remainingPercent.rounded()))
-                                    .font(.system(size: 9, design: .monospaced).monospacedDigit())
-                                    .frame(width: 30, alignment: .trailing)
+                                    .font(.system(size: 8, design: .monospaced).monospacedDigit())
+                                    .frame(width: 27, alignment: .trailing)
+                            }
+                        }
+                        Spacer(minLength: 0)
+                        if let reset = entry.soonestReset {
+                            HStack(spacing: 3) {
+                                PixelCheck(
+                                    entry.willLastUntilReset ? .checked : .warn,
+                                    size: 6,
+                                    accent: paceColor(lasts: entry.willLastUntilReset)
+                                )
+                                Text(reset, style: .timer)
+                                    .font(.system(size: 8, design: .monospaced).monospacedDigit())
+                                    .foregroundStyle(TRTheme.cyan)
                             }
                         }
                     }
-                    Spacer(minLength: 0)
                 }
             } else {
                 HStack(spacing: 8) {
-                    PixelRobot(remainingPercent: 0, size: 24, monochrome: true)
+                    TokenRemainHeadLogo(
+                        claudeRemaining: 0,
+                        codexRemaining: 0,
+                        size: 24
+                    )
                         .accessibilityHidden(true)
-                    Text(TRL10n.t("origin.none.status"))
+                    Text(entry.paceLine)
                         .font(.system(size: 12, design: .monospaced))
                     Spacer(minLength: 0)
                 }

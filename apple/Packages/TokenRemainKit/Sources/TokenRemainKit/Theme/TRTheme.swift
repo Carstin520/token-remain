@@ -24,16 +24,30 @@ public enum TRTheme {
     /// Cool gray — captions and disabled ornament only, never value-bearing.
     public static let textMute = Color(hex: 0x55617A)
 
-    // The three chromatic accents
-    /// Robot Violet — the robot, Claude, primary accents, LOW badge.
+    // The three chromatic accents (2026-07-22: softened to the desktop tokens —
+    // no fluorescent hues anywhere; accents appear sparingly, one role each).
+    /// Robot Violet — the robot and primary product accent. Kept at the original
+    /// depth (not the desktop `#8F7BF2`) so the filled HIGH badge's off-white
+    /// text stays ≥ 3:1 (asserted in TRThemeContrastTests).
     public static let violet = Color(hex: 0x8357F5)
     public static let violetDim = Color(hex: 0x5A3EA8)
     /// Robot Indigo — system actions (refresh control, CTA, links).
     public static let indigo = Color(hex: 0x4D5FE8)
     public static let indigoDim = Color(hex: 0x35429E)
-    /// Robot Cyan — Codex, countdowns, confirmations.
-    public static let cyan = Color(hex: 0x00CDE8)
-    public static let cyanDim = Color(hex: 0x0A7C8C)
+    /// Robot Cyan — countdowns and confirmations only, never a meter colour.
+    public static let cyan = Color(hex: 0x3ECFE0)
+    public static let cyanDim = Color(hex: 0x2B8FA0)
+
+    // MARK: - Provider meter accents (muted tonal band, desktop parity)
+
+    /// Provider identity colours for meters (rings, bars, dots). Both sit in the
+    /// same muted band (saturation ~40%, similar lightness) as the desktop
+    /// `DashboardTheme` provider slots, so hue alone carries identity and no
+    /// meter ever reads as fluorescent. Official logo colours stay separate.
+    public static let claudeAccent = Color(hex: 0xBF8471)     // muted terracotta
+    public static let claudeAccentDim = Color(hex: 0x956758)
+    public static let codexAccent = Color(hex: 0x6687C5)      // muted steel blue
+    public static let codexAccentDim = Color(hex: 0x50699A)
 
     // MARK: - Semantic status (palette.md v1.1)
 
@@ -58,15 +72,23 @@ public enum TRTheme {
 
     public static func accent(for provider: ProviderQuota.Provider) -> Color {
         switch provider {
-        case .claude: return violet
-        case .codex: return cyan
+        case .claude: return claudeAccent
+        case .codex: return codexAccent
+        case .cursor, .kimi, .minimax, .qoder: return violet
+        case .antigravity, .deepseek, .mimo, .ollama: return cyanDim
+        case .grok, .zai, .copilot, .devin, .openrouter, .opencode, .kiro, .volcengine:
+            return indigo
         }
     }
 
     public static func accentDim(for provider: ProviderQuota.Provider) -> Color {
         switch provider {
-        case .claude: return violetDim
-        case .codex: return cyanDim
+        case .claude: return claudeAccentDim
+        case .codex: return codexAccentDim
+        case .cursor, .kimi, .minimax, .qoder: return violetDim
+        case .antigravity, .deepseek, .mimo, .ollama: return cyanDim.opacity(0.72)
+        case .grok, .zai, .copilot, .devin, .openrouter, .opencode, .kiro, .volcengine:
+            return indigoDim
         }
     }
 
@@ -99,6 +121,7 @@ public enum TRTheme {
         switch provider {
         case .claude: return claudeBrand
         case .codex: return codexBrand
+        default: return accent(for: provider)
         }
     }
 }
@@ -140,8 +163,10 @@ public enum TRThemeHex {
     public static let violetDim: UInt32 = 0x5A3EA8
     public static let indigo: UInt32 = 0x4D5FE8
     public static let indigoDim: UInt32 = 0x35429E
-    public static let cyan: UInt32 = 0x00CDE8
-    public static let cyanDim: UInt32 = 0x0A7C8C
+    public static let cyan: UInt32 = 0x3ECFE0
+    public static let cyanDim: UInt32 = 0x2B8FA0
+    public static let claudeAccent: UInt32 = 0xBF8471
+    public static let codexAccent: UInt32 = 0x6687C5
     public static let success: UInt32 = 0x57D19A
     public static let warning: UInt32 = 0xFFB554
     public static let danger: UInt32 = 0xFF6B6B

@@ -9,7 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusBarController: StatusBarController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Token Remain is a desktop app with a persistent Dashboard and a
+        // TokenRemain is a desktop app with a persistent Dashboard and a
         // companion menu-bar status item.
         NSApp.setActivationPolicy(.regular)
         statusBarController = StatusBarController(
@@ -17,6 +17,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             feedStore: feedStore,
             launchAtLogin: launchAtLogin
         )
+#if TOKENREMAIN_CLOUD_SYNC
+        CrossDeviceSyncController.shared.attach(to: store, feedStore: feedStore)
+#endif
 
         let arguments = ProcessInfo.processInfo.arguments
         if arguments.contains("--enable-launch-at-login") {

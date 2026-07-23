@@ -64,6 +64,11 @@ public struct TokenRemainActivityAttributes: ActivityAttributes {
             )
         }
 
+        public func isStale(at now: Date) -> Bool {
+            !isDemo
+                && now.timeIntervalSince(generatedAt) > UsageSnapshot.macSyncStaleInterval
+        }
+
         public var heroText: String {
             UsageFormatting.percent(minRemainingPercent.rounded())
         }
@@ -80,8 +85,13 @@ public struct TokenRemainActivityAttributes: ActivityAttributes {
 /// there is no push server in this build, so remote updates are never claimed.
 @available(iOS 16.2, *)
 public enum LiveActivityCoordinator {
-    /// Past this the system dims the activity and the UI renders "数据未更新".
-    public static let staleInterval: TimeInterval = 3_600
+    /// Demo content remains locally interactive. Verified Mac content becomes
+    /// stale from its source timestamp, not from the latest local redraw.
+    private static func staleDate(for entry: TREntry, now: Date) -> Date {
+        entry.origin == .macSync
+            ? entry.generatedAt.addingTimeInterval(UsageSnapshot.macSyncStaleInterval)
+            : now.addingTimeInterval(3_600)
+    }
 
     public static var areActivitiesEnabled: Bool {
         ActivityAuthorizationInfo().areActivitiesEnabled
@@ -97,7 +107,7 @@ public enum LiveActivityCoordinator {
         guard !isRunning else { return true }
         let content = ActivityContent(
             state: TokenRemainActivityAttributes.ContentState(entry: entry),
-            staleDate: now.addingTimeInterval(staleInterval)
+            staleDate: staleDate(for: entry, now: now)
         )
         do {
             _ = try Activity.request(
@@ -118,7 +128,7 @@ public enum LiveActivityCoordinator {
         }
         let content = ActivityContent(
             state: TokenRemainActivityAttributes.ContentState(entry: entry),
-            staleDate: now.addingTimeInterval(staleInterval)
+            staleDate: staleDate(for: entry, now: now)
         )
         for activity in Activity<TokenRemainActivityAttributes>.activities {
             await activity.update(content)
