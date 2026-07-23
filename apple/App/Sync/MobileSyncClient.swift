@@ -39,7 +39,7 @@ struct MobileSyncSourceCandidate: Sendable, Equatable {
 /// surfaces. This client never writes App Group snapshot files, Widget data,
 /// Live Activities, or WatchConnectivity state directly.
 enum MobileSyncPullOutcome: Sendable, Equatable {
-    case updated(MobileUsageSnapshot)
+    case updated(MobileSyncDelivery)
     case noChange(MobileSyncNoChangeReason)
     case requiresSourceConfirmation(MobileSyncSourceCandidate)
     case failed(MobileSyncFailure)
@@ -106,7 +106,8 @@ actor MobileSyncClient {
     /// decrypting, validating, and replay-checking the current record.
     func pull(
         confirmedSourceChange: SyncReplayMarker? = nil,
-        now: Date = Date()
+        now: Date = Date(),
+        phoneReceivedAt: Date? = nil
     ) async -> MobileSyncPullOutcome {
         do {
             switch try await cloudStore.accountStatus() {
@@ -148,7 +149,9 @@ actor MobileSyncClient {
             return try evaluateReplay(
                 snapshot,
                 confirmedSourceChange: confirmedSourceChange,
-                configuration: configuration
+                configuration: configuration,
+                macUploadedAt: stored.macUploadedAt,
+                phoneReceivedAt: phoneReceivedAt ?? Date()
             )
         } catch let error as SyncCloudStoreError {
             return .failed(Self.mapCloudError(error))
@@ -175,7 +178,9 @@ actor MobileSyncClient {
     private func evaluateReplay(
         _ snapshot: MobileUsageSnapshot,
         confirmedSourceChange: SyncReplayMarker?,
-        configuration: SyncValidationConfiguration
+        configuration: SyncValidationConfiguration,
+        macUploadedAt: Date?,
+        phoneReceivedAt: Date
     ) throws -> MobileSyncPullOutcome {
         let previousGuard = replayGuard
         let decision = try replayGuard.evaluate(
@@ -189,7 +194,11 @@ actor MobileSyncClient {
                 replayGuard = previousGuard
                 return .failed(.localReplayStateUnavailable)
             }
-            return .updated(snapshot)
+            return .updated(MobileSyncDelivery(
+                snapshot: snapshot,
+                macUploadedAt: macUploadedAt,
+                phoneReceivedAt: phoneReceivedAt
+            ))
         case .duplicate:
             return .noChange(.duplicate)
         case .replayedOlderSequence, .conflictingSequence:

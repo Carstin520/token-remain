@@ -161,7 +161,11 @@ struct OverviewTab: View {
             }
             return TRL10n.f(
                 "origin.macsync.freshness",
-                UsageFormatting.freshnessDescription(since: model.snapshot.generatedAt, now: Date())
+                UsageFormatting.freshnessDescription(
+                    since: model.snapshot.providers.map(\.capturedAt).min()
+                        ?? model.snapshot.generatedAt,
+                    now: Date()
+                )
             )
         }
     }

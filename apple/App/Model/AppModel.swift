@@ -35,6 +35,8 @@ final class AppModel {
     private(set) var curatedFeed: SyncedCuratedFeed?
     var liveActivityState: LiveActivityState = .inactive
     private(set) var mobileSyncState: MobileSyncState = .off
+    private(set) var syncLatencySummary: SyncLatencySummary?
+    private(set) var latestSyncTiming: SyncLatencyObservation?
 
     /// Router state, driven by the URL scheme, widgets and `OpenTabIntent`.
     var route: TRRoute = .overview
@@ -49,6 +51,7 @@ final class AppModel {
     private let historyStore = SnapshotHistoryStore.shared
     private let dailyUsageHistoryStore = MobileDailyUsageHistoryStore.shared
     private let curatedFeedStore = MobileCuratedFeedStore.shared
+    private let syncLatencyStore = MobileSyncLatencyStore.shared
     private let watchSync = WatchSyncEngine()
     private var mobileSync: MobileSyncClient { .shared }
     private var isApplyingSyncedSnapshot = false
@@ -123,6 +126,8 @@ final class AppModel {
         history = []
         dailyUsageHistory = nil
         curatedFeed = nil
+        syncLatencySummary = syncLatencyStore.summary()
+        latestSyncTiming = syncLatencyStore.observations().last
 
         settings.origin = resolvedOrigin
         settings.demoScenario = demoScenario
@@ -222,6 +227,23 @@ final class AppModel {
         mobileSyncState = .synced(source.generatedAt)
     }
 
+    /// Commits a verified delivery to every presentation surface, then records
+    /// the point at which the observable render model is ready. This timestamp
+    /// does not claim to measure a background WidgetKit refresh.
+    func applySyncedDelivery(
+        _ delivery: MobileSyncDelivery,
+        phoneRenderedAt: Date? = nil
+    ) {
+        guard origin == .macSync else { return }
+        applySyncedSnapshot(delivery.snapshot, now: phoneRenderedAt ?? Date())
+        let committedAt = phoneRenderedAt ?? Date()
+        syncLatencySummary = syncLatencyStore.record(
+            delivery,
+            phoneRenderedAt: committedAt
+        )
+        latestSyncTiming = syncLatencyStore.observations().last
+    }
+
     func setMacSyncEnabled(_ enabled: Bool) {
         if enabled {
             origin = .macSync
@@ -257,8 +279,8 @@ final class AppModel {
             return false
         }
         switch outcome {
-        case .updated(let source):
-            applySyncedSnapshot(source, now: now)
+        case .updated(let delivery):
+            applySyncedDelivery(delivery)
             return true
         case .noChange(let reason):
             switch reason {

@@ -39,9 +39,11 @@ final class UsageStore: ObservableObject {
     private var lastCCUsageRefresh: Date?
     private var lastClaudeAttempt: Date?
     private var lastCodexAPIAttempt: Date?
-    /// Cursor / Grok / Z.ai 共用的直查节奏门(它们都只有 API 一条路)。
-    private var lastAuxProvidersAttempt: Date?
+    private var lastAuxProviderAttempts: [ProviderQuota.Provider: Date] = [:]
+    private var auxProviderFailureCounts: [ProviderQuota.Provider: Int] = [:]
+    private var auxProviderRetryAfter: [ProviderQuota.Provider: Date] = [:]
     private var claudeRetryAfter: Date?
+    private var lowLatencySyncEnabled = false
     private let quotaCache = QuotaCache()
     private let historyCache = DailyHistoryCache()
     private let logger = Logger(subsystem: "com.jamesli.usagedock", category: "UsageRefresh")
@@ -231,15 +233,27 @@ final class UsageStore: ObservableObject {
         }
     }
 
+    /// Cross-device sync owns this override. It never changes the user's saved
+    /// menu-bar preference; disabling sync immediately returns to that choice.
+    func setLowLatencySyncEnabled(_ enabled: Bool) {
+        guard enabled != lowLatencySyncEnabled else { return }
+        lowLatencySyncEnabled = enabled
+        guard enabled else { return }
+        Task { await refresh(forceCCUsage: false, forceClaude: true) }
+    }
+
     func refresh(forceCCUsage: Bool = true, forceClaude: Bool = false) async {
         guard !isRefreshing else { return }
         isRefreshing = true
         defer { isRefreshing = false }
 
         let now = Date()
-        // 直查节奏由用户偏好决定(1/5/15/30 分钟);"仅手动"模式下只有
-        // 强制刷新(手动按钮/新增追踪)才发起请求。
-        let interval = PreferencesStore.shared.refreshInterval
+        // 普通直查节奏由用户偏好决定；启用 Apple 设备同步后由低延迟
+        // 策略临时覆盖，关闭同步即恢复原偏好。
+        let interval = AdaptiveRefreshPolicy.interval(
+            preferred: PreferencesStore.shared.refreshInterval,
+            lowLatencySyncEnabled: lowLatencySyncEnabled
+        )
         func autoDue(since date: Date?) -> Bool {
             guard let interval else { return false }
             return date.map { now.timeIntervalSince($0) >= interval } ?? true
@@ -248,17 +262,20 @@ final class UsageStore: ObservableObject {
         let shouldRefreshClaude = tracked.isEnabled(.claude)
             && (forceClaude || autoDue(since: lastClaudeAttempt) || backoffJustCompleted)
 
-        // Codex API 直查限到 5 分钟一次(手动刷新立即直查);分钟级轮次
-        // 只扫本地会话快照,在两次直查之间补新而不打服务端接口。
+        // Codex 本地会话快照保持分钟级扫描；API 直查遵循当前有效节奏，
+        // 同步关闭时仍回到用户设置的刷新偏好。
         let codexAPIDue = forceClaude || autoDue(since: lastCodexAPIAttempt)
-
-        // Cursor / Grok / Z.ai 只有 API 一条路(无本地快照可扫),
-        // 与 Claude 同为 5 分钟节奏。
-        let auxDue = forceClaude || autoDue(since: lastAuxProvidersAttempt)
 
         // async-let 的子任务不在主 actor 上,启用判断先在这里(主 actor)取好。
         let codexEnabled = tracked.isEnabled(.codex)
-        let dueAuxProviders = auxDue ? Self.auxProviders.filter(tracked.isEnabled) : []
+        let dueAuxProviders = Self.auxProviders.filter { provider in
+            guard tracked.isEnabled(provider) else { return false }
+            if forceClaude { return true }
+            if let retryAfter = auxProviderRetryAfter[provider], now < retryAfter {
+                return false
+            }
+            return autoDue(since: lastAuxProviderAttempts[provider])
+        }
 
         async let claudeResult: Result<ProviderQuota, Error>? = shouldRefreshClaude
             ? result { try await ClaudeUsageService().fetch() }
@@ -309,18 +326,33 @@ final class UsageStore: ObservableObject {
             }
         }
 
-        if auxDue {
-            lastAuxProvidersAttempt = now
+        if !dueAuxProviders.isEmpty {
             // 缓存数据继续展示;说明文字告诉用户为什么没有数据、怎么接入/恢复。
-            for provider in Self.auxProviders {
+            for provider in dueAuxProviders {
                 guard let auxResult = quotaResults.2[provider] else { continue }
+                lastAuxProviderAttempts[provider] = now
+                switch auxResult {
+                case .success:
+                    auxProviderFailureCounts[provider] = nil
+                    auxProviderRetryAfter[provider] = nil
+                case .failure:
+                    let failures = min((auxProviderFailureCounts[provider] ?? 0) + 1, 9)
+                    auxProviderFailureCounts[provider] = failures
+                    auxProviderRetryAfter[provider] = now.addingTimeInterval(
+                        AdaptiveRefreshPolicy.retryDelay(after: failures)
+                    )
+                }
                 apply(auxResult, to: provider) { self.assign($0, to: provider) }
             }
         }
 
         quotaCache.save(currentSnapshot())
 
-        let shouldRefreshCCUsage = forceCCUsage || lastCCUsageRefresh.map { Date().timeIntervalSince($0) >= 300 } != false
+        let historyInterval = lowLatencySyncEnabled
+            ? AdaptiveRefreshPolicy.activeInterval
+            : AdaptiveRefreshPolicy.idleHistoryInterval
+        let shouldRefreshCCUsage = forceCCUsage
+            || lastCCUsageRefresh.map { Date().timeIntervalSince($0) >= historyInterval } != false
         if shouldRefreshCCUsage {
             do {
                 daily = try await CCUsageService().fetch()

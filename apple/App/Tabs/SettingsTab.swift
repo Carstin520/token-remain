@@ -48,6 +48,34 @@ struct SettingsTab: View {
                 Text(mobileSyncStatus)
                     .font(.footnote)
                     .foregroundStyle(TRTheme.textDim)
+                if let timing = self.model.latestSyncTiming {
+                    LabeledContent(
+                        TRL10n.current == .zhHans ? "Provider 采集" : "Provider captured"
+                    ) {
+                        Text(timing.providerCapturedAt.formatted(date: .omitted, time: .standard))
+                            .foregroundStyle(TRTheme.textDim)
+                    }
+                    LabeledContent(
+                        TRL10n.current == .zhHans ? "手机呈现" : "Phone rendered"
+                    ) {
+                        Text(timing.phoneRenderedAt.formatted(date: .omitted, time: .standard))
+                            .foregroundStyle(TRTheme.textDim)
+                    }
+                }
+                if let summary = self.model.syncLatencySummary {
+                    let format = TRL10n.current == .zhHans
+                        ? "前台时延 · p50 %.0f 秒 · p95 %.0f 秒 · 最大 %.0f 秒 · n=%d"
+                        : "Foreground latency · p50 %.0fs · p95 %.0fs · max %.0fs · n=%d"
+                    Text(String(
+                        format: format,
+                        summary.p50Seconds,
+                        summary.p95Seconds,
+                        summary.maximumSeconds,
+                        summary.sampleCount
+                    ))
+                    .font(.caption)
+                    .foregroundStyle(TRTheme.textDim)
+                }
                 if case .sourceChangeRequiresConfirmation = self.model.mobileSyncState {
                     Button(TRL10n.t("settings.macsync.confirm")) {
                         self.model.acceptPendingMacSource()

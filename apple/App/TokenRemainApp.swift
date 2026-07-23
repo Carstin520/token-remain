@@ -43,7 +43,8 @@ final class TokenRemainAppDelegate: NSObject, UIApplicationDelegate {
                 return
             }
             switch outcome {
-            case .updated(let snapshot):
+            case .updated(let delivery):
+                let snapshot = delivery.snapshot
                 // Persist a validated fallback before acknowledging the push.
                 // If SwiftUI has not installed its observer yet, the next
                 // foreground refresh still reads this exact verified snapshot.
@@ -57,7 +58,7 @@ final class TokenRemainAppDelegate: NSObject, UIApplicationDelegate {
                 WidgetReload.all()
                 NotificationCenter.default.post(
                     name: .tokenRemainRemoteSyncSnapshot,
-                    object: snapshot
+                    object: delivery
                 )
                 completionHandler(.newData)
             case .noChange(.noRemoteSnapshot):
@@ -109,8 +110,8 @@ struct TokenRemainApp: App {
                 .onOpenURL { model.handle(url: $0) }
                 .onReceive(NotificationCenter.default.publisher(for: .tokenRemainRemoteSyncSnapshot)) { notification in
                     guard model.isMacSyncEnabled else { return }
-                    guard let snapshot = notification.object as? MobileUsageSnapshot else { return }
-                    model.applySyncedSnapshot(snapshot)
+                    guard let delivery = notification.object as? MobileSyncDelivery else { return }
+                    model.applySyncedDelivery(delivery)
                 }
                 .onReceive(NotificationCenter.default.publisher(for: .tokenRemainRemoteSyncCleared)) { _ in
                     guard model.isMacSyncEnabled else { return }
@@ -126,7 +127,7 @@ struct TokenRemainApp: App {
                     }
                 }
                 // CloudKit silent pushes remain the low-latency path. While the
-                // app is visible, a five-minute reconciliation also catches a
+                // app is visible, a 45-second reconciliation also catches a
                 // missed/coalesced push without pretending iOS offers a strict
                 // background polling schedule.
                 .task(id: model.isMacSyncEnabled) {
@@ -135,7 +136,7 @@ struct TokenRemainApp: App {
                         if scenePhase == .active {
                             await model.pullMacSync()
                         }
-                        try? await Task.sleep(for: .seconds(5 * 60))
+                        try? await Task.sleep(for: .seconds(45))
                     }
                 }
         }

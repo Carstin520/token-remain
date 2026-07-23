@@ -1,6 +1,5 @@
 #if TOKENREMAIN_CLOUD_SYNC
 import Combine
-import CryptoKit
 import Foundation
 import OSLog
 import Security
@@ -72,6 +71,7 @@ final class CrossDeviceSyncController: ObservableObject {
     private var heartbeatTask: Task<Void, Never>?
     private var retryAttempt = 0
     private var allowsSourceTakeoverOnce = false
+    private weak var usageStore: UsageStore?
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -84,6 +84,8 @@ final class CrossDeviceSyncController: ObservableObject {
 
     func attach(to store: UsageStore, feedStore: AIFeedStore) {
         guard storeSubscription == nil else { return }
+        usageStore = store
+        store.setLowLatencySyncEnabled(isEnabled)
         latestQuotas = store.quotas
         latestHistory = store.history
         latestFeedPosts = feedStore.topStories
@@ -95,7 +97,7 @@ final class CrossDeviceSyncController: ObservableObject {
                 guard let self else { return }
                 self.latestQuotas = quotas
                 self.updatePreview()
-                self.scheduleUpload(after: 12)
+                self.scheduleUpload(after: 4)
             }
         historySubscription = store.$history
             .dropFirst()
@@ -104,7 +106,7 @@ final class CrossDeviceSyncController: ObservableObject {
                 guard let self else { return }
                 self.latestHistory = history
                 self.updatePreview()
-                self.scheduleUpload(after: 12)
+                self.scheduleUpload(after: 4)
             }
         feedSubscription = feedStore.$posts
             .dropFirst()
@@ -112,7 +114,7 @@ final class CrossDeviceSyncController: ObservableObject {
             .sink { [weak self, weak feedStore] _ in
                 guard let self, let feedStore else { return }
                 self.latestFeedPosts = feedStore.topStories
-                self.scheduleUpload(after: 12)
+                self.scheduleUpload(after: 4)
             }
         if isEnabled {
             scheduleUpload(after: 0)
@@ -124,6 +126,7 @@ final class CrossDeviceSyncController: ObservableObject {
         guard enabled != isEnabled else { return }
         isEnabled = enabled
         defaults.set(enabled, forKey: DefaultsKey.enabled)
+        usageStore?.setLowLatencySyncEnabled(enabled)
         if enabled {
             retryAttempt = 0
             state = latestQuotas.isEmpty ? .waitingForMacData : .checkingICloud
@@ -257,7 +260,7 @@ final class CrossDeviceSyncController: ObservableObject {
             state = .uploading
             let keyRecord = try await keys.loadOrCreate()
             let sequence = nextSequence()
-            let now = Date()
+            let preparedAt = Date()
             let snapshot = MobileSnapshotRedactor.makeSnapshot(
                 from: latestQuotas,
                 history: latestHistory,
@@ -265,23 +268,24 @@ final class CrossDeviceSyncController: ObservableObject {
                 feedPosts: latestFeedPosts,
                 sourceInstanceID: localSourceID,
                 sequence: sequence,
-                generatedAt: now
+                generatedAt: preparedAt
             )
             let envelope = try EncryptedSyncEnvelope.seal(
                 snapshot,
                 using: keyRecord.key,
                 keyID: keyRecord.keyID,
                 containerID: Self.cloudContainerIdentifier,
-                configuration: .current(now: now)
+                configuration: .current(now: preparedAt)
             )
             try await cloud.save(envelope)
+            let uploadedAt = Date()
 
             retryAttempt = 0
             allowsSourceTakeoverOnce = false
             defaults.set(fingerprint, forKey: DefaultsKey.lastFingerprint)
-            defaults.set(now, forKey: DefaultsKey.lastUploadedAt)
-            lastUploadedAt = now
-            state = .synced(now)
+            defaults.set(uploadedAt, forKey: DefaultsKey.lastUploadedAt)
+            lastUploadedAt = uploadedAt
+            state = .synced(uploadedAt)
             logger.info("Private sync upload succeeded; sequence \(sequence, privacy: .public)")
         } catch {
             let failure = Self.failure(for: error)
@@ -345,50 +349,12 @@ final class CrossDeviceSyncController: ObservableObject {
         includesUsageHistory: Bool,
         feedPosts: [AIFeedPost]
     ) -> String {
-        struct FingerprintWindow: Codable {
-            let usedPercent: Double
-            let windowMinutes: Int
-            let resetsAt: Date?
-        }
-        struct FingerprintProvider: Codable {
-            let id: String
-            let capturedAt: Date
-            let planName: String?
-            let windows: [FingerprintWindow]
-        }
-        struct FingerprintPayload: Codable {
-            let providers: [FingerprintProvider]
-            let history: DailyUsageHistory?
-            let curatedPosts: [SyncedCuratedPost]
-        }
-        let values = MobileSnapshotRedactor.publishedProviders.compactMap { provider -> FingerprintProvider? in
-            guard let quota = quotas[provider] else { return nil }
-            return FingerprintProvider(
-                id: MobileSnapshotRedactor.stableID(for: provider),
-                capturedAt: quota.capturedAt,
-                planName: SyncedProviderQuota.sanitizedPlanName(quota.planName),
-                windows: [quota.primary, quota.secondary].compactMap { $0 }.map {
-                    FingerprintWindow(
-                        usedPercent: min(max($0.usedPercent, 0), 100),
-                        windowMinutes: max(0, $0.windowMinutes),
-                        resetsAt: $0.resetsAt
-                    )
-                }
-            )
-        }
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = .sortedKeys
-        encoder.dateEncodingStrategy = .millisecondsSince1970
-        let payload = FingerprintPayload(
-            providers: values,
-            history: includesUsageHistory ? history : nil,
-            curatedPosts: MobileSnapshotRedactor.curatedFeed(
-                from: feedPosts,
-                generatedAt: Date()
-            )?.posts ?? []
+        SyncContentFingerprint.make(
+            quotas: quotas,
+            history: history,
+            includesUsageHistory: includesUsageHistory,
+            feedPosts: feedPosts
         )
-        let data = (try? encoder.encode(payload)) ?? Data()
-        return SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
     }
 
     private static func failure(for error: Error) -> Failure {

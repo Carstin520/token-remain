@@ -70,6 +70,19 @@ public struct SyncCloudRecordMetadata: Sendable, Equatable {
 public struct SyncCloudStoredEnvelope: Sendable, Equatable {
     public let envelope: EncryptedSyncEnvelope
     public let metadata: SyncCloudRecordMetadata
+    /// CloudKit's server-assigned record modification time. This is transport
+    /// telemetry only and is never trusted for authentication or replay order.
+    public let macUploadedAt: Date?
+
+    public init(
+        envelope: EncryptedSyncEnvelope,
+        metadata: SyncCloudRecordMetadata,
+        macUploadedAt: Date? = nil
+    ) {
+        self.envelope = envelope
+        self.metadata = metadata
+        self.macUploadedAt = macUploadedAt
+    }
 }
 
 /// Fixed, opaque record codec for the private CloudKit database. Keeping this
@@ -187,7 +200,14 @@ public enum CloudKitSyncRecordCodec {
         guard try sameMillisecond(metadata.generatedAt, envelope.generatedAt) else {
             throw SyncCloudRecordValidationError.metadataMismatch(generatedAtField)
         }
-        return SyncCloudStoredEnvelope(envelope: envelope, metadata: metadata)
+        let macUploadedAt = record.modificationDate.flatMap { date in
+            date.timeIntervalSince1970.isFinite ? date : nil
+        }
+        return SyncCloudStoredEnvelope(
+            envelope: envelope,
+            metadata: metadata,
+            macUploadedAt: macUploadedAt
+        )
     }
 
     private static func decodeMetadata(from record: CKRecord) throws -> SyncCloudRecordMetadata {
