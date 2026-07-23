@@ -153,13 +153,10 @@
 "devices.this_mac" = "이 Mac";
 "devices.this_mac_subtitle" = "현재 모니터링 중인 기기";
 "feed.allow_notifications" = "알림 허용";
-"feed.config.empty_token" = "프로젝트 구성 파일의 XBearerToken이 비어 있습니다";
-"feed.config.unreadable" = "로컬 AI Feed 구성 파일을 읽을 수 없습니다";
 "feed.curated.api_error" = "TokenRemain 큐레이션 소스 %1$d: %2$@";
 "feed.curated.invalid_response" = "TokenRemain 큐레이션 소스가 인식할 수 없는 데이터를 반환했습니다";
 "feed.empty_message" = "주목할 만한 새 소식이 생기면 여기에 자동으로 표시됩니다.";
 "feed.empty_title" = "중요 소식 없음";
-"feed.enter_bearer_token" = "X API Bearer Token을 입력하세요";
 "feed.important_subtitle" = "할당량, 가격, 제품 출시, 서비스 상태 우선";
 "feed.important_title" = "중요 알림";
 "feed.more_subtitle" = "관련성, 시의성, 참여 품질 순으로 정렬";
@@ -179,7 +176,6 @@
 "feed.rotating_refresh_failed" = "보조 티어 새로 고침 실패: %1$@";
 "feed.section_subtitle" = "내 할당량과 워크플로에 직접 관련된 큐레이션 업데이트";
 "feed.source.curated" = "TokenRemain 큐레이션 소스 · 검수된 콘텐츠";
-"feed.source.x_api" = "X 공식 API · 최근 공개 게시물";
 "feed.syncing_message" = "내 할당량과 워크플로에 직접 관련된 소식을 선별하는 중입니다.";
 "feed.syncing_title" = "큐레이션 소식 동기화 중";
 "feed.trending_accessibility" = "인기 %1$d위, %2$@: %3$@";
@@ -187,11 +183,7 @@
 "feed.trending_subtitle" = "지금 가장 주목할 소식";
 "feed.update_unavailable" = "큐레이션 소식을 지금은 업데이트할 수 없습니다. 앱이 백그라운드에서 자동으로 다시 시도합니다.";
 "feed.view_on_x" = "X에서 보기";
-"feed.x.api_error" = "X API %1$d: %2$@";
-"feed.x.invalid_request" = "X API 요청을 생성할 수 없습니다";
-"feed.x.invalid_response" = "X API가 인식할 수 없는 데이터를 반환했습니다";
 "keychain.operation_failed" = "키체인 작업 실패: %1$@";
-"keychain.token_unreadable" = "키체인의 X API Token을 읽을 수 없습니다";
 "keychain.unknown_error" = "알 수 없는 오류";
 "launch.allow_in_system_settings" = "“시스템 설정 → 일반 → 로그인 항목”에서 TokenRemain을 허용해 주세요";
 "launch.restart_failed" = "TokenRemain을 재시작할 수 없습니다: %1$@";

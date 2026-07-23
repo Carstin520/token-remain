@@ -12,6 +12,7 @@ BASELINE_EXECUTABLE="UsageDockProviderAuditBaseline"
 CANDIDATE_EXECUTABLE="UsageDockAppStoreCandidate"
 ENTITLEMENTS="$ROOT_DIR/Resources/UsageDockAppStoreCandidate.entitlements"
 SIGNING_IDENTITY="${TOKENREMAIN_APP_STORE_SIGNING_IDENTITY:-}"
+BROADCAST_BASE_URL="${TOKENREMAIN_BROADCAST_BASE_URL:-https://tokenremain-broadcast.jamescarstin520.workers.dev}"
 
 export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
 
@@ -42,6 +43,15 @@ stage_bundle() {
   cp "$build_binary" "$app_macos/$executable_name"
   cp "$ROOT_DIR/Resources/Info.plist" "$app_contents/Info.plist"
   /usr/libexec/PlistBuddy -c "Set :CFBundleExecutable $executable_name" "$app_contents/Info.plist"
+  if [[ -n "$BROADCAST_BASE_URL" ]]; then
+    if [[ "$BROADCAST_BASE_URL" != https://* ]]; then
+      echo "TOKENREMAIN_BROADCAST_BASE_URL must use HTTPS." >&2
+      exit 2
+    fi
+    /usr/libexec/PlistBuddy \
+      -c "Add :TokenRemainBroadcastBaseURL string $BROADCAST_BASE_URL" \
+      "$app_contents/Info.plist"
+  fi
   cp "$ROOT_DIR/Sources/UsageDock/Resources/claude.png" "$app_resources/claude.png"
   cp "$ROOT_DIR/Sources/UsageDock/Resources/openai.png" "$app_resources/openai.png"
   cp "$ROOT_DIR/Sources/UsageDock/Resources/TokenRemain.icns" "$app_resources/TokenRemain.icns"
@@ -72,6 +82,13 @@ verify_candidate_entitlements() {
       exit 1
     fi
   done
+  if [[ "$(/usr/libexec/PlistBuddy \
+    -c 'Print :com.apple.developer.aps-environment' \
+    "$extracted" 2>/dev/null || true)" != "development" ]]; then
+    echo "Candidate signature is missing the development APNs entitlement." >&2
+    rm -f "$extracted"
+    exit 1
+  fi
   if /usr/libexec/PlistBuddy -c 'Print :com.apple.security.files.home-relative-path.read-only' "$extracted" >/dev/null 2>&1 \
     || /usr/libexec/PlistBuddy -c 'Print :com.apple.security.files.absolute-path.read-only' "$extracted" >/dev/null 2>&1; then
     echo "Candidate must not use temporary-path exception entitlements." >&2

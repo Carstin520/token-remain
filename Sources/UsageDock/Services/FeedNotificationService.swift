@@ -2,6 +2,10 @@ import AppKit
 import Foundation
 import UserNotifications
 
+extension Notification.Name {
+    static let tokenRemainOpenAIFeed = Notification.Name("tokenRemain.openAIFeed")
+}
+
 final class FeedNotificationService: NSObject, UNUserNotificationCenterDelegate, @unchecked Sendable {
     private lazy var center: UNUserNotificationCenter = {
         let center = UNUserNotificationCenter.current()
@@ -60,6 +64,8 @@ final class FeedNotificationService: NSObject, UNUserNotificationCenterDelegate,
         if let value = response.notification.request.content.userInfo["url"] as? String,
            let url = URL(string: value) {
             NSWorkspace.shared.open(url)
+        } else if response.notification.request.content.userInfo["route"] as? String == "feed" {
+            NotificationCenter.default.post(name: .tokenRemainOpenAIFeed, object: nil)
         }
         completionHandler()
     }

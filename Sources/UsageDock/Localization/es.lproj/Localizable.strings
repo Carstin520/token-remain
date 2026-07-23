@@ -153,13 +153,10 @@
 "devices.this_mac" = "Este Mac";
 "devices.this_mac_subtitle" = "El dispositivo supervisado actualmente";
 "feed.allow_notifications" = "Permitir notificaciones";
-"feed.config.empty_token" = "El XBearerToken del archivo de configuración del proyecto está vacío";
-"feed.config.unreadable" = "No se pudo leer el archivo de configuración local de AI Feed";
 "feed.curated.api_error" = "Fuente seleccionada de TokenRemain %1$d: %2$@";
 "feed.curated.invalid_response" = "La fuente seleccionada de TokenRemain devolvió datos no reconocibles";
 "feed.empty_message" = "Las novedades que merezcan tu atención aparecerán aquí automáticamente.";
 "feed.empty_title" = "Sin novedades importantes";
-"feed.enter_bearer_token" = "Introduce tu X API Bearer Token";
 "feed.important_subtitle" = "Prioridad a cuota, precios, lanzamientos y estado del servicio";
 "feed.important_title" = "Importante";
 "feed.more_subtitle" = "Ordenado por relevancia, actualidad y calidad de interacción";
@@ -179,7 +176,6 @@
 "feed.rotating_refresh_failed" = "Falló la actualización del nivel secundario: %1$@";
 "feed.section_subtitle" = "Novedades seleccionadas directamente relevantes para tu cuota y tu flujo de trabajo";
 "feed.source.curated" = "Fuente seleccionada de TokenRemain · contenido revisado";
-"feed.source.x_api" = "API oficial de X · publicaciones públicas recientes";
 "feed.syncing_message" = "Filtrando lo que afecta directamente a tu cuota y a tu flujo de trabajo.";
 "feed.syncing_title" = "Sincronizando novedades seleccionadas";
 "feed.trending_accessibility" = "Tendencia n.º %1$d, %2$@: %3$@";
@@ -187,11 +183,7 @@
 "feed.trending_subtitle" = "Lo más relevante ahora mismo";
 "feed.update_unavailable" = "Las novedades seleccionadas no se pueden actualizar ahora; la app lo reintentará en segundo plano.";
 "feed.view_on_x" = "Ver en X";
-"feed.x.api_error" = "X API %1$d: %2$@";
-"feed.x.invalid_request" = "No se pudo crear la solicitud a la API de X";
-"feed.x.invalid_response" = "La API de X devolvió datos no reconocibles";
 "keychain.operation_failed" = "Falló la operación del llavero: %1$@";
-"keychain.token_unreadable" = "No se pudo leer el X API Token del llavero";
 "keychain.unknown_error" = "Error desconocido";
 "launch.allow_in_system_settings" = "Permite TokenRemain en Ajustes del Sistema → General → Ítems de inicio";
 "launch.restart_failed" = "No se pudo reiniciar TokenRemain: %1$@";

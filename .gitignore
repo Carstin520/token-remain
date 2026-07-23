@@ -7,3 +7,6 @@ dist-release/
 UsageDock.app/
 Config/UsageDockFeed.local.plist
 design/token-remain-logo-gallery/
+broadcast/.dev.vars
+broadcast/.wrangler/
+broadcast/node_modules/

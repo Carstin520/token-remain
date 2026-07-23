@@ -1,42 +1,43 @@
 import Foundation
 
-/// Engineering entry point for AI Feed delivery.
+/// Public, credential-free entry point for the server-curated broadcast feed.
 ///
-/// Development:
-///   Keep `.directXAPI`. Put the Bearer Token in
-///   `Config/UsageDockFeed.local.plist`; the build script asks the signed app
-///   to import it into its own Keychain item.
-///
-/// Productization:
-///   Change `delivery` to `.curatedAPI(endpoint: ...)`. The client will then
-///   consume only content selected by the UsageDock backend and never receive
-///   an X API credential.
+/// Production builds inject `TokenRemainBroadcastBaseURL` into Info.plist.
+/// Local builds can instead set `TOKENREMAIN_BROADCAST_BASE_URL`.
 enum FeedConfiguration {
-    static let delivery: FeedDelivery = .directXAPI
-
-    // Productization example:
-    // static let delivery: FeedDelivery = .curatedAPI(
-    //     endpoint: URL(string: "https://api.usagedock.app/v1/ai-feed")!
-    // )
-
     static let pollingIntervalSeconds: TimeInterval = 600
-    static let primaryAccounts = AIFeedAccount.primary
-    static let rotatingCandidates = AIFeedAccount.rotatingCandidates
-}
+    private static let productionBaseURL =
+        "https://tokenremain-broadcast.jamescarstin520.workers.dev"
 
-enum FeedDelivery: Sendable {
-    case directXAPI
-    case curatedAPI(endpoint: URL)
-
-    var requiresXBearerToken: Bool {
-        if case .directXAPI = self { return true }
-        return false
+    static var baseURL: URL? {
+        let environmentValue = ProcessInfo.processInfo.environment[
+            "TOKENREMAIN_BROADCAST_BASE_URL"
+        ]
+        let bundledValue = Bundle.main.object(
+            forInfoDictionaryKey: "TokenRemainBroadcastBaseURL"
+        ) as? String
+        guard let rawValue = [environmentValue, bundledValue, productionBaseURL]
+            .compactMap({ $0?.trimmingCharacters(in: .whitespacesAndNewlines) })
+            .first(where: { !$0.isEmpty }),
+              let url = URL(string: rawValue),
+              let scheme = url.scheme?.lowercased(),
+              ["https", "http"].contains(scheme),
+              url.host != nil
+        else {
+            return nil
+        }
+        return url
     }
 
-    var sourceTitle: String {
-        switch self {
-        case .directXAPI: return L10n.text("feed.source.x_api")
-        case .curatedAPI: return L10n.text("feed.source.curated")
-        }
+    static var feedEndpoint: URL? {
+        baseURL?.appending(path: "v1/ai-feed")
+    }
+
+    static var deviceRegistrationEndpoint: URL? {
+        baseURL?.appending(path: "v1/devices/register")
+    }
+
+    static var sourceTitle: String {
+        L10n.text("feed.source.curated")
     }
 }

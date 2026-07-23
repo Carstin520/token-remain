@@ -24,29 +24,6 @@ struct AIFeedTests {
         ) == false)
     }
 
-    @Test("Primary tier is fixed and Elon Musk rotates")
-    func primaryTierAccounts() {
-        #expect(
-            AIFeedAccount.primary.map(\.username) == [
-                "btibor91",
-                "sama",
-                "claudeai",
-                "AnthropicAI",
-                "OpenAI",
-                "thsottiaux",
-                "karpathy"
-            ]
-        )
-        #expect(AIFeedAccount.rotatingCandidates.first?.username == "elonmusk")
-        #expect(AIFeedAccount.tier(for: "elonmusk") == .rotating)
-        #expect(AIFeedAccount.primary.allSatisfy { AIFeedAccount.tier(for: $0.username) == .primary })
-        #expect(
-            AIFeedAccount.rotatingCandidates.allSatisfy {
-                AIFeedAccount.tier(for: $0.username) == .rotating
-            }
-        )
-    }
-
     @Test("Token reset language receives the highest priority")
     func tokenResetPriority() {
         #expect(FeedPriorityClassifier.classify("We increased the API token rate limit and the quota resets every five hours.") == .tokenReset)
@@ -62,70 +39,6 @@ struct AIFeedTests {
     func majorUpdatePriority() {
         #expect(FeedPriorityClassifier.classify("Introducing our new model, available now in the API.") == .majorUpdate)
         #expect(FeedPriorityClassifier.classify("I enjoyed talking about model behavior today.") == .normal)
-    }
-
-    @Test("X search payload maps authors, metrics, priority, and ordering")
-    func searchPayloadDecoding() throws {
-        let data = Data(
-            """
-            {
-              "data": [
-                {
-                  "id": "2",
-                  "text": "A regular research note.",
-                  "author_id": "20",
-                  "created_at": "2026-07-18T10:00:00.000Z",
-                  "public_metrics": {"like_count": 3, "retweet_count": 2, "reply_count": 1, "quote_count": 0, "bookmark_count": 0, "impression_count": 10}
-                },
-                {
-                  "id": "1",
-                  "text": "Introducing a new model, now available in the API.",
-                  "author_id": "10",
-                  "created_at": "2026-07-18T09:00:00.000Z",
-                  "public_metrics": {"like_count": 30, "retweet_count": 20, "reply_count": 10, "quote_count": 0, "bookmark_count": 0, "impression_count": 100}
-                }
-              ],
-              "includes": {
-                "users": [
-                  {"id": "10", "name": "OpenAI", "username": "OpenAI"},
-                  {"id": "20", "name": "Tibor Blaho", "username": "btibor91"}
-                ]
-              }
-            }
-            """.utf8
-        )
-
-        let posts = try XFeedService.decode(data: data, tier: .rotating)
-
-        #expect(posts.count == 2)
-        #expect(posts.first?.id == "1")
-        #expect(posts.first?.priority == .majorUpdate)
-        #expect(posts.first?.displayName == "OpenAI")
-        #expect(posts.first?.metrics.likes == 30)
-        #expect(posts.last?.username == "btibor91")
-        #expect(posts.allSatisfy { $0.tier == .rotating })
-    }
-
-    @Test("Recent search is bounded to the Shanghai day and 50 results")
-    func dailySearchURL() throws {
-        let now = try #require(
-            ISO8601DateFormatter().date(from: "2026-07-18T08:00:00Z")
-        )
-        let start = AIFeedCollectionPolicy.startOfDay(for: now)
-        let url = try XFeedService.searchURL(
-            accounts: AIFeedAccount.primary,
-            startTime: start,
-            maxResults: 50
-        )
-        let components = try #require(URLComponents(url: url, resolvingAgainstBaseURL: false))
-        let values = Dictionary(
-            uniqueKeysWithValues: (components.queryItems ?? []).map { ($0.name, $0.value ?? "") }
-        )
-
-        #expect(values["max_results"] == "50")
-        #expect(values["start_time"] == "2026-07-17T16:00:00Z")
-        #expect(values["query"]?.contains("from:karpathy") == true)
-        #expect(values["query"]?.contains("from:thsottiaux") == true)
     }
 
     @Test("Rotating tier selects the five hottest accounts")
@@ -335,25 +248,6 @@ struct AIFeedTests {
         #expect(merged.filter { $0.tier == .primary }.count == 50)
         #expect(merged.filter { $0.tier == .rotating }.count == 25)
         #expect(!merged.contains { $0.id == "old" })
-    }
-
-    @Test("Local engineering plist imports the X token without embedding it in code")
-    func localConfigurationImport() throws {
-        let data = Data(
-            """
-            <?xml version="1.0" encoding="UTF-8"?>
-            <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-            <plist version="1.0"><dict>
-              <key>XBearerToken</key><string>test-token</string>
-            </dict></plist>
-            """.utf8
-        )
-        let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("UsageDockFeed-\(UUID().uuidString).plist")
-        try data.write(to: url)
-        defer { try? FileManager.default.removeItem(at: url) }
-
-        #expect(try LocalFeedConfigurationImporter().token(from: url) == "test-token")
     }
 
     @Test("Curated API payload preserves server priority and canonical URL")

@@ -9,7 +9,7 @@ struct KeychainSecretStore: Sendable {
         var errorDescription: String? {
             switch self {
             case .invalidData:
-                return L10n.text("keychain.token_unreadable")
+                return L10n.text("keychain.unknown_error")
             case .unexpectedStatus(let status):
                 let detail = SecCopyErrorMessageString(status, nil) as String? ?? L10n.text("keychain.unknown_error")
                 return L10n.format("keychain.operation_failed", detail)
@@ -72,4 +72,3 @@ struct KeychainSecretStore: Sendable {
         ]
     }
 }
-

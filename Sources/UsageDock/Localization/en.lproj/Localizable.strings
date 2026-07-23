@@ -154,13 +154,10 @@
 "devices.this_mac" = "This Mac";
 "devices.this_mac_subtitle" = "The device currently monitored";
 "feed.allow_notifications" = "Allow Notifications";
-"feed.config.empty_token" = "XBearerToken in the project configuration file is empty";
-"feed.config.unreadable" = "Could not read the local AI Feed configuration file";
 "feed.curated.api_error" = "TokenRemain curated feed %1$d: %2$@";
 "feed.curated.invalid_response" = "The TokenRemain curated feed returned unrecognized data";
 "feed.empty_message" = "New items worth your attention will appear here automatically.";
 "feed.empty_title" = "No important updates";
-"feed.enter_bearer_token" = "Enter your X API Bearer Token";
 "feed.important_subtitle" = "Quota, pricing, product launches, and service status first";
 "feed.important_title" = "Important";
 "feed.more_subtitle" = "Ranked by relevance, recency, and engagement quality";
@@ -180,7 +177,6 @@
 "feed.rotating_refresh_failed" = "Secondary tier refresh failed: %1$@";
 "feed.section_subtitle" = "Curated updates directly relevant to your quota and workflow";
 "feed.source.curated" = "TokenRemain curated feed · reviewed content";
-"feed.source.x_api" = "Official X API · recent public posts";
 "feed.syncing_message" = "Filtering for what directly affects your quota and workflow.";
 "feed.syncing_title" = "Syncing curated updates";
 "feed.trending_accessibility" = "Trending #%1$d, %2$@: %3$@";
@@ -188,11 +184,7 @@
 "feed.trending_subtitle" = "What matters most right now";
 "feed.update_unavailable" = "The curated feed can't update right now; the app will retry in the background.";
 "feed.view_on_x" = "View on X";
-"feed.x.api_error" = "X API %1$d: %2$@";
-"feed.x.invalid_request" = "Could not create the X API request";
-"feed.x.invalid_response" = "The X API returned unrecognized data";
 "keychain.operation_failed" = "Keychain operation failed: %1$@";
-"keychain.token_unreadable" = "The X API token in the keychain could not be read";
 "keychain.unknown_error" = "Unknown error";
 "launch.allow_in_system_settings" = "Allow TokenRemain in System Settings → General → Login Items";
 "launch.restart_failed" = "Could not restart TokenRemain: %1$@";

@@ -153,13 +153,10 @@
 "devices.this_mac" = "この Mac";
 "devices.this_mac_subtitle" = "現在モニタリング中のデバイス";
 "feed.allow_notifications" = "通知を許可";
-"feed.config.empty_token" = "プロジェクト設定ファイルの XBearerToken が空です";
-"feed.config.unreadable" = "ローカルの AI Feed 設定ファイルを読み取れません";
 "feed.curated.api_error" = "TokenRemain 厳選フィード %1$d:%2$@";
 "feed.curated.invalid_response" = "TokenRemain 厳選フィードが認識できないデータを返しました";
 "feed.empty_message" = "注目に値する新着があると、ここに自動的に表示されます。";
 "feed.empty_title" = "重要な更新はありません";
-"feed.enter_bearer_token" = "X API Bearer Token を入力してください";
 "feed.important_subtitle" = "クォータ、価格、製品リリース、サービス状態を優先";
 "feed.important_title" = "重要";
 "feed.more_subtitle" = "関連性・新しさ・エンゲージメント品質で並べ替え";
@@ -179,7 +176,6 @@
 "feed.rotating_refresh_failed" = "セカンダリの更新に失敗しました:%1$@";
 "feed.section_subtitle" = "あなたのクォータとワークフローに直接関わる厳選アップデート";
 "feed.source.curated" = "TokenRemain 厳選フィード · 審査済みコンテンツ";
-"feed.source.x_api" = "X 公式 API · 最近の公開ポスト";
 "feed.syncing_message" = "クォータとワークフローに直接関わる情報を選別しています。";
 "feed.syncing_title" = "厳選アップデートを同期中";
 "feed.trending_accessibility" = "トレンド%1$d件目、%2$@:%3$@";
@@ -187,11 +183,7 @@
 "feed.trending_subtitle" = "今もっとも注目すべき情報";
 "feed.update_unavailable" = "厳選フィードを現在更新できません。バックグラウンドで自動的に再試行します。";
 "feed.view_on_x" = "X で表示";
-"feed.x.api_error" = "X API %1$d:%2$@";
-"feed.x.invalid_request" = "X API リクエストを作成できません";
-"feed.x.invalid_response" = "X API が認識できないデータを返しました";
 "keychain.operation_failed" = "キーチェーン操作に失敗しました:%1$@";
-"keychain.token_unreadable" = "キーチェーン内の X API Token を読み取れません";
 "keychain.unknown_error" = "不明なエラー";
 "launch.allow_in_system_settings" = "「システム設定 → 一般 → ログイン項目」で TokenRemain を許可してください";
 "launch.restart_failed" = "TokenRemain を再起動できません:%1$@";
