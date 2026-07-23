@@ -11,27 +11,31 @@ export const PRIMARY_ACCOUNTS = [
   { username: "karpathy", displayName: "Andrej Karpathy" },
 ] as const;
 
+export const ROTATING_ACCOUNTS = [
+  { username: "Kimi_Moonshot", displayName: "Kimi / Moonshot" },
+  { username: "AIatMeta", displayName: "Meta AI" },
+  { username: "GoogleDeepMind", displayName: "Google DeepMind" },
+  { username: "xai", displayName: "xAI" },
+  { username: "MistralAI", displayName: "Mistral AI" },
+  { username: "deepseek_ai", displayName: "DeepSeek" },
+  { username: "OpenRouterAI", displayName: "OpenRouter" },
+  { username: "perplexity_ai", displayName: "Perplexity" },
+  { username: "simonw", displayName: "Simon Willison" },
+  { username: "emollick", displayName: "Ethan Mollick" },
+  { username: "ArtificialAnlys", displayName: "Artificial Analysis" },
+  { username: "elonmusk", displayName: "Elon Musk" },
+] as const;
+
 export const PRIMARY_DAILY_LIMIT = 30;
 export const ROTATING_DAILY_LIMIT = 20;
 export const ROTATING_PER_AUTHOR_DAILY_LIMIT = 3;
 
 const originalPostFilters = "-is:reply -is:retweet -is:quote -is:nullcast";
-const discoveryTerms = [
-  "AI",
-  '"artificial intelligence"',
-  "LLM",
-  '"large language model"',
-  '"foundation model"',
-  '"AI agent"',
-  "ChatGPT",
-  "Claude",
-  "Gemini",
-  '"人工智能"',
-  '"大模型"',
-  '"生成式AI"',
-].join(" OR ");
 const primaryByUsername = new Map(
   PRIMARY_ACCOUNTS.map((account) => [account.username.toLowerCase(), account]),
+);
+const rotatingByUsername = new Map(
+  ROTATING_ACCOUNTS.map((account) => [account.username.toLowerCase(), account]),
 );
 
 interface XPost {
@@ -95,10 +99,10 @@ export function buildPrimaryQuery(): string {
 }
 
 export function buildRotatingQuery(): string {
-  const exclusions = PRIMARY_ACCOUNTS
-    .map((account) => `-from:${account.username}`)
-    .join(" ");
-  return `(${discoveryTerms}) ${exclusions} ${originalPostFilters}`;
+  const accounts = ROTATING_ACCOUNTS
+    .map((account) => `from:${account.username}`)
+    .join(" OR ");
+  return `(${accounts}) ${originalPostFilters}`;
 }
 
 export async function syncPrimaryPosts(
@@ -130,7 +134,10 @@ export async function syncRotatingPosts(
 
   const payload = await searchRecent(token, buildRotatingQuery(), now, "relevancy");
   const candidates = candidatesFromSearch(payload, "rotating", now)
-    .filter((candidate) => !primaryByUsername.has(candidate.authorUsername.toLowerCase()))
+    .filter((candidate) => (
+      rotatingByUsername.has(candidate.authorUsername.toLowerCase())
+      && !primaryByUsername.has(candidate.authorUsername.toLowerCase())
+    ))
     .sort((left, right) => {
       if (right.selectionScore !== left.selectionScore) {
         return right.selectionScore - left.selectionScore;
@@ -348,10 +355,11 @@ function candidatesFromSearch(
     const author = users.get(post.author_id);
     if (!author) continue;
     const activity = authorActivity.get(author.id) ?? 1;
-    if (tier === "rotating" && !isEligibleRotatingAuthor(post, author, activity)) {
+    if (tier === "rotating" && !isEligibleRotatingAuthor(author)) {
       continue;
     }
     const primary = primaryByUsername.get(author.username.toLowerCase());
+    const rotating = rotatingByUsername.get(author.username.toLowerCase());
     const metrics = {
       likes: post.public_metrics?.like_count ?? 0,
       reposts: post.public_metrics?.retweet_count ?? 0,
@@ -361,7 +369,7 @@ function candidatesFromSearch(
       id: post.id,
       text: post.text,
       authorUsername: author.username,
-      authorDisplayName: primary?.displayName ?? author.name,
+      authorDisplayName: primary?.displayName ?? rotating?.displayName ?? author.name,
       publishedAt: new Date(post.created_at).toISOString(),
       url: `https://x.com/${author.username}/status/${post.id}`,
       priority: classify(post.text),
@@ -402,26 +410,10 @@ async function weakestPublishedCandidate(
 }
 
 export function isEligibleRotatingAuthor(
-  post: XPost,
-  author: XUser,
-  candidatePostCount: number,
+  author: Pick<XUser, "username">,
 ): boolean {
-  const profileLooksAI = /(?:\bAI\b|\bML\b|\bLLMs?\b|artificial intelligence|machine learning|deep learning|neural|foundation model|generative AI|人工智能|大模型)/iu
-    .test(author.description ?? "");
-  const followers = author.public_metrics?.followers_count ?? 0;
-  const metrics = post.public_metrics;
-  const weightedEngagement =
-    (metrics?.like_count ?? 0)
-    + (metrics?.retweet_count ?? 0) * 2
-    + (metrics?.reply_count ?? 0)
-    + (metrics?.quote_count ?? 0) * 2;
-  const establishedHotAuthor = followers >= 25_000 && weightedEngagement >= 10;
-  const activeAIAccount = profileLooksAI && (
-    followers >= 1_000
-    || weightedEngagement >= 10
-    || candidatePostCount >= 2
-  );
-  return establishedHotAuthor || activeAIAccount;
+  const username = author.username.toLowerCase();
+  return rotatingByUsername.has(username) && !primaryByUsername.has(username);
 }
 
 function discoveryHeatScore(

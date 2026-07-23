@@ -10,6 +10,7 @@ import {
   isOriginalPost,
   PRIMARY_ACCOUNTS,
   PRIMARY_DAILY_LIMIT,
+  ROTATING_ACCOUNTS,
   ROTATING_DAILY_LIMIT,
   ROTATING_PER_AUTHOR_DAILY_LIMIT,
 } from "../src/x-api";
@@ -29,6 +30,7 @@ describe("TokenRemain broadcast worker", () => {
           dailyLimit: 30,
         },
         rotating: {
+          accounts: ROTATING_ACCOUNTS.map((account) => account.username),
           dailyLimit: 20,
         },
       },
@@ -169,7 +171,12 @@ describe("TokenRemain broadcast worker", () => {
 
     for (const account of PRIMARY_ACCOUNTS) {
       expect(primary).toContain(`from:${account.username}`);
-      expect(rotating).toContain(`-from:${account.username}`);
+      expect(rotating).not.toMatch(
+        new RegExp(`(?:^|[ (])from:${account.username}(?:[ )]|$)`, "i"),
+      );
+    }
+    for (const account of ROTATING_ACCOUNTS) {
+      expect(rotating).toContain(`from:${account.username}`);
     }
     for (const filter of ["-is:reply", "-is:retweet", "-is:quote"]) {
       expect(primary).toContain(filter);
@@ -182,27 +189,18 @@ describe("TokenRemain broadcast worker", () => {
       referenced_tweets: [{ id: "456", type: "quoted" }],
     })).toBe(false);
     expect(isEligibleRotatingAuthor(
-      { id: "1", text: "A model update", public_metrics: {} },
       {
-        id: "author-1",
-        name: "AI Researcher",
-        username: "airesearcher",
-        description: "AI and machine learning research",
-        public_metrics: { followers_count: 1_500 },
+        username: "GoogleDeepMind",
       },
-      1,
     )).toBe(true);
     expect(isEligibleRotatingAuthor(
-      { id: "2", text: "A model update", public_metrics: {} },
       {
-        id: "author-2",
-        name: "Unrelated",
-        username: "unrelated",
-        description: "Personal notes",
-        public_metrics: { followers_count: 100 },
+        username: "popular_ai_outsider",
       },
-      1,
     )).toBe(false);
+    expect(isEligibleRotatingAuthor({
+      username: "OpenAI",
+    })).toBe(false);
   });
 
   it("enforces aggregate 30/20 daily limits and rotating author diversity", async () => {
