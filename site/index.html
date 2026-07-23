@@ -403,7 +403,7 @@ footer.site .disclaimer{
   <nav>
     <span class="wordmark">Token<em>Remain</em></span>
     <span class="links">
-      <a href="#download" data-i18n="nav-dl">Download</a>
+      <a href="#download" data-i18n="nav-dl">In development</a>
       <a href="#screens" data-i18n="nav-screens">Screens</a>
       <a href="#providers" data-i18n="nav-providers">Providers</a>
       <a href="#privacy" data-i18n="nav-privacy">Privacy</a>
@@ -418,7 +418,7 @@ footer.site .disclaimer{
   <!-- ================= hero ================= -->
   <header class="hero" id="download">
     <div>
-      <span class="badge"><span class="dot"></span>macOS · Menu&nbsp;Bar · Quota&nbsp;HUD</span>
+      <span class="badge"><span class="dot"></span>Development preview · macOS · Menu&nbsp;Bar · Quota&nbsp;HUD</span>
       <h1 data-i18n="h-h1">Your AI quotas,<br><span class="accent">right in the menu bar</span>.</h1>
       <p class="sub" data-i18n="h-sub">
         Remaining quota and reset countdowns for <strong>Claude Code, Codex, Cursor, Grok, GLM</strong>
@@ -426,10 +426,9 @@ footer.site .disclaimer{
         Provider credentials stay on your Mac. If you enable Apple-device sync, only an allowlisted AES-256-GCM encrypted quota snapshot moves through your own iCloud account.
       </p>
       <div class="cta-row">
-        <a class="btn btn-primary" href="https://github.com/Carstin520/token-remain/releases/latest/download/TokenRemain.dmg">
-          <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 1v8.6L4.9 6.5 3.8 7.6 8 11.8l4.2-4.2-1.1-1.1L8 9.6V1H8zM2 13h12v1.5H2z"/></svg>
-          <span data-i18n="h-dl">Download TokenRemain.dmg</span>
-        </a>
+        <span class="btn btn-primary" aria-disabled="true">
+          <span data-i18n="h-dl">In development — download coming later</span>
+        </span>
         <a class="btn btn-ghost" href="https://github.com/Carstin520/token-remain" rel="noopener">
           <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 .2a8 8 0 0 0-2.5 15.6c.4.1.5-.2.5-.4v-1.4c-2.2.5-2.7-1-2.7-1-.4-.9-.9-1.2-.9-1.2-.7-.5.1-.5.1-.5.8.1 1.2.9 1.2.9.7 1.2 1.9.9 2.4.7 0-.5.3-.9.5-1.1-1.8-.2-3.7-.9-3.7-4a3 3 0 0 1 .8-2.1c0-.2-.3-1 .1-2.1 0 0 .7-.2 2.2.8a7.5 7.5 0 0 1 4 0c1.5-1 2.2-.8 2.2-.8.4 1.1.1 1.9.1 2.1a3 3 0 0 1 .8 2.1c0 3.1-1.9 3.8-3.7 4 .3.3.6.8.6 1.5v2.2c0 .2.1.5.5.4A8 8 0 0 0 8 .2z"/></svg>
           <span data-i18n="h-gh">GitHub Repo</span>
@@ -438,9 +437,9 @@ footer.site .disclaimer{
       <p class="req-line">
         <span>macOS 14+</span><span class="sep">·</span>
         <span>Apple Silicon (arm64)</span><span class="sep">·</span>
-        <span data-i18n="h-req3">direct .dmg install</span>
+        <span data-i18n="h-req3">public build coming later</span>
       </p>
-      <p class="releases-hint" data-i18n="h-hint">The button points to the latest release asset — browse all versions on the <a href="https://github.com/Carstin520/token-remain/releases" rel="noopener">Releases page</a>.</p>
+      <p class="releases-hint" data-i18n="h-hint">TokenRemain is still under active development. No public DMG is available yet; follow progress on GitHub.</p>
     </div>
 
     <!-- ============ 3D stage · real popover screenshot ============ -->
@@ -594,15 +593,15 @@ footer.site .disclaimer{
     <div class="split">
     <div>
     <p class="eyebrow">Current Build</p>
-    <h2 data-i18n="lm-h2">Known limits — read before you download</h2>
-    <p class="lede" data-i18n="lm-lede">TokenRemain is in early distribution. These limits are deliberate trade-offs — data safety always outranks feature coverage.</p>
+    <h2 data-i18n="lm-h2">Known limits of the development preview</h2>
+    <p class="lede" data-i18n="lm-lede">TokenRemain is still being developed and is not a finished public release. These limits are deliberate trade-offs — data safety always outranks feature coverage.</p>
     </div>
     <div class="limit-card ticked">
       <div class="head"><span class="sym">!</span><span data-i18n="lm-head">Known limitations</span></div>
       <ul>
         <li><span class="k" data-i18n="lmk1">CHIP</span><span data-i18n="lm1"><strong>Apple Silicon (arm64) only</strong> — no Intel builds yet.</span></li>
         <li><span class="k" data-i18n="lmk2">OS</span><span data-i18n="lm2">Requires <strong>macOS 14 Sonoma or later</strong>; macOS 26 gets native Liquid Glass, 14/15 fall back to the dark card style.</span></li>
-        <li><span class="k" data-i18n="lmk3">DIST</span><span data-i18n="lm3"><strong>Developer ID signed .dmg</strong>, not on the Mac App Store yet; if Gatekeeper objects, allow it under System Settings → Privacy &amp; Security.</span></li>
+        <li><span class="k" data-i18n="lmk3">DIST</span><span data-i18n="lm3"><strong>No public DMG is available yet.</strong> This website is a development preview, not a release announcement.</span></li>
         <li><span class="k" data-i18n="lmk4">DEPS</span><span data-i18n="lm4">Direct quota queries need the <strong>matching tools signed in on this Mac</strong> (Claude Code, Codex CLI, Cursor…); services that aren't signed in show setup hints. Z.ai is the only one that needs a pasted API key.</span></li>
         <li><span class="k" data-i18n="lmk5">EST</span><span data-i18n="lm5">Cost figures are <strong>API list-price estimates</strong>, not your subscription bill; when a credential expires, data pauses and the app tells you how to recover.</span></li>
       </ul>
@@ -638,22 +637,22 @@ footer.site .disclaimer{
     </div>
   </section>
 
-  <!-- ================= install ================= -->
+  <!-- ================= release ================= -->
   <section>
-    <p class="eyebrow">Install</p>
-    <h2 data-i18n="in-h2">Installed in three steps</h2>
+    <p class="eyebrow">Release</p>
+    <h2 data-i18n="in-h2">What happens before download</h2>
     <div class="steps">
       <div class="step">
-        <h3 data-i18n="st1t">Download and open the .dmg</h3>
-        <p data-i18n="st1d">Grab <code>TokenRemain.dmg</code> from the button above or the Releases page, then double-click to mount.</p>
+        <h3 data-i18n="st1t">Development is in progress</h3>
+        <p data-i18n="st1d">Core product, privacy, signing, and cross-device behavior are still being completed and verified.</p>
       </div>
       <div class="step">
-        <h3 data-i18n="st2t">Drag into Applications</h3>
-        <p data-i18n="st2d">Drop TokenRemain into your Applications folder; if the first launch is blocked, allow it under Privacy &amp; Security.</p>
+        <h3 data-i18n="st2t">A public release will be announced</h3>
+        <p data-i18n="st2d">The website and GitHub repository will link to the official build only after it is ready for public use.</p>
       </div>
       <div class="step">
-        <h3 data-i18n="st3t">See you in the menu bar</h3>
-        <p data-i18n="st3d">Onboarding detects the AI tools on this Mac and pre-selects them — confirm and tracking starts. No Dock icon; it lives in the menu bar.</p>
+        <h3 data-i18n="st3t">Install once it is available</h3>
+        <p data-i18n="st3d">Until then, there is no public DMG to download. Follow the repository for verified release updates.</p>
       </div>
     </div>
   </section>
@@ -691,11 +690,11 @@ footer.site .disclaimer{
 <script>
 /* ---------- i18n: English inline (default), Chinese dictionary ---------- */
 var ZH={
-  "nav-dl":"下载","nav-screens":"界面","nav-providers":"支持的服务","nav-privacy":"隐私","nav-policy":"隐私政策","nav-support":"支持","nav-limits":"限制",
+  "nav-dl":"开发中","nav-screens":"界面","nav-providers":"支持的服务","nav-privacy":"隐私","nav-policy":"隐私政策","nav-support":"支持","nav-limits":"限制",
   "h-h1":"你的 AI 额度，<br><span class=\"accent\">常驻菜单栏</span>。",
   "h-sub":"一处看全 <strong>Claude Code、Codex、Cursor、Grok、GLM</strong> 等 <strong>18+ 服务</strong>的剩余额度与重置倒计时。Provider 凭证始终留在 Mac；启用 Apple 设备同步后，只有经过白名单过滤并使用 AES-256-GCM 加密的额度快照会通过你自己的 iCloud 账户传输。",
-  "h-dl":"下载 TokenRemain.dmg","h-gh":"GitHub 仓库","h-req3":".dmg 直装",
-  "h-hint":"按钮指向最新 Release 附件；也可到 <a href=\"https://github.com/Carstin520/token-remain/releases\" rel=\"noopener\">Releases 页</a> 查看全部版本。",
+  "h-dl":"开发中，稍后开放下载","h-gh":"GitHub 仓库","h-req3":"公开版本稍后提供",
+  "h-hint":"TokenRemain 仍在开发中，当前没有公开 DMG；可在 GitHub 查看进展。",
   "chip-grok":"Grok 周池",
   "s-h2":"三块屏幕，同一套像素语言",
   "s-lede":"菜单栏弹窗在上方已经见过——下面全部是<strong style=\"color:var(--text)\">正在运行的最新版实机截图</strong>：桌面 Dashboard、iPhone 版与桌面小组件。",
@@ -726,12 +725,12 @@ var ZH={
   "pr4t":"无追踪、无分析","pr4d":"不埋点、不上报、没有广告 SDK。",
   "pr5t":"无需注册账户","pr5d":"不需要为 TokenRemain 注册任何账号——登录本机已有工具即自动接入。",
   "pr6t":"本地缓存，可选加密同步","pr6d":"Mac 缓存与成本统计留在本机；只有你主动启用同步时，经过白名单过滤的加密展示快照才会进入你的 iCloud 私有数据库。",
-  "lm-h2":"现阶段限制，下载前请确认",
-  "lm-lede":"TokenRemain 仍在早期分发阶段，以下限制是刻意的取舍——数据安全永远排在功能覆盖前面。",
+  "lm-h2":"开发预览阶段的已知限制",
+  "lm-lede":"TokenRemain 仍在开发中，尚未形成可公开发布的完成版本。以下限制是刻意的取舍——数据安全永远排在功能覆盖前面。",
   "lm-head":"已知限制",
   "lmk1":"芯片","lm1":"<strong>仅支持 Apple Silicon（arm64）</strong>，Intel Mac 暂不提供构建。",
   "lmk2":"系统","lm2":"需要 <strong>macOS 14 Sonoma 或更高</strong>；macOS 26 可启用原生 Liquid Glass 样式，14/15 自动回退深色卡片。",
-  "lmk3":"分发","lm3":"<strong>Developer ID 直发 .dmg</strong>，暂未上架 Mac App Store；若系统拦截，请到「系统设置 → 隐私与安全性」允许打开。",
+  "lmk3":"分发","lm3":"<strong>当前没有公开 DMG。</strong> 本网站是开发预览，不代表产品已经发布。",
   "lmk4":"依赖","lm4":"额度直查依赖<strong>本机已登录的对应工具</strong>（Claude Code、Codex CLI、Cursor 等）；未登录的服务会显示接入指引。Z.ai 是唯一需要手动粘贴 API Key 的服务。",
   "lmk5":"估算","lm5":"成本数字是 <strong>API 标价估算</strong>，不等于订阅账单；部分服务凭证过期时数据会暂停更新并提示恢复方法。",
   "ft-h2":"把节奏握在手里",
@@ -739,10 +738,10 @@ var ZH={
   "ft2t":"菜单栏与浮窗","ft2d":"菜单栏显示哪些应用自选；刷新 1/5/15/30 分钟或仅手动；桌面浮窗跨空间常驻。",
   "ft3t":"今日成本估算","ft3d":"ccusage 统计今日 token 与估算 API 成本，按服务商拆分，全部本地计算。",
   "ft4t":"AI 动态聚合","ft4d":"额度重置、速率限制变化与重大模型更新自动置顶并触发 macOS 本地通知。",
-  "in-h2":"三步装好",
-  "st1t":"下载并打开 .dmg","st1d":"从上方按钮或 Releases 页获取 <code>TokenRemain.dmg</code>，双击挂载。",
-  "st2t":"拖入 Applications","st2d":"把 TokenRemain 拖进应用程序文件夹，首次启动如被拦截，到「隐私与安全性」允许。",
-  "st3t":"菜单栏见","st3d":"Onboarding 自动检测本机已装的 AI 工具并预勾选，确认即开始追踪。无 Dock 图标，常驻菜单栏。",
+  "in-h2":"开放下载前还要完成什么",
+  "st1t":"产品仍在开发","st1d":"核心功能、隐私、签名与跨设备行为仍在完成和验证中。",
+  "st2t":"准备好后再正式发布","st2d":"只有完成公开使用所需的验证后，官网与 GitHub 才会提供官方构建链接。",
+  "st3t":"发布后再安装","st3d":"当前没有可公开下载的 DMG；可关注 GitHub 获取经过验证的发布进展。",
   "rp-h2":"源码全部公开",
   "rp-p":"凭证怎么读、数据去了哪，代码里一行行可查。Issue 与 PR 都欢迎。<br><code>github.com/Carstin520/token-remain</code>",
   "rp-btn":"打开仓库",
