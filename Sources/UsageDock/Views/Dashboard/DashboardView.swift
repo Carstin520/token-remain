@@ -20,6 +20,9 @@ struct DashboardView: View {
     @ObservedObject var launchAtLogin: LaunchAtLoginManager
     @ObservedObject var navigator: DashboardNavigator
     @ObservedObject var tracked: TrackedProvidersStore = .shared
+#if TOKENREMAIN_CLOUD_SYNC
+    @ObservedObject private var cloudSync = CrossDeviceSyncController.shared
+#endif
 
     private var insights: UsageInsights {
         UsageInsights(
@@ -32,6 +35,28 @@ struct DashboardView: View {
     }
 
     var body: some View {
+#if TOKENREMAIN_CLOUD_SYNC
+        dashboardContent
+            .alert(item: syncGuidanceBinding) { guidance in
+                Alert(
+                    title: Text(syncGuidanceTitle(guidance)),
+                    message: Text(syncGuidanceMessage(guidance)),
+                    primaryButton: .default(Text(L10n.text("sync.guidance.review"))) {
+                        navigator.selection = .devices
+                        cloudSync.dismissGuidance()
+                    },
+                    secondaryButton: .cancel(Text(L10n.text("sync.guidance.later"))) {
+                        cloudSync.dismissGuidance()
+                    }
+                )
+            }
+#else
+        dashboardContent
+#endif
+    }
+
+    @ViewBuilder
+    private var dashboardContent: some View {
         if tracked.hasCompletedOnboarding {
             dashboardBody
         } else {
@@ -39,6 +64,33 @@ struct DashboardView: View {
                 .frame(minWidth: 920, minHeight: 620)
         }
     }
+
+#if TOKENREMAIN_CLOUD_SYNC
+    private var syncGuidanceBinding: Binding<CrossDeviceSyncController.Guidance?> {
+        Binding(
+            get: { cloudSync.guidance },
+            set: { value in
+                if value == nil {
+                    cloudSync.dismissGuidance()
+                }
+            }
+        )
+    }
+
+    private func syncGuidanceTitle(_ guidance: CrossDeviceSyncController.Guidance) -> String {
+        switch guidance {
+        case .checkICloud: L10n.text("sync.guidance.icloud_title")
+        case .checkKeychain: L10n.text("sync.guidance.keychain_title")
+        }
+    }
+
+    private func syncGuidanceMessage(_ guidance: CrossDeviceSyncController.Guidance) -> String {
+        switch guidance {
+        case .checkICloud: L10n.text("sync.guidance.icloud_message")
+        case .checkKeychain: L10n.text("sync.guidance.keychain_message")
+        }
+    }
+#endif
 
     private var dashboardBody: some View {
         NavigationSplitView {
@@ -143,7 +195,7 @@ struct DashboardView: View {
     private var syncFooter: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("同步状态")
+                Text(L10n.text("sync.status"))
                     .font(.system(size: 10))
                     .foregroundStyle(DashboardTheme.mutedText)
                 Spacer()
@@ -161,8 +213,8 @@ struct DashboardView: View {
                 .usageDockRoundControlStyle()
                 .buttonBorderShape(.circle)
                 .disabled(store.isRefreshing)
-                .help("立即刷新所有数据源")
-                .accessibilityLabel("刷新")
+                .help(L10n.text("action.refresh_all_sources"))
+                .accessibilityLabel(L10n.text("action.refresh"))
             }
             StatusDotLabel(color: syncColor, text: syncText, bold: true)
         }

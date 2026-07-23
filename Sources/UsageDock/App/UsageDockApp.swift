@@ -79,6 +79,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return true
     }
 
+    func applicationDidBecomeActive(_ notification: Notification) {
+#if TOKENREMAIN_CLOUD_SYNC
+        CrossDeviceSyncController.shared.checkNow()
+#endif
+    }
+
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         false
     }

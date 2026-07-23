@@ -9,14 +9,17 @@ struct CrossDeviceSyncSettingsCard: View {
     var body: some View {
         DashboardCard {
             VStack(alignment: .leading, spacing: 12) {
-                PanelHeader(title: "跨设备同步", subtitle: "Mac → iCloud 私有数据库 → iPhone")
+                PanelHeader(
+                    title: L10n.text("sync.card.title"),
+                    subtitle: L10n.text("sync.card.subtitle")
+                )
 
                 Toggle(isOn: enabledBinding) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("加密同步到我的 Apple 设备")
+                        Text(L10n.text("sync.toggle.encrypt_title"))
                             .font(.system(size: 13, weight: .medium))
                             .foregroundStyle(DashboardTheme.text)
-                        Text("默认关闭；provider 凭证、账号、路径、错误原文与 Token 明细永不上传")
+                        Text(L10n.text("sync.toggle.encrypt_detail"))
                             .font(.system(size: 11))
                             .foregroundStyle(DashboardTheme.secondaryText)
                     }
@@ -26,10 +29,10 @@ struct CrossDeviceSyncSettingsCard: View {
 
                 Toggle(isOn: usageHistoryBinding) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("同步每日 Token / 费用历史")
+                        Text(L10n.text("sync.toggle.history_title"))
                             .font(.system(size: 13, weight: .medium))
                             .foregroundStyle(DashboardTheme.text)
-                        Text("独立授权；最多 30 天，仅 Claude / Codex 的按日聚合值")
+                        Text(L10n.text("sync.toggle.history_detail"))
                             .font(.system(size: 11))
                             .foregroundStyle(DashboardTheme.secondaryText)
                     }
@@ -38,6 +41,23 @@ struct CrossDeviceSyncSettingsCard: View {
                 .tint(DashboardTheme.violet)
                 .disabled(!sync.isEnabled)
 
+                if sync.isEnabled {
+                    LabeledContent(L10n.text("sync.health.icloud")) {
+                        Label(iCloudHealthText, systemImage: iCloudHealthIcon)
+                            .foregroundStyle(iCloudHealthColor)
+                    }
+                    LabeledContent(L10n.text("sync.health.key")) {
+                        Label(syncKeyHealthText, systemImage: syncKeyHealthIcon)
+                            .foregroundStyle(syncKeyHealthColor)
+                    }
+                    if let checkedAt = sync.lastAutomaticCheckAt {
+                        LabeledContent(L10n.text("sync.health.last_check")) {
+                            Text(checkedAt.formatted(date: .omitted, time: .standard))
+                                .foregroundStyle(DashboardTheme.secondaryText)
+                        }
+                    }
+                }
+
                 Label(statusText, systemImage: statusIcon)
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(statusColor)
@@ -45,7 +65,7 @@ struct CrossDeviceSyncSettingsCard: View {
                 DisclosureGroup(isExpanded: $showsPreview) {
                     VStack(alignment: .leading, spacing: 7) {
                         if sync.previewProviders.isEmpty {
-                            Text("Mac 尚无可同步的额度快照")
+                            Text(L10n.text("sync.preview.empty"))
                                 .foregroundStyle(DashboardTheme.secondaryText)
                         } else {
                             ForEach(sync.previewProviders) { provider in
@@ -60,21 +80,21 @@ struct CrossDeviceSyncSettingsCard: View {
                         }
                         if sync.syncUsageHistoryEnabled {
                             HStack {
-                                Text("每日用量历史")
+                                Text(L10n.text("sync.preview.history_label"))
                                     .foregroundStyle(DashboardTheme.text)
                                 Spacer()
-                                Text("\(sync.previewHistoryDays) 天 · Claude / Codex")
+                                Text(L10n.format("sync.preview.history_days", sync.previewHistoryDays))
                                     .foregroundStyle(DashboardTheme.secondaryText)
                             }
                         }
-                        Text("预览即完整白名单：所有已启用额度来源的 provider ID、百分比、窗口、重置时间、采集时间和安全套餐标签；历史只含日期、Claude/Codex 每日 Token 和估算费用。无账号、提示词、项目、会话或逐请求明细。")
+                        Text(L10n.text("sync.preview.whitelist_note"))
                             .font(.system(size: 10))
                             .foregroundStyle(DashboardTheme.mutedText)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     .padding(.top, 6)
                 } label: {
-                    Text("查看将要同步的数据")
+                    Text(L10n.text("sync.preview.disclosure"))
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(DashboardTheme.text)
                 }
@@ -83,33 +103,33 @@ struct CrossDeviceSyncSettingsCard: View {
 
                 HStack(spacing: 10) {
                     if sync.state == .anotherMacIsPrimary {
-                        Button("改用这台 Mac", role: .destructive) {
+                        Button(L10n.text("sync.action.use_this_mac"), role: .destructive) {
                             sync.takeOverAsPrimaryMac()
                         }
-                    } else {
-                        Button("立即安全同步") { sync.uploadNow() }
-                            .disabled(!sync.isEnabled || sync.previewProviders.isEmpty)
+                    } else if case .failed = sync.state {
+                        Button(L10n.text("sync.action.recheck")) { sync.checkNow() }
+                            .disabled(!sync.isEnabled)
                     }
                     Spacer()
-                    Button("从 iCloud 删除并断开", role: .destructive) {
+                    Button(L10n.text("sync.action.delete_disconnect"), role: .destructive) {
                         confirmsDeletion = true
                     }
                 }
                 .usageDockActionButtonStyle()
 
-                Text("CloudKit 记录仍使用 AES-256-GCM 应用层加密；TokenRemain 自建服务器不参与此数据链路。")
+                Text(L10n.text("sync.footnote.encryption"))
                     .font(.system(size: 10))
                     .foregroundStyle(DashboardTheme.mutedText)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .alert("删除跨设备同步数据？", isPresented: $confirmsDeletion) {
-            Button("取消", role: .cancel) {}
-            Button("删除并断开", role: .destructive) {
+        .alert(L10n.text("sync.alert.delete_title"), isPresented: $confirmsDeletion) {
+            Button(L10n.text("action.cancel"), role: .cancel) {}
+            Button(L10n.text("sync.alert.delete_confirm"), role: .destructive) {
                 Task { await sync.deleteCloudDataAndDisconnect() }
             }
         } message: {
-            Text("将删除 TokenRemain 的 CloudKit 私有同步区和专用同步密钥。Mac 上的 provider 凭证及本地额度不会被删除。")
+            Text(L10n.text("sync.alert.delete_message"))
         }
     }
 
@@ -123,13 +143,14 @@ struct CrossDeviceSyncSettingsCard: View {
 
     private var statusText: String {
         switch sync.state {
-        case .off: return "同步已关闭"
-        case .needsSignedCapabilities: return "当前构建尚未获得 CloudKit / 同步钥匙串签名权限"
-        case .waitingForMacData: return "等待 Mac 产生第一份额度快照"
-        case .checkingICloud: return "正在检查 iCloud 账户"
-        case .anotherMacIsPrimary: return "iCloud 已有主数据 Mac；接管后 iPhone 会再次要求确认"
-        case .uploading: return "正在加密并上传最新快照"
-        case .synced(let date): return "上次安全同步：\(date.formatted(date: .omitted, time: .shortened))"
+        case .off: return L10n.text("sync.status.off")
+        case .needsSignedCapabilities: return L10n.text("sync.status.needs_capabilities")
+        case .waitingForMacData: return L10n.text("sync.status.waiting_for_mac_data")
+        case .checkingICloud: return L10n.text("sync.status.checking_icloud")
+        case .anotherMacIsPrimary: return L10n.text("sync.status.another_mac_primary")
+        case .uploading: return L10n.text("sync.status.uploading")
+        case .synced(let date):
+            return L10n.format("sync.last_synced", date.formatted(date: .omitted, time: .shortened))
         case .failed(let failure): return failureText(failure)
         }
     }
@@ -152,21 +173,71 @@ struct CrossDeviceSyncSettingsCard: View {
         }
     }
 
+    private var iCloudHealthText: String {
+        switch sync.iCloudAvailable {
+        case true: L10n.text("sync.health.available")
+        case false: L10n.text("sync.health.unavailable")
+        case nil: L10n.text("sync.health.checking")
+        }
+    }
+
+    private var iCloudHealthIcon: String {
+        switch sync.iCloudAvailable {
+        case true: "checkmark.circle.fill"
+        case false: "icloud.slash"
+        case nil: "icloud"
+        }
+    }
+
+    private var iCloudHealthColor: Color {
+        switch sync.iCloudAvailable {
+        case true: DashboardTheme.success
+        case false: DashboardTheme.warning
+        case nil: DashboardTheme.secondaryText
+        }
+    }
+
+    private var syncKeyHealthText: String {
+        switch sync.syncKeyAvailable {
+        case true: L10n.text("sync.health.ready")
+        case false: L10n.text("sync.health.unavailable")
+        case nil: L10n.text("sync.health.checking")
+        }
+    }
+
+    private var syncKeyHealthIcon: String {
+        switch sync.syncKeyAvailable {
+        case true: "key.fill"
+        case false: "key.slash"
+        case nil: "key.horizontal"
+        }
+    }
+
+    private var syncKeyHealthColor: Color {
+        switch sync.syncKeyAvailable {
+        case true: DashboardTheme.success
+        case false: DashboardTheme.warning
+        case nil: DashboardTheme.secondaryText
+        }
+    }
+
     private func failureText(_ failure: CrossDeviceSyncController.Failure) -> String {
         switch failure {
-        case .iCloudUnavailable: "iCloud 不可用；请确认已登录同一 Apple 账户"
-        case .keychainUnavailable: "同步钥匙串暂不可用；不会上传未加密数据"
-        case .networkUnavailable: "网络不可用；恢复后会重试最新快照"
-        case .serviceUnavailable: "iCloud 暂时繁忙；稍后自动重试"
-        case .encryptionFailed: "快照校验或加密失败；旧数据不会被覆盖"
-        case .unknown: "同步暂不可用；旧数据不会被覆盖"
+        case .iCloudUnavailable: L10n.text("sync.failure.icloud_unavailable")
+        case .keychainUnavailable: L10n.text("sync.failure.keychain_unavailable")
+        case .networkUnavailable: L10n.text("sync.failure.network_unavailable")
+        case .serviceUnavailable: L10n.text("sync.failure.service_unavailable")
+        case .encryptionFailed: L10n.text("sync.failure.encryption_failed")
+        case .unknown: L10n.text("sync.failure.unknown")
         }
     }
 
     private func windowSummary(_ windows: [CrossDeviceSyncController.PreviewProvider.Window]) -> String {
         windows.map { window in
             let value = String(format: "%.0f%%", window.usedPercent)
-            return window.windowMinutes == 0 ? value : "\(value) / \(window.windowMinutes) 分钟"
+            return window.windowMinutes == 0
+                ? value
+                : L10n.format("sync.preview.window_minutes", value, window.windowMinutes)
         }.joined(separator: " · ")
     }
 }
