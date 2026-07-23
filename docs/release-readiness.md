@@ -20,7 +20,7 @@ unsandboxed Developer ID Mac download.
 | CloudKit Production | Release entitlements are configured in code | Deploy schema, then test Production with release builds |
 | APNs Production | Release build setting is configured in code | Verify the distribution-signed entitlement and silent push on TestFlight |
 | Foreground freshness | Timing instrumentation and simulator paths pass | Collect real Mac + iPhone samples and meet p50/p95/max gates |
-| App Store Connect | No mutation performed | Complete the account and app-record actions below |
+| App Store Connect | App record, pricing, storefronts, metadata, content rights, age rating, privacy draft, review notes, and manual release are configured as recorded below | Supply public URLs/contact/legal details, publish privacy, upload/process a build, and complete account compliance |
 | Review approval | Not submitted | Submit only after every blocking row below passes |
 
 Historical Development-device evidence in the sync architecture document is
@@ -259,20 +259,48 @@ a force-quit app, low-power restrictions, missing network, or provider failure.
 
 ## App Store Connect blocking actions
 
-These require the Account Holder, Admin, App Manager, or a signed-in Xcode
-session and are intentionally not automated here:
+The signed-in App Store Connect session established the following state on
+2026-07-23:
 
-1. Accept the current Paid Apps Agreement and complete banking and tax status.
-2. Confirm the App Store record uses `com.jamesli.tokenremain`.
-3. Choose the base country/region, final price, storefronts, tax category,
-   education/business availability, and Family Sharing policy if offered.
-4. Publish a public privacy-policy URL and enter the App Privacy answers.
-5. Complete age rating, category, copyright, support URL, marketing URL,
-   export compliance, third-party content-rights confirmation, and release method.
-6. Create/upload the distribution archive, wait for processing, and resolve all
-   entitlement or privacy-manifest warnings.
-7. Run internal and external TestFlight on real iPhone and paired Watch.
-8. Attach the final screenshots and review notes, then submit for review.
+- App Store Apple ID `6793884338`, SKU `tokenremain-ios-2026`, version `1.0`,
+  and bundle ID `com.jamesli.tokenremain`;
+- a paid-upfront price schedule across all 175 storefronts; the owner confirmed
+  United States `US$3.99` as the base price;
+- all 175 storefronts selected, including China mainland, which currently
+  reports `Available on App Release` rather than an ICP error;
+- primary category `Developer Tools`, secondary category `Productivity`, and
+  content rights declared for the selected third-party provider/X content;
+- current age questionnaire result: `13+` in 171 storefronts, `16+` in two
+  storefronts, and `15+` in Korea;
+- English promotional text, description, and keywords saved;
+- Simplified Chinese promotional text, description, and keywords saved;
+- review notes saved, `Sign-in required` disabled, and
+  `Manually release this version` selected;
+- App Privacy saved as `Data Not Collected`, consistent with the current
+  no-analytics/no-ad/no-developer-server code path, but not yet published.
 
-Draft listing copy is available in `docs/app-store-metadata-draft.md`; it is not
-an App Store Connect mutation or owner approval.
+These remaining actions still require owner input, an explicit external action,
+or stronger release evidence:
+
+1. Verify the current Paid Apps Agreement, banking, tax, education/business
+   distribution, and Family Sharing state.
+2. Publish reachable HTTPS product, support, and privacy-policy pages; provide
+   the support email, copyright holder, and App Review contact details.
+3. Complete Digital Services Act trader/non-trader identity verification.
+4. Publish the App Privacy response only after its public policy URL is entered
+   and the processed build is rechecked for SDK/privacy changes.
+5. Complete the App Store export-compliance determination for CryptoKit
+   AES-256-GCM, then set the matching Info.plist key and rebuild.
+6. Upload the distribution archive, wait for processing, and resolve all
+   entitlement, export-compliance, or privacy-manifest warnings.
+7. Capture and upload the final iPhone and Apple Watch screenshots.
+8. Run internal and external TestFlight on a real iPhone and paired Watch.
+9. Deploy and verify the CloudKit Production schema only after explicit owner
+   approval.
+10. Attach the final build and evidence to the prepared version, then stop for
+    owner confirmation before `Add for Review`.
+
+The listing source remains in `docs/app-store-metadata-draft.md`. The status
+above records actual App Store Connect state; it is not evidence of build
+processing, TestFlight validation, paid-storefront checkout, or review
+approval.
