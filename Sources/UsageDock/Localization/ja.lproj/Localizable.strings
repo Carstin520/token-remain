@@ -84,13 +84,13 @@
 "action.refresh_quota" = "ccusage、Codex、Claude のクォータを更新";
 "action.refresh_usage" = "使用量を更新";
 "action.open_dashboard" = "ダッシュボードを開く";
-"action.open_dashboard_help" = "Token Remain のダッシュボードウインドウを開く";
+"action.open_dashboard_help" = "TokenRemain のダッシュボードウインドウを開く";
 "action.launch_at_login" = "ログイン時に起動";
 "action.open_dashboard_settings" = "ダッシュボード設定を開く";
-"action.restart_app" = "Token Remain を再起動";
+"action.restart_app" = "TokenRemain を再起動";
 "action.settings" = "設定";
 "action.quit" = "終了";
-"action.quit_app" = "Token Remain を終了";
+"action.quit_app" = "TokenRemain を終了";
 "usage.updated_local" = "%1$@に更新 · データはこの Mac に保存";
 "usage.loading_local" = "使用量を読み込み中 · データはこの Mac に保存";
 "usage.provider_breakdown_empty" = "プロバイダ別データなし";

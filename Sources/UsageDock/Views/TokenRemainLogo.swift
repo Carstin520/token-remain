@@ -48,62 +48,145 @@ enum TokenRemainLogoState: String, CaseIterable {
         }
     }
 
-    /// AppKit is the narrow bridge used by the dynamic Dock icon. The same
-    /// vector renderer also supplies SwiftUI, so no raster-state assets are
-    /// downsampled at runtime.
-    func image(size: CGFloat = 1024) -> NSImage {
-        TokenRemainLogoArtwork.image(for: self, size: size)
+    func image(
+        size: CGFloat = 1024,
+        tone: TokenRemainLogoTone = .neutral,
+        remainingPercent: Double? = nil
+    ) -> NSImage {
+        TokenRemainLogoArtwork.image(
+            for: self,
+            tone: tone,
+            remainingPercent: remainingPercent,
+            size: size
+        )
+    }
+}
+
+enum TokenRemainLogoMeter {
+    static let segmentCount = 10
+
+    static func filledSegments(remainingPercent: Double?) -> Int? {
+        guard let remainingPercent else { return nil }
+        let clamped = min(max(remainingPercent, 0), 100)
+        return Int((clamped / 100 * Double(segmentCount)).rounded())
+    }
+}
+
+/// The logo hue communicates the provider driving the current state. Usage
+/// only overrides that identity color when the selected session is critical.
+enum TokenRemainLogoTone: Equatable {
+    case neutral
+    case provider(ProviderQuota.Provider)
+    case critical
+
+    static func resolve(
+        provider: ProviderQuota.Provider?,
+        remainingPercent: Double?
+    ) -> Self {
+        if let remainingPercent, remainingPercent < 10 {
+            return .critical
+        }
+        guard let provider else { return .neutral }
+        return .provider(provider)
+    }
+
+    var color: Color {
+        switch self {
+        case .neutral:
+            return DashboardTheme.violet
+        case .critical:
+            return DashboardTheme.danger
+        case .provider(.claude):
+            return DashboardTheme.claudeBrand
+        case .provider(.codex):
+            return DashboardTheme.codexBrand
+        case .provider(let provider):
+            return DashboardTheme.quotaAccent(for: provider, remainingPercent: 100)
+        }
+    }
+
+    fileprivate var cacheKey: String {
+        switch self {
+        case .neutral: return "neutral"
+        case .critical: return "critical"
+        case .provider(let provider): return provider.rawValue
+        }
     }
 }
 
 struct TokenRemainLogo: View {
     let remainingPercent: Double?
+    let provider: ProviderQuota.Provider?
+
+    init(
+        remainingPercent: Double?,
+        provider: ProviderQuota.Provider? = nil
+    ) {
+        self.remainingPercent = remainingPercent
+        self.provider = provider
+    }
 
     private var state: TokenRemainLogoState {
         .resolve(remainingPercent: remainingPercent)
     }
 
+    private var tone: TokenRemainLogoTone {
+        .resolve(provider: provider, remainingPercent: remainingPercent)
+    }
+
     var body: some View {
-        Image(nsImage: state.image(size: 256))
+        Image(nsImage: state.image(
+            size: 256,
+            tone: tone,
+            remainingPercent: remainingPercent
+        ))
             .resizable()
-            .interpolation(.high)
+            .interpolation(.none)
             .scaledToFit()
             .accessibilityLabel(accessibilityLabel)
     }
 
     private var accessibilityLabel: String {
         guard let remainingPercent else {
-            return "Token Remain，等待额度数据"
+            return "TokenRemain，等待额度数据"
         }
-        return "Token Remain，剩余 \(Int(remainingPercent.rounded()))%，\(state.accessibilityDescription)"
+        let providerName = provider.map { "，由\($0.displayName)决定" } ?? ""
+        return "TokenRemain，剩余 \(Int(remainingPercent.rounded()))%\(providerName)，\(state.accessibilityDescription)"
     }
 }
 
 private enum TokenRemainLogoArtwork {
     private static let imageCache = NSCache<NSString, NSImage>()
-    private static let navyTop = NSColor(srgbRed: 0.075, green: 0.095, blue: 0.27, alpha: 1)
-    private static let navyBottom = NSColor(srgbRed: 0.018, green: 0.028, blue: 0.12, alpha: 1)
-    private static let violet = NSColor(srgbRed: 0.43, green: 0.20, blue: 1.0, alpha: 1)
-    private static let violetLight = NSColor(srgbRed: 0.61, green: 0.34, blue: 1.0, alpha: 1)
-    private static let cyan = NSColor(srgbRed: 0.08, green: 0.82, blue: 0.93, alpha: 1)
-    private static let orange = NSColor(srgbRed: 1.0, green: 0.31, blue: 0.015, alpha: 1)
-    private static let orangeLight = NSColor(srgbRed: 1.0, green: 0.52, blue: 0.05, alpha: 1)
+    private static let tileTop = NSColor(srgbRed: 0.055, green: 0.071, blue: 0.18, alpha: 1)
+    private static let tileBottom = NSColor(srgbRed: 0.018, green: 0.026, blue: 0.075, alpha: 1)
+    private static let facePlate = NSColor(srgbRed: 0.018, green: 0.028, blue: 0.10, alpha: 1)
+    private static let robotBody = NSColor(srgbRed: 0.43, green: 0.20, blue: 1.0, alpha: 1)
+    private static let robotEye = NSColor(srgbRed: 0.08, green: 0.82, blue: 0.93, alpha: 1)
 
-    static func image(for state: TokenRemainLogoState, size: CGFloat) -> NSImage {
-        let cacheKey = "\(state.rawValue)-\(Int(size.rounded()))" as NSString
+    static func image(
+        for state: TokenRemainLogoState,
+        tone: TokenRemainLogoTone,
+        remainingPercent: Double?,
+        size: CGFloat
+    ) -> NSImage {
+        let meterLevel = TokenRemainLogoMeter.filledSegments(remainingPercent: remainingPercent)
+        let meterKey = meterLevel.map(String.init) ?? "unknown"
+        let cacheKey = "\(state.rawValue)-\(tone.cacheKey)-\(meterKey)-\(Int(size.rounded()))" as NSString
         if let cached = imageCache.object(forKey: cacheKey) {
             return cached
         }
 
         let dimensions = NSSize(width: size, height: size)
         let image = NSImage(size: dimensions, flipped: true) { rect in
-            guard let graphics = NSGraphicsContext.current else {
-                return false
-            }
-
-            graphics.shouldAntialias = true
-            graphics.imageInterpolation = .high
-            draw(in: rect, state: state)
+            guard let graphics = NSGraphicsContext.current else { return false }
+            graphics.shouldAntialias = false
+            graphics.imageInterpolation = .none
+            draw(
+                in: rect,
+                state: state,
+                tone: tone,
+                meterLevel: meterLevel
+            )
             return true
         }
         image.isTemplate = false
@@ -111,15 +194,15 @@ private enum TokenRemainLogoArtwork {
         return image
     }
 
-    private static func draw(in rect: NSRect, state: TokenRemainLogoState) {
+    private static func draw(
+        in rect: NSRect,
+        state: TokenRemainLogoState,
+        tone: TokenRemainLogoTone,
+        meterLevel: Int?
+    ) {
         let side = min(rect.width, rect.height)
-
-        func frame(
-            _ x: CGFloat,
-            _ y: CGFloat,
-            _ width: CGFloat,
-            _ height: CGFloat
-        ) -> NSRect {
+        let accent = NSColor(tone.color)
+        func frame(_ x: CGFloat, _ y: CGFloat, _ width: CGFloat, _ height: CGFloat) -> NSRect {
             NSRect(
                 x: rect.minX + x * side,
                 y: rect.minY + y * side,
@@ -131,207 +214,93 @@ private enum TokenRemainLogoArtwork {
         NSColor.clear.setFill()
         rect.fill()
 
-        let outerRect = frame(0.055, 0.055, 0.89, 0.89)
-        let outer = NSBezierPath(
-            roundedRect: outerRect,
-            xRadius: side * 0.205,
-            yRadius: side * 0.205
+        let tileRect = frame(0.055, 0.055, 0.89, 0.89)
+        let tile = NSBezierPath(
+            roundedRect: tileRect,
+            xRadius: side * 0.19,
+            yRadius: side * 0.19
         )
 
         NSGraphicsContext.saveGraphicsState()
-        outer.addClip()
-        NSGradient(starting: navyTop, ending: navyBottom)?
-            .draw(in: outerRect, angle: -90)
+        tile.addClip()
+        NSGradient(starting: tileTop, ending: tileBottom)?.draw(in: tileRect, angle: -90)
 
-        let reservoirRect = frame(0.055, 0.745, 0.89, 0.20)
-        NSGradient(starting: orangeLight, ending: orange)?
-            .draw(in: reservoirRect, angle: -90)
-
-        let glassHighlight = NSBezierPath(
-            roundedRect: frame(0.075, 0.072, 0.85, 0.45),
-            xRadius: side * 0.18,
-            yRadius: side * 0.18
-        )
-        NSGradient(colorsAndLocations:
-            (NSColor.white.withAlphaComponent(0.12), 0),
-            (NSColor.clear, 1)
-        )?.draw(in: glassHighlight, angle: -90)
+        // Quiet pixel highlights keep the icon aligned with the Dashboard mark
+        // without competing with the Orbit silhouette.
+        accent.withAlphaComponent(0.13).setFill()
+        frame(0.12, 0.12, 0.07, 0.07).fill()
+        frame(0.81, 0.18, 0.045, 0.045).fill()
         NSGraphicsContext.restoreGraphicsState()
 
-        violetLight.withAlphaComponent(0.9).setStroke()
-        outer.lineWidth = side * 0.018
-        outer.stroke()
+        accent.setStroke()
+        tile.lineWidth = side * 0.018
+        tile.stroke()
 
-        // Smooth robot silhouette: the same recognizable antenna, ear pods,
-        // visor, and base as the former pixel artwork, without staircase edges.
-        let base = NSBezierPath(
-            roundedRect: frame(0.335, 0.675, 0.33, 0.085),
-            xRadius: side * 0.024,
-            yRadius: side * 0.024
-        )
-        violet.withAlphaComponent(0.72).setFill()
-        base.fill()
-
-        let leftEar = NSBezierPath(
-            roundedRect: frame(0.145, 0.445, 0.10, 0.205),
-            xRadius: side * 0.045,
-            yRadius: side * 0.045
-        )
-        let rightEar = NSBezierPath(
-            roundedRect: frame(0.755, 0.445, 0.10, 0.205),
-            xRadius: side * 0.045,
-            yRadius: side * 0.045
-        )
-        NSGradient(starting: violetLight, ending: violet)?
-            .draw(in: leftEar, angle: 0)
-        NSGradient(starting: violet, ending: violetLight)?
-            .draw(in: rightEar, angle: 0)
-
-        let antennaStem = NSBezierPath(
-            roundedRect: frame(0.477, 0.265, 0.046, 0.125),
-            xRadius: side * 0.018,
-            yRadius: side * 0.018
-        )
-        violet.setFill()
-        antennaStem.fill()
-
-        let antennaCap = NSBezierPath(
-            roundedRect: frame(0.445, 0.245, 0.11, 0.052),
-            xRadius: side * 0.026,
-            yRadius: side * 0.026
-        )
-        violetLight.setFill()
-        antennaCap.fill()
-
-        let antennaLight = NSBezierPath(
-            ovalIn: frame(0.487, 0.318, 0.026, 0.026)
-        )
-        cyan.setFill()
-        antennaLight.fill()
-
-        let headRect = frame(0.225, 0.365, 0.55, 0.35)
-        let head = NSBezierPath(
-            roundedRect: headRect,
-            xRadius: side * 0.085,
-            yRadius: side * 0.085
-        )
-        navyBottom.setFill()
-        head.fill()
-        violetLight.setStroke()
-        head.lineWidth = side * 0.032
-        head.stroke()
-
-        drawFace(state, in: rect, side: side)
+        drawRobot(in: rect, state: state, side: side)
+        drawQuotaMeter(in: rect, side: side, accent: accent, filledSegments: meterLevel)
     }
 
-    private static func drawFace(
-        _ state: TokenRemainLogoState,
+    private static func drawRobot(
         in rect: NSRect,
+        state: TokenRemainLogoState,
         side: CGFloat
     ) {
-        func point(_ x: CGFloat, _ y: CGFloat) -> NSPoint {
-            NSPoint(x: rect.minX + x * side, y: rect.minY + y * side)
-        }
+        let matrix = PixelRobotMark.matrix(face: PixelRobotMark.face(for: state))
+        let cellSize = side * 0.039
+        let gridWidth = cellSize * CGFloat(PixelRobotMark.columns)
+        let originX = rect.midX - gridWidth / 2
+        let originY = rect.minY + side * 0.145
 
-        let left = point(0.385, 0.535)
-        let right = point(0.615, 0.535)
-        let stroke = side * 0.031
-
-        func line(_ points: [NSPoint], width: CGFloat = stroke) {
-            guard let first = points.first else { return }
-            let path = NSBezierPath()
-            path.move(to: first)
-            points.dropFirst().forEach(path.line(to:))
-            path.lineWidth = width
-            path.lineCapStyle = .round
-            path.lineJoinStyle = .round
-            orange.setStroke()
-            path.stroke()
-        }
-
-        func dot(at center: NSPoint, radius: CGFloat = 0.022) {
-            orange.setFill()
-            NSBezierPath(
-                ovalIn: NSRect(
-                    x: center.x - side * radius,
-                    y: center.y - side * radius,
-                    width: side * radius * 2,
-                    height: side * radius * 2
-                )
-            ).fill()
-        }
-
-        func star(at center: NSPoint) {
-            line([
-                point(center.x / side - 0.038, center.y / side),
-                point(center.x / side + 0.038, center.y / side)
-            ], width: stroke * 0.72)
-            line([
-                point(center.x / side, center.y / side - 0.038),
-                point(center.x / side, center.y / side + 0.038)
-            ], width: stroke * 0.72)
-        }
-
-        switch state {
-        case .excitedStars:
-            star(at: left)
-            star(at: right)
-        case .happyCarets:
-            line([point(0.34, 0.56), point(0.385, 0.51), point(0.43, 0.56)])
-            line([point(0.57, 0.56), point(0.615, 0.51), point(0.66, 0.56)])
-        case .sparkle:
-            star(at: left)
-            dot(at: right, radius: 0.027)
-        case .calmDots:
-            dot(at: left)
-            dot(at: right)
-        case .focusedBars:
-            line([point(0.34, 0.535), point(0.43, 0.535)])
-            line([point(0.57, 0.535), point(0.66, 0.535)])
-        case .neutralDashes:
-            line([point(0.355, 0.54), point(0.415, 0.54)])
-            line([point(0.585, 0.54), point(0.645, 0.54)])
-        case .worriedSlants:
-            line([point(0.345, 0.51), point(0.425, 0.565)])
-            line([point(0.575, 0.565), point(0.655, 0.51)])
-        case .tenseChevrons:
-            line([point(0.34, 0.52), point(0.385, 0.57), point(0.43, 0.52)])
-            line([point(0.57, 0.52), point(0.615, 0.57), point(0.66, 0.52)])
-        case .dizzySpirals:
-            drawSpiral(center: left, side: side)
-            drawSpiral(center: right, side: side)
-        case .cryingWarning:
-            line([point(0.335, 0.50), point(0.435, 0.50)])
-            line([point(0.385, 0.50), point(0.385, 0.59)])
-            line([point(0.565, 0.50), point(0.665, 0.50)])
-            line([point(0.615, 0.50), point(0.615, 0.59)])
-        case .offline:
-            line([point(0.35, 0.50), point(0.42, 0.57)])
-            line([point(0.42, 0.50), point(0.35, 0.57)])
-            line([point(0.58, 0.50), point(0.65, 0.57)])
-            line([point(0.65, 0.50), point(0.58, 0.57)])
+        for (rowIndex, row) in matrix.enumerated() {
+            for (columnIndex, cell) in row.enumerated() {
+                let color: NSColor?
+                switch cell {
+                case .empty: color = nil
+                case .body: color = robotBody
+                case .bodyDim: color = robotBody.withAlphaComponent(0.58)
+                case .cap: color = NSColor(DashboardTheme.text)
+                case .signal: color = robotEye
+                case .plate: color = facePlate
+                case .eye: color = robotEye
+                case .glow: color = robotEye.withAlphaComponent(0.48)
+                }
+                guard let color else { continue }
+                color.setFill()
+                NSRect(
+                    x: originX + CGFloat(columnIndex) * cellSize,
+                    y: originY + CGFloat(rowIndex) * cellSize,
+                    width: cellSize,
+                    height: cellSize
+                ).fill()
+            }
         }
     }
 
-    private static func drawSpiral(center: NSPoint, side: CGFloat) {
-        let path = NSBezierPath()
-        let turns: CGFloat = 1.65
-        let steps = 32
+    private static func drawQuotaMeter(
+        in rect: NSRect,
+        side: CGFloat,
+        accent: NSColor,
+        filledSegments: Int?
+    ) {
+        let segmentCount = TokenRemainLogoMeter.segmentCount
+        let totalWidth = side * 0.66
+        let gap = side * 0.012
+        let segmentWidth = (totalWidth - gap * CGFloat(segmentCount - 1)) / CGFloat(segmentCount)
+        let height = side * 0.028
+        let originX = rect.midX - totalWidth / 2
+        let originY = rect.minY + side * 0.84
 
-        for index in 0...steps {
-            let progress = CGFloat(index) / CGFloat(steps)
-            let angle = progress * turns * 2 * .pi
-            let radius = side * (0.008 + progress * 0.042)
-            let point = NSPoint(
-                x: center.x + cos(angle) * radius,
-                y: center.y + sin(angle) * radius
+        for index in 0..<segmentCount {
+            let segment = NSRect(
+                x: originX + CGFloat(index) * (segmentWidth + gap),
+                y: originY,
+                width: segmentWidth,
+                height: height
             )
-            index == 0 ? path.move(to: point) : path.line(to: point)
+            (index < (filledSegments ?? 0)
+                ? accent
+                : NSColor.white.withAlphaComponent(0.11)).setFill()
+            segment.fill()
         }
-
-        path.lineWidth = side * 0.022
-        path.lineCapStyle = .round
-        orange.setStroke()
-        path.stroke()
     }
 }

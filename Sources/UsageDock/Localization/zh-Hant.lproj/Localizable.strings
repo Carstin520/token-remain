@@ -75,13 +75,13 @@
 "action.refresh_quota" = "立即重新整理 ccusage、Codex 與 Claude 額度";
 "action.refresh_usage" = "重新整理用量";
 "action.open_dashboard" = "開啟 Dashboard";
-"action.open_dashboard_help" = "開啟獨立的 Token Remain Dashboard 視窗";
+"action.open_dashboard_help" = "開啟獨立的 TokenRemain Dashboard 視窗";
 "action.launch_at_login" = "登入時自動啟動";
 "action.open_dashboard_settings" = "開啟 Dashboard 設定";
-"action.restart_app" = "重新啟動 Token Remain";
+"action.restart_app" = "重新啟動 TokenRemain";
 "action.settings" = "設定";
 "action.quit" = "結束";
-"action.quit_app" = "結束 Token Remain";
+"action.quit_app" = "結束 TokenRemain";
 "usage.updated_local" = "更新於 %1$@ · 資料保留在此 Mac";
 "usage.loading_local" = "正在讀取用量 · 資料保留在此 Mac";
 "usage.provider_breakdown_empty" = "暫無服務商細分";

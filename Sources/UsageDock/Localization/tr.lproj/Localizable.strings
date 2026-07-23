@@ -84,13 +84,13 @@
 "action.refresh_quota" = "ccusage, Codex ve Claude kotalarını yenile";
 "action.refresh_usage" = "Kullanımı yenile";
 "action.open_dashboard" = "Panoyu aç";
-"action.open_dashboard_help" = "Token Remain pano penceresini aç";
+"action.open_dashboard_help" = "TokenRemain pano penceresini aç";
 "action.launch_at_login" = "Girişte başlat";
 "action.open_dashboard_settings" = "Pano ayarlarını aç";
-"action.restart_app" = "Token Remain'i yeniden başlat";
+"action.restart_app" = "TokenRemain'i yeniden başlat";
 "action.settings" = "Ayarlar";
 "action.quit" = "Çık";
-"action.quit_app" = "Token Remain'den çık";
+"action.quit_app" = "TokenRemain'den çık";
 "usage.updated_local" = "%1$@ güncellendi · veriler bu Mac'te kalır";
 "usage.loading_local" = "Kullanım okunuyor · veriler bu Mac'te kalır";
 "usage.provider_breakdown_empty" = "Sağlayıcı dökümü yok";

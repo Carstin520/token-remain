@@ -84,13 +84,13 @@
 "action.refresh_quota" = "Actualiser les quotas ccusage, Codex et Claude";
 "action.refresh_usage" = "Actualiser l’utilisation";
 "action.open_dashboard" = "Ouvrir le tableau de bord";
-"action.open_dashboard_help" = "Ouvrir la fenêtre du tableau de bord Token Remain";
+"action.open_dashboard_help" = "Ouvrir la fenêtre du tableau de bord TokenRemain";
 "action.launch_at_login" = "Lancer à l’ouverture de session";
 "action.open_dashboard_settings" = "Ouvrir les réglages du tableau de bord";
-"action.restart_app" = "Redémarrer Token Remain";
+"action.restart_app" = "Redémarrer TokenRemain";
 "action.settings" = "Réglages";
 "action.quit" = "Quitter";
-"action.quit_app" = "Quitter Token Remain";
+"action.quit_app" = "Quitter TokenRemain";
 "usage.updated_local" = "Mis à jour %1$@ · les données restent sur ce Mac";
 "usage.loading_local" = "Lecture de l’utilisation · les données restent sur ce Mac";
 "usage.provider_breakdown_empty" = "Aucune ventilation par fournisseur";

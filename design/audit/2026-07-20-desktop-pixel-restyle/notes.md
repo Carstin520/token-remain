@@ -1,6 +1,6 @@
 # Desktop pixel restyle — 2026-07-20
 
-Restyled the Token Remain macOS popover and Dashboard to the confirmed mobile
+Restyled the TokenRemain macOS popover and Dashboard to the confirmed mobile
 pixel-tech, low-contrast, three-color robot design system
 (`design/mobile/token-remain-apple-system-concept-2026-07-20.png`,
 `apple/FABLE-FUNCTIONAL-SPEC.md` §3). Visual/theme only — no data logic, refresh
@@ -22,7 +22,7 @@ behavior, or copy semantics changed. zh-Hans copy preserved.
   "mixed lines are fine" behavior.
 - Hero values (metric-card heroes, popover/quota `剩余 XX%`, official-quota %,
   risk-strip constraining value, ring center) = monospaced semibold/bold.
-- Brand wordmark "Token Remain" (popover header + sidebar lockup) = SF Mono.
+- Brand wordmark "TokenRemain" (popover header + sidebar lockup) = SF Mono.
 - Menu-bar status item upgraded from `monospacedDigitSystemFont` to
   `monospacedSystemFont` (SF Mono) — its text is pure percentages, so safe.
 - Swept: QuotaCard, RiskStrip, MetricCard, RingChart, OverviewSection,
@@ -314,15 +314,15 @@ action — no blocking "先关闭锁定" prompt.
 - Pinning a collapsed widget still expands+pins (unchanged natural model).
 
 ## Dashboard title de-duplication
-The window/toolbar showed "Token Remain" a second time above the content.
+The window/toolbar showed "TokenRemain" a second time above the content.
 - `Support/DashboardWindowController.swift`: `titleVisibility = .hidden` (kept
-  `window.title = "Token Remain"` for Mission Control / the window switcher /
+  `window.title = "TokenRemain"` for Mission Control / the window switcher /
   accessibility), re-asserted in `show()` after SwiftUI configures its toolbar.
 - `Views/Dashboard/DashboardView.swift`: removed `.navigationTitle`; added a
   `HideToolbarTitle` modifier applying `.toolbar(removing: .title)` on macOS 15+
   (the user runs macOS 26), falling back to the hidden `titleVisibility` pre-15.
 - Verified: the titlebar shows only the sidebar-toggle button (clean, no leftover
-  spacing); the window's title property is still "Token Remain" (CGWindowList
+  spacing); the window's title property is still "TokenRemain" (CGWindowList
   name); the popover preview window title is unaffected.
 
 ## Tests

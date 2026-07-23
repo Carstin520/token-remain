@@ -84,13 +84,13 @@
 "action.refresh_quota" = "Aggiorna le quote di ccusage, Codex e Claude";
 "action.refresh_usage" = "Aggiorna utilizzo";
 "action.open_dashboard" = "Apri dashboard";
-"action.open_dashboard_help" = "Apri la finestra Dashboard di Token Remain";
+"action.open_dashboard_help" = "Apri la finestra Dashboard di TokenRemain";
 "action.launch_at_login" = "Apri al login";
 "action.open_dashboard_settings" = "Apri impostazioni Dashboard";
-"action.restart_app" = "Riavvia Token Remain";
+"action.restart_app" = "Riavvia TokenRemain";
 "action.settings" = "Impostazioni";
 "action.quit" = "Esci";
-"action.quit_app" = "Esci da Token Remain";
+"action.quit_app" = "Esci da TokenRemain";
 "usage.updated_local" = "Aggiornato %1$@ · i dati restano su questo Mac";
 "usage.loading_local" = "Lettura utilizzo · i dati restano su questo Mac";
 "usage.provider_breakdown_empty" = "Nessuna suddivisione per provider";
