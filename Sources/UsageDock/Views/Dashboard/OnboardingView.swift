@@ -27,9 +27,8 @@ struct OnboardingView: View {
             Spacer(minLength: 24)
 
             VStack(spacing: 10) {
-                TokenRemainLogo(remainingPercent: nil)
-                    .frame(width: 56, height: 56)
-                Text("欢迎使用 Token Remain")
+                TokenRemainFullBodyRobot(remainingPercent: nil, size: 72)
+                Text("欢迎使用 TokenRemain")
                     .wordmarkFont(26)
                     .foregroundStyle(DashboardTheme.text)
                 Text("已扫描本机的 AI 编码工具。勾选要追踪额度的应用——之后随时可在「额度」页增删。")
@@ -42,7 +41,7 @@ struct OnboardingView: View {
 
             VStack(spacing: 8) {
                 if visibleDetections.isEmpty {
-                    Text("未检测到已安装的 AI 编码工具；点下方 + 手动添加,或先安装工具后再打开 Token Remain。")
+                    Text("未检测到已安装的 AI 编码工具；点下方 + 手动添加,或先安装工具后再打开 TokenRemain。")
                         .font(.system(size: 12))
                         .foregroundStyle(DashboardTheme.secondaryText)
                         .multilineTextAlignment(.center)
@@ -151,6 +150,9 @@ struct OnboardingView: View {
                         Text(detection.provider.displayName)
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundStyle(DashboardTheme.text)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.85)
+                            .layoutPriority(1)
                         if detection.installed {
                             TagPill(text: "已检测到")
                         }

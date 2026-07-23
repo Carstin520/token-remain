@@ -8,6 +8,7 @@ macOS 菜单栏常驻用量助手，同时展示：
 - Grok（xAI）周池剩余额度（只读 Grok CLI 凭证直查）
 - Z.ai GLM Coding Plan 会话 / 周窗口剩余额度（用户 API Key，存本机钥匙串）
 - Copilot 月度 Credits（只读本机 GitHub 登录）、Devin 日/周配额、OpenRouter 预充积分（用户 API Key）、Antigravity 配额池（只读本机登录态）、OpenCode Go 套餐（本地数据库扫描估算，纯本地）
+- token-monitor 兼容层（共 18 家）：DeepSeek 余额（API Key）、Kimi 会话/周窗口（API Key 或 kimi-auth Cookie）、MiniMax Coding Plan 5h/周（API Key）、MiMo Code 月度 token 池（Cookie）、Qoder Credits（Cookie）、Kiro（kiro-cli /usage 报告解析）、火山引擎 Coding Plan（AK:SK 签名直查）、Ollama 会话/周（session Cookie）
 - 基于真实窗口进度与官方重置时间判断当前节奏能否持续到重置，并在可能提前用尽时给出预计可用时长
 - ccusage 统计的 Claude Code / Codex 今日 token 与估算 API 成本
 - AI Feed 聚合 Tibor Blaho、Sam Altman、Claude、Anthropic、OpenAI 与 Elon Musk 的 X 动态
@@ -23,6 +24,7 @@ macOS 菜单栏常驻用量助手，同时展示：
 - Z.ai（GLM Coding Plan）是唯一需要手动接入的服务：在 Dashboard「数据源」页粘贴一次 API Key（也支持 `ZAI_API_KEY` 环境变量或 `~/.config/zai/key.json`），Key 仅保存在 macOS 钥匙串。
 - 除 Z.ai 外全部自动接入：登录对应工具即自动读取本机凭证，无需任何配置；未接入的服务在额度卡片与「数据源」页显示具体接入指引。
 - 首次启动有 onboarding：自动检测本机已安装的 AI 编码工具并预勾选，确认后开始追踪；之后在「额度」页可随时增删——「添加应用」卡片加入新服务，卡片右键停止追踪。选择保存在本地，菜单栏与弹窗同步跟随。
+- 显示与刷新可自定义（「设置」页）：菜单栏文字显示哪些应用自选（任意追踪中的 provider）；额度直查频率 1/5/15/30 分钟或仅手动；可开启置顶的桌面浮窗（跨空间常驻、位置记忆）。
 - ccusage 通过 `npx --yes ccusage@latest` 读取本地日志。成本是 API 标价估算，不等于订阅账单。
 - Claude 限额成功读取后会缓存到 `~/Library/Caches/com.jamesli.usagedock/`；Claude Code 暂时不可用时继续显示最近有效值。
 - 打开菜单栏面板会触发一次非阻塞的轻量刷新；刷新按钮则会立即刷新 ccusage、Codex 与 Claude。UsageDock 不会自行调用 Claude OAuth 续期接口，因此不会与 Claude Code 争用 refresh token 或触发第三方续期限流。

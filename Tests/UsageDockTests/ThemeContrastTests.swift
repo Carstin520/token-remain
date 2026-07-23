@@ -3,7 +3,7 @@ import SwiftUI
 import Testing
 @testable import UsageDock
 
-/// WCAG contrast guarantees for the pixel-tech "Token Remain" palette. Value-
+/// WCAG contrast guarantees for the pixel-tech "TokenRemain" palette. Value-
 /// bearing text (`text`, `secondaryText`) must stay legible on `surface`; the
 /// provider accents must clear the 3:1 non-text component threshold against
 /// both the card surface and the unfilled progress track.

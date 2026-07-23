@@ -1,11 +1,9 @@
 import Foundation
 import OSLog
 
-/// Antigravity(Google 家的 agentic IDE)配额池直查。参考 OpenUsage(MIT)
-/// 的 Antigravity provider,坚持只读:读取 Antigravity 存在钥匙串的 Google
-/// OAuth token(service `gemini` / account `antigravity`,go-keyring 包装),
-/// 调用 Cloud Code 的 RetrieveUserQuotaSummary。**绝不用 Google OAuth 代刷**
-/// ——token 过期(Antigravity 长时间未运行)时提示打开一次应用恢复。
+/// Antigravity(Google 家的 agentic IDE)配额池直查。优先复用正在运行的
+/// Antigravity language server；仅在本地服务不可用时，无交互地尝试已有
+/// 钥匙串授权。**绝不用 Google OAuth 代刷**，也绝不在后台触发授权弹窗。
 struct AntigravityUsageService {
     enum ServiceError: LocalizedError, Sendable {
         case notLoggedIn
@@ -37,6 +35,16 @@ struct AntigravityUsageService {
     private static let logger = Logger(subsystem: "com.jamesli.usagedock", category: "AntigravityUsage")
 
     func fetch(now: Date = .now) async throws -> ProviderQuota {
+        // Prefer Antigravity's loopback quota service. It uses the already-running
+        // app session and never touches the cross-app `gemini` Keychain item.
+        if let localQuota = try? await AntigravityLocalUsageProbe().fetch(now: now) {
+            Self.logger.info("Antigravity quota served by local language server")
+            return localQuota
+        }
+
+        // Retain the old remote path only as a non-interactive fallback. If the
+        // user previously granted this signed app access it continues to work;
+        // otherwise Keychain returns immediately instead of showing a prompt.
         guard let token = AntigravityTokenReader().load() else {
             throw ServiceError.notLoggedIn
         }
@@ -148,7 +156,11 @@ struct AntigravityTokenReader {
     }
 
     var keychainPayload: @Sendable () -> String? = {
-        KeychainRead.genericPassword(service: "gemini", account: "antigravity")
+        KeychainRead.genericPassword(
+            service: "gemini",
+            account: "antigravity",
+            allowUserInteraction: false
+        )
     }
 
     func load() -> Token? {
@@ -202,5 +214,181 @@ struct AntigravityTokenReader {
         fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         let expiry = expiryText.flatMap { fractional.date(from: $0) ?? ISO8601DateFormatter().date(from: $0) }
         return Token(accessToken: access, expiry: expiry)
+    }
+}
+
+/// Reads the authenticated quota service exposed by the running Antigravity
+/// desktop app. The CSRF token is taken from that process's command line, kept
+/// in memory only, and sent exclusively to a loopback address.
+struct AntigravityLocalUsageProbe {
+    struct ProcessInfo: Equatable, Sendable {
+        let pid: Int
+        let csrfToken: String
+    }
+
+    enum ProbeError: Error {
+        case processUnavailable
+        case portUnavailable
+        case quotaUnavailable
+    }
+
+    private static let quotaPath =
+        "/exa.language_server_pb.LanguageServerService/RetrieveUserQuotaSummary"
+    private static let requestBody = Data(
+        #"{"metadata":{"ideName":"antigravity","extensionName":"antigravity","ideVersion":"unknown","locale":"en"}}"#.utf8
+    )
+
+    func fetch(now: Date = .now) async throws -> ProviderQuota {
+        let processOutput = try await ProcessRunner.run(
+            "/bin/ps",
+            arguments: ["-ax", "-o", "pid=,command="]
+        )
+        let processes = Self.parseProcesses(String(decoding: processOutput, as: UTF8.self))
+        guard !processes.isEmpty else { throw ProbeError.processUnavailable }
+
+        let delegate = AntigravityLoopbackSessionDelegate()
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.timeoutIntervalForRequest = 4
+        configuration.timeoutIntervalForResource = 6
+        let session = URLSession(configuration: configuration, delegate: delegate, delegateQueue: nil)
+        defer { session.invalidateAndCancel() }
+
+        var foundPort = false
+        for process in processes {
+            let ports = await Self.listeningPorts(pid: process.pid)
+            foundPort = foundPort || !ports.isEmpty
+            // Antigravity 2.x normally exposes one self-signed HTTPS port and
+            // one HTTP extension port. Prefer HTTPS, then try the HTTP peer.
+            for scheme in ["https", "http"] {
+                for port in ports {
+                    guard let data = try? await Self.requestQuota(
+                        scheme: scheme,
+                        port: port,
+                        csrfToken: process.csrfToken,
+                        session: session
+                    ), let quota = try? AntigravityUsageParser.parse(data, now: now)
+                    else { continue }
+                    return quota
+                }
+            }
+        }
+
+        throw foundPort ? ProbeError.quotaUnavailable : ProbeError.portUnavailable
+    }
+
+    static func parseProcesses(_ output: String) -> [ProcessInfo] {
+        output.split(whereSeparator: \.isNewline).compactMap { rawLine in
+            let fields = rawLine.split(
+                maxSplits: 1,
+                omittingEmptySubsequences: true,
+                whereSeparator: \.isWhitespace
+            )
+            guard fields.count == 2, let pid = Int(fields[0]) else { return nil }
+
+            let command = String(fields[1])
+            let lower = command.lowercased()
+            let isLanguageServer = lower.contains("language_server") || lower.contains("language-server")
+            let isAntigravity = lower.contains("/antigravity.app/")
+                || lower.contains("--app_data_dir antigravity")
+                || lower.contains("--app_data_dir=antigravity")
+            guard isLanguageServer, isAntigravity,
+                  let csrfToken = flag("csrf_token", in: command), !csrfToken.isEmpty
+            else { return nil }
+            return ProcessInfo(pid: pid, csrfToken: csrfToken)
+        }
+    }
+
+    static func parseListeningPorts(_ output: String) -> [Int] {
+        guard let regex = try? NSRegularExpression(pattern: #":(\d+)\s+\(LISTEN\)"#) else {
+            return []
+        }
+        let range = NSRange(output.startIndex..<output.endIndex, in: output)
+        let ports = regex.matches(in: output, range: range).compactMap { match -> Int? in
+            guard let valueRange = Range(match.range(at: 1), in: output) else { return nil }
+            return Int(output[valueRange])
+        }
+        return Array(Set(ports)).sorted()
+    }
+
+    private static func flag(_ name: String, in command: String) -> String? {
+        let escaped = NSRegularExpression.escapedPattern(for: name)
+        guard let regex = try? NSRegularExpression(
+            pattern: "(?:^|\\s)--\(escaped)(?:=|\\s+)([^\\s]+)"
+        ) else { return nil }
+        let range = NSRange(command.startIndex..<command.endIndex, in: command)
+        guard let match = regex.firstMatch(in: command, range: range),
+              let valueRange = Range(match.range(at: 1), in: command)
+        else { return nil }
+        return String(command[valueRange])
+    }
+
+    private static func listeningPorts(pid: Int) async -> [Int] {
+        let candidates = ["/usr/sbin/lsof", "/usr/bin/lsof"]
+        guard let executable = candidates.first(where: FileManager.default.isExecutableFile(atPath:)) else {
+            return []
+        }
+        guard let output = try? await ProcessRunner.run(
+            executable,
+            arguments: ["-nP", "-iTCP", "-sTCP:LISTEN", "-a", "-p", String(pid)]
+        ) else { return [] }
+        return parseListeningPorts(String(decoding: output, as: UTF8.self))
+    }
+
+    private static func requestQuota(
+        scheme: String,
+        port: Int,
+        csrfToken: String,
+        session: URLSession
+    ) async throws -> Data {
+        guard let url = URL(string: "\(scheme)://127.0.0.1:\(port)\(quotaPath)") else {
+            throw ProbeError.portUnavailable
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 4
+        request.httpBody = requestBody
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("1", forHTTPHeaderField: "Connect-Protocol-Version")
+        request.setValue(csrfToken, forHTTPHeaderField: "X-Codeium-Csrf-Token")
+
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+            throw ProbeError.quotaUnavailable
+        }
+        return data
+    }
+}
+
+/// Antigravity's loopback HTTPS endpoint uses a self-signed certificate. Trust
+/// is relaxed only for 127.0.0.1/localhost; all non-loopback challenges keep
+/// the platform's default validation.
+private final class AntigravityLoopbackSessionDelegate: NSObject,
+    URLSessionDelegate, URLSessionTaskDelegate, @unchecked Sendable
+{
+    private func disposition(
+        for challenge: URLAuthenticationChallenge
+    ) -> (URLSession.AuthChallengeDisposition, URLCredential?) {
+        let space = challenge.protectionSpace
+        let host = space.host.lowercased()
+        guard space.authenticationMethod == NSURLAuthenticationMethodServerTrust,
+              host == "127.0.0.1" || host == "localhost",
+              let trust = space.serverTrust
+        else { return (.performDefaultHandling, nil) }
+        return (.useCredential, URLCredential(trust: trust))
+    }
+
+    func urlSession(
+        _ session: URLSession,
+        didReceive challenge: URLAuthenticationChallenge
+    ) async -> (URLSession.AuthChallengeDisposition, URLCredential?) {
+        disposition(for: challenge)
+    }
+
+    func urlSession(
+        _ session: URLSession,
+        task: URLSessionTask,
+        didReceive challenge: URLAuthenticationChallenge
+    ) async -> (URLSession.AuthChallengeDisposition, URLCredential?) {
+        disposition(for: challenge)
     }
 }

@@ -187,6 +187,30 @@ struct AntigravityUsageParserTests {
         #expect(AntigravityTokenReader.parse("{broken json") == nil)
         #expect(GoKeyring.unwrap("go-keyring-base64:" + Data("hello".utf8).base64EncodedString()) == "hello")
     }
+
+    @Test("Local process discovery accepts Antigravity 2.x and ignores unrelated servers")
+    func localProcessDiscovery() {
+        let listing = """
+          101 /Applications/Antigravity.app/Contents/Resources/bin/language_server --csrf_token secret-a --app_data_dir antigravity
+          102 /tmp/language_server --csrf_token unrelated --app_data_dir another-app
+          103 /Applications/Antigravity.app/Contents/Resources/bin/language_server --app_data_dir=antigravity --csrf_token=secret-b
+        """
+        let processes = AntigravityLocalUsageProbe.parseProcesses(listing)
+        #expect(processes == [
+            .init(pid: 101, csrfToken: "secret-a"),
+            .init(pid: 103, csrfToken: "secret-b")
+        ])
+    }
+
+    @Test("Local lsof output is reduced to unique listening ports")
+    func localPortDiscovery() {
+        let listing = """
+        language 101 user 20u IPv4 0t0 TCP 127.0.0.1:60735 (LISTEN)
+        language 101 user 21u IPv4 0t0 TCP 127.0.0.1:60734 (LISTEN)
+        language 101 user 22u IPv4 0t0 TCP 127.0.0.1:60735 (LISTEN)
+        """
+        #expect(AntigravityLocalUsageProbe.parseListeningPorts(listing) == [60734, 60735])
+    }
 }
 
 @Suite("OpenCode usage math")

@@ -8,9 +8,9 @@ struct CuratedFeedService: Sendable {
         var errorDescription: String? {
             switch self {
             case .invalidResponse:
-                return "Token Remain 精选源返回了无法识别的数据"
+                return "TokenRemain 精选源返回了无法识别的数据"
             case .api(let status, let message):
-                return "Token Remain 精选源 \(status)：\(message)"
+                return "TokenRemain 精选源 \(status)：\(message)"
             }
         }
     }

@@ -190,6 +190,19 @@ struct UsageInsights {
             .sorted { $0.tokens > $1.tokens }
     }
 
+    /// 按今日本地 token 用量降序的 provider 排名(去重,只含有真实用量且能映射
+    /// 到官方 provider 的 agent)。无本地统计时为空,由调用方决定默认值。
+    var providersByTokenUsage: [ProviderQuota.Provider] {
+        var seen = Set<ProviderQuota.Provider>()
+        return providerUsage.compactMap { usage in
+            guard usage.tokens > 0,
+                  let provider = usage.provider,
+                  seen.insert(provider).inserted
+            else { return nil }
+            return provider
+        }
+    }
+
     var totalTokens: Int64? {
         guard let agents = daily?.agents, !agents.isEmpty else { return nil }
         return agents.reduce(0) { $0 + $1.tokens }
@@ -289,7 +302,7 @@ struct UsageInsights {
     }
 
     static func color(for agentID: String) -> Color {
-        guard let provider = provider(for: agentID) else { return DashboardTheme.purple }
+        guard let provider = provider(for: agentID) else { return DashboardTheme.secondaryText }
         return DashboardTheme.accent(for: provider)
     }
 }

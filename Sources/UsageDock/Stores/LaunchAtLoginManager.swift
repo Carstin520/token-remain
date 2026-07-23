@@ -26,7 +26,7 @@ final class LaunchAtLoginManager: ObservableObject {
                 }
                 isEnabled = SMAppService.mainApp.status == .enabled
                 if enabled && !isEnabled {
-                    errorMessage = "请在“系统设置 → 通用 → 登录项”中允许 Token Remain"
+                    errorMessage = "请在“系统设置 → 通用 → 登录项”中允许 TokenRemain"
                 }
             } catch {
                 isEnabled = previousValue
@@ -41,11 +41,11 @@ final class LaunchAtLoginManager: ObservableObject {
             do {
                 _ = try await ProcessRunner.run(
                     "/usr/bin/open",
-                    arguments: ["-n", Bundle.main.bundleURL.path]
+                    arguments: ["-n", AppResourceBundle.bundle.bundleURL.path]
                 )
                 NSApplication.shared.terminate(nil)
             } catch {
-                errorMessage = "无法重启 Token Remain：\(error.localizedDescription)"
+                errorMessage = "无法重启 TokenRemain：\(error.localizedDescription)"
             }
         }
     }

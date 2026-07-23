@@ -3,24 +3,32 @@ import Foundation
 import UserNotifications
 
 final class FeedNotificationService: NSObject, UNUserNotificationCenterDelegate, @unchecked Sendable {
-    private let center = UNUserNotificationCenter.current()
-
-    override init() {
-        super.init()
+    private lazy var center: UNUserNotificationCenter = {
+        let center = UNUserNotificationCenter.current()
         center.delegate = self
-    }
+        return center
+    }()
 
     func requestAuthorization() async throws -> Bool {
         try await center.requestAuthorization(options: [.alert, .sound])
     }
 
     func authorizationStatus() async -> UNAuthorizationStatus {
-        await center.notificationSettings().authorizationStatus
+        // UserNotifications requires a LaunchServices-backed .app bundle on
+        // macOS. SwiftPM's bare `swift run` executable has no bundle proxy and
+        // UNUserNotificationCenter.current() would raise an Objective-C
+        // exception before Swift can handle it.
+        guard Bundle.main.bundleURL.pathExtension == "app",
+              NSRunningApplication.current.bundleIdentifier == Bundle.main.bundleIdentifier
+        else {
+            return .notDetermined
+        }
+        return await center.notificationSettings().authorizationStatus
     }
 
     func notify(post: AIFeedPost) async {
         let content = UNMutableNotificationContent()
-        content.title = post.priority == .tokenReset ? "Token Remain · Token / 额度更新" : "Token Remain · AI 重大更新"
+        content.title = post.priority == .tokenReset ? "TokenRemain · Token / 额度更新" : "TokenRemain · AI 重大更新"
         content.subtitle = "\(post.displayName) · @\(post.username)"
         content.body = post.text.truncated(to: 180)
         content.sound = .default

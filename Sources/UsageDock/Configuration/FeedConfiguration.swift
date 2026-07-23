@@ -36,7 +36,7 @@ enum FeedDelivery: Sendable {
     var sourceTitle: String {
         switch self {
         case .directXAPI: return "X 官方 API · 最近公开动态"
-        case .curatedAPI: return "Token Remain 精选源 · 已审核内容"
+        case .curatedAPI: return "TokenRemain 精选源 · 已审核内容"
         }
     }
 }

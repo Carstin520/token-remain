@@ -34,11 +34,21 @@ struct ProviderQuota: Sendable, Codable {
         case openrouter = "OpenRouter"
         case antigravity = "Antigravity"
         case opencode = "OpenCode"
+        case deepseek = "DeepSeek"
+        case kimi = "Kimi"
+        case minimax = "MiniMax"
+        case mimo = "MiMo Code"
+        case qoder = "Qoder"
+        case kiro = "Kiro"
+        case volcengine = "Volcengine"
+        case ollama = "Ollama"
 
         /// UI 展示与遍历用的稳定顺序(nonisolated,供任何上下文使用)。
         static let displayOrder: [Provider] = [
             .claude, .codex, .cursor, .copilot, .devin,
-            .grok, .openrouter, .antigravity, .opencode, .zai
+            .grok, .openrouter, .antigravity, .opencode, .zai,
+            .deepseek, .kimi, .minimax, .mimo, .qoder,
+            .kiro, .volcengine, .ollama
         ]
 
         /// UI 里的短名(rawValue 保留历史值以兼容缓存/持久化)。
@@ -54,6 +64,14 @@ struct ProviderQuota: Sendable, Codable {
             case .openrouter: return "OpenRouter"
             case .antigravity: return "Antigravity"
             case .opencode: return "OpenCode"
+            case .deepseek: return "DeepSeek"
+            case .kimi: return "Kimi"
+            case .minimax: return "MiniMax"
+            case .mimo: return "MiMo"
+            case .qoder: return "Qoder"
+            case .kiro: return "Kiro"
+            case .volcengine: return "Volcengine"
+            case .ollama: return "Ollama"
             }
         }
     }

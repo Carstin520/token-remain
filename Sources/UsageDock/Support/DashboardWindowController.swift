@@ -5,7 +5,7 @@ import SwiftUI
 /// window glue in the app; it is deliberately isolated so the rest of the
 /// Dashboard stays pure SwiftUI.
 ///
-/// Token Remain is a regular Dock-resident desktop app. The menu-bar status
+/// TokenRemain is a regular Dock-resident desktop app. The menu-bar status
 /// item is a companion surface, while this controller owns the primary window.
 @MainActor
 final class DashboardWindowController: NSWindowController {
@@ -29,9 +29,8 @@ final class DashboardWindowController: NSWindowController {
         )
         window.contentViewController = hosting
         // Keep the real window title for Mission Control, the window switcher and
-        // accessibility, but hide the in-titlebar text: the sidebar brand lockup
-        // already shows "Token Remain", so the visible title would be a duplicate.
-        window.title = "Token Remain"
+        // accessibility, but leave the visible chrome to the compact sidebar mark.
+        window.title = "TokenRemain"
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
         window.appearance = NSAppearance(named: .darkAqua)
@@ -71,7 +70,7 @@ final class DashboardWindowController: NSWindowController {
         window?.makeKeyAndOrderFront(nil)
         // Re-assert after SwiftUI configures its toolbar, which can otherwise
         // flip the document title back to visible. The title *property* stays
-        // "Token Remain" for Mission Control / the window switcher.
+        // "TokenRemain" for Mission Control / the window switcher.
         window?.titleVisibility = .hidden
     }
 }

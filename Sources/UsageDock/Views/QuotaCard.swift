@@ -76,6 +76,9 @@ struct QuotaCard: View {
             Text(provider.displayName)
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(DashboardTheme.text)
+                .lineLimit(1)
+                .minimumScaleFactor(0.82)
+                .layoutPriority(1)
             Spacer()
             if let plan = quota?.planName, !plan.isEmpty {
                 TagPill(text: plan)

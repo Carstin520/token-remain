@@ -17,9 +17,12 @@ struct AIFeedPostCard: View {
                             Text(post.displayName)
                                 .font(.system(size: 13, weight: .semibold))
                                 .foregroundStyle(DashboardTheme.text)
+                                .lineLimit(1)
+                                .layoutPriority(1)
                             Text("@\(post.username)")
                                 .font(.system(size: 11))
                                 .foregroundStyle(DashboardTheme.mutedText)
+                                .lineLimit(1)
                         }
                         Text(post.createdAt, style: .relative)
                             .numericFont(10)

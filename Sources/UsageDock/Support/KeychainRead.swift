@@ -1,16 +1,29 @@
 import Foundation
+import LocalAuthentication
 import Security
 
 /// 只读钥匙串工具:按 service(可选 account)取第一条 generic password。
 /// 供各 provider 的凭证发现使用;绝不写入。
 enum KeychainRead {
-    static func genericPassword(service: String, account: String? = nil) -> String? {
+    static func genericPassword(
+        service: String,
+        account: String? = nil,
+        allowUserInteraction: Bool = true
+    ) -> String? {
         var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne
         ]
+        // Background quota refreshes must never summon a system password dialog.
+        // A pre-authorized item still succeeds; an item that needs interaction
+        // fails immediately so the caller can use a prompt-free fallback.
+        if !allowUserInteraction {
+            let context = LAContext()
+            context.interactionNotAllowed = true
+            query[kSecUseAuthenticationContext as String] = context
+        }
         if let account {
             query[kSecAttrAccount as String] = account
         }

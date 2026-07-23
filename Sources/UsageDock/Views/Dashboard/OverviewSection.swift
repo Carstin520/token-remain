@@ -82,7 +82,7 @@ struct OverviewSection: View {
             )
         }
 
-        let provider = assessment.window.provider == .claude ? "Claude" : "Codex"
+        let provider = assessment.window.provider.displayName
         let window = UsageFormatting.windowName(minutes: assessment.window.windowMinutes)
         return MetricCard(
             label: "预计可用",
@@ -98,12 +98,11 @@ struct OverviewSection: View {
     private var officialQuotaPanel: some View {
         DashboardCard {
             VStack(alignment: .leading, spacing: 14) {
-                PanelHeader(title: "官方额度", subtitle: "各服务商最紧张的窗口") {
+                PanelHeader(title: "官方额度", subtitle: "最常用服务商的最紧张窗口") {
                     TagPill(text: "LIVE", color: DashboardTheme.codex, background: DashboardTheme.surface2)
                 }
 
-                let providers: [ProviderQuota.Provider] = [.claude, .codex]
-                let rows = providers.compactMap { scarcestWindow(for: $0) }
+                let rows = officialQuotaProviders.compactMap { scarcestWindow(for: $0) }
 
                 if rows.isEmpty {
                     EmptyStateView(
@@ -131,6 +130,17 @@ struct OverviewSection: View {
             }
         }
         .frame(maxWidth: .infinity)
+    }
+
+    /// 今日 token 用量最高的两个 provider;没有本地统计时默认 Claude / Codex。
+    /// 排名靠前但没有官方额度快照的候选会被顺延,保证只要有数据就凑满两行。
+    private var officialQuotaProviders: [ProviderQuota.Provider] {
+        var candidates = insights.providersByTokenUsage
+        let fallbacks = [ProviderQuota.Provider.claude, .codex] + insights.quotas.map(\.provider)
+        for fallback in fallbacks where !candidates.contains(fallback) {
+            candidates.append(fallback)
+        }
+        return Array(candidates.filter { scarcestWindow(for: $0) != nil }.prefix(2))
     }
 
     private func scarcestWindow(for provider: ProviderQuota.Provider) -> UsageInsights.Window? {
@@ -166,7 +176,7 @@ struct OverviewSection: View {
                     Divider().overlay(DashboardTheme.border)
                     InfoRow(
                         label: "最紧张窗口",
-                        value: "\(window.provider == .claude ? "Claude" : "Codex") · \(UsageFormatting.windowName(minutes: window.windowMinutes))"
+                        value: "\(window.provider.displayName) · \(UsageFormatting.windowName(minutes: window.windowMinutes))"
                     )
                     InfoRow(
                         label: "剩余额度",
@@ -199,9 +209,12 @@ private struct OfficialQuotaRow: View {
             HStack {
                 BrandIcon(provider: window.provider)
                     .frame(width: 18, height: 18)
-                Text(window.provider == .claude ? "Claude" : "Codex")
+                Text(window.provider.displayName)
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(DashboardTheme.text)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+                    .layoutPriority(1)
                 Spacer()
                 Text(UsageFormatting.percent(window.remainingPercent))
                     .numericFont(13, .bold)
@@ -228,6 +241,6 @@ private struct OfficialQuotaRow: View {
             }
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(window.provider == .claude ? "Claude" : "Codex") 剩余 \(UsageFormatting.percent(window.remainingPercent))")
+        .accessibilityLabel("\(window.provider.displayName) 剩余 \(UsageFormatting.percent(window.remainingPercent))")
     }
 }

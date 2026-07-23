@@ -4,17 +4,27 @@ import OSLog
 
 @MainActor
 final class UsageStore: ObservableObject {
-    @Published private(set) var claude: ProviderQuota?
-    @Published private(set) var codex: ProviderQuota?
-    @Published private(set) var cursor: ProviderQuota?
-    @Published private(set) var grok: ProviderQuota?
-    @Published private(set) var zai: ProviderQuota?
-    @Published private(set) var copilot: ProviderQuota?
-    @Published private(set) var devin: ProviderQuota?
-    @Published private(set) var openrouter: ProviderQuota?
-    @Published private(set) var antigravity: ProviderQuota?
-    @Published private(set) var opencode: ProviderQuota?
-    /// 直查 provider 卡片内的状态说明(未接入指引、登录过期提示等)。
+    struct LogoQuotaSelection: Equatable {
+        let provider: ProviderQuota.Provider
+        let remainingPercent: Double
+        let windowMinutes: Int
+    }
+
+    /// 各 provider 当前快照的唯一存储。逐 provider 的具名访问器保留在下方,
+    /// 视图无需感知字典结构。
+    @Published private(set) var quotas: [ProviderQuota.Provider: ProviderQuota] = [:]
+
+    var claude: ProviderQuota? { quotas[.claude] }
+    var codex: ProviderQuota? { quotas[.codex] }
+    var cursor: ProviderQuota? { quotas[.cursor] }
+    var grok: ProviderQuota? { quotas[.grok] }
+    var zai: ProviderQuota? { quotas[.zai] }
+    var copilot: ProviderQuota? { quotas[.copilot] }
+    var devin: ProviderQuota? { quotas[.devin] }
+    var openrouter: ProviderQuota? { quotas[.openrouter] }
+    var antigravity: ProviderQuota? { quotas[.antigravity] }
+    var opencode: ProviderQuota? { quotas[.opencode] }
+    /// 直查 provider 卡片内的状态说明(登录过期、接口错误等)。
     /// 刻意不进全局错误条:"未接入某工具"是卡片语境的信息,
     /// 不该像故障一样反复告警。
     @Published private(set) var providerNotices: [ProviderQuota.Provider: String] = [:]
@@ -54,7 +64,8 @@ final class UsageStore: ObservableObject {
     /// Claude / Codex 之外、只有 API(或本地扫描)一条直查路径的 provider,
     /// 统一走 5 分钟节奏的批量抓取。
     static let auxProviders: [ProviderQuota.Provider] = [
-        .cursor, .grok, .zai, .copilot, .devin, .openrouter, .antigravity, .opencode
+        .cursor, .grok, .zai, .copilot, .devin, .openrouter, .antigravity, .opencode,
+        .deepseek, .kimi, .minimax, .mimo, .qoder, .kiro, .volcengine, .ollama
     ]
 
     /// 当前全部 provider 快照(含未追踪的 nil),固定顺序。
@@ -63,37 +74,26 @@ final class UsageStore: ObservableObject {
     }
 
     var aggregateRemainingPercent: Double? {
-        Self.aggregateRemainingPercent(from: allQuotas)
+        logoQuotaSelection?.remainingPercent
+    }
+
+    var logoQuotaSelection: LogoQuotaSelection? {
+        Self.logoQuotaSelection(from: allQuotas)
     }
 
     func quotaValue(for provider: ProviderQuota.Provider) -> ProviderQuota? {
-        switch provider {
-        case .claude: return claude
-        case .codex: return codex
-        case .cursor: return cursor
-        case .grok: return grok
-        case .zai: return zai
-        case .copilot: return copilot
-        case .devin: return devin
-        case .openrouter: return openrouter
-        case .antigravity: return antigravity
-        case .opencode: return opencode
-        }
+        quotas[provider]
+    }
+
+    var connectedProviders: [ProviderQuota.Provider] {
+        tracked.connectedOrdered
     }
 
     private func assign(_ value: ProviderQuota?, to provider: ProviderQuota.Provider) {
-        switch provider {
-        case .claude: claude = value
-        case .codex: codex = value
-        case .cursor: cursor = value
-        case .grok: grok = value
-        case .zai: zai = value
-        case .copilot: copilot = value
-        case .devin: devin = value
-        case .openrouter: openrouter = value
-        case .antigravity: antigravity = value
-        case .opencode: opencode = value
+        if value != nil {
+            tracked.markConnected(provider)
         }
+        quotas[provider] = value
     }
 
     private static func auxFetcher(
@@ -108,6 +108,14 @@ final class UsageStore: ObservableObject {
         case .openrouter: return { try await OpenRouterUsageService().fetch() }
         case .antigravity: return { try await AntigravityUsageService().fetch() }
         case .opencode: return { try await OpenCodeUsageService().fetch() }
+        case .deepseek: return { try await DeepSeekUsageService().fetch() }
+        case .kimi: return { try await KimiUsageService().fetch() }
+        case .minimax: return { try await MiniMaxUsageService().fetch() }
+        case .mimo: return { try await MiMoUsageService().fetch() }
+        case .qoder: return { try await QoderUsageService().fetch() }
+        case .kiro: return { try await KiroUsageService().fetch() }
+        case .volcengine: return { try await VolcengineUsageService().fetch() }
+        case .ollama: return { try await OllamaUsageService().fetch() }
         case .claude, .codex: return nil
         }
     }
@@ -134,12 +142,32 @@ final class UsageStore: ObservableObject {
     }
 
     static func aggregateRemainingPercent(from quotas: [ProviderQuota?]) -> Double? {
-        let values = quotas.compactMap { $0 }.flatMap { quota in
-            [quota.primary, quota.secondary].compactMap { $0 }.map { window in
-                min(max(100 - window.usedPercent, 0), 100)
-            }
+        logoQuotaSelection(from: quotas)?.remainingPercent
+    }
+
+    /// Each provider contributes only its shortest recurring quota window to
+    /// the app-logo comparison. This avoids comparing Claude's five-hour and
+    /// seven-day windows against Codex's single seven-day window as if all
+    /// three represented equivalent sessions.
+    static func logoQuotaSelection(from quotas: [ProviderQuota?]) -> LogoQuotaSelection? {
+        quotas.compactMap { quota -> LogoQuotaSelection? in
+            guard let quota else { return nil }
+            let windows = [quota.primary, quota.secondary].compactMap { $0 }
+            guard let shortest = windows.min(by: { lhs, rhs in
+                // A zero-minute window is a lifetime meter, not a session.
+                // Keep it as a fallback only when the provider has no recurring window.
+                let lhsDuration = lhs.windowMinutes > 0 ? lhs.windowMinutes : Int.max
+                let rhsDuration = rhs.windowMinutes > 0 ? rhs.windowMinutes : Int.max
+                return lhsDuration < rhsDuration
+            }) else { return nil }
+
+            return LogoQuotaSelection(
+                provider: quota.provider,
+                remainingPercent: min(max(100 - shortest.usedPercent, 0), 100),
+                windowMinutes: shortest.windowMinutes
+            )
         }
-        return values.min()
+        .min(by: { $0.remainingPercent < $1.remainingPercent })
     }
 
     convenience init() {
@@ -149,17 +177,13 @@ final class UsageStore: ObservableObject {
     init(tracked: TrackedProvidersStore) {
         self.tracked = tracked
         if let cached = quotaCache.load() {
-            claude = cached.claude
-            codex = cached.codex
-            cursor = cached.cursor
-            grok = cached.grok
-            zai = cached.zai
-            copilot = cached.copilot
-            devin = cached.devin
-            openrouter = cached.openrouter
-            antigravity = cached.antigravity
-            opencode = cached.opencode
-            lastClaudeAttempt = cached.claude?.capturedAt
+            quotas = cached.byProvider
+            // 升级兼容：旧版没有独立连接历史，已有成功快照就是最可靠的
+            // “曾连接”证据。
+            for provider in cached.byProvider.keys {
+                tracked.markConnected(provider)
+            }
+            lastClaudeAttempt = cached.byProvider[.claude]?.capturedAt
         }
         history = historyCache.load()
         claudeRetryAfter = UserDefaults.standard.object(forKey: claudeRetryAfterKey) as? Date
@@ -213,18 +237,24 @@ final class UsageStore: ObservableObject {
         defer { isRefreshing = false }
 
         let now = Date()
-        let normalClaudeRefreshDue = lastClaudeAttempt.map { now.timeIntervalSince($0) >= 300 } ?? true
+        // 直查节奏由用户偏好决定(1/5/15/30 分钟);"仅手动"模式下只有
+        // 强制刷新(手动按钮/新增追踪)才发起请求。
+        let interval = PreferencesStore.shared.refreshInterval
+        func autoDue(since date: Date?) -> Bool {
+            guard let interval else { return false }
+            return date.map { now.timeIntervalSince($0) >= interval } ?? true
+        }
         let backoffJustCompleted = claudeRetryAfter.map { now >= $0 } ?? false
         let shouldRefreshClaude = tracked.isEnabled(.claude)
-            && (forceClaude || normalClaudeRefreshDue || backoffJustCompleted)
+            && (forceClaude || autoDue(since: lastClaudeAttempt) || backoffJustCompleted)
 
         // Codex API 直查限到 5 分钟一次(手动刷新立即直查);分钟级轮次
         // 只扫本地会话快照,在两次直查之间补新而不打服务端接口。
-        let codexAPIDue = forceClaude || lastCodexAPIAttempt.map { now.timeIntervalSince($0) >= 300 } ?? true
+        let codexAPIDue = forceClaude || autoDue(since: lastCodexAPIAttempt)
 
         // Cursor / Grok / Z.ai 只有 API 一条路(无本地快照可扫),
         // 与 Claude 同为 5 分钟节奏。
-        let auxDue = forceClaude || lastAuxProvidersAttempt.map { now.timeIntervalSince($0) >= 300 } ?? true
+        let auxDue = forceClaude || autoDue(since: lastAuxProvidersAttempt)
 
         // async-let 的子任务不在主 actor 上,启用判断先在这里(主 actor)取好。
         let codexEnabled = tracked.isEnabled(.codex)
@@ -244,11 +274,13 @@ final class UsageStore: ObservableObject {
             lastClaudeAttempt = now
             switch claudeResult {
             case .success(let value):
-                claude = value
+                assign(value, to: .claude)
+                providerNotices[.claude] = nil
                 claudeRetryAfter = nil
                 UserDefaults.standard.removeObject(forKey: claudeRetryAfterKey)
                 logger.info("Claude quota refreshed; primary usage: \(value.primary.usedPercent, privacy: .public)%, reset time available: \(value.primary.resetsAt != nil, privacy: .public)")
             case .failure(let error):
+                providerNotices[.claude] = error.localizedDescription
                 if let serviceError = error as? ClaudeUsageService.ServiceError {
                     let retryAfter = now.addingTimeInterval(serviceError.retryDelay)
                     claudeRetryAfter = retryAfter
@@ -262,14 +294,16 @@ final class UsageStore: ObservableObject {
         if let codexResult = quotaResults.1 {
             switch codexResult {
             case .success(let value):
+                providerNotices[.codex] = nil
                 // 快照补新绝不把界面回退到比当前更旧的数据;API 结果的
                 // capturedAt 是请求时刻,天然通过该检查。
                 if codex.map({ value.capturedAt > $0.capturedAt }) ?? true {
-                    codex = value
+                    assign(value, to: .codex)
                 }
             case .failure(let error):
                 // 快照缺失对纯 API 用户是常态:间隙轮次失败且已有数据时不算错误。
                 if codexAPIDue || codex == nil {
+                    providerNotices[.codex] = error.localizedDescription
                     errors.append("Codex: \(error.localizedDescription)")
                 }
             }
@@ -313,7 +347,9 @@ final class UsageStore: ObservableObject {
             switch provider {
             case .zai: try ZAIKeyStore().save(key)
             case .openrouter: try OpenRouterKeyStore().save(key)
-            default: return
+            default:
+                guard ProviderSecretStore.descriptor(for: provider) != nil else { return }
+                try ProviderSecretStore(provider: provider).save(key)
             }
         } catch {
             providerNotices[provider] = error.localizedDescription
@@ -328,7 +364,9 @@ final class UsageStore: ObservableObject {
         switch provider {
         case .zai: try? ZAIKeyStore().clear()
         case .openrouter: try? OpenRouterKeyStore().clear()
-        default: return
+        default:
+            guard ProviderSecretStore.descriptor(for: provider) != nil else { return }
+            try? ProviderSecretStore(provider: provider).clear()
         }
         await refreshKeyProvider(provider)
     }
@@ -360,11 +398,7 @@ final class UsageStore: ObservableObject {
     }
 
     private func currentSnapshot() -> QuotaCache.Snapshot {
-        .init(
-            claude: claude, codex: codex, cursor: cursor, grok: grok, zai: zai,
-            copilot: copilot, devin: devin, openrouter: openrouter,
-            antigravity: antigravity, opencode: opencode
-        )
+        .init(byProvider: quotas)
     }
 
     deinit { refreshTask?.cancel() }

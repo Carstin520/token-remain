@@ -4,7 +4,7 @@ import SwiftUI
 /// 用实色强调,其余用弱化色。纯展示,不可交互;空数据渲染为空白。
 struct MiniBarChart: View {
     let values: [Double]
-    var accent: Color = DashboardTheme.link
+    var accent: Color = DashboardTheme.secondaryText
     var barSpacing: CGFloat = 2
     var minBarHeightRatio: CGFloat = 0.08
 

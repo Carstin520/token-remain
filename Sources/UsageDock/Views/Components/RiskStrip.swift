@@ -10,42 +10,44 @@ struct RiskStrip: View {
         TimelineView(.periodic(from: .now, by: 60)) { context in
             let risk = insights.riskLevel(at: context.date)
 
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 8) {
-                    PixelBadge(text: risk.badge, color: risk.tint, filled: risk == .high)
-                    Text("当前使用判断")
-                        .font(.system(size: 10))
-                        .foregroundStyle(DashboardTheme.mutedText)
-                    Spacer(minLength: 8)
+            HStack(spacing: 10) {
+                PixelBadge(text: risk.badge, color: risk.tint, filled: risk == .high)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(insights.decisionHeadline(at: context.date))
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(DashboardTheme.text)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.88)
+
                     if let window = insights.constrainingWindow {
-                        let provider = window.provider == .claude ? "Claude" : "Codex"
-                        Text("\(provider) 剩余 \(UsageFormatting.percent(window.remainingPercent))")
-                            .numericFont(12, .bold)
-                            .foregroundStyle(DashboardTheme.text)
+                        Text("\(window.provider.displayName) 剩余 \(UsageFormatting.percent(window.remainingPercent))")
+                            .numericFont(10, .medium)
+                            .foregroundStyle(DashboardTheme.secondaryText)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.85)
                     }
                 }
 
-                Text(insights.decisionHeadline(at: context.date))
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(DashboardTheme.text)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.88)
+                Spacer(minLength: 8)
             }
             .padding(.horizontal, 13)
-            .padding(.vertical, 11)
+            .padding(.vertical, 10)
+            // The semantic signal lives in the badge + border; the card face
+            // stays near-neutral so one banner doesn't wash the whole popover
+            // in amber/red.
             .usageDockGlassSurface(
                 cornerRadius: 13,
-                tint: risk.tint.opacity(0.16),
-                fallbackBackground: risk.tint.opacity(0.10),
-                fallbackBorder: risk.tint.opacity(0.30)
+                tint: risk.tint.opacity(0.07),
+                fallbackBackground: risk.tint.opacity(0.05),
+                fallbackBorder: risk.tint.opacity(0.28)
             )
-            .pixelTicks(cornerRadius: 13, color: risk.tint.opacity(0.5))
+            .pixelTicks(cornerRadius: 13, color: risk.tint.opacity(0.35))
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("当前使用判断 \(risk.badge)，\(insights.decisionHeadline(at: context.date))")
             .accessibilityValue(
                 insights.constrainingWindow.map {
-                    let provider = $0.provider == .claude ? "Claude" : "Codex"
-                    return "\(provider) 剩余 \(UsageFormatting.percent($0.remainingPercent))"
+                    "\($0.provider.displayName) 剩余 \(UsageFormatting.percent($0.remainingPercent))"
                 } ?? ""
             )
         }

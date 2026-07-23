@@ -41,7 +41,7 @@ struct AIFeedHotStoriesCard: View {
                     Button(L10n.text("feed.view_all"), action: onViewAll)
                         .buttonStyle(.plain)
                         .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(DashboardTheme.link)
+                        .foregroundStyle(DashboardTheme.secondaryText)
                 }
 
                 if !posts.isEmpty {
@@ -88,9 +88,12 @@ struct AIFeedHotStoriesCard: View {
                         Text(post.displayName)
                             .font(.system(size: 10, weight: .semibold))
                             .foregroundStyle(DashboardTheme.text)
+                            .lineLimit(1)
+                            .layoutPriority(1)
                         Text(post.createdAt, style: .relative)
                             .numericFont(9)
                             .foregroundStyle(DashboardTheme.mutedText)
+                            .lineLimit(1)
                     }
                     Text(showsFullText ? normalizedText(post.text) : shortHeadline(post.text))
                         .font(.system(size: 11, weight: .medium))
@@ -125,11 +128,14 @@ struct AIFeedHotStoriesCard: View {
             .joined(separator: " ")
     }
 
+    // Priority is encoded by brightness, not hue: only the semantic amber for
+    // token resets keeps a color; everything else stays neutral so the popover
+    // reads as one palette.
     private func accentColor(for post: AIFeedPost) -> Color {
         switch post.priority {
         case .tokenReset: return DashboardTheme.warning
-        case .majorUpdate: return DashboardTheme.purple
-        case .normal: return DashboardTheme.codex
+        case .majorUpdate: return DashboardTheme.text
+        case .normal: return DashboardTheme.mutedText
         }
     }
 }
