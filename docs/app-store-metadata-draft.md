@@ -1,7 +1,8 @@
 # TokenRemain App Store metadata draft
 
-This copy is ready for owner review. Bracketed URLs/contact values must be
-replaced before entry in App Store Connect.
+The English and Simplified Chinese copy, public URLs, copyright, and review
+contact values were entered in App Store Connect on 2026-07-23. This source
+remains the canonical reference for later edits.
 
 ## English (U.S.)
 
@@ -110,21 +111,35 @@ AI,额度,Claude,Codex,Cursor,用量,小组件,手表,开发者,趋势
 
 - Primary category: **Developer Tools**
 - Secondary category: **Productivity**
-- Age rating: complete the current questionnaire; do not hard-code a rating in
-  this draft
-- Support URL: `[HTTPS SUPPORT URL]`
-- Marketing URL: `[HTTPS PRODUCT URL]`
-- Privacy Policy URL: `[HTTPS PRIVACY URL]`
-- Copyright: `[YEAR LEGAL NAME]`
-- Review contact name: `[NAME]`
-- Review contact phone: `[PHONE]`
-- Review contact email: `[EMAIL]`
-- Mac companion download/review URL: `[HTTPS NOTARIZED MAC DOWNLOAD URL]`
+- Age rating: **13+** in 171 storefronts, **16+** in two storefronts, and
+  **15+** in Korea based on the questionnaire completed on 2026-07-23
+- English Support URL:
+  <https://tokenremain.jamescarstin520.chatgpt.site/support.html>
+- Simplified Chinese Support URL:
+  <https://tokenremain.jamescarstin520.chatgpt.site/support.html?lang=zh>
+- English Marketing URL: <https://tokenremain.jamescarstin520.chatgpt.site>
+- Simplified Chinese Marketing URL:
+  <https://tokenremain.jamescarstin520.chatgpt.site/?lang=zh>
+- English Privacy Policy URL:
+  <https://tokenremain.jamescarstin520.chatgpt.site/privacy.html>
+- Simplified Chinese Privacy Policy URL:
+  <https://tokenremain.jamescarstin520.chatgpt.site/privacy.html?lang=zh>
+- Copyright: `2026 Dongheng Li`
+- Review contact name: `Dongheng Li`
+- Review contact phone: `+1 2177786869`
+- Review contact email: `jamescarstin520@gmail.com`
+- Support email: `jamescarstin520@gmail.com`
+- Mac companion product/download page:
+  <https://tokenremain.jamescarstin520.chatgpt.site>
+- Candidate direct Mac release URL:
+  <https://github.com/Carstin520/token-remain/releases/latest/download/TokenRemain.dmg>
+  (must be replaced or verified against the final notarized release artifact)
 
 ## Owner confirmations before entry
 
 1. Confirm the subtitle, categories, and localized copy.
 2. Confirm the provider trademarks shown in metadata/screenshots are accurate
    compatibility references and that required content rights are held.
-3. Replace every bracketed field with a public, reachable value.
+3. Recheck that every public URL still resolves from an unauthenticated
+   connection before final submission.
 4. Verify all feature statements against the exact uploaded build.

@@ -1,15 +1,16 @@
-# TokenRemain Privacy Policy — release draft
+# TokenRemain Privacy Policy — release source
 
-> Publication blockers: replace the effective date, publisher name, support
-> email, and public URL before using this text. Legal review may be appropriate
-> for the selected storefronts. This draft describes the current code and is
-> not a claim that an App Store privacy form has already been submitted.
+The public English and Simplified Chinese policy is available at
+<https://tokenremain.jamescarstin520.chatgpt.site/privacy.html>. Legal review
+may still be appropriate for the selected storefronts. This text describes the
+current code and is not a claim that the App Store privacy response has been
+published.
 
-Effective date: `[DATE]`
+Effective date: July 23, 2026
 
-Publisher: `[LEGAL NAME]`
+Publisher: Dongheng Li
 
-Contact: `[SUPPORT EMAIL]`
+Contact: `jamescarstin520@gmail.com`
 
 ## Summary
 
@@ -132,4 +133,5 @@ complying with provider terms and applicable laws in their region.
 ## Changes and contact
 
 Material changes will be reflected by updating this policy and its effective
-date. Questions or deletion assistance can be sent to `[SUPPORT EMAIL]`.
+date. Questions or deletion assistance can be sent to
+`jamescarstin520@gmail.com`.

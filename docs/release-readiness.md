@@ -278,26 +278,29 @@ The signed-in App Store Connect session established the following state on
   `Manually release this version` selected;
 - App Privacy saved as `Data Not Collected`, consistent with the current
   no-analytics/no-ad/no-developer-server code path, but not yet published.
+- public product, support, and privacy-policy pages deployed at
+  `https://tokenremain.jamescarstin520.chatgpt.site`, with English and
+  Simplified Chinese URLs saved in App Store Connect;
+- copyright `2026 Dongheng Li` and App Review contact Dongheng Li,
+  `+1 2177786869`, `jamescarstin520@gmail.com` saved.
 
 These remaining actions still require owner input, an explicit external action,
 or stronger release evidence:
 
 1. Verify the current Paid Apps Agreement, banking, tax, education/business
    distribution, and Family Sharing state.
-2. Publish reachable HTTPS product, support, and privacy-policy pages; provide
-   the support email, copyright holder, and App Review contact details.
-3. Complete Digital Services Act trader/non-trader identity verification.
-4. Publish the App Privacy response only after its public policy URL is entered
+2. Complete Digital Services Act trader/non-trader identity verification.
+3. Publish the App Privacy response only after its public policy URL is entered
    and the processed build is rechecked for SDK/privacy changes.
-5. Complete the App Store export-compliance determination for CryptoKit
+4. Complete the App Store export-compliance determination for CryptoKit
    AES-256-GCM, then set the matching Info.plist key and rebuild.
-6. Upload the distribution archive, wait for processing, and resolve all
+5. Upload the distribution archive, wait for processing, and resolve all
    entitlement, export-compliance, or privacy-manifest warnings.
-7. Capture and upload the final iPhone and Apple Watch screenshots.
-8. Run internal and external TestFlight on a real iPhone and paired Watch.
-9. Deploy and verify the CloudKit Production schema only after explicit owner
+6. Capture and upload the final iPhone and Apple Watch screenshots.
+7. Run internal and external TestFlight on a real iPhone and paired Watch.
+8. Deploy and verify the CloudKit Production schema only after explicit owner
    approval.
-10. Attach the final build and evidence to the prepared version, then stop for
+9. Attach the final build and evidence to the prepared version, then stop for
     owner confirmation before `Add for Review`.
 
 The listing source remains in `docs/app-store-metadata-draft.md`. The status

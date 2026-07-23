@@ -1,9 +1,10 @@
 # TokenRemain App Store submission draft
 
 This is the canonical submission source. The English and Simplified Chinese
-version metadata and the review notes were entered in App Store Connect on
-2026-07-23. That does not prove build processing, TestFlight validation, paid
-storefront behavior, or App Review approval.
+version metadata, public URLs, copyright, review contact, and review notes were
+entered in App Store Connect on 2026-07-23. That does not prove build
+processing, TestFlight validation, paid storefront behavior, or App Review
+approval.
 
 ## Review notes
 
@@ -130,14 +131,20 @@ actual embedded build, not a design mock.
 
 ## App Store Connect state still requiring owner input
 
-- public support, marketing, and privacy-policy URLs plus the support email;
-- copyright holder and App Review contact name, phone, and email;
+- English and Simplified Chinese support, marketing, and privacy-policy URLs
+  are saved and return HTTP 200;
+- support email `jamescarstin520@gmail.com` is published on the support and
+  privacy pages;
+- copyright `2026 Dongheng Li` and App Review contact Dongheng Li,
+  `+1 2177786869`, `jamescarstin520@gmail.com` are saved;
 - Paid Apps Agreement, banking, tax, education/business distribution, and
   Family Sharing confirmation;
 - Digital Services Act identity/trader status;
 - export-compliance determination for CryptoKit AES-256-GCM;
-- privacy-label publication, screenshots, processed build selection,
-  TestFlight validation, and final review submission.
+- App Privacy publication after the final processed build and privacy report
+  are rechecked;
+- screenshots, processed build selection, TestFlight validation, and final
+  review submission.
 
 A proposed English and Simplified Chinese listing is in
 `docs/app-store-metadata-draft.md`.
