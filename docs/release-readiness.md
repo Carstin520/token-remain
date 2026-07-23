@@ -17,7 +17,7 @@ unsandboxed Developer ID Mac download.
 | StoreKit configuration | Not applicable | The app is paid upfront; there is no IAP product |
 | StoreKit Sandbox purchase | Not applicable | Paid storefront checkout is outside the app and is not simulated by TestFlight |
 | Developer ID package | Current HEAD `10754b6` is G2-signed with Production entitlements; the preceding release candidate was notarized, stapled, and Gatekeeper-accepted | Notarize the final HEAD, download it through the customer HTTPS path, and complete the Mac acceptance matrix |
-| CloudKit Production | Release entitlements are configured in code | Deploy schema, then test Production with release builds |
+| CloudKit Production | Release entitlements are configured; the final zero-index/private-role deployment diff has been verified | Obtain explicit owner approval, deploy the reviewed schema, then test Production with release builds |
 | APNs Production | Release build setting is configured in code | Verify the distribution-signed entitlement and silent push on TestFlight |
 | Foreground freshness | Timing instrumentation and simulator paths pass | Collect real Mac + iPhone samples and meet p50/p95/max gates |
 | App Store Connect | App record, pricing, storefronts, metadata, content rights, age rating, privacy draft, review notes, and manual release are configured as recorded below | Supply public URLs/contact/legal details, publish privacy, upload/process a build, and complete account compliance |
@@ -208,32 +208,36 @@ field appeared in the preview.
 
 CloudKit's initially inferred public-database grants for
 `TRCurrentSnapshot` were removed from `_world`, `_icloud`, and `_creator`.
-The next successful deployment preview reported `Security Roles (0)`, so the
-record type had no proposed public access. The preview still contained 13
-automatically inferred query/search/sort indexes even though the shipping code
-fetches the single `current-v1` record by ID and performs no `CKQuery`.
+All 13 automatically inferred query/search/sort indexes were also removed
+because the shipping code fetches the single `current-v1` record by ID and
+performs no `CKQuery`.
 
-Index minimization then began in Development. Five individual index deletions
-were accepted before CloudKit Console began returning `Error performing DAW
-auth` for schema export, history, and deployment-diff requests. Production was
-not changed and the Deploy button was never used. Because the console could no
-longer produce an authoritative final diff, the current Development type/index
-state must be re-exported and re-verified after Apple restores schema access.
-Do not deploy, infer success from the sidebar, or recreate the type blindly
-until that final export is available.
+After Apple restored console access, each application field was rechecked in
+Development and showed `None` under Single Field Indexes. The default roles
+were also rechecked: `_world` and `_creator` contained only the system `Users`
+type, while `_icloud` had no assigned record types.
 
-1. Export or record the Development schema for container
-   `iCloud.com.jamesli.tokenremain`.
-2. Verify the custom zone, record type, field types, encrypted field status,
-   and required query indexes match the code contract.
-3. Confirm no credential, account, email, prompt, project, conversation,
-   request-level, path, token, or API-key field exists.
-4. Deploy the schema to Production in CloudKit Console.
-5. Verify the Production schema is queryable by distribution-signed iPhone and
+The final deployment preview compared Production version
+`0567a9b0-8688-11f1-bcb8-87342b1e7c53` with Development version
+`c83e5900-869e-11f1-a5b0-cbb8b212d0c7`. It proposed:
+
+- `Record Types (1)`: create `TRCurrentSnapshot`;
+- `Indexes (0)`;
+- `Security Roles (0)`.
+
+The schema diff contained only the six system metadata fields and the six
+application fields listed above. It contained no index attributes and no
+`GRANT` clause for `TRCurrentSnapshot`; the existing `Users` definition was
+unchanged. The preview was cancelled. Production was not changed and the
+Deploy button was never used.
+
+1. Obtain explicit owner confirmation for the reviewed Production deployment.
+2. Deploy the exact reviewed schema to Production in CloudKit Console.
+3. Verify the Production schema is accessible to distribution-signed iPhone and
    Developer ID Mac builds using the same iCloud account.
-6. Exercise deletion, missing key, corrupt ciphertext, replay, stale data, and
+4. Exercise deletion, missing key, corrupt ciphertext, replay, stale data, and
    main-Mac takeover before release.
-7. Record the deployment date and schema version in the release evidence.
+5. Record the deployment date and schema version in the release evidence.
 
 ## Current HEAD local verification
 
