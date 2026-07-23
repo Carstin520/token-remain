@@ -1,4 +1,13 @@
-# Token Remain — Implementation Report
+# TokenRemain — Implementation Report
+
+> 2026-07-22 update: the earlier offline/demo-only baseline described below has now been
+> extended with a privacy-first `.macSync` path using an application-layer AES-256-GCM
+> envelope, CloudKit Private Database, a dedicated synchronizable Keychain key, replay
+> protection, Widget/Live Activity fan-out and read-only WatchConnectivity delivery.
+> Statements below that say “no networking/keychain/synced origin” are retained only as
+> historical baseline evidence and are superseded by
+> `docs/cross-device-sync-privacy-architecture.md`. Real-account device E2E remains a
+> release gate; simulator and package tests are not presented as CloudKit production proof.
 
 Date: 2026-07-20 · Xcode 26.5 (17F42) · iOS 26.5 + watchOS 26.5 simulator runtimes
 
@@ -27,10 +36,10 @@ Every command below was executed from `apple/` with
 Embedded product graph verified in the build output directory:
 
 ```
-Token Remain.app
-Token Remain.app/PlugIns/TokenRemainWidgets.appex
-Token Remain.app/Watch/Token Remain.app
-Token Remain.app/Watch/Token Remain.app/PlugIns/TokenRemainWatchWidgets.appex
+TokenRemain.app
+TokenRemain.app/PlugIns/TokenRemainWidgets.appex
+TokenRemain.app/Watch/TokenRemain.app
+TokenRemain.app/Watch/TokenRemain.app/PlugIns/TokenRemainWatchWidgets.appex
 ```
 
 ### Simulator runs observed (screenshots in `apple/Screenshots/`, git-ignored)
@@ -88,9 +97,9 @@ the paired phone in the concept scenario delivered a new `origin: demo` snapshot
   substitutions), `PixelCard` (corner ticks + dot cluster), `SegmentBar`, `PixelBadge`,
   `DemoChip`, `PixelCheck`, `DottedSparkline`, `ProviderGlyph`, `TRValue`,
   `TRAdaptiveRow`, and `PixelRobot`.
-- **`PixelRobot`** is a code-defined 16×12 matrix drawn in a `Canvas` with integral rects
+- **`PixelRobot`** is the shared Orbit robot, defined as a 16×16 matrix and drawn in a `Canvas` with integral rects
   (no antialiasing, no image assets, no third-party font). The 11 ported mood states
-  collapse to 5 drawn faces while all 11 accessibility descriptions are preserved.
+  retain 11 distinct eye expressions, with matching accessibility descriptions.
 - **Liquid Glass**: `trGlassCard` / `TRPrimaryButton` apply `.glassEffect` and
   `.buttonStyle(.glass)` behind `#available(iOS 26.0, watchOS 26.0, macOS 26.0, *)`;
   below that the flat `PixelCard` surface *is* the design, so the fallback is on-brand.

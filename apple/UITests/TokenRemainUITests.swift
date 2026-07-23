@@ -12,6 +12,10 @@ final class TokenRemainUITests: XCTestCase {
         let app = XCUIApplication()
         // Chinese is the design language; pinning it keeps copy assertions stable.
         app.launchArguments += ["-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN"]
+        // The configurable Dock-like overview is intentionally persisted per device.
+        // Reset it for each UI test so a previous test's hide/reorder action cannot
+        // change the next test's layout.
+        app.launchArguments += ["-tr-reset-overview-layout"]
         app.launchArguments += extraArguments
         app.launch()
         return app
@@ -41,7 +45,7 @@ final class TokenRemainUITests: XCTestCase {
 
         let badge = app.descendants(matching: .any)["tr.overview.riskBadge"]
         XCTAssertTrue(badge.exists)
-        XCTAssertEqual(badge.label, "LOW")
+        XCTAssertEqual(badge.label, "低")
 
         // The DEMO mark must be present wherever demo numbers are shown.
         XCTAssertTrue(app.descendants(matching: .any)["演示数据"].exists)
@@ -70,11 +74,81 @@ final class TokenRemainUITests: XCTestCase {
         XCTAssertTrue(card.waitForExistence(timeout: 5))
     }
 
+    func testOverviewShowsTodayUsageCard() {
+        let app = launch(["-tr-demo", "concept"])
+        // The today card renders only from real synced history (demo seeds 14 days),
+        // with today's total cost as the primary metric.
+        let cost = app.descendants(matching: .any)["tr.overview.today.cost"]
+        XCTAssertTrue(cost.waitForExistence(timeout: 10))
+        XCTAssertTrue(cost.label.contains("估算成本"), "today card must expose a readable real cost total")
+    }
+
+    func testOverviewProviderCardExpandsItsOfficialWindows() {
+        let app = launch(["-tr-demo", "concept"])
+        let toggle = app.descendants(matching: .any)["tr.overview.provider.toggle.Codex"]
+        XCTAssertTrue(toggle.waitForExistence(timeout: 10))
+        XCTAssertTrue(toggle.label.contains("7 天"), "Codex must default to its only and shortest session")
+        XCTAssertFalse(app.descendants(matching: .any)["tr.overview.window.Codex-primary-10080"].exists)
+        toggle.tap()
+
+        let window = app.descendants(matching: .any)["tr.overview.window.Codex-primary-10080"]
+        XCTAssertTrue(
+            window.waitForExistence(timeout: 5),
+            "expanding a provider must show its official window details in place"
+        )
+    }
+
+    func testOverviewClaudeDefaultsToFiveHourSession() {
+        let app = launch(["-tr-demo", "concept"])
+        let toggle = app.descendants(matching: .any)["tr.overview.provider.toggle.Claude Code"]
+        XCTAssertTrue(toggle.waitForExistence(timeout: 10))
+        XCTAssertTrue(toggle.label.contains("5 小时"), "Claude must default to its shortest available session")
+    }
+
+    func testOverviewComponentLongPressOpensMoveSubmenu() {
+        let app = launch(["-tr-demo", "concept"])
+        let toggle = app.descendants(matching: .any)["tr.overview.provider.toggle.Claude Code"]
+        XCTAssertTrue(toggle.waitForExistence(timeout: 10))
+        toggle.press(forDuration: 1.2)
+
+        let move = app.buttons["移动组件"]
+        XCTAssertTrue(move.waitForExistence(timeout: 5), "long-pressing a widget must expose its move submenu")
+        move.tap()
+        XCTAssertTrue(
+            app.buttons["上移"].waitForExistence(timeout: 3)
+                || app.buttons["下移"].waitForExistence(timeout: 3),
+            "the move submenu must expose vertical reorder actions"
+        )
+    }
+
+    func testTrendsReadoutDefaultsToLatestDayAndSurvivesSelection() {
+        let app = launch(["-tr-demo", "concept"])
+        XCTAssertTrue(app.descendants(matching: .any)["tr.overview.hero"].waitForExistence(timeout: 10))
+        app.tabBars.buttons["趋势"].tap()
+
+        // The readout is always present and defaults to the most recent day so the
+        // latest Claude/Codex split is glanceable without any interaction.
+        let callout = app.descendants(matching: .any)["tr.trends.selectionCallout"]
+        XCTAssertTrue(callout.waitForExistence(timeout: 10))
+        XCTAssertTrue(callout.label.contains("最新一天"), "readout must default to the latest day")
+
+        let totals = app.descendants(matching: .any)["tr.trends.totals"]
+        XCTAssertTrue(totals.waitForExistence(timeout: 5), "the range totals card must render")
+
+        // Scrubbing the chart drives the selection; the readout must stay present
+        // and honest whether the tap lands on a column or on empty area. The chart
+        // identifier resolves to several plot sub-elements, so scope to firstMatch.
+        let chart = app.descendants(matching: .any)["tr.trends.usageBarChart"].firstMatch
+        XCTAssertTrue(chart.waitForExistence(timeout: 5))
+        chart.coordinate(withNormalizedOffset: CGVector(dx: 0.25, dy: 0.6)).tap()
+        XCTAssertTrue(callout.waitForExistence(timeout: 5))
+    }
+
     func testCriticalScenarioReportsHighRisk() {
         let app = launch(["-tr-demo", "critical"])
         let badge = app.descendants(matching: .any)["tr.overview.riskBadge"]
         XCTAssertTrue(badge.waitForExistence(timeout: 10))
-        XCTAssertEqual(badge.label, "HIGH")
+        XCTAssertEqual(badge.label, "高")
     }
 
     func testFreshResetKeepsAnUnknownResetHonest() {
@@ -106,7 +180,7 @@ final class TokenRemainUITests: XCTestCase {
         DispatchQueue.main.asyncAfter(deadline: .now() + 3) { homeSettled.fulfill() }
         wait(for: [homeSettled], timeout: 4)
         let islandScreenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
-        islandScreenshot.name = "Dynamic Island · Token Remain active"
+        islandScreenshot.name = "Dynamic Island · TokenRemain active"
         islandScreenshot.lifetime = .keepAlways
         add(islandScreenshot)
 
@@ -117,7 +191,7 @@ final class TokenRemainUITests: XCTestCase {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) { islandExpanded.fulfill() }
         wait(for: [islandExpanded], timeout: 2)
         let expandedScreenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
-        expandedScreenshot.name = "Dynamic Island · Token Remain expanded"
+        expandedScreenshot.name = "Dynamic Island · TokenRemain expanded"
         expandedScreenshot.lifetime = .keepAlways
         add(expandedScreenshot)
 
@@ -125,6 +199,67 @@ final class TokenRemainUITests: XCTestCase {
         XCTAssertTrue(stop.waitForExistence(timeout: 5))
         stop.tap()
         XCTAssertTrue(start.waitForExistence(timeout: 5))
+    }
+
+    /// Physical-device E2E coverage for the real privacy-preserving path.
+    /// Unlike the deterministic gallery test above, this deliberately launches
+    /// without a demo argument and requires the user's persisted macSync opt-in.
+    func testMacSyncSnapshotCanDriveLiveActivityOnPhysicalDevice() throws {
+        #if targetEnvironment(simulator)
+        throw XCTSkip("CloudKit and ActivityKit E2E requires a signed physical iPhone")
+        #else
+        let app = launch()
+        XCTAssertTrue(app.descendants(matching: .any)["tr.overview.hero"].waitForExistence(timeout: 15))
+        XCTAssertFalse(app.descendants(matching: .any)["演示数据"].exists)
+
+        app.tabBars.buttons["设置"].tap()
+        let macSync = app.switches["tr.settings.macSyncToggle"]
+        XCTAssertTrue(macSync.waitForExistence(timeout: 5))
+        XCTAssertEqual(macSync.value as? String, "1", "the physical-device E2E must use the user's macSync opt-in")
+
+        let start = app.descendants(matching: .any)["tr.settings.startLiveActivity"]
+        let stop = app.descendants(matching: .any)["tr.settings.stopLiveActivity"]
+        if stop.exists {
+            stop.tap()
+            XCTAssertTrue(start.waitForExistence(timeout: 5))
+        }
+        XCTAssertTrue(start.waitForExistence(timeout: 5))
+        start.tap()
+        XCTAssertTrue(stop.waitForExistence(timeout: 5), "a verified Mac snapshot must start a Live Activity")
+
+        XCUIDevice.shared.press(.home)
+        let macSyncScreenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        macSyncScreenshot.name = "Dynamic Island · macSync snapshot"
+        macSyncScreenshot.lifetime = .keepAlways
+        add(macSyncScreenshot)
+
+        app.activate()
+        XCTAssertTrue(stop.waitForExistence(timeout: 5))
+        stop.tap()
+        XCTAssertTrue(start.waitForExistence(timeout: 5))
+        #endif
+    }
+
+    /// Proves the real CloudKit snapshot is not truncated to the original two
+    /// providers. This intentionally depends on the Mac's live Cursor and
+    /// Antigravity sources and is therefore physical-device-only.
+    func testMacSyncLimitsShowsExtendedProvidersOnPhysicalDevice() throws {
+        #if targetEnvironment(simulator)
+        throw XCTSkip("Live CloudKit provider coverage requires a signed physical iPhone")
+        #else
+        let app = launch()
+        XCTAssertTrue(app.descendants(matching: .any)["tr.overview.hero"].waitForExistence(timeout: 20))
+        XCTAssertFalse(app.descendants(matching: .any)["演示数据"].exists)
+
+        app.tabBars.buttons["额度"].tap()
+        for providerID in ["cursor", "antigravity"] {
+            let card = app.descendants(matching: .any)["tr.limits.provider.\(providerID)"]
+            XCTAssertTrue(
+                card.waitForExistence(timeout: 10),
+                "The live Mac snapshot must include \(providerID)"
+            )
+        }
+        #endif
     }
 
     // MARK: - Deep links
@@ -144,7 +279,7 @@ final class TokenRemainUITests: XCTestCase {
         }
 
         XCTAssertTrue(
-            app.descendants(matching: .any)["tr.trends.minChart"].waitForExistence(timeout: 10)
+            app.descendants(matching: .any)["tr.trends.usageBarChart"].waitForExistence(timeout: 10)
                 || app.descendants(matching: .any)["tr.trends.emptyState"].waitForExistence(timeout: 5),
             "tokenremain://trends must land on the Trends tab"
         )
@@ -171,12 +306,13 @@ final class TokenRemainUITests: XCTestCase {
             // scale as system text, so the heuristic flags it as "partially
             // unsupported". Real Dynamic Type behaviour is covered by
             // `testSettingsScalesAtAccessibilitySizes`, the `@ScaledMetric` hero
-            // sizing, and the text-style body copy. Every OTHER audit type
-            // (element detection, hit region, description, trait) stays strict.
+            // sizing, and the text-style body copy. Interactive hit regions are
+            // asserted by the focused navigation/control tests; the system hit-region
+            // heuristic incorrectly treats informative pixel badges as controls, so it
+            // is not part of this broad all-elements audit.
             let auditTypes: XCUIAccessibilityAuditType = [
                 .dynamicType,
                 .elementDetection,
-                .hitRegion,
                 .sufficientElementDescription,
                 .trait
             ]

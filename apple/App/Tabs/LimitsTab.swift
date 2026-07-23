@@ -1,6 +1,8 @@
 import SwiftUI
 import TokenRemainKit
 
+/// The mobile Limits tab follows the Desktop Dashboard information hierarchy:
+/// one provider card, then every official window with freshness, reset and pace.
 struct LimitsTab: View {
     @Environment(AppModel.self) private var model
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -15,19 +17,22 @@ struct LimitsTab: View {
                         if model.snapshot.isEmpty {
                             NotConnectedCard()
                         } else {
-                            ForEach(model.insights.windows) { window in
-                                WindowDetailCard(
-                                    window: window,
-                                    highlighted: model.highlightedWindowID == window.id,
-                                    reduceMotion: reduceMotion
-                                )
-                                .id(window.id)
+                            ForEach(ProviderQuota.Provider.allCases, id: \.self) { provider in
+                                let windows = model.insights.windows(for: provider)
+                                if !windows.isEmpty {
+                                    ProviderLimitsCard(
+                                        provider: provider,
+                                        windows: windows,
+                                        highlightedWindowID: model.highlightedWindowID,
+                                        reduceMotion: reduceMotion
+                                    )
+                                }
                             }
                         }
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 4)
-                    .padding(.bottom, 24)
+                    .padding(.bottom, 96)
                 }
                 .background(TRTheme.ink)
                 .onChange(of: model.highlightedWindowID) { _, newValue in
@@ -46,34 +51,121 @@ struct LimitsTab: View {
     }
 }
 
-struct WindowDetailCard: View {
+private struct ProviderLimitsCard: View {
+    @Environment(AppModel.self) private var model
+
+    let provider: ProviderQuota.Provider
+    let windows: [UsageInsights.Window]
+    let highlightedWindowID: String?
+    let reduceMotion: Bool
+
+    private var quota: ProviderQuota? {
+        model.snapshot.providers.first { $0.provider == provider }
+    }
+
+    private var accent: Color { TRTheme.accent(for: provider) }
+
+    var body: some View {
+        PixelCard {
+            VStack(alignment: .leading, spacing: 12) {
+                header
+                Divider().overlay(TRTheme.border)
+                ForEach(windows) { window in
+                    ProviderLimitWindowRow(
+                        window: window,
+                        highlighted: highlightedWindowID == window.id,
+                        reduceMotion: reduceMotion
+                    )
+                    .id(window.id)
+                    if window.id != windows.last?.id {
+                        Divider().overlay(TRTheme.border)
+                    }
+                }
+                freshness
+            }
+        }
+        .cyberCard(border: TRTheme.accentDim(for: provider))
+        .trGlassCard(enabled: model.glassEnabled)
+        .accessibilityIdentifier("tr.limits.provider.\(provider.syncID)")
+    }
+
+    private var header: some View {
+        TRAdaptiveRow {
+            HStack(spacing: 8) {
+                ProviderGlyph(provider: provider, size: 20)
+                Text(provider.shortName)
+                    .font(.system(.headline, design: .monospaced))
+                    .foregroundStyle(TRTheme.text)
+                if let plan = quota?.planName, !plan.isEmpty {
+                    Text(plan)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(TRTheme.textDim)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(TRTheme.surface2, in: Capsule())
+                }
+            }
+            Spacer(minLength: 8)
+            if let lowest = windows.map(\.remainingPercent).min() {
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(TRL10n.t("overview.min_remaining"))
+                        .font(.caption2)
+                        .foregroundStyle(TRTheme.textDim)
+                    CyberValue(
+                        UsageFormatting.percent(lowest.rounded()),
+                        size: 22,
+                        color: TRTheme.text,
+                        glow: accent
+                    )
+                }
+            }
+        }
+    }
+
+    private var freshness: some View {
+        TimelineView(.periodic(from: .now, by: 60)) { context in
+            let capturedAt = quota?.capturedAt ?? model.snapshot.generatedAt
+            let stale = context.date.timeIntervalSince(capturedAt) >= UsageSnapshot.macSyncStaleInterval
+            Label(
+                TRL10n.f("limits.freshness", UsageFormatting.freshnessDescription(since: capturedAt, now: context.date)),
+                systemImage: stale ? "exclamationmark.circle.fill" : "checkmark.circle.fill"
+            )
+            .font(.caption)
+            .foregroundStyle(stale ? TRTheme.warning : TRTheme.textDim)
+        }
+    }
+}
+
+/// Dense full-window detail. It deliberately uses only the already synchronized
+/// fields and derives pace locally, so the Limits page never invents plan or
+/// spend information missing from the privacy-minimized snapshot.
+private struct ProviderLimitWindowRow: View {
+    @Environment(AppModel.self) private var model
+
     let window: UsageInsights.Window
     let highlighted: Bool
     let reduceMotion: Bool
-
-    @Environment(AppModel.self) private var model
     @State private var pulse = false
 
     private var accent: Color { TRTheme.accent(for: window.provider) }
 
     var body: some View {
-        let now = Date()
-        let pace = model.insights.pace(for: window, at: now)
-        PixelCard {
-            VStack(alignment: .leading, spacing: 12) {
+        TimelineView(.periodic(from: .now, by: 60)) { context in
+            let pace = model.insights.pace(for: window, at: context.date)
+            VStack(alignment: .leading, spacing: 9) {
                 header
                 SegmentBar(remainingPercent: window.remainingPercent, accent: accent)
-                    .neonGlow(accent, intensity: 0.4)
-                paceSection(pace: pace, now: now)
-                Divider().overlay(TRTheme.border)
-                resetSection(now: now)
+                    .neonGlow(accent, intensity: 0.32)
+                resetRow(now: context.date)
+                paceDetails(pace: pace, now: context.date)
             }
-        }
-        // Structure layer: scanlines + faint neon border in the provider accent (key card).
-        .cyberCard(border: accent)
-        .overlay {
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .strokeBorder(TRTheme.indigo, lineWidth: highlighted && pulse ? 2 : 0)
+            .overlay {
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .strokeBorder(TRTheme.indigo, lineWidth: highlighted && pulse ? 2 : 0)
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityIdentifier("tr.limits.window.\(window.id)")
+            .accessibilityLabel(accessibilityLabel(pace: pace, now: context.date))
         }
         .onChange(of: highlighted) { _, isHighlighted in
             guard isHighlighted else {
@@ -88,49 +180,56 @@ struct WindowDetailCard: View {
                 pulse = true
             }
         }
-        .accessibilityElement(children: .ignore)
-        .accessibilityIdentifier("tr.limits.window.\(window.id)")
-        .accessibilityLabel(accessibilityLabel(pace: pace, now: now))
     }
 
     private var header: some View {
         TRAdaptiveRow {
-            ProviderGlyph(provider: window.provider, size: 16)
-            Text(window.title)
-                .font(.system(.subheadline, design: .monospaced))
-                .foregroundStyle(TRTheme.text)
-            Spacer(minLength: 0)
-            // Display layer: dot-matrix window hero % with a neon bloom in the
-            // provider accent (violet Claude / cyan Codex).
+            VStack(alignment: .leading, spacing: 2) {
+                Text(UsageFormatting.windowName(minutes: window.windowMinutes))
+                    .font(.system(.subheadline, design: .monospaced))
+                    .foregroundStyle(TRTheme.text)
+                Text(TRL10n.t("limits.window.caption"))
+                    .font(.caption2)
+                    .foregroundStyle(TRTheme.textMute)
+            }
+            Spacer(minLength: 8)
             CyberValue(
                 UsageFormatting.percent(window.remainingPercent.rounded()),
-                size: 30,
+                size: 28,
                 color: TRTheme.text,
                 glow: accent
             )
         }
     }
 
+    private func resetRow(now: Date) -> some View {
+        Label(resetDescription(now: now), systemImage: "arrow.clockwise")
+            .font(.caption)
+            .foregroundStyle(TRTheme.textDim)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
     @ViewBuilder
-    private func paceSection(pace: UsagePace?, now: Date) -> some View {
+    private func paceDetails(pace: UsagePace?, now: Date) -> some View {
         if let pace {
             VStack(alignment: .leading, spacing: 6) {
-                TRAdaptiveRow {
+                TRAdaptiveRow(spacing: 8) {
                     metric(TRL10n.t("limits.pace.expected"), UsageFormatting.percent(pace.expectedUsedPercent.rounded()))
                     metric(TRL10n.t("limits.pace.actual"), UsageFormatting.percent(pace.actualUsedPercent.rounded()))
                     metric(TRL10n.t("limits.pace.delta"), signed(pace.deltaPercent))
-                    Spacer(minLength: 0)
                     PixelBadge(statusLabel(pace.status), accent: statusAccent(pace.status))
-                        .neonGlow(statusAccent(pace.status), intensity: 0.5)
                 }
                 if let runOut = pace.estimatedRunOutAt {
-                    // Always phrased as an estimate — never as a fact.
                     Label(
                         TRL10n.f("limits.pace.projected", UsageFormatting.durationUntil(runOut, now: now)),
                         systemImage: "exclamationmark.triangle"
                     )
                     .font(.caption)
-                    .foregroundStyle(TRTheme.violet)
+                    .foregroundStyle(TRTheme.warning)
+                } else {
+                    Label(TRL10n.t("overview.pace.ok"), systemImage: "checkmark.circle")
+                        .font(.caption)
+                        .foregroundStyle(TRTheme.success)
                 }
             }
         } else {
@@ -142,14 +241,17 @@ struct WindowDetailCard: View {
 
     private func metric(_ caption: String, _ value: String) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(caption)
-                .font(.caption)
-                .foregroundStyle(TRTheme.textDim)
+            Text(caption).font(.caption2).foregroundStyle(TRTheme.textDim)
             Text(value)
-                .font(.system(.footnote, design: .monospaced).monospacedDigit())
+                .font(.system(.caption, design: .monospaced).monospacedDigit())
                 .foregroundStyle(TRTheme.text)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func resetDescription(now: Date) -> String {
+        guard let resetsAt = window.resetsAt else { return TRL10n.t("limits.reset.unknown") }
+        return UsageFormatting.resetDescription(to: resetsAt, now: now)
     }
 
     private func signed(_ value: Double) -> String {
@@ -167,57 +269,22 @@ struct WindowDetailCard: View {
     private func statusAccent(_ status: UsagePace.Status) -> Color {
         switch status {
         case .onTrack: return TRTheme.indigo
-        case .reserve: return TRTheme.cyan
-        case .deficit: return TRTheme.violet
-        }
-    }
-
-    private func resetSection(now: Date) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(TRL10n.t("limits.reset.section"))
-                .font(.caption)
-                .foregroundStyle(TRTheme.textDim)
-            if let resetsAt = window.resetsAt {
-                let description = UsageFormatting.resetDescription(to: resetsAt, now: now)
-                let absolute = UsageFormatting.absoluteReset(resetsAt)
-                Text(description)
-                    .font(.system(.footnote, design: .monospaced))
-                    .foregroundStyle(TRTheme.text)
-                    .fixedSize(horizontal: false, vertical: true)
-                // For far resets `resetDescription` already reads "周五 12:37 重置", so the
-                // absolute clock line would just repeat it — only show it when it adds
-                // information (e.g. the near-reset countdown case "重置还有 02:38").
-                if !description.contains(absolute) {
-                    Text(absolute)
-                        .font(.caption)
-                        .foregroundStyle(TRTheme.textDim)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            } else {
-                // Claude can report a fresh window before it knows the next reset.
-                // That stays unknown rather than being invented.
-                Text(TRL10n.t("limits.reset.unknown"))
-                    .font(.system(.footnote, design: .monospaced))
-                    .foregroundStyle(TRTheme.textDim)
-            }
+        case .reserve: return TRTheme.success
+        case .deficit: return TRTheme.warning
         }
     }
 
     private func accessibilityLabel(pace: UsagePace?, now: Date) -> String {
         var parts = [
             window.title,
-            "\(TRL10n.t("overview.min_remaining")) \(UsageFormatting.percent(window.remainingPercent.rounded()))"
+            "\(TRL10n.t("overview.min_remaining")) \(UsageFormatting.percent(window.remainingPercent.rounded()))",
+            resetDescription(now: now)
         ]
         if let pace {
             parts.append(statusLabel(pace.status))
             if let runOut = pace.estimatedRunOutAt {
                 parts.append(TRL10n.f("limits.pace.projected", UsageFormatting.durationUntil(runOut, now: now)))
             }
-        }
-        if let resetsAt = window.resetsAt {
-            parts.append(UsageFormatting.resetDescription(to: resetsAt, now: now))
-        } else {
-            parts.append(TRL10n.t("limits.reset.unknown"))
         }
         if model.snapshot.isDemo { parts.append(TRL10n.t("demo.a11y")) }
         return parts.joined(separator: "，")
@@ -226,6 +293,6 @@ struct WindowDetailCard: View {
 
 #Preview("Limits · critical") {
     LimitsTab()
-        .environment(AppModel(arguments: ["-tr-demo", "critical"]))
+        .environment(AppModel(arguments: ["-tr-demo", "critical", "-tr-reset-overview-layout"]))
         .preferredColorScheme(.dark)
 }

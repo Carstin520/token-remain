@@ -32,10 +32,33 @@ struct SettingsTab: View {
     private func sourceSection(_ model: Bindable<AppModel>) -> some View {
         Section {
             LabeledContent(TRL10n.t("settings.origin.row")) {
-                Text(self.model.snapshot.isDemo
-                    ? TRL10n.t("origin.demo.status")
-                    : TRL10n.t("origin.none.status"))
+                Text(originStatus)
                     .foregroundStyle(TRTheme.textDim)
+            }
+            Toggle(
+                TRL10n.t("settings.macsync.toggle"),
+                isOn: Binding(
+                    get: { self.model.isMacSyncEnabled },
+                    set: { self.model.setMacSyncEnabled($0) }
+                )
+            )
+            .tint(TRTheme.indigo)
+            .accessibilityIdentifier("tr.settings.macSyncToggle")
+            if self.model.isMacSyncEnabled {
+                Text(mobileSyncStatus)
+                    .font(.footnote)
+                    .foregroundStyle(TRTheme.textDim)
+                if case .sourceChangeRequiresConfirmation = self.model.mobileSyncState {
+                    Button(TRL10n.t("settings.macsync.confirm")) {
+                        self.model.acceptPendingMacSource()
+                    }
+                    .tint(TRTheme.indigo)
+                } else {
+                    Button(TRL10n.t("settings.macsync.refresh")) {
+                        Task { await self.model.pullMacSync() }
+                    }
+                    .disabled(self.model.mobileSyncState == .pulling)
+                }
             }
             Toggle(TRL10n.t("settings.demo.toggle"), isOn: model.isDemoEnabled)
                 .tint(TRTheme.indigo)
@@ -81,16 +104,56 @@ struct SettingsTab: View {
                 Button(TRL10n.t("settings.liveactivity.start")) {
                     model.startLiveActivity()
                 }
-                .disabled(!model.snapshot.isDemo)
+                .disabled(model.snapshot.isEmpty)
                 .accessibilityIdentifier("tr.settings.startLiveActivity")
-                if !model.snapshot.isDemo {
-                    Text(TRL10n.t("settings.liveactivity.needsdemo"))
+                if model.snapshot.isEmpty {
+                    Text(TRL10n.t("settings.liveactivity.needssource"))
                         .font(.footnote)
                         .foregroundStyle(TRTheme.textDim)
                 }
             }
         }
         .onAppear { model.refreshLiveActivityState() }
+    }
+
+    private var originStatus: String {
+        switch model.origin {
+        case .demo: TRL10n.t("origin.demo.status")
+        case .macSync: TRL10n.t("origin.macsync.status")
+        case .none: TRL10n.t("origin.none.status")
+        }
+    }
+
+    private var mobileSyncStatus: String {
+        switch model.mobileSyncState {
+        case .off: return TRL10n.t("origin.none.status")
+        case .pulling: return TRL10n.current == .zhHans ? "正在安全拉取…" : "Securely pulling…"
+        case .waitingForMac: return TRL10n.current == .zhHans ? "等待 Mac 上传第一份快照" : "Waiting for the first Mac snapshot"
+        case .waitingForKey: return TRL10n.current == .zhHans ? "等待 iCloud 钥匙串同步密钥" : "Waiting for the iCloud Keychain sync key"
+        case .synced(let date):
+            let value = date.formatted(date: .omitted, time: .shortened)
+            return TRL10n.current == .zhHans ? "已同步 · \(value)" : "Synced · \(value)"
+        case .sourceChangeRequiresConfirmation:
+            return TRL10n.current == .zhHans ? "检测到新的 Mac 数据源，需要确认" : "A new Mac source needs confirmation"
+        case .failed(let failure): return mobileSyncFailureText(failure)
+        }
+    }
+
+    private func mobileSyncFailureText(_ failure: MobileSyncFailure) -> String {
+        let zh = TRL10n.current == .zhHans
+        switch failure {
+        case .iCloudAccountUnavailable, .iCloudAccountRestricted,
+             .iCloudAccountUnknown, .iCloudAuthenticationRequired, .iCloudPermissionDenied:
+            return zh ? "iCloud 账户不可用或未授权" : "iCloud account unavailable or unauthorized"
+        case .iCloudTemporarilyUnavailable, .networkUnavailable, .serviceUnavailable, .rateLimited, .syncConflict:
+            return zh ? "iCloud 暂不可用，稍后可重试" : "iCloud is temporarily unavailable; retry later"
+        case .remoteRecordUnavailable:
+            return zh ? "等待 Mac 上传快照" : "Waiting for a Mac snapshot"
+        case .syncKeyUnavailable:
+            return zh ? "等待 iCloud 钥匙串同步密钥" : "Waiting for the iCloud Keychain sync key"
+        case .untrustedRemotePayload, .localReplayStateUnavailable:
+            return zh ? "远端快照未通过安全校验，已保留旧数据" : "Remote snapshot failed security validation; old data was kept"
+        }
     }
 
     // MARK: - 小组件

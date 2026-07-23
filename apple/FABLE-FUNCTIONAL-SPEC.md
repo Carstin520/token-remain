@@ -1,4 +1,10 @@
-# Token Remain — Apple-Platform Implementation Specification
+# TokenRemain — Apple-Platform Implementation Specification
+
+> Historical baseline note (2026-07-22): this document originally specified the
+> offline/demo-only Apple UI. The product now also implements the opt-in `.macSync` path
+> defined in `docs/cross-device-sync-privacy-architecture.md`. Any “future/not implemented”
+> or “fully offline” statement below applies only to the original baseline and is not the
+> current network/privacy contract.
 
 **Audience:** Claude Opus 4.8 coding agent.
 **Repo:** `/Users/jamesli/Developer/Desktop_Projects/UsageDock-project`
@@ -9,7 +15,7 @@
 
 ## 0. Context
 
-UsageDock today is a macOS menu-bar app that reads **local** Claude Code / Codex quota state (Claude via a PTY-driven `/usage`, Codex via `~/.codex` session files, ccusage via `npx`). None of those sources exist on iPhone or Apple Watch, and macOS CLI credentials must never travel to mobile. The confirmed mobile concept ("Token Remain") is a pixel-tech, low-contrast three-color robot design spanning iPhone app, Dynamic Island Live Activity, Home Screen widgets, Lock Screen widgets, an Action Button control, and watchOS glance + complications.
+UsageDock today is a macOS menu-bar app that reads **local** Claude Code / Codex quota state (Claude via a PTY-driven `/usage`, Codex via `~/.codex` session files, ccusage via `npx`). None of those sources exist on iPhone or Apple Watch, and macOS CLI credentials must never travel to mobile. The confirmed mobile concept ("TokenRemain") is a pixel-tech, low-contrast three-color robot design spanning iPhone app, Dynamic Island Live Activity, Home Screen widgets, Lock Screen widgets, an Action Button control, and watchOS glance + complications.
 
 The mission: build a **real, locally buildable** Apple-platform implementation of that system that is **honest about data provenance** — every surface either renders clearly-labeled deterministic demo data or an explicit "no data source connected" state. The architecture leaves a clean seam for a future real sync source (e.g. the curated-feed server or a Mac companion push), but ships none.
 
@@ -52,7 +58,7 @@ Tab bar matches design panel 1: **Overview · Limits · Trends · Settings** (�
 
 Top-to-bottom, per the design:
 
-1. **Header:** "Overview" large title; beneath it the pixel robot mini-glyph + "Token Remain" wordmark (monospaced). `DEMO` chip when demo.
+1. **Header:** "Overview" large title; beneath it the pixel robot mini-glyph + "TokenRemain" wordmark (monospaced). `DEMO` chip when demo.
 2. **Risk hero card:** left column — "当前额度风险" caption, risk badge (`LOW` in large pixel caps), "最低剩余" caption, giant min-remaining value ("46%", monospaced, ~64pt), pace line with pixel checkbox ("☑ 可持续到重置" when every window's pace `willLastUntilReset`, else "⚠ 预计 <duration> 后用尽" from the earliest `paceAssessment`). Right column — the large pixel robot (mood from remaining %). Top-right: source status line ("全部数据源正常" in demo / "未连接数据源" otherwise).
 3. **Provider cards** (one per provider): provider pixel glyph (Claude sunburst ✳ violet, Codex knot cyan), name, remaining % right-aligned; a **14-segment block progress bar** showing remaining; footer "7 天窗口 · 周五 13:00 重置" (window name via `UsageFormatting.windowName`, reset via `resetDescription`). Claude card shows its scarcer window's bar with a secondary line for the other window.
 4. **Two half-width cards:** "重置还有 02:38 · 周五 13:00" countdown card (soonest reset, live-updating via `TimelineView(.periodic)` at 1s only while foregrounded; the `REC` pixel dot pulses when a Live Activity is running) and "7 天趋势" sparkline card (dotted pixel sparkline of observed min-remaining history; honest empty state "暂无本机历史" when <2 points).
@@ -78,7 +84,7 @@ Renders **only history the phone has actually recorded** (`SnapshotHistoryStore`
 - **实时活动** group: Start/Stop Live Activity button + current state; system Live Activity permission hint if denied.
 - **小组件** group: static how-to rows for Home/Lock Screen widgets and the Action Button control (no fake toggles — widgets are user-added in system UI).
 - **Apple Watch** group: last-sync status from WatchConnectivity (`isPaired`, `isWatchAppInstalled`, last `applicationContext` push time).
-- **关于** group: version, privacy statement ("Token Remain 不联网、不存储任何凭证"), link-free.
+- **关于** group: version, privacy statement ("TokenRemain 不联网、不存储任何凭证"), link-free.
 
 Localization: zh-Hans primary + en, via a small `String(localized:)` catalog in the kit (mirror macOS L10n keys where copy matches; do not import the macOS `L10n.swift`).
 
@@ -105,7 +111,9 @@ Three chromatic roles on an ink ground; dark-only appearance (app sets `.preferr
 | `textDim` | `#8B97AB` | secondary text |
 | `textMute` | `#55617A` | captions, disabled |
 
-Risk/status is expressed **within the three colors**: LOW = violet badge, MEDIUM = cyan badge + `!` pixel glyph, HIGH = text-white badge on violet field + `‼` glyph, plus always a text label — never a red/green-only signal. Provider identity: Claude = violet, Codex = cyan (this intentionally diverges from macOS orange/blue; the mobile design is the confirmed target).
+Risk/status is expressed **within the three colors**: LOW = violet badge, MEDIUM = cyan badge + `!` pixel glyph, HIGH = text-white badge on violet field + `‼` glyph, plus always a text label — never a red/green-only signal.
+
+**2026-07-22 muted restyle (desktop parity).** Provider identity for *meters* (rings, bars, dots) no longer uses violet/cyan; it uses the same muted tonal band as the desktop `DashboardTheme`: `claudeAccent` `#BF8471` (muted terracotta, dim `#956758`) and `codexAccent` `#6687C5` (muted steel blue, dim `#50699A`). Cyan is softened to `#3ECFE0` and appears only for countdowns/confirmations; violet stays `#8357F5` (the desktop `#8F7BF2` fails the ≥3:1 filled-HIGH-badge contrast test). Neon glows are reduced to a whisper and the wordmark's aberration ghosts use the in-palette cyan/violet — no fluorescent hues anywhere. Official logo colours remain on glyphs only.
 
 ### 3.2 Pixel-tech component kit (`TRComponents` in the shared package)
 
@@ -114,7 +122,7 @@ Risk/status is expressed **within the three colors**: LOW = violet badge, MEDIUM
 - **`PixelBadge`**: uppercase monospaced caption in a bordered chip (`LOW`, `DEMO`, `REC`, `IEC`-style meta tags from the design).
 - **`PixelCheck`**: 5×5 pixel checkbox glyph (checked/warn variants).
 - **`DottedSparkline`**: Canvas-drawn dot-per-sample sparkline.
-- **`PixelRobot`**: the robot drawn as a code-defined pixel matrix (`[[PalettePixel]]`, violet body / cyan eye-glow variants), scalable from 12pt (Dynamic Island minimal) to 96pt (Overview hero), antialiasing off (`.interpolation(.none)`-equivalent via integral `Canvas` rects). **Moods:** port the exact `TokenRemainLogoState.resolve` thresholds (96/86/76/66/56/46/36/26/16/0.5) but collapse to **5 drawn faces** — excited (star eyes), calm (flat glow eyes, the design's face), neutral (dash eyes), worried (slant eyes + sweat pixel), offline (X eyes) — with the 11 accessibility descriptions preserved (translated from `TokenRemainLogo.swift`).
+- **`PixelRobot`**: the shared Orbit robot drawn as a code-defined 16×16 pixel matrix (`[[PalettePixel]]`, violet shell / dark visor / cyan eye-glow), scalable from 12pt (Dynamic Island minimal) to 96pt (Overview hero), antialiasing off (`.interpolation(.none)`-equivalent via integral `Canvas` rects). Its round shell, top cap, side signal nodes and bottom stabilizer are fixed across every platform and app icon. **Moods:** port the exact `TokenRemainLogoState.resolve` thresholds (96/86/76/66/56/46/36/26/16/0.5) as **11 distinct pixel-eye expressions**, with matching accessibility descriptions. The macOS dynamic Logo also carries a 10-segment meter filled from the actual remaining percentage.
 - **Typography:** system SF; all numerals `.monospaced()` with `.monospacedDigit()`; hero values `fontWeight(.semibold)`. No third-party pixel font (avoids licensing + widget font loading); the pixel feel comes from chrome, not glyphs.
 
 ### 3.3 Liquid Glass (iOS 26) with fallback
@@ -202,7 +210,7 @@ Previews & tests always pass a **fixed** `now` (`Date(timeIntervalSinceReference
 
 ## 8. watchOS — view-only + WatchConnectivity boundary
 
-- **Watch app (SwiftUI, watchOS-only target):** exactly the design's Glance — vertically paged: page 1 hero (最低剩余 46%, robot, pace check line), page 2 provider bars + reset line, page 3 provenance ("来自 iPhone · n 分钟前" / "等待 iPhone 同步"). **No settings, no actions, no scenario switching, no Live Activity control** — view-only by contract.
+- **Watch app (SwiftUI, watchOS-only target):** vertically paged glance, **centre-focused since the 2026-07-22 redesign** (edge-to-edge block bars crowded the round display's rim; every page now reads from the middle out and nothing hugs the edges). Page 1: risk badge above a large centred `RingGauge` (min-remaining % in the ring's centre), pace line and per-provider ring chips below. Pages 2–3: the provider's tightest window as one large centred ring (%, window name inside), longer windows collapsed to a quiet centred line, then reset + pace. Page 4: centred 今日用量 + provenance. Rings are meters and carry the muted provider accents. **No settings, no actions, no scenario switching, no Live Activity control** — view-only by contract.
 - **Boundary:** `WatchSyncEngine` on iPhone pushes the encoded `UsageSnapshot` via `WCSession.updateApplicationContext` on every snapshot change (context overwrites are ideal for latest-value semantics; no queues, no `sendMessage`, no reply handlers). Watch side: `WatchSnapshotReceiver` decodes, writes to watch App Group `SnapshotStore`, calls `WidgetCenter.reloadAllTimelines()`. The watch **never** composes, projects, or mutates data — it renders the last snapshot + staleness. If never synced: full-screen honest empty state.
 - **Complications (watch widget extension, WidgetKit):** `accessoryCircular` (three variants via `intent`-less separate widget kinds to keep it simple: RemainGauge — `Gauge` 46% + mini robot; ResetCountdown — `Text(timerInterval:)` "02:38 重置"; StatusRobot — robot face only), `accessoryCorner` (46% curved label), `accessoryRectangular` (Smart Stack card: robot + 最低剩余 46% + ☑ line + reset line, matching the design's Smart Stack panel), `accessoryInline`.
 
@@ -255,7 +263,7 @@ All support `containerBackground(for: .widget)`; Lock Screen families rely on sy
 
 ### 10.2 App Shortcuts & deep links
 
-- `AppShortcutsProvider` phrases (zh+en): "刷新 Token Remain 额度" → `RefreshSnapshotIntent`; "查看 Token Remain" → `OpenTabIntent(.overview)`; "开始/停止 Token Remain 实时活动" → `Start/StopLiveActivityIntent`.
+- `AppShortcutsProvider` phrases (zh+en): "刷新 TokenRemain 额度" → `RefreshSnapshotIntent`; "查看 TokenRemain" → `OpenTabIntent(.overview)`; "开始/停止 TokenRemain 实时活动" → `Start/StopLiveActivityIntent`.
 - URL scheme `tokenremain://` with routes `overview | limits | limits/<windowID> | trends | settings`; widgets use `.widgetURL`, `OpenTabIntent` opens via `openAppWhenRun = true` + router in `AppModel`.
 
 ---
@@ -334,7 +342,7 @@ Matrix (all on Xcode 26.5 SDKs):
 3. `xcodebuild test` for scheme `TokenRemainKit` (unit tests) exits 0.
 4. `xcodebuild test` for scheme `TokenRemainUITests` on iPhone 17 Pro exits 0.
 5. App boots on iPhone 17 Pro sim; screenshots captured (`xcrun simctl io booted screenshot`) of: `.none` empty state, and all four tabs in `.concept` demo — hero reads 46% / LOW.
-6. Widget gallery (long-press Home → add widget) shows Token Remain with small+medium; Lock Screen gallery shows inline/circular/rectangular; each renders demo data with DEMO mark, and `.none` variants render "未连接" (toggle demo off, `simctl` screenshot again).
+6. Widget gallery (long-press Home → add widget) shows TokenRemain with small+medium; Lock Screen gallery shows inline/circular/rectangular; each renders demo data with DEMO mark, and `.none` variants render "未连接" (toggle demo off, `simctl` screenshot again).
 7. Control Center gallery lists "刷新额度" control; tapping it produces the "已刷新 · 最低 46%" dialog.
 8. Live Activity: start from Settings ⇒ appears on Lock Screen and Dynamic Island (compact + expanded verified by screenshot); Stop ends it; expanded 刷新 button updates `generatedAt` freshness text.
 9. Paired watch sim: watch app renders the synced `.concept` snapshot ("来自 iPhone"); watch widget gallery shows circular/corner/rectangular/inline complications rendering demo data; with demo off, watch shows the honest empty state after next sync.
@@ -349,7 +357,7 @@ Matrix (all on Xcode 26.5 SDKs):
 2. Scaffold `Packages/TokenRemainKit` (Package.swift, iOS 18/watchOS 11) and port pure types from the macOS sources listed in §6.1 (models, `UsagePace`, `UsageInsights` sans SwiftUI, `RiskLevel` sans tint, `UsageFormatting` with `String(localized:)`, robot mood thresholds); add the zh-Hans/en string catalog.
 3. Add snapshot layer to the kit: `SnapshotOrigin`, `UsageSnapshot`, `SnapshotStore` (App Group JSON + stamp), `SnapshotHistoryStore`, `SnapshotComposer` with the four `DemoScenario`s and fixed-`now` preview fixtures.
 4. Write kit unit tests (§12.1) and get them passing via `swift test` inside the package (fast loop before any Xcode project exists).
-5. Build the visual kit in the package: `TRTheme` tokens, `PixelCard`, `SegmentBar`, `PixelBadge`, `PixelCheck`, `DottedSparkline`, `PixelRobot` (5 faces × moods), `TRSurface` glass/fallback helpers — each with fixed-`now` `#Preview`s.
+5. Build the visual kit in the package: `TRTheme` tokens, `PixelCard`, `SegmentBar`, `PixelBadge`, `PixelCheck`, `DottedSparkline`, `PixelRobot` (11 quota-linked faces), `TRSurface` glass/fallback helpers — each with fixed-`now` `#Preview`s.
 6. Author `apple/project.yml` with the five-target graph, bundle IDs, App Group entitlements, inline Info.plists (Live Activities key, `tokenremain://` scheme); run `xcodegen generate`; confirm empty targets build (gate 1–2 skeleton).
 7. Implement the iOS app: `AppModel`, router/deep links, Overview tab (§2.1), then Limits, Trends, Settings; wire demo toggle/scenario → compose → store → widget reload; launch-argument hooks (`-tr-demo`, `-tr-force-legacy-chrome`).
 8. Implement `TokenRemainWidgets`: timeline entry builder in kit, `TRHeroWidget`, `TRProvidersWidget`, the three accessory kinds, `WidgetBundle`; verify in widget gallery (gate 6).

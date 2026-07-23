@@ -41,9 +41,9 @@ struct WidgetGalleryView: View {
     private func single(_ family: String) -> some View {
         switch family {
         case "home-small":
-            tile(small) { TRHeroView(entry: entry) }
+            homeTile(small) { TRHeroView(entry: entry) }
         case "home-medium":
-            tile(medium) { TRProvidersView(entry: entry) }
+            homeTile(medium) { TRProvidersView(entry: entry) }
         case "lock-circular":
             circle { TRCircularView(entry: entry) }
         case "lock-rectangular":
@@ -67,10 +67,10 @@ struct WidgetGalleryView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 label("Home · Small")
-                tile(small) { TRHeroView(entry: entry) }
+                homeTile(small) { TRHeroView(entry: entry) }
 
                 label("Home · Medium")
-                tile(medium) { TRProvidersView(entry: entry) }
+                homeTile(medium) { TRProvidersView(entry: entry) }
 
                 label("Lock · Circular (double ring)")
                 HStack(spacing: 18) {
@@ -95,9 +95,17 @@ struct WidgetGalleryView: View {
             .foregroundStyle(TRTheme.textDim)
     }
 
+    /// The shipping Home widgets disable WidgetKit's default content margins and
+    /// own their full-bleed card inset, so the gallery must not add a second one.
+    private func homeTile<Content: View>(_ size: CGSize, @ViewBuilder _ content: () -> Content) -> some View {
+        content()
+            .frame(width: size.width, height: size.height, alignment: .topLeading)
+            .clipShape(RoundedRectangle(cornerRadius: 21, style: .continuous))
+    }
+
     private func tile<Content: View>(_ size: CGSize, @ViewBuilder _ content: () -> Content) -> some View {
         content()
-            .padding(14)
+            .padding(8)
             .frame(width: size.width, height: size.height, alignment: .topLeading)
             .background(TRTheme.ink)
             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
