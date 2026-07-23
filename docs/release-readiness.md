@@ -12,8 +12,8 @@ unsandboxed Developer ID Mac download.
 |---|---|---|
 | Distribution model | Code and docs verified | No further product decision |
 | macOS local feature set | Swift tests and unsandboxed runtime audit passed | Final signed build smoke test |
-| iOS / watchOS | Simulator build and tests passed | Distribution-signed device archive and TestFlight |
-| Privacy manifests | Added to every executable bundle source | Validate the exported App Store archive privacy report |
+| iOS / watchOS | Release archive and Apple Distribution export passed for all four executable bundles | App Store Connect processing and TestFlight device validation |
+| Privacy manifests | Present and plist-valid in all four exported executable bundles | Validate App Store Connect's processed privacy report |
 | StoreKit configuration | Not applicable | The app is paid upfront; there is no IAP product |
 | StoreKit Sandbox purchase | Not applicable | Paid storefront checkout is outside the app and is not simulated by TestFlight |
 | Developer ID package | G2-signed arm64 Production candidate notarized, stapled, and Gatekeeper-accepted | Download through the customer HTTPS path and complete the Mac acceptance matrix |
@@ -41,12 +41,15 @@ Observed on the release workstation on 2026-07-23:
   private key available locally and certificate expiry on 2027-07-23;
 - development provisioning profiles exist for the iPhone, iPhone Widget,
   Watch app, and Watch Widget identifiers;
+- App Store distribution profiles exist for the iPhone, iPhone Widget, Watch
+  app, and Watch Widget identifiers; all four embed the current Apple
+  Distribution certificate, disable `get-task-allow`, and authorize the shared
+  App Group;
 - Apple-issued Developer ID profile
   `TokenRemain macOS Developer ID Production` exists for
   `com.jamesli.usagedock`, authorizes CloudKit Production and
   `84397AQ22Y.*` Keychain groups, embeds the G2 certificate, applies to all
   devices, and expires on 2044-07-18;
-- no App Store distribution profiles were found;
 - the `tokenremain-notary` notarytool credential profile is stored in the
   login Keychain; its secret is not stored in this repository.
 
@@ -109,6 +112,62 @@ and recreates the final ZIP around the stapled app.
   customization, notifications, and launch at login remain free.
 - Enable sync and confirm the Production private zone receives only the
   allowlisted encrypted record.
+
+## App Store distribution export
+
+The four Apple-issued App Store profiles were installed and validated on
+2026-07-23:
+
+- `TokenRemain iOS App Store` →
+  `com.jamesli.tokenremain`;
+- `TokenRemain Widgets App Store` →
+  `com.jamesli.tokenremain.widgets`;
+- `TokenRemain Watch Main App Store` →
+  `com.jamesli.tokenremain.watchkitapp`;
+- `TokenRemain Watch App Store` →
+  `com.jamesli.tokenremain.watchkitapp.widgets`.
+
+The last profile's display name is historical; its signed application
+identifier proves that it belongs to the Watch Widget extension.
+
+A Release archive built all four targets successfully. Xcode then exported the
+archive with manual App Store Connect distribution settings, the installed
+Apple Distribution certificate, CloudKit `Production`, and the four exact
+profiles above. The iOS app and its Widget are explicitly iPhone-only, matching
+the selected product scope and eliminating the invalid iPad orientation
+assumption. The exported IPA passed deep signature validation. Its signed
+entitlements prove:
+
+- the main iPhone app has production APNs, CloudKit `Production`,
+  `iCloud.com.jamesli.tokenremain`, the shared App Group, and only the exact
+  `84397AQ22Y.com.jamesli.tokenremain.sync` sync Keychain group;
+- the iPhone Widget, Watch app, and Watch Widget have the shared App Group but
+  no APNs, CloudKit, or Keychain entitlement;
+- all four bundles disable `get-task-allow`, use Team `84397AQ22Y`, and include
+  a plist-valid `PrivacyInfo.xcprivacy`.
+
+The local export is
+`dist-release/ios/1.0-1/AppStore/TokenRemain.ipa`, with SHA-256
+`6eeafcd5227152bebcff371d3ac2af5752c964f1e1bb964511b857e433b7454e`.
+This proves local Archive and App Store distribution export only. It has
+**not** been uploaded to or processed by App Store Connect, installed through
+TestFlight, or tested against the paid storefront.
+
+For repeatable profile preflight, Archive, export, and product-level entitlement
+verification, use:
+
+```bash
+export TOKENREMAIN_APPLE_DISTRIBUTION_IDENTITY='B31821150459350B621C377ED9469A567AAE3098'
+export TOKENREMAIN_IOS_PROFILE=/absolute/path/TokenRemain_iOS_App_Store.mobileprovision
+export TOKENREMAIN_WIDGETS_PROFILE=/absolute/path/TokenRemain_Widgets_App_Store.mobileprovision
+export TOKENREMAIN_WATCH_PROFILE=/absolute/path/TokenRemain_Watch_Main_App_Store.mobileprovision
+export TOKENREMAIN_WATCH_WIDGETS_PROFILE=/absolute/path/TokenRemain_Watch_App_Store.mobileprovision
+
+./script/package_app_store_release.sh all
+```
+
+The script does not upload the IPA. Upload remains a separately authorized App
+Store Connect action.
 
 ## CloudKit Development to Production
 

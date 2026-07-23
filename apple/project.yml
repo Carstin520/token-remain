@@ -53,6 +53,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.jamesli.tokenremain
         PRODUCT_NAME: TokenRemain
+        TARGETED_DEVICE_FAMILY: "1"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIUserInterfaceStyle: Dark
@@ -93,6 +94,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.jamesli.tokenremain.widgets
         PRODUCT_NAME: TokenRemainWidgets
+        TARGETED_DEVICE_FAMILY: "1"
         CODE_SIGN_ENTITLEMENTS: SupportFiles/TokenRemainWidgets.entitlements
     info:
       path: SupportFiles/TokenRemainWidgets-Info.plist
