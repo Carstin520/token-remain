@@ -12,11 +12,11 @@ unsandboxed Developer ID Mac download.
 |---|---|---|
 | Distribution model | Code and docs verified | No further product decision |
 | macOS local feature set | Swift tests and unsandboxed runtime audit passed | Final signed build smoke test |
-| iOS / watchOS | Release archive and Apple Distribution export passed for all four executable bundles | App Store Connect processing and TestFlight device validation |
+| iOS / watchOS | Current HEAD `10754b6` Release archive and Apple Distribution export passed for all four executable bundles | App Store Connect processing and TestFlight device validation |
 | Privacy manifests | Present and plist-valid in all four exported executable bundles | Validate App Store Connect's processed privacy report |
 | StoreKit configuration | Not applicable | The app is paid upfront; there is no IAP product |
 | StoreKit Sandbox purchase | Not applicable | Paid storefront checkout is outside the app and is not simulated by TestFlight |
-| Developer ID package | G2-signed arm64 Production candidate notarized, stapled, and Gatekeeper-accepted | Download through the customer HTTPS path and complete the Mac acceptance matrix |
+| Developer ID package | Current HEAD `10754b6` is G2-signed with Production entitlements; the preceding release candidate was notarized, stapled, and Gatekeeper-accepted | Notarize the final HEAD, download it through the customer HTTPS path, and complete the Mac acceptance matrix |
 | CloudKit Production | Release entitlements are configured in code | Deploy schema, then test Production with release builds |
 | APNs Production | Release build setting is configured in code | Verify the distribution-signed entitlement and silent push on TestFlight |
 | Foreground freshness | Timing instrumentation and simulator paths pass | Collect real Mac + iPhone samples and meet p50/p95/max gates |
@@ -69,6 +69,15 @@ This is local packaging and Apple notarization evidence. It has **not** yet been
 downloaded through the customer HTTPS path, smoke-tested as a clean customer
 install, uploaded to App Store Connect, or installed through TestFlight. Intel
 or Universal Binary support has not been claimed or verified.
+
+After the automatic-sync and bounded-process updates, HEAD `10754b6` was also
+rebuilt as a separate, non-notarized Developer ID candidate at
+`dist-release/head-10754b6/TokenRemain-1.0.0-1-macOS.zip`, with SHA-256
+`0f6d694a4a4a82b776e4876109638b0aa4051d6dc928d0ed0196dc4452b095a5`.
+Strict signature validation passed. The bundle is arm64, uses Hardened Runtime
+and a secure timestamp, carries CloudKit `Production`, and contains only the
+exact sync Keychain group. This newer candidate is local signing evidence, not
+notarization or customer-download proof.
 
 ## Developer ID Mac release
 
@@ -153,6 +162,14 @@ This proves local Archive and App Store distribution export only. It has
 **not** been uploaded to or processed by App Store Connect, installed through
 TestFlight, or tested against the paid storefront.
 
+HEAD `10754b6` was subsequently archived and exported into the separate path
+`dist-release/ios/head-10754b6/AppStore/TokenRemain.ipa`, with SHA-256
+`0ab83d33d6da16599aaeaf572ae930e8518e4d12f7634ac4e910028641a3841b`.
+The same four-bundle signature, profile, privacy-manifest, APNs, CloudKit,
+App Group, Keychain, and `get-task-allow` checks passed. This is the current
+local App Store export; it has not been uploaded or processed by App Store
+Connect.
+
 For repeatable profile preflight, Archive, export, and product-level entitlement
 verification, use:
 
@@ -174,6 +191,37 @@ Store Connect action.
 Deployment is an explicit external action and has not been performed by this
 branch.
 
+### 2026-07-23 schema preflight
+
+Before any deployment, CloudKit Console showed that Production contained only
+the system `Users` record type. The Development-to-Production preview proposed
+creating `TRCurrentSnapshot` with these application fields:
+
+- `encryptedEnvelope` as `ENCRYPTED BYTES`;
+- `envelopeVersion` as `INT64`;
+- `generatedAt` as `TIMESTAMP`;
+- `keyID`, `sequence`, and `sourceInstanceID` as `STRING`.
+
+This matches the fixed-ID, private-database codec. No credential, account,
+email, prompt, project, conversation, request-level, path, token, or API-key
+field appeared in the preview.
+
+CloudKit's initially inferred public-database grants for
+`TRCurrentSnapshot` were removed from `_world`, `_icloud`, and `_creator`.
+The next successful deployment preview reported `Security Roles (0)`, so the
+record type had no proposed public access. The preview still contained 13
+automatically inferred query/search/sort indexes even though the shipping code
+fetches the single `current-v1` record by ID and performs no `CKQuery`.
+
+Index minimization then began in Development. Five individual index deletions
+were accepted before CloudKit Console began returning `Error performing DAW
+auth` for schema export, history, and deployment-diff requests. Production was
+not changed and the Deploy button was never used. Because the console could no
+longer produce an authoritative final diff, the current Development type/index
+state must be re-exported and re-verified after Apple restores schema access.
+Do not deploy, infer success from the sidebar, or recreate the type blindly
+until that final export is available.
+
 1. Export or record the Development schema for container
    `iCloud.com.jamesli.tokenremain`.
 2. Verify the custom zone, record type, field types, encrypted field status,
@@ -186,6 +234,28 @@ branch.
 6. Exercise deletion, missing key, corrupt ciphertext, replay, stale data, and
    main-Mac takeover before release.
 7. Record the deployment date and schema version in the release evidence.
+
+## Current HEAD local verification
+
+The following checks passed on `10754b6` with
+`DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`:
+
+- root Swift package: 150 tests in 31 suites;
+- `apple/Packages/TokenRemainKit`: 94 tests in 19 suites;
+- release-configuration and automatic-sync contract scripts;
+- existing notarized Developer ID artifact validation and Gatekeeper
+  assessment;
+- `xcodegen generate`;
+- iOS Simulator build;
+- watchOS Simulator build;
+- current-HEAD Apple Distribution archive/export verification;
+- current-HEAD Developer ID signing, Hardened Runtime, timestamp, Production
+  CloudKit, and Keychain entitlement verification.
+
+These results are code, simulator, local export, and local signing evidence.
+They are not CloudKit Production deployment, current-HEAD notarization,
+App Store Connect processing, TestFlight installation, paid-storefront
+checkout, or App Review approval.
 
 ## iOS, extensions, Watch, and APNs
 
