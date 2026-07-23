@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TokenRemain Privacy Policy</title>
+  <meta name="description" content="How TokenRemain processes local provider data and optional encrypted Apple-device sync.">
+  <link rel="stylesheet" href="legal.css">
+</head>
+<body data-page="privacy">
+  <main class="shell">
+    <nav>
+      <a class="wordmark" href="index.html">Token<em>Remain</em></a>
+      <span class="navlinks">
+        <a href="support.html">Support</a>
+        <a href="index.html">Product</a>
+        <button class="lang" id="langBtn" type="button">中文</button>
+      </span>
+    </nav>
+
+    <div data-lang-panel="en">
+      <p class="eyebrow">Private by design</p>
+      <h1>Privacy Policy</h1>
+      <p class="intro">TokenRemain is a local-first quota viewer. Provider credentials remain on the Mac. Apple-device sync is optional and carries only an allowlisted, application-encrypted display snapshot through the user's own iCloud account.</p>
+      <div class="meta"><span>Effective July 23, 2026</span><span>Publisher: Dongheng Li</span></div>
+      <article>
+        <section>
+          <h2>Summary</h2>
+          <p>The Mac app reads selected AI coding tools and provider services on the Mac. The iPhone app, widgets, Live Activity, and Apple Watch can display a privacy-filtered snapshot that the user chooses to sync. TokenRemain does not require a TokenRemain account, use advertising, or track users across apps or websites.</p>
+        </section>
+        <section>
+          <h2>Data processed on the Mac</h2>
+          <p>Depending on the providers enabled, TokenRemain may read local configuration files, local databases, command-line output, localhost services, or credentials already stored by those tools. It may send authenticated requests directly to a selected provider to retrieve quota or usage information.</p>
+          <p>Provider credentials—including access tokens, API keys, cookies, and account sessions—remain on the Mac. TokenRemain does not upload them to iCloud or a TokenRemain-operated server, refresh third-party OAuth tokens, or upload prompts, projects, conversations, account names, email addresses, or request-level history.</p>
+          <p>Settings, quota caches, aggregate history, and optional feed data are stored locally for dashboards, trends, alerts, and offline states.</p>
+        </section>
+        <section class="callout">
+          <h2>Optional Apple-device sync</h2>
+          <p>Sync uses the user's CloudKit Private Database. Before upload, the Mac reduces data to a strict allowlist and encrypts the snapshot with AES-256-GCM. The encryption key is stored in a dedicated synchronizable iCloud Keychain access group available only to the TokenRemain Mac and iPhone main apps.</p>
+          <h3>The snapshot may contain</h3>
+          <ul>
+            <li>Stable provider identifiers, quota-window percentages, reset dates, capture times, and availability states.</li>
+            <li>Sanitized subscription-tier labels and source/version/sequence metadata used to reject stale, replayed, or wrong-source updates.</li>
+            <li>If enabled, up to 30 days of aggregate Claude and Codex token and estimated-cost history.</li>
+            <li>Up to three selected public feed posts with display text and public links.</li>
+          </ul>
+          <h3>The snapshot never contains</h3>
+          <p>Provider credentials, API keys, cookies, account names, email addresses, prompts, project names or paths, conversations, or individual request records. CloudKit notification payloads only indicate that a record may have changed; they do not carry quota details.</p>
+          <p>The iPhone validates and decrypts a snapshot before writing a reduced display snapshot to the App Group used by widgets and Live Activity. Apple Watch data is delivered from the iPhone through WatchConnectivity. Extensions do not receive CloudKit or sync-key access.</p>
+        </section>
+        <section>
+          <h2>Freshness diagnostics</h2>
+          <p>The iPhone privately stores up to 240 timing observations to measure foreground sync freshness. Each contains a stable provider slug and the provider-capture, Mac-upload, phone-receipt, and phone-render timestamps. It contains no quota value, credential, account identifier, or content and is not uploaded to iCloud, an App Group, or a TokenRemain server.</p>
+        </section>
+        <section>
+          <h2>Notifications</h2>
+          <p>Sync does not require notification permission. Notification permission is requested only when the user enables an alerting feature. CloudKit silent notifications are system delivery hints and do not display provider data in a notification banner.</p>
+        </section>
+        <section>
+          <h2>Purchases and Apple services</h2>
+          <p>The iPhone app is purchased and downloaded through the App Store. TokenRemain does not receive payment-card details. Purchase and re-download records are handled by Apple. The app contains no subscription, advertising SDK, or in-app purchase product.</p>
+          <p>Apple may process CloudKit, iCloud Keychain, App Store, crash, and opt-in diagnostic data under Apple's terms and privacy policies.</p>
+        </section>
+        <section>
+          <h2>Analytics, tracking, and provider services</h2>
+          <p>TokenRemain includes no developer-operated advertising or analytics SDK, does not sell user data, and does not combine TokenRemain data with other companies' data for advertising.</p>
+          <p>Provider requests are governed by the selected provider's privacy policy. The Mac sends only what is required to authenticate and retrieve the provider's quota response.</p>
+        </section>
+        <section>
+          <h2>Retention and deletion</h2>
+          <p>Local caches and settings remain until the user removes them or the operating system clears eligible cache data. Cloud sync keeps the current encrypted snapshot and limited operational metadata in TokenRemain's private CloudKit zone.</p>
+          <p>Users can disconnect sync and remove TokenRemain's private CloudKit data and dedicated sync key without deleting provider credentials or Mac-local quota history. If iCloud Keychain encrypted data is reset, prior synchronized records may no longer be decryptable.</p>
+        </section>
+        <section>
+          <h2>Security</h2>
+          <p>TokenRemain uses platform code signing, Keychain storage, CloudKit Private Database controls, application-layer authenticated encryption, schema and range validation, expiry checks, and source/sequence replay protection. No system can eliminate every risk, particularly on an unlocked or compromised device.</p>
+        </section>
+        <section>
+          <h2>Children, international use, and changes</h2>
+          <p>TokenRemain is not directed to children and does not knowingly request contact, location, health, or advertising-identifier data. Users are responsible for complying with provider terms and applicable laws in their region.</p>
+          <p>Material changes will be reflected here with a revised effective date.</p>
+        </section>
+        <section>
+          <h2>Contact</h2>
+          <p>For privacy questions or deletion assistance, contact Dongheng Li.</p>
+          <a class="contact" href="mailto:jamescarstin520@gmail.com?subject=TokenRemain%20Privacy">jamescarstin520@gmail.com</a>
+        </section>
+      </article>
+    </div>
+
+    <div data-lang-panel="zh" hidden>
+      <p class="eyebrow">隐私优先的架构</p>
+      <h1>隐私政策</h1>
+      <p class="intro">TokenRemain 是本地优先的额度查看工具。Provider 凭证始终留在 Mac。Apple 设备同步完全可选，只会通过用户自己的 iCloud 账户传输经过白名单过滤与应用层加密的展示快照。</p>
+      <div class="meta"><span>生效日期：2026 年 7 月 23 日</span><span>发布者：Dongheng Li</span></div>
+      <article>
+        <section>
+          <h2>摘要</h2>
+          <p>Mac App 读取用户选择的 AI 编程工具与 Provider 服务。iPhone、Widget、Live Activity 和 Apple Watch 可显示用户主动同步的隐私过滤快照。TokenRemain 不建立账号、不投放广告，也不跨 App 或网站跟踪用户。</p>
+        </section>
+        <section>
+          <h2>Mac 上处理的数据</h2>
+          <p>根据用户启用的 Provider，TokenRemain 可能读取本地配置文件、数据库、命令行输出、localhost 服务，或这些工具已保存的凭证，也可能直接向所选 Provider 发送认证请求以获取额度或用量。</p>
+          <p>Access token、API key、cookie 和账号会话等 Provider 凭证始终留在 Mac。TokenRemain 不会把它们上传到 iCloud 或 TokenRemain 运营的服务器，不代替第三方工具刷新 OAuth token，也不上传提示词、项目、对话、账号名、邮箱或逐请求历史。</p>
+          <p>设置、额度缓存、聚合历史与可选精选内容保存在本地，用于 Dashboard、趋势、提醒和离线状态。</p>
+        </section>
+        <section class="callout">
+          <h2>可选的 Apple 设备同步</h2>
+          <p>同步使用用户的 CloudKit 私有数据库。上传前，Mac 会把数据缩减为严格白名单快照，并使用 AES-256-GCM 加密。密钥保存在独立的可同步 iCloud Keychain access group 中，仅 TokenRemain 的 Mac 与 iPhone 主 App 可访问。</p>
+          <h3>快照可以包含</h3>
+          <ul>
+            <li>稳定的 Provider 标识、额度窗口百分比、重置时间、采集时间和可用状态。</li>
+            <li>经过清理的订阅层级标签，以及用于拒绝过期、重放或错误来源更新的版本与序列元数据。</li>
+            <li>用户启用时，最多 30 天 Claude 与 Codex 的聚合 token 和估算成本历史。</li>
+            <li>最多三条用户选中的公开精选内容及公开链接。</li>
+          </ul>
+          <h3>快照绝不会包含</h3>
+          <p>Provider 凭证、API key、cookie、账号名、邮箱、提示词、项目名称或路径、对话或逐请求记录。CloudKit 静默通知只表示记录可能变化，不携带额度详情。</p>
+          <p>iPhone 完成校验和解密后，才会把进一步缩减的展示快照写入 Widget 与 Live Activity 使用的 App Group。Apple Watch 通过 WatchConnectivity 从 iPhone 接收数据；扩展不具备 CloudKit 或同步密钥权限。</p>
+        </section>
+        <section>
+          <h2>新鲜度诊断</h2>
+          <p>iPhone 在本地最多保存 240 条前台同步时序观测，仅包含稳定 Provider slug，以及采集、Mac 上传、手机接收和渲染四个时间戳。它不包含额度值、凭证、账号标识或内容，也不会上传到 iCloud、App Group 或 TokenRemain 服务器。</p>
+        </section>
+        <section>
+          <h2>通知</h2>
+          <p>同步不以通知授权为前置。只有用户主动启用提醒功能时才请求通知权限。CloudKit 静默通知只是系统变更提示，不会在通知横幅中显示 Provider 数据。</p>
+        </section>
+        <section>
+          <h2>购买与 Apple 服务</h2>
+          <p>iPhone App 通过 App Store 购买和下载。TokenRemain 不会收到付款卡信息；购买与重新下载记录由 Apple 处理。App 内没有订阅、广告 SDK 或应用内购买产品。</p>
+          <p>Apple 可能依据其条款与隐私政策处理 CloudKit、iCloud Keychain、App Store、崩溃与用户自愿共享的诊断数据。</p>
+        </section>
+        <section>
+          <h2>分析、跟踪与 Provider 服务</h2>
+          <p>TokenRemain 不包含开发者运营的广告或分析 SDK，不出售用户数据，也不会把 TokenRemain 数据与其他公司的数据结合用于广告。</p>
+          <p>Provider 请求受所选 Provider 的隐私政策约束。Mac 只发送完成认证与获取额度响应所必需的信息。</p>
+        </section>
+        <section>
+          <h2>保留与删除</h2>
+          <p>本地缓存与设置会保留到用户移除，或操作系统清理符合条件的缓存。Cloud 同步只在 TokenRemain 的 CloudKit 私有区域保存当前加密快照和有限的运行元数据。</p>
+          <p>用户可断开同步并移除 TokenRemain 的 CloudKit 私有数据与专用同步密钥，不影响 Provider 凭证或 Mac 本地额度历史。如果 iCloud Keychain 加密数据被重置，旧同步记录可能无法再解密。</p>
+        </section>
+        <section>
+          <h2>安全</h2>
+          <p>TokenRemain 使用平台代码签名、Keychain、CloudKit 私有数据库权限、应用层认证加密、结构与范围校验、过期检查，以及来源和序列防重放保护。任何系统都无法消除全部风险，尤其是在设备已解锁或被攻破时。</p>
+        </section>
+        <section>
+          <h2>儿童、国际使用与政策变更</h2>
+          <p>TokenRemain 不面向儿童，也不会主动请求联系人、位置、健康或广告标识符数据。用户应遵守所在地区的法律与 Provider 条款。</p>
+          <p>如有重大变更，本页面将更新内容和生效日期。</p>
+        </section>
+        <section>
+          <h2>联系</h2>
+          <p>如有隐私问题或需要删除协助，请联系 Dongheng Li。</p>
+          <a class="contact" href="mailto:jamescarstin520@gmail.com?subject=TokenRemain%20Privacy">jamescarstin520@gmail.com</a>
+        </section>
+      </article>
+    </div>
+
+    <footer><span>© 2026 Dongheng Li</span><span><a href="support.html">Support</a> · <a href="index.html">TokenRemain</a></span></footer>
+  </main>
+  <script src="legal.js"></script>
+</body>
+</html>
