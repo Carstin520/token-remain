@@ -31,7 +31,10 @@ final class AIFeedStore: ObservableObject {
 
     init() {
         let configured = defaults.object(forKey: notificationsKey)
-        notificationsEnabled = configured == nil ? true : defaults.bool(forKey: notificationsKey)
+        // Notification authorization is never a prerequisite for feed refresh
+        // or cross-device sync. A fresh install stays off until the user
+        // explicitly enables reminders in the AI Feed UI.
+        notificationsEnabled = Self.resolvedNotificationsEnabled(storedValue: configured)
 
         if let cached = cache.load() {
             let now = Date()
@@ -133,7 +136,10 @@ final class AIFeedStore: ObservableObject {
             try tokenStore.save(value)
             hasBearerToken = true
             errorMessage = nil
-            if notificationsEnabled && notificationStatus == .notDetermined {
+            if Self.shouldRequestNotificationPermission(
+                notificationsEnabled: notificationsEnabled,
+                authorizationStatus: notificationStatus
+            ) {
                 await requestNotificationPermission()
             }
             await refresh()
@@ -151,7 +157,10 @@ final class AIFeedStore: ObservableObject {
             try tokenStore.save(token)
             hasBearerToken = true
             errorMessage = nil
-            if notificationsEnabled && notificationStatus == .notDetermined {
+            if Self.shouldRequestNotificationPermission(
+                notificationsEnabled: notificationsEnabled,
+                authorizationStatus: notificationStatus
+            ) {
                 await requestNotificationPermission()
             }
             await refresh()
@@ -176,7 +185,10 @@ final class AIFeedStore: ObservableObject {
     func setNotificationsEnabled(_ enabled: Bool) async {
         notificationsEnabled = enabled
         defaults.set(enabled, forKey: notificationsKey)
-        if enabled && notificationStatus == .notDetermined {
+        if Self.shouldRequestNotificationPermission(
+            notificationsEnabled: enabled,
+            authorizationStatus: notificationStatus
+        ) {
             await requestNotificationPermission()
         } else {
             await refreshNotificationStatus()
@@ -309,5 +321,16 @@ final class AIFeedStore: ObservableObject {
                 order[$0.username.lowercased(), default: .max]
                     < order[$1.username.lowercased(), default: .max]
             }
+    }
+
+    nonisolated static func resolvedNotificationsEnabled(storedValue: Any?) -> Bool {
+        (storedValue as? NSNumber)?.boolValue ?? false
+    }
+
+    nonisolated static func shouldRequestNotificationPermission(
+        notificationsEnabled: Bool,
+        authorizationStatus: UNAuthorizationStatus
+    ) -> Bool {
+        notificationsEnabled && authorizationStatus == .notDetermined
     }
 }
