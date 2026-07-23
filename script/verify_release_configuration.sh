@@ -12,6 +12,7 @@ cd "$ROOT_DIR"
 /usr/bin/grep -Fq 'PRODUCT_BUNDLE_IDENTIFIER: com.jamesli.tokenremain' apple/project.yml
 /usr/bin/grep -Fq 'APS_ENVIRONMENT: production' apple/project.yml
 /usr/bin/grep -Fq 'ICLOUD_CONTAINER_ENVIRONMENT: Production' apple/project.yml
+[[ "$(/usr/bin/grep -Fc 'TARGETED_DEVICE_FAMILY: "1"' apple/project.yml)" == "2" ]]
 
 for manifest in \
   apple/App/PrivacyInfo.xcprivacy \
@@ -26,5 +27,6 @@ done
 
 /bin/bash -n script/build_and_run.sh
 /bin/bash -n script/package_developer_id_release.sh
+/bin/bash -n script/package_app_store_release.sh
 
 echo "release configuration verified: paid iOS + production Apple capabilities + Developer ID packaging guardrails"
