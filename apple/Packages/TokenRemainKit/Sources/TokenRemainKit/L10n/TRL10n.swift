@@ -113,8 +113,8 @@ public enum TRL10n {
         // Provenance / honesty
         "origin.none.title": Entry("未连接数据源", "No data source connected"),
         "origin.none.body": Entry(
-            "iPhone 上没有 Claude Code 或 Codex 的本地额度来源。真实数据需要一个 Mac 伴侣同步或服务端来源 —— 两者都未随本版本发布。你可以在「设置」中打开演示模式，查看带明确标注的示例数据。",
-            "There is no local Claude Code or Codex quota source on iPhone. Real data would require a Mac companion sync or a server source — neither ships in this build. Turn on Demo Mode in Settings to see clearly-labelled sample data."
+            "iPhone 不读取 provider 凭证。请在 Mac 上运行 TokenRemain，并让两台设备登录同一 iCloud 账户且开启 iCloud 钥匙串，然后在「设置」中启用 Mac 安全同步。也可以打开演示模式查看明确标注的示例数据。",
+            "iPhone never reads provider credentials. Run TokenRemain on your Mac, sign both devices into the same iCloud account with iCloud Keychain enabled, then turn on Secure Mac Sync in Settings. You can also enable Demo Mode to view clearly-labelled sample data."
         ),
         "origin.demo.status": Entry("全部数据源正常", "All sources nominal"),
         "origin.none.status": Entry("未连接数据源", "No data source"),

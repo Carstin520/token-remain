@@ -6,13 +6,24 @@ import TokenRemainSyncKit
 
 private actor FakeCloudStore: SyncCloudSnapshotStoring {
     var stored: SyncCloudStoredEnvelope?
-    var status: SyncCloudAccountStatus = .available
+    var status: SyncCloudAccountStatus
+    var operationError: SyncCloudStoreError?
     private(set) var subscriptionEnsured = false
 
-    init(stored: SyncCloudStoredEnvelope?) { self.stored = stored }
+    init(
+        stored: SyncCloudStoredEnvelope?,
+        status: SyncCloudAccountStatus = .available,
+        operationError: SyncCloudStoreError? = nil
+    ) {
+        self.stored = stored
+        self.status = status
+        self.operationError = operationError
+    }
 
     func accountStatus() async throws -> SyncCloudAccountStatus { status }
-    func ensureZone() async throws {}
+    func ensureZone() async throws {
+        if let operationError { throw operationError }
+    }
     func save(_ envelope: EncryptedSyncEnvelope) async throws {}
     func fetch() async throws -> SyncCloudStoredEnvelope? { stored }
     func deleteCurrent() async throws {}
@@ -63,6 +74,54 @@ struct MobileSyncClientTests {
         #expect(await cloud.subscriptionEnsured)
     }
 
+    @Test("Every unavailable iCloud account state fails before reading a snapshot")
+    func unavailableICloudAccounts() async {
+        let cases: [(SyncCloudAccountStatus, MobileSyncFailure)] = [
+            (.noAccount, .iCloudAccountUnavailable),
+            (.restricted, .iCloudAccountRestricted),
+            (.temporarilyUnavailable, .iCloudTemporarilyUnavailable),
+            (.couldNotDetermine, .iCloudAccountUnknown)
+        ]
+
+        for (status, expected) in cases {
+            let cloud = FakeCloudStore(stored: nil, status: status)
+            let client = MobileSyncClient(
+                cloudStore: cloud,
+                keyStore: FakeKeyStore(records: [:]),
+                containerIdentifier: containerID,
+                defaultsSuiteName: uniqueSuite()
+            )
+            #expect(await client.pull(now: now) == .failed(expected))
+            #expect(await cloud.subscriptionEnsured == false)
+        }
+    }
+
+    @Test("Network, authentication, permission, rate-limit, and missing-record errors stay redacted")
+    func cloudFailuresAreRedacted() async {
+        let cases: [(SyncCloudStoreError, MobileSyncFailure)] = [
+            (.networkUnavailable, .networkUnavailable),
+            (.notAuthenticated, .iCloudAuthenticationRequired),
+            (.permissionDenied, .iCloudPermissionDenied),
+            (.serviceUnavailable, .serviceUnavailable),
+            (.requestRateLimited(retryAfterSeconds: 42), .rateLimited(retryAfterSeconds: 42)),
+            (.conflict, .syncConflict),
+            (.recordNotFound, .remoteRecordUnavailable),
+            (.zoneNotFound, .remoteRecordUnavailable),
+            (.malformedRecord(.invalidEnvelope), .untrustedRemotePayload)
+        ]
+
+        for (error, expected) in cases {
+            let cloud = FakeCloudStore(stored: nil, operationError: error)
+            let client = MobileSyncClient(
+                cloudStore: cloud,
+                keyStore: FakeKeyStore(records: [:]),
+                containerIdentifier: containerID,
+                defaultsSuiteName: uniqueSuite()
+            )
+            #expect(await client.pull(now: now) == .failed(expected))
+        }
+    }
+
     @Test("Missing and incorrect keys fail closed without creating a receiver key")
     func keyFailure() async throws {
         let fixture = try makeFixture(source: UUID(), sequence: 1)
@@ -109,6 +168,27 @@ struct MobileSyncClientTests {
         #expect(await client.pull(now: now, phoneReceivedAt: now) == .noChange(.noRemoteSnapshot))
         await cloud.replace(with: replacement.stored)
         #expect(await client.pull(now: now, phoneReceivedAt: now) == .updated(delivery(replacement.snapshot)))
+    }
+
+    @Test("An older sequence never replaces an accepted snapshot")
+    func olderSequenceIsRejected() async throws {
+        let source = UUID()
+        let latest = try makeFixture(source: source, sequence: 8)
+        let older = try makeFixture(source: source, sequence: 7, key: latest.key)
+        let cloud = FakeCloudStore(stored: latest.stored)
+        let keys = FakeKeyStore(records: [latest.key.keyID: latest.key])
+        let suite = uniqueSuite()
+        defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
+        let client = MobileSyncClient(
+            cloudStore: cloud,
+            keyStore: keys,
+            containerIdentifier: containerID,
+            defaultsSuiteName: suite
+        )
+
+        #expect(await client.pull(now: now, phoneReceivedAt: now) == .updated(delivery(latest.snapshot)))
+        await cloud.replace(with: older.stored)
+        #expect(await client.pull(now: now, phoneReceivedAt: now) == .noChange(.olderSequence))
     }
 
     @Test("A disabled mobile sync setting rejects delayed data and erases local copies")

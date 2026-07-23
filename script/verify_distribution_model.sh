@@ -41,7 +41,7 @@ if /usr/bin/grep -Fq -- "com.apple.security.app-sandbox" \
 fi
 
 require_absent \
-  'tokenremain\.pro\.sync\.lifetime|Transaction\.currentEntitlements|AppStore\.sync\(|Product\.products\(' \
+  'tokenremain\.pro\.sync\.lifetime|Transaction\.currentEntitlements|AppStore\.sync\(|Product\.products\(|EntitlementStore|RestorePurchases|PaywallView' \
   "$ROOT_DIR/Sources" "$ROOT_DIR/apple/App" "$ROOT_DIR/apple/Widgets" \
   "$ROOT_DIR/apple/WatchApp" "$ROOT_DIR/apple/WatchWidgets"
 

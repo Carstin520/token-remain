@@ -1,9 +1,29 @@
 import Foundation
 import Testing
+import UserNotifications
 @testable import UsageDock
 
 @Suite("AI Feed")
 struct AIFeedTests {
+    @Test("Notifications stay off until the user explicitly enables reminders")
+    func notificationPermissionIsUserInitiated() {
+        #expect(AIFeedStore.resolvedNotificationsEnabled(storedValue: nil) == false)
+        #expect(AIFeedStore.resolvedNotificationsEnabled(storedValue: NSNumber(value: false)) == false)
+        #expect(AIFeedStore.resolvedNotificationsEnabled(storedValue: NSNumber(value: true)) == true)
+        #expect(AIFeedStore.shouldRequestNotificationPermission(
+            notificationsEnabled: false,
+            authorizationStatus: .notDetermined
+        ) == false)
+        #expect(AIFeedStore.shouldRequestNotificationPermission(
+            notificationsEnabled: true,
+            authorizationStatus: .notDetermined
+        ) == true)
+        #expect(AIFeedStore.shouldRequestNotificationPermission(
+            notificationsEnabled: true,
+            authorizationStatus: .denied
+        ) == false)
+    }
+
     @Test("Primary tier is fixed and Elon Musk rotates")
     func primaryTierAccounts() {
         #expect(

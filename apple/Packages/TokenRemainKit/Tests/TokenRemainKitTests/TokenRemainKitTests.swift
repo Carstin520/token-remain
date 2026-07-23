@@ -541,6 +541,18 @@ struct TRL10nTests {
         }
     }
 
+    @Test("The disconnected state points to the shipping private Mac sync path")
+    func disconnectedStateUsesCurrentSyncCopy() {
+        let zh = TRL10n.t("origin.none.body", language: .zhHans)
+        let en = TRL10n.t("origin.none.body", language: .en)
+        #expect(zh.contains("Mac 安全同步"))
+        #expect(zh.contains("iCloud 钥匙串"))
+        #expect(en.contains("Secure Mac Sync"))
+        #expect(en.contains("iCloud Keychain"))
+        #expect(!zh.contains("未随本版本发布"))
+        #expect(!en.contains("neither ships"))
+    }
+
     @Test("Language resolution matches zh / en and otherwise falls back to English")
     func resolution() {
         #expect(TRL10n.resolve(["zh-Hans-CN", "en-US"]) == .zhHans)
