@@ -16,7 +16,7 @@ unsandboxed Developer ID Mac download.
 | Privacy manifests | Added to every executable bundle source | Validate the exported App Store archive privacy report |
 | StoreKit configuration | Not applicable | The app is paid upfront; there is no IAP product |
 | StoreKit Sandbox purchase | Not applicable | Paid storefront checkout is outside the app and is not simulated by TestFlight |
-| Developer ID package | G2-signed Production candidate and embedded profile verified | Configure notarytool credentials, notarize, staple |
+| Developer ID package | G2-signed arm64 Production candidate notarized, stapled, and Gatekeeper-accepted | Download through the customer HTTPS path and complete the Mac acceptance matrix |
 | CloudKit Production | Release entitlements are configured in code | Deploy schema, then test Production with release builds |
 | APNs Production | Release build setting is configured in code | Verify the distribution-signed entitlement and silent push on TestFlight |
 | Foreground freshness | Timing instrumentation and simulator paths pass | Collect real Mac + iPhone samples and meet p50/p95/max gates |
@@ -47,14 +47,25 @@ Observed on the release workstation on 2026-07-23:
   `84397AQ22Y.*` Keychain groups, embeds the G2 certificate, applies to all
   devices, and expires on 2044-07-18;
 - no App Store distribution profiles were found;
-- no notarytool credential profile was supplied to this task.
+- the `tokenremain-notary` notarytool credential profile is stored in the
+  login Keychain; its secret is not stored in this repository.
 
 A G2 Developer ID-signed candidate was built on 2026-07-23 with Hardened
 Runtime, a secure timestamp, the Production CloudKit container, and the exact
 `84397AQ22Y.com.jamesli.tokenremain.sync` Keychain group. Its signature and
-embedded profile passed strict local verification. It has **not** been submitted
-for notarization, stapled, assessed as the final website download, uploaded to
-App Store Connect, or installed through TestFlight.
+embedded profile passed strict local verification. Apple notarization submission
+`18a55f70-b6da-4494-a4b3-1ce47d44d92f` was accepted with status code `0`,
+summary `Ready for distribution`, and no issues. The ticket was stapled and
+validated, and Gatekeeper accepted the app with source
+`Notarized Developer ID`.
+
+The final stapled arm64 ZIP is
+`dist-release/1.0.0-1/TokenRemain-1.0.0-1-macOS.zip`, with SHA-256
+`bc4662ab8fb870dff1532517f8f3363f5eb3771a9de5f9e34df4ab58d8febb2f`.
+This is local packaging and Apple notarization evidence. It has **not** yet been
+downloaded through the customer HTTPS path, smoke-tested as a clean customer
+install, uploaded to App Store Connect, or installed through TestFlight. Intel
+or Universal Binary support has not been claimed or verified.
 
 ## Developer ID Mac release
 
