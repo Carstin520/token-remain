@@ -1,6 +1,8 @@
 .DS_Store
 .build/
+.build-app-store-candidate/
 dist/
+dist-app-store-candidate/
 UsageDock.app/
 Config/UsageDockFeed.local.plist
 design/token-remain-logo-gallery/
