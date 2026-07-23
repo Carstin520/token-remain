@@ -18,13 +18,9 @@ struct UsageMenuView: View {
 
     private var insights: UsageInsights {
         UsageInsights(
-            claude: store.claude,
-            codex: store.codex,
-            cursor: store.cursor,
-            grok: store.grok,
-            zai: store.zai,
-            others: [store.copilot, store.devin, store.openrouter, store.antigravity, store.opencode]
-                .compactMap { $0 },
+            claude: nil,
+            codex: nil,
+            others: Array(store.quotas.values),
             daily: store.daily,
             history: store.history
         )
@@ -100,16 +96,6 @@ struct UsageMenuView: View {
     @ViewBuilder
     private func widgetView(_ widget: PopoverWidget) -> some View {
         switch widget {
-        case .claude, .codex, .cursor, .grok, .zai,
-             .copilot, .devin, .openrouter, .antigravity, .opencode:
-            let provider = widget.provider!
-            PopoverQuotaWidget(
-                provider: provider,
-                quota: store.quotaValue(for: provider),
-                notice: store.providerNotices[provider],
-                layout: layout,
-                draggingWidget: $draggingWidget
-            )
         case .localUsage:
             LocalUsageCard(
                 insights: insights,
@@ -124,21 +110,31 @@ struct UsageMenuView: View {
                 draggingWidget: $draggingWidget,
                 onViewAll: { onOpenDashboard(.overview) }
             )
+        default:
+            // 其余挂件都是 provider 额度卡,provider 映射必然非空。
+            let provider = widget.provider!
+            PopoverQuotaWidget(
+                provider: provider,
+                quota: store.quotaValue(for: provider),
+                notice: store.providerNotices[provider],
+                layout: layout,
+                draggingWidget: $draggingWidget
+            )
         }
     }
 
     private var header: some View {
-        HStack(alignment: .top, spacing: 10) {
-            TokenRemainLogo(remainingPercent: store.aggregateRemainingPercent)
-                .frame(width: 36, height: 36)
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text("Token Remain")
-                    .wordmarkFont(19)
+        HStack(alignment: .center, spacing: 10) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("TokenRemain")
+                    .wordmarkFont(18)
                     .foregroundStyle(DashboardTheme.text)
-                Text(updatedSubtitle)
-                    .numericFont(11)
-                    .foregroundStyle(DashboardTheme.secondaryText)
+
+                TimelineView(.periodic(from: .now, by: 60)) { context in
+                    Text(updatedSubtitle(at: context.date))
+                        .font(.system(size: 10))
+                        .foregroundStyle(DashboardTheme.mutedText)
+                }
             }
             Spacer()
             addWidgetMenu
@@ -172,25 +168,31 @@ struct UsageMenuView: View {
             Image(systemName: "plus")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(DashboardTheme.text)
-                .frame(width: 32, height: 32)
+                .frame(width: 26, height: 26)
+                .usageDockGlassSurface(
+                    cornerRadius: 13,
+                    interactive: true,
+                    fallbackBackground: DashboardTheme.surface,
+                    fallbackBorder: DashboardTheme.border
+                )
+                .overlay {
+                    Circle()
+                        .strokeBorder(DashboardTheme.border, lineWidth: 1)
+                }
                 .contentShape(Circle())
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
-        .frame(width: 32, height: 32)
-        .background(DashboardTheme.surface2, in: Circle())
+        .frame(width: 34, height: 34)
         .help(L10n.text("action.add_widget"))
         .accessibilityLabel(L10n.text("action.add_widget"))
     }
 
-    private var updatedSubtitle: String {
+    private func updatedSubtitle(at date: Date) -> String {
         if let updated = insights.lastUpdated {
-            return L10n.format(
-                "usage.updated_local",
-                updated.formatted(date: .omitted, time: .shortened)
-            )
+            return UsageFormatting.freshnessDescription(since: updated, now: date)
         }
-        return L10n.text("usage.loading_local")
+        return L10n.text("sync.loading")
     }
 
     private var refreshButton: some View {

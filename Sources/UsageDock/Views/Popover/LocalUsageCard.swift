@@ -171,6 +171,9 @@ struct LocalUsageCard: View {
             Text(entry.displayName)
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(DashboardTheme.text)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .layoutPriority(1)
 
             Spacer(minLength: 6)
 

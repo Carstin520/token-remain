@@ -92,11 +92,14 @@ struct InfoRow: View {
             Text(label)
                 .font(.system(size: 12))
                 .foregroundStyle(DashboardTheme.secondaryText)
+                .lineLimit(1)
             Spacer(minLength: 12)
             Text(value)
                 .numericFont(12, .medium)
                 .foregroundStyle(valueColor)
                 .multilineTextAlignment(.trailing)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
         }
         .accessibilityElement(children: .combine)
     }

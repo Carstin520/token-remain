@@ -104,6 +104,22 @@ struct BrandIcon: View {
                 }
             }
             .accessibilityLabel(provider.rawValue)
+        default:
+            // token-monitor 兼容层的长尾 provider:圆角方框 + 粗体首字母,
+            // 始终与名称标签同现,不靠图形单独辨识。
+            Canvas { context, size in
+                let rect = CGRect(origin: .zero, size: size)
+                let inset = min(size.width, size.height) * 0.06
+                context.stroke(
+                    Path(roundedRect: rect.insetBy(dx: inset, dy: inset), cornerRadius: size.width * 0.24),
+                    with: .style(.foreground),
+                    style: StrokeStyle(lineWidth: min(size.width, size.height) * 0.09)
+                )
+                let text = Text(MonoBrandGlyph.initials(for: provider))
+                    .font(.system(size: size.height * 0.42, weight: .bold, design: .rounded))
+                context.draw(context.resolve(text), at: CGPoint(x: rect.midX, y: rect.midY))
+            }
+            .accessibilityLabel(provider.rawValue)
         }
     }
 
@@ -135,6 +151,12 @@ struct BrandIcon: View {
             let glyph = MonoBrandGlyph.glyph(for: provider)
             image = MonoBrandGlyph.templateImage(size: size, path: glyph.path, filled: glyph.filled)
             image.isTemplate = true
+        default:
+            image = MonoBrandGlyph.initialsTemplateImage(
+                size: size,
+                initials: MonoBrandGlyph.initials(for: provider)
+            )
+            image.isTemplate = true
         }
 
         image.size = NSSize(width: size, height: size)
@@ -142,7 +164,7 @@ struct BrandIcon: View {
     }
 
     private static func claudeImage() -> NSImage {
-        Bundle.main.url(forResource: "claude", withExtension: "png")
+        AppResourceBundle.bundle.url(forResource: "claude", withExtension: "png")
             .flatMap(NSImage.init(contentsOf:))
             ?? NSImage(
                 systemSymbolName: "questionmark.circle",
@@ -224,6 +246,49 @@ enum MonoBrandGlyph {
                 context.setLineJoin(.round)
                 context.strokePath()
             }
+            return true
+        }
+        image.isTemplate = true
+        return image
+    }
+
+    /// 长尾 provider 的首字母标。
+    static func initials(for provider: ProviderQuota.Provider) -> String {
+        switch provider {
+        case .deepseek: return "DS"
+        case .kimi: return "K"
+        case .minimax: return "MX"
+        case .mimo: return "Mo"
+        case .qoder: return "Q"
+        case .kiro: return "Kr"
+        case .volcengine: return "V"
+        case .ollama: return "OL"
+        default: return String(provider.displayName.prefix(1))
+        }
+    }
+
+    static func initialsTemplateImage(size: CGFloat, initials: String) -> NSImage {
+        let dimensions = NSSize(width: size, height: size)
+        let image = NSImage(size: dimensions, flipped: false) { rect in
+            guard let context = NSGraphicsContext.current?.cgContext else { return false }
+            let inset = min(rect.width, rect.height) * 0.06
+            context.setStrokeColor(NSColor.black.cgColor)
+            context.setLineWidth(min(rect.width, rect.height) * 0.09)
+            context.addPath(
+                CGPath(
+                    roundedRect: rect.insetBy(dx: inset, dy: inset),
+                    cornerWidth: rect.width * 0.24,
+                    cornerHeight: rect.height * 0.24,
+                    transform: nil
+                )
+            )
+            context.strokePath()
+
+            let font = NSFont.systemFont(ofSize: rect.height * 0.42, weight: .bold)
+            let attributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: NSColor.black]
+            let text = NSAttributedString(string: initials, attributes: attributes)
+            let textSize = text.size()
+            text.draw(at: NSPoint(x: rect.midX - textSize.width / 2, y: rect.midY - textSize.height / 2))
             return true
         }
         image.isTemplate = true

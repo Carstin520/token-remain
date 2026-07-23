@@ -40,6 +40,24 @@ struct TrackedProvidersStoreTests {
         #expect(store.enabled == [.zai])
     }
 
+    @Test("Only a successful connection is remembered and failures never erase it")
+    func connectionHistoryPersistsIndependently() {
+        let defaults = testDefaults()
+        var store = TrackedProvidersStore(defaults: defaults)
+
+        #expect(store.connectedOrdered.isEmpty)
+        store.setEnabled(.cursor, true)
+        #expect(!store.hasConnected(.cursor))
+
+        store.markConnected(.cursor)
+        store.setEnabled(.cursor, false)
+
+        store = TrackedProvidersStore(defaults: defaults)
+        #expect(store.hasConnected(.cursor))
+        #expect(store.connectedOrdered == [.cursor])
+        #expect(!store.isEnabled(.cursor))
+    }
+
     @Test("Dashboard card order survives a new store instance")
     func providerOrderPersists() {
         let defaults = testDefaults()

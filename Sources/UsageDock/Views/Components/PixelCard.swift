@@ -3,7 +3,7 @@ import SwiftUI
 /// Decorative pixel-tech corner ticks plus a small dot cluster, drawn as an
 /// integral-pixel `Canvas` overlay. Ornament only — hidden from accessibility.
 /// Layered on card surfaces (both the macOS 26 glass path and the pre-26 flat
-/// `PixelCard` fallback) to carry the mobile Token Remain identity onto desktop.
+/// `PixelCard` fallback) to carry the mobile TokenRemain identity onto desktop.
 struct PixelTickOverlay: View {
     var color: Color = DashboardTheme.border
     /// Distance of the tick corner from the card edge.

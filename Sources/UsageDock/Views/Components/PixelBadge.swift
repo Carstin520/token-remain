@@ -17,6 +17,8 @@ struct PixelBadge: View {
             .font(.system(size: 9, weight: .bold, design: .monospaced))
             .tracking(1)
             .foregroundStyle(filled ? DashboardTheme.canvas : color)
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
             .padding(.horizontal, 7)
             .padding(.vertical, 3)
             .background(

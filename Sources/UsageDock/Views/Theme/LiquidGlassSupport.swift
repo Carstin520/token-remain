@@ -17,26 +17,17 @@ struct UsageDockGlassGroup<Content: View>: View {
     }
 }
 
-/// System material plus restrained brand light. The material keeps the window
-/// connected to macOS while the low-opacity gradient preserves UsageDock's
-/// Claude/Codex identity beneath the glass surfaces.
+/// Neutral system material. The glass stays uncolored so the only hues on
+/// screen come from content (provider bars, semantic status, the one link
+/// accent) — brand identity lives in the logo, not the backdrop.
 struct UsageDockCanvasBackground: View {
     var body: some View {
         if #available(macOS 26.0, *) {
             ZStack {
                 Rectangle().fill(.ultraThinMaterial)
-                // Keep the dense, glanceable menu-bar contrast while still
-                // letting the system material sample the desktop underneath.
-                DashboardTheme.canvas.opacity(0.72)
-                LinearGradient(
-                    colors: [
-                        DashboardTheme.codex.opacity(0.11),
-                        Color.clear,
-                        DashboardTheme.purple.opacity(0.08)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
+                // A thin ink scrim keeps text legible on bright desktops while
+                // the glass stays visibly translucent (was 0.72 — near-opaque).
+                DashboardTheme.canvas.opacity(0.35)
             }
             .ignoresSafeArea()
         } else {

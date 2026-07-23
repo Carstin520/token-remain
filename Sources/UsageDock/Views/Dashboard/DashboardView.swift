@@ -23,13 +23,9 @@ struct DashboardView: View {
 
     private var insights: UsageInsights {
         UsageInsights(
-            claude: store.claude,
-            codex: store.codex,
-            cursor: store.cursor,
-            grok: store.grok,
-            zai: store.zai,
-            others: [store.copilot, store.devin, store.openrouter, store.antigravity, store.opencode]
-                .compactMap { $0 },
+            claude: nil,
+            codex: nil,
+            others: Array(store.quotas.values),
             daily: store.daily,
             history: store.history
         )
@@ -52,10 +48,9 @@ struct DashboardView: View {
             detail
         }
         .navigationSplitViewStyle(.balanced)
-        // Remove the toolbar title text: the sidebar brand lockup is the only
-        // visible "Token Remain". The NSWindow keeps its `title` property (for
-        // Mission Control / the window switcher / accessibility); this only drops
-        // the duplicated in-toolbar text, keeping the sidebar toggle intact.
+        // Remove the toolbar title text. The NSWindow keeps its `title` property
+        // for Mission Control / the window switcher / accessibility; this only
+        // drops the duplicated in-toolbar text, keeping the sidebar toggle intact.
         // `.toolbar(removing: .title)` needs macOS 15+; pre-15 relies on the
         // window's `titleVisibility = .hidden` set in DashboardWindowController.
         .modifier(HideToolbarTitle())
@@ -70,10 +65,10 @@ struct DashboardView: View {
 
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: 0) {
-            brandLockup
+            brandMark
                 .padding(.horizontal, 18)
                 .padding(.top, 18)
-                .padding(.bottom, 10)
+                .padding(.bottom, 12)
 
             // Custom nav list: SwiftUI `.tint` does not recolor the macOS
             // NSTableView sidebar selection (it follows the system accent), so
@@ -128,15 +123,20 @@ struct DashboardView: View {
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
 
-    private var brandLockup: some View {
+    private var brandMark: some View {
         HStack(spacing: 10) {
-            TokenRemainLogo(remainingPercent: store.aggregateRemainingPercent)
-                .frame(width: 32, height: 32)
-            Text("Token Remain")
+            TokenRemainFullBodyRobot(
+                remainingPercent: store.aggregateRemainingPercent,
+                size: 42
+            )
+
+            Text("TokenRemain")
                 .wordmarkFont(15)
                 .foregroundStyle(DashboardTheme.text)
+                .lineLimit(1)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isHeader)
     }
 
@@ -194,10 +194,9 @@ struct DashboardView: View {
             }
         }
         .background { UsageDockCanvasBackground() }
-        // No `.navigationTitle` here: the sidebar brand lockup is the only
-        // visible "Token Remain". The NSWindow keeps its title property (set in
-        // DashboardWindowController) for Mission Control / the window switcher,
-        // while `titleVisibility = .hidden` suppresses the duplicate titlebar text.
+        // The NSWindow keeps its title property (set in DashboardWindowController)
+        // for Mission Control / the window switcher, while `titleVisibility =
+        // .hidden` suppresses duplicate titlebar text.
     }
 
     @ViewBuilder

@@ -4,7 +4,7 @@ import Foundation
 /// `Text`/`Button` initializers. Static SwiftUI literals are resolved by the
 /// same Localizable.strings files through Bundle.main.
 enum L10n {
-    static func text(_ key: String, bundle: Bundle = .main) -> String {
+    static func text(_ key: String, bundle: Bundle = AppResourceBundle.bundle) -> String {
         let localized = bundle.localizedString(forKey: key, value: key, table: nil)
         return localized == key ? fallback[key] ?? key : localized
     }
@@ -108,19 +108,23 @@ enum L10n {
         "action.refresh_quota": "立即刷新 ccusage、Codex 与 Claude 官方额度",
         "action.refresh_usage": "刷新用量",
         "action.open_dashboard": "打开 Dashboard",
-        "action.open_dashboard_help": "打开独立的 Token Remain Dashboard 窗口",
+        "action.open_dashboard_help": "打开独立的 TokenRemain Dashboard 窗口",
         "action.launch_at_login": "登录时自动启动",
         "action.open_dashboard_settings": "打开 Dashboard 设置",
-        "action.restart_app": "重启 Token Remain",
+        "action.restart_app": "重启 TokenRemain",
         "action.settings": "设置",
         "action.quit": "退出",
-        "action.quit_app": "退出 Token Remain",
+        "action.quit_app": "退出 TokenRemain",
         "usage.updated_local": "更新于 %1$@ · 数据留在本机",
         "usage.loading_local": "正在读取用量 · 数据留在本机",
         "usage.provider_breakdown_empty": "暂无按服务商拆分",
         "usage.loading_ccusage": "正在读取 ccusage 本地统计…",
         "usage.provider_help": "%1$@：%2$@ API 花费，%3$@ tokens，占 %4$@",
         "usage.provider_accessibility": "%1$@，%2$@ API 花费，%3$@ tokens",
+        "usage.spend_today": "今日",
+        "usage.spend_yesterday": "昨日",
+        "usage.spend_last30": "近 30 天",
+        "usage.trend": "用量趋势",
         "quota.loading_official": "正在读取官方额度…",
         "feed.updating": "更新中",
         "feed.item_count": "%d 条",

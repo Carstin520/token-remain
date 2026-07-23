@@ -30,7 +30,7 @@ final class PopoverPreviewWindowController: NSWindowController {
             defer: false
         )
         window.contentViewController = hosting
-        window.title = "Token Remain Popover Preview"
+        window.title = "TokenRemain Popover Preview"
         window.appearance = NSAppearance(named: .darkAqua)
         if #available(macOS 26.0, *) {
             window.isOpaque = false

@@ -28,7 +28,7 @@ extension DashboardTheme {
         /// Uppercase monospaced meta badge; apply `.tracking()` at the call site.
         static func badge(_ size: CGFloat = 9) -> Font { mono(size, .bold) }
 
-        /// The monospaced brand wordmark face ("Token Remain").
+        /// The monospaced brand wordmark face ("TokenRemain").
         static func wordmark(_ size: CGFloat, _ weight: Font.Weight = .bold) -> Font {
             mono(size, weight)
         }

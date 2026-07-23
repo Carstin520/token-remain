@@ -11,6 +11,7 @@ final class TrackedProvidersStore: ObservableObject {
     static let enabledKey = "tokenRemain.trackedProviders.v1"
     static let onboardingKey = "tokenRemain.onboardingCompleted.v1"
     static let orderKey = "tokenRemain.trackedProvidersOrder.v1"
+    static let connectedKey = "tokenRemain.connectedProviders.v1"
 
     /// UI 展示与遍历用的稳定顺序。
     static let allProviders = ProviderQuota.Provider.displayOrder
@@ -18,6 +19,9 @@ final class TrackedProvidersStore: ObservableObject {
     @Published private(set) var enabled: Set<ProviderQuota.Provider>
     @Published private(set) var order: [ProviderQuota.Provider]
     @Published private(set) var hasCompletedOnboarding: Bool
+    /// 至少成功读取过一次额度的 provider。与“正在追踪”分开持久化：
+    /// 链路或凭据后来失效时，数据来源页仍应保留该应用并提示故障。
+    @Published private(set) var connected: Set<ProviderQuota.Provider>
 
     private let defaults: UserDefaults
 
@@ -34,6 +38,8 @@ final class TrackedProvidersStore: ObservableObject {
         } else {
             enabled = Set(Self.allProviders)
         }
+        let rawConnected = (defaults.array(forKey: Self.connectedKey) as? [String]) ?? []
+        connected = Set(rawConnected.compactMap(ProviderQuota.Provider.init(rawValue:)))
         let savedOrder = (defaults.array(forKey: Self.orderKey) as? [String]) ?? []
         order = Self.mergedOrder(savedOrder)
     }
@@ -47,8 +53,26 @@ final class TrackedProvidersStore: ObservableObject {
         order.filter { !enabled.contains($0) }
     }
 
+    var connectedOrdered: [ProviderQuota.Provider] {
+        Self.allProviders.filter(connected.contains)
+    }
+
     func isEnabled(_ provider: ProviderQuota.Provider) -> Bool {
         enabled.contains(provider)
+    }
+
+    func hasConnected(_ provider: ProviderQuota.Provider) -> Bool {
+        connected.contains(provider)
+    }
+
+    /// 只在一次真实读取成功后调用。连接历史不因后续失败、清除 Key 或
+    /// 停止追踪而删除，确保失效的数据链仍然可见、可诊断。
+    func markConnected(_ provider: ProviderQuota.Provider) {
+        guard connected.insert(provider).inserted else { return }
+        defaults.set(
+            Self.allProviders.filter(connected.contains).map(\.rawValue),
+            forKey: Self.connectedKey
+        )
     }
 
     func setEnabled(_ provider: ProviderQuota.Provider, _ isOn: Bool) {
@@ -159,7 +183,7 @@ final class TrackedProvidersStore: ObservableObject {
         let opencodeInstalled = exists(".local/share/opencode")
             || environment["OPENCODE_DATA_DIR"]?.isEmpty == false
 
-        return [
+        let detections = [
             detection(.claude, installed: exists(".claude"),
                       found: "检测到 ~/.claude(Claude Code 已安装)",
                       hint: "安装并登录 Claude Code 后自动接入"),
@@ -189,7 +213,34 @@ final class TrackedProvidersStore: ObservableObject {
                       hint: "安装并登录 OpenCode Go 后自动接入"),
             detection(.zai, installed: zaiStore.load() != nil,
                       found: "检测到已配置的 Z.ai API Key",
-                      hint: "需要 API Key；开启后在「数据源」页粘贴一次即可")
-        ]
+                      hint: "需要 API Key；开启后在「数据源」页粘贴一次即可"),
+            detection(.kiro, installed: KiroUsageService.cliPath() != nil,
+                      found: "检测到 kiro-cli",
+                      hint: "安装 Kiro CLI 并登录后自动接入")
+        ] + Self.secretDetections(home: home, environment: environment)
+        // 稳定排序:与 displayOrder 一致,onboarding 列表顺序不抖动。
+        let order = ProviderQuota.Provider.displayOrder
+        return detections.sorted {
+            (order.firstIndex(of: $0.provider) ?? .max) < (order.firstIndex(of: $1.provider) ?? .max)
+        }
+    }
+
+    /// token-monitor 兼容层的密钥/Cookie 型 provider:凭据在即视为已接入。
+    private nonisolated static func secretDetections(
+        home: URL,
+        environment: [String: String]
+    ) -> [Detection] {
+        ProviderSecretStore.descriptors.map { descriptor in
+            var store = ProviderSecretStore(provider: descriptor.provider)
+            store.environment = environment
+            let configured = store.load() != nil
+            return Detection(
+                provider: descriptor.provider,
+                installed: configured,
+                detail: configured
+                    ? "检测到已配置的 \(descriptor.provider.displayName) 凭据"
+                    : "需要\(descriptor.isCookie ? " Cookie" : " API Key")；开启后在「数据源」页粘贴一次即可"
+            )
+        }
     }
 }

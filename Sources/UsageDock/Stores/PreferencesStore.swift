@@ -1,0 +1,70 @@
+import Combine
+import Foundation
+
+/// 显示与刷新的用户偏好(参考 token-monitor 的配置自由度):
+/// 菜单栏显示哪些 provider、API 直查频率、桌面浮窗开关。
+/// 全部持久化在 UserDefaults,即改即生效。
+@MainActor
+final class PreferencesStore: ObservableObject {
+    static let shared = PreferencesStore()
+
+    static let menuBarKey = "tokenRemain.menuBarProviders.v1"
+    static let refreshKey = "tokenRemain.refreshMinutes.v1"
+    static let floatingKey = "tokenRemain.floatingWidget.v1"
+
+    /// 刷新频率可选档位(分钟);0 = 仅手动刷新。
+    static let refreshChoices = [1, 5, 15, 30, 0]
+
+    /// 菜单栏文字里显示的 provider(有序子集)。默认沿用历史行为:Claude + Codex。
+    @Published private(set) var menuBarProviders: [ProviderQuota.Provider]
+    /// Claude 与各直查 provider 的自动刷新间隔(分钟);0 = 仅手动。
+    @Published private(set) var refreshMinutes: Int
+    /// 桌面浮窗(置顶的挂件面板)。
+    @Published private(set) var floatingWidgetEnabled: Bool
+
+    private let defaults: UserDefaults
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        if let raw = defaults.array(forKey: Self.menuBarKey) as? [String] {
+            menuBarProviders = raw.compactMap(ProviderQuota.Provider.init(rawValue:))
+        } else {
+            menuBarProviders = [.claude, .codex]
+        }
+        let storedMinutes = defaults.object(forKey: Self.refreshKey) as? Int
+        refreshMinutes = storedMinutes.map { Self.refreshChoices.contains($0) ? $0 : 5 } ?? 5
+        floatingWidgetEnabled = defaults.bool(forKey: Self.floatingKey)
+    }
+
+    func isInMenuBar(_ provider: ProviderQuota.Provider) -> Bool {
+        menuBarProviders.contains(provider)
+    }
+
+    /// 切换某 provider 是否出现在菜单栏,顺序保持 displayOrder。
+    func toggleMenuBar(_ provider: ProviderQuota.Provider) {
+        var set = Set(menuBarProviders)
+        if set.contains(provider) {
+            set.remove(provider)
+        } else {
+            set.insert(provider)
+        }
+        menuBarProviders = ProviderQuota.Provider.displayOrder.filter(set.contains)
+        defaults.set(menuBarProviders.map(\.rawValue), forKey: Self.menuBarKey)
+    }
+
+    func setRefreshMinutes(_ minutes: Int) {
+        guard Self.refreshChoices.contains(minutes) else { return }
+        refreshMinutes = minutes
+        defaults.set(minutes, forKey: Self.refreshKey)
+    }
+
+    func setFloatingWidgetEnabled(_ enabled: Bool) {
+        floatingWidgetEnabled = enabled
+        defaults.set(enabled, forKey: Self.floatingKey)
+    }
+
+    /// 自动刷新间隔(秒);仅手动模式返回 nil。
+    var refreshInterval: TimeInterval? {
+        refreshMinutes > 0 ? TimeInterval(refreshMinutes * 60) : nil
+    }
+}

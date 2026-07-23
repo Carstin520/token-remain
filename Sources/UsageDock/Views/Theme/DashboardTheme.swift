@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Semantic dark tokens for content and pre-macOS 26 surface fallbacks.
 ///
-/// These are the confirmed "Token Remain" mobile palette (`TRTheme`): a
+/// These are the confirmed "TokenRemain" mobile palette (`TRTheme`): a
 /// pixel-tech, low-contrast robot visual language on an ink ground.
 ///
 /// Two color roles are kept deliberately separate:
@@ -38,19 +38,20 @@ enum DashboardTheme {
     static let cyanDim = Color(hex: 0x2B8FA0)
 
     // Provider quota palette. Red is deliberately absent: it is reserved for
-    // a critically low remaining quota. Claude and Codex retain their requested
-    // identity colors; the rest span cool blue/violet/cyan/teal/green plus a
-    // high-luminance yellow so adjacent cards remain easy to distinguish.
-    static let claudeAccent = Color(hex: 0xD97757)      // Anthropic orange
-    static let codexAccent = Color(hex: 0x3578F6)       // Codex deep blue
-    static let cursorAccent = Color(hex: 0xA78BFA)      // violet
-    static let copilotAccent = Color(hex: 0x22D3EE)     // cyan
-    static let devinAccent = Color(hex: 0x2DD4BF)       // teal
-    static let grokAccent = Color(hex: 0xFACC15)        // yellow
+    // a critically low remaining quota. Every entry sits in the same muted
+    // tonal band (saturation ~35-45%, similar lightness) so hue alone carries
+    // identity and adjacent cards read as one calm system instead of a mix of
+    // fluorescent brand colors.
+    static let claudeAccent = Color(hex: 0xBF8471)      // muted terracotta
+    static let codexAccent = Color(hex: 0x6687C5)       // muted steel blue
+    static let cursorAccent = Color(hex: 0x9684CD)      // muted violet
+    static let copilotAccent = Color(hex: 0x64ABB4)     // muted cyan
+    static let devinAccent = Color(hex: 0x5AAA9F)       // muted teal
+    static let grokAccent = Color(hex: 0xC1AD5C)        // muted gold
     static let openrouterAccent = Color(hex: 0x94A3B8)  // slate
-    static let antigravityAccent = Color(hex: 0x60A5FA) // sky blue
-    static let opencodeAccent = Color(hex: 0x34D399)    // green
-    static let zaiAccent = Color(hex: 0xA3E635)         // lime
+    static let antigravityAccent = Color(hex: 0x7499C3) // muted sky blue
+    static let opencodeAccent = Color(hex: 0x63AB91)    // muted green
+    static let zaiAccent = Color(hex: 0x9CB766)         // muted lime
 
     // MARK: - Provider color slots (reserved)
 
@@ -73,8 +74,8 @@ enum DashboardTheme {
 
     /// Muted variant for each entry in `providerSlots`, index-aligned.
     static let providerSlotsDim: [Color] = [
-        Color(hex: 0xA85D45), Color(hex: 0x295EC2), Color(hex: 0x725FB0),
-        Color(hex: 0xA18416), Color(hex: 0x6D9924)
+        Color(hex: 0x956758), Color(hex: 0x50699A), Color(hex: 0x7567A0),
+        Color(hex: 0x978748), Color(hex: 0x7A8F50)
     ]
 
     // MARK: - Official provider brand marks (glyph tint only)
@@ -83,8 +84,8 @@ enum DashboardTheme {
     /// starburst / terminal-prompt marks in `BrandIcon`). These are deliberately
     /// named separately from the categorical quota palette even when the current
     /// Claude/Codex values intentionally match their meter identity colors.
-    static let claudeBrand = Color(hex: 0xD97757)   // Anthropic coral
-    static let codexBrand = codexAccent             // Codex deep blue
+    static let claudeBrand = Color(hex: 0xD97757)   // Anthropic coral (official, full saturation)
+    static let codexBrand = Color(hex: 0x3578F6)    // Codex deep blue (official, full saturation)
 
     // MARK: - Brand identity
 
@@ -118,6 +119,14 @@ enum DashboardTheme {
         case .openrouter: return openrouterAccent
         case .antigravity: return antigravityAccent
         case .opencode: return opencodeAccent
+        case .deepseek: return Color(hex: 0x7382CA)     // muted indigo
+        case .kimi: return Color(hex: 0x86B5C6)          // muted ice cyan
+        case .minimax: return Color(hex: 0xC06E7E)       // muted rose
+        case .mimo: return Color(hex: 0xC689A9)          // muted pink
+        case .qoder: return Color(hex: 0xA07FB0)         // muted mauve
+        case .kiro: return Color(hex: 0xA292C7)          // muted lavender
+        case .volcengine: return Color(hex: 0x6BA3C4)    // muted volcano sky
+        case .ollama: return Color(hex: 0xCBD5E1)        // light slate
         }
     }
 

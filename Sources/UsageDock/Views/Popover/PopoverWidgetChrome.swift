@@ -69,7 +69,7 @@ struct PopoverWidgetHeader<Summary: View>: View {
                     compactButton(
                         systemImage: isPinned ? "pin.fill" : "pin",
                         help: isPinned ? L10n.text("widget.stop_keep_expanded") : L10n.text("widget.keep_expanded"),
-                        tint: isPinned ? DashboardTheme.purple : DashboardTheme.mutedText,
+                        tint: isPinned ? DashboardTheme.text : DashboardTheme.mutedText,
                         action: onTogglePinned
                     )
                 }
@@ -89,7 +89,7 @@ struct PopoverWidgetHeader<Summary: View>: View {
         } else {
             Image(systemName: widget.systemImage)
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(widget == .aiFeed ? DashboardTheme.purple : DashboardTheme.codex)
+                .foregroundStyle(DashboardTheme.secondaryText)
                 .frame(width: 20, height: 20)
         }
     }
