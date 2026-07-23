@@ -231,11 +231,11 @@ CloudKit Private Database 只在用户登录 iCloud 时可用，数据归该用�
 2. `SyncRedactor` 从内存模型构造白名单 DTO。
 3. 对 DTO 做验证、稳定排序和内容 hash。
 4. 与上一次已上传 hash 相同则不上传；每 15 分钟允许一次 heartbeat 更新新鲜度。
-5. 变化合并 10–15 秒，避免多个 provider 先后完成造成连续写入。
+5. 变化合并 4 秒，避免多个 provider 先后完成造成连续写入。
 6. 加密后覆盖 `current-v1`。
 7. 失败采用指数退避并保留“最后一份待上传快照”，不保存无界队列。
 
-当前刷新与延迟参数：额度变化合并等待 12 秒；无变化时每 15 分钟发送一次新鲜度 heartbeat。手动刷新或 App 回到前台会立即发起网络请求。实际端到端延迟还包括 CloudKit 上传和静默推送调度，通常是秒到分钟级，但 Apple 不提供实时到达保证；因此 UI 以 `generatedAt` 显示真实新鲜度，10 分钟标记 stale，24 小时后隐藏数值。
+当前刷新与延迟参数：启用 Apple 设备同步后，Mac 将 Provider 与本地历史检查节奏提升到 60 秒；单个 Provider 的错误按 60/120/240/300 秒独立退避。额度、窗口、历史或精选内容变化后合并等待 4 秒上传；仅 `capturedAt` 改变不重复上传整份密文，无变化时每 15 分钟发送一次 heartbeat。iPhone 前台每 45 秒兜底拉取，CloudKit 静默推送仍作为低延迟提示。实际端到端延迟还包括 CloudKit 上传和推送调度，Apple 不提供实时到达保证；因此额度页与概览优先显示 Provider 的真实 `capturedAt`，10 分钟标记 stale，24 小时后隐藏数值。
 
 ### 8.2 iPhone 接收
 
@@ -428,11 +428,13 @@ App Store Privacy Nutrition Label 不能仅凭“密文”就草率填写“未�
 
 刷新与延迟目标：
 
-- Mac 数据源本身默认每 5 分钟刷新，用户可选 1 / 5 / 15 / 30 分钟或手动刷新。
-- Mac 获得新数据后等待 12 秒合并连续变化，再上传最新快照。
-- 前台且网络正常时，CloudKit 变化提示、拉取、解密和本地分发的工程目标为约 3–18 秒，因此从 Mac 已获得新数据算起通常约 15–30 秒。
-- 从 provider 实际变化算起，默认端到端通常约 15 秒至 5 分 30 秒；后台静默提示由系统调度，不承诺固定 SLA，回到前台时会立即补拉。
+- Apple 设备同步启用时，Mac 每 60 秒检查 Provider 与本地历史；同步关闭后恢复用户的 1 / 5 / 15 / 30 分钟或手动偏好。
+- Mac 获得变化后等待 4 秒合并连续更新，再上传最新快照；仅采集时间变化不会重复上传大快照。
+- iPhone 前台每 45 秒兜底拉取并保留 CloudKit 静默提示；后台静默提示由系统调度，不承诺固定 SLA。
+- 工程验收目标是前台 p50 ≤ 60 秒、p95 ≤ 120 秒、最大 ≤ 180 秒；锁屏、挂起、强退、低电量与无网场景不作该承诺。
 - 即使内容不变，Mac 每 15 分钟发送一次 heartbeat，避免接收端无法区分“额度没变”和“Mac 已离线”。
+- iPhone 主 App 在私有 Application Support 中滚动保存最多 240 条仅含 Provider slug 与时间戳的观测：`providerCapturedAt`、CloudKit server `macUploadedAt`、`phoneReceivedAt`、`phoneRenderedAt`。它不会进入 App Group 或 CloudKit，也不包含额度、凭证、账号或内容。
+- 设置页用 nearest-rank 计算并展示真实前台样本的 p50/p95；没有真实样本时不显示数字。当前代码、协议单测和模拟器路径已完成，正式时延目标仍必须用同一 iCloud 账户的 Mac + 真 iPhone 前台样本验收，不能以模拟器构建代替。
 
 已通过的验证：
 
