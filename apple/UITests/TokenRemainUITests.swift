@@ -203,7 +203,7 @@ final class TokenRemainUITests: XCTestCase {
 
     /// Physical-device E2E coverage for the real privacy-preserving path.
     /// Unlike the deterministic gallery test above, this deliberately launches
-    /// without a demo argument and requires the user's persisted macSync opt-in.
+    /// without a demo argument and requires the automatic Mac-sync source.
     func testMacSyncSnapshotCanDriveLiveActivityOnPhysicalDevice() throws {
         #if targetEnvironment(simulator)
         throw XCTSkip("CloudKit and ActivityKit E2E requires a signed physical iPhone")
@@ -215,7 +215,7 @@ final class TokenRemainUITests: XCTestCase {
         app.tabBars.buttons["设置"].tap()
         let macSync = app.switches["tr.settings.macSyncToggle"]
         XCTAssertTrue(macSync.waitForExistence(timeout: 5))
-        XCTAssertEqual(macSync.value as? String, "1", "the physical-device E2E must use the user's macSync opt-in")
+        XCTAssertEqual(macSync.value as? String, "1", "the physical-device E2E must use automatic Mac sync")
 
         let start = app.descendants(matching: .any)["tr.settings.startLiveActivity"]
         let stop = app.descendants(matching: .any)["tr.settings.stopLiveActivity"]

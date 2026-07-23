@@ -45,29 +45,72 @@ struct SettingsTab: View {
             .tint(TRTheme.indigo)
             .accessibilityIdentifier("tr.settings.macSyncToggle")
             if self.model.isMacSyncEnabled {
+                LabeledContent(TRL10n.t("settings.sync.automatic")) {
+                    Label(
+                        TRL10n.t("settings.sync.automatic_on"),
+                        systemImage: "checkmark.circle.fill"
+                    )
+                    .foregroundStyle(TRTheme.success)
+                }
+                Text(TRL10n.t("settings.sync.automatic_detail"))
+                    .font(.caption)
+                    .foregroundStyle(TRTheme.textDim)
+                LabeledContent(TRL10n.t("settings.sync.health.icloud")) {
+                    Label(iCloudHealthText, systemImage: iCloudHealthIcon)
+                        .foregroundStyle(iCloudHealthColor)
+                }
+                LabeledContent(TRL10n.t("settings.sync.health.key")) {
+                    Label(syncKeyHealthText, systemImage: syncKeyHealthIcon)
+                        .foregroundStyle(syncKeyHealthColor)
+                }
+                LabeledContent(TRL10n.t("settings.sync.health.snapshot")) {
+                    Label(macSnapshotHealthText, systemImage: macSnapshotHealthIcon)
+                        .foregroundStyle(macSnapshotHealthColor)
+                }
                 Text(mobileSyncStatus)
                     .font(.footnote)
                     .foregroundStyle(TRTheme.textDim)
+                if let checkedAt = self.model.lastAutomaticSyncCheckAt {
+                    LabeledContent(TRL10n.t("settings.sync.last_check")) {
+                        Text(checkedAt.formatted(
+                            Date.FormatStyle.dateTime
+                                .hour()
+                                .minute()
+                                .second()
+                                .locale(TRL10n.locale)
+                        ))
+                        .foregroundStyle(TRTheme.textDim)
+                    }
+                }
                 if let timing = self.model.latestSyncTiming {
                     LabeledContent(
-                        TRL10n.current == .zhHans ? "Provider 采集" : "Provider captured"
+                        TRL10n.t("settings.sync.provider_captured")
                     ) {
-                        Text(timing.providerCapturedAt.formatted(date: .omitted, time: .standard))
+                        Text(timing.providerCapturedAt.formatted(
+                            Date.FormatStyle.dateTime
+                                .hour()
+                                .minute()
+                                .second()
+                                .locale(TRL10n.locale)
+                        ))
                             .foregroundStyle(TRTheme.textDim)
                     }
                     LabeledContent(
-                        TRL10n.current == .zhHans ? "手机呈现" : "Phone rendered"
+                        TRL10n.t("settings.sync.phone_rendered")
                     ) {
-                        Text(timing.phoneRenderedAt.formatted(date: .omitted, time: .standard))
+                        Text(timing.phoneRenderedAt.formatted(
+                            Date.FormatStyle.dateTime
+                                .hour()
+                                .minute()
+                                .second()
+                                .locale(TRL10n.locale)
+                        ))
                             .foregroundStyle(TRTheme.textDim)
                     }
                 }
                 if let summary = self.model.syncLatencySummary {
-                    let format = TRL10n.current == .zhHans
-                        ? "前台时延 · p50 %.0f 秒 · p95 %.0f 秒 · 最大 %.0f 秒 · n=%d"
-                        : "Foreground latency · p50 %.0fs · p95 %.0fs · max %.0fs · n=%d"
-                    Text(String(
-                        format: format,
+                    Text(TRL10n.f(
+                        "settings.sync.latency",
                         summary.p50Seconds,
                         summary.p95Seconds,
                         summary.maximumSeconds,
@@ -81,8 +124,8 @@ struct SettingsTab: View {
                         self.model.acceptPendingMacSource()
                     }
                     .tint(TRTheme.indigo)
-                } else {
-                    Button(TRL10n.t("settings.macsync.refresh")) {
+                } else if case .failed = self.model.mobileSyncState {
+                    Button(TRL10n.t("settings.macsync.retry")) {
                         Task { await self.model.pullMacSync() }
                     }
                     .disabled(self.model.mobileSyncState == .pulling)
@@ -155,32 +198,116 @@ struct SettingsTab: View {
     private var mobileSyncStatus: String {
         switch model.mobileSyncState {
         case .off: return TRL10n.t("origin.none.status")
-        case .pulling: return TRL10n.current == .zhHans ? "正在安全拉取…" : "Securely pulling…"
-        case .waitingForMac: return TRL10n.current == .zhHans ? "等待 Mac 上传第一份快照" : "Waiting for the first Mac snapshot"
-        case .waitingForKey: return TRL10n.current == .zhHans ? "等待 iCloud 钥匙串同步密钥" : "Waiting for the iCloud Keychain sync key"
+        case .pulling: return TRL10n.t("settings.sync.pulling")
+        case .waitingForMac: return TRL10n.t("settings.sync.waiting_mac")
+        case .waitingForKey: return TRL10n.t("settings.sync.waiting_key")
         case .synced(let date):
-            let value = date.formatted(date: .omitted, time: .shortened)
-            return TRL10n.current == .zhHans ? "已同步 · \(value)" : "Synced · \(value)"
+            let value = date.formatted(
+                Date.FormatStyle.dateTime.hour().minute().locale(TRL10n.locale)
+            )
+            return TRL10n.f("settings.sync.latest_snapshot", value)
         case .sourceChangeRequiresConfirmation:
-            return TRL10n.current == .zhHans ? "检测到新的 Mac 数据源，需要确认" : "A new Mac source needs confirmation"
+            return TRL10n.t("settings.sync.source_change")
         case .failed(let failure): return mobileSyncFailureText(failure)
         }
     }
 
     private func mobileSyncFailureText(_ failure: MobileSyncFailure) -> String {
-        let zh = TRL10n.current == .zhHans
         switch failure {
         case .iCloudAccountUnavailable, .iCloudAccountRestricted,
              .iCloudAccountUnknown, .iCloudAuthenticationRequired, .iCloudPermissionDenied:
-            return zh ? "iCloud 账户不可用或未授权" : "iCloud account unavailable or unauthorized"
+            return TRL10n.t("settings.sync.error.account")
         case .iCloudTemporarilyUnavailable, .networkUnavailable, .serviceUnavailable, .rateLimited, .syncConflict:
-            return zh ? "iCloud 暂不可用，稍后可重试" : "iCloud is temporarily unavailable; retry later"
+            return TRL10n.t("settings.sync.error.temporary")
         case .remoteRecordUnavailable:
-            return zh ? "等待 Mac 上传快照" : "Waiting for a Mac snapshot"
+            return TRL10n.t("settings.sync.error.remote")
         case .syncKeyUnavailable:
-            return zh ? "等待 iCloud 钥匙串同步密钥" : "Waiting for the iCloud Keychain sync key"
+            return TRL10n.t("settings.sync.error.key")
         case .untrustedRemotePayload, .localReplayStateUnavailable:
-            return zh ? "远端快照未通过安全校验，已保留旧数据" : "Remote snapshot failed security validation; old data was kept"
+            return TRL10n.t("settings.sync.error.security")
+        }
+    }
+
+    private var iCloudHealthText: String {
+        if case .failed(let failure) = model.mobileSyncState {
+            switch failure {
+            case .iCloudAccountUnavailable, .iCloudAccountRestricted,
+                 .iCloudAccountUnknown, .iCloudAuthenticationRequired,
+                 .iCloudPermissionDenied:
+                return TRL10n.t("settings.sync.health.unavailable")
+            default:
+                return TRL10n.t("settings.sync.health.pending")
+            }
+        }
+        switch model.mobileSyncState {
+        case .waitingForMac, .waitingForKey, .synced, .sourceChangeRequiresConfirmation:
+            return TRL10n.t("settings.sync.health.available")
+        case .off, .pulling, .failed:
+            return TRL10n.t("settings.sync.health.pending")
+        }
+    }
+
+    private var iCloudHealthIcon: String {
+        iCloudHealthText == TRL10n.t("settings.sync.health.available")
+            ? "checkmark.circle.fill"
+            : "icloud.slash"
+    }
+
+    private var iCloudHealthColor: Color {
+        iCloudHealthText == TRL10n.t("settings.sync.health.available")
+            ? TRTheme.success
+            : TRTheme.textDim
+    }
+
+    private var syncKeyHealthText: String {
+        switch model.mobileSyncState {
+        case .synced, .sourceChangeRequiresConfirmation:
+            return TRL10n.t("settings.sync.health.ready")
+        case .waitingForKey:
+            return TRL10n.t("settings.sync.health.waiting")
+        case .off, .pulling, .waitingForMac, .failed:
+            return TRL10n.t("settings.sync.health.pending")
+        }
+    }
+
+    private var syncKeyHealthIcon: String {
+        switch model.mobileSyncState {
+        case .synced, .sourceChangeRequiresConfirmation: "key.fill"
+        case .waitingForKey: "key.horizontal"
+        case .off, .pulling, .waitingForMac, .failed: "questionmark.circle"
+        }
+    }
+
+    private var syncKeyHealthColor: Color {
+        switch model.mobileSyncState {
+        case .synced, .sourceChangeRequiresConfirmation: TRTheme.success
+        default: TRTheme.textDim
+        }
+    }
+
+    private var macSnapshotHealthText: String {
+        switch model.mobileSyncState {
+        case .waitingForMac:
+            return TRL10n.t("settings.sync.health.not_found")
+        case .waitingForKey, .synced, .sourceChangeRequiresConfirmation:
+            return TRL10n.t("settings.sync.health.found")
+        case .off, .pulling, .failed:
+            return TRL10n.t("settings.sync.health.pending")
+        }
+    }
+
+    private var macSnapshotHealthIcon: String {
+        switch model.mobileSyncState {
+        case .waitingForKey, .synced, .sourceChangeRequiresConfirmation: "desktopcomputer"
+        case .waitingForMac: "desktopcomputer.trianglebadge.exclamationmark"
+        case .off, .pulling, .failed: "questionmark.circle"
+        }
+    }
+
+    private var macSnapshotHealthColor: Color {
+        switch model.mobileSyncState {
+        case .waitingForKey, .synced, .sourceChangeRequiresConfirmation: TRTheme.success
+        default: TRTheme.textDim
         }
     }
 

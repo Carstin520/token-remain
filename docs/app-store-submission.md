@@ -28,14 +28,16 @@ Disable Demo Mode to return to the honest not-connected state.
 
 To test real sync, use a Developer ID TokenRemain Mac build configured for the
 Production CloudKit container `iCloud.com.jamesli.tokenremain`, sign both devices
-into the same iCloud account with iCloud Keychain enabled, enable Apple-device
-sync on the Mac, then enable Mac sync in iPhone Settings. A different source Mac
-requires explicit confirmation. Missing keys, decryption failure, stale data,
-and sequence replay fail closed.
+into the same iCloud account with iCloud Drive and iCloud Keychain enabled, then
+open TokenRemain once on each device. Both fresh installations self-check and
+connect automatically; no sync switch or manual pull is required. A different
+source Mac requires explicit confirmation. Missing keys, decryption failure,
+stale data, and sequence replay fail closed.
 
 CloudKit silent notifications carry no quota data and notification permission
-is not required for sync. The active iPhone app also performs a 45-second
-foreground reconciliation. Locked, suspended, force-quit, offline, and
+is not required for sync. While connecting, the active iPhone retries on a short
+backoff; after connection it performs a 45-second foreground reconciliation.
+Locked, suspended, force-quit, offline, and
 WidgetKit-controlled background states are not represented as fixed-latency
 delivery.
 

@@ -20,7 +20,7 @@
 ## 2. 设计原则
 
 - **凭证永不跨设备。** Claude / Codex access token、refresh token、API Key、Cookie、X Bearer Token、GitHub 登录态等只留在 Mac 本机。
-- **同步是明确选择。** 首次安装默认关闭；Mac 和 iPhone 均显示同步状态、最近同步时间和删除入口。
+- **首次安装自动连接，用户可随时退出。** Mac 和 iPhone 首次运行会自动自检并加入同一 Apple 账户下的私有同步；显式关闭后保持关闭。两端均显示同步状态、最近检查时间和删除入口。
 - **默认只同步最少结果。** 只同步用于展示的稳定 provider ID、额度百分比、
   窗口时长、重置时间、采集时间、受控状态和经过净化的套餐标签。
 - **单向、单写者。** Mac 是额度快照唯一写者；iPhone、Widget、Watch 不回写额度，消除绝大多数冲突。
@@ -224,7 +224,7 @@ CloudKit Private Database 只在用户登录 iCloud 时可用，数据归该用�
 
 ### 7.3 生命周期
 
-- 开启同步：Mac 检查 iCloud / iCloud Keychain → 创建或读取 key → 上传第一份密文。
+- 首次运行或重新开启同步：Mac 检查 iCloud / iCloud Keychain → 创建或读取 key → 上传第一份密文。
 - 新 iPhone：同一 Apple 账户获取 key → fetch current record → 解密 → 显示 Mac 数据。
 - 轮换：创建新 `keyID` → 用新 key 覆盖 current record → 确认至少一台手机成功读取 → 删除旧 key。首发可只提供“重置同步”，不做自动轮换。
 - iPhone 本地断开：立即停止后台 pull，清除本地快照、真实历史、replay marker、Widget、Watch context 和 Live Activity。
@@ -247,7 +247,7 @@ CloudKit Private Database 只在用户登录 iCloud 时可用，数据归该用�
 
 ### 8.2 iPhone 接收
 
-以下事件都触发幂等 pull：首次连接、App 前台、CloudKit 静默通知、用户手动刷新、系统允许的后台刷新。
+以下事件都触发幂等 pull：首次启动、App 前台、iCloud 账户变化、CloudKit 静默通知和系统允许的后台刷新。连接阶段按 2/5/10/30/60 秒退避重试，稳定后前台每 45 秒校验。
 
 1. 检查 iCloud account status。
 2. fetch `current-v1`。
@@ -298,7 +298,8 @@ CloudKit 通知可能合并或丢失，因此“通知”只能是刷新提示�
 
 设置页提供：
 
-- “跨设备同步”总开关，默认关闭。
+- “跨设备同步”总开关，首次安装默认开启；用户显式关闭后保持关闭。
+- iCloud、同步密钥、Mac 快照和最近自动检查的健康状态。
 - “查看将要同步的数据”结构化预览。
 - “同步今日 token / 费用”独立开关，默认关闭。
 - 最近上传 / 下载时间、主数据 Mac、快照新鲜度。
@@ -368,10 +369,10 @@ App Store Privacy Nutrition Label 不能仅凭“密文”就草率填写“未�
 
 验收：给 DTO 注入假 token / Cookie / path 后，最终 envelope 明文和解密后 payload 均不包含它们。
 
-### P1：前台手动同步闭环
+### P1：前台同步闭环（已由自动自检取代手动入口）
 
-- Mac 手动“立即同步”上传 current record。
-- iPhone 前台手动拉取、解密、更新 App Group。
+- Mac 首次运行自动检查并上传 current record。
+- iPhone 首次启动和前台自动拉取、解密、更新 App Group。
 - 现有 Widget / Watch 链路消费真实 `.macSync` 快照。
 - 实现查看、导出、断开和删除。
 

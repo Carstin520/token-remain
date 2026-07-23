@@ -1,4 +1,5 @@
 import AppIntents
+import CloudKit
 import SwiftUI
 import TokenRemainKit
 import TokenRemainSyncKit
@@ -117,30 +118,84 @@ struct TokenRemainApp: App {
                     guard model.isMacSyncEnabled else { return }
                     model.handleRemoteSyncCleared()
                 }
+                .onReceive(NotificationCenter.default.publisher(for: .CKAccountChanged)) { _ in
+                    Task { await model.handleICloudAccountChanged() }
+                }
                 .onChange(of: scenePhase) { _, phase in
                     guard phase == .active else { return }
                     model.consumePendingRoute()
                     model.refreshLiveActivityState()
                     model.refresh()
-                    if model.isMacSyncEnabled {
-                        Task { await model.pullMacSync() }
-                    }
                 }
                 // CloudKit silent pushes remain the low-latency path. While the
                 // app is visible, a 45-second reconciliation also catches a
-                // missed/coalesced push without pretending iOS offers a strict
-                // background polling schedule.
-                .task(id: model.isMacSyncEnabled) {
-                    guard model.isMacSyncEnabled else { return }
+                // missed/coalesced push. Keying the task to foreground state
+                // makes the first pull immediate instead of allowing a launch
+                // race to sleep for one interval while the scene is inactive.
+                .task(id: ForegroundSyncTaskID(
+                    isEnabled: model.isMacSyncEnabled,
+                    isActive: scenePhase == .active
+                )) {
+                    guard model.isMacSyncEnabled, scenePhase == .active else { return }
+                    var retryAttempt = 0
                     while !Task.isCancelled {
-                        if scenePhase == .active {
-                            await model.pullMacSync()
+                        await model.pullMacSync()
+                        let delay = model.automaticSyncRetryDelay(afterAttempt: retryAttempt)
+                        if case .synced = model.mobileSyncState {
+                            retryAttempt = 0
+                        } else {
+                            retryAttempt += 1
                         }
-                        try? await Task.sleep(for: .seconds(45))
+                        try? await Task.sleep(for: .seconds(delay))
                     }
+                }
+                .alert(item: syncGuidanceBinding) { guidance in
+                    Alert(
+                        title: Text(syncGuidanceTitle(guidance)),
+                        message: Text(syncGuidanceMessage(guidance)),
+                        primaryButton: .default(Text(TRL10n.t("sync.guidance.review"))) {
+                            model.route = .settings
+                            model.dismissSyncGuidance()
+                        },
+                        secondaryButton: .cancel(Text(TRL10n.t("sync.guidance.later"))) {
+                            model.dismissSyncGuidance()
+                        }
+                    )
                 }
         }
     }
+
+    private var syncGuidanceBinding: Binding<MobileSyncGuidance?> {
+        Binding(
+            get: { model.syncGuidance },
+            set: { value in
+                if value == nil {
+                    model.dismissSyncGuidance()
+                }
+            }
+        )
+    }
+
+    private func syncGuidanceTitle(_ guidance: MobileSyncGuidance) -> String {
+        switch guidance {
+        case .openMac: return TRL10n.t("settings.sync.waiting_mac")
+        case .checkICloud: return TRL10n.t("settings.sync.error.account")
+        case .checkKeychain: return TRL10n.t("settings.sync.error.key")
+        }
+    }
+
+    private func syncGuidanceMessage(_ guidance: MobileSyncGuidance) -> String {
+        switch guidance {
+        case .openMac: return TRL10n.t("sync.guidance.mac_message")
+        case .checkICloud: return TRL10n.t("sync.guidance.icloud_message")
+        case .checkKeychain: return TRL10n.t("sync.guidance.keychain_message")
+        }
+    }
+}
+
+private struct ForegroundSyncTaskID: Equatable {
+    let isEnabled: Bool
+    let isActive: Bool
 }
 
 struct RootView: View {

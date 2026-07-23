@@ -50,8 +50,9 @@ Private by design:
 - widgets and Watch receive only an already validated display snapshot
 
 TokenRemain for Mac is required for live provider data. Both devices must use
-the same iCloud account with iCloud Keychain enabled. Demo Mode is available to
-preview every surface without connecting provider data.
+the same iCloud account with iCloud Drive and iCloud Keychain enabled. Open
+TokenRemain once on each device and they connect automatically. Demo Mode is
+available to preview every surface without connecting provider data.
 
 Background delivery timing is controlled by Apple. When the iPhone app is
 active, TokenRemain combines CloudKit change notifications with foreground
@@ -100,7 +101,7 @@ Mac 始终是唯一 Provider 数据源。单独下载的 TokenRemain Mac 版读�
 - 白名单快照使用 AES-256-GCM，并存入用户自己的 CloudKit 私有数据库
 - 小组件与 Watch 只接收主 App 已校验的展示快照
 
-查看真实 Provider 数据需要 TokenRemain Mac 版。两台设备需登录同一 iCloud 账户并开启 iCloud 钥匙串。未连接数据时，可使用带明确标记的演示模式预览全部界面。
+查看真实 Provider 数据需要 TokenRemain Mac 版。两台设备需登录同一 iCloud 账户并开启 iCloud Drive 与 iCloud 钥匙串；分别打开一次 TokenRemain 后会自动连接。未连接数据时，可使用带明确标记的演示模式预览全部界面。
 
 iOS 后台时机由系统控制。iPhone App 活跃时，TokenRemain 会结合 CloudKit 变更提示与前台兜底拉取；锁屏、挂起、强退、离线或 WidgetKit 后台刷新不承诺固定到达时间。
 

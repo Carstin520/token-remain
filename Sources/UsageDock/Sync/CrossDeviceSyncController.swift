@@ -1,4 +1,5 @@
 #if TOKENREMAIN_CLOUD_SYNC
+import CloudKit
 import Combine
 import Foundation
 import OSLog
@@ -39,6 +40,13 @@ final class CrossDeviceSyncController: ObservableObject {
         case unknown
     }
 
+    enum Guidance: String, Identifiable, Equatable {
+        case checkICloud
+        case checkKeychain
+
+        var id: String { rawValue }
+    }
+
     static let shared = CrossDeviceSyncController()
     nonisolated static let cloudContainerIdentifier = "iCloud.com.jamesli.tokenremain"
     nonisolated static let keychainAccessGroup = "84397AQ22Y.com.jamesli.tokenremain.sync"
@@ -49,6 +57,10 @@ final class CrossDeviceSyncController: ObservableObject {
     @Published private(set) var previewProviders: [PreviewProvider] = []
     @Published private(set) var syncUsageHistoryEnabled: Bool
     @Published private(set) var previewHistoryDays = 0
+    @Published private(set) var lastAutomaticCheckAt: Date?
+    @Published private(set) var iCloudAvailable: Bool?
+    @Published private(set) var syncKeyAvailable: Bool?
+    @Published private(set) var guidance: Guidance?
 
     private enum DefaultsKey {
         static let enabled = "crossDeviceSync.enabled"
@@ -67,15 +79,21 @@ final class CrossDeviceSyncController: ObservableObject {
     private var storeSubscription: AnyCancellable?
     private var historySubscription: AnyCancellable?
     private var feedSubscription: AnyCancellable?
+    private var accountSubscription: AnyCancellable?
     private var uploadTask: Task<Void, Never>?
     private var heartbeatTask: Task<Void, Never>?
     private var retryAttempt = 0
     private var allowsSourceTakeoverOnce = false
     private weak var usageStore: UsageStore?
+    private var currentGuidanceIssue: Guidance?
+    private var guidanceIssueBeganAt: Date?
+    private var dismissedGuidanceIssue: Guidance?
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
-        let enabled = defaults.bool(forKey: DefaultsKey.enabled)
+        // Fresh installs participate automatically. Once the user turns sync
+        // off, the explicit stored false remains authoritative.
+        let enabled = (defaults.object(forKey: DefaultsKey.enabled) as? Bool) ?? true
         isEnabled = enabled
         syncUsageHistoryEnabled = defaults.bool(forKey: DefaultsKey.syncUsageHistory)
         lastUploadedAt = defaults.object(forKey: DefaultsKey.lastUploadedAt) as? Date
@@ -116,6 +134,11 @@ final class CrossDeviceSyncController: ObservableObject {
                 self.latestFeedPosts = feedStore.topStories
                 self.scheduleUpload(after: 4)
             }
+        accountSubscription = NotificationCenter.default.publisher(for: .CKAccountChanged)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.handleICloudAccountChanged()
+            }
         if isEnabled {
             scheduleUpload(after: 0)
             startHeartbeat()
@@ -138,12 +161,25 @@ final class CrossDeviceSyncController: ObservableObject {
             heartbeatTask?.cancel()
             heartbeatTask = nil
             state = .off
+            iCloudAvailable = nil
+            syncKeyAvailable = nil
+            clearGuidanceIssue()
         }
     }
 
     func uploadNow() {
         guard isEnabled else { return }
         scheduleUpload(after: 0, forceHeartbeat: true)
+    }
+
+    func checkNow() {
+        guard isEnabled else { return }
+        scheduleUpload(after: 0, forceHeartbeat: true)
+    }
+
+    func dismissGuidance() {
+        dismissedGuidanceIssue = guidance
+        guidance = nil
     }
 
     func setUsageHistoryEnabled(_ enabled: Bool) {
@@ -186,6 +222,9 @@ final class CrossDeviceSyncController: ObservableObject {
             isEnabled = false
             syncUsageHistoryEnabled = false
             previewHistoryDays = 0
+            iCloudAvailable = nil
+            syncKeyAvailable = nil
+            clearGuidanceIssue()
             defaults.set(false, forKey: DefaultsKey.enabled)
             state = .off
             logger.info("Private sync data deleted")
@@ -210,25 +249,12 @@ final class CrossDeviceSyncController: ObservableObject {
 
     private func publishLatest(forceHeartbeat: Bool) async {
         guard isEnabled else { return }
-        guard !latestQuotas.isEmpty else {
-            state = .waitingForMacData
-            return
-        }
+        let checkedAt = Date()
+        lastAutomaticCheckAt = checkedAt
         guard SyncCapabilityProbe.hasRequiredEntitlements else {
             state = .needsSignedCapabilities
-            return
-        }
-
-        let fingerprint = Self.fingerprint(
-            for: latestQuotas,
-            history: latestHistory,
-            includesUsageHistory: syncUsageHistoryEnabled,
-            feedPosts: latestFeedPosts
-        )
-        if !forceHeartbeat,
-           fingerprint == defaults.string(forKey: DefaultsKey.lastFingerprint),
-           let lastUploadedAt,
-           Date().timeIntervalSince(lastUploadedAt) < 15 * 60 {
+            iCloudAvailable = nil
+            syncKeyAvailable = nil
             return
         }
 
@@ -238,8 +264,33 @@ final class CrossDeviceSyncController: ObservableObject {
             guard try await cloud.accountStatus() == .available else {
                 throw SyncCloudStoreError.accountUnavailable
             }
+            iCloudAvailable = true
             let localSourceID = sourceInstanceID()
             let keys = SynchronizableSyncKeyStore(accessGroup: Self.keychainAccessGroup)
+            let keyRecord = try await keys.loadOrCreate()
+            syncKeyAvailable = true
+            clearGuidanceIssue()
+
+            guard !latestQuotas.isEmpty else {
+                retryAttempt = 0
+                state = .waitingForMacData
+                return
+            }
+
+            let fingerprint = Self.fingerprint(
+                for: latestQuotas,
+                history: latestHistory,
+                includesUsageHistory: syncUsageHistoryEnabled,
+                feedPosts: latestFeedPosts
+            )
+            if !forceHeartbeat,
+               fingerprint == defaults.string(forKey: DefaultsKey.lastFingerprint),
+               let lastUploadedAt,
+               checkedAt.timeIntervalSince(lastUploadedAt) < 15 * 60 {
+                state = .synced(lastUploadedAt)
+                return
+            }
+
             if let existing = try await cloud.fetch(),
                existing.envelope.sourceInstanceID != localSourceID,
                !allowsSourceTakeoverOnce {
@@ -258,7 +309,6 @@ final class CrossDeviceSyncController: ObservableObject {
                 }
             }
             state = .uploading
-            let keyRecord = try await keys.loadOrCreate()
             let sequence = nextSequence()
             let preparedAt = Date()
             let snapshot = MobileSnapshotRedactor.makeSnapshot(
@@ -290,6 +340,14 @@ final class CrossDeviceSyncController: ObservableObject {
         } catch {
             let failure = Self.failure(for: error)
             state = .failed(failure)
+            if failure == .iCloudUnavailable {
+                iCloudAvailable = false
+                syncKeyAvailable = nil
+            } else if failure == .keychainUnavailable {
+                iCloudAvailable = true
+                syncKeyAvailable = false
+            }
+            updateGuidance(for: failure, at: checkedAt)
             logger.error("Private sync upload failed: \(Self.errorCode(error), privacy: .public)")
             retryAttempt = min(retryAttempt + 1, 8)
             let delay = min(pow(2, Double(retryAttempt)), 300)
@@ -306,6 +364,42 @@ final class CrossDeviceSyncController: ObservableObject {
                 await self.publishLatest(forceHeartbeat: true)
             }
         }
+    }
+
+    private func handleICloudAccountChanged() {
+        guard isEnabled else { return }
+        iCloudAvailable = nil
+        syncKeyAvailable = nil
+        clearGuidanceIssue()
+        scheduleUpload(after: 0, forceHeartbeat: true)
+    }
+
+    private func updateGuidance(for failure: Failure, at now: Date) {
+        let issue: Guidance? = switch failure {
+        case .iCloudUnavailable: .checkICloud
+        case .keychainUnavailable: .checkKeychain
+        case .networkUnavailable, .serviceUnavailable, .encryptionFailed, .unknown: nil
+        }
+        guard issue == currentGuidanceIssue else {
+            currentGuidanceIssue = issue
+            guidanceIssueBeganAt = issue == nil ? nil : now
+            dismissedGuidanceIssue = nil
+            guidance = nil
+            return
+        }
+        guard let issue, dismissedGuidanceIssue != issue else { return }
+        let beganAt = guidanceIssueBeganAt ?? now
+        guidanceIssueBeganAt = beganAt
+        if now.timeIntervalSince(beganAt) >= 15 {
+            guidance = issue
+        }
+    }
+
+    private func clearGuidanceIssue() {
+        currentGuidanceIssue = nil
+        guidanceIssueBeganAt = nil
+        dismissedGuidanceIssue = nil
+        guidance = nil
     }
 
     private func sourceInstanceID() -> UUID {

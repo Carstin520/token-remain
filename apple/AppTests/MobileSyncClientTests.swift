@@ -54,6 +54,46 @@ struct MobileSyncClientTests {
     private let now = Date(timeIntervalSince1970: 1_784_764_800)
     private let containerID = MobileSyncClient.defaultContainerIdentifier
 
+    @Test("A fresh installation enables private Mac sync without setup")
+    func freshInstallDefaultsToMacSync() {
+        let suite = uniqueSuite()
+        defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
+        let settings = TRSettingsStore(suiteName: suite)
+
+        #expect(settings.origin == .macSync)
+        settings.origin = .none
+        #expect(settings.origin == .none)
+    }
+
+    @Test("Automatic health checks use fast retries before steady reconciliation")
+    func automaticRetryPolicy() {
+        let expected: [TimeInterval] = [2, 5, 10, 30, 60, 45, 45]
+        for (attempt, delay) in expected.enumerated() {
+            #expect(MobileSyncHealthPolicy.retryDelay(
+                afterAttempt: attempt,
+                state: .waitingForKey
+            ) == delay)
+        }
+        #expect(MobileSyncHealthPolicy.retryDelay(
+            afterAttempt: 0,
+            state: .synced(now)
+        ) == 45)
+    }
+
+    @Test("Only persistent actionable states produce setup guidance")
+    func actionableHealthGuidance() {
+        #expect(MobileSyncHealthPolicy.guidance(for: .waitingForMac) == .openMac)
+        #expect(MobileSyncHealthPolicy.graceInterval(for: .openMac) == 120)
+        #expect(MobileSyncHealthPolicy.guidance(for: .waitingForKey) == .checkKeychain)
+        #expect(MobileSyncHealthPolicy.graceInterval(for: .checkKeychain) == 120)
+        #expect(MobileSyncHealthPolicy.guidance(
+            for: .failed(.iCloudAccountUnavailable)
+        ) == .checkICloud)
+        #expect(MobileSyncHealthPolicy.guidance(
+            for: .failed(.networkUnavailable)
+        ) == nil)
+    }
+
     @Test("A valid snapshot updates once and a duplicate never overwrites")
     func updateThenDuplicate() async throws {
         let fixture = try makeFixture(source: UUID(), sequence: 1)

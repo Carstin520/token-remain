@@ -37,6 +37,8 @@ final class AppModel {
     private(set) var mobileSyncState: MobileSyncState = .off
     private(set) var syncLatencySummary: SyncLatencySummary?
     private(set) var latestSyncTiming: SyncLatencyObservation?
+    private(set) var lastAutomaticSyncCheckAt: Date?
+    private(set) var syncGuidance: MobileSyncGuidance?
 
     /// Router state, driven by the URL scheme, widgets and `OpenTabIntent`.
     var route: TRRoute = .overview
@@ -55,6 +57,9 @@ final class AppModel {
     private let watchSync = WatchSyncEngine()
     private var mobileSync: MobileSyncClient { .shared }
     private var isApplyingSyncedSnapshot = false
+    private var currentGuidanceIssue: MobileSyncGuidance?
+    private var guidanceIssueBeganAt: Date?
+    private var dismissedGuidanceIssue: MobileSyncGuidance?
 
     var origin: SnapshotOrigin {
         didSet {
@@ -224,7 +229,7 @@ final class AppModel {
         curatedFeedStore.replace(with: source.curatedFeed, now: now)
         curatedFeed = curatedFeedStore.load(now: now)
         install(snapshot: adapted, now: now)
-        mobileSyncState = .synced(source.generatedAt)
+        updateMobileSyncState(.synced(source.generatedAt), at: now)
     }
 
     /// Commits a verified delivery to every presentation surface, then records
@@ -247,7 +252,7 @@ final class AppModel {
     func setMacSyncEnabled(_ enabled: Bool) {
         if enabled {
             origin = .macSync
-            mobileSyncState = .waitingForMac
+            updateMobileSyncState(.waitingForMac, at: Date())
             Task { await pullMacSync() }
         } else if origin == .macSync {
             isApplyingSyncedSnapshot = true
@@ -255,9 +260,27 @@ final class AppModel {
             isApplyingSyncedSnapshot = false
             settings.origin = .none
             clearSyncedLocalData(now: Date())
-            mobileSyncState = .off
+            updateMobileSyncState(.off, at: Date())
             Task { await mobileSync.resetReplayState() }
         }
+    }
+
+    func dismissSyncGuidance() {
+        dismissedGuidanceIssue = syncGuidance
+        syncGuidance = nil
+    }
+
+    func automaticSyncRetryDelay(afterAttempt attempt: Int) -> TimeInterval {
+        MobileSyncHealthPolicy.retryDelay(afterAttempt: attempt, state: mobileSyncState)
+    }
+
+    func handleICloudAccountChanged() async {
+        guard origin == .macSync else { return }
+        currentGuidanceIssue = nil
+        guidanceIssueBeganAt = nil
+        dismissedGuidanceIssue = nil
+        syncGuidance = nil
+        await pullMacSync()
     }
 
     @discardableResult
@@ -266,16 +289,18 @@ final class AppModel {
         now: Date = Date()
     ) async -> Bool {
         guard origin == .macSync else {
-            mobileSyncState = .off
+            updateMobileSyncState(.off, at: now)
             return false
         }
+        guard mobileSyncState != .pulling else { return false }
         mobileSyncState = .pulling
         let outcome = await mobileSync.pull(
             confirmedSourceChange: confirmedSource?.marker,
             now: now
         )
+        lastAutomaticSyncCheckAt = now
         guard origin == .macSync else {
-            mobileSyncState = .off
+            updateMobileSyncState(.off, at: now)
             return false
         }
         switch outcome {
@@ -286,21 +311,24 @@ final class AppModel {
             switch reason {
             case .noRemoteSnapshot:
                 clearSyncedLocalData(now: now)
-                mobileSyncState = .waitingForMac
+                updateMobileSyncState(.waitingForMac, at: now)
             case .duplicate, .olderSequence:
-                mobileSyncState = snapshot.origin == .macSync && !snapshot.isEmpty
-                    ? .synced(snapshot.generatedAt)
-                    : .waitingForMac
+                updateMobileSyncState(
+                    snapshot.origin == .macSync && !snapshot.isEmpty
+                        ? .synced(snapshot.generatedAt)
+                        : .waitingForMac,
+                    at: now
+                )
             }
             return false
         case .requiresSourceConfirmation(let candidate):
-            mobileSyncState = .sourceChangeRequiresConfirmation(candidate)
+            updateMobileSyncState(.sourceChangeRequiresConfirmation(candidate), at: now)
             return false
         case .failed(.syncKeyUnavailable):
-            mobileSyncState = .waitingForKey
+            updateMobileSyncState(.waitingForKey, at: now)
             return false
         case .failed(let failure):
-            mobileSyncState = .failed(failure)
+            updateMobileSyncState(.failed(failure), at: now)
             return false
         }
     }
@@ -317,7 +345,31 @@ final class AppModel {
     func handleRemoteSyncCleared(now: Date = Date()) {
         guard origin == .macSync else { return }
         clearSyncedLocalData(now: now)
-        mobileSyncState = .waitingForMac
+        updateMobileSyncState(.waitingForMac, at: now)
+    }
+
+    private func updateMobileSyncState(_ state: MobileSyncState, at now: Date) {
+        mobileSyncState = state
+        let issue = MobileSyncHealthPolicy.guidance(for: state)
+        guard issue == currentGuidanceIssue else {
+            currentGuidanceIssue = issue
+            guidanceIssueBeganAt = issue == nil ? nil : now
+            dismissedGuidanceIssue = nil
+            syncGuidance = nil
+            return
+        }
+        guard let issue, dismissedGuidanceIssue != issue else {
+            if issue == nil {
+                guidanceIssueBeganAt = nil
+                syncGuidance = nil
+            }
+            return
+        }
+        let beganAt = guidanceIssueBeganAt ?? now
+        guidanceIssueBeganAt = beganAt
+        if now.timeIntervalSince(beganAt) >= MobileSyncHealthPolicy.graceInterval(for: issue) {
+            syncGuidance = issue
+        }
     }
 
     private func clearSyncedLocalData(now: Date) {

@@ -106,7 +106,10 @@ public struct TRSettingsStore: Sendable {
     public static let shared = TRSettingsStore()
 
     public var origin: SnapshotOrigin {
-        get { SnapshotOrigin(rawValue: defaults.string(forKey: Self.originKey) ?? "") ?? .none }
+        // A fresh installation joins the user's private iCloud sync path
+        // automatically. Once a value exists, explicit Demo/Off choices remain
+        // authoritative across launches.
+        get { SnapshotOrigin(rawValue: defaults.string(forKey: Self.originKey) ?? "") ?? .macSync }
         nonmutating set { defaults.set(newValue.rawValue, forKey: Self.originKey) }
     }
 
