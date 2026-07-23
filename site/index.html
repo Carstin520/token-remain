@@ -1,0 +1,880 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TokenRemain — Your AI quota, always in the menu bar</title>
+<meta name="description" content="TokenRemain: a private macOS and iPhone AI quota companion. Provider credentials stay on your Mac; an allowlisted, encrypted snapshot can sync through your own iCloud account.">
+<style>
+/* ============ tokens · design/palette.md v1.1 ============ */
+:root{
+  --ink:#070B12;
+  --surface:#0D1420;
+  --surface2:#141D2C;
+  --surface3:#1B2536;
+  --border:#223044;
+  --track:#1B2536;
+  --text:#E9EDF5;
+  --text-dim:#8B97AB;
+  --text-mute:#55617A;
+  --violet:#8F7BF2;
+  --violet-dim:#5B4FB0;
+  --cyan:#3ECFE0;
+  --cyan-dim:#2B8FA0;
+  --indigo:#2F5FD0;
+  --magenta:#D95FB8;
+  --olive:#7DA342;
+  --success:#57D19A;
+  --warning:#FFB554;
+  --danger:#FF6B6B;
+  --claude-logo:#D97757;
+  --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Helvetica Neue",sans-serif;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  background:var(--ink);
+  color:var(--text);
+  font-family:var(--sans);
+  font-size:16px;
+  line-height:1.7;
+  overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+::selection{background:var(--violet-dim);color:var(--text)}
+a{color:var(--cyan);text-decoration:none}
+a:hover{text-decoration:underline}
+a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offset:3px;border-radius:2px}
+
+/* ============ canvas backdrop ============ */
+#bg{position:fixed;inset:0;z-index:0;display:block}
+.page{position:relative;z-index:1}
+
+/* ============ shared ============ */
+.wrap{max-width:1080px;margin:0 auto;padding:0 28px}
+.mono{font-family:var(--mono)}
+.badge{
+  font-family:var(--mono);font-size:11px;font-weight:600;
+  letter-spacing:.14em;text-transform:uppercase;
+  color:var(--text-dim);
+  border:1px solid var(--border);border-radius:4px;
+  padding:4px 10px;display:inline-flex;align-items:center;gap:7px;
+  background:color-mix(in srgb,var(--surface) 72%,transparent);
+}
+.badge .dot{width:5px;height:5px;border-radius:1px;background:var(--cyan)}
+
+/* pixel corner ticks: top-left + bottom-right only */
+.ticked{position:relative}
+.ticked::before,.ticked::after{
+  content:"";position:absolute;width:9px;height:9px;pointer-events:none;
+}
+.ticked::before{top:-1px;left:-1px;border-top:2px solid var(--border);border-left:2px solid var(--border)}
+.ticked::after{bottom:-1px;right:-1px;border-bottom:2px solid var(--border);border-right:2px solid var(--border)}
+
+/* ============ nav ============ */
+nav{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:22px 0;
+}
+.wordmark{font-family:var(--mono);font-size:15px;font-weight:700;letter-spacing:.06em;color:var(--text)}
+.wordmark em{font-style:normal;color:var(--violet)}
+nav .links{display:flex;gap:22px;align-items:center;flex-wrap:wrap}
+nav .links a{color:var(--text-dim);font-size:14px}
+nav .links a:hover{color:var(--text);text-decoration:none}
+.lang{
+  font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.06em;
+  color:var(--text-dim);background:var(--surface2);
+  border:1px solid var(--border);border-radius:5px;
+  padding:4px 10px;cursor:pointer;
+}
+.lang:hover{color:var(--cyan);border-color:var(--cyan-dim)}
+
+/* ============ hero ============ */
+.hero{
+  display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);
+  gap:48px;align-items:center;
+  min-height:calc(100vh - 88px);
+  padding:36px 0 72px;
+}
+.hero h1{
+  font-size:clamp(34px,4.6vw,52px);
+  line-height:1.22;font-weight:700;letter-spacing:-.01em;
+  text-wrap:balance;
+  margin:22px 0 18px;
+}
+.hero h1 .accent{color:var(--violet)}
+.hero .sub{
+  color:var(--text-dim);font-size:17px;max-width:34em;
+  margin-bottom:34px;
+}
+.hero .sub strong{color:var(--text);font-weight:600}
+.cta-row{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+.btn{
+  font-family:var(--mono);font-size:14px;font-weight:700;letter-spacing:.02em;
+  border-radius:8px;padding:14px 22px;
+  display:inline-flex;align-items:center;gap:10px;
+  cursor:pointer;transition:transform .15s ease,background .15s ease,border-color .15s ease;
+}
+.btn:hover{text-decoration:none;transform:translateY(-1px)}
+.btn:active{transform:translateY(0)}
+.btn-primary{background:var(--cyan);color:var(--ink);border:1px solid var(--cyan)}
+.btn-primary:hover{background:#5CDAE8}
+.btn-ghost{background:transparent;color:var(--text);border:1px solid var(--border)}
+.btn-ghost:hover{border-color:var(--cyan-dim);color:var(--cyan)}
+.btn svg{flex:none}
+.req-line{
+  font-family:var(--mono);font-size:12px;letter-spacing:.08em;
+  color:var(--text-dim);margin-top:18px;
+  display:flex;gap:10px;flex-wrap:wrap;align-items:center;
+}
+.req-line .sep{color:var(--text-mute)}
+.releases-hint{font-size:13px;color:var(--text-mute);margin-top:10px}
+.releases-hint a{color:var(--cyan-dim)}
+
+/* ============ 3D stage ============ */
+.stage-wrap{perspective:1300px;perspective-origin:60% 40%;min-width:0;display:flex;justify-content:center}
+.stage{
+  position:relative;
+  transform-style:preserve-3d;
+  transform:rotateX(6deg) rotateY(-10deg);
+  will-change:transform;
+}
+@keyframes idle-float{
+  0%,100%{transform:translateZ(0) translateY(0)}
+  50%{transform:translateZ(0) translateY(-9px)}
+}
+.float{animation:idle-float 7s ease-in-out infinite;transform-style:preserve-3d}
+
+/* ============ real popover screenshot ============ */
+.pop-shot{
+  width:330px;max-width:100%;height:auto;display:block;
+  border-radius:18px;
+  border:1px solid var(--border);
+  box-shadow:0 40px 90px -30px rgba(0,0,0,.85),0 0 0 1px rgba(34,48,68,.4);
+}
+
+/* floating chips at depth */
+.chip{
+  position:absolute;
+  font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.08em;
+  color:var(--text-dim);
+  background:color-mix(in srgb,var(--surface2) 88%,transparent);
+  border:1px solid var(--border);border-radius:6px;
+  padding:7px 12px;display:flex;gap:8px;align-items:center;
+  box-shadow:0 18px 40px -18px rgba(0,0,0,.8);
+  white-space:nowrap;
+}
+.chip i{width:6px;height:6px;border-radius:1.5px}
+.chip .v{color:var(--text);font-variant-numeric:tabular-nums}
+.chip.mb{padding:5px 10px;background:rgba(7,11,18,.92)}
+.chip.mb img{height:24px;width:auto;display:block}
+.chip1{top:-30px;right:-6%;transform:translateZ(90px)}
+.chip2{bottom:-4px;left:-13%;transform:translateZ(140px)}
+.chip3{top:30%;left:-17%;transform:translateZ(55px)}
+.chip4{bottom:-42px;right:-3%;transform:translateZ(110px)}
+
+/* ============ sections ============ */
+section{padding:76px 0}
+.eyebrow{
+  font-family:var(--mono);font-size:12px;font-weight:700;
+  letter-spacing:.2em;text-transform:uppercase;color:var(--cyan);
+  margin-bottom:14px;
+}
+h2{font-size:clamp(24px,3vw,32px);font-weight:700;letter-spacing:-.01em;text-wrap:balance;margin-bottom:14px}
+.lede{color:var(--text-dim);max-width:40em;margin-bottom:40px}
+.lede a{color:var(--cyan-dim)}
+
+/* screens showcase */
+.shot-grid{display:grid;gap:20px}
+.shot-row3{display:grid;grid-template-columns:1fr 1fr 1.35fr;gap:20px;align-items:start}
+figure.shot.phone img{width:auto;max-width:100%;max-height:600px;margin:0 auto}
+figure.shot.widgets{display:grid;gap:12px}
+figure.shot.widgets img{border-radius:16px}
+figure.shot{
+  background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  padding:12px;margin:0;
+}
+figure.shot img{width:100%;height:auto;display:block;border-radius:8px}
+figure.shot figcaption{
+  display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;
+  padding:12px 6px 2px;
+}
+figure.shot figcaption .tag{
+  font-family:var(--mono);font-size:11px;font-weight:800;letter-spacing:.15em;
+  color:var(--violet);text-transform:uppercase;white-space:nowrap;
+}
+figure.shot figcaption .cap{color:var(--text-dim);font-size:13.5px}
+
+/* providers — bento: two featured, small tiles, compat strip */
+.prov-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.prov{
+  background:var(--surface);border:1px solid var(--border);border-radius:10px;
+  padding:16px 16px 14px;
+}
+.prov .pn{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-weight:700;font-size:13.5px;margin-bottom:5px}
+.prov .pn i{width:7px;height:7px;border-radius:2px;flex:none;background:var(--text-mute)}
+.prov .pn svg{flex:none}
+.prov p{color:var(--text-dim);font-size:12.5px;line-height:1.55}
+.prov p code{font-family:var(--mono);font-size:11px;color:var(--cyan-dim)}
+.prov .mode{
+  margin-left:auto;font-family:var(--mono);font-size:9.5px;font-weight:700;
+  letter-spacing:.12em;color:var(--text-mute);
+  border:1px solid var(--border);border-radius:4px;padding:1px 6px;white-space:nowrap;
+}
+.prov .mode.key{color:var(--cyan-dim);border-color:color-mix(in srgb,var(--cyan-dim) 45%,transparent)}
+.prov.featp{
+  grid-column:span 2;padding:20px 22px 18px;
+  background:linear-gradient(135deg,color-mix(in srgb,var(--surface2) 65%,var(--surface)),var(--surface) 72%);
+}
+.prov.featp .pn{font-size:15px;gap:10px;margin-bottom:2px}
+.prov.featp p{font-size:13.5px}
+.minibar{display:flex;gap:3px;height:7px;margin:12px 0 10px}
+.minibar b{flex:1;border-radius:2px;background:var(--track)}
+.prov.wide{grid-column:1/-1;display:flex;gap:18px;align-items:baseline;flex-wrap:wrap}
+.prov.wide .pn{margin-bottom:0}
+.prov.wide .names{display:flex;gap:8px;flex-wrap:wrap}
+.prov.wide .names span{
+  font-family:var(--mono);font-size:11.5px;font-weight:600;color:var(--text-dim);
+  background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:2px 8px;
+}
+.prov-note{color:var(--text-mute);font-size:13px;margin-top:16px}
+.prov-note code{font-family:var(--mono);font-size:12px;color:var(--cyan-dim)}
+
+/* privacy — verifiable facts checklist */
+.pipe-card{
+  background:var(--surface);border:1px dashed var(--border);border-radius:10px;
+  padding:14px 18px;margin-bottom:20px;
+  display:flex;justify-content:center;
+}
+.pipe-card .pipe{margin-top:0}
+.pipe{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  font-family:var(--mono);font-size:12px;color:var(--text-dim);
+  margin-top:18px;
+}
+.pipe .node{border:1px solid var(--border);background:var(--surface2);border-radius:6px;padding:4px 10px;color:var(--text);white-space:nowrap}
+.pipe .arrow{color:var(--cyan-dim);white-space:nowrap;letter-spacing:0}
+.priv-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.priv{
+  background:var(--surface);border:1px solid var(--border);border-radius:10px;
+  padding:20px 20px 18px;
+}
+.priv .row{display:flex;gap:10px;align-items:center;margin-bottom:8px}
+.priv .ck{
+  width:22px;height:22px;border-radius:5px;flex:none;
+  background:color-mix(in srgb,var(--success) 14%,var(--surface2));
+  border:1px solid color-mix(in srgb,var(--success) 40%,transparent);
+  color:var(--success);font-family:var(--mono);font-weight:800;font-size:12px;
+  display:grid;place-items:center;
+}
+.priv h3{font-size:15.5px;font-weight:700}
+.priv p{color:var(--text-dim);font-size:13.5px}
+.priv p code{font-family:var(--mono);font-size:11.5px;color:var(--cyan-dim)}
+
+/* limitations — side-by-side split */
+.split{display:grid;grid-template-columns:minmax(240px,5fr) minmax(0,7fr);gap:48px;align-items:start}
+.split .lede{margin-bottom:0}
+.limit-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:10px;
+  padding:28px 30px;
+}
+.limit-card .head{
+  display:flex;align-items:center;gap:12px;margin-bottom:20px;
+  color:var(--warning);font-weight:700;font-size:17px;
+}
+.limit-card .head .sym{
+  font-family:var(--mono);font-weight:800;font-size:14px;
+  width:24px;height:24px;border-radius:5px;flex:none;
+  background:var(--warning);color:var(--ink);
+  display:grid;place-items:center;
+}
+.limit-card ul{list-style:none;display:grid;gap:14px}
+.limit-card li{
+  display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:baseline;
+  color:var(--text-dim);font-size:15px;
+}
+.limit-card li strong{color:var(--text);font-weight:600}
+.limit-card li .k{
+  font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.1em;
+  color:var(--warning);border:1px solid color-mix(in srgb,var(--warning) 45%,transparent);
+  border-radius:4px;padding:2px 8px;text-transform:uppercase;white-space:nowrap;
+  transform:translateY(-1px);
+}
+
+/* features — four compact */
+.feat-sub{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.feat{
+  background:var(--surface);border:1px solid var(--border);border-radius:10px;
+  padding:26px 24px;
+}
+.feat-sub .feat{padding:20px 18px}
+.feat-sub .feat h3{font-size:15px}
+.feat-sub .feat p{font-size:13px}
+.feat .glyph{
+  font-family:var(--mono);font-size:13px;font-weight:800;letter-spacing:.05em;
+  color:var(--violet);margin-bottom:14px;
+}
+.feat-sub .feat .glyph{font-size:11px;margin-bottom:10px}
+.feat h3{font-size:16.5px;font-weight:700;margin-bottom:8px}
+.feat p{color:var(--text-dim);font-size:14.5px}
+.feat p code{font-family:var(--mono);font-size:12.5px;color:var(--cyan);background:var(--surface2);padding:1px 6px;border-radius:4px}
+
+/* install steps — connected timeline, numbering carries the sequence */
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:34px;counter-reset:step}
+.step{
+  background:var(--surface);border:1px solid var(--border);border-radius:10px;
+  padding:24px;counter-increment:step;position:relative;
+}
+.step::before{
+  content:"0" counter(step);
+  font-family:var(--mono);font-size:12px;font-weight:800;letter-spacing:.15em;
+  color:var(--cyan);display:block;margin-bottom:12px;
+}
+.step:not(:last-child)::after{
+  content:"";position:absolute;top:38px;right:-30px;width:26px;
+  border-top:2px dashed var(--violet-dim);
+}
+.step h3{font-size:15.5px;font-weight:700;margin-bottom:6px}
+.step p{color:var(--text-dim);font-size:14px}
+.step p code{font-family:var(--mono);font-size:12.5px;color:var(--text);background:var(--surface2);padding:1px 6px;border-radius:4px}
+
+/* repo band */
+.repo-band{
+  display:flex;align-items:center;justify-content:space-between;gap:24px;
+  background:linear-gradient(120deg,color-mix(in srgb,var(--violet-dim) 22%,var(--surface)),var(--surface) 55%);
+  border:1px solid var(--border);border-radius:12px;
+  padding:34px 36px;flex-wrap:wrap;
+}
+.repo-band .txt h2{margin-bottom:6px}
+.repo-band .txt p{color:var(--text-dim);font-size:15px}
+.repo-band .txt p code{font-family:var(--mono);font-size:13px;color:var(--cyan)}
+
+footer.site{
+  border-top:1px solid var(--border);
+  padding:30px 0 46px;margin-top:30px;
+  display:grid;gap:18px;
+  font-family:var(--mono);font-size:12px;letter-spacing:.08em;color:var(--text-mute);
+}
+footer.site a{color:var(--text-dim)}
+footer.site .frow{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+footer.site .disclaimer{
+  font-family:var(--sans);font-size:12.5px;letter-spacing:0;line-height:1.8;
+  color:var(--text-mute);max-width:60em;
+}
+
+@media (max-width:900px){
+  .hero{grid-template-columns:1fr;min-height:0;padding-top:20px;gap:64px}
+  .stage-wrap{perspective-origin:50% 30%}
+  .chip2{left:-4%}
+  .chip3{left:-6%}
+  .chip1,.chip4{right:-4%}
+  .feat-sub{grid-template-columns:1fr 1fr}
+  .steps{grid-template-columns:1fr;gap:16px}
+  .step:not(:last-child)::after{display:none}
+  .prov-grid{grid-template-columns:1fr 1fr}
+  .priv-grid{grid-template-columns:1fr 1fr}
+  .split{grid-template-columns:1fr;gap:28px}
+  .shot-row3{grid-template-columns:1fr}
+  .repo-band{padding:28px}
+}
+@media (max-width:560px){
+  .feat-sub{grid-template-columns:1fr}
+  .prov-grid,.priv-grid{grid-template-columns:1fr}
+  .prov.featp{grid-column:span 1}
+}
+/* scroll reveal — motion only when allowed */
+@media (prefers-reduced-motion:no-preference){
+  .reveal{opacity:0;transform:translateY(16px);transition:opacity .55s ease,transform .55s ease}
+  .reveal.in{opacity:1;transform:none}
+}
+@media (prefers-reduced-motion:reduce){
+  .float{animation:none}
+  html{scroll-behavior:auto}
+  .btn,.stage{transition:none}
+}
+</style>
+</head>
+<body>
+<canvas id="bg" aria-hidden="true"></canvas>
+
+<div class="page wrap">
+
+  <nav>
+    <span class="wordmark">Token<em>Remain</em></span>
+    <span class="links">
+      <a href="#download" data-i18n="nav-dl">Download</a>
+      <a href="#screens" data-i18n="nav-screens">Screens</a>
+      <a href="#providers" data-i18n="nav-providers">Providers</a>
+      <a href="#privacy" data-i18n="nav-privacy">Privacy</a>
+      <a href="privacy.html" data-i18n="nav-policy">Privacy Policy</a>
+      <a href="support.html" data-i18n="nav-support">Support</a>
+      <a href="#limits" data-i18n="nav-limits">Limits</a>
+      <a href="https://github.com/Carstin520/token-remain" rel="noopener">GitHub</a>
+      <button class="lang" id="langBtn" type="button" aria-label="切换语言 / Switch language">中文</button>
+    </span>
+  </nav>
+
+  <!-- ================= hero ================= -->
+  <header class="hero" id="download">
+    <div>
+      <span class="badge"><span class="dot"></span>macOS · Menu&nbsp;Bar · Quota&nbsp;HUD</span>
+      <h1 data-i18n="h-h1">Your AI quotas,<br><span class="accent">right in the menu bar</span>.</h1>
+      <p class="sub" data-i18n="h-sub">
+        Remaining quota and reset countdowns for <strong>Claude Code, Codex, Cursor, Grok, GLM</strong>
+        and <strong>18+ services</strong>, all in one place.
+        Provider credentials stay on your Mac. If you enable Apple-device sync, only an allowlisted AES-256-GCM encrypted quota snapshot moves through your own iCloud account.
+      </p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="https://github.com/Carstin520/token-remain/releases/latest/download/TokenRemain.dmg">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 1v8.6L4.9 6.5 3.8 7.6 8 11.8l4.2-4.2-1.1-1.1L8 9.6V1H8zM2 13h12v1.5H2z"/></svg>
+          <span data-i18n="h-dl">Download TokenRemain.dmg</span>
+        </a>
+        <a class="btn btn-ghost" href="https://github.com/Carstin520/token-remain" rel="noopener">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 .2a8 8 0 0 0-2.5 15.6c.4.1.5-.2.5-.4v-1.4c-2.2.5-2.7-1-2.7-1-.4-.9-.9-1.2-.9-1.2-.7-.5.1-.5.1-.5.8.1 1.2.9 1.2.9.7 1.2 1.9.9 2.4.7 0-.5.3-.9.5-1.1-1.8-.2-3.7-.9-3.7-4a3 3 0 0 1 .8-2.1c0-.2-.3-1 .1-2.1 0 0 .7-.2 2.2.8a7.5 7.5 0 0 1 4 0c1.5-1 2.2-.8 2.2-.8.4 1.1.1 1.9.1 2.1a3 3 0 0 1 .8 2.1c0 3.1-1.9 3.8-3.7 4 .3.3.6.8.6 1.5v2.2c0 .2.1.5.5.4A8 8 0 0 0 8 .2z"/></svg>
+          <span data-i18n="h-gh">GitHub Repo</span>
+        </a>
+      </div>
+      <p class="req-line">
+        <span>macOS 14+</span><span class="sep">·</span>
+        <span>Apple Silicon (arm64)</span><span class="sep">·</span>
+        <span data-i18n="h-req3">direct .dmg install</span>
+      </p>
+      <p class="releases-hint" data-i18n="h-hint">The button points to the latest release asset — browse all versions on the <a href="https://github.com/Carstin520/token-remain/releases" rel="noopener">Releases page</a>.</p>
+    </div>
+
+    <!-- ============ 3D stage · real popover screenshot ============ -->
+    <div class="stage-wrap" aria-hidden="true">
+      <div class="stage" id="stage">
+        <div class="float">
+
+          <img class="pop-shot" src="assets/popover.png" width="720" height="1464" alt="">
+
+          <span class="chip chip1 mb"><img src="assets/menubar.png" width="234" height="70" alt="Menu bar showing Claude 97% and Codex 29%"></span>
+          <span class="chip chip2"><i style="background:var(--cyan-dim)"></i><span data-i18n="chip-grok">Grok weekly</span> <span class="v">58%</span></span>
+          <span class="chip chip3"><i style="background:var(--violet-dim)"></i>GLM <span class="v">77%</span></span>
+          <span class="chip chip4"><i style="background:var(--text-mute)"></i>Copilot <span class="v">91%</span></span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ================= screens ================= -->
+  <section id="screens">
+    <p class="eyebrow">Real UI</p>
+    <h2 data-i18n="s-h2">Three screens, one pixel language</h2>
+    <p class="lede" data-i18n="s-lede">You've met the menu bar popover above — everything below is a <strong style="color:var(--text)">live screenshot of the latest build</strong>: the desktop Dashboard, the iPhone app and Home Screen widgets.</p>
+    <div class="shot-grid">
+      <figure class="shot ticked">
+        <img src="assets/dashboard.jpg" width="1600" height="1065" alt="TokenRemain Dashboard overview: today's usage and cost donut, official quota bars (Claude coral / Codex blue), trending and risk hints" loading="lazy">
+        <figcaption><span class="tag" data-i18n="cap-dash-t">Dashboard · Live</span><span class="cap" data-i18n="cap-dash-c">Real local usage: 202.16M tokens and $189.11 estimated cost today, split by provider; official quota progress and risk hints on the right.</span></figcaption>
+      </figure>
+      <div class="shot-row3">
+        <figure class="shot phone ticked">
+          <img src="assets/phone-overview.jpg" width="720" height="1560" alt="TokenRemain iPhone overview: risk card synced from Mac, Claude 98% and Codex 40% bars, today's usage split and 30-day stats" loading="lazy">
+          <figcaption><span class="tag" data-i18n="cap-pov-t">iPhone · Overview</span><span class="cap" data-i18n="cap-pov-c">Cross-device sync with your Mac — an allowlisted quota snapshot is encrypted before it enters your private iCloud database.</span></figcaption>
+        </figure>
+        <figure class="shot phone ticked">
+          <img src="assets/phone-trends.jpg" width="720" height="1560" alt="TokenRemain iPhone trends: daily stacked bars for Claude and Codex, 7/14/30-day ranges, tokens or cost, 1.9B tokens in the last 7 days" loading="lazy">
+          <figcaption><span class="tag" data-i18n="cap-ptr-t">iPhone · Trends</span><span class="cap" data-i18n="cap-ptr-c">30 days of real history synced: daily stacks, 7 / 14 / 30-day ranges, tokens or cost.</span></figcaption>
+        </figure>
+        <figure class="shot widgets ticked">
+          <img src="assets/widget-m.png" width="1118" height="522" alt="TokenRemain medium Home Screen widget: lowest remaining 40% in pixel LED, robot mascot, Claude and Codex bars, reset countdown" loading="lazy">
+          <img src="assets/widget-s.png" width="522" height="503" alt="TokenRemain small Home Screen widget: lowest remaining 40%, per-provider bars and reset countdown" loading="lazy">
+          <figcaption><span class="tag" data-i18n="cap-wg-t">Widgets</span><span class="cap" data-i18n="cap-wg-c">Medium and small Home Screen widgets: lowest remaining, per-provider bars and a reset countdown at a glance.</span></figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= providers ================= -->
+  <section id="providers">
+    <p class="eyebrow">Supported Providers</p>
+    <h2 data-i18n="pv-h2">Supported services</h2>
+    <p class="lede" data-i18n="pv-lede">Most services connect <strong style="color:var(--text)">automatically the moment you're signed in</strong>: TokenRemain only reads credentials that already live on your machine — no extra login, no token refreshing. Every card says where its data comes from.</p>
+    <div class="prov-grid">
+      <div class="prov featp">
+        <div class="pn">
+          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+            <g stroke="var(--claude-logo)" stroke-width="2.4" stroke-linecap="round">
+              <line x1="12" y1="12" x2="12" y2="3.2"/><line x1="12" y1="12" x2="12" y2="20.8"/>
+              <line x1="12" y1="12" x2="3.2" y2="12"/><line x1="12" y1="12" x2="20.8" y2="12"/>
+              <line x1="12" y1="12" x2="6.2" y2="6.2"/><line x1="12" y1="12" x2="17.8" y2="17.8"/>
+              <line x1="12" y1="12" x2="6.2" y2="17.8"/><line x1="12" y1="12" x2="17.8" y2="6.2"/>
+            </g>
+          </svg>
+          Claude Code<span class="mode">AUTO</span>
+        </div>
+        <span class="minibar" data-fill="13" data-color="#D97757"></span>
+        <p data-i18n="pv-claude-d">Official 5-hour / 7-day windows with reset countdowns. Direct oauth/usage queries, degrading to a PTY probe when credentials misbehave — refresh tokens are never touched.</p>
+      </div>
+      <div class="prov featp">
+        <div class="pn">
+          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+            <defs><linearGradient id="cxg" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#C49AF8"/><stop offset=".55" stop-color="#6A78FF"/><stop offset="1" stop-color="#245BFF"/>
+            </linearGradient></defs>
+            <g fill="url(#cxg)">
+              <ellipse cx="12" cy="5.6" rx="3.4" ry="5"/><ellipse cx="12" cy="18.4" rx="3.4" ry="5"/>
+              <ellipse cx="12" cy="5.6" rx="3.4" ry="5" transform="rotate(60 12 12)"/>
+              <ellipse cx="12" cy="18.4" rx="3.4" ry="5" transform="rotate(60 12 12)"/>
+              <ellipse cx="12" cy="5.6" rx="3.4" ry="5" transform="rotate(-60 12 12)"/>
+              <ellipse cx="12" cy="18.4" rx="3.4" ry="5" transform="rotate(-60 12 12)"/>
+            </g>
+            <text x="12" y="14.8" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="7.5" font-weight="800" fill="#fff">&gt;_</text>
+          </svg>
+          Codex<span class="mode">AUTO</span>
+        </div>
+        <span class="minibar" data-fill="6" data-color="#5C7FD8"></span>
+        <p data-i18n="pv-codex-d">Live 5-hour / 7-day windows for the main account. Direct server queries with local snapshot fallback; burn-ahead ETA when you're running hot.</p>
+      </div>
+      <div class="prov"><div class="pn"><i style="background:var(--indigo)"></i>Cursor<span class="mode">AUTO</span></div><p data-i18n="pv-cursor-d">Monthly billing-cycle quota and reset countdown. Read-only queries of <code>state.vscdb</code>.</p></div>
+      <div class="prov"><div class="pn"><i style="background:var(--cyan-dim)"></i>Grok<span class="mode">AUTO</span></div><p data-i18n="pv-grok-d">Weekly pool remaining. Reads the Grok CLI's existing credentials.</p></div>
+      <div class="prov"><div class="pn"><i style="background:var(--violet-dim)"></i>Z.ai GLM<span class="mode key">API KEY</span></div><p data-i18n="pv-zai-d">Coding Plan session / weekly windows. The key lives only in your Keychain.</p></div>
+      <div class="prov"><div class="pn"><i></i>Copilot<span class="mode">AUTO</span></div><p data-i18n="pv-copilot-d">Monthly credits. Reads your local GitHub sign-in.</p></div>
+      <div class="prov"><div class="pn"><i></i>Devin<span class="mode">AUTO</span></div><p data-i18n="pv-devin-d">Daily / weekly quotas.</p></div>
+      <div class="prov"><div class="pn"><i></i>OpenRouter<span class="mode key">API KEY</span></div><p data-i18n="pv-or-d">Prepaid credit balance.</p></div>
+      <div class="prov"><div class="pn"><i></i>Antigravity<span class="mode">AUTO</span></div><p data-i18n="pv-ag-d">Quota pools. Reads the local sign-in state.</p></div>
+      <div class="prov"><div class="pn"><i style="background:var(--olive)"></i>OpenCode<span class="mode">LOCAL</span></div><p data-i18n="pv-oc-d">Go plan usage, estimated from a local database scan — fully offline.</p></div>
+      <div class="prov wide">
+        <div class="pn"><i style="background:var(--magenta)"></i><span data-i18n="pv-compat-n">token-monitor compatibility layer</span></div>
+        <div class="names">
+          <span>DeepSeek</span><span>Kimi</span><span>MiniMax</span><span>MiMo Code</span>
+          <span>Qoder</span><span>Kiro</span><span data-i18n="pv-volc">Volcengine</span><span>Ollama</span>
+        </div>
+      </div>
+    </div>
+    <p class="prov-note" data-i18n="pv-note">Credential locations and endpoints for every service are documented in the repo <code>README</code>; pace prediction uses real window progress and official reset times to judge whether your current pace lasts until reset.</p>
+  </section>
+
+  <!-- ================= privacy ================= -->
+  <section id="privacy">
+    <p class="eyebrow">Private by Design</p>
+    <h2 data-i18n="pr-h2">Privacy isn't a promise. It's the architecture.</h2>
+    <p class="lede" data-i18n="pr-lede">Every line below is a verifiable technical fact, not privacy-policy boilerplate — you can trace each one in the source.</p>
+    <div class="pipe-card" aria-hidden="true">
+      <div class="pipe">
+        <span class="node" data-i18n="pipe-n1">Credentials already on your machine</span>
+        <span class="arrow" data-i18n="pipe-a1">─ read-only ─▶</span>
+        <span class="node" data-i18n="pipe-n2">Official provider APIs</span>
+        <span class="arrow">─▶</span>
+        <span class="node" data-i18n="pipe-n3">Rendered &amp; cached locally</span>
+      </div>
+    </div>
+    <div class="priv-grid">
+      <div class="priv ticked">
+        <div class="row"><span class="ck">✓</span><h3 data-i18n="pr1t">Read-only credentials, never refreshed</h3></div>
+        <p data-i18n="pr1d">Reads the access tokens your tools already maintain. Refresh tokens are never touched, nothing is written back — no fighting Claude Code or Cursor for their sessions.</p>
+      </div>
+      <div class="priv ticked">
+        <div class="row"><span class="ck">✓</span><h3 data-i18n="pr2t">Keys live in the Keychain</h3></div>
+        <p data-i18n="pr2d">Manually added API keys (Z.ai, OpenRouter…) are stored only in the macOS Keychain — never in source, bundles or logs.</p>
+      </div>
+      <div class="priv ticked">
+        <div class="row"><span class="ck">✓</span><h3 data-i18n="pr3t">No servers of ours</h3></div>
+        <p data-i18n="pr3d">Quota queries go straight to each provider's official API. TokenRemain runs no credential relay; optional Apple-device sync uses your private iCloud database.</p>
+      </div>
+      <div class="priv ticked">
+        <div class="row"><span class="ck">✓</span><h3 data-i18n="pr4t">No tracking, no analytics</h3></div>
+        <p data-i18n="pr4d">No telemetry, no ads, no analytics SDK.</p>
+      </div>
+      <div class="priv ticked">
+        <div class="row"><span class="ck">✓</span><h3 data-i18n="pr5t">No account required</h3></div>
+        <p data-i18n="pr5d">You never sign up for TokenRemain — being signed in to your local tools is enough.</p>
+      </div>
+      <div class="priv ticked">
+        <div class="row"><span class="ck">✓</span><h3 data-i18n="pr6t">Cache and stats stay local</h3></div>
+        <p data-i18n="pr6d">Mac caches and cost statistics stay local. Only when you enable sync does an allowlisted, encrypted display snapshot enter your private iCloud database.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= limitations ================= -->
+  <section id="limits">
+    <div class="split">
+    <div>
+    <p class="eyebrow">Current Build</p>
+    <h2 data-i18n="lm-h2">Known limits — read before you download</h2>
+    <p class="lede" data-i18n="lm-lede">TokenRemain is in early distribution. These limits are deliberate trade-offs — data safety always outranks feature coverage.</p>
+    </div>
+    <div class="limit-card ticked">
+      <div class="head"><span class="sym">!</span><span data-i18n="lm-head">Known limitations</span></div>
+      <ul>
+        <li><span class="k" data-i18n="lmk1">CHIP</span><span data-i18n="lm1"><strong>Apple Silicon (arm64) only</strong> — no Intel builds yet.</span></li>
+        <li><span class="k" data-i18n="lmk2">OS</span><span data-i18n="lm2">Requires <strong>macOS 14 Sonoma or later</strong>; macOS 26 gets native Liquid Glass, 14/15 fall back to the dark card style.</span></li>
+        <li><span class="k" data-i18n="lmk3">DIST</span><span data-i18n="lm3"><strong>Developer ID signed .dmg</strong>, not on the Mac App Store yet; if Gatekeeper objects, allow it under System Settings → Privacy &amp; Security.</span></li>
+        <li><span class="k" data-i18n="lmk4">DEPS</span><span data-i18n="lm4">Direct quota queries need the <strong>matching tools signed in on this Mac</strong> (Claude Code, Codex CLI, Cursor…); services that aren't signed in show setup hints. Z.ai is the only one that needs a pasted API key.</span></li>
+        <li><span class="k" data-i18n="lmk5">EST</span><span data-i18n="lm5">Cost figures are <strong>API list-price estimates</strong>, not your subscription bill; when a credential expires, data pauses and the app tells you how to recover.</span></li>
+      </ul>
+    </div>
+    </div>
+  </section>
+
+  <!-- ================= features ================= -->
+  <section>
+    <p class="eyebrow">Features</p>
+    <h2 data-i18n="ft-h2">Keep your pace in hand</h2>
+    <div class="feat-sub">
+      <div class="feat ticked">
+        <div class="glyph">PACE</div>
+        <h3 data-i18n="ft1t">Pace prediction</h3>
+        <p data-i18n="ft1d">Real window progress plus official reset times decide whether you'll make it to reset — with an ETA when you won't.</p>
+      </div>
+      <div class="feat ticked">
+        <div class="glyph">MENU BAR</div>
+        <h3 data-i18n="ft2t">Menu bar &amp; floating window</h3>
+        <p data-i18n="ft2d">Choose which apps show in the menu bar; refresh every 1/5/15/30 min or manually; a floating window stays on top across Spaces.</p>
+      </div>
+      <div class="feat ticked">
+        <div class="glyph">COST</div>
+        <h3 data-i18n="ft3t">Today's cost estimate</h3>
+        <p data-i18n="ft3d">ccusage counts today's tokens and estimated API cost, split by provider, all computed locally.</p>
+      </div>
+      <div class="feat ticked">
+        <div class="glyph">AI FEED</div>
+        <h3 data-i18n="ft4t">AI feed</h3>
+        <p data-i18n="ft4d">Quota resets, rate-limit changes and major model releases get pinned and trigger local macOS notifications.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= install ================= -->
+  <section>
+    <p class="eyebrow">Install</p>
+    <h2 data-i18n="in-h2">Installed in three steps</h2>
+    <div class="steps">
+      <div class="step">
+        <h3 data-i18n="st1t">Download and open the .dmg</h3>
+        <p data-i18n="st1d">Grab <code>TokenRemain.dmg</code> from the button above or the Releases page, then double-click to mount.</p>
+      </div>
+      <div class="step">
+        <h3 data-i18n="st2t">Drag into Applications</h3>
+        <p data-i18n="st2d">Drop TokenRemain into your Applications folder; if the first launch is blocked, allow it under Privacy &amp; Security.</p>
+      </div>
+      <div class="step">
+        <h3 data-i18n="st3t">See you in the menu bar</h3>
+        <p data-i18n="st3d">Onboarding detects the AI tools on this Mac and pre-selects them — confirm and tracking starts. No Dock icon; it lives in the menu bar.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= repo ================= -->
+  <section>
+    <div class="repo-band ticked">
+      <div class="txt">
+        <h2 data-i18n="rp-h2">All source, in the open</h2>
+        <p data-i18n="rp-p">How credentials are read and where data goes — every line is auditable. Issues and PRs welcome.<br><code>github.com/Carstin520/token-remain</code></p>
+      </div>
+      <a class="btn btn-ghost" href="https://github.com/Carstin520/token-remain" rel="noopener">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 .2a8 8 0 0 0-2.5 15.6c.4.1.5-.2.5-.4v-1.4c-2.2.5-2.7-1-2.7-1-.4-.9-.9-1.2-.9-1.2-.7-.5.1-.5.1-.5.8.1 1.2.9 1.2.9.7 1.2 1.9.9 2.4.7 0-.5.3-.9.5-1.1-1.8-.2-3.7-.9-3.7-4a3 3 0 0 1 .8-2.1c0-.2-.3-1 .1-2.1 0 0 .7-.2 2.2.8a7.5 7.5 0 0 1 4 0c1.5-1 2.2-.8 2.2-.8.4 1.1.1 1.9.1 2.1a3 3 0 0 1 .8 2.1c0 3.1-1.9 3.8-3.7 4 .3.3.6.8.6 1.5v2.2c0 .2.1.5.5.4A8 8 0 0 0 8 .2z"/></svg>
+        <span data-i18n="rp-btn">Open the repo</span>
+      </a>
+    </div>
+  </section>
+
+  <footer class="site">
+    <p class="disclaimer" data-i18n="fd">TokenRemain is an independent app, not affiliated with, endorsed by, or sponsored by Anthropic, OpenAI, Anysphere, xAI, GitHub, Zhipu AI, or any other provider; service names and marks appear only to identify the services you can choose to connect. Cost figures are API list-price estimates; quota and pricing policies are defined by each provider's official pages.</p>
+    <div class="frow">
+      <span>© 2026 Dongheng Li</span>
+      <span>
+        <a href="privacy.html" data-i18n="fp">Privacy Policy</a>
+        ·
+        <a href="support.html" data-i18n="fs">Support</a>
+        ·
+        <a href="https://github.com/Carstin520/token-remain/issues" rel="noopener" data-i18n="fi">Report an issue</a>
+      </span>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+/* ---------- i18n: English inline (default), Chinese dictionary ---------- */
+var ZH={
+  "nav-dl":"下载","nav-screens":"界面","nav-providers":"支持的服务","nav-privacy":"隐私","nav-policy":"隐私政策","nav-support":"支持","nav-limits":"限制",
+  "h-h1":"你的 AI 额度，<br><span class=\"accent\">常驻菜单栏</span>。",
+  "h-sub":"一处看全 <strong>Claude Code、Codex、Cursor、Grok、GLM</strong> 等 <strong>18+ 服务</strong>的剩余额度与重置倒计时。Provider 凭证始终留在 Mac；启用 Apple 设备同步后，只有经过白名单过滤并使用 AES-256-GCM 加密的额度快照会通过你自己的 iCloud 账户传输。",
+  "h-dl":"下载 TokenRemain.dmg","h-gh":"GitHub 仓库","h-req3":".dmg 直装",
+  "h-hint":"按钮指向最新 Release 附件；也可到 <a href=\"https://github.com/Carstin520/token-remain/releases\" rel=\"noopener\">Releases 页</a> 查看全部版本。",
+  "chip-grok":"Grok 周池",
+  "s-h2":"三块屏幕，同一套像素语言",
+  "s-lede":"菜单栏弹窗在上方已经见过——下面全部是<strong style=\"color:var(--text)\">正在运行的最新版实机截图</strong>：桌面 Dashboard、iPhone 版与桌面小组件。",
+  "cap-dash-t":"Dashboard · 实机","cap-dash-c":"真实本地用量：今日 202.16M tokens、$189.11 估算成本按服务商拆分；右侧官方额度实时进度与风险提示。",
+  "cap-pov-t":"iPhone · 概览","cap-pov-c":"与 Mac 跨设备同步：白名单额度快照在进入你的 iCloud 私有数据库前即完成加密。",
+  "cap-ptr-t":"iPhone · 趋势","cap-ptr-c":"已同步 30 天真实历史：每日堆叠、7 / 14 / 30 天与 Tokens / 费用双口径。",
+  "cap-wg-t":"Widgets · 小组件","cap-wg-c":"中 / 小两档桌面小组件：最低剩余、双 provider 段条与重置倒计时，一眼扫完。",
+  "pv-h2":"支持的服务",
+  "pv-lede":"绝大多数服务<strong style=\"color:var(--text)\">登录即自动接入</strong>：只读各工具已经存在本机的凭证，不额外登录、不代刷。每张卡片注明数据从哪来。",
+  "pv-claude-d":"官方 5 小时 / 7 天窗口 + 重置倒计时。oauth/usage 直查，凭证异常时自动降级 PTY 探针，绝不触碰 refresh token。",
+  "pv-codex-d":"主账户 5 小时 / 7 天实时窗口。服务端接口直查，离线回退最近本地快照；用量超前时给出用尽预测。",
+  "pv-cursor-d":"月度账期剩余与重置倒计时。<code>state.vscdb</code> 只读查询。",
+  "pv-grok-d":"周池剩余额度。只读 Grok CLI 已有凭证。",
+  "pv-zai-d":"Coding Plan 会话 / 周窗口。Key 只存钥匙串。",
+  "pv-copilot-d":"月度 Credits。只读本机 GitHub 登录。",
+  "pv-devin-d":"日 / 周配额。",
+  "pv-or-d":"预充积分余额。",
+  "pv-ag-d":"配额池。只读本机登录态。",
+  "pv-oc-d":"Go 套餐用量。本地数据库扫描估算，纯本地。",
+  "pv-compat-n":"token-monitor 兼容层","pv-volc":"火山引擎",
+  "pv-note":"各服务的凭证位置与接口方式在仓库 <code>README</code> 有完整说明；节奏预测基于真实窗口进度与官方重置时间，判断当前用量能否撑到重置。",
+  "pr-h2":"隐私不是承诺，是架构。",
+  "pr-lede":"下面每一条都是可验证的技术事实，不是隐私政策里的套话——对应实现都能在源码里逐行找到。",
+  "pipe-n1":"本机已有凭证","pipe-a1":"─ 只读 ─▶","pipe-n2":"各服务官方接口","pipe-n3":"本地渲染 · 本地缓存",
+  "pr1t":"凭证只读，绝不代刷","pr1d":"只读各工具自己维护的 access token，绝不触碰 refresh token、绝不写回——不与 Claude Code / Cursor 争用登录态。",
+  "pr2t":"Key 只进钥匙串","pr2d":"手动接入的 API Key（Z.ai、OpenRouter 等）只存 macOS 钥匙串，不进源码、包体或日志。",
+  "pr3t":"没有我们的凭证中转服务器","pr3d":"额度直查直连各服务官方接口；TokenRemain 不运行凭证中转服务，可选的 Apple 设备同步使用你自己的 iCloud 私有数据库。",
+  "pr4t":"无追踪、无分析","pr4d":"不埋点、不上报、没有广告 SDK。",
+  "pr5t":"无需注册账户","pr5d":"不需要为 TokenRemain 注册任何账号——登录本机已有工具即自动接入。",
+  "pr6t":"本地缓存，可选加密同步","pr6d":"Mac 缓存与成本统计留在本机；只有你主动启用同步时，经过白名单过滤的加密展示快照才会进入你的 iCloud 私有数据库。",
+  "lm-h2":"现阶段限制，下载前请确认",
+  "lm-lede":"TokenRemain 仍在早期分发阶段，以下限制是刻意的取舍——数据安全永远排在功能覆盖前面。",
+  "lm-head":"已知限制",
+  "lmk1":"芯片","lm1":"<strong>仅支持 Apple Silicon（arm64）</strong>，Intel Mac 暂不提供构建。",
+  "lmk2":"系统","lm2":"需要 <strong>macOS 14 Sonoma 或更高</strong>；macOS 26 可启用原生 Liquid Glass 样式，14/15 自动回退深色卡片。",
+  "lmk3":"分发","lm3":"<strong>Developer ID 直发 .dmg</strong>，暂未上架 Mac App Store；若系统拦截，请到「系统设置 → 隐私与安全性」允许打开。",
+  "lmk4":"依赖","lm4":"额度直查依赖<strong>本机已登录的对应工具</strong>（Claude Code、Codex CLI、Cursor 等）；未登录的服务会显示接入指引。Z.ai 是唯一需要手动粘贴 API Key 的服务。",
+  "lmk5":"估算","lm5":"成本数字是 <strong>API 标价估算</strong>，不等于订阅账单；部分服务凭证过期时数据会暂停更新并提示恢复方法。",
+  "ft-h2":"把节奏握在手里",
+  "ft1t":"节奏预测","ft1d":"基于真实窗口进度与官方重置时间判断能否撑到重置，可能提前用尽时给出预计时长。",
+  "ft2t":"菜单栏与浮窗","ft2d":"菜单栏显示哪些应用自选；刷新 1/5/15/30 分钟或仅手动；桌面浮窗跨空间常驻。",
+  "ft3t":"今日成本估算","ft3d":"ccusage 统计今日 token 与估算 API 成本，按服务商拆分，全部本地计算。",
+  "ft4t":"AI 动态聚合","ft4d":"额度重置、速率限制变化与重大模型更新自动置顶并触发 macOS 本地通知。",
+  "in-h2":"三步装好",
+  "st1t":"下载并打开 .dmg","st1d":"从上方按钮或 Releases 页获取 <code>TokenRemain.dmg</code>，双击挂载。",
+  "st2t":"拖入 Applications","st2d":"把 TokenRemain 拖进应用程序文件夹，首次启动如被拦截，到「隐私与安全性」允许。",
+  "st3t":"菜单栏见","st3d":"Onboarding 自动检测本机已装的 AI 工具并预勾选，确认即开始追踪。无 Dock 图标，常驻菜单栏。",
+  "rp-h2":"源码全部公开",
+  "rp-p":"凭证怎么读、数据去了哪，代码里一行行可查。Issue 与 PR 都欢迎。<br><code>github.com/Carstin520/token-remain</code>",
+  "rp-btn":"打开仓库",
+  "fd":"TokenRemain 为独立应用，与 Anthropic、OpenAI、Anysphere、xAI、GitHub、智谱 AI 等服务提供方均无隶属、背书或赞助关系；页面中出现的服务名称与标识仅用于说明你可选择接入的服务。成本数字为 API 标价估算，额度与价格政策以各服务官方页面为准。",
+  "fp":"隐私政策","fs":"支持","fi":"反馈问题"
+};
+var TITLES={en:"TokenRemain — Your AI quota, always in the menu bar",zh:"TokenRemain — AI 额度，常驻菜单栏"};
+(function(){
+  var EN={},nodes=document.querySelectorAll('[data-i18n]');
+  nodes.forEach(function(el){EN[el.dataset.i18n]=el.innerHTML});
+  var btn=document.getElementById('langBtn');
+  function store(l){try{localStorage.setItem('tr-lang',l)}catch(e){}}
+  function load(){try{return localStorage.getItem('tr-lang')}catch(e){return null}}
+  function apply(l){
+    var dict=l==='zh'?ZH:EN;
+    nodes.forEach(function(el){
+      var v=dict[el.dataset.i18n];
+      if(v!=null)el.innerHTML=v;
+    });
+    document.documentElement.lang=l==='zh'?'zh-CN':'en';
+    document.title=TITLES[l]||TITLES.en;
+    btn.textContent=l==='zh'?'EN':'中文';
+    store(l);
+  }
+  var param=new URLSearchParams(location.search).get('lang');
+  var lang=(param==='zh'||param==='en')?param:(load()||'en');
+  if(lang==='zh')apply('zh');
+  btn.addEventListener('click',function(){
+    apply(document.documentElement.lang==='en'?'zh':'en');
+  });
+})();
+
+/* ---------- 14-segment minibars (featured provider cards) ---------- */
+document.querySelectorAll('.minibar').forEach(function(bar){
+  var fill=+bar.dataset.fill,color=bar.dataset.color;
+  for(var i=0;i<14;i++){
+    var b=document.createElement('b');
+    if(i<fill)b.style.background=color;
+    bar.appendChild(b);
+  }
+});
+
+/* ---------- scroll reveal ---------- */
+(function(){
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches||!('IntersectionObserver' in window))return;
+  var els=document.querySelectorAll('figure.shot,.prov,.priv,.pipe-card,.limit-card,.feat,.step,.repo-band');
+  els.forEach(function(el){el.classList.add('reveal')});
+  var io=new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}
+    });
+  },{threshold:.12,rootMargin:'0px 0px -40px 0px'});
+  els.forEach(function(el){io.observe(el)});
+})();
+
+/* ---------- pointer-driven 3D tilt (lerped) ---------- */
+(function(){
+  var stage=document.getElementById('stage');
+  if(!stage||matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  var tx=-10,ty=6,cx=-10,cy=6;      /* targetRotY, targetRotX, current */
+  addEventListener('pointermove',function(e){
+    var nx=e.clientX/innerWidth*2-1, ny=e.clientY/innerHeight*2-1;
+    tx=-10+nx*10; ty=6-ny*8;
+  });
+  (function loop(){
+    cx+=(tx-cx)*.06; cy+=(ty-cy)*.06;
+    stage.style.transform='rotateX('+cy.toFixed(2)+'deg) rotateY('+cx.toFixed(2)+'deg)';
+    requestAnimationFrame(loop);
+  })();
+})();
+
+/* ---------- canvas backdrop: perspective grid + drifting tokens ---------- */
+(function(){
+  var cv=document.getElementById('bg'),ctx=cv.getContext('2d');
+  var W,H,DPR=Math.min(devicePixelRatio||1,2);
+  var reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function size(){
+    W=innerWidth;H=innerHeight;
+    cv.width=W*DPR;cv.height=H*DPR;
+    cv.style.width=W+'px';cv.style.height=H+'px';
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+  }
+  size();addEventListener('resize',size);
+
+  var COLORS=['#5B4FB0','#2B8FA0','#24479C'];
+  var pts=[];
+  for(var i=0;i<70;i++){
+    pts.push({x:Math.random(),y:Math.random(),z:.3+Math.random()*.7,
+      s:Math.random()*1.4+.6,c:COLORS[i%COLORS.length],
+      vx:(Math.random()-.5)*.00012,vy:-(.00003+Math.random()*.00008)});
+  }
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    /* perspective floor grid, anchored to bottom */
+    var horizon=H*.62, rows=14;
+    ctx.lineWidth=1;
+    for(var r=0;r<=rows;r++){
+      var p=r/rows, y=horizon+(H-horizon)*p*p;
+      ctx.strokeStyle='rgba(34,48,68,'+(0.05+p*.24)+')';
+      ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();
+    }
+    var cols=18;
+    for(var c2=0;c2<=cols;c2++){
+      var xNorm=c2/cols, xh=W*.5+(xNorm-.5)*W*.34, xb=(xNorm-.5)*W*2.1+W*.5;
+      ctx.strokeStyle='rgba(34,48,68,0.16)';
+      ctx.beginPath();ctx.moveTo(xh,horizon);ctx.lineTo(xb,H);ctx.stroke();
+    }
+    /* soft glow pools, brand dims only */
+    var g=ctx.createRadialGradient(W*.72,H*.34,0,W*.72,H*.34,W*.42);
+    g.addColorStop(0,'rgba(91,79,176,0.10)');g.addColorStop(1,'rgba(91,79,176,0)');
+    ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+    var g2=ctx.createRadialGradient(W*.15,H*.85,0,W*.15,H*.85,W*.4);
+    g2.addColorStop(0,'rgba(43,143,160,0.07)');g2.addColorStop(1,'rgba(43,143,160,0)');
+    ctx.fillStyle=g2;ctx.fillRect(0,0,W,H);
+    /* drifting square tokens */
+    for(var i2=0;i2<pts.length;i2++){
+      var p2=pts[i2];
+      if(!reduced){
+        p2.x+=p2.vx;p2.y+=p2.vy;
+        if(p2.y<-.02){p2.y=1.02;p2.x=Math.random()}
+        if(p2.x<-.02)p2.x=1.02; if(p2.x>1.02)p2.x=-.02;
+      }
+      var sz=p2.s*p2.z*2.4;
+      ctx.globalAlpha=.14+p2.z*.3;
+      ctx.fillStyle=p2.c;
+      ctx.fillRect(p2.x*W,p2.y*H,sz,sz);
+    }
+    ctx.globalAlpha=1;
+    if(!reduced)requestAnimationFrame(draw);
+  }
+  draw();
+})();
+</script>
+</body>
+</html>
