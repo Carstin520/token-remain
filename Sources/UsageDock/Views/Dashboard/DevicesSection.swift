@@ -40,7 +40,7 @@ struct DevicesSection: View {
                         }
                         InfoRow(label: "数据库", value: "iCloud 私有数据库")
                         InfoRow(label: "当前发布来源", value: "\(sync.previewProviders.count) 个")
-                        InfoRow(label: "变更上传", value: "约 12 秒后")
+                        InfoRow(label: "变更上传", value: "约 4 秒后")
                         InfoRow(label: "保活同步", value: "每 15 分钟")
                         if let uploaded = sync.lastUploadedAt {
                             InfoRow(
@@ -60,7 +60,7 @@ struct DevicesSection: View {
                     VStack(alignment: .leading, spacing: 14) {
                         PanelHeader(title: "Apple 设备接收端", subtitle: "由系统 iCloud 账户关联")
                         RoadmapList(items: [
-                            "iPhone 前台每 5 分钟校验最新快照",
+                            "iPhone 前台每 45 秒校验最新快照",
                             "CloudKit 静默推送触发低延迟拉取",
                             "主屏 / 锁屏 Widget 与 Apple Watch 读取已验证快照",
                             "无需 TokenRemain 登录或 Sign in with Apple"
