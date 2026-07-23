@@ -112,7 +112,7 @@ struct AIFeedHotStoriesCard: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("\(post.displayName)：\(post.text)")
+        .accessibilityLabel(L10n.format("feed.post_accessibility", post.displayName, post.text))
         .accessibilityHint(L10n.text("feed.open_x_hint"))
     }
 

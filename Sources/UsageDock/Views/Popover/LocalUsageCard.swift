@@ -58,9 +58,9 @@ struct LocalUsageCard: View {
                                         color: UsageInsights.color(for: $0.id)
                                     )
                                 },
-                                lineWidth: 10,
+                                lineWidth: 8,
                                 centerText: ringCenterText,
-                                centerCaption: hoveredEntry == nil ? nil : L10n.text("usage.api_cost"),
+                                centerCaption: ringCenterCaption,
                                 centerTextSize: 9,
                                 highlightedSegmentID: hoveredProviderID,
                                 onHoverSegment: { hoveredProviderID = $0 }
@@ -159,6 +159,10 @@ struct LocalUsageCard: View {
 
     private var ringCenterText: String? {
         hoveredEntry.map { L10n.usd($0.cost) }
+    }
+
+    private var ringCenterCaption: String? {
+        hoveredEntry.map { UsageFormatting.compactNumber($0.tokens) }
     }
 
     private func providerRow(_ entry: UsageInsights.ProviderUsage) -> some View {

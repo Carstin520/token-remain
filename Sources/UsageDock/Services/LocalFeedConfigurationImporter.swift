@@ -16,9 +16,9 @@ struct LocalFeedConfigurationImporter: Sendable {
         var errorDescription: String? {
             switch self {
             case .emptyToken:
-                return "工程配置文件中的 XBearerToken 为空"
+                return L10n.text("feed.config.empty_token")
             case .unreadableFile:
-                return "无法读取本地 AI Feed 配置文件"
+                return L10n.text("feed.config.unreadable")
             }
         }
     }

@@ -59,16 +59,6 @@
 "pace.lasts_until_reset" = "Đủ đến lần đặt lại";
 "pace.projected_early" = "Dự kiến cạn sớm";
 "pace.projected_in" = "Dự kiến cạn sau %1$@";
-"暂无按服务商拆分" = "Không có phân tích theo nhà cung cấp";
-"正在读取 ccusage 本地统计…" = "Đang đọc dữ liệu ccusage cục bộ…";
-"正在读取官方额度…" = "Đang đọc hạn mức chính thức…";
-"打开 Dashboard" = "Mở Dashboard";
-"设置" = "Cài đặt";
-"退出" = "Thoát";
-"添加组件" = "Thêm tiện ích";
-"刷新用量" = "Làm mới mức dùng";
-"查看全部" = "Xem tất cả";
-"在 X 查看" = "Xem trên X";
 "widget.all_visible" = "Tất cả tiện ích đều đang hiển thị";
 "widget.add_named" = "Thêm %1$@";
 "widget.keep_expanded" = "Giữ mở rộng";

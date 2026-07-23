@@ -185,38 +185,38 @@ final class TrackedProvidersStore: ObservableObject {
 
         let detections = [
             detection(.claude, installed: exists(".claude"),
-                      found: "检测到 ~/.claude(Claude Code 已安装)",
-                      hint: "安装并登录 Claude Code 后自动接入"),
+                      found: L10n.text("provider.detect.claude.found"),
+                      hint: L10n.format("provider.detect.install_login_hint", "Claude Code")),
             detection(.codex, installed: exists(".codex"),
-                      found: "检测到 ~/.codex(Codex CLI 已安装)",
-                      hint: "安装并登录 Codex CLI 后自动接入"),
+                      found: L10n.text("provider.detect.codex.found"),
+                      hint: L10n.format("provider.detect.install_login_hint", "Codex CLI")),
             detection(.cursor, installed: cursorInstalled,
-                      found: "检测到 Cursor 应用数据",
-                      hint: "安装并登录 Cursor 后自动接入"),
+                      found: L10n.text("provider.detect.cursor.found"),
+                      hint: L10n.format("provider.detect.install_login_hint", "Cursor")),
             detection(.copilot, installed: copilotInstalled,
-                      found: "检测到 GitHub Copilot / gh CLI 配置",
-                      hint: "在编辑器登录 Copilot 或运行 gh auth login 后自动接入"),
+                      found: L10n.text("provider.detect.copilot.found"),
+                      hint: L10n.text("provider.detect.copilot.hint")),
             detection(.devin, installed: devinInstalled,
-                      found: "检测到 Devin 应用数据",
-                      hint: "安装并登录 Devin 后自动接入"),
+                      found: L10n.text("provider.detect.devin.found"),
+                      hint: L10n.format("provider.detect.install_login_hint", "Devin")),
             detection(.grok, installed: exists(".grok/auth.json"),
-                      found: "检测到 ~/.grok 登录凭证",
-                      hint: "运行一次 grok 并登录后自动接入"),
+                      found: L10n.text("provider.detect.grok.found"),
+                      hint: L10n.text("provider.detect.grok.hint")),
             detection(.openrouter, installed: openRouterStore.load() != nil,
-                      found: "检测到已配置的 OpenRouter API Key",
-                      hint: "需要 API Key；开启后在「数据源」页粘贴一次即可"),
+                      found: L10n.format("provider.detect.found_api_key", "OpenRouter"),
+                      hint: L10n.text("provider.detect.needs_api_key_hint")),
             detection(.antigravity, installed: antigravityInstalled,
-                      found: "检测到 Antigravity 应用",
-                      hint: "安装并登录 Antigravity 后自动接入"),
+                      found: L10n.text("provider.detect.antigravity.found"),
+                      hint: L10n.format("provider.detect.install_login_hint", "Antigravity")),
             detection(.opencode, installed: opencodeInstalled,
-                      found: "检测到 OpenCode 本地数据",
-                      hint: "安装并登录 OpenCode Go 后自动接入"),
+                      found: L10n.text("provider.detect.opencode.found"),
+                      hint: L10n.format("provider.detect.install_login_hint", "OpenCode Go")),
             detection(.zai, installed: zaiStore.load() != nil,
-                      found: "检测到已配置的 Z.ai API Key",
-                      hint: "需要 API Key；开启后在「数据源」页粘贴一次即可"),
+                      found: L10n.format("provider.detect.found_api_key", "Z.ai"),
+                      hint: L10n.text("provider.detect.needs_api_key_hint")),
             detection(.kiro, installed: KiroUsageService.cliPath() != nil,
-                      found: "检测到 kiro-cli",
-                      hint: "安装 Kiro CLI 并登录后自动接入")
+                      found: L10n.text("provider.detect.kiro.found"),
+                      hint: L10n.text("provider.detect.kiro.hint"))
         ] + Self.secretDetections(home: home, environment: environment)
         // 稳定排序:与 displayOrder 一致,onboarding 列表顺序不抖动。
         let order = ProviderQuota.Provider.displayOrder
@@ -238,8 +238,12 @@ final class TrackedProvidersStore: ObservableObject {
                 provider: descriptor.provider,
                 installed: configured,
                 detail: configured
-                    ? "检测到已配置的 \(descriptor.provider.displayName) 凭据"
-                    : "需要\(descriptor.isCookie ? " Cookie" : " API Key")；开启后在「数据源」页粘贴一次即可"
+                    ? L10n.format("provider.detect.found_credentials", descriptor.provider.displayName)
+                    : L10n.text(
+                        descriptor.isCookie
+                            ? "provider.detect.needs_cookie_hint"
+                            : "provider.detect.needs_api_key_hint"
+                    )
             )
         }
     }

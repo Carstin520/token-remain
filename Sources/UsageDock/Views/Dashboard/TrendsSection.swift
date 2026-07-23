@@ -25,8 +25,8 @@ struct TrendsSection: View {
                 DashboardCard {
                     EmptyStateView(
                         icon: "chart.bar.xaxis",
-                        title: "趋势数据按日累积中",
-                        message: "每日用量趋势需要至少两天的本地历史。你每天使用 Claude Code / Codex 后,ccusage 会按日累积 token 与成本,凑齐后这里会自动显示真实的堆叠柱状趋势,绝不虚构曲线。"
+                        title: L10n.text("trends.accumulating_title"),
+                        message: L10n.text("trends.accumulating_message")
                     )
                 }
             }
@@ -41,15 +41,15 @@ struct TrendsSection: View {
     private var currentSnapshotPanel: some View {
         DashboardCard {
             VStack(alignment: .leading, spacing: 12) {
-                PanelHeader(title: "今日快照", subtitle: "趋势累积的起点 · 本地 ccusage")
+                PanelHeader(title: L10n.text("trends.snapshot_title"), subtitle: L10n.text("trends.snapshot_subtitle"))
 
                 if insights.totalTokens == nil {
-                    Text("暂无今日本地用量。")
+                    Text(L10n.text("trends.no_local_usage_today"))
                         .font(.system(size: 12))
                         .foregroundStyle(DashboardTheme.secondaryText)
                 } else {
-                    InfoRow(label: "今日 Tokens", value: insights.totalTokens.map { UsageFormatting.compactNumber($0) } ?? "—")
-                    InfoRow(label: "今日预估成本", value: insights.totalCost.map { String(format: "$%.2f", $0) } ?? "—")
+                    InfoRow(label: L10n.text("usage.today_tokens"), value: insights.totalTokens.map { UsageFormatting.compactNumber($0) } ?? "—")
+                    InfoRow(label: L10n.text("usage.today_est_cost"), value: insights.totalCost.map { String(format: "$%.2f", $0) } ?? "—")
                     Divider().overlay(DashboardTheme.border)
                     ForEach(insights.providerUsage) { usage in
                         InfoRow(
@@ -66,11 +66,11 @@ struct TrendsSection: View {
     private var roadmapPanel: some View {
         DashboardCard {
             VStack(alignment: .leading, spacing: 14) {
-                PanelHeader(title: "规划中", subtitle: "趋势相关的产品方向")
+                PanelHeader(title: L10n.text("trends.roadmap_title"), subtitle: L10n.text("trends.roadmap_subtitle"))
                 RoadmapList(items: [
-                    "按周使用热力图",
-                    "服务商成本占比的历史变化",
-                    "接近额度上限时的用量提醒"
+                    L10n.text("trends.roadmap.heatmap"),
+                    L10n.text("trends.roadmap.cost_share_history"),
+                    L10n.text("trends.roadmap.limit_alerts")
                 ])
             }
         }

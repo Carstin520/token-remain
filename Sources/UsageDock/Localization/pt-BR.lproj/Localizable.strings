@@ -59,16 +59,6 @@
 "pace.lasts_until_reset" = "Dura até a redefinição";
 "pace.projected_early" = "Esgotamento antecipado";
 "pace.projected_in" = "Esgota em %1$@";
-"暂无按服务商拆分" = "Sem detalhamento por provedor";
-"正在读取 ccusage 本地统计…" = "Lendo dados locais do ccusage…";
-"正在读取官方额度…" = "Lendo a cota oficial…";
-"打开 Dashboard" = "Abrir Dashboard";
-"设置" = "Ajustes";
-"退出" = "Sair";
-"添加组件" = "Adicionar widget";
-"刷新用量" = "Atualizar uso";
-"查看全部" = "Ver tudo";
-"在 X 查看" = "Ver no X";
 "widget.all_visible" = "Todos os widgets estão visíveis";
 "widget.add_named" = "Adicionar %1$@";
 "widget.keep_expanded" = "Manter expandido";

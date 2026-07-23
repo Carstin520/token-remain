@@ -21,7 +21,11 @@ struct RiskStrip: View {
                         .minimumScaleFactor(0.88)
 
                     if let window = insights.constrainingWindow {
-                        Text("\(window.provider.displayName) 剩余 \(UsageFormatting.percent(window.remainingPercent))")
+                        Text(L10n.format(
+                            "risk.provider_remaining",
+                            window.provider.displayName,
+                            UsageFormatting.percent(window.remainingPercent)
+                        ))
                             .numericFont(10, .medium)
                             .foregroundStyle(DashboardTheme.secondaryText)
                             .lineLimit(1)
@@ -44,10 +48,18 @@ struct RiskStrip: View {
             )
             .pixelTicks(cornerRadius: 13, color: risk.tint.opacity(0.35))
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("当前使用判断 \(risk.badge)，\(insights.decisionHeadline(at: context.date))")
+            .accessibilityLabel(L10n.format(
+                "risk.accessibility_summary",
+                risk.badge,
+                insights.decisionHeadline(at: context.date)
+            ))
             .accessibilityValue(
                 insights.constrainingWindow.map {
-                    "\($0.provider.displayName) 剩余 \(UsageFormatting.percent($0.remainingPercent))"
+                    L10n.format(
+                        "risk.provider_remaining",
+                        $0.provider.displayName,
+                        UsageFormatting.percent($0.remainingPercent)
+                    )
                 } ?? ""
             )
         }

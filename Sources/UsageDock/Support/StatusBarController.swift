@@ -219,9 +219,9 @@ final class StatusBarController: NSObject {
         for provider in ProviderQuota.Provider.displayOrder {
             guard let quota = store.quotaValue(for: provider) else { continue }
             let remaining = UsageFormatting.percent(max(0, 100 - quota.primary.usedPercent))
-            tooltipLines.append("\(provider.displayName) 剩余 \(remaining)")
+            tooltipLines.append(L10n.format("statusbar.tooltip_remaining", provider.displayName, remaining))
         }
-        statusItem.button?.toolTip = tooltipLines.joined(separator: "；")
+        statusItem.button?.toolTip = tooltipLines.joined(separator: L10n.text("statusbar.tooltip_separator"))
         statusItem.length = ceil(title.size().width) + 8
     }
 

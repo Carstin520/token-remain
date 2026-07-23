@@ -27,7 +27,7 @@ struct TokenRemainFullBodyRobot: View {
         .frame(width: size, height: size)
         .clipped()
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("TokenRemain，\(state.accessibilityDescription)")
+        .accessibilityLabel(L10n.format("logo.accessibility.brand_state", state.accessibilityDescription))
     }
 
     @ViewBuilder

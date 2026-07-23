@@ -52,7 +52,7 @@ struct AIFeedPostCard: View {
                     metric(icon: "arrow.2.squarepath", value: post.metrics.reposts)
                     metric(icon: "heart", value: post.metrics.likes)
                     Spacer()
-                    Text("在 X 查看")
+                    Text(L10n.text("feed.view_on_x"))
                         .font(.system(size: 10, weight: .medium))
                         .foregroundStyle(DashboardTheme.link)
                 }
@@ -69,8 +69,8 @@ struct AIFeedPostCard: View {
             .pixelTicks(cornerRadius: 13)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("\(post.displayName)：\(post.text)")
-        .accessibilityHint("在 X 打开原帖")
+        .accessibilityLabel(L10n.format("feed.post_accessibility", post.displayName, post.text))
+        .accessibilityHint(L10n.text("feed.open_x_hint"))
     }
 
     private var avatar: some View {

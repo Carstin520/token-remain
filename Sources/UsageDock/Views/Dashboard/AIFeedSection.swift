@@ -8,7 +8,7 @@ struct AIFeedSection: View {
         VStack(alignment: .leading, spacing: 16) {
             SectionTitleHeader(
                 title: "AI Feed",
-                subtitle: "与你的额度和工作流直接相关的精选更新",
+                subtitle: L10n.text("feed.section_subtitle"),
                 trailing: updatedText
             )
 
@@ -20,8 +20,8 @@ struct AIFeedSection: View {
 
             if !store.importantPosts.isEmpty {
                 feedGroup(
-                    title: "重要提醒",
-                    subtitle: "额度、价格、产品发布和服务状态优先",
+                    title: L10n.text("feed.important_title"),
+                    subtitle: L10n.text("feed.important_subtitle"),
                     posts: store.importantPosts
                 )
             }
@@ -30,18 +30,18 @@ struct AIFeedSection: View {
                 DashboardCard {
                     EmptyStateView(
                         icon: "dot.radiowaves.left.and.right",
-                        title: store.isRefreshing ? "正在同步精选动态" : "暂无重要动态",
+                        title: store.isRefreshing ? L10n.text("feed.syncing_title") : L10n.text("feed.empty_title"),
                         message: store.isRefreshing
-                            ? "正在筛选与你的额度和工作流直接相关的信息。"
-                            : "有值得关注的新消息时会自动出现在这里。"
+                            ? L10n.text("feed.syncing_message")
+                            : L10n.text("feed.empty_message")
                     )
                 }
             }
 
             if !store.morePosts.isEmpty {
                 feedGroup(
-                    title: "更多值得关注",
-                    subtitle: "按相关性、时效和互动质量排序",
+                    title: L10n.text("feed.more_title"),
+                    subtitle: L10n.text("feed.more_subtitle"),
                     posts: store.morePosts
                 )
             }
@@ -51,7 +51,7 @@ struct AIFeedSection: View {
 
     private var updatedText: String? {
         store.lastUpdated.map {
-            "更新于 " + $0.formatted(date: .omitted, time: .standard)
+            L10n.format("common.updated_at", $0.formatted(date: .omitted, time: .standard))
         }
     }
 
@@ -63,7 +63,7 @@ struct AIFeedSection: View {
                     .foregroundStyle(notificationColor)
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("重要动态提醒")
+                    Text(L10n.text("feed.notify_title"))
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(DashboardTheme.text)
                     Text(notificationText)
@@ -74,7 +74,7 @@ struct AIFeedSection: View {
                 Spacer()
 
                 if store.notificationsEnabled && store.notificationStatus == .notDetermined {
-                    Button("允许通知") {
+                    Button(L10n.text("feed.allow_notifications")) {
                         Task { await store.requestNotificationPermission() }
                     }
                     .buttonStyle(.borderless)
@@ -82,7 +82,7 @@ struct AIFeedSection: View {
                 }
 
                 Toggle(
-                    "通知",
+                    L10n.text("feed.notifications"),
                     isOn: Binding(
                         get: { store.notificationsEnabled },
                         set: { value in Task { await store.setNotificationsEnabled(value) } }
@@ -92,7 +92,7 @@ struct AIFeedSection: View {
                 .toggleStyle(.switch)
                 .controlSize(.small)
                 .tint(DashboardTheme.violet)
-                .accessibilityLabel("重要动态通知")
+                .accessibilityLabel(L10n.text("feed.notify_accessibility"))
             }
         }
     }
@@ -100,7 +100,7 @@ struct AIFeedSection: View {
     private var updateUnavailableCard: some View {
         DashboardCard {
             Label(
-                "精选动态暂时无法更新，应用会在后台自动重试。",
+                L10n.text("feed.update_unavailable"),
                 systemImage: "exclamationmark.triangle.fill"
             )
             .font(.system(size: 11))
@@ -121,16 +121,16 @@ struct AIFeedSection: View {
     }
 
     private var notificationText: String {
-        guard store.notificationsEnabled else { return "通知已关闭" }
+        guard store.notificationsEnabled else { return L10n.text("feed.notify_off") }
         switch store.notificationStatus {
         case .authorized, .provisional, .ephemeral:
-            return "额度重置和重大更新会通过系统通知提醒"
+            return L10n.text("feed.notify_on_desc")
         case .denied:
-            return "通知已被系统拒绝，请到系统设置中开启"
+            return L10n.text("feed.notify_denied")
         case .notDetermined:
-            return "允许通知后，重要变化会第一时间提醒"
+            return L10n.text("feed.notify_prompt")
         @unknown default:
-            return "通知状态未知"
+            return L10n.text("feed.notify_unknown")
         }
     }
 

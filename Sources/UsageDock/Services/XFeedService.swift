@@ -15,11 +15,11 @@ struct XFeedService: Sendable {
         var errorDescription: String? {
             switch self {
             case .invalidRequest:
-                return "无法创建 X API 请求"
+                return L10n.text("feed.x.invalid_request")
             case .invalidResponse:
-                return "X API 返回了无法识别的数据"
+                return L10n.text("feed.x.invalid_response")
             case .api(let status, let message):
-                return "X API \(status)：\(message)"
+                return L10n.format("feed.x.api_error", status, message)
             }
         }
     }
@@ -86,7 +86,7 @@ struct XFeedService: Sendable {
             return TieredResult(
                 posts: primaryPosts,
                 selectedRotatingUsernames: [],
-                rotatingWarning: "第二梯队刷新失败：\(error.localizedDescription)"
+                rotatingWarning: L10n.format("feed.rotating_refresh_failed", error.localizedDescription)
             )
         }
     }

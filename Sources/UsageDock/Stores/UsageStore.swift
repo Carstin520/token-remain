@@ -365,7 +365,7 @@ final class UsageStore: ObservableObject {
                 history = fetched
                 historyCache.save(fetched)
             } catch {
-                errors.append("ccusage 历史: \(error.localizedDescription)")
+                errors.append(L10n.format("usage.ccusage_history_error", error.localizedDescription))
             }
         }
 

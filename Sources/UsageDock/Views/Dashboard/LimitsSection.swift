@@ -21,7 +21,7 @@ struct LimitsSection: View {
             SectionTitleHeader(
                 title: DashboardSection.limits.title,
                 subtitle: DashboardSection.limits.subtitle,
-                trailing: insights.lastUpdated.map { "更新于 \($0.formatted(date: .omitted, time: .standard))" }
+                trailing: insights.lastUpdated.map { L10n.format("common.updated_at", $0.formatted(date: .omitted, time: .standard)) }
             )
 
             LazyVGrid(
@@ -53,7 +53,7 @@ struct LimitsSection: View {
                             Button(role: .destructive) {
                                 withAnimation(.snappy) { tracked.setEnabled(provider, false) }
                             } label: {
-                                Label("停止追踪 \(provider.displayName)", systemImage: "minus.circle")
+                                Label(L10n.format("limits.stop_tracking_named", provider.displayName), systemImage: "minus.circle")
                             }
                         }
                 }
@@ -66,16 +66,16 @@ struct LimitsSection: View {
 
             DashboardCard {
                 VStack(alignment: .leading, spacing: 10) {
-                    PanelHeader(title: "关于额度窗口")
-                    Text("所有百分比表示窗口内的剩余额度。窗口由各服务端直接提供：Claude、Codex 与 Z.ai 通常包含 5 小时会话窗口与 7 天窗口；Cursor 为月度账期窗口；Grok 为周池窗口。除 Z.ai 需在「数据源」页粘贴 API Key 外，其余服务登录对应工具后自动接入。")
+                    PanelHeader(title: L10n.text("limits.about_windows_title"))
+                    Text(L10n.text("limits.about_windows_body"))
                         .font(.system(size: 12))
                         .foregroundStyle(DashboardTheme.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
-                    Text("增删追踪的应用：点「添加应用」卡片加入新的服务；在任意卡片上右键可停止追踪。")
+                    Text(L10n.text("limits.manage_tracking_hint"))
                         .font(.system(size: 12))
                         .foregroundStyle(DashboardTheme.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
-                    Text("重置时间来自官方快照；若某窗口暂未提供重置时间，会显示“待官方提供”。")
+                    Text(L10n.text("limits.reset_time_note"))
                         .font(.system(size: 12))
                         .foregroundStyle(DashboardTheme.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
@@ -124,8 +124,8 @@ private struct AddProviderTile: View {
                 } label: {
                     Label(
                         detection.installed
-                            ? "\(detection.provider.displayName)（已检测到）"
-                            : "\(detection.provider.displayName)（未检测到）",
+                            ? L10n.format("limits.provider_detected", detection.provider.displayName)
+                            : L10n.format("limits.provider_not_detected", detection.provider.displayName),
                         systemImage: detection.installed ? "checkmark.circle" : "circle.dashed"
                     )
                 }
@@ -135,10 +135,10 @@ private struct AddProviderTile: View {
                 Image(systemName: "plus.circle.dashed")
                     .font(.system(size: 22, weight: .medium))
                     .foregroundStyle(DashboardTheme.secondaryText)
-                Text("添加应用")
+                Text(L10n.text("limits.add_app"))
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(DashboardTheme.text)
-                Text("追踪更多 AI 编码工具的额度")
+                Text(L10n.text("limits.add_app_subtitle"))
                     .font(.system(size: 11))
                     .foregroundStyle(DashboardTheme.secondaryText)
             }
@@ -154,6 +154,6 @@ private struct AddProviderTile: View {
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
-        .accessibilityLabel("添加追踪应用")
+        .accessibilityLabel(L10n.text("limits.add_app_accessibility"))
     }
 }

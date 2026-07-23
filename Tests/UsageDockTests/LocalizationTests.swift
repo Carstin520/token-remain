@@ -82,6 +82,34 @@ struct LocalizationTests {
         }
     }
 
+    /// Locales the product promises complete coverage for. Every key in the
+    /// English catalog must exist there — new UI strings cannot ship
+    /// English-only (or Chinese-only) in these languages.
+    private let fullyLocalizedLocales = ["zh-Hans", "zh-Hant", "es", "de", "ja", "ko"]
+
+    @Test("Fully localized locales cover the entire English catalog")
+    func fullyLocalizedLocalesCoverAllKeys() throws {
+        let english = try loadStrings(locale: "en")
+        for locale in fullyLocalizedLocales {
+            let strings = try loadStrings(locale: locale)
+            let missing = Set(english.keys).subtracting(strings.keys)
+            #expect(
+                missing.isEmpty,
+                "\(locale) is missing \(missing.count) keys, e.g. \(missing.sorted().prefix(8))"
+            )
+            for (key, value) in strings {
+                #expect(!value.isEmpty, "Empty \(key) in \(locale)")
+            }
+            for key in english.keys {
+                #expect(
+                    placeholders(in: strings[key] ?? "").sorted()
+                        == placeholders(in: english[key] ?? "").sorted(),
+                    "Placeholder mismatch for \(key) in \(locale)"
+                )
+            }
+        }
+    }
+
     @Test("Arabic ships a real RTL localization")
     func arabicIsNotAnEnglishFallback() throws {
         let strings = try loadStrings(locale: "ar")
@@ -127,7 +155,7 @@ struct LocalizationTests {
     }
 
     private func placeholders(in value: String) -> [String] {
-        let pattern = #"%(?:\d+\$)?(?:@|d|f)"#
+        let pattern = #"%(?:\d+\$)?(?:\.\d+)?(?:@|lld|d|f)"#
         guard let regex = try? NSRegularExpression(pattern: pattern) else { return [] }
         let range = NSRange(value.startIndex..., in: value)
         return regex.matches(in: value, range: range).compactMap {

@@ -18,15 +18,15 @@ struct DataSourcesSection: View {
 
             DashboardCard {
                 VStack(alignment: .leading, spacing: 0) {
-                    PanelHeader(title: "数据来源状态")
+                    PanelHeader(title: L10n.text("datasource.status_title"))
                         .padding(.bottom, 4)
-                    Text("这里只显示至少成功连接过一次的应用；链路或凭据后来失效时仍会保留，并标记为“数据链失效”。")
+                    Text(L10n.text("datasource.visibility_note"))
                         .font(.system(size: 11))
                         .foregroundStyle(DashboardTheme.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.bottom, 12)
                     if visibleSources.isEmpty {
-                        Text("尚无成功连接过的数据来源")
+                        Text(L10n.text("datasource.none_connected"))
                             .font(.system(size: 12))
                             .foregroundStyle(DashboardTheme.mutedText)
                             .frame(maxWidth: .infinity, minHeight: 56, alignment: .center)
@@ -44,7 +44,7 @@ struct DataSourcesSection: View {
             if let errorMessage {
                 DashboardCard {
                     VStack(alignment: .leading, spacing: 8) {
-                        Label("最近一次刷新的诊断信息", systemImage: "exclamationmark.triangle.fill")
+                        Label(L10n.text("datasource.diagnostics_title"), systemImage: "exclamationmark.triangle.fill")
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundStyle(DashboardTheme.warning)
                         Text(errorMessage)
@@ -57,13 +57,13 @@ struct DataSourcesSection: View {
 
             DashboardCard {
                 VStack(alignment: .leading, spacing: 10) {
-                    PanelHeader(title: "隐私")
+                    PanelHeader(title: L10n.text("privacy.title"))
                     RoadmapList(items: [
-                        "本机用量数据全部留在本地，TokenRemain 不做任何上传。",
-                        "所有工具凭证均为只读：绝不刷新 token、绝不写回，认证始终由各工具自行处理。",
-                        "Z.ai API Key 仅保存在本机钥匙串，不进入源码、日志或任何网络请求（额度查询本身除外）。",
-                        "ccusage 成本是 API 标价估算，不等于订阅账单。",
-                        "AI 精选动态由内置策略自动同步；用户无需选择账号或管理数据源。"
+                        L10n.text("privacy.local_only"),
+                        L10n.text("privacy.readonly_credentials"),
+                        L10n.text("privacy.zai_key"),
+                        L10n.text("privacy.cost_estimate"),
+                        L10n.text("privacy.feed_managed")
                     ])
                 }
             }
@@ -100,13 +100,13 @@ struct DataSourcesSection: View {
         case .ccusage:
             SourceHealthRow(
                 name: "ccusage",
-                detail: "npx ccusage 统计本地日志中的 token 与预估成本",
+                detail: L10n.text("datasource.ccusage_detail"),
                 healthy: true,
                 capturedAt: insights.daily?.capturedAt
             )
         case .feed:
             SourceHealthRow(
-                name: "AI 精选动态",
+                name: L10n.text("datasource.feed_name"),
                 detail: feedSourceDetail,
                 healthy: true,
                 capturedAt: feedStore.lastUpdated
@@ -121,14 +121,14 @@ struct DataSourcesSection: View {
             APIKeyRow(
                 store: store,
                 provider: provider,
-                placeholder: "粘贴 OpenRouter API Key（openrouter.ai → Keys 页生成）",
+                placeholder: L10n.text("datasource.openrouter_key_placeholder"),
                 hasStoredKey: OpenRouterKeyStore().hasStoredKey()
             )
         case .zai:
             APIKeyRow(
                 store: store,
                 provider: provider,
-                placeholder: "粘贴 Z.ai API Key（z.ai → API Keys 页生成）",
+                placeholder: L10n.text("datasource.zai_key_placeholder"),
                 hasStoredKey: ZAIKeyStore().hasStoredKey()
             )
         default:
@@ -146,27 +146,27 @@ struct DataSourcesSection: View {
     private func sourceName(for provider: ProviderQuota.Provider) -> String {
         switch provider {
         case .claude: return "Claude Code"
-        case .grok: return "Grok（xAI）"
-        case .zai: return "Z.ai（GLM Coding Plan）"
+        case .grok: return L10n.text("datasource.name_grok")
+        case .zai: return L10n.text("datasource.name_zai")
         default: return provider.displayName
         }
     }
 
     private func sourceDetail(for provider: ProviderQuota.Provider) -> String {
         switch provider {
-        case .claude: return "官方 oauth/usage 接口直查（只读本机凭证）；异常时回退 /usage 探针"
-        case .codex: return "服务端实时接口直查（只读 ~/.codex/auth.json）；离线回退本地会话快照"
-        case .cursor: return "月度账期接口直查（只读 Cursor 本机登录态）"
-        case .copilot: return "GitHub copilot_internal 接口直查（只读本机 GitHub 登录）"
-        case .devin: return "SeatManagement 接口直查（只读本机 Devin 凭证）"
-        case .grok: return "周池额度接口直查（只读 ~/.grok/auth.json）"
-        case .openrouter: return "预充积分接口直查（API Key 存于本机钥匙串）"
-        case .antigravity: return "Cloud Code 配额池直查（只读本机登录态，绝不代刷）"
-        case .opencode: return "本地数据库扫描估算 Go 套餐额度（纯本地，无网络）"
-        case .zai: return "额度接口直查（API Key 存于本机钥匙串）"
-        case .kiro: return "kiro-cli /usage 报告解析（本机子进程）"
-        case .ollama: return "本机 Ollama 运行状态与模型信息（纯本地）"
-        default: return "额度接口直查（凭据存于本机钥匙串）"
+        case .claude: return L10n.text("datasource.detail.claude")
+        case .codex: return L10n.text("datasource.detail.codex")
+        case .cursor: return L10n.text("datasource.detail.cursor")
+        case .copilot: return L10n.text("datasource.detail.copilot")
+        case .devin: return L10n.text("datasource.detail.devin")
+        case .grok: return L10n.text("datasource.detail.grok")
+        case .openrouter: return L10n.text("datasource.detail.openrouter")
+        case .antigravity: return L10n.text("datasource.detail.antigravity")
+        case .opencode: return L10n.text("datasource.detail.opencode")
+        case .zai: return L10n.text("datasource.detail.zai")
+        case .kiro: return L10n.text("datasource.detail.kiro")
+        case .ollama: return L10n.text("datasource.detail.ollama")
+        default: return L10n.text("datasource.detail.default")
         }
     }
 
@@ -176,8 +176,8 @@ struct DataSourcesSection: View {
 
     private var feedSourceDetail: String {
         feedStore.lastUpdated == nil
-            ? "等待后台同步精选内容"
-            : "后台自动筛选额度、产品发布与服务状态更新"
+            ? L10n.text("datasource.feed_waiting")
+            : L10n.text("datasource.feed_active")
     }
 }
 
@@ -201,12 +201,12 @@ private struct APIKeyRow: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            SecureField(hasStoredKey ? "已保存（粘贴新 Key 可替换）" : placeholder, text: $draftKey)
+            SecureField(hasStoredKey ? L10n.text("datasource.key_saved_placeholder") : placeholder, text: $draftKey)
                 .textFieldStyle(.roundedBorder)
                 .font(.system(size: 11))
                 .disabled(isSaving)
 
-            Button(hasStoredKey ? "替换" : "保存") {
+            Button(hasStoredKey ? L10n.text("action.replace") : L10n.text("action.save")) {
                 let key = draftKey.trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !key.isEmpty else { return }
                 isSaving = true
@@ -220,7 +220,7 @@ private struct APIKeyRow: View {
             .disabled(draftKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSaving)
 
             if hasStoredKey {
-                Button("清除") {
+                Button(L10n.text("action.clear")) {
                     isSaving = true
                     Task {
                         await store.clearAPIKey(for: provider)
@@ -235,7 +235,7 @@ private struct APIKeyRow: View {
         .padding(.top, 8)
         .padding(.leading, 20)
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("\(provider.displayName) API Key 设置")
+        .accessibilityLabel(L10n.format("datasource.api_key_settings", provider.displayName))
     }
 }
 
@@ -262,7 +262,7 @@ private struct SourceHealthRow: View {
             }
             Spacer(minLength: 12)
             VStack(alignment: .trailing, spacing: 3) {
-                Text(healthy ? "正常" : "数据链失效")
+                Text(healthy ? L10n.text("datasource.healthy") : L10n.text("datasource.broken"))
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(healthy ? DashboardTheme.success : DashboardTheme.warning)
                 if let capturedAt {

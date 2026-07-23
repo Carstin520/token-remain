@@ -7,7 +7,7 @@ enum TrendRange: Int, CaseIterable, Identifiable {
     case month = 30
 
     var id: Int { rawValue }
-    var label: String { "\(rawValue) 天" }
+    var label: String { L10n.format("trends.range_days", rawValue) }
 
     /// Thin bars; narrower as the range widens so 30 days still breathe.
     var barWidth: CGFloat {
@@ -34,7 +34,7 @@ enum TrendMetric: CaseIterable, Identifiable {
     case cost
 
     var id: Self { self }
-    var label: String { self == .tokens ? "Tokens" : "成本" }
+    var label: String { self == .tokens ? "Tokens" : L10n.text("trends.metric_cost") }
 }
 
 // MARK: - Card
@@ -59,7 +59,7 @@ struct UsageTrendCard: View {
     var body: some View {
         DashboardCard {
             VStack(alignment: .leading, spacing: 14) {
-                PanelHeader(title: "每日用量趋势", subtitle: "Claude + Codex 堆叠 · 本地 ccusage") {
+                PanelHeader(title: L10n.text("trends.daily_title"), subtitle: L10n.text("trends.daily_subtitle")) {
                     TagPill(text: "LIVE", color: DashboardTheme.codex)
                 }
 
@@ -104,7 +104,7 @@ struct UsageTrendCard: View {
         }
         if !visibleProviders.isEmpty, totals.count > 1 {
             HStack(spacing: 8) {
-                Text("总量趋势")
+                Text(L10n.text("trends.total_sparkline"))
                     .font(.system(size: 9, weight: .medium))
                     .foregroundStyle(DashboardTheme.mutedText)
                 // Neutral (non-series) tint: a total is neither Claude nor Codex,
@@ -207,7 +207,7 @@ struct UsageTrendChart: View {
                 }
 
                 if !hasVisibleSeries {
-                    Text("点击图例显示用量")
+                    Text(L10n.text("trends.legend_hint"))
                         .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(DashboardTheme.mutedText)
                         .frame(width: plotW, height: plotH)
@@ -234,7 +234,7 @@ struct UsageTrendChart: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(
-            hasVisibleSeries ? "每日用量堆叠柱状图" : "每日用量柱状图，未选择服务商"
+            hasVisibleSeries ? L10n.text("trends.chart_accessibility") : L10n.text("trends.chart_accessibility_empty")
         )
     }
 
@@ -398,9 +398,9 @@ struct UsageTrendChart: View {
             parts.append("Codex \(valueLabel(codexValue(day)))")
         }
         if hasVisibleSeries {
-            parts.append("共 \(valueLabel(total(day)))")
+            parts.append(L10n.format("trends.total_format", valueLabel(total(day))))
         } else {
-            parts.append("未选择服务商")
+            parts.append(L10n.text("trends.no_provider_selected"))
         }
         return parts.joined(separator: " · ")
     }
@@ -431,7 +431,7 @@ struct UsageTrendChart: View {
 
     static func fullDayLabel(_ date: Date) -> String {
         let c = Calendar.current.dateComponents([.month, .day], from: date)
-        return "\(c.month ?? 0)月\(c.day ?? 0)日"
+        return L10n.format("date.month_day", c.month ?? 0, c.day ?? 0)
     }
 
     static func selectedTotal(
@@ -544,9 +544,9 @@ struct TrendLegend: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .help(isVisible ? "隐藏 \(name) 用量" : "显示 \(name) 用量")
-        .accessibilityLabel("\(name) 图例")
-        .accessibilityValue(isVisible ? "已显示" : "已隐藏")
+        .help(isVisible ? L10n.format("trends.legend_hide", name) : L10n.format("trends.legend_show", name))
+        .accessibilityLabel(L10n.format("trends.legend_label", name))
+        .accessibilityValue(isVisible ? L10n.text("trends.legend_visible") : L10n.text("trends.legend_hidden"))
         .accessibilityAddTraits(isVisible ? [.isButton, .isSelected] : .isButton)
     }
 }
@@ -574,7 +574,7 @@ private struct TrendTooltip: View {
             }
             Divider().overlay(DashboardTheme.border)
             HStack {
-                Text("共")
+                Text(L10n.text("trends.total_label"))
                     .font(.system(size: 10))
                     .foregroundStyle(DashboardTheme.secondaryText)
                 Spacer(minLength: 8)

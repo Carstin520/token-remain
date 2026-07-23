@@ -129,7 +129,7 @@ final class AIFeedStore: ObservableObject {
     func saveBearerToken(_ rawValue: String) async -> Bool {
         let value = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !value.isEmpty else {
-            errorMessage = "请输入 X API Bearer Token"
+            errorMessage = L10n.text("feed.enter_bearer_token")
             return false
         }
         do {
@@ -199,7 +199,7 @@ final class AIFeedStore: ObservableObject {
         do {
             _ = try await notificationService.requestAuthorization()
         } catch {
-            errorMessage = "通知授权失败：\(error.localizedDescription)"
+            errorMessage = L10n.format("feed.notification_auth_failed", error.localizedDescription)
         }
         await refreshNotificationStatus()
     }

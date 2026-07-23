@@ -16,15 +16,15 @@ struct DevinUsageService {
         var errorDescription: String? {
             switch self {
             case .notLoggedIn:
-                return "未检测到 Devin 登录；安装并登录 Devin 后自动接入"
+                return L10n.format("service.common.not_logged_in_install", "Devin")
             case .keyRejected(let status):
-                return "Devin 拒绝了当前凭证（HTTP \(status)）；重新登录 Devin 后恢复"
+                return L10n.format("service.devin.token_rejected", status)
             case .requestFailed(let status):
-                return "Devin 用量接口请求失败（HTTP \(status)）"
+                return L10n.format("service.common.request_failed", "Devin", status)
             case .invalidResponse:
-                return "Devin 用量接口返回了无法识别的内容"
+                return L10n.format("service.common.invalid_response", "Devin")
             case .quotaUnavailable:
-                return "当前 Devin 账户未提供配额数据"
+                return L10n.text("service.devin.no_quota_data")
             }
         }
     }

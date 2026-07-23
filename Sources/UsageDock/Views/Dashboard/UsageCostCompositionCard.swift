@@ -22,13 +22,13 @@ struct UsageCostCompositionCard: View {
     var body: some View {
         DashboardCard {
             VStack(alignment: .leading, spacing: 14) {
-                PanelHeader(title: "今日用量与成本", subtitle: "按服务商统计 · 本地 ccusage")
+                PanelHeader(title: L10n.text("usage.today_cost_title"), subtitle: L10n.text("usage.today_cost_subtitle"))
 
                 if entries.isEmpty {
                     EmptyStateView(
                         icon: "chart.pie",
-                        title: "今日暂无本地用量",
-                        message: "运行一次 Claude Code 或 Codex 后，ccusage 会记录今日 token 与预估成本。"
+                        title: L10n.text("usage.no_local_today_title"),
+                        message: L10n.text("usage.no_local_today_message")
                     )
                 } else {
                     HStack(alignment: .center, spacing: 18) {
@@ -41,7 +41,7 @@ struct UsageCostCompositionCard: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
 
-                    Text("以上为今日快照；跨天趋势见 Trends。")
+                    Text(L10n.text("usage.snapshot_note"))
                         .font(.system(size: 10))
                         .foregroundStyle(DashboardTheme.mutedText)
                 }
@@ -57,12 +57,12 @@ struct UsageCostCompositionCard: View {
             },
             lineWidth: 16,
             centerText: insights.totalCost.map { String(format: "$%.2f", $0) } ?? "—",
-            centerCaption: "今日预估",
+            centerCaption: L10n.text("usage.today_estimate"),
             centerTextSize: 17
         )
         .frame(width: 108, height: 108)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("今日预估成本 \(insights.totalCost.map { String(format: "%.2f 美元", $0) } ?? "暂无数据")")
+        .accessibilityLabel(L10n.format("usage.today_est_cost_accessibility", insights.totalCost.map { L10n.format("usage.usd_amount", $0) } ?? L10n.text("common.no_data")))
     }
 }
 
@@ -99,9 +99,13 @@ private struct ProviderUsageRow: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(
-            "\(usage.displayName)，\(UsageFormatting.compactNumber(usage.tokens)) tokens，"
-                + String(format: "%.2f 美元", usage.cost)
-                + "，占成本 \(UsageFormatting.percent(share))"
+            L10n.format(
+                "usage.provider_cost_accessibility",
+                usage.displayName,
+                UsageFormatting.compactNumber(usage.tokens),
+                usage.cost,
+                UsageFormatting.percent(share)
+            )
         )
     }
 }

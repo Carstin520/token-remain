@@ -34,6 +34,6 @@ struct MetricCard: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(label)
-        .accessibilityValue([value, caption].compactMap { $0 }.joined(separator: "，"))
+        .accessibilityValue([value, caption].compactMap { $0 }.joined(separator: L10n.text("common.list_separator")))
     }
 }
