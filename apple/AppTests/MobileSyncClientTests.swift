@@ -57,8 +57,8 @@ struct MobileSyncClientTests {
             defaultsSuiteName: suite
         )
 
-        #expect(await client.pull(now: now) == .updated(fixture.snapshot))
-        #expect(await client.pull(now: now) == .noChange(.duplicate))
+        #expect(await client.pull(now: now, phoneReceivedAt: now) == .updated(delivery(fixture.snapshot)))
+        #expect(await client.pull(now: now, phoneReceivedAt: now) == .noChange(.duplicate))
         #expect(await keys.loadOrCreateCalls == 0)
         #expect(await cloud.subscriptionEnsured)
     }
@@ -104,11 +104,11 @@ struct MobileSyncClientTests {
             defaultsSuiteName: suite
         )
 
-        #expect(await client.pull(now: now) == .updated(first.snapshot))
+        #expect(await client.pull(now: now, phoneReceivedAt: now) == .updated(delivery(first.snapshot)))
         await cloud.replace(with: nil)
-        #expect(await client.pull(now: now) == .noChange(.noRemoteSnapshot))
+        #expect(await client.pull(now: now, phoneReceivedAt: now) == .noChange(.noRemoteSnapshot))
         await cloud.replace(with: replacement.stored)
-        #expect(await client.pull(now: now) == .updated(replacement.snapshot))
+        #expect(await client.pull(now: now, phoneReceivedAt: now) == .updated(delivery(replacement.snapshot)))
     }
 
     @Test("A disabled mobile sync setting rejects delayed data and erases local copies")
@@ -229,17 +229,21 @@ struct MobileSyncClientTests {
             defaultsSuiteName: uniqueSuite()
         )
 
-        #expect(await client.pull(now: now) == .updated(first.snapshot))
+        #expect(await client.pull(now: now, phoneReceivedAt: now) == .updated(delivery(first.snapshot)))
         await cloud.replace(with: second.stored)
-        guard case .requiresSourceConfirmation(let candidate) = await client.pull(now: now) else {
+        guard case .requiresSourceConfirmation(let candidate) = await client.pull(
+            now: now,
+            phoneReceivedAt: now
+        ) else {
             Issue.record("A new source must not be accepted implicitly")
             return
         }
         #expect(candidate.marker.sourceInstanceID == second.snapshot.sourceInstanceID)
         #expect(await client.pull(
             confirmedSourceChange: candidate.marker,
-            now: now
-        ) == .updated(second.snapshot))
+            now: now,
+            phoneReceivedAt: now
+        ) == .updated(delivery(second.snapshot)))
     }
 
     @Test("Source confirmation is bound to the exact authenticated candidate")
@@ -256,9 +260,12 @@ struct MobileSyncClientTests {
             defaultsSuiteName: uniqueSuite()
         )
 
-        #expect(await client.pull(now: now) == .updated(first.snapshot))
+        #expect(await client.pull(now: now, phoneReceivedAt: now) == .updated(delivery(first.snapshot)))
         await cloud.replace(with: second.stored)
-        guard case .requiresSourceConfirmation(let candidate) = await client.pull(now: now) else {
+        guard case .requiresSourceConfirmation(let candidate) = await client.pull(
+            now: now,
+            phoneReceivedAt: now
+        ) else {
             Issue.record("The second source must require confirmation")
             return
         }
@@ -266,7 +273,8 @@ struct MobileSyncClientTests {
         await cloud.replace(with: replacement.stored)
         guard case .requiresSourceConfirmation(let newCandidate) = await client.pull(
             confirmedSourceChange: candidate.marker,
-            now: now
+            now: now,
+            phoneReceivedAt: now
         ) else {
             Issue.record("A replacement source must not inherit confirmation")
             return
@@ -335,7 +343,16 @@ struct MobileSyncClientTests {
             configuration: .current(now: now)
         )
         let record = try CloudKitSyncRecordCodec.record(for: envelope)
-        return (snapshot, key, try CloudKitSyncRecordCodec.storedEnvelope(from: record))
+        let decoded = try CloudKitSyncRecordCodec.storedEnvelope(from: record)
+        return (
+            snapshot,
+            key,
+            SyncCloudStoredEnvelope(
+                envelope: decoded.envelope,
+                metadata: decoded.metadata,
+                macUploadedAt: now
+            )
+        )
     }
 
     private func makeClaudeQuota() -> SyncedProviderQuota {
@@ -344,6 +361,14 @@ struct MobileSyncClientTests {
             windows: [SyncedQuotaWindow(usedPercent: 42, windowMinutes: 300, resetsAt: now + 300)],
             capturedAt: now,
             statusCode: .available
+        )
+    }
+
+    private func delivery(_ snapshot: MobileUsageSnapshot) -> MobileSyncDelivery {
+        MobileSyncDelivery(
+            snapshot: snapshot,
+            macUploadedAt: now,
+            phoneReceivedAt: now
         )
     }
 

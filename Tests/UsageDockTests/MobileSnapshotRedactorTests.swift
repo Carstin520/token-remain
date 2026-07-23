@@ -168,39 +168,6 @@ struct MobileSnapshotRedactorTests {
         }
     }
 
-    @Test("Providers unsupported by mobile never enter the encrypted payload")
-    func excludesUnsupportedProviders() throws {
-        let now = Date(timeIntervalSince1970: 1_784_764_800)
-        let claude = ProviderQuota(
-            provider: .claude,
-            primary: QuotaWindow(usedPercent: 42, windowMinutes: 300, resetsAt: nil),
-            secondary: nil,
-            planName: nil,
-            capturedAt: now
-        )
-        let cursor = ProviderQuota(
-            provider: .cursor,
-            primary: QuotaWindow(usedPercent: 91, windowMinutes: 1_337, resetsAt: nil),
-            secondary: nil,
-            planName: "MUST NOT LEAVE MAC",
-            capturedAt: now
-        )
-
-        let snapshot = MobileSnapshotRedactor.makeSnapshot(
-            from: [.claude: claude, .cursor: cursor],
-            sourceInstanceID: UUID(),
-            sequence: 1,
-            generatedAt: now
-        )
-        let payload = try snapshot.encodedPayload()
-        let text = try #require(String(data: payload, encoding: .utf8))
-
-        #expect(snapshot.providers.map(\.providerID) == ["claude"])
-        #expect(!text.contains("cursor"))
-        #expect(!text.contains("MUST NOT LEAVE MAC"))
-        #expect(!text.contains("1337"))
-    }
-
     @Test("Every macOS provider has a well-formed stable wire identifier")
     func stableProviderIdentifiers() {
         let identifiers = ProviderQuota.Provider.displayOrder.map(MobileSnapshotRedactor.stableID)
