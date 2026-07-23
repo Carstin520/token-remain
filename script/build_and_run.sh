@@ -28,7 +28,7 @@ SIGNING_IDENTITY="${USAGEDOCK_SIGNING_IDENTITY:-}"
 # To produce a profile-backed sync build, set all of:
 #   USAGEDOCK_SYNC_RELEASE=1
 #   USAGEDOCK_SYNC_PROVISIONING_PROFILE=/absolute/path/to/profile.provisionprofile
-#   USAGEDOCK_SYNC_SIGNING_IDENTITY='Developer ID Application: …'
+#   USAGEDOCK_SYNC_SIGNING_IDENTITY=<certificate SHA-1 or unambiguous common name>
 #   USAGEDOCK_SYNC_ICLOUD_ENVIRONMENT=Production   # optional when profile type is unambiguous
 # An Apple Development identity is also accepted for a profile-backed development
 # build, but only a Developer ID identity receives a signing timestamp.
@@ -44,7 +44,22 @@ SYNC_EXPECTED_APPLICATION_IDENTIFIER=""
 SYNC_EXPECTED_TEAM_IDENTIFIER=""
 SYNC_EXPECTED_ICLOUD_ENVIRONMENT=""
 SYNC_EXPECTED_GET_TASK_ALLOW="false"
+SYNC_SIGNING_COMMON_NAME=""
 ARCHIVE_DIR="${USAGEDOCK_ARCHIVE_DIR:-$ROOT_DIR/dist-release}"
+
+resolve_signing_common_name() {
+  local selector="$1"
+  local matches match_count
+  matches="$(/usr/bin/security find-identity -v -p codesigning 2>/dev/null \
+    | /usr/bin/grep -F -- "$selector" || true)"
+  match_count="$(printf '%s\n' "$matches" | /usr/bin/sed '/^[[:space:]]*$/d' \
+    | /usr/bin/wc -l | /usr/bin/tr -d '[:space:]')"
+  if [[ "$match_count" != "1" ]]; then
+    echo "Signing identity selector must match exactly one valid identity; use its SHA-1 when common names are duplicated." >&2
+    return 1
+  fi
+  printf '%s\n' "$matches" | /usr/bin/sed -n 's/.*"\(.*\)".*/\1/p'
+}
 
 cleanup_build_artifacts() {
   if [[ -n "$SYNC_WORK_DIR" && -d "$SYNC_WORK_DIR" ]]; then
@@ -96,6 +111,11 @@ prepare_sync_signing() {
   fi
   if [[ -z "$SYNC_SIGNING_IDENTITY" ]]; then
     echo "USAGEDOCK_SYNC_SIGNING_IDENTITY is required when USAGEDOCK_SYNC_RELEASE=1." >&2
+    exit 1
+  fi
+  SYNC_SIGNING_COMMON_NAME="$(resolve_signing_common_name "$SYNC_SIGNING_IDENTITY")"
+  if [[ -z "$SYNC_SIGNING_COMMON_NAME" ]]; then
+    echo "Could not resolve the requested signing identity." >&2
     exit 1
   fi
   if [[ ! -r "$SYNC_ENTITLEMENTS_TEMPLATE" ]]; then
@@ -181,13 +201,13 @@ prepare_sync_signing() {
   SYNC_EXPECTED_GET_TASK_ALLOW="false"
   if [[ "$SYNC_EXPECTED_ICLOUD_ENVIRONMENT" == "Development" ]]; then
     SYNC_EXPECTED_GET_TASK_ALLOW="true"
-    if [[ "$SYNC_SIGNING_IDENTITY" != "Apple Development:"* ]]; then
+    if [[ "$SYNC_SIGNING_COMMON_NAME" != "Apple Development:"* ]]; then
       echo "CloudKit Development builds require an Apple Development identity." >&2
       exit 1
     fi
   fi
   if [[ "$SYNC_EXPECTED_ICLOUD_ENVIRONMENT" == "Production" \
-    && "$SYNC_SIGNING_IDENTITY" != "Developer ID Application:"* ]]; then
+    && "$SYNC_SIGNING_COMMON_NAME" != "Developer ID Application:"*"(84397AQ22Y)" ]]; then
     echo "Production website distribution requires a Developer ID Application identity." >&2
     exit 1
   fi
@@ -298,7 +318,7 @@ if [[ "$SYNC_RELEASE_MODE" == "1" ]]; then
   # the locally built bundle, Gatekeeper treats this development app as an
   # internet-distributed, unnotarized app and kills it before main() runs.
   /usr/bin/xattr -c "$APP_CONTENTS/embedded.provisionprofile" 2>/dev/null || true
-  if [[ "$SIGNING_IDENTITY" == "Developer ID Application:"* ]]; then
+  if [[ "$SYNC_SIGNING_COMMON_NAME" == "Developer ID Application:"* ]]; then
     /usr/bin/codesign --force --sign "$SIGNING_IDENTITY" --options runtime --timestamp \
       --entitlements "$SYNC_RESOLVED_ENTITLEMENTS" "$APP_BUNDLE"
   else

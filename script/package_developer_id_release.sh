@@ -12,20 +12,36 @@ ZIP="$OUTPUT_DIR/TokenRemain-$VERSION-$BUILD-macOS.zip"
 PROFILE="${USAGEDOCK_SYNC_PROVISIONING_PROFILE:-}"
 IDENTITY="${USAGEDOCK_SYNC_SIGNING_IDENTITY:-}"
 NOTARY_PROFILE="${TOKENREMAIN_NOTARYTOOL_PROFILE:-}"
+IDENTITY_COMMON_NAME=""
 
 export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
+
+resolve_signing_common_name() {
+  local selector="$1"
+  local matches match_count
+  matches="$(/usr/bin/security find-identity -v -p codesigning 2>/dev/null \
+    | /usr/bin/grep -F -- "$selector" || true)"
+  match_count="$(printf '%s\n' "$matches" | /usr/bin/sed '/^[[:space:]]*$/d' \
+    | /usr/bin/wc -l | /usr/bin/tr -d '[:space:]')"
+  if [[ "$match_count" != "1" ]]; then
+    echo "Signing identity selector must match exactly one valid identity; use its SHA-1 when common names are duplicated." >&2
+    return 1
+  fi
+  printf '%s\n' "$matches" | /usr/bin/sed -n 's/.*"\(.*\)".*/\1/p'
+}
 
 require_signing_inputs() {
   if [[ ! -r "$PROFILE" ]]; then
     echo "USAGEDOCK_SYNC_PROVISIONING_PROFILE must point to the Apple-issued Developer ID provisioning profile." >&2
     exit 1
   fi
-  if [[ "$IDENTITY" != "Developer ID Application:"* ]]; then
-    echo "USAGEDOCK_SYNC_SIGNING_IDENTITY must be a Developer ID Application identity." >&2
+  if [[ -z "$IDENTITY" ]]; then
+    echo "USAGEDOCK_SYNC_SIGNING_IDENTITY must be a certificate SHA-1 or unambiguous common name." >&2
     exit 1
   fi
-  if ! /usr/bin/security find-identity -v -p codesigning | /usr/bin/grep -Fq "\"$IDENTITY\""; then
-    echo "The requested Developer ID Application identity is not installed or is not valid." >&2
+  IDENTITY_COMMON_NAME="$(resolve_signing_common_name "$IDENTITY")"
+  if [[ "$IDENTITY_COMMON_NAME" != "Developer ID Application:"*"(84397AQ22Y)" ]]; then
+    echo "The requested identity is not a valid Team 84397AQ22Y Developer ID Application identity." >&2
     exit 1
   fi
 }
