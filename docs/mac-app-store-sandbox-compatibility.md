@@ -1,6 +1,6 @@
 # TokenRemain Mac App Store Sandbox compatibility
 
-Status: **Phase 1 decision gate reached**
+Status: **Phase 1 complete; option B approved**
 
 Audit date: 2026-07-23
 
@@ -82,8 +82,8 @@ also remains unproven because Antigravity was installed but not running during
 the audit. Claude and Copilot worked only on an already-authorized development
 Mac; that is not fresh-install or App Review proof.
 
-Per the release plan, implementation pauses here until one product direction is
-selected:
+The runtime evidence triggered the planned product decision gate. The available
+directions were:
 
 - **A — Mac App Store only:** accept provider changes to OAuth/API key and
   explicit folder authorization, and replace shell/CLI-dependent history.
@@ -93,6 +93,13 @@ selected:
 - **C — Two macOS editions:** maintain a sandboxed Mac App Store edition with a
   reduced/redesigned provider set and a notarized website edition with the full
   local integration.
+
+**Selected direction: B.** The shipping Mac app is the unsandboxed,
+Developer ID-signed and notarized website edition. The Sandbox candidate remains
+an isolated compatibility artifact and is not a release target. Consequently,
+Codex, Cursor, OpenCode, local history/trends, and the other local integrations
+keep their existing automatic paths in the website build; they are not being
+redesigned around Sandbox folder grants for version 1.
 
 No Provider credential was uploaded, no server architecture was introduced,
 and the existing installed full app was not replaced.
