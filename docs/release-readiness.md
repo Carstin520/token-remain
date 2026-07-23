@@ -32,8 +32,11 @@ TestFlight, paid-storefront, or notarized-release acceptance run.
 Observed on the release workstation on 2026-07-23:
 
 - one valid `Apple Development` identity;
-- one valid `Developer ID Application: Dongheng Li (84397AQ22Y)` identity,
-  with its private key available locally and certificate expiry on 2027-02-01;
+- one preferred G2 `Developer ID Application: Dongheng Li (84397AQ22Y)`
+  identity, with its private key available locally and certificate expiry on
+  2031-07-24;
+- one legacy G1 Developer ID identity with the same common name and certificate
+  expiry on 2027-02-01; it is retained but must not sign release artifacts;
 - one valid `Apple Distribution: Dongheng Li (84397AQ22Y)` identity, with its
   private key available locally and certificate expiry on 2027-07-23;
 - development provisioning profiles exist for the iPhone, iPhone Widget,
@@ -64,7 +67,7 @@ upload, or TestFlight install has been claimed.
 ```bash
 export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 export USAGEDOCK_SYNC_PROVISIONING_PROFILE=/absolute/path/TokenRemain.provisionprofile
-export USAGEDOCK_SYNC_SIGNING_IDENTITY='Developer ID Application: NAME (TEAMID)'
+export USAGEDOCK_SYNC_SIGNING_IDENTITY='0F00E922CD02FB10B8EA41E03CCA65B38BC5DB5B'
 export TOKENREMAIN_NOTARYTOOL_PROFILE='tokenremain-notary'
 
 ./script/package_developer_id_release.sh notarize
