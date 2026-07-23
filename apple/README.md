@@ -50,6 +50,14 @@ xcodebuild test -project TokenRemain.xcodeproj -scheme TokenRemainUITests \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
 ```
 
+Every shipping iPhone, Widget, Watch app, and Watch widget target contains its
+own `PrivacyInfo.xcprivacy`. The declarations cover only app-private and
+same-App-Group `UserDefaults`; tracking is false. Validate the privacy report
+from the final exported archive before App Store submission.
+
+Release preparation and honest verification status are tracked in
+`../docs/release-readiness.md` and `../docs/app-store-submission.md`.
+
 ### Running it by hand
 
 ```bash
