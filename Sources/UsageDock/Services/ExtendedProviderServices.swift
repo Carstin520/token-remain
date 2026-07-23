@@ -19,13 +19,13 @@ enum ExtendedProviderError: LocalizedError, Sendable {
     var errorDescription: String? {
         switch self {
         case .notConfigured(let provider):
-            return "未配置 \(provider.displayName) 凭据；在 Dashboard「数据源」页粘贴一次即可接入"
+            return L10n.format("service.common.secret_missing", provider.displayName)
         case .secretRejected(let provider, let status):
-            return "\(provider.displayName) 拒绝了当前凭据（HTTP \(status)）；请在「数据源」页更新"
+            return L10n.format("service.common.secret_rejected", provider.displayName, status)
         case .requestFailed(let provider, let status):
-            return "\(provider.displayName) 用量接口请求失败（HTTP \(status)）"
+            return L10n.format("service.common.request_failed", provider.displayName, status)
         case .invalidResponse(let provider):
-            return "\(provider.displayName) 用量接口返回了无法识别的内容"
+            return L10n.format("service.common.invalid_response", provider.displayName)
         case .notInstalled(_, let hint):
             return hint
         }
@@ -108,7 +108,11 @@ struct DeepSeekUsageService {
                 resetsAt: nil
             ),
             secondary: nil,
-            planName: String(format: "余额 %@%.2f", currency == "CNY" ? "¥" : (currency == "USD" ? "$" : "\(currency) "), amount),
+            planName: L10n.format(
+                "service.deepseek.balance_plan",
+                currency == "CNY" ? "¥" : (currency == "USD" ? "$" : "\(currency) "),
+                String(format: "%.2f", amount)
+            ),
             capturedAt: now
         )
     }
@@ -426,7 +430,7 @@ struct QoderUsageService {
 struct KiroUsageService {
     func fetch(now: Date = .now) async throws -> ProviderQuota {
         guard let cli = Self.cliPath() else {
-            throw ExtendedProviderError.notInstalled(.kiro, hint: "未检测到 kiro-cli；安装 Kiro CLI 并登录后自动接入")
+            throw ExtendedProviderError.notInstalled(.kiro, hint: L10n.text("service.kiro.not_installed"))
         }
         let output = try await ProcessRunner.run(cli, arguments: ["chat", "--no-interactive", "/usage"])
         return try Self.parse(String(data: output, encoding: .utf8) ?? "", now: now)
@@ -497,7 +501,7 @@ struct VolcengineUsageService {
         guard parts.count == 2 else {
             throw ExtendedProviderError.notInstalled(
                 .volcengine,
-                hint: "火山引擎凭据格式应为 AccessKeyId:SecretAccessKey（冒号分隔）"
+                hint: L10n.text("service.volcengine.bad_credentials")
             )
         }
         let url = URL(string: "https://open.volcengineapi.com/?Action=GetCodingPlanUsage&Version=2024-01-01")!

@@ -29,8 +29,12 @@ struct TokenRemainHeadLogo: View {
             remainingPercent: [claudeRemaining, codexRemaining].compactMap { $0 }.min()
         )
         return values.isEmpty
-            ? "TokenRemain，\(mood.accessibilityDescription)"
-            : "TokenRemain，\(values.joined(separator: "，"))，\(mood.accessibilityDescription)"
+            ? L10n.format("logo.accessibility.brand_state", mood.accessibilityDescription)
+            : L10n.format(
+                "logo.accessibility.brand_values_state",
+                values.joined(separator: L10n.text("common.list_separator")),
+                mood.accessibilityDescription
+            )
     }
 }
 

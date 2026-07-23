@@ -16,15 +16,15 @@ struct ZAIUsageService {
         var errorDescription: String? {
             switch self {
             case .missingKey:
-                return "未配置 Z.ai API Key；在 Dashboard「数据源」页粘贴一次即可接入"
+                return L10n.format("service.common.api_key_missing", "Z.ai")
             case .keyRejected(let status):
-                return "Z.ai 拒绝了当前 API Key（HTTP \(status)）；请在「数据源」页更新"
+                return L10n.format("service.common.api_key_rejected", "Z.ai", status)
             case .noCodingPlan:
-                return "该 Z.ai 账户没有 GLM Coding Plan 订阅"
+                return L10n.text("service.zai.no_coding_plan")
             case .requestFailed(let status):
-                return "Z.ai 用量接口请求失败（HTTP \(status)）"
+                return L10n.format("service.common.request_failed", "Z.ai", status)
             case .invalidResponse:
-                return "Z.ai 用量接口返回了无法识别的内容"
+                return L10n.format("service.common.invalid_response", "Z.ai")
             }
         }
     }

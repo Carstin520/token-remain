@@ -20,18 +20,18 @@ struct ClaudeOAuthUsageService {
         var errorDescription: String? {
             switch self {
             case .credentialsUnavailable:
-                return "未找到可用的 Claude Code 登录凭证"
+                return L10n.text("service.claude.credentials_unavailable")
             case .tokenRejected(let status):
-                return "Claude 用量接口拒绝了当前凭证(HTTP \(status))"
+                return L10n.format("service.common.token_rejected_plain", "Claude", status)
             case .rateLimited(let seconds):
                 if let seconds {
-                    return "Claude 用量接口限流,约 \(max(1, Int(ceil(Double(seconds) / 60)))) 分钟后重试"
+                    return L10n.format("service.claude.api_rate_limited_minutes", max(1, Int(ceil(Double(seconds) / 60))))
                 }
-                return "Claude 用量接口限流,稍后重试"
+                return L10n.text("service.claude.api_rate_limited")
             case .requestFailed(let status):
-                return "Claude 用量接口请求失败(HTTP \(status))"
+                return L10n.format("service.common.request_failed_plain", "Claude", status)
             case .invalidResponse:
-                return "Claude 用量接口返回了无法识别的内容"
+                return L10n.format("service.common.invalid_response", "Claude")
             }
         }
     }

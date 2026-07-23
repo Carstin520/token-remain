@@ -359,7 +359,7 @@ struct NotConnectedCard: View {
     }
 }
 
-/// The design's pulsing `REC` dot, shown only while a Live Activity is running.
+/// The design's pulsing live dot, shown only while a Live Activity is running.
 struct RecordingDot: View {
     let animated: Bool
     @State private var bright = false
@@ -370,7 +370,7 @@ struct RecordingDot: View {
                 .fill(TRTheme.violet)
                 .frame(width: 5, height: 5)
                 .opacity(bright ? 1 : 0.35)
-            Text("REC")
+            Text(TRL10n.t("liveactivity.indicator"))
                 .font(.system(size: 9, design: .monospaced).weight(.semibold))
                 .foregroundStyle(TRTheme.violet)
         }

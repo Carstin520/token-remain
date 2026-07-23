@@ -59,16 +59,6 @@
 "pace.lasts_until_reset" = "Cukup hingga reset";
 "pace.projected_early" = "Diperkirakan habis lebih awal";
 "pace.projected_in" = "Diperkirakan habis dalam %1$@";
-"暂无按服务商拆分" = "Tidak ada perincian penyedia";
-"正在读取 ccusage 本地统计…" = "Membaca data ccusage lokal…";
-"正在读取官方额度…" = "Membaca kuota resmi…";
-"打开 Dashboard" = "Buka Dashboard";
-"设置" = "Pengaturan";
-"退出" = "Keluar";
-"添加组件" = "Tambah widget";
-"刷新用量" = "Segarkan penggunaan";
-"查看全部" = "Lihat semua";
-"在 X 查看" = "Lihat di X";
 "widget.all_visible" = "Semua widget terlihat";
 "widget.add_named" = "Tambahkan %1$@";
 "widget.keep_expanded" = "Tetap diperluas";

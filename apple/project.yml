@@ -70,6 +70,7 @@ targets:
       path: SupportFiles/TokenRemain-Info.plist
       properties:
         CFBundleDisplayName: TokenRemain
+        CFBundleLocalizations: [en, zh-Hans, zh-Hant, es, de, ja, ko]
         NSSupportsLiveActivities: true
         NSSupportsLiveActivitiesFrequentUpdates: false
         # CloudKit zone subscriptions use content-available pushes only; no

@@ -28,7 +28,9 @@ final class FeedNotificationService: NSObject, UNUserNotificationCenterDelegate,
 
     func notify(post: AIFeedPost) async {
         let content = UNMutableNotificationContent()
-        content.title = post.priority == .tokenReset ? "TokenRemain · Token / 额度更新" : "TokenRemain · AI 重大更新"
+        content.title = post.priority == .tokenReset
+            ? L10n.text("feed.notification.title_token")
+            : L10n.text("feed.notification.title_major_update")
         content.subtitle = "\(post.displayName) · @\(post.username)"
         content.body = post.text.truncated(to: 180)
         content.sound = .default

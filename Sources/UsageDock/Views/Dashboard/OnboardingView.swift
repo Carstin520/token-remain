@@ -28,10 +28,10 @@ struct OnboardingView: View {
 
             VStack(spacing: 10) {
                 TokenRemainFullBodyRobot(remainingPercent: nil, size: 72)
-                Text("欢迎使用 TokenRemain")
+                Text(L10n.text("onboarding.welcome"))
                     .wordmarkFont(26)
                     .foregroundStyle(DashboardTheme.text)
-                Text("已扫描本机的 AI 编码工具。勾选要追踪额度的应用——之后随时可在「额度」页增删。")
+                Text(L10n.text("onboarding.intro"))
                     .font(.system(size: 13))
                     .foregroundStyle(DashboardTheme.secondaryText)
                     .multilineTextAlignment(.center)
@@ -41,7 +41,7 @@ struct OnboardingView: View {
 
             VStack(spacing: 8) {
                 if visibleDetections.isEmpty {
-                    Text("未检测到已安装的 AI 编码工具；点下方 + 手动添加,或先安装工具后再打开 TokenRemain。")
+                    Text(L10n.text("onboarding.none_detected"))
                         .font(.system(size: 12))
                         .foregroundStyle(DashboardTheme.secondaryText)
                         .multilineTextAlignment(.center)
@@ -60,7 +60,7 @@ struct OnboardingView: View {
                 Button {
                     tracked.completeOnboarding(enabled: selection)
                 } label: {
-                    Text(selection.isEmpty ? "暂不追踪，直接开始" : "开始追踪 \(selection.count) 个应用")
+                    Text(selection.isEmpty ? L10n.text("onboarding.start_without") : L10n.format("onboarding.start_tracking", selection.count))
                         .font(.system(size: 14, weight: .semibold))
                         .frame(maxWidth: 300)
                         .padding(.vertical, 8)
@@ -68,7 +68,7 @@ struct OnboardingView: View {
                 .buttonStyle(.borderedProminent)
                 .tint(DashboardTheme.purple)
 
-                Text("凭证只读、绝不上传；未检测到的应用登录后会自动接入。")
+                Text(L10n.text("onboarding.privacy_note"))
                     .font(.system(size: 11))
                     .foregroundStyle(DashboardTheme.mutedText)
             }
@@ -89,9 +89,9 @@ struct OnboardingView: View {
     private var addRow: some View {
         Menu {
             if addableDetections.isEmpty {
-                Button("可支持的应用都已在列表中") {}.disabled(true)
+                Button(L10n.text("onboarding.all_added")) {}.disabled(true)
             } else {
-                Section("未检测到,手动添加") {
+                Section(L10n.text("onboarding.add_manually")) {
                     ForEach(addableDetections) { detection in
                         Button {
                             manuallyAdded.insert(detection.provider)
@@ -107,7 +107,7 @@ struct OnboardingView: View {
                 Image(systemName: "plus.circle.dashed")
                     .font(.system(size: 18, weight: .medium))
                     .foregroundStyle(DashboardTheme.secondaryText)
-                Text("添加其他应用")
+                Text(L10n.text("onboarding.add_other"))
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(DashboardTheme.text)
                 Spacer()
@@ -128,7 +128,7 @@ struct OnboardingView: View {
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
-        .accessibilityLabel("添加其他应用")
+        .accessibilityLabel(L10n.text("onboarding.add_other"))
     }
 
     private func providerRow(_ detection: TrackedProvidersStore.Detection) -> some View {
@@ -154,7 +154,7 @@ struct OnboardingView: View {
                             .minimumScaleFactor(0.85)
                             .layoutPriority(1)
                         if detection.installed {
-                            TagPill(text: "已检测到")
+                            TagPill(text: L10n.text("onboarding.detected"))
                         }
                     }
                     Text(detection.detail)
@@ -182,7 +182,7 @@ struct OnboardingView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(detection.provider.displayName)
-        .accessibilityValue(isOn ? "追踪中" : "未追踪")
+        .accessibilityValue(isOn ? L10n.text("onboarding.tracking") : L10n.text("onboarding.not_tracking"))
         .accessibilityHint(detection.detail)
     }
 }

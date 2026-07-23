@@ -15,11 +15,11 @@ struct OpenCodeUsageService {
         var errorDescription: String? {
             switch self {
             case .notInstalled:
-                return "未检测到 OpenCode；安装并登录 OpenCode Go 后自动接入"
+                return L10n.text("service.opencode.not_installed")
             case .noUsage:
-                return "本机还没有 OpenCode Go 用量记录；用一次 OpenCode 后出现"
+                return L10n.text("service.opencode.no_usage")
             case .scanFailed(let detail):
-                return "OpenCode 本地用量扫描失败：\(detail)"
+                return L10n.format("service.opencode.scan_failed", detail)
             }
         }
     }

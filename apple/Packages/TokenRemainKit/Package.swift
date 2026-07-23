@@ -3,10 +3,9 @@ import PackageDescription
 
 let package = Package(
     name: "TokenRemainKit",
-    // English is the neutral base localization; zh-Hans is the second. These exist
-    // only so `Bundle.module.preferredLocalizations` reports both languages, letting
-    // `TRL10n.resolve` follow the system language (see TRL10n.swift). The actual
-    // strings live in the pure-Swift `TRL10n` table.
+    // English is the neutral base localization. Marker resources for every supported
+    // language let `Bundle.module.preferredLocalizations` follow the user's system or
+    // per-app language choice, while the actual copy remains in the pure-Swift table.
     defaultLocalization: "en",
     platforms: [
         .iOS(.v18),

@@ -75,7 +75,7 @@ struct CodexUsageService {
             if let newest = legacy.max(by: { $0.capturedAt < $1.capturedAt }) {
                 return newest.quota
             }
-            throw ProcessRunner.Failure(message: "未找到 Codex 主额度快照；请先运行一次 Codex")
+            throw ProcessRunner.Failure(message: L10n.text("service.codex.snapshot_missing"))
         }.value
     }
 

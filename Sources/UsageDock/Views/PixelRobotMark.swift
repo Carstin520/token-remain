@@ -180,8 +180,12 @@ struct PixelRobotMark: View {
 
     private var accessibilityLabel: String {
         guard let remainingPercent else {
-            return "TokenRemain，等待额度数据"
+            return L10n.text("logo.accessibility.waiting")
         }
-        return "TokenRemain，剩余 \(Int(remainingPercent.rounded()))%，\(state.accessibilityDescription)"
+        return L10n.format(
+            "logo.accessibility.remaining",
+            "\(Int(remainingPercent.rounded()))%",
+            state.accessibilityDescription
+        )
     }
 }

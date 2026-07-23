@@ -528,7 +528,7 @@ struct UsageFormattingTests {
 
 @Suite("Localization")
 struct TRL10nTests {
-    @Test("Every key carries a non-empty value in BOTH zh-Hans and en")
+    @Test("Every key carries a non-empty value in every supported language")
     func complete() {
         #expect(!TRL10n.table.isEmpty)
         for (key, entry) in TRL10n.table {
@@ -536,8 +536,24 @@ struct TRL10nTests {
             // empty placeholder — either would leak the raw key / a blank into the UI.
             #expect(!entry.zh.isEmpty, "missing zh-Hans value for \(key)")
             #expect(!entry.en.isEmpty, "missing en value for \(key)")
-            #expect(!TRL10n.t(key, language: .zhHans).isEmpty)
-            #expect(!TRL10n.t(key, language: .en).isEmpty)
+            for language in TRL10n.Language.allCases {
+                #expect(
+                    !TRL10n.t(key, language: language).isEmpty,
+                    "missing \(language.rawValue) value for \(key)"
+                )
+                if language != .en && language != .zhHans {
+                    #expect(
+                        TRL10n.supplementalTranslations[language]?[key] != nil,
+                        "missing explicit \(language.rawValue) translation for \(key)"
+                    )
+                }
+            }
+        }
+        for language in TRL10n.Language.allCases where language != .en && language != .zhHans {
+            #expect(
+                TRL10n.supplementalTranslations[language]?.count == TRL10n.table.count,
+                "\(language.rawValue) must translate every catalogue key"
+            )
         }
     }
 
@@ -545,35 +561,43 @@ struct TRL10nTests {
     func disconnectedStateUsesCurrentSyncCopy() {
         let zh = TRL10n.t("origin.none.body", language: .zhHans)
         let en = TRL10n.t("origin.none.body", language: .en)
-        #expect(zh.contains("Mac 安全同步"))
+        #expect(zh.contains("自动连接"))
         #expect(zh.contains("iCloud 钥匙串"))
-        #expect(en.contains("Secure Mac Sync"))
+        #expect(en.contains("connect automatically"))
         #expect(en.contains("iCloud Keychain"))
         #expect(!zh.contains("未随本版本发布"))
         #expect(!en.contains("neither ships"))
     }
 
-    @Test("Language resolution matches zh / en and otherwise falls back to English")
+    @Test("Language resolution matches all supported languages and falls back to English")
     func resolution() {
         #expect(TRL10n.resolve(["zh-Hans-CN", "en-US"]) == .zhHans)
+        #expect(TRL10n.resolve(["zh-Hant-TW", "en-US"]) == .zhHant)
+        #expect(TRL10n.resolve(["zh-TW"]) == .zhHant)
+        #expect(TRL10n.resolve(["zh-HK"]) == .zhHant)
         #expect(TRL10n.resolve(["en-US", "zh-Hans"]) == .en)
         #expect(TRL10n.resolve(["zh"]) == .zhHans)
         #expect(TRL10n.resolve(["en"]) == .en)
+        #expect(TRL10n.resolve(["es-MX"]) == .es)
+        #expect(TRL10n.resolve(["de-DE"]) == .de)
+        #expect(TRL10n.resolve(["ja-JP"]) == .ja)
+        #expect(TRL10n.resolve(["ko-KR"]) == .ko)
         // An unsupported system language resolves to the English base, never Chinese.
         #expect(TRL10n.resolve(["fr-FR"]) == .en)
         #expect(TRL10n.resolve([]) == .en)
     }
 
-    @Test("The kit bundle advertises both localizations so it follows the system")
+    @Test("The kit bundle advertises every supported localization")
     func bundleLocalizations() {
-        // `Bundle.module.preferredLocalizations` is the primary resolution signal;
-        // it only reflects the system language if the bundle declares both languages.
+        // `Bundle.module.preferredLocalizations` is a resolution signal; it only
+        // reflects the system language when the bundle declares that language.
         // Bundle localization identifiers can come back region-cased or lowercased
         // depending on the platform (e.g. "zh-hans" on macOS), and `resolve` matches
         // case-insensitively, so compare in lower case.
         let declared = Set(Bundle.module.localizations.map { $0.lowercased() })
-        #expect(declared.contains("en"))
-        #expect(declared.contains("zh-hans"))
+        for language in ["en", "zh-hans", "zh-hant", "es", "de", "ja", "ko"] {
+            #expect(declared.contains(language), "bundle missing \(language)")
+        }
     }
 }
 

@@ -15,15 +15,15 @@ struct OpenRouterUsageService {
         var errorDescription: String? {
             switch self {
             case .missingKey:
-                return "未配置 OpenRouter API Key；在 Dashboard「数据源」页粘贴一次即可接入"
+                return L10n.format("service.common.api_key_missing", "OpenRouter")
             case .keyRejected(let status):
-                return "OpenRouter 拒绝了当前 API Key（HTTP \(status)）；请在「数据源」页更新"
+                return L10n.format("service.common.api_key_rejected", "OpenRouter", status)
             case .requestFailed(let status):
-                return "OpenRouter 用量接口请求失败（HTTP \(status)）"
+                return L10n.format("service.common.request_failed", "OpenRouter", status)
             case .invalidResponse:
-                return "OpenRouter 用量接口返回了无法识别的内容"
+                return L10n.format("service.common.invalid_response", "OpenRouter")
             case .noCredits:
-                return "该 OpenRouter 账户没有预充积分；充值后即可显示余额进度"
+                return L10n.text("service.openrouter.no_credits")
             }
         }
     }

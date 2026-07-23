@@ -22,15 +22,15 @@ struct CursorUsageService {
         var errorDescription: String? {
             switch self {
             case .notLoggedIn:
-                return "未找到 Cursor 登录凭证；请先在 Cursor 应用中登录"
+                return L10n.text("service.cursor.not_logged_in")
             case .staleLogin:
-                return "Cursor 长时间未使用，登录凭证已过期；打开一次 Cursor 应用即可恢复额度刷新"
+                return L10n.format("service.common.stale_login_reopen", "Cursor")
             case .requestFailed(let status):
-                return "Cursor 用量接口请求失败（HTTP \(status)）"
+                return L10n.format("service.common.request_failed", "Cursor", status)
             case .invalidResponse:
-                return "Cursor 用量接口返回了无法识别的内容"
+                return L10n.format("service.common.invalid_response", "Cursor")
             case .noActiveSubscription:
-                return "当前 Cursor 账户没有生效中的订阅"
+                return L10n.text("service.cursor.no_subscription")
             }
         }
     }

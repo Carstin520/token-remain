@@ -14,12 +14,12 @@ struct TrendingStoriesCard: View {
     var body: some View {
         DashboardCard {
             VStack(alignment: .leading, spacing: 12) {
-                PanelHeader(title: "Trending", subtitle: "此刻最值得关注") {
+                PanelHeader(title: "Trending", subtitle: L10n.text("feed.trending_subtitle")) {
                     TagPill(text: "HOT", color: TrendingRank.first.accent, background: DashboardTheme.surface2)
                 }
 
                 if posts.isEmpty {
-                    Text("正在捕捉热门动态…")
+                    Text(L10n.text("feed.trending_loading"))
                         .font(.system(size: 11))
                         .foregroundStyle(DashboardTheme.secondaryText)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -135,8 +135,8 @@ private struct TrendingStoryRow: View {
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("热门第 \(rank == .first ? 1 : 2) 条，\(post.displayName)：\(post.text)")
-        .accessibilityHint("在 X 打开原帖")
+        .accessibilityLabel(L10n.format("feed.trending_accessibility", rank == .first ? 1 : 2, post.displayName, post.text))
+        .accessibilityHint(L10n.text("feed.open_x_hint"))
     }
 
     private func metric(_ icon: String, _ value: Int) -> some View {

@@ -1,13 +1,22 @@
 import Foundation
 
-/// Minimal two-language catalogue (zh-Hans primary, en fallback).
+/// Shared catalogue for every TokenRemain Apple surface.
 ///
 /// Deliberately a plain Swift table rather than a `.xcstrings` resource: the kit is
-/// linked into two widget extensions and a watch app, and a resource-bundle-free
-/// kit removes an entire class of extension bundle-lookup failures. Lookup is pure
-/// and injectable, so goldens are testable without swizzling `Locale`.
+/// linked into two widget extensions and a watch app, so a single pure lookup avoids
+/// host-bundle differences. Lightweight `.lproj` markers only advertise supported
+/// languages for system/per-app language selection. Lookup remains injectable and
+/// testable without swizzling `Locale`.
 public enum TRL10n {
-    public enum Language: String, Sendable { case zhHans, en }
+    public enum Language: String, Sendable, CaseIterable {
+        case en
+        case zhHans
+        case zhHant
+        case es
+        case de
+        case ja
+        case ko
+    }
 
     /// The UI language, resolved once per process from the system.
     ///
@@ -23,9 +32,18 @@ public enum TRL10n {
     /// would render "Fri" instead of "周五". Keyed off the same `current` resolution
     /// as every string, so a language and its dates never disagree.
     public static var locale: Locale {
-        switch current {
-        case .zhHans: return Locale(identifier: "zh_Hans")
+        locale(for: current)
+    }
+
+    static func locale(for language: Language) -> Locale {
+        switch language {
         case .en: return Locale(identifier: "en")
+        case .zhHans: return Locale(identifier: "zh_Hans")
+        case .zhHant: return Locale(identifier: "zh_Hant")
+        case .es: return Locale(identifier: "es")
+        case .de: return Locale(identifier: "de")
+        case .ja: return Locale(identifier: "ja")
+        case .ko: return Locale(identifier: "ko")
         }
     }
 
@@ -34,10 +52,11 @@ public enum TRL10n {
     /// The primary signal is `Locale.preferredLanguages` — the user's ordered language
     /// preference, which honours the device language, the per-app language override
     /// (Settings › TokenRemain › Language) and the `-AppleLanguages` launch argument
-    /// alike. `Bundle.module.preferredLocalizations` (the kit bundle's own `en` +
-    /// `zh-Hans`, intersected with the user's languages) follows as a corroborating
-    /// fallback. Both are per-process, so a widget or watch extension resolves in
-    /// exactly the language its host process was launched in.
+    /// alike. `Bundle.module.preferredLocalizations` (the kit bundle's declared
+    /// localizations intersected with the user's languages) follows as a corroborating
+    /// fallback. The module advertises every supported language. Both signals are
+    /// per-process, so a widget or watch extension resolves in exactly the language
+    /// its host process was launched in.
     ///
     /// Unmatched system languages fall back to English (the kit's base localization)
     /// rather than defaulting to Chinese. `preferred` is injectable for tests.
@@ -46,8 +65,18 @@ public enum TRL10n {
     ) -> Language {
         for code in preferred {
             let lower = code.lowercased()
+            if lower.hasPrefix("zh-hant")
+                || lower.hasPrefix("zh-tw")
+                || lower.hasPrefix("zh-hk")
+                || lower.hasPrefix("zh-mo") {
+                return .zhHant
+            }
             if lower.hasPrefix("zh") { return .zhHans }
             if lower.hasPrefix("en") { return .en }
+            if lower.hasPrefix("es") { return .es }
+            if lower.hasPrefix("de") { return .de }
+            if lower.hasPrefix("ja") { return .ja }
+            if lower.hasPrefix("ko") { return .ko }
         }
         return .en
     }
@@ -60,17 +89,23 @@ public enum TRL10n {
             return key
         }
         switch language {
-        case .zhHans: return entry.zh
         case .en: return entry.en
+        case .zhHans: return entry.zh
+        case .zhHant, .es, .de, .ja, .ko:
+            return supplementalTranslations[language]?[key] ?? entry.en
         }
     }
 
     public static func f(_ key: String, _ arguments: any CVarArg...) -> String {
-        String(format: t(key), arguments: arguments)
+        String(format: t(key), locale: locale, arguments: arguments)
     }
 
     public static func f(_ key: String, language: Language, _ arguments: any CVarArg...) -> String {
-        String(format: t(key, language: language), arguments: arguments)
+        String(
+            format: t(key, language: language),
+            locale: locale(for: language),
+            arguments: arguments
+        )
     }
 
     struct Entry: Sendable {
@@ -113,8 +148,8 @@ public enum TRL10n {
         // Provenance / honesty
         "origin.none.title": Entry("未连接数据源", "No data source connected"),
         "origin.none.body": Entry(
-            "iPhone 不读取 provider 凭证。请在 Mac 上运行 TokenRemain，并让两台设备登录同一 iCloud 账户且开启 iCloud 钥匙串，然后在「设置」中启用 Mac 安全同步。也可以打开演示模式查看明确标注的示例数据。",
-            "iPhone never reads provider credentials. Run TokenRemain on your Mac, sign both devices into the same iCloud account with iCloud Keychain enabled, then turn on Secure Mac Sync in Settings. You can also enable Demo Mode to view clearly-labelled sample data."
+            "iPhone 不读取 provider 凭证。请在 Mac 上运行 TokenRemain，并让两台设备登录同一 iCloud 账户且开启 iCloud 钥匙串；App 会自动连接。也可以打开演示模式查看明确标注的示例数据。",
+            "iPhone never reads provider credentials. Run TokenRemain on your Mac with both devices signed into the same iCloud account and iCloud Keychain enabled; the apps connect automatically. You can also enable Demo Mode to view clearly-labelled sample data."
         ),
         "origin.demo.status": Entry("全部数据源正常", "All sources nominal"),
         "origin.none.status": Entry("未连接数据源", "No data source"),
@@ -217,7 +252,59 @@ public enum TRL10n {
         "settings.demo.toggle": Entry("演示模式", "Demo Mode"),
         "settings.macsync.toggle": Entry("从 Mac 安全同步", "Secure sync from Mac"),
         "settings.macsync.refresh": Entry("立即从 iCloud 拉取", "Pull from iCloud now"),
+        "settings.macsync.retry": Entry("立即重试", "Retry now"),
         "settings.macsync.confirm": Entry("确认改用这台 Mac", "Confirm this Mac as source"),
+        "settings.sync.automatic": Entry("自动同步", "Automatic sync"),
+        "settings.sync.automatic_on": Entry("已开启", "On"),
+        "settings.sync.automatic_detail": Entry(
+            "首次启动自动自检；等待连接时会快速重试，连接后每 45 秒检查。进入后台后由 iCloud 变更唤醒。",
+            "Runs a self-check on first launch, retries quickly while connecting, then checks every 45 seconds. iCloud changes wake it in the background."
+        ),
+        "settings.sync.health.icloud": Entry("iCloud", "iCloud"),
+        "settings.sync.health.key": Entry("同步密钥", "Sync key"),
+        "settings.sync.health.snapshot": Entry("Mac 快照", "Mac snapshot"),
+        "settings.sync.health.available": Entry("可用", "Available"),
+        "settings.sync.health.unavailable": Entry("不可用", "Unavailable"),
+        "settings.sync.health.ready": Entry("已就绪", "Ready"),
+        "settings.sync.health.waiting": Entry("正在等待", "Waiting"),
+        "settings.sync.health.found": Entry("已找到", "Found"),
+        "settings.sync.health.not_found": Entry("尚未找到", "Not found yet"),
+        "settings.sync.health.pending": Entry("检查中", "Checking"),
+        "settings.sync.last_check": Entry("最近自动检查", "Last automatic check"),
+        "settings.sync.provider_captured": Entry("Provider 采集", "Provider captured"),
+        "settings.sync.phone_rendered": Entry("手机呈现", "Phone rendered"),
+        "settings.sync.latency": Entry(
+            "前台时延 · p50 %.0f 秒 · p95 %.0f 秒 · 最大 %.0f 秒 · n=%d",
+            "Foreground latency · p50 %.0fs · p95 %.0fs · max %.0fs · n=%d"
+        ),
+        "settings.sync.pulling": Entry("正在安全拉取…", "Securely pulling…"),
+        "settings.sync.waiting_mac": Entry("等待 Mac 上传第一份快照", "Waiting for the first Mac snapshot"),
+        "settings.sync.waiting_key": Entry("等待 iCloud 钥匙串同步密钥", "Waiting for the iCloud Keychain sync key"),
+        "settings.sync.synced": Entry("已同步 · %@", "Synced · %@"),
+        "settings.sync.latest_snapshot": Entry("最新快照 · %@", "Latest snapshot · %@"),
+        "settings.sync.source_change": Entry("检测到新的 Mac 数据源，需要确认", "A new Mac source needs confirmation"),
+        "settings.sync.error.account": Entry("iCloud 账户不可用或未授权", "iCloud account unavailable or unauthorized"),
+        "settings.sync.error.temporary": Entry("iCloud 暂不可用，稍后可重试", "iCloud is temporarily unavailable; retry later"),
+        "settings.sync.error.remote": Entry("等待 Mac 上传快照", "Waiting for a Mac snapshot"),
+        "settings.sync.error.key": Entry("等待 iCloud 钥匙串同步密钥", "Waiting for the iCloud Keychain sync key"),
+        "settings.sync.error.security": Entry(
+            "远端快照未通过安全校验，已保留旧数据",
+            "Remote snapshot failed security validation; old data was kept"
+        ),
+        "sync.guidance.mac_message": Entry(
+            "请在 Mac 上打开 TokenRemain。Mac 会自动检查 iCloud、创建同步密钥并上传第一份加密快照，无需手动开启同步。",
+            "Open TokenRemain on your Mac. It will check iCloud, create the sync key, and upload the first encrypted snapshot automatically."
+        ),
+        "sync.guidance.icloud_message": Entry(
+            "请确认已登录 iCloud 并开启 iCloud Drive。路径：设置 > 你的名字 > iCloud。恢复后 TokenRemain 会自动重试。",
+            "Confirm that you are signed in to iCloud and iCloud Drive is on: Settings > your name > iCloud. TokenRemain retries automatically."
+        ),
+        "sync.guidance.keychain_message": Entry(
+            "已找到 Mac 快照，但同步密钥仍未到达。请确认两台设备使用同一 Apple 账户，并前往“设置 > 你的名字 > iCloud > 密码与钥匙串”开启同步。",
+            "The Mac snapshot was found, but its key has not arrived. Confirm both devices use the same Apple Account and turn on Passwords & Keychain in Settings > your name > iCloud."
+        ),
+        "sync.guidance.review": Entry("查看诊断", "Review status"),
+        "sync.guidance.later": Entry("稍后", "Later"),
         "settings.demo.footer": Entry(
             "Mac 同步使用 iCloud 私有数据库和应用层加密；每日 Token/费用历史需在 Mac 单独授权，provider 凭证永不上传。演示模式只使用确定性示例数据。",
             "Mac sync uses your private iCloud database plus app-layer encryption; daily token/cost history needs separate Mac authorization, and provider credentials are never uploaded. Demo Mode uses deterministic sample data only."
@@ -257,6 +344,7 @@ public enum TRL10n {
         "intent.stopla.done": Entry("实时活动已停止", "Live Activity stopped"),
 
         // Live Activity
+        "liveactivity.indicator": Entry("实时", "LIVE"),
         "liveactivity.stale": Entry("数据未更新", "Data not updated"),
         "liveactivity.refresh": Entry("刷新", "Refresh"),
 

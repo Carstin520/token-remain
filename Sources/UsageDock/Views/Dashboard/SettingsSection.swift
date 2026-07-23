@@ -41,7 +41,7 @@ private struct FlowToggleRow: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(provider.displayName)
-                .accessibilityValue(active ? "已显示在菜单栏" : "未显示在菜单栏")
+                .accessibilityValue(active ? L10n.text("settings.menubar_shown") : L10n.text("settings.menubar_hidden"))
             }
         }
     }
@@ -65,13 +65,13 @@ struct SettingsSection: View {
 
             DashboardCard {
                 VStack(alignment: .leading, spacing: 12) {
-                    PanelHeader(title: "通用")
+                    PanelHeader(title: L10n.text("settings.general"))
                     Toggle(isOn: launchAtLoginBinding) {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("登录时自动启动")
+                            Text(L10n.text("action.launch_at_login"))
                                 .font(.system(size: 13, weight: .medium))
                                 .foregroundStyle(DashboardTheme.text)
-                            Text("使用 macOS 原生登录项管理")
+                            Text(L10n.text("settings.login_item_note"))
                                 .font(.system(size: 11))
                                 .foregroundStyle(DashboardTheme.secondaryText)
                         }
@@ -90,14 +90,14 @@ struct SettingsSection: View {
 
             DashboardCard {
                 VStack(alignment: .leading, spacing: 14) {
-                    PanelHeader(title: "显示与刷新")
+                    PanelHeader(title: L10n.text("settings.display_refresh"))
 
                     // 菜单栏内容自选:任意追踪中的 provider 都可上菜单栏。
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("菜单栏显示")
+                        Text(L10n.text("settings.menubar_title"))
                             .font(.system(size: 13, weight: .medium))
                             .foregroundStyle(DashboardTheme.text)
-                        Text("勾选要常驻菜单栏文字的应用；建议不超过 3 项以免过宽。全部关闭时显示 “TR”。")
+                        Text(L10n.text("settings.menubar_hint"))
                             .font(.system(size: 11))
                             .foregroundStyle(DashboardTheme.secondaryText)
                         FlowToggleRow(
@@ -112,17 +112,17 @@ struct SettingsSection: View {
                     // 直查刷新频率。
                     HStack(alignment: .firstTextBaseline) {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("额度刷新频率")
+                            Text(L10n.text("settings.refresh_rate"))
                                 .font(.system(size: 13, weight: .medium))
                                 .foregroundStyle(DashboardTheme.text)
-                            Text("各服务端接口的自动直查间隔；“仅手动”时只在点刷新按钮时请求")
+                            Text(L10n.text("settings.refresh_rate_hint"))
                                 .font(.system(size: 11))
                                 .foregroundStyle(DashboardTheme.secondaryText)
                         }
                         Spacer()
                         Picker("", selection: refreshBinding) {
                             ForEach(PreferencesStore.refreshChoices, id: \.self) { minutes in
-                                Text(minutes == 0 ? "仅手动" : "\(minutes) 分钟").tag(minutes)
+                                Text(minutes == 0 ? L10n.text("settings.manual_only") : L10n.format("settings.minutes_format", minutes)).tag(minutes)
                             }
                         }
                         .labelsHidden()
@@ -135,10 +135,10 @@ struct SettingsSection: View {
                     // 桌面浮窗。
                     Toggle(isOn: floatingBinding) {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("桌面浮窗")
+                            Text(L10n.text("settings.floating_widget"))
                                 .font(.system(size: 13, weight: .medium))
                                 .foregroundStyle(DashboardTheme.text)
-                            Text("置顶的挂件面板,跨桌面空间常驻;可整窗拖动,位置自动记忆")
+                            Text(L10n.text("settings.floating_widget_hint"))
                                 .font(.system(size: 11))
                                 .foregroundStyle(DashboardTheme.secondaryText)
                         }
@@ -154,19 +154,19 @@ struct SettingsSection: View {
 
             DashboardCard {
                 VStack(alignment: .leading, spacing: 12) {
-                    PanelHeader(title: "操作")
+                    PanelHeader(title: L10n.text("settings.actions"))
                     HStack(spacing: 10) {
                         Button {
                             Task { await store.refresh(forceCCUsage: true, forceClaude: true) }
                         } label: {
-                            Label(store.isRefreshing ? "刷新中…" : "立即刷新", systemImage: "arrow.clockwise")
+                            Label(store.isRefreshing ? L10n.text("settings.refreshing") : L10n.text("settings.refresh_now"), systemImage: "arrow.clockwise")
                         }
                         .disabled(store.isRefreshing)
 
                         Button {
                             launchAtLogin.restart()
                         } label: {
-                            Label("重启 TokenRemain", systemImage: "arrow.clockwise.circle")
+                            Label(L10n.text("action.restart_app"), systemImage: "arrow.clockwise.circle")
                         }
 
                         Spacer()
@@ -174,7 +174,7 @@ struct SettingsSection: View {
                         Button(role: .destructive) {
                             NSApplication.shared.terminate(nil)
                         } label: {
-                            Label("退出", systemImage: "power")
+                            Label(L10n.text("action.quit"), systemImage: "power")
                         }
                     }
                     .usageDockActionButtonStyle()
@@ -184,11 +184,11 @@ struct SettingsSection: View {
 
             DashboardCard {
                 VStack(alignment: .leading, spacing: 10) {
-                    PanelHeader(title: "关于")
-                    InfoRow(label: "版本", value: appVersion)
-                    InfoRow(label: "数据", value: "本地优先 · 可选 iCloud 私有加密同步")
+                    PanelHeader(title: L10n.text("settings.about"))
+                    InfoRow(label: L10n.text("settings.version"), value: appVersion)
+                    InfoRow(label: L10n.text("settings.data_label"), value: L10n.text("settings.data_value"))
                     HStack {
-                        Text("统计来源")
+                        Text(L10n.text("settings.stats_source"))
                             .font(.system(size: 12))
                             .foregroundStyle(DashboardTheme.secondaryText)
                         Spacer()

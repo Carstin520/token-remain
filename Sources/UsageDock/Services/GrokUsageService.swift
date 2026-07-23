@@ -15,13 +15,13 @@ struct GrokUsageService {
         var errorDescription: String? {
             switch self {
             case .notLoggedIn:
-                return "未检测到 Grok CLI 登录；运行一次 grok 并登录后自动接入"
+                return L10n.text("service.grok.not_logged_in")
             case .staleLogin:
-                return "Grok 长时间未使用，登录凭证已过期；运行一次 grok 即可恢复额度刷新"
+                return L10n.text("service.grok.stale_login")
             case .requestFailed(let status):
-                return "Grok 用量接口请求失败（HTTP \(status)）"
+                return L10n.format("service.common.request_failed", "Grok", status)
             case .invalidResponse:
-                return "Grok 用量接口返回了无法识别的内容"
+                return L10n.format("service.common.invalid_response", "Grok")
             }
         }
     }

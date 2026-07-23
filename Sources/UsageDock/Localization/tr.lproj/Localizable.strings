@@ -59,16 +59,6 @@
 "pace.lasts_until_reset" = "Sıfırlamaya kadar yeter";
 "pace.projected_early" = "Erken tükenecek";
 "pace.projected_in" = "%1$@ içinde tükenecek";
-"暂无按服务商拆分" = "Sağlayıcı dökümü yok";
-"正在读取 ccusage 本地统计…" = "Yerel ccusage verileri okunuyor…";
-"正在读取官方额度…" = "Resmî kota okunuyor…";
-"打开 Dashboard" = "Dashboard'u aç";
-"设置" = "Ayarlar";
-"退出" = "Çık";
-"添加组件" = "Araç takımı ekle";
-"刷新用量" = "Kullanımı yenile";
-"查看全部" = "Tümünü göster";
-"在 X 查看" = "X'te görüntüle";
 "widget.all_visible" = "Tüm araç takımları görünür";
 "widget.add_named" = "%1$@ ekle";
 "widget.keep_expanded" = "Açık tut";

@@ -15,15 +15,15 @@ struct AntigravityUsageService {
         var errorDescription: String? {
             switch self {
             case .notLoggedIn:
-                return "未检测到 Antigravity 登录；安装并登录 Antigravity 后自动接入"
+                return L10n.format("service.common.not_logged_in_install", "Antigravity")
             case .staleLogin:
-                return "Antigravity 长时间未使用，登录凭证已过期；打开一次 Antigravity 应用即可恢复额度刷新"
+                return L10n.format("service.common.stale_login_reopen", "Antigravity")
             case .requestFailed(let status):
-                return "Antigravity 配额接口请求失败（HTTP \(status)）"
+                return L10n.format("service.antigravity.request_failed", status)
             case .invalidResponse:
-                return "Antigravity 配额接口返回了无法识别的内容"
+                return L10n.text("service.antigravity.invalid_response")
             case .quotaUnavailable:
-                return "当前 Antigravity 账户未提供配额池数据"
+                return L10n.text("service.antigravity.no_quota_data")
             }
         }
     }

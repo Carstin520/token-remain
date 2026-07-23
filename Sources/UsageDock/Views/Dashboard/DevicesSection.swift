@@ -19,14 +19,14 @@ struct DevicesSection: View {
 
             DashboardCard {
                 VStack(alignment: .leading, spacing: 12) {
-                    PanelHeader(title: "这台 Mac", subtitle: "当前受监测的设备") {
-                        StatusDotLabel(color: DashboardTheme.success, text: "监测中", bold: true)
+                    PanelHeader(title: L10n.text("devices.this_mac"), subtitle: L10n.text("devices.this_mac_subtitle")) {
+                        StatusDotLabel(color: DashboardTheme.success, text: L10n.text("devices.monitoring"), bold: true)
                     }
-                    InfoRow(label: "设备名称", value: deviceName)
-                    InfoRow(label: "系统版本", value: osVersion)
-                    InfoRow(label: "活跃数据源", value: activeSourcesText)
+                    InfoRow(label: L10n.text("devices.device_name"), value: deviceName)
+                    InfoRow(label: L10n.text("devices.os_version"), value: osVersion)
+                    InfoRow(label: L10n.text("devices.active_sources"), value: activeSourcesText)
                     if let updated = insights.lastUpdated {
-                        InfoRow(label: "最近更新", value: updated.formatted(date: .abbreviated, time: .shortened))
+                        InfoRow(label: L10n.text("devices.last_updated"), value: updated.formatted(date: .abbreviated, time: .shortened))
                     }
                 }
             }
@@ -35,20 +35,20 @@ struct DevicesSection: View {
 #if TOKENREMAIN_CLOUD_SYNC
                 DashboardCard {
                     VStack(alignment: .leading, spacing: 12) {
-                        PanelHeader(title: "CloudKit 私有同步", subtitle: "这台 Mac → Apple 设备") {
+                        PanelHeader(title: L10n.text("sync.cloudkit_title"), subtitle: L10n.text("sync.cloudkit_subtitle")) {
                             StatusDotLabel(color: syncStatusColor, text: syncStatusText, bold: true)
                         }
-                        InfoRow(label: "数据库", value: "iCloud 私有数据库")
-                        InfoRow(label: "当前发布来源", value: "\(sync.previewProviders.count) 个")
-                        InfoRow(label: "变更上传", value: "约 4 秒后")
-                        InfoRow(label: "保活同步", value: "每 15 分钟")
+                        InfoRow(label: L10n.text("sync.database_label"), value: L10n.text("sync.private_database"))
+                        InfoRow(label: L10n.text("sync.publishing_sources"), value: L10n.format("sync.source_count", sync.previewProviders.count))
+                        InfoRow(label: L10n.text("sync.change_upload"), value: L10n.text("sync.upload_delay"))
+                        InfoRow(label: L10n.text("sync.keepalive"), value: L10n.text("sync.keepalive_interval"))
                         if let uploaded = sync.lastUploadedAt {
                             InfoRow(
-                                label: "最近上传",
+                                label: L10n.text("sync.last_uploaded"),
                                 value: uploaded.formatted(date: .abbreviated, time: .shortened)
                             )
                         }
-                        Text("仅同步额度百分比、窗口、重置时间、采集时间、状态和安全套餐标签；内容经应用层加密后写入当前 iCloud 账户的私有库。")
+                        Text(L10n.text("sync.privacy_note"))
                             .font(.system(size: 10))
                             .foregroundStyle(DashboardTheme.mutedText)
                             .fixedSize(horizontal: false, vertical: true)
@@ -58,14 +58,14 @@ struct DevicesSection: View {
 
                 DashboardCard {
                     VStack(alignment: .leading, spacing: 14) {
-                        PanelHeader(title: "Apple 设备接收端", subtitle: "由系统 iCloud 账户关联")
+                        PanelHeader(title: L10n.text("sync.receivers_title"), subtitle: L10n.text("sync.receivers_subtitle"))
                         RoadmapList(items: [
-                            "iPhone 前台每 45 秒校验最新快照",
-                            "CloudKit 静默推送触发低延迟拉取",
-                            "主屏 / 锁屏 Widget 与 Apple Watch 读取已验证快照",
-                            "无需 TokenRemain 登录或 Sign in with Apple"
+                            L10n.text("sync.roadmap.iphone_poll"),
+                            L10n.text("sync.roadmap.silent_push"),
+                            L10n.text("sync.roadmap.widgets"),
+                            L10n.text("sync.roadmap.no_login")
                         ])
-                        Text("后台刷新时机由 iOS 调度，不能承诺固定分钟级周期；设备清单需未来增加匿名接收回执后才能准确展示。")
+                        Text(L10n.text("sync.background_note"))
                             .font(.system(size: 10))
                             .foregroundStyle(DashboardTheme.mutedText)
                             .fixedSize(horizontal: false, vertical: true)
@@ -76,8 +76,8 @@ struct DevicesSection: View {
                 DashboardCard {
                     EmptyStateView(
                         icon: "lock.icloud",
-                        title: "当前构建未启用同步权限",
-                        message: "请安装带 CloudKit 与同步钥匙串签名权限的 TokenRemain 构建，设备页才会显示真实私有同步状态。"
+                        title: L10n.text("sync.entitlement_missing_title"),
+                        message: L10n.text("sync.entitlement_missing_message")
                     )
                 }
 #endif
@@ -86,7 +86,7 @@ struct DevicesSection: View {
     }
 
     private var deviceName: String {
-        Host.current().localizedName ?? "这台 Mac"
+        Host.current().localizedName ?? L10n.text("devices.this_mac")
     }
 
     private var osVersion: String {
@@ -96,20 +96,20 @@ struct DevicesSection: View {
     private var activeSourcesText: String {
         var sources = insights.quotas.map { $0.provider.displayName }
         if insights.daily != nil { sources.append("ccusage") }
-        return sources.isEmpty ? "暂无" : sources.joined(separator: " · ")
+        return sources.isEmpty ? L10n.text("common.none") : sources.joined(separator: " · ")
     }
 
 #if TOKENREMAIN_CLOUD_SYNC
     private var syncStatusText: String {
         switch sync.state {
-        case .off: return "已关闭"
-        case .needsSignedCapabilities: return "缺少签名权限"
-        case .waitingForMacData: return "等待额度"
-        case .checkingICloud: return "检查 iCloud"
-        case .anotherMacIsPrimary: return "其他 Mac 为主设备"
-        case .uploading: return "上传中"
-        case .synced: return "已同步"
-        case .failed: return "同步异常"
+        case .off: return L10n.text("sync.state.off")
+        case .needsSignedCapabilities: return L10n.text("sync.state.needs_capabilities")
+        case .waitingForMacData: return L10n.text("sync.state.waiting_data")
+        case .checkingICloud: return L10n.text("sync.state.checking_icloud")
+        case .anotherMacIsPrimary: return L10n.text("sync.state.other_mac_primary")
+        case .uploading: return L10n.text("sync.state.uploading")
+        case .synced: return L10n.text("sync.state.synced")
+        case .failed: return L10n.text("sync.state.failed")
         }
     }
 

@@ -34,17 +34,17 @@ enum TokenRemainLogoState: String, CaseIterable {
 
     var accessibilityDescription: String {
         switch self {
-        case .excitedStars: return "额度充足，兴奋"
-        case .happyCarets: return "额度充足，开心"
-        case .sparkle: return "额度健康，精神"
-        case .calmDots: return "额度健康，平稳"
-        case .focusedBars: return "额度适中，专注"
-        case .neutralDashes: return "额度过半，平淡"
-        case .worriedSlants: return "额度偏低，担忧"
-        case .tenseChevrons: return "额度较低，紧张"
-        case .dizzySpirals: return "额度很低，晕厥"
-        case .cryingWarning: return "额度即将耗尽，焦虑"
-        case .offline: return "额度已耗尽"
+        case .excitedStars: return L10n.text("logo.state.excited_stars")
+        case .happyCarets: return L10n.text("logo.state.happy_carets")
+        case .sparkle: return L10n.text("logo.state.sparkle")
+        case .calmDots: return L10n.text("logo.state.calm_dots")
+        case .focusedBars: return L10n.text("logo.state.focused_bars")
+        case .neutralDashes: return L10n.text("logo.state.neutral_dashes")
+        case .worriedSlants: return L10n.text("logo.state.worried_slants")
+        case .tenseChevrons: return L10n.text("logo.state.tense_chevrons")
+        case .dizzySpirals: return L10n.text("logo.state.dizzy_spirals")
+        case .cryingWarning: return L10n.text("logo.state.crying_warning")
+        case .offline: return L10n.text("logo.state.offline")
         }
     }
 
@@ -148,10 +148,22 @@ struct TokenRemainLogo: View {
 
     private var accessibilityLabel: String {
         guard let remainingPercent else {
-            return "TokenRemain，等待额度数据"
+            return L10n.text("logo.accessibility.waiting")
         }
-        let providerName = provider.map { "，由\($0.displayName)决定" } ?? ""
-        return "TokenRemain，剩余 \(Int(remainingPercent.rounded()))%\(providerName)，\(state.accessibilityDescription)"
+        let percentText = "\(Int(remainingPercent.rounded()))%"
+        if let provider {
+            return L10n.format(
+                "logo.accessibility.remaining_provider",
+                percentText,
+                provider.displayName,
+                state.accessibilityDescription
+            )
+        }
+        return L10n.format(
+            "logo.accessibility.remaining",
+            percentText,
+            state.accessibilityDescription
+        )
     }
 }
 

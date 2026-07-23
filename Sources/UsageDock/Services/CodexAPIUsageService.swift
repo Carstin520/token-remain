@@ -18,15 +18,15 @@ struct CodexAPIUsageService {
         var errorDescription: String? {
             switch self {
             case .notLoggedIn:
-                return "未找到 Codex 登录凭证;请先用 Codex CLI 登录"
+                return L10n.text("service.codex.not_logged_in")
             case .tokenExpired:
-                return "Codex 登录凭证已过期;运行一次 Codex 即可续期"
+                return L10n.text("service.codex.token_expired")
             case .tokenRejected(let status):
-                return "Codex 用量接口拒绝了当前凭证(HTTP \(status))"
+                return L10n.format("service.common.token_rejected_plain", "Codex", status)
             case .requestFailed(let status):
-                return "Codex 用量接口请求失败(HTTP \(status))"
+                return L10n.format("service.common.request_failed_plain", "Codex", status)
             case .invalidResponse:
-                return "Codex 用量接口返回了无法识别的内容"
+                return L10n.format("service.common.invalid_response", "Codex")
             }
         }
     }

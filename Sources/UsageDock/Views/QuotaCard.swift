@@ -41,7 +41,7 @@ struct QuotaCard: View {
                 } else if notice == nil {
                     HStack(spacing: 8) {
                         ProgressView().controlSize(.small)
-                        Text("正在读取官方额度…")
+                        Text(L10n.text("quota.loading_official"))
                             .font(.system(size: 12))
                             .foregroundStyle(DashboardTheme.secondaryText)
                     }
@@ -109,8 +109,8 @@ struct QuotaCard: View {
                         .frame(width: measuredWidth)
                         .preferredColorScheme(.dark)
                     }
-                    .help("长按并拖动卡片顶部可调整位置")
-                    .accessibilityHint("长按并拖动可调整卡片位置")
+                    .help(L10n.text("quota.drag_help"))
+                    .accessibilityHint(L10n.text("quota.drag_accessibility"))
             } else {
                 content
             }
@@ -166,8 +166,8 @@ struct QuotaWindowRow: View {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .font(.system(size: 10, weight: .bold))
                             .foregroundStyle(DashboardTheme.danger)
-                            .help("当前用量节奏超前")
-                            .accessibilityLabel("当前用量节奏超前")
+                            .help(L10n.text("pace.ahead_warning"))
+                            .accessibilityLabel(L10n.text("pace.ahead_warning"))
                     }
                     Text(L10n.format("quota.remaining", UsageFormatting.percent(remainingPercent)))
                         .numericFont(14, .bold)
@@ -190,7 +190,7 @@ struct QuotaWindowRow: View {
                             Text(UsageFormatting.resetDescription(to: resetsAt, now: context.date))
                                 .numericFont(10)
                         } else {
-                            Text("下次重置时间待官方提供")
+                            Text(L10n.text("quota.reset_pending"))
                         }
                     }
                     .font(.system(size: 10))

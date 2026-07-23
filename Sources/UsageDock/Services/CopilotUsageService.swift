@@ -16,15 +16,15 @@ struct CopilotUsageService {
         var errorDescription: String? {
             switch self {
             case .notLoggedIn:
-                return "未检测到 GitHub 登录；在编辑器里登录 Copilot 或运行 gh auth login 后自动接入"
+                return L10n.text("service.copilot.not_logged_in")
             case .tokenRejected(let status):
-                return "GitHub 拒绝了当前凭证（HTTP \(status)）；重新登录 Copilot 或 gh 后恢复"
+                return L10n.format("service.copilot.token_rejected", status)
             case .requestFailed(let status):
-                return "Copilot 用量接口请求失败（HTTP \(status)）"
+                return L10n.format("service.common.request_failed", "Copilot", status)
             case .invalidResponse:
-                return "Copilot 用量接口返回了无法识别的内容"
+                return L10n.format("service.common.invalid_response", "Copilot")
             case .quotaUnavailable:
-                return "该 Copilot 席位不提供个人配额（组织按量计费席位）"
+                return L10n.text("service.copilot.no_personal_quota")
             }
         }
     }

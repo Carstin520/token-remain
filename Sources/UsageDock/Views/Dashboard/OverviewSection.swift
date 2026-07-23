@@ -33,7 +33,7 @@ struct OverviewSection: View {
     }
 
     private var updatedText: String? {
-        insights.lastUpdated.map { "更新于 \($0.formatted(date: .omitted, time: .standard))" }
+        insights.lastUpdated.map { L10n.format("common.updated_at", $0.formatted(date: .omitted, time: .standard)) }
     }
 
     // MARK: - KPIs (all real)
@@ -44,22 +44,22 @@ struct OverviewSection: View {
 
             HStack(alignment: .top, spacing: 13) {
                 MetricCard(
-                    label: "最低可用额度",
+                    label: L10n.text("overview.kpi.min_remaining"),
                     value: insights.minRemainingPercent.map { UsageFormatting.percent($0) } ?? "—",
                     caption: "\(risk.badge) RISK",
                     captionColor: risk.tint,
                     valueColor: risk == .unknown ? DashboardTheme.text : risk.tint
                 )
                 MetricCard(
-                    label: "今日 Tokens",
+                    label: L10n.text("usage.today_tokens"),
                     value: insights.totalTokens.map { UsageFormatting.compactNumber($0) } ?? "—",
-                    caption: "ccusage 本地统计",
+                    caption: L10n.text("usage.ccusage_local"),
                     captionColor: DashboardTheme.secondaryText
                 )
                 MetricCard(
-                    label: "今日预估成本",
+                    label: L10n.text("usage.today_est_cost"),
                     value: insights.totalCost.map { String(format: "$%.2f", $0) } ?? "—",
-                    caption: "API 标价估算",
+                    caption: L10n.text("usage.api_price_estimate"),
                     captionColor: DashboardTheme.secondaryText
                 )
                 sustainabilityMetric(at: context.date)
@@ -72,9 +72,9 @@ struct OverviewSection: View {
               let runOutAt = assessment.pace.estimatedRunOutAt
         else {
             return MetricCard(
-                label: "额度可持续性",
-                value: insights.riskLevel(at: now) == .unknown ? "—" : "可到重置",
-                caption: "按当前窗口平均节奏",
+                label: L10n.text("overview.kpi.sustainability"),
+                value: insights.riskLevel(at: now) == .unknown ? "—" : L10n.text("overview.kpi.until_reset"),
+                caption: L10n.text("overview.kpi.pace_basis"),
                 captionColor: insights.riskLevel(at: now) == .unknown
                     ? DashboardTheme.secondaryText
                     : DashboardTheme.success,
@@ -85,9 +85,9 @@ struct OverviewSection: View {
         let provider = assessment.window.provider.displayName
         let window = UsageFormatting.windowName(minutes: assessment.window.windowMinutes)
         return MetricCard(
-            label: "预计可用",
+            label: L10n.text("overview.kpi.projected_available"),
             value: UsageFormatting.durationUntil(runOutAt, now: now),
-            caption: "\(provider) \(window) · 早于重置",
+            caption: L10n.format("overview.kpi.window_before_reset", provider, window),
             captionColor: DashboardTheme.warning,
             valueColor: DashboardTheme.warning
         )
@@ -98,7 +98,7 @@ struct OverviewSection: View {
     private var officialQuotaPanel: some View {
         DashboardCard {
             VStack(alignment: .leading, spacing: 14) {
-                PanelHeader(title: "官方额度", subtitle: "最常用服务商的最紧张窗口") {
+                PanelHeader(title: L10n.text("quota.official_title"), subtitle: L10n.text("quota.official_subtitle")) {
                     TagPill(text: "LIVE", color: DashboardTheme.codex, background: DashboardTheme.surface2)
                 }
 
@@ -107,8 +107,8 @@ struct OverviewSection: View {
                 if rows.isEmpty {
                     EmptyStateView(
                         icon: "gauge.with.dots.needle.bottom.0percent",
-                        title: "正在读取官方额度",
-                        message: "Claude 与 Codex 的服务端额度快照稍后会自动出现。"
+                        title: L10n.text("quota.loading_official_title"),
+                        message: L10n.text("quota.loading_official_message")
                     )
                 } else {
                     ForEach(rows) { window in
@@ -116,7 +116,7 @@ struct OverviewSection: View {
                     }
                     Divider().overlay(DashboardTheme.border)
                     HStack {
-                        Text("风险等级")
+                        Text(L10n.text("overview.risk_level"))
                             .font(.system(size: 11))
                             .foregroundStyle(DashboardTheme.secondaryText)
                         Spacer()
@@ -158,7 +158,7 @@ struct OverviewSection: View {
                 let risk = insights.riskLevel(at: now)
                 let paceAssessment = insights.paceAssessment(at: now)
 
-                PanelHeader(title: "风险提示", subtitle: "基于最紧张的额度窗口")
+                PanelHeader(title: L10n.text("overview.risk_panel_title"), subtitle: L10n.text("overview.risk_panel_subtitle"))
 
                 HStack(spacing: 8) {
                     PixelBadge(text: risk.badge, color: risk.tint, filled: risk == .high)
@@ -175,23 +175,23 @@ struct OverviewSection: View {
                 if let window = paceAssessment?.window ?? insights.constrainingWindow {
                     Divider().overlay(DashboardTheme.border)
                     InfoRow(
-                        label: "最紧张窗口",
+                        label: L10n.text("overview.scarcest_window"),
                         value: "\(window.provider.displayName) · \(UsageFormatting.windowName(minutes: window.windowMinutes))"
                     )
                     InfoRow(
-                        label: "剩余额度",
+                        label: L10n.text("overview.remaining_quota"),
                         value: UsageFormatting.percent(window.remainingPercent),
                         valueColor: risk.tint
                     )
                     if let runOutAt = paceAssessment?.pace.estimatedRunOutAt {
                         InfoRow(
-                            label: "预计用尽",
-                            value: UsageFormatting.durationUntil(runOutAt, now: now) + "后",
+                            label: L10n.text("overview.projected_depletion"),
+                            value: L10n.format("overview.in_duration", UsageFormatting.durationUntil(runOutAt, now: now)),
                             valueColor: DashboardTheme.warning
                         )
                     }
                     if let reset = window.resetsAt {
-                        InfoRow(label: "预计重置", value: UsageFormatting.resetDescription(to: reset))
+                        InfoRow(label: L10n.text("overview.projected_reset"), value: UsageFormatting.resetDescription(to: reset))
                     }
                 }
             }
@@ -229,7 +229,7 @@ private struct OfficialQuotaRow: View {
                 height: 5
             )
             HStack {
-                Text(UsageFormatting.windowName(minutes: window.windowMinutes) + "窗口")
+                Text(L10n.format("quota.window", UsageFormatting.windowName(minutes: window.windowMinutes)))
                     .font(.system(size: 10))
                     .foregroundStyle(DashboardTheme.mutedText)
                 Spacer()
@@ -241,6 +241,6 @@ private struct OfficialQuotaRow: View {
             }
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(window.provider.displayName) 剩余 \(UsageFormatting.percent(window.remainingPercent))")
+        .accessibilityLabel(L10n.format("quota.provider_remaining", window.provider.displayName, UsageFormatting.percent(window.remainingPercent)))
     }
 }

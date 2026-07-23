@@ -13,18 +13,18 @@ struct ClaudeUsageService {
         var errorDescription: String? {
             switch self {
             case .cliNotFound:
-                return "未找到 Claude Code；请先安装并登录 Claude Code"
+                return L10n.text("service.claude.cli_not_found")
             case .cliTimedOut:
-                return "Claude Code 用量读取超时，正在显示最近缓存"
+                return L10n.text("service.claude.cli_timeout")
             case .cliLaunchFailed(let detail):
-                return "无法启动 Claude Code 用量探针：\(detail)"
+                return L10n.format("service.claude.probe_launch_failed", detail)
             case .invalidUsageOutput:
-                return "Claude Code 未返回可识别的 5 小时 / 7 天用量"
+                return L10n.text("service.claude.invalid_usage_output")
             case .rateLimited(let seconds):
                 if let seconds {
-                    return "Claude 用量接口限流，约 \(max(1, Int((Double(seconds) / 60).rounded(.up)))) 分钟后自动重试"
+                    return L10n.format("service.claude.rate_limited_minutes", max(1, Int((Double(seconds) / 60).rounded(.up))))
                 }
-                return "Claude 用量接口限流，稍后自动重试"
+                return L10n.text("service.claude.rate_limited")
             }
         }
 

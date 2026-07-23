@@ -9,10 +9,10 @@ struct KeychainSecretStore: Sendable {
         var errorDescription: String? {
             switch self {
             case .invalidData:
-                return "钥匙串中的 X API Token 无法读取"
+                return L10n.text("keychain.token_unreadable")
             case .unexpectedStatus(let status):
-                let detail = SecCopyErrorMessageString(status, nil) as String? ?? "未知错误"
-                return "钥匙串操作失败：\(detail)"
+                let detail = SecCopyErrorMessageString(status, nil) as String? ?? L10n.text("keychain.unknown_error")
+                return L10n.format("keychain.operation_failed", detail)
             }
         }
     }
