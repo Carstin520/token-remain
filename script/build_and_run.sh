@@ -14,7 +14,7 @@ LEGACY_INSTALLED_APPS=(
   "$INSTALL_DIR/UsageDock.app"
   "$INSTALL_DIR/Token Remain.app"
 )
-LOCAL_FEED_CONFIG="$ROOT_DIR/Config/UsageDockFeed.local.plist"
+BROADCAST_BASE_URL="${TOKENREMAIN_BROADCAST_BASE_URL:-https://tokenremain-broadcast.jamescarstin520.workers.dev}"
 APP_CONTENTS="$APP_BUNDLE/Contents"
 APP_MACOS="$APP_CONTENTS/MacOS"
 APP_RESOURCES="$APP_CONTENTS/Resources"
@@ -43,6 +43,7 @@ SYNC_EXPECTED_KEYCHAIN_GROUP=""
 SYNC_EXPECTED_APPLICATION_IDENTIFIER=""
 SYNC_EXPECTED_TEAM_IDENTIFIER=""
 SYNC_EXPECTED_ICLOUD_ENVIRONMENT=""
+SYNC_EXPECTED_APNS_ENVIRONMENT=""
 SYNC_EXPECTED_GET_TASK_ALLOW="false"
 SYNC_SIGNING_COMMON_NAME=""
 ARCHIVE_DIR="${USAGEDOCK_ARCHIVE_DIR:-$ROOT_DIR/dist-release}"
@@ -208,6 +209,17 @@ prepare_sync_signing() {
     echo "The sync provisioning profile does not authorize CloudKit Production." >&2
     exit 1
   fi
+  SYNC_EXPECTED_APNS_ENVIRONMENT="$(
+    printf '%s' "$SYNC_EXPECTED_ICLOUD_ENVIRONMENT" | /usr/bin/tr '[:upper:]' '[:lower:]'
+  )"
+  local profile_apns_environment
+  profile_apns_environment="$(/usr/libexec/PlistBuddy \
+    -c 'Print :Entitlements:com.apple.developer.aps-environment' \
+    "$profile_plist" 2>/dev/null || true)"
+  if [[ "$profile_apns_environment" != "$SYNC_EXPECTED_APNS_ENVIRONMENT" ]]; then
+    echo "The sync provisioning profile does not authorize the required APNs environment." >&2
+    exit 1
+  fi
 
   SYNC_EXPECTED_GET_TASK_ALLOW="false"
   if [[ "$SYNC_EXPECTED_ICLOUD_ENVIRONMENT" == "Development" ]]; then
@@ -232,6 +244,7 @@ prepare_sync_signing() {
   /usr/libexec/PlistBuddy -c "Set :com.apple.application-identifier $SYNC_EXPECTED_APPLICATION_IDENTIFIER" "$SYNC_RESOLVED_ENTITLEMENTS"
   /usr/libexec/PlistBuddy -c "Set :com.apple.developer.team-identifier $SYNC_EXPECTED_TEAM_IDENTIFIER" "$SYNC_RESOLVED_ENTITLEMENTS"
   /usr/libexec/PlistBuddy -c "Set :com.apple.developer.icloud-container-environment $SYNC_EXPECTED_ICLOUD_ENVIRONMENT" "$SYNC_RESOLVED_ENTITLEMENTS"
+  /usr/libexec/PlistBuddy -c "Set :com.apple.developer.aps-environment $SYNC_EXPECTED_APNS_ENVIRONMENT" "$SYNC_RESOLVED_ENTITLEMENTS"
   if [[ "$SYNC_EXPECTED_GET_TASK_ALLOW" == "true" ]]; then
     /usr/libexec/PlistBuddy -c 'Set :com.apple.security.get-task-allow true' "$SYNC_RESOLVED_ENTITLEMENTS"
   else
@@ -245,9 +258,10 @@ verify_sync_signature() {
   /usr/bin/codesign --verify --deep --strict "$signed_app"
   /usr/bin/codesign -d --entitlements :- "$signed_app/Contents/MacOS/$EXECUTABLE_NAME" > "$final_entitlements" 2>/dev/null
 
-  local container environment service keychain_group application_identifier team_identifier get_task_allow
+  local container environment apns_environment service keychain_group application_identifier team_identifier get_task_allow
   container="$(/usr/libexec/PlistBuddy -c 'Print :com.apple.developer.icloud-container-identifiers:0' "$final_entitlements" 2>/dev/null || true)"
   environment="$(/usr/libexec/PlistBuddy -c 'Print :com.apple.developer.icloud-container-environment' "$final_entitlements" 2>/dev/null || true)"
+  apns_environment="$(/usr/libexec/PlistBuddy -c 'Print :com.apple.developer.aps-environment' "$final_entitlements" 2>/dev/null || true)"
   service="$(/usr/libexec/PlistBuddy -c 'Print :com.apple.developer.icloud-services:0' "$final_entitlements" 2>/dev/null || true)"
   keychain_group="$(/usr/libexec/PlistBuddy -c 'Print :keychain-access-groups:0' "$final_entitlements" 2>/dev/null || true)"
   application_identifier="$(/usr/libexec/PlistBuddy -c 'Print :com.apple.application-identifier' "$final_entitlements" 2>/dev/null || true)"
@@ -255,6 +269,7 @@ verify_sync_signature() {
   get_task_allow="$(/usr/libexec/PlistBuddy -c 'Print :com.apple.security.get-task-allow' "$final_entitlements" 2>/dev/null || true)"
   if [[ "$container" != "iCloud.com.jamesli.tokenremain" \
     || "$environment" != "$SYNC_EXPECTED_ICLOUD_ENVIRONMENT" \
+    || "$apns_environment" != "$SYNC_EXPECTED_APNS_ENVIRONMENT" \
     || "$service" != "CloudKit" \
     || "$keychain_group" != "$SYNC_EXPECTED_KEYCHAIN_GROUP" \
     || "$application_identifier" != "$SYNC_EXPECTED_APPLICATION_IDENTIFIER" \
@@ -293,6 +308,16 @@ rm -rf "$APP_BUNDLE"
 mkdir -p "$APP_MACOS" "$APP_RESOURCES"
 cp "$BUILD_BINARY" "$APP_BINARY"
 cp "$ROOT_DIR/Resources/Info.plist" "$APP_CONTENTS/Info.plist"
+if [[ -n "$BROADCAST_BASE_URL" ]]; then
+  if [[ "$BROADCAST_BASE_URL" != https://* && "$BROADCAST_BASE_URL" != http://localhost* \
+    && "$BROADCAST_BASE_URL" != http://127.0.0.1* ]]; then
+    echo "TOKENREMAIN_BROADCAST_BASE_URL must use HTTPS (localhost HTTP is allowed for development)." >&2
+    exit 2
+  fi
+  /usr/libexec/PlistBuddy \
+    -c "Add :TokenRemainBroadcastBaseURL string $BROADCAST_BASE_URL" \
+    "$APP_CONTENTS/Info.plist"
+fi
 cp "$ROOT_DIR/Sources/UsageDock/Resources/claude.png" "$APP_RESOURCES/claude.png"
 cp "$ROOT_DIR/Sources/UsageDock/Resources/TokenRemain.icns" "$APP_RESOURCES/TokenRemain.icns"
 cp -R "$ROOT_DIR/Sources/UsageDock/Resources/TokenRemainHeadStates" "$APP_RESOURCES/"
@@ -374,12 +399,7 @@ for legacy_app in "${LEGACY_INSTALLED_APPS[@]}"; do
 done
 
 open_app() {
-  local open_arguments=()
-  if [[ -f "$LOCAL_FEED_CONFIG" ]]; then
-    chmod 600 "$LOCAL_FEED_CONFIG"
-    open_arguments=(--args --import-feed-config "$LOCAL_FEED_CONFIG")
-  fi
-  /usr/bin/open -n "$INSTALLED_APP" "${open_arguments[@]}"
+  /usr/bin/open -n "$INSTALLED_APP"
 }
 
 case "$MODE" in

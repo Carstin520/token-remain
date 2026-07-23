@@ -2,6 +2,8 @@ import Foundation
 import SwiftUI
 import TokenRemainKit
 import TokenRemainSyncKit
+import UIKit
+import UserNotifications
 #if canImport(ActivityKit)
 import ActivityKit
 #endif
@@ -39,6 +41,11 @@ final class AppModel {
     private(set) var latestSyncTiming: SyncLatencyObservation?
     private(set) var lastAutomaticSyncCheckAt: Date?
     private(set) var syncGuidance: MobileSyncGuidance?
+    var broadcastNotificationsEnabled: Bool {
+        didSet {
+            MobileBroadcastPreferences.notificationsEnabled = broadcastNotificationsEnabled
+        }
+    }
 
     /// Router state, driven by the URL scheme, widgets and `OpenTabIntent`.
     var route: TRRoute = .overview
@@ -70,15 +77,11 @@ final class AppModel {
                 historyStore.clearDemoPoints()
                 dailyUsageHistoryStore.clear()
                 dailyUsageHistory = nil
-                curatedFeedStore.clear()
-                curatedFeed = nil
                 endLiveActivity()
             case .demo:
                 historyStore.seedDemo(scenario: demoScenario, now: Date())
                 dailyUsageHistoryStore.clear()
                 dailyUsageHistory = Self.demoDailyUsageHistory(scenario: demoScenario, now: Date())
-                curatedFeedStore.clear()
-                curatedFeed = nil
             case .macSync:
                 // Switching away from a fixture removes its synthetic history;
                 // the verified Mac snapshot is appended by `install(snapshot:)`.
@@ -131,6 +134,7 @@ final class AppModel {
         history = []
         dailyUsageHistory = nil
         curatedFeed = nil
+        broadcastNotificationsEnabled = MobileBroadcastPreferences.notificationsEnabled
         syncLatencySummary = syncLatencyStore.summary()
         latestSyncTiming = syncLatencyStore.observations().last
 
@@ -144,16 +148,12 @@ final class AppModel {
         switch resolvedOrigin {
         case .macSync:
             dailyUsageHistory = dailyUsageHistoryStore.load()
-            curatedFeed = curatedFeedStore.load()
         case .demo:
             dailyUsageHistory = Self.demoDailyUsageHistory(scenario: demoScenario, now: Date())
-            curatedFeedStore.clear()
-            curatedFeed = nil
         case .none:
             dailyUsageHistoryStore.clear()
-            curatedFeedStore.clear()
-            curatedFeed = nil
         }
+        curatedFeed = curatedFeedStore.load()
         // `-tr-route <tab>` pins the initial tab for deterministic screenshots.
         if let index = arguments.firstIndex(of: "-tr-route"), index + 1 < arguments.count,
            let launchRoute = TRRoute(rawValue: arguments[index + 1]) {
@@ -226,8 +226,6 @@ final class AppModel {
 
         dailyUsageHistoryStore.replace(with: source.dailyUsageHistory, now: now)
         dailyUsageHistory = dailyUsageHistoryStore.load(now: now)
-        curatedFeedStore.replace(with: source.curatedFeed, now: now)
-        curatedFeed = curatedFeedStore.load(now: now)
         install(snapshot: adapted, now: now)
         updateMobileSyncState(.synced(source.generatedAt), at: now)
     }
@@ -377,10 +375,8 @@ final class AppModel {
         store.clear()
         historyStore.clear()
         dailyUsageHistoryStore.clear()
-        curatedFeedStore.clear()
         history = []
         dailyUsageHistory = nil
-        curatedFeed = nil
         WidgetReload.all()
         watchSync.push(snapshot)
         endLiveActivity()
@@ -446,6 +442,28 @@ final class AppModel {
     func consumePendingRoute() {
         if let pending = TRRoute.takePending() {
             open(route: pending)
+        }
+    }
+
+    func refreshBroadcastFeed() async {
+        guard let feed = try? await MobileBroadcastService.shared.fetchFeed() else { return }
+        curatedFeedStore.replace(with: feed)
+        curatedFeed = curatedFeedStore.load()
+    }
+
+    func setBroadcastNotificationsEnabled(_ enabled: Bool) async {
+        broadcastNotificationsEnabled = enabled
+        if enabled {
+            let granted = (try? await UNUserNotificationCenter.current().requestAuthorization(
+                options: [.alert, .sound]
+            )) ?? false
+            if granted {
+                UIApplication.shared.registerForRemoteNotifications()
+            } else {
+                broadcastNotificationsEnabled = false
+            }
+        } else {
+            try? await MobileBroadcastService.shared.unregister()
         }
     }
 

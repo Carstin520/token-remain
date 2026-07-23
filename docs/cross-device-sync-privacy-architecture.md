@@ -12,19 +12,19 @@
 2. Mac 先执行严格的数据白名单和脱敏，再生成独立的移动端快照。
 3. 快照使用应用层 AES-256-GCM 加密，密钥只保存在用户的 iCloud 钥匙串中。
 4. 密文写入用户自己的 CloudKit Private Database；不建设可读取用户额度数据的 TokenRemain 业务服务器。
-5. iPhone 收到 CloudKit 静默变更提示后拉取密文；当前额度更新 App Group、Widget 和 Live Activity，历史与公开精选 Feed 只保存在主 App 私有目录。
+5. iPhone 收到 CloudKit 静默变更提示后拉取密文；当前额度更新 App Group、Widget 和 Live Activity，每日历史只保存在主 App 私有目录。公开 X Feed 走独立、无用户账户的广播服务，不进入额度快照。
 6. iPhone 沿用现有 `WatchConnectivity.updateApplicationContext`，把最新快照发给 Apple Watch。
 
 这条路径同时满足异地同步、低运维成本、Apple 账户免登录、服务端不可读和现有 Apple 端代码可渐进迁移。不同 Apple 账户之间的同步不进入首发范围。
 
 ## 2. 设计原则
 
-- **凭证永不跨设备。** Claude / Codex access token、refresh token、API Key、Cookie、X Bearer Token、GitHub 登录态等只留在 Mac 本机。
+- **用户凭证永不跨设备。** Claude / Codex access token、refresh token、API Key、Cookie、GitHub 登录态等只留在 Mac 本机。产品方唯一的 X Bearer Token 只保存在 Broadcast Worker Secret 中，从不进入 Apple 客户端。
 - **首次安装自动连接，用户可随时退出。** Mac 和 iPhone 首次运行会自动自检并加入同一 Apple 账户下的私有同步；显式关闭后保持关闭。两端均显示同步状态、最近检查时间和删除入口。
 - **默认只同步最少结果。** 只同步用于展示的稳定 provider ID、额度百分比、
   窗口时长、重置时间、采集时间、受控状态和经过净化的套餐标签。
 - **单向、单写者。** Mac 是额度快照唯一写者；iPhone、Widget、Watch 不回写额度，消除绝大多数冲突。
-- **业务服务器不碰用户额度。** 当前实现不建设 Feed 后端；Mac 只把已经筛选的公开 X 帖子随同一加密快照交给 iPhone，X 凭证仍只留在 Mac。
+- **业务服务器不碰用户额度。** Broadcast Worker 只处理产品方公开 X 帖子、匿名 APNs 设备注册和投递状态；用户额度继续只走应用层加密的 CloudKit Private Database。
 - **推送只作提示。** APNs / CloudKit notification 不携带百分比、费用或 provider 明细。
 - **失败时诚实降级。** 无 iCloud、密钥未到达、快照过期、解密失败都显示明确状态，不回退到演示数字。
 - **用户可看、可导出、可删除。** 设置页提供“本次会同步什么”、导出、断开、删除云端副本。
@@ -40,6 +40,7 @@
 - iPhone / Widget 共享 `SnapshotStore` 和 `UsageSnapshot`；真实来源为 `.macSync`，首次启动仍为 `.none`。
 - iPhone → Watch 已使用 `WatchConnectivity.updateApplicationContext`，符合“最新值覆盖”的需求。
 - CloudKit Private Database、AES-256-GCM envelope、同步 Keychain、重放防护和静默通知入口均已接入。
+- 独立 Broadcast Worker、D1 公开 Feed、匿名设备注册、按时区每日摘要和 Apple 客户端直连路径已实现；Cloudflare / X / APNs 生产凭证仍待配置。
 
 发布前仍必须解决：
 
@@ -57,8 +58,6 @@ flowchart LR
         P["本地 CLI / provider API"] --> C["UsageStore"]
         K1["provider 凭证\n本机 Keychain"] --> P
         C --> R["SyncRedactor\n白名单 + 归一化"]
-        XF["X 公开内容\nMac 本地筛选"] --> R
-        XK["X Bearer Token\nMac Keychain"] --> XF
         R --> S["MobileUsageSnapshot"]
         S --> E["AES-256-GCM 加密"]
         SK1["同步密钥\niCloud Keychain"] --> E
@@ -80,6 +79,10 @@ flowchart LR
 
     WC --> WATCH["Apple Watch + complications"]
 
+    XK["产品方 X Bearer Token\nWorker Secret"] --> BW["Broadcast Worker\n公开 Feed + APNs"]
+    BW -->|"公开精选内容"| APP
+    BW -->|"每日通知；不含额度"| APP
+
 ```
 
 关键边界：
@@ -87,7 +90,7 @@ flowchart LR
 - `UsageStore → SyncRedactor` 是最重要的隐私边界。只有明确列入 allowlist 的字段可离开 Mac。
 - CloudKit 记录只包含加密 envelope。TokenRemain 自建服务不参与上传、下载或密钥分发。
 - iPhone 解密后仍只保存展示所需的快照；Watch 只收到 iPhone 已验证的同一份快照。
-- 精选 Feed 只含最多 3 条公开 X 帖子的受限展示字段，随同一 AES-GCM envelope 传输；X Bearer Token、互动统计、关注配置和浏览行为均不进入快照。
+- 广播 Feed 与额度同步完全分离。CloudKit envelope 不再携带 Feed；Worker 不接收 provider 额度、CloudKit source ID、同步 key 或用户账户。
 
 ## 5. 同步数据白名单
 
@@ -112,11 +115,11 @@ provider 条目。该集合与 Mac 的 `ProviderQuota.Provider.displayOrder` 由
 | `capturedAt` | 数据新鲜度 | 可与 provider 原始采集时间不同 |
 | `statusCode` | 离线 / 过期 / 正常 | 使用受控枚举，不传原始错误文本 |
 
-精选 X 帖子属于单独的可选公开内容字段：最多 3 条，只允许 tweet id、公开用户名/显示名、正文、发布时间、受控优先级和规范的 `https://x.com/<user>/status/<id>` 链接；每条不得早于 14 天，字段有严格长度和字符集限制。iPhone 解密后仅写主 App 私有 Application Support，不进入 App Group、Widget、Live Activity 或 Watch。
+旧协议中的 `curatedFeed` 字段仅为向后兼容而保留；当前 Mac 发布者固定写入 `nil`。iPhone 和 macOS 从广播服务直接读取公开帖子，iPhone 只在主 App 私有 Application Support 保存最多 3 条展示记录，不进入 App Group、Widget、Live Activity 或 Watch。
 
 ### 5.2 默认不跨设备
 
-- access token、refresh token、session token、API Key、Cookie、X Bearer Token。
+- access token、refresh token、session token、API Key、Cookie；产品方 X Bearer Token 也绝不进入 CloudKit 或客户端。
 - 用户名、邮箱、provider account id、组织名、套餐的原始账号标识。
 - prompt、聊天内容、项目名、仓库名、文件路径、终端命令、CLI 原始日志。
 - HTTP request / response body、认证 header、provider 原始错误字符串。
@@ -330,17 +333,18 @@ CloudKit 通知可能合并或丢失，因此“通知”只能是刷新提示�
 
 ## 12. 精选 Feed 的当前隔离方式
 
-当前版本不建设 Feed 后端。Mac 使用本地 Keychain 中的 X 凭证获取并筛选公开帖子，再由同步白名单仅抽取最多 3 条公开展示字段：
+当前版本使用独立 TokenRemain Broadcast Worker。它只用产品方的一组 X 凭证同步指定账号，并向所有客户端提供同一份公开结果：
 
 | 通路 | 数据 | 身份 | 隐私边界 |
 |---|---|---|---|
 | 额度同步 | 用户自己的加密快照 | Apple / iCloud account | CloudKit private DB，TokenRemain 服务器不参与 |
-| AI Feed | 已筛选的公开帖子 | 同一 Apple / iCloud account | 与额度共同进入 AES-GCM envelope；X 凭证不进入 |
+| AI Feed | 产品方公开 X 帖子 | 无用户账户；匿名安装 ID | Worker + D1；客户端只读公开接口 |
+| 每日通知 | 摘要或最新动态入口 | APNs device token | Worker + Queue + APNs；不含用户额度 |
 
 严禁：
 
-- 把 X Bearer Token、互动统计或关注配置写入跨端 DTO。
-- 为 Feed 另建能关联 `sourceInstanceID`、key id 或 provider 列表的用户画像。
+- 把 X Bearer Token 写入客户端、Info.plist、CloudKit DTO 或日志。
+- 让 Feed 设备记录关联 `sourceInstanceID`、CloudKit key id、provider 列表或 Apple 账户。
 - 在同一 analytics event 中关联 Feed 行为和 quota 状态。
 - 通过自建 APNs payload 发送用户具体额度。
 
@@ -352,7 +356,7 @@ CloudKit 通知可能合并或丢失，因此“通知”只能是刷新提示�
 - 哪些字段在用户开启后会加密同步到 iCloud。
 - provider 凭证永不上传，TokenRemain 服务器不接收额度快照。
 - 云端默认只有最新快照；用户如何导出和删除。
-- 精选 Feed 只包含公开帖文字/链接，X 凭证与用户浏览行为不跨设备。
+- 精选 Feed 只包含公开帖文字/链接；X 凭证只在 Worker Secret，匿名设备注册不关联额度或 Apple 账户。
 - 崩溃分析、诊断和通知预览的默认策略。
 
 App Store Privacy Nutrition Label 不能仅凭“密文”就草率填写“未收集”。发布前应按 Apple 当期定义确认 CloudKit 私有同步是否属于开发者可访问的 collected data，并让商店声明、隐私政策和真实实现一致。
@@ -425,13 +429,13 @@ App Store Privacy Nutrition Label 不能仅凭“密文”就草率填写“未�
 
 已完成：
 
-- macOS 端使用独立白名单 DTO；默认只传 provider ID、额度窗口、采集时间和状态。每日 token / 费用历史必须单独授权，且只含 Claude / Codex 最多 30 天按日聚合。公开精选 X Feed 最多 3 条并严格校验规范链接、年龄、字符和长度；凭证、Cookie、账号、互动统计、路径和任意 provider 原始响应不进入同步模型。
+- macOS 端使用独立白名单 DTO；默认只传 provider ID、额度窗口、采集时间和状态。每日 token / 费用历史必须单独授权，且只含 Claude / Codex 最多 30 天按日聚合。公开 Feed 已从 CloudKit 快照移除并改由独立广播服务提供。
 - 快照先经过 AES-256-GCM 应用层加密，再写入 CloudKit Private Database 的 encrypted field；推送只作为“有变化”的静默提示，不携带额度。
 - 同步密钥使用独立 synchronizable Keychain item；iPhone 只能读取现有 key，不能自行创建错误的新 key。
 - Mac 端实现 4 秒变更 debounce、15 分钟 heartbeat、内容指纹去重、指数退避和单一主 Mac 接管确认。
 - iPhone 在启动、回到前台和 CloudKit 静默提示后拉取；验证 schema、大小、时间、来源和 sequence 后，统一写入 App Group，并刷新 App、Widget、Live Activity 和 Watch。
 - Mac 发布者覆盖当前全部 `SyncedProviderID` 白名单 Provider；只进入稳定 ID、窗口、采集时间和状态，任意原始响应、账号、凭证、路径与诊断字符串仍被拒绝。
-- iPhone 每日历史和公开精选 Feed 只保存在主 App 私有目录；Widget、Live Activity 和 Watch 的 entitlement 与数据输入均未扩大。趋势页和概览卡使用真实每日聚合堆叠柱，不再把本机额度观察点绘制成曲线。
+- iPhone 每日历史和公开 Feed 缓存只保存在主 App 私有目录；Widget、Live Activity 和 Watch 的 entitlement 与数据输入均未扩大。趋势页和概览卡使用真实每日聚合堆叠柱，不再把本机额度观察点绘制成曲线。
 - 同步数据超过 10 分钟显示陈旧提示，超过 24 小时硬过期并停止显示额度数字。
 - 默认本地 macOS 构建不带 CloudKit 或共享 Keychain entitlement；只有显式 profile-backed 构建才可启用同步。
 

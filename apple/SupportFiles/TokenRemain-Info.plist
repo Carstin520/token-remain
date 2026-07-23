@@ -47,6 +47,8 @@
 	<true/>
 	<key>NSSupportsLiveActivitiesFrequentUpdates</key>
 	<false/>
+	<key>TokenRemainBroadcastBaseURL</key>
+	<string>$(TOKENREMAIN_BROADCAST_BASE_URL)</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>

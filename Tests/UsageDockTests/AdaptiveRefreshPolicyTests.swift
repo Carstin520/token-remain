@@ -42,20 +42,17 @@ struct AdaptiveRefreshPolicyTests {
         let first = SyncContentFingerprint.make(
             quotas: [.claude: quota(usedPercent: 42, capturedAt: start)],
             history: nil,
-            includesUsageHistory: false,
-            feedPosts: []
+            includesUsageHistory: false
         )
         let recaptured = SyncContentFingerprint.make(
             quotas: [.claude: quota(usedPercent: 42, capturedAt: start + 60)],
             history: nil,
-            includesUsageHistory: false,
-            feedPosts: []
+            includesUsageHistory: false
         )
         let changed = SyncContentFingerprint.make(
             quotas: [.claude: quota(usedPercent: 43, capturedAt: start + 60)],
             history: nil,
-            includesUsageHistory: false,
-            feedPosts: []
+            includesUsageHistory: false
         )
         #expect(first == recaptured)
         #expect(first != changed)

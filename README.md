@@ -11,8 +11,8 @@ macOS 菜单栏常驻用量助手，同时展示：
 - token-monitor 兼容层（共 18 家）：DeepSeek 余额（API Key）、Kimi 会话/周窗口（API Key 或 kimi-auth Cookie）、MiniMax Coding Plan 5h/周（API Key）、MiMo Code 月度 token 池（Cookie）、Qoder Credits（Cookie）、Kiro（kiro-cli /usage 报告解析）、火山引擎 Coding Plan（AK:SK 签名直查）、Ollama 会话/周（session Cookie）
 - 基于真实窗口进度与官方重置时间判断当前节奏能否持续到重置，并在可能提前用尽时给出预计可用时长
 - ccusage 统计的 Claude Code / Codex 今日 token 与估算 API 成本
-- AI Feed 聚合 Tibor Blaho、Sam Altman、Claude、Anthropic、OpenAI 与 Elon Musk 的 X 动态
-- 自动置顶 Token / 额度重置和重大模型更新，并通过 macOS 本地通知提醒
+- AI Feed 由 TokenRemain 广播服务统一分发产品方的公开 X 动态
+- 每日通过 APNs 向已允许通知的 macOS 与 iPhone / iPad 用户发送摘要，重大更新可即时推送
 - macOS 26 使用系统 Liquid Glass、原生侧栏与玻璃按钮；macOS 14/15 自动回退到原有深色卡片样式
 
 ## 数据与隐私
@@ -28,22 +28,13 @@ macOS 菜单栏常驻用量助手，同时展示：
 - ccusage 通过 `npx --yes ccusage@latest` 读取本地日志。成本是 API 标价估算，不等于订阅账单。
 - Claude 限额成功读取后会缓存到 `~/Library/Caches/com.jamesli.usagedock/`；Claude Code 暂时不可用时继续显示最近有效值。
 - 打开菜单栏面板会触发一次非阻塞的轻量刷新；刷新按钮则会立即刷新 ccusage、Codex 与 Claude。UsageDock 不会自行调用 Claude OAuth 续期接口，因此不会与 Claude Code 争用 refresh token 或触发第三方续期限流。
-- AI Feed 使用用户自己的 X API Bearer Token；Token 仅保存在 macOS 钥匙串。公开帖子快照和已读 ID 缓存在本机，不写入日志。
+- AI Feed 客户端不接受、读取或保存用户的 X API 凭证。产品方的 X 与 APNs 凭证只保存在 Cloudflare Worker Secret 中；Apple 客户端只接收公开精选内容和 APNs 通知。
 
 ## AI Feed
 
-Dashboard 的 `AI Feed` 页面通过 X 官方 Recent Search API 聚合关注账号最近七天的公开原创帖子，每十分钟检查一次。首次连接只建立已读基线，不会把历史帖子一次性推送；之后新出现的额度重置、速率限制变化、重大模型发布、API 弃用或价格调整会置顶并触发系统通知。
+`broadcast/` 是 Cloudflare Workers + D1 + Queues 后端。第一梯队每十分钟收集 `btibor91`、`sama`、`claudeai`、`AnthropicAI`、`OpenAI`、`karpathy` 的原帖，合计每天最多 30 条；第二梯队每小时从其他活跃 AI 账号中按互动热度、账号影响力和时效选取原帖，合计每天最多 20 条。两层都排除回复、转帖和引用帖。服务公开提供 `GET /v1/ai-feed`，并按设备时区每天发送一次 APNs 摘要。用户无需账号，也不会看到 X API 配置入口；设备注册只使用随机安装 ID、设备生成的撤销密钥和 APNs device token。
 
-X API 当前为按量计费服务。本地工程入口是 `Config/UsageDockFeed.local.plist`：
-
-```xml
-<key>XBearerToken</key>
-<string>在这里填写你的 Bearer Token</string>
-```
-
-该文件已被 Git 忽略。执行 `bash ./script/build_and_run.sh --verify` 时，构建脚本只把配置文件路径传给已签名的 UsageDock；应用读取 Token 后写入自己的 macOS 钥匙串。Token 不会进入源码、应用包或命令行参数。AI Feed 页面中的安全输入框仍作为手动备用入口。
-
-产品化切换入口是 `Sources/UsageDock/Configuration/FeedConfiguration.swift`。将 delivery 从 `.directXAPI` 改为 `.curatedAPI(endpoint: ...)` 后，客户端只读取 UsageDock 服务端筛选好的内容，不再接触 X API Token。完整接口与 APNs 数据契约见 `docs/curated-feed-contract.md`。
+macOS 与 iOS 生产构建默认连接 `https://tokenremain-broadcast.jamescarstin520.workers.dev`，也可在开发/预览环境用 `TOKENREMAIN_BROADCAST_BASE_URL` 覆盖。X、APNs 私钥与后台管理令牌均不得写入客户端、源码或 Info.plist。完整链路和接口见 `docs/curated-feed-contract.md` 与 `broadcast/README.md`。
 
 ## 本地运行
 

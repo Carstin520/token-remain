@@ -36,6 +36,17 @@ struct SettingsTab: View {
                     .foregroundStyle(TRTheme.textDim)
             }
             Toggle(
+                TRL10n.t("overview.feed.title"),
+                isOn: Binding(
+                    get: { self.model.broadcastNotificationsEnabled },
+                    set: { enabled in
+                        Task { await self.model.setBroadcastNotificationsEnabled(enabled) }
+                    }
+                )
+            )
+            .tint(TRTheme.indigo)
+            .accessibilityIdentifier("tr.settings.broadcastNotificationsToggle")
+            Toggle(
                 TRL10n.t("settings.macsync.toggle"),
                 isOn: Binding(
                     get: { self.model.isMacSyncEnabled },

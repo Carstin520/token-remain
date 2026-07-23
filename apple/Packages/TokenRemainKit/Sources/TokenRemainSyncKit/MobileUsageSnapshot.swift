@@ -174,9 +174,9 @@ public struct SyncedDailyUsageHistory: Codable, Sendable, Equatable {
     }
 }
 
-/// A public X post selected by the Mac app. The DTO intentionally excludes
-/// bearer tokens, account configuration, private metrics, and any provider
-/// response body. Mobile only receives enough public data to render a link.
+/// Legacy public-feed DTO retained for decoding snapshots from older Mac builds.
+/// Current clients fetch the owner-managed public broadcast API directly and
+/// current Mac publishers always encode `curatedFeed` as nil.
 public struct SyncedCuratedPost: Codable, Sendable, Equatable, Identifiable {
     public enum Priority: String, Codable, Sendable, Equatable {
         case tokenReset
@@ -211,8 +211,8 @@ public struct SyncedCuratedPost: Codable, Sendable, Equatable, Identifiable {
     }
 }
 
-/// An encrypted, bounded set of already-curated public posts. X credentials
-/// remain exclusively in the Mac Keychain and are never part of this payload.
+/// Backward-compatible container for older encrypted snapshots. It is no longer
+/// a live transport path for the product broadcast feed.
 public struct SyncedCuratedFeed: Codable, Sendable, Equatable {
     public static let maximumPosts = 3
     public static let maximumPostAge: TimeInterval = 14 * 24 * 60 * 60

@@ -52,7 +52,7 @@ struct CuratedFeedService: Sendable {
                 priority: item.priority?.appPriority
                     ?? FeedPriorityClassifier.classify(item.text),
                 externalURL: item.url,
-                tier: item.tier?.appTier ?? AIFeedAccount.tier(for: item.author.username)
+                tier: item.tier?.appTier ?? .primary
             )
         })
     }

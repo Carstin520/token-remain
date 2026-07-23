@@ -133,41 +133,6 @@ struct MobileSnapshotRedactorTests {
         }
     }
 
-    @Test("Curated feed syncs only bounded public post fields")
-    func curatedFeedAllowlist() throws {
-        let now = Date(timeIntervalSince1970: 1_784_764_800)
-        let post = AIFeedPost(
-            id: "1234567890123456789",
-            text: "Public update",
-            username: "OpenAI",
-            displayName: "OpenAI",
-            createdAt: now - 60,
-            metrics: AIFeedMetrics(likes: 999, reposts: 88, replies: 7),
-            priority: .majorUpdate,
-            externalURL: URL(string: "https://x.com/OpenAI/status/1234567890123456789")
-        )
-        let snapshot = MobileSnapshotRedactor.makeSnapshot(
-            from: [:],
-            feedPosts: [post],
-            sourceInstanceID: UUID(),
-            sequence: 1,
-            generatedAt: now
-        )
-        let synced = try #require(snapshot.curatedFeed?.posts.first)
-        #expect(synced.id == post.id)
-        #expect(synced.url.host == "x.com")
-
-        let payload = try snapshot.encodedPayload()
-        let text = try #require(String(data: payload, encoding: .utf8))
-        #expect(!text.contains("likes"))
-        #expect(!text.contains("reposts"))
-        #expect(!text.contains("replies"))
-        #expect(!text.lowercased().contains("bearer"))
-        #expect(throws: Never.self) {
-            try snapshot.validatedForTransport(configuration: .current(now: now))
-        }
-    }
-
     @Test("Every macOS provider has a well-formed stable wire identifier")
     func stableProviderIdentifiers() {
         let identifiers = ProviderQuota.Provider.displayOrder.map(MobileSnapshotRedactor.stableID)

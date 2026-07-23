@@ -1,0 +1,49 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "tokenremain-broadcast",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-23",
+  "workers_dev": true,
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+  "vars": {
+    "ENVIRONMENT": "production",
+    "APNS_ENVIRONMENT": "production",
+    "APNS_TOPIC_MACOS": "com.jamesli.usagedock",
+    "APNS_TOPIC_IOS": "com.jamesli.tokenremain",
+    "DAILY_DIGEST_LOCAL_HOUR": "9"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "tokenremain-broadcast",
+      "database_id": "b4132029-06da-4dd0-82b3-d2092b2ac52b",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "queues": {
+    "producers": [
+      {
+        "binding": "PUSH_QUEUE",
+        "queue": "tokenremain-push"
+      }
+    ],
+    "consumers": [
+      {
+        "queue": "tokenremain-push",
+        "max_batch_size": 20,
+        "max_batch_timeout": 5,
+        "max_retries": 5,
+        "retry_delay": 60
+      }
+    ]
+  },
+  "triggers": {
+    "crons": [
+      "*/10 * * * *",
+      "0 * * * *"
+    ]
+  }
+}

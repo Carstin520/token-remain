@@ -1,0 +1,7 @@
+# Copy to .dev.vars for local integration only. Never commit .dev.vars.
+# The application can be developed and tested without real values.
+ADMIN_TOKEN=
+X_BEARER_TOKEN=
+APNS_KEY_ID=
+APNS_TEAM_ID=
+APNS_PRIVATE_KEY=

@@ -196,8 +196,8 @@ public enum TRL10n {
         "overview.widget.expand": Entry("展开窗口", "Expand windows"),
         "overview.widget.collapse": Entry("收起窗口", "Collapse windows"),
         "overview.feed.title": Entry("精选 X 动态", "Curated X posts"),
-        "overview.feed.empty": Entry("Mac 正在筛选公开 X 动态；有真实内容后会加密同步到这里。", "Mac is curating public X posts. Real posts will appear here after encrypted sync."),
-        "overview.feed.freshness": Entry("Mac 筛选于 %@", "Curated on Mac %@"),
+        "overview.feed.empty": Entry("正在等待广播源发布第一条 X 动态。", "Waiting for the first X post from the broadcast feed."),
+        "overview.feed.freshness": Entry("广播更新于 %@", "Broadcast updated %@"),
         "overview.feed.open.hint": Entry("在 X 中打开这条公开动态", "Open this public post on X"),
 
         // Limits

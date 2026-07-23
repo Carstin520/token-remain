@@ -85,8 +85,8 @@ overview.widget.options	元件選項	Opciones del widget	Widget-Optionen	ウィ�
 overview.widget.expand	展開視窗	Expandir ventanas	Fenster ausklappen	ウィンドウを展開	창 펼치기
 overview.widget.collapse	收合視窗	Contraer ventanas	Fenster einklappen	ウィンドウを折りたたむ	창 접기
 overview.feed.title	精選 X 動態	Publicaciones seleccionadas de X	Kuratierte X-Posts	厳選 X ポスト	선별된 X 게시물
-overview.feed.empty	Mac 正在篩選公開 X 動態；有真實內容後會加密同步到這裡。	El Mac está seleccionando publicaciones públicas de X. El contenido real aparecerá aquí tras sincronizarse de forma cifrada.	Der Mac kuratiert öffentliche X-Posts. Echte Inhalte erscheinen hier nach der verschlüsselten Synchronisierung.	Mac が公開 X ポストを選別しています。実際のコンテンツは暗号化同期後にここへ表示されます。	Mac에서 공개 X 게시물을 선별하고 있습니다. 실제 콘텐츠는 암호화 동기화 후 여기에 표시됩니다.
-overview.feed.freshness	Mac 篩選於 %@	Seleccionado en el Mac %@	Auf dem Mac kuratiert %@	Mac で選別 %@	Mac에서 선별 %@
+overview.feed.empty	正在等待廣播來源發布第一則 X 動態。	Esperando la primera publicación de X del canal.	Warten auf den ersten X-Post des Broadcast-Feeds.	配信元から最初の X ポストを待っています。	방송 피드의 첫 X 게시물을 기다리는 중입니다.
+overview.feed.freshness	廣播更新於 %@	Canal actualizado %@	Broadcast aktualisiert %@	配信更新 %@	방송 업데이트 %@
 overview.feed.open.hint	在 X 開啟這則公開動態	Abrir esta publicación pública en X	Diesen öffentlichen Post auf X öffnen	この公開ポストを X で開く	이 공개 게시물을 X에서 열기
 limits.window.caption	官方額度視窗	Ventana de cuota oficial	Offizielles Kontingentfenster	公式上限ウィンドウ	공식 한도 창
 limits.freshness	官方資料更新於 %@	Datos oficiales actualizados %@	Offizielle Daten aktualisiert %@	公式データ更新 %@	공식 데이터 업데이트 %@

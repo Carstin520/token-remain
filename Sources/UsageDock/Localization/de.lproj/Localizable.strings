@@ -153,13 +153,10 @@
 "devices.this_mac" = "Dieser Mac";
 "devices.this_mac_subtitle" = "Das derzeit überwachte Gerät";
 "feed.allow_notifications" = "Mitteilungen erlauben";
-"feed.config.empty_token" = "XBearerToken in der Projektkonfiguration ist leer";
-"feed.config.unreadable" = "Die lokale KI-Feed-Konfigurationsdatei kann nicht gelesen werden";
 "feed.curated.api_error" = "Kuratierter TokenRemain-Feed %1$d: %2$@";
 "feed.curated.invalid_response" = "Der kuratierte TokenRemain-Feed lieferte unlesbare Daten";
 "feed.empty_message" = "Neue Meldungen, die Aufmerksamkeit verdienen, erscheinen hier automatisch.";
 "feed.empty_title" = "Keine wichtigen Updates";
-"feed.enter_bearer_token" = "X API Bearer Token eingeben";
 "feed.important_subtitle" = "Kontingente, Preise, Produktstarts und Dienststatus zuerst";
 "feed.important_title" = "Wichtig";
 "feed.more_subtitle" = "Sortiert nach Relevanz, Aktualität und Interaktionsqualität";
@@ -179,7 +176,6 @@
 "feed.rotating_refresh_failed" = "Aktualisierung der sekundären Quellen fehlgeschlagen: %1$@";
 "feed.section_subtitle" = "Kuratierte Updates mit direktem Bezug zu deinem Kontingent und Workflow";
 "feed.source.curated" = "Kuratierter TokenRemain-Feed · geprüfte Inhalte";
-"feed.source.x_api" = "Offizielle X API · aktuelle öffentliche Beiträge";
 "feed.syncing_message" = "Es wird gefiltert, was dein Kontingent und deinen Workflow direkt betrifft.";
 "feed.syncing_title" = "Kuratierte Updates werden synchronisiert";
 "feed.trending_accessibility" = "Trend Nr. %1$d, %2$@: %3$@";
@@ -187,11 +183,7 @@
 "feed.trending_subtitle" = "Was gerade am wichtigsten ist";
 "feed.update_unavailable" = "Der kuratierte Feed kann gerade nicht aktualisiert werden; die App versucht es im Hintergrund automatisch erneut.";
 "feed.view_on_x" = "Auf X ansehen";
-"feed.x.api_error" = "X API %1$d: %2$@";
-"feed.x.invalid_request" = "X-API-Anfrage konnte nicht erstellt werden";
-"feed.x.invalid_response" = "Die X API lieferte unlesbare Daten";
 "keychain.operation_failed" = "Schlüsselbund-Vorgang fehlgeschlagen: %1$@";
-"keychain.token_unreadable" = "Der X API Token im Schlüsselbund kann nicht gelesen werden";
 "keychain.unknown_error" = "Unbekannter Fehler";
 "launch.allow_in_system_settings" = "TokenRemain unter „Systemeinstellungen → Allgemein → Anmeldeobjekte“ erlauben";
 "launch.restart_failed" = "TokenRemain konnte nicht neu gestartet werden: %1$@";

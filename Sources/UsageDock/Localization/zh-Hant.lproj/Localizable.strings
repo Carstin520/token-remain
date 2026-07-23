@@ -154,13 +154,10 @@
 "devices.this_mac" = "這台 Mac";
 "devices.this_mac_subtitle" = "目前受監測的裝置";
 "feed.allow_notifications" = "允許通知";
-"feed.config.empty_token" = "專案設定檔中的 XBearerToken 為空";
-"feed.config.unreadable" = "無法讀取本機 AI Feed 設定檔";
 "feed.curated.api_error" = "TokenRemain 精選來源 %1$d：%2$@";
 "feed.curated.invalid_response" = "TokenRemain 精選來源回傳了無法識別的資料";
 "feed.empty_message" = "有值得關注的新訊息時會自動出現在這裡。";
 "feed.empty_title" = "暫無重要動態";
-"feed.enter_bearer_token" = "請輸入 X API Bearer Token";
 "feed.important_subtitle" = "額度、價格、產品發布與服務狀態優先";
 "feed.important_title" = "重要提醒";
 "feed.more_subtitle" = "依相關性、時效與互動品質排序";
@@ -180,7 +177,6 @@
 "feed.rotating_refresh_failed" = "第二層級重新整理失敗：%1$@";
 "feed.section_subtitle" = "與你的額度和工作流程直接相關的精選更新";
 "feed.source.curated" = "TokenRemain 精選來源 · 已審核內容";
-"feed.source.x_api" = "X 官方 API · 最近公開動態";
 "feed.syncing_message" = "正在篩選與你的額度和工作流程直接相關的資訊。";
 "feed.syncing_title" = "正在同步精選動態";
 "feed.trending_accessibility" = "熱門第 %1$d 則，%2$@：%3$@";
@@ -188,11 +184,7 @@
 "feed.trending_subtitle" = "此刻最值得關注";
 "feed.update_unavailable" = "精選動態暫時無法更新，App 會在背景自動重試。";
 "feed.view_on_x" = "在 X 查看";
-"feed.x.api_error" = "X API %1$d：%2$@";
-"feed.x.invalid_request" = "無法建立 X API 請求";
-"feed.x.invalid_response" = "X API 回傳了無法識別的資料";
 "keychain.operation_failed" = "鑰匙圈操作失敗：%1$@";
-"keychain.token_unreadable" = "無法讀取鑰匙圈中的 X API Token";
 "keychain.unknown_error" = "未知錯誤";
 "launch.allow_in_system_settings" = "請在「系統設定 → 一般 → 登入項目」中允許 TokenRemain";
 "launch.restart_failed" = "無法重新啟動 TokenRemain：%1$@";

@@ -75,10 +75,8 @@ final class CrossDeviceSyncController: ObservableObject {
     private let logger = Logger(subsystem: "com.jamesli.usagedock", category: "PrivateSync")
     private var latestQuotas: [ProviderQuota.Provider: ProviderQuota] = [:]
     private var latestHistory: DailyUsageHistory?
-    private var latestFeedPosts: [AIFeedPost] = []
     private var storeSubscription: AnyCancellable?
     private var historySubscription: AnyCancellable?
-    private var feedSubscription: AnyCancellable?
     private var accountSubscription: AnyCancellable?
     private var uploadTask: Task<Void, Never>?
     private var heartbeatTask: Task<Void, Never>?
@@ -100,13 +98,12 @@ final class CrossDeviceSyncController: ObservableObject {
         state = enabled ? .waitingForMacData : .off
     }
 
-    func attach(to store: UsageStore, feedStore: AIFeedStore) {
+    func attach(to store: UsageStore) {
         guard storeSubscription == nil else { return }
         usageStore = store
         store.setLowLatencySyncEnabled(isEnabled)
         latestQuotas = store.quotas
         latestHistory = store.history
-        latestFeedPosts = feedStore.topStories
         updatePreview()
         storeSubscription = store.$quotas
             .dropFirst()
@@ -124,14 +121,6 @@ final class CrossDeviceSyncController: ObservableObject {
                 guard let self else { return }
                 self.latestHistory = history
                 self.updatePreview()
-                self.scheduleUpload(after: 4)
-            }
-        feedSubscription = feedStore.$posts
-            .dropFirst()
-            .receive(on: RunLoop.main)
-            .sink { [weak self, weak feedStore] _ in
-                guard let self, let feedStore else { return }
-                self.latestFeedPosts = feedStore.topStories
                 self.scheduleUpload(after: 4)
             }
         accountSubscription = NotificationCenter.default.publisher(for: .CKAccountChanged)
@@ -280,8 +269,7 @@ final class CrossDeviceSyncController: ObservableObject {
             let fingerprint = Self.fingerprint(
                 for: latestQuotas,
                 history: latestHistory,
-                includesUsageHistory: syncUsageHistoryEnabled,
-                feedPosts: latestFeedPosts
+                includesUsageHistory: syncUsageHistoryEnabled
             )
             if !forceHeartbeat,
                fingerprint == defaults.string(forKey: DefaultsKey.lastFingerprint),
@@ -315,7 +303,6 @@ final class CrossDeviceSyncController: ObservableObject {
                 from: latestQuotas,
                 history: latestHistory,
                 includesUsageHistory: syncUsageHistoryEnabled,
-                feedPosts: latestFeedPosts,
                 sourceInstanceID: localSourceID,
                 sequence: sequence,
                 generatedAt: preparedAt
@@ -440,14 +427,12 @@ final class CrossDeviceSyncController: ObservableObject {
     private static func fingerprint(
         for quotas: [ProviderQuota.Provider: ProviderQuota],
         history: DailyUsageHistory?,
-        includesUsageHistory: Bool,
-        feedPosts: [AIFeedPost]
+        includesUsageHistory: Bool
     ) -> String {
         SyncContentFingerprint.make(
             quotas: quotas,
             history: history,
-            includesUsageHistory: includesUsageHistory,
-            feedPosts: feedPosts
+            includesUsageHistory: includesUsageHistory
         )
     }
 

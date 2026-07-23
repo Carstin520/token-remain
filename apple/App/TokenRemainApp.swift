@@ -4,6 +4,7 @@ import SwiftUI
 import TokenRemainKit
 import TokenRemainSyncKit
 import UIKit
+import UserNotifications
 
 extension Notification.Name {
     static let tokenRemainRemoteSyncSnapshot = Notification.Name("tokenRemain.remoteSyncSnapshot")
@@ -11,13 +12,35 @@ extension Notification.Name {
 }
 
 @MainActor
-final class TokenRemainAppDelegate: NSObject, UIApplicationDelegate {
+final class TokenRemainAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
     func application(
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
+        UNUserNotificationCenter.current().delegate = self
         application.registerForRemoteNotifications()
         return true
+    }
+
+    func application(
+        _ application: UIApplication,
+        didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
+    ) {
+        guard MobileBroadcastPreferences.notificationsEnabled else { return }
+        let platform = UIDevice.current.userInterfaceIdiom == .pad ? "ipados" : "ios"
+        Task {
+            try? await MobileBroadcastService.shared.register(
+                deviceToken: deviceToken,
+                platform: platform
+            )
+        }
+    }
+
+    func application(
+        _ application: UIApplication,
+        didFailToRegisterForRemoteNotificationsWithError error: Error
+    ) {
+        // Foreground refresh remains available; APNs registration retries on launch.
     }
 
     func application(
@@ -55,7 +78,6 @@ final class TokenRemainAppDelegate: NSObject, UIApplicationDelegate {
                 MobileDailyUsageHistoryStore.shared.replace(
                     with: snapshot.dailyUsageHistory
                 )
-                MobileCuratedFeedStore.shared.replace(with: snapshot.curatedFeed)
                 WidgetReload.all()
                 NotificationCenter.default.post(
                     name: .tokenRemainRemoteSyncSnapshot,
@@ -67,7 +89,6 @@ final class TokenRemainAppDelegate: NSObject, UIApplicationDelegate {
                 SnapshotStore.shared.clear()
                 SnapshotHistoryStore.shared.clear()
                 MobileDailyUsageHistoryStore.shared.clear()
-                MobileCuratedFeedStore.shared.clear()
                 WidgetReload.all()
                 NotificationCenter.default.post(
                     name: .tokenRemainRemoteSyncCleared,
@@ -78,6 +99,25 @@ final class TokenRemainAppDelegate: NSObject, UIApplicationDelegate {
                 completionHandler(.noData)
             }
         }
+    }
+
+    nonisolated func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        completionHandler([.banner, .sound])
+    }
+
+    nonisolated func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        if response.notification.request.content.userInfo["route"] as? String == "feed" {
+            TRRoute.setPending(.overview)
+        }
+        completionHandler()
     }
 }
 
@@ -126,7 +166,9 @@ struct TokenRemainApp: App {
                     model.consumePendingRoute()
                     model.refreshLiveActivityState()
                     model.refresh()
+                    Task { await model.refreshBroadcastFeed() }
                 }
+                .task { await model.refreshBroadcastFeed() }
                 // CloudKit silent pushes remain the low-latency path. While the
                 // app is visible, a 45-second reconciliation also catches a
                 // missed/coalesced push. Keying the task to foreground state

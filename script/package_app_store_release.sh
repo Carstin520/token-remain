@@ -13,6 +13,7 @@ EXPORT_DIR="${TOKENREMAIN_IOS_EXPORT_DIR:-$OUTPUT_ROOT/AppStore}"
 IPA="${TOKENREMAIN_IOS_IPA:-}"
 PROFILE_DIR="$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles"
 IDENTITY_SELECTOR="${TOKENREMAIN_APPLE_DISTRIBUTION_IDENTITY:-Apple Distribution: Dongheng Li (84397AQ22Y)}"
+BROADCAST_BASE_URL="${TOKENREMAIN_BROADCAST_BASE_URL:-https://tokenremain-broadcast.jamescarstin520.workers.dev}"
 
 IOS_PROFILE="${TOKENREMAIN_IOS_PROFILE:-}"
 WIDGETS_PROFILE="${TOKENREMAIN_WIDGETS_PROFILE:-}"
@@ -141,6 +142,8 @@ preflight_profiles() {
 }
 
 archive_app() {
+  [[ "$BROADCAST_BASE_URL" == https://* ]] \
+    || fail "TOKENREMAIN_BROADCAST_BASE_URL must be the deployed HTTPS Worker origin."
   command -v xcodegen >/dev/null \
     || fail "xcodegen is required to regenerate the Apple project."
   (
@@ -155,6 +158,7 @@ archive_app() {
     -configuration Release \
     -destination "generic/platform=iOS" \
     -archivePath "$ARCHIVE_PATH" \
+    TOKENREMAIN_BROADCAST_BASE_URL="$BROADCAST_BASE_URL" \
     archive
   echo "Release archive created: $ARCHIVE_PATH"
 }
@@ -235,6 +239,8 @@ verify_bundle() {
     || fail "$role embedded profile has the wrong application identifier."
 
   if [[ "$role" == "ios" ]]; then
+    [[ "$(plist_value "$bundle/Info.plist" TokenRemainBroadcastBaseURL)" == "$BROADCAST_BASE_URL" ]] \
+      || fail "The exported iOS app has the wrong broadcast service URL."
     [[ "$(plist_value "$entitlements" aps-environment)" == "production" ]] \
       || fail "The exported iOS app must use production APNs."
     [[ "$(plist_value "$entitlements" com.apple.developer.icloud-container-environment)" == \

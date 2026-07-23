@@ -58,6 +58,7 @@ targets:
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIUserInterfaceStyle: Dark
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+        TOKENREMAIN_BROADCAST_BASE_URL: https://tokenremain-broadcast.jamescarstin520.workers.dev
         CODE_SIGN_ENTITLEMENTS: SupportFiles/TokenRemain.entitlements
       configs:
         Debug:
@@ -76,6 +77,7 @@ targets:
         # CloudKit zone subscriptions use content-available pushes only; no
         # quota data is ever carried in an APNs payload.
         UIBackgroundModes: [remote-notification]
+        TokenRemainBroadcastBaseURL: $(TOKENREMAIN_BROADCAST_BASE_URL)
         CFBundleURLTypes:
           - CFBundleURLName: com.jamesli.tokenremain
             CFBundleTypeRole: Editor

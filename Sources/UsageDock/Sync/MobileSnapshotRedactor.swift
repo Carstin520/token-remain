@@ -18,7 +18,6 @@ enum MobileSnapshotRedactor {
         from quotas: [ProviderQuota.Provider: ProviderQuota],
         history: DailyUsageHistory? = nil,
         includesUsageHistory: Bool = false,
-        feedPosts: [AIFeedPost] = [],
         sourceInstanceID: UUID,
         sequence: UInt64,
         generatedAt: Date = Date()
@@ -37,63 +36,8 @@ enum MobileSnapshotRedactor {
             dailyUsageHistory: includesUsageHistory
                 ? history.map { redact($0, now: generatedAt) }
                 : nil,
-            curatedFeed: curatedFeed(from: feedPosts, generatedAt: generatedAt)
+            curatedFeed: nil
         )
-    }
-
-    static func curatedFeed(
-        from posts: [AIFeedPost],
-        generatedAt: Date
-    ) -> SyncedCuratedFeed? {
-        let earliest = generatedAt.addingTimeInterval(-SyncedCuratedFeed.maximumPostAge)
-        let values = posts
-            .filter { $0.createdAt >= earliest && $0.createdAt <= generatedAt.addingTimeInterval(5 * 60) }
-            .compactMap(redact)
-            .reduce(into: [SyncedCuratedPost]()) { result, post in
-                guard result.count < SyncedCuratedFeed.maximumPosts,
-                      !result.contains(where: { $0.id == post.id }) else { return }
-                result.append(post)
-            }
-        guard !values.isEmpty else { return nil }
-        return SyncedCuratedFeed(posts: values, capturedAt: generatedAt)
-    }
-
-    private static func redact(_ post: AIFeedPost) -> SyncedCuratedPost? {
-        guard (1...64).contains(post.id.utf8.count),
-              post.id.utf8.allSatisfy({ (48...57).contains($0) }),
-              (1...15).contains(post.username.utf8.count),
-              post.username.utf8.allSatisfy({ byte in
-                  (byte >= 65 && byte <= 90) ||
-                      (byte >= 97 && byte <= 122) ||
-                      (byte >= 48 && byte <= 57) ||
-                      byte == 95
-              }),
-              isBoundedPublicText(post.displayName, maximumUTF8Bytes: 160),
-              isBoundedPublicText(post.text, maximumUTF8Bytes: 2_000),
-              let url = URL(string: "https://x.com/\(post.username)/status/\(post.id)") else {
-            return nil
-        }
-        let priority: SyncedCuratedPost.Priority = switch post.priority {
-        case .tokenReset: .tokenReset
-        case .majorUpdate: .majorUpdate
-        case .normal: .normal
-        }
-        return SyncedCuratedPost(
-            id: post.id,
-            username: post.username,
-            displayName: post.displayName,
-            text: post.text,
-            createdAt: post.createdAt,
-            url: url,
-            priority: priority
-        )
-    }
-
-    private static func isBoundedPublicText(_ value: String, maximumUTF8Bytes: Int) -> Bool {
-        guard !value.isEmpty, value.utf8.count <= maximumUTF8Bytes else { return false }
-        return value.unicodeScalars.allSatisfy { scalar in
-            scalar.value == 9 || scalar.value == 10 || scalar.value == 13 || scalar.value >= 32
-        }
     }
 
     private static func redact(

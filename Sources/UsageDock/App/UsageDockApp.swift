@@ -7,6 +7,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var feedStore = AIFeedStore()
     private lazy var launchAtLogin = LaunchAtLoginManager()
     private var statusBarController: StatusBarController?
+    private var feedNotificationObserver: NSObjectProtocol?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let arguments = ProcessInfo.processInfo.arguments
@@ -32,20 +33,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             feedStore: feedStore,
             launchAtLogin: launchAtLogin
         )
+        feedNotificationObserver = NotificationCenter.default.addObserver(
+            forName: .tokenRemainOpenAIFeed,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.statusBarController?.showDashboard(section: .overview)
+            }
+        }
 #if TOKENREMAIN_CLOUD_SYNC
-        CrossDeviceSyncController.shared.attach(to: store, feedStore: feedStore)
+        CrossDeviceSyncController.shared.attach(to: store)
 #endif
 
         if arguments.contains("--enable-launch-at-login") {
             launchAtLogin.setEnabled(true)
-        }
-
-        if let flagIndex = arguments.firstIndex(of: "--import-feed-config"),
-           arguments.indices.contains(flagIndex + 1) {
-            let configURL = URL(fileURLWithPath: arguments[flagIndex + 1])
-            Task { [weak self] in
-                await self?.feedStore.importLocalConfiguration(from: configURL)
-            }
         }
 
         // Dev/QA hook: jump straight to a named dashboard section (rawValue),
@@ -83,6 +85,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 #if TOKENREMAIN_CLOUD_SYNC
         CrossDeviceSyncController.shared.checkNow()
 #endif
+    }
+
+    func application(
+        _ application: NSApplication,
+        didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
+    ) {
+        Task { [weak self] in
+            await self?.feedStore.didRegisterForRemoteNotifications(deviceToken: deviceToken)
+        }
+    }
+
+    func application(
+        _ application: NSApplication,
+        didFailToRegisterForRemoteNotificationsWithError error: Error
+    ) {
+        feedStore.didFailToRegisterForRemoteNotifications(error)
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {

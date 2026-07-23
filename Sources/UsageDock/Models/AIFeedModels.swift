@@ -34,51 +34,6 @@ enum AIFeedPriority: String, Codable, Hashable, Sendable {
     }
 }
 
-struct AIFeedAccount: Identifiable, Codable, Hashable, Sendable {
-    let username: String
-    let displayName: String
-
-    var id: String { username.lowercased() }
-
-    var profileURL: URL {
-        URL(string: "https://x.com/\(username)")!
-    }
-
-    static let primary: [AIFeedAccount] = [
-        .init(username: "btibor91", displayName: "Tibor Blaho"),
-        .init(username: "sama", displayName: "Sam Altman"),
-        .init(username: "claudeai", displayName: "Claude"),
-        .init(username: "AnthropicAI", displayName: "Anthropic"),
-        .init(username: "OpenAI", displayName: "OpenAI"),
-        .init(username: "thsottiaux", displayName: "Tibo"),
-        .init(username: "karpathy", displayName: "Andrej Karpathy")
-    ]
-
-    static let rotatingCandidates: [AIFeedAccount] = [
-        .init(username: "elonmusk", displayName: "Elon Musk"),
-        .init(username: "Kimi_Moonshot", displayName: "Kimi"),
-        .init(username: "AIatMeta", displayName: "AI at Meta"),
-        .init(username: "GoogleDeepMind", displayName: "Google DeepMind"),
-        .init(username: "xai", displayName: "xAI"),
-        .init(username: "MistralAI", displayName: "Mistral AI"),
-        .init(username: "deepseek_ai", displayName: "DeepSeek"),
-        .init(username: "OpenRouterAI", displayName: "OpenRouter"),
-        .init(username: "perplexity_ai", displayName: "Perplexity"),
-        .init(username: "simonw", displayName: "Simon Willison"),
-        .init(username: "emollick", displayName: "Ethan Mollick"),
-        .init(username: "ArtificialAnlys", displayName: "Artificial Analysis")
-    ]
-
-    static let monitored = primary + rotatingCandidates
-
-    static func tier(for username: String) -> AIFeedTier {
-        let normalized = username.lowercased()
-        return primary.contains { $0.username.lowercased() == normalized }
-            ? .primary
-            : .rotating
-    }
-}
-
 struct AIFeedMetrics: Codable, Hashable, Sendable {
     let likes: Int
     let reposts: Int
@@ -132,28 +87,11 @@ struct AIFeedPost: Identifiable, Codable, Hashable, Sendable {
         metrics = try container.decode(AIFeedMetrics.self, forKey: .metrics)
         priority = try container.decode(AIFeedPriority.self, forKey: .priority)
         externalURL = try container.decodeIfPresent(URL.self, forKey: .externalURL)
-        tier = try container.decodeIfPresent(AIFeedTier.self, forKey: .tier)
-            ?? AIFeedAccount.tier(for: username)
+        tier = try container.decodeIfPresent(AIFeedTier.self, forKey: .tier) ?? .primary
     }
 
     var postURL: URL {
         externalURL ?? URL(string: "https://x.com/\(username)/status/\(id)")!
-    }
-
-    func applyingConfiguredTier() -> AIFeedPost {
-        let configuredTier = AIFeedAccount.tier(for: username)
-        guard configuredTier != tier else { return self }
-        return AIFeedPost(
-            id: id,
-            text: text,
-            username: username,
-            displayName: displayName,
-            createdAt: createdAt,
-            metrics: metrics,
-            priority: priority,
-            externalURL: externalURL,
-            tier: configuredTier
-        )
     }
 
     var initials: String {

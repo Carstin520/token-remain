@@ -6,6 +6,8 @@
   <string>$(AppIdentifierPrefix)com.jamesli.usagedock</string>
   <key>com.apple.developer.team-identifier</key>
   <string>$(TeamIdentifierPrefix)</string>
+  <key>com.apple.developer.aps-environment</key>
+  <string>development</string>
   <key>com.apple.developer.icloud-container-identifiers</key>
   <array>
     <string>iCloud.com.jamesli.tokenremain</string>
