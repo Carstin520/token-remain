@@ -84,13 +84,13 @@
 "action.refresh_quota" = "Segarkan kuota ccusage, Codex, dan Claude";
 "action.refresh_usage" = "Segarkan penggunaan";
 "action.open_dashboard" = "Buka dasbor";
-"action.open_dashboard_help" = "Buka jendela dasbor Token Remain";
+"action.open_dashboard_help" = "Buka jendela dasbor TokenRemain";
 "action.launch_at_login" = "Buka saat masuk";
 "action.open_dashboard_settings" = "Buka pengaturan dasbor";
-"action.restart_app" = "Mulai ulang Token Remain";
+"action.restart_app" = "Mulai ulang TokenRemain";
 "action.settings" = "Pengaturan";
 "action.quit" = "Keluar";
-"action.quit_app" = "Keluar dari Token Remain";
+"action.quit_app" = "Keluar dari TokenRemain";
 "usage.updated_local" = "Diperbarui %1$@ · data tetap di Mac ini";
 "usage.loading_local" = "Membaca penggunaan · data tetap di Mac ini";
 "usage.provider_breakdown_empty" = "Tidak ada rincian per penyedia";

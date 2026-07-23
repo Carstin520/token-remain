@@ -84,13 +84,13 @@
 "action.refresh_quota" = "ccusage, Codex 및 Claude 할당량 새로 고침";
 "action.refresh_usage" = "사용량 새로 고침";
 "action.open_dashboard" = "대시보드 열기";
-"action.open_dashboard_help" = "Token Remain 대시보드 창 열기";
+"action.open_dashboard_help" = "TokenRemain 대시보드 창 열기";
 "action.launch_at_login" = "로그인 시 실행";
 "action.open_dashboard_settings" = "대시보드 설정 열기";
-"action.restart_app" = "Token Remain 재시작";
+"action.restart_app" = "TokenRemain 재시작";
 "action.settings" = "설정";
 "action.quit" = "종료";
-"action.quit_app" = "Token Remain 종료";
+"action.quit_app" = "TokenRemain 종료";
 "usage.updated_local" = "%1$@ 업데이트 · 데이터는 이 Mac에 보관";
 "usage.loading_local" = "사용량 읽는 중 · 데이터는 이 Mac에 보관";
 "usage.provider_breakdown_empty" = "제공업체별 내역 없음";

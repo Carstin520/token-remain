@@ -29,7 +29,7 @@
 "risk.summary.low" = "Beim aktuellen Tempo reicht das Kontingent bis zur nächsten Zurücksetzung.";
 "risk.summary.medium" = "Einige Fenster sind knapp. Nutzung drosseln oder Zurücksetzung beobachten.";
 "risk.summary.high" = "Das Kontingent ist fast aufgebraucht. Vorsichtig nutzen oder auf die Zurücksetzung warten.";
-"risk.summary.unknown" = "Noch keine offizielle Kontingentaufnahme. Token Remain versucht es automatisch erneut.";
+"risk.summary.unknown" = "Noch keine offizielle Kontingentaufnahme. TokenRemain versucht es automatisch erneut.";
 "risk.summary.projected_runout" = "%1$@ %2$@ wird voraussichtlich in %3$@ aufgebraucht, vor der offiziellen Zurücksetzung. Nutzung drosseln oder Anbieter wechseln.";
 "feed.tier.primary" = "Primär";
 "feed.tier.rotating" = "Sekundär";
@@ -84,13 +84,13 @@
 "action.refresh_quota" = "ccusage-, Codex- und Claude-Kontingente aktualisieren";
 "action.refresh_usage" = "Nutzung aktualisieren";
 "action.open_dashboard" = "Dashboard öffnen";
-"action.open_dashboard_help" = "Token Remain-Dashboardfenster öffnen";
+"action.open_dashboard_help" = "TokenRemain-Dashboardfenster öffnen";
 "action.launch_at_login" = "Bei Anmeldung starten";
 "action.open_dashboard_settings" = "Dashboard-Einstellungen öffnen";
-"action.restart_app" = "Token Remain neu starten";
+"action.restart_app" = "TokenRemain neu starten";
 "action.settings" = "Einstellungen";
 "action.quit" = "Beenden";
-"action.quit_app" = "Token Remain beenden";
+"action.quit_app" = "TokenRemain beenden";
 "usage.updated_local" = "Aktualisiert %1$@ · Daten bleiben auf diesem Mac";
 "usage.loading_local" = "Nutzung wird gelesen · Daten bleiben auf diesem Mac";
 "usage.provider_breakdown_empty" = "Keine Aufschlüsselung nach Anbieter";

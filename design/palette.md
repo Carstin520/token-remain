@@ -1,6 +1,6 @@
-# Token Remain 调色板 v1.1(2026-07-20)
+# TokenRemain 调色板 v1.1(2026-07-20)
 
-桌面端(`Sources/UsageDock/Views/Theme/DashboardTheme.swift`)与移动端(`apple/FABLE-FUNCTIONAL-SPEC.md` §3 `TRTheme`)共用的颜色令牌。可视化色块板:见 Claude Artifact「Token Remain 色板」。
+桌面端(`Sources/UsageDock/Views/Theme/DashboardTheme.swift`)与移动端(`apple/FABLE-FUNCTIONAL-SPEC.md` §3 `TRTheme`)共用的颜色令牌。可视化色块板:见 Claude Artifact「TokenRemain 色板」。
 
 核心原则:**身份与语义分离** —— 紫罗兰/青只表达品牌身份与强调(Claude、Codex、选中、链接);红黄绿只表达状态好坏,且永远与图形符号(✓ / ! / ‼)+ 文字标签同时出现。
 
@@ -66,7 +66,7 @@
 | 所有数字(百分比、token、成本、倒计时、时间) | SF Mono + `monospacedDigit` | 一律等宽;混排行只对数字 Text 生效(SF Mono 无中文字形) |
 | 英雄数值(46% 式大数字) | SF Mono semibold/bold | 等宽半粗 |
 | 徽章 / meta 标签 | SF Mono 大写 + 字距 | `PixelBadge` 统一实现 |
-| 品牌字标 "Token Remain" | SF Mono | popover 头部、侧栏、菜单栏共用 |
+| 品牌字标 "TokenRemain" | SF Mono | popover 头部、侧栏、菜单栏共用 |
 
 ## 配色规则
 

@@ -1,4 +1,4 @@
-# Token Remain Brand Integration QA
+# TokenRemain Brand Integration QA
 
 final result: passed
 
@@ -14,7 +14,7 @@ final result: passed
 - The selected pixel robot, violet stepped shell, dark face, cyan water field, and neutral dash eyes remain recognizable in the 36 pt popover logo.
 - The logo was center-cropped before app packaging so the robot remains legible at menu-bar and sidebar sizes.
 - The live 46% minimum-provider state selects the intended neutral-dash expression.
-- `Token Remain` is visible in the popover header, Dashboard sidebar lockup, navigation title, and native window title.
+- `TokenRemain` is visible in the popover header, Dashboard sidebar lockup, navigation title, and native window title.
 - The icon does not collide with the header subtitle or refresh control.
 - The Dashboard sidebar remains aligned and readable with the wider product name.
 

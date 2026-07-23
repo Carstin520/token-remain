@@ -84,13 +84,13 @@
 "action.refresh_quota" = "تحديث حصص ccusage وCodex وClaude";
 "action.refresh_usage" = "تحديث الاستخدام";
 "action.open_dashboard" = "فتح لوحة المعلومات";
-"action.open_dashboard_help" = "فتح نافذة لوحة معلومات Token Remain";
+"action.open_dashboard_help" = "فتح نافذة لوحة معلومات TokenRemain";
 "action.launch_at_login" = "تشغيل عند تسجيل الدخول";
 "action.open_dashboard_settings" = "فتح إعدادات لوحة المعلومات";
-"action.restart_app" = "إعادة تشغيل Token Remain";
+"action.restart_app" = "إعادة تشغيل TokenRemain";
 "action.settings" = "الإعدادات";
 "action.quit" = "إنهاء";
-"action.quit_app" = "إنهاء Token Remain";
+"action.quit_app" = "إنهاء TokenRemain";
 "usage.updated_local" = "تم التحديث %1$@ · تبقى البيانات على هذا الـ Mac";
 "usage.loading_local" = "جارٍ قراءة الاستخدام · تبقى البيانات على هذا الـ Mac";
 "usage.provider_breakdown_empty" = "لا يوجد تفصيل حسب المزوّد";

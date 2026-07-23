@@ -84,13 +84,13 @@
 "action.refresh_quota" = "ccusage, Codex और Claude कोटा रीफ़्रेश करें";
 "action.refresh_usage" = "उपयोग रीफ़्रेश करें";
 "action.open_dashboard" = "डैशबोर्ड खोलें";
-"action.open_dashboard_help" = "Token Remain डैशबोर्ड विंडो खोलें";
+"action.open_dashboard_help" = "TokenRemain डैशबोर्ड विंडो खोलें";
 "action.launch_at_login" = "लॉगिन पर खोलें";
 "action.open_dashboard_settings" = "डैशबोर्ड सेटिंग खोलें";
-"action.restart_app" = "Token Remain पुनः शुरू करें";
+"action.restart_app" = "TokenRemain पुनः शुरू करें";
 "action.settings" = "सेटिंग";
 "action.quit" = "बंद करें";
-"action.quit_app" = "Token Remain बंद करें";
+"action.quit_app" = "TokenRemain बंद करें";
 "usage.updated_local" = "%1$@ अपडेट · डेटा इसी Mac पर रहता है";
 "usage.loading_local" = "उपयोग पढ़ा जा रहा है · डेटा इसी Mac पर रहता है";
 "usage.provider_breakdown_empty" = "प्रदाता के अनुसार विवरण उपलब्ध नहीं";

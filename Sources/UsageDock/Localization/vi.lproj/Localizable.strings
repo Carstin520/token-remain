@@ -84,13 +84,13 @@
 "action.refresh_quota" = "Làm mới hạn mức ccusage, Codex và Claude";
 "action.refresh_usage" = "Làm mới mức dùng";
 "action.open_dashboard" = "Mở bảng điều khiển";
-"action.open_dashboard_help" = "Mở cửa sổ bảng điều khiển Token Remain";
+"action.open_dashboard_help" = "Mở cửa sổ bảng điều khiển TokenRemain";
 "action.launch_at_login" = "Mở khi đăng nhập";
 "action.open_dashboard_settings" = "Mở cài đặt bảng điều khiển";
-"action.restart_app" = "Khởi động lại Token Remain";
+"action.restart_app" = "Khởi động lại TokenRemain";
 "action.settings" = "Cài đặt";
 "action.quit" = "Thoát";
-"action.quit_app" = "Thoát Token Remain";
+"action.quit_app" = "Thoát TokenRemain";
 "usage.updated_local" = "Đã cập nhật %1$@ · dữ liệu được giữ trên máy Mac này";
 "usage.loading_local" = "Đang đọc mức dùng · dữ liệu được giữ trên máy Mac này";
 "usage.provider_breakdown_empty" = "Không có phân tích theo nhà cung cấp";

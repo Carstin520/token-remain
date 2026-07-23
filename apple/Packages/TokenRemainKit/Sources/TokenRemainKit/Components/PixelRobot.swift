@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// The 11 mood thresholds ported verbatim from `TokenRemainLogoState.resolve`.
-/// Accessibility descriptions are preserved 1:1; the *drawn* faces collapse to five.
+/// Every threshold keeps its own eye expression, matching the macOS dynamic logo.
 public enum RobotMoodState: String, Sendable, CaseIterable {
     case excitedStars = "100-excited-stars"
     case happyCarets = "90-happy-carets"
@@ -49,42 +49,81 @@ public enum RobotMoodState: String, Sendable, CaseIterable {
         }
     }
 
-    /// The five drawn faces the eleven states collapse into.
+    /// One drawn face per quota band so the eyes remain a useful status signal.
     public var face: RobotFace {
         switch self {
-        case .excitedStars, .happyCarets: return .excited
-        case .sparkle, .calmDots: return .calm
-        case .focusedBars, .neutralDashes: return .neutral
-        case .worriedSlants, .tenseChevrons, .dizzySpirals, .cryingWarning: return .worried
+        case .excitedStars: return .excitedStars
+        case .happyCarets: return .happyCarets
+        case .sparkle: return .sparkle
+        case .calmDots: return .calmDots
+        case .focusedBars: return .focusedBars
+        case .neutralDashes: return .neutralDashes
+        case .worriedSlants: return .worriedSlants
+        case .tenseChevrons: return .tenseChevrons
+        case .dizzySpirals: return .dizzySpirals
+        case .cryingWarning: return .cryingWarning
         case .offline: return .offline
         }
     }
 }
 
-public enum RobotFace: Sendable, CaseIterable {
-    case excited, calm, neutral, worried, offline
+public enum RobotFace: Sendable, CaseIterable, Hashable {
+    case excitedStars
+    case happyCarets
+    case sparkle
+    case calmDots
+    case focusedBars
+    case neutralDashes
+    case worriedSlants
+    case tenseChevrons
+    case dizzySpirals
+    case cryingWarning
+    case offline
 
     /// 8 wide × 3 tall eye window, blitted into the head's face plate.
     /// `e` = cyan eye, `g` = dim cyan glow, `.` = face plate.
     var eyes: [String] {
         switch self {
-        case .excited:
+        case .excitedStars:
             return [".e....e.",
                     "eee..eee",
                     ".e....e."]
-        case .calm:
+        case .happyCarets:
+            return ["e.e..e.e",
+                    ".e....e.",
+                    "........"]
+        case .sparkle:
+            return [".e....e.",
+                    "eee...e.",
+                    ".e....g."]
+        case .calmDots:
             return ["........",
                     ".ee..ee.",
                     ".gg..gg."]
-        case .neutral:
-            // The confirmed concept's face: two flat glow bars.
+        case .focusedBars:
             return ["........",
                     "eee..eee",
-                    "ggg..ggg"]
-        case .worried:
-            return ["e......e",
+                    "........"]
+        case .neutralDashes:
+            return ["........",
                     ".ee..ee.",
                     "........"]
+        case .worriedSlants:
+            return ["e......e",
+                    ".e....e.",
+                    "..e..e.."]
+        case .tenseChevrons:
+            return ["........",
+                    ".e....e.",
+                    "e.e..e.e"]
+        case .dizzySpirals:
+            return ["eee..eee",
+                    "e......e",
+                    ".ee..ee."]
+        case .cryingWarning:
+            return [".e....e.",
+                    "eee..eee",
+                    ".g....g."]
         case .offline:
             return ["e.e..e.e",
                     ".e....e.",
@@ -92,15 +131,20 @@ public enum RobotFace: Sendable, CaseIterable {
         }
     }
 
-    var hasSweatPixel: Bool { self == .worried }
+    var hasSweatPixel: Bool {
+        self == .worriedSlants || self == .cryingWarning
+    }
 }
 
-/// A code-defined pixel matrix — no image assets, no third-party font, and no
-/// antialiasing (every cell is an integral rect), so it stays crisp from a 12pt
-/// Dynamic Island minimal glyph up to the 96pt Overview hero.
+/// The canonical Orbit robot (2026-07-22 redesign) — a chunky rounded-square
+/// head with a top antenna, side signal ears, little feet, and a **large inset
+/// visor**: the 8×3 eye window sits centred in a 10×5 dark plate, so every mood's
+/// eye shape reads clearly with a full pixel of dark margin on all sides. It is a
+/// code-defined pixel matrix with integral cells, so the same mark stays crisp
+/// from the 16pt Dynamic Island glyph up to the 96pt Overview hero.
 public struct PixelRobot: View {
-    public enum Cell: Sendable {
-        case empty, body, bodyDim, plate, eye, glow
+    public enum Cell: Sendable, Equatable {
+        case empty, body, bodyDim, cap, signal, plate, eye, glow
     }
 
     private let remainingPercent: Double?
@@ -120,22 +164,28 @@ public struct PixelRobot: View {
     // The matrix is pure data, so it stays off the main actor and can be asserted
     // directly in tests without a renderer.
     public nonisolated static let columns = 16
-    public nonisolated static let rows = 12
+    public nonisolated static let rows = 16
 
-    /// Head outline. `#` body, `x` dark face plate, `.` empty.
+    /// Orbit outline. `#` body, `d` dim (mouth slot / feet shadow), `p` antenna
+    /// cap, `s` signal ear, `x` dark visor plate. The visor spans rows 5…9 ×
+    /// cols 3…12 — one full cell of margin around the 8×3 eye window.
     private nonisolated static let head = [
-        ".......##.......",
+        ".......pp.......",
         ".......##.......",
         "....########....",
         "..############..",
+        ".##############.",
         ".##xxxxxxxxxx##.",
-        "###xxxxxxxxxx###",
-        "###xxxxxxxxxx###",
+        "s##xxxxxxxxxx##s",
+        "s##xxxxxxxxxx##s",
+        "s##xxxxxxxxxx##s",
         ".##xxxxxxxxxx##.",
+        ".##############.",
+        ".###dddddddd###.",
         "..############..",
-        "...##########...",
         "....##....##....",
-        "...###....###..."
+        "....dd....dd....",
+        "................"
     ]
 
     public nonisolated static func matrix(face: RobotFace) -> [[Cell]] {
@@ -143,14 +193,17 @@ public struct PixelRobot: View {
             row.map { character in
                 switch character {
                 case "#": return Cell.body
+                case "d": return Cell.bodyDim
+                case "p": return Cell.cap
+                case "s": return Cell.signal
                 case "x": return Cell.plate
                 default: return Cell.empty
                 }
             }
         }
-        // Blit the mood's eye window into the face plate at rows 4…6, cols 4…11.
+        // Blit the mood's eye window into the face plate at rows 6…8, cols 4…11.
         for (offset, line) in face.eyes.enumerated() {
-            let row = 4 + offset
+            let row = 6 + offset
             for (column, character) in line.enumerated() {
                 switch character {
                 case "e": grid[row][4 + column] = .eye
@@ -197,13 +250,15 @@ public struct PixelRobot: View {
             case .empty: return nil
             case .plate: return nil
             case .bodyDim, .glow: return TRTheme.text.opacity(0.45)
-            case .body, .eye: return TRTheme.text
+            case .body, .cap, .signal, .eye: return TRTheme.text
             }
         }
         switch cell {
         case .empty: return nil
         case .body: return TRTheme.violet
         case .bodyDim: return TRTheme.violetDim
+        case .cap: return TRTheme.text
+        case .signal: return TRTheme.cyan
         case .plate: return TRTheme.surface2
         case .eye: return TRTheme.cyan
         case .glow: return TRTheme.cyanDim

@@ -93,13 +93,13 @@ public struct PixelDigitText: View {
 // MARK: Neon glow
 
 public extension View {
-    /// Layered soft shadows in the value's own accent — a neon bloom for the
-    /// dot-matrix numerals (full intensity) and, subtly, the hero-card meters
-    /// (`intensity` ~0.4).
+    /// Layered soft shadows in the value's own accent. 2026-07-22 muted restyle:
+    /// the bloom is now a whisper (was 0.55/0.25) — enough to lift a hero numeral
+    /// off the ink, never enough to read as neon. Call sites are unchanged.
     func neonGlow(_ color: Color, intensity: Double = 1) -> some View {
         self
-            .shadow(color: color.opacity(0.55 * intensity), radius: 6)
-            .shadow(color: color.opacity(0.25 * intensity), radius: 14)
+            .shadow(color: color.opacity(0.18 * intensity), radius: 5)
+            .shadow(color: color.opacity(0.07 * intensity), radius: 12)
     }
 }
 
@@ -251,7 +251,7 @@ public struct CyberPageHeader: View {
 
 // MARK: Chromatic wordmark
 
-/// The "Token Remain" wordmark with static ±1pt cyan/magenta ghost offsets — a
+/// The "TokenRemain" wordmark with static ±1pt cyan/magenta ghost offsets — a
 /// still chromatic-aberration effect (no animation, so Reduce Motion is a no-op).
 public struct ChromaticText: View {
     private let text: String
@@ -259,10 +259,11 @@ public struct ChromaticText: View {
     private let base: Color
     private let offset: CGFloat
 
-    /// Cyberpunk aberration ghosts — cyan and magenta, deliberately outside the
-    /// core palette (this is an opt-in experiment on the wordmark only).
-    private static let cyanGhost = Color(hex: 0x00E5FF)
-    private static let magentaGhost = Color(hex: 0xFF2D95)
+    /// Aberration ghosts. 2026-07-22 muted restyle: the fluorescent cyan/magenta
+    /// pair is replaced by the product's own soft cyan + violet so the wordmark
+    /// keeps its split-light identity without introducing off-palette neon.
+    private static let cyanGhost = TRTheme.cyan
+    private static let magentaGhost = TRTheme.violet
 
     public init(_ text: String, font: Font, base: Color = TRTheme.text, offset: CGFloat = 1) {
         self.text = text
@@ -273,8 +274,8 @@ public struct ChromaticText: View {
 
     public var body: some View {
         ZStack {
-            Text(text).font(font).foregroundStyle(Self.cyanGhost.opacity(0.55)).offset(x: -offset)
-            Text(text).font(font).foregroundStyle(Self.magentaGhost.opacity(0.55)).offset(x: offset)
+            Text(text).font(font).foregroundStyle(Self.cyanGhost.opacity(0.30)).offset(x: -offset)
+            Text(text).font(font).foregroundStyle(Self.magentaGhost.opacity(0.30)).offset(x: offset)
             Text(text).font(font).foregroundStyle(base)
         }
         .accessibilityElement()

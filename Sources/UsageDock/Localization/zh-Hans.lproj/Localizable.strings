@@ -75,13 +75,13 @@
 "action.refresh_quota" = "立即刷新 ccusage、Codex 与 Claude 官方额度";
 "action.refresh_usage" = "刷新用量";
 "action.open_dashboard" = "打开 Dashboard";
-"action.open_dashboard_help" = "打开独立的 Token Remain Dashboard 窗口";
+"action.open_dashboard_help" = "打开独立的 TokenRemain Dashboard 窗口";
 "action.launch_at_login" = "登录时自动启动";
 "action.open_dashboard_settings" = "打开 Dashboard 设置";
-"action.restart_app" = "重启 Token Remain";
+"action.restart_app" = "重启 TokenRemain";
 "action.settings" = "设置";
 "action.quit" = "退出";
-"action.quit_app" = "退出 Token Remain";
+"action.quit_app" = "退出 TokenRemain";
 "usage.updated_local" = "更新于 %1$@ · 数据留在本机";
 "usage.loading_local" = "正在读取用量 · 数据留在本机";
 "usage.provider_breakdown_empty" = "暂无按服务商拆分";
