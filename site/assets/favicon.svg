@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="TokenRemain">
+  <rect width="64" height="64" rx="14" fill="#0D1420"/>
+  <rect x="28" y="9" width="8" height="7" rx="2" fill="#B7A9F7"/>
+  <rect x="12" y="15" width="40" height="33" rx="10" fill="#8F7BF2"/>
+  <rect x="18" y="22" width="28" height="19" rx="5" fill="#0A0F18"/>
+  <circle cx="26" cy="32" r="2.8" fill="#3ECFE0"/>
+  <circle cx="38" cy="32" r="2.8" fill="#3ECFE0"/>
+  <rect x="20" y="52" width="7" height="3" rx="1.5" fill="#D97757"/>
+  <rect x="30" y="52" width="7" height="3" rx="1.5" fill="#8F7BF2"/>
+  <rect x="40" y="52" width="4" height="3" rx="1.5" fill="#223044"/>
+</svg>
