@@ -3,12 +3,27 @@ import SwiftUI
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    private let store = UsageStore()
-    private let feedStore = AIFeedStore()
-    private let launchAtLogin = LaunchAtLoginManager()
+    private lazy var store = UsageStore()
+    private lazy var feedStore = AIFeedStore()
+    private lazy var launchAtLogin = LaunchAtLoginManager()
     private var statusBarController: StatusBarController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        let arguments = ProcessInfo.processInfo.arguments
+#if TOKENREMAIN_APP_STORE_CANDIDATE
+        if arguments.contains("--provider-compatibility-audit") {
+            let environment = argument(after: "--audit-environment", in: arguments) ?? "unspecified"
+            NSApp.setActivationPolicy(.prohibited)
+            Task {
+                let report = await AppStoreSandboxProviderAudit.run(environment: environment)
+                try? FileHandle.standardOutput.write(contentsOf: report)
+                try? FileHandle.standardOutput.write(contentsOf: Data("\n".utf8))
+                NSApp.terminate(nil)
+            }
+            return
+        }
+#endif
+
         // TokenRemain is a desktop app with a persistent Dashboard and a
         // companion menu-bar status item.
         NSApp.setActivationPolicy(.regular)
@@ -21,7 +36,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         CrossDeviceSyncController.shared.attach(to: store, feedStore: feedStore)
 #endif
 
-        let arguments = ProcessInfo.processInfo.arguments
         if arguments.contains("--enable-launch-at-login") {
             launchAtLogin.setEnabled(true)
         }
@@ -68,6 +82,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         false
     }
+
+#if TOKENREMAIN_APP_STORE_CANDIDATE
+    private func argument(after flag: String, in arguments: [String]) -> String? {
+        guard let index = arguments.firstIndex(of: flag),
+              arguments.indices.contains(index + 1) else { return nil }
+        return arguments[index + 1]
+    }
+#endif
 }
 
 @main
