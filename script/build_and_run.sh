@@ -44,6 +44,7 @@ SYNC_EXPECTED_APPLICATION_IDENTIFIER=""
 SYNC_EXPECTED_TEAM_IDENTIFIER=""
 SYNC_EXPECTED_ICLOUD_ENVIRONMENT=""
 SYNC_EXPECTED_GET_TASK_ALLOW="false"
+ARCHIVE_DIR="${USAGEDOCK_ARCHIVE_DIR:-$ROOT_DIR/dist-release}"
 
 cleanup_build_artifacts() {
   if [[ -n "$SYNC_WORK_DIR" && -d "$SYNC_WORK_DIR" ]]; then
@@ -63,6 +64,16 @@ trap cleanup_build_artifacts EXIT
 if [[ "$SYNC_RELEASE_MODE" != "0" && "$SYNC_RELEASE_MODE" != "1" ]]; then
   echo "USAGEDOCK_SYNC_RELEASE must be 0 or 1." >&2
   exit 2
+fi
+if [[ "$MODE" == "--archive" || "$MODE" == "archive" ]]; then
+  if [[ "$SYNC_RELEASE_MODE" != "1" ]]; then
+    echo "Archive mode requires USAGEDOCK_SYNC_RELEASE=1." >&2
+    exit 2
+  fi
+  if [[ "$SYNC_REQUESTED_ICLOUD_ENVIRONMENT" != "Production" ]]; then
+    echo "Archive mode requires USAGEDOCK_SYNC_ICLOUD_ENVIRONMENT=Production." >&2
+    exit 2
+  fi
 fi
 if [[ "$SYNC_RELEASE_MODE" == "0" \
   && ( -n "$SYNC_PROVISIONING_PROFILE" \
@@ -235,7 +246,9 @@ verify_sync_signature() {
   fi
 }
 
-pkill -x "$EXECUTABLE_NAME" >/dev/null 2>&1 || true
+if [[ "$MODE" != "--archive" && "$MODE" != "archive" ]]; then
+  pkill -x "$EXECUTABLE_NAME" >/dev/null 2>&1 || true
+fi
 cd "$ROOT_DIR"
 SWIFT_BUILD_ARGS=(--product "$EXECUTABLE_NAME")
 if [[ "$SYNC_RELEASE_MODE" == "1" ]]; then
@@ -300,6 +313,18 @@ fi
 # signing does not change the code signature and prevents dyld launch stalls.
 /usr/bin/xattr -dr com.apple.provenance "$APP_BUNDLE" 2>/dev/null || true
 
+if [[ "$MODE" == "--archive" || "$MODE" == "archive" ]]; then
+  verify_sync_signature "$APP_BUNDLE"
+  mkdir -p "$ARCHIVE_DIR"
+  ARCHIVED_APP="$ARCHIVE_DIR/$APP_NAME.app"
+  rm -rf "$ARCHIVED_APP"
+  /usr/bin/ditto "$APP_BUNDLE" "$ARCHIVED_APP"
+  /usr/bin/codesign --verify --deep --strict "$ARCHIVED_APP"
+  verify_sync_signature "$ARCHIVED_APP"
+  printf '%s\n' "$ARCHIVED_APP"
+  exit 0
+fi
+
 # Run from the stable installed location. LaunchServices can refuse or stall on
 # app bundles inside File Provider-backed development folders, while the
 # installed path also gives Keychain and notification permissions a stable home.
@@ -356,7 +381,7 @@ case "$MODE" in
     exit 1
     ;;
   *)
-    echo "usage: $0 [run|--debug|--logs|--telemetry|--verify]" >&2
+    echo "usage: $0 [run|--debug|--logs|--telemetry|--verify|--archive]" >&2
     exit 2
     ;;
 esac
