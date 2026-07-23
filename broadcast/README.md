@@ -8,10 +8,14 @@ receive or store an X credential.
 
 - Primary: `btibor91`, `sama`, `claudeai`, `AnthropicAI`, `OpenAI`, and
   `karpathy`; checked every 10 minutes, with an aggregate UTC-day limit of 30.
-- Rotating: hot posts from other AI accounts; checked hourly, ranked by
-  engagement, account reach/activity, and recency, with an aggregate UTC-day
-  limit of 20 and a per-author limit of 3. Stronger posts discovered later can
-  replace weaker rotating items without exceeding the daily public limit.
+- Rotating: only `Kimi_Moonshot`, `AIatMeta`, `GoogleDeepMind`, `xai`,
+  `MistralAI`, `deepseek_ai`, `OpenRouterAI`, `perplexity_ai`, `simonw`,
+  `emollick`, `ArtificialAnlys`, and `elonmusk`. The Worker checks this strict
+  allowlist hourly and ranks posts by engagement, account reach/activity, and
+  recency, with an aggregate UTC-day limit of 20 and a per-author limit of 3.
+  Stronger posts discovered later can replace weaker rotating items without
+  exceeding the daily public limit. Primary accounts are not present in this
+  allowlist and are rejected if returned for the rotating tier.
 - Both queries and ingestion reject replies, reposts, quote posts, and
   nullcasts. Apple clients receive only the resulting public feed.
 

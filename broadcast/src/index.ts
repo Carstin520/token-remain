@@ -8,6 +8,7 @@ import type { Env, PushJob } from "./types";
 import {
   PRIMARY_ACCOUNTS,
   PRIMARY_DAILY_LIMIT,
+  ROTATING_ACCOUNTS,
   ROTATING_DAILY_LIMIT,
 } from "./x-api";
 
@@ -27,6 +28,7 @@ export default {
               dailyLimit: PRIMARY_DAILY_LIMIT,
             },
             rotating: {
+              accounts: ROTATING_ACCOUNTS.map((account) => account.username),
               dailyLimit: ROTATING_DAILY_LIMIT,
             },
           },
