@@ -21,7 +21,8 @@
 
 - **凭证永不跨设备。** Claude / Codex access token、refresh token、API Key、Cookie、X Bearer Token、GitHub 登录态等只留在 Mac 本机。
 - **同步是明确选择。** 首次安装默认关闭；Mac 和 iPhone 均显示同步状态、最近同步时间和删除入口。
-- **默认只同步最少结果。** 只同步用于展示的额度百分比、窗口时长、重置时间和采集时间。
+- **默认只同步最少结果。** 只同步用于展示的稳定 provider ID、额度百分比、
+  窗口时长、重置时间、采集时间、受控状态和经过净化的套餐标签。
 - **单向、单写者。** Mac 是额度快照唯一写者；iPhone、Widget、Watch 不回写额度，消除绝大多数冲突。
 - **业务服务器不碰用户额度。** 当前实现不建设 Feed 后端；Mac 只把已经筛选的公开 X 帖子随同一加密快照交给 iPhone，X 凭证仍只留在 Mac。
 - **推送只作提示。** APNs / CloudKit notification 不携带百分比、费用或 provider 明细。
@@ -32,7 +33,10 @@
 
 当前实现已经具备：
 
-- macOS 的真实额度来源集中在 `UsageStore`，并由显式 `MobileSnapshotRedactor` 只挑选 Claude / Codex 展示字段。
+- macOS 的真实额度来源集中在 `UsageStore`，并由显式
+  `MobileSnapshotRedactor` 只挑选当前 `SyncedProviderID` 白名单中的稳定
+  provider ID、额度窗口、采集时间、受控状态和经过净化的套餐标签。每日
+  Token / 费用历史仍只允许 Claude / Codex 的按日聚合值。
 - iPhone / Widget 共享 `SnapshotStore` 和 `UsageSnapshot`；真实来源为 `.macSync`，首次启动仍为 `.none`。
 - iPhone → Watch 已使用 `WatchConnectivity.updateApplicationContext`，符合“最新值覆盖”的需求。
 - CloudKit Private Database、AES-256-GCM envelope、同步 Keychain、重放防护和静默通知入口均已接入。
@@ -89,7 +93,11 @@ flowchart LR
 
 ### 5.1 默认允许跨设备
 
-首发发布者只生成 `claude` 和 `codex` 两个 provider 条目；协议虽然可容忍未来 provider ID，但这不授权 Mac 提前上传手机端不会展示的数据。
+首发发布者只生成当前 `SyncedProviderID.supportedOnCurrentMobile` 明确列出的
+provider 条目。该集合与 Mac 的 `ProviderQuota.Provider.displayOrder` 由测试锁定；
+新增 provider 必须同时更新跨端白名单、范围校验和隐私审查，不能因为 Mac
+模型中出现了新字段就自动进入快照。Claude / Codex 的特殊边界仅适用于下方
+可选的每日 Token / 费用历史。
 
 | 字段 | 用途 | 隐私处理 |
 |---|---|---|

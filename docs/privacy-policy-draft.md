@@ -52,6 +52,7 @@ The default snapshot may contain:
 - stable provider identifiers;
 - quota-window percentages, reset dates, capture times, and availability
   states;
+- sanitized provider subscription-tier labels used only for display;
 - source/version/sequence metadata used to reject replay and wrong-source
   updates;
 - if separately enabled, up to 30 days of aggregate Claude and Codex token and

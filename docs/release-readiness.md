@@ -33,7 +33,10 @@ Observed on the release workstation on 2026-07-23:
 
 - one valid `Apple Development` identity;
 - no valid `Developer ID Application` identity;
-- no provisioning profiles in the standard local profile directory;
+- development provisioning profiles exist for the iPhone, iPhone Widget,
+  Watch app, and Watch Widget identifiers;
+- no Apple Distribution identity, App Store distribution profiles, or macOS
+  Developer ID provisioning profile was found;
 - no notarytool credential profile was supplied to this task.
 
 Therefore no Developer ID archive, notarization submission, stapling, App Store
