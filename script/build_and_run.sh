@@ -161,6 +161,17 @@ prepare_sync_signing() {
 
   local has_development_environment=false
   local has_production_environment=false
+  local scalar_environment
+  scalar_environment="$(/usr/libexec/PlistBuddy \
+    -c 'Print :Entitlements:com.apple.developer.icloud-container-environment' \
+    "$profile_plist" 2>/dev/null || true)"
+  [[ "$scalar_environment" == "Development" ]] && has_development_environment=true
+  [[ "$scalar_environment" == "Production" ]] && has_production_environment=true
+
+  # Development profiles may encode the allowed environments as an array,
+  # while Developer ID profiles commonly encode the sole Production value as
+  # a scalar string. Accept both Apple-issued representations without
+  # weakening the requested-environment check below.
   local environment_index=0
   while true; do
     local profile_environment

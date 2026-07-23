@@ -16,7 +16,7 @@ unsandboxed Developer ID Mac download.
 | Privacy manifests | Added to every executable bundle source | Validate the exported App Store archive privacy report |
 | StoreKit configuration | Not applicable | The app is paid upfront; there is no IAP product |
 | StoreKit Sandbox purchase | Not applicable | Paid storefront checkout is outside the app and is not simulated by TestFlight |
-| Developer ID package | Script and signature guardrails complete | Install certificate and profile, build, notarize, staple |
+| Developer ID package | G2-signed Production candidate and embedded profile verified | Configure notarytool credentials, notarize, staple |
 | CloudKit Production | Release entitlements are configured in code | Deploy schema, then test Production with release builds |
 | APNs Production | Release build setting is configured in code | Verify the distribution-signed entitlement and silent push on TestFlight |
 | Foreground freshness | Timing instrumentation and simulator paths pass | Collect real Mac + iPhone samples and meet p50/p95/max gates |
@@ -41,12 +41,20 @@ Observed on the release workstation on 2026-07-23:
   private key available locally and certificate expiry on 2027-07-23;
 - development provisioning profiles exist for the iPhone, iPhone Widget,
   Watch app, and Watch Widget identifiers;
-- no App Store distribution profiles or macOS Developer ID provisioning
-  profile was found;
+- Apple-issued Developer ID profile
+  `TokenRemain macOS Developer ID Production` exists for
+  `com.jamesli.usagedock`, authorizes CloudKit Production and
+  `84397AQ22Y.*` Keychain groups, embeds the G2 certificate, applies to all
+  devices, and expires on 2044-07-18;
+- no App Store distribution profiles were found;
 - no notarytool credential profile was supplied to this task.
 
-Therefore no Developer ID archive, notarization submission, stapling, App Store
-upload, or TestFlight install has been claimed.
+A G2 Developer ID-signed candidate was built on 2026-07-23 with Hardened
+Runtime, a secure timestamp, the Production CloudKit container, and the exact
+`84397AQ22Y.com.jamesli.tokenremain.sync` Keychain group. Its signature and
+embedded profile passed strict local verification. It has **not** been submitted
+for notarization, stapled, assessed as the final website download, uploaded to
+App Store Connect, or installed through TestFlight.
 
 ## Developer ID Mac release
 
