@@ -8,7 +8,7 @@
 
 生产版采用“Mac 是数据源，iPhone 是只读镜像，Watch 是 iPhone 的只读镜像”的单向同步模型：
 
-1. Mac 继续在本地读取各工具额度；首发同步发布边界只允许 Claude 和 Codex。
+1. Mac 继续在本地读取各工具额度；首发同步只发布显式 `SyncedProviderID` 白名单中的稳定 Provider ID、额度窗口、采集时间和状态。
 2. Mac 先执行严格的数据白名单和脱敏，再生成独立的移动端快照。
 3. 快照使用应用层 AES-256-GCM 加密，密钥只保存在用户的 iCloud 钥匙串中。
 4. 密文写入用户自己的 CloudKit Private Database；不建设可读取用户额度数据的 TokenRemain 业务服务器。
@@ -419,9 +419,9 @@ App Store Privacy Nutrition Label 不能仅凭“密文”就草率填写“未�
 - macOS 端使用独立白名单 DTO；默认只传 provider ID、额度窗口、采集时间和状态。每日 token / 费用历史必须单独授权，且只含 Claude / Codex 最多 30 天按日聚合。公开精选 X Feed 最多 3 条并严格校验规范链接、年龄、字符和长度；凭证、Cookie、账号、互动统计、路径和任意 provider 原始响应不进入同步模型。
 - 快照先经过 AES-256-GCM 应用层加密，再写入 CloudKit Private Database 的 encrypted field；推送只作为“有变化”的静默提示，不携带额度。
 - 同步密钥使用独立 synchronizable Keychain item；iPhone 只能读取现有 key，不能自行创建错误的新 key。
-- Mac 端实现 12 秒变更 debounce、15 分钟 heartbeat、内容指纹去重、指数退避和单一主 Mac 接管确认。
+- Mac 端实现 4 秒变更 debounce、15 分钟 heartbeat、内容指纹去重、指数退避和单一主 Mac 接管确认。
 - iPhone 在启动、回到前台和 CloudKit 静默提示后拉取；验证 schema、大小、时间、来源和 sequence 后，统一写入 App Group，并刷新 App、Widget、Live Activity 和 Watch。
-- 首版 Mac 发布者只允许 Claude Code 与 Codex 进入密文；协议仍可容忍未来稳定 provider ID，但当前未展示的数据不会被提前上传。
+- Mac 发布者覆盖当前全部 `SyncedProviderID` 白名单 Provider；只进入稳定 ID、窗口、采集时间和状态，任意原始响应、账号、凭证、路径与诊断字符串仍被拒绝。
 - iPhone 每日历史和公开精选 Feed 只保存在主 App 私有目录；Widget、Live Activity 和 Watch 的 entitlement 与数据输入均未扩大。趋势页和概览卡使用真实每日聚合堆叠柱，不再把本机额度观察点绘制成曲线。
 - 同步数据超过 10 分钟显示陈旧提示，超过 24 小时硬过期并停止显示额度数字。
 - 默认本地 macOS 构建不带 CloudKit 或共享 Keychain entitlement；只有显式 profile-backed 构建才可启用同步。

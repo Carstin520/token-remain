@@ -41,6 +41,19 @@ delivery.
 Not applicable. There is no IAP Product ID and no StoreKit paywall. Purchase and
 re-download are the standard paid-app App Store flow.
 
+## Encryption and content-rights notes
+
+TokenRemain uses Apple CryptoKit AES-256-GCM to encrypt the private CloudKit
+snapshot. The App Store Connect encryption questionnaire must be completed
+truthfully before the build is submitted; no repository setting currently
+claims an exemption on the Account Holder's behalf.
+
+The optional AI Feed can display selected public X posts and links synchronized
+from the user's Mac. Before submission, the publisher must confirm that this use
+and the screenshots comply with the X API/content terms and complete App Store
+Connect's third-party content-rights declaration. Review screenshots must not
+imply endorsement by Anthropic, OpenAI, X, or another provider.
+
 ## App Privacy response worksheet
 
 Current code has no developer analytics, ads, tracking, TokenRemain account, or
@@ -82,6 +95,16 @@ using demo data.
 8. Settings showing encrypted private sync, source Mac, freshness metrics, and
    disconnect/delete controls.
 
+For the separately distributed Mac product page, capture:
+
+1. full multi-provider dashboard with the shortest real provider windows;
+2. menu bar panel and provider in-place expansion;
+3. real daily history/trend bars and risk projection;
+4. overview layout customization and drag ordering;
+5. Apple-device sync status with capture/upload timing and privacy explanation;
+6. data-source settings showing local-only credential handling and optional
+   reminders.
+
 Capture a separate clean set for each required iPhone display class and the
 localized storefronts selected for launch. Watch screenshots should match the
 actual embedded build, not a design mock.
@@ -111,3 +134,6 @@ actual embedded build, not a design mock.
 - base country/region, price, storefront availability, tax category,
   education/business distribution, and Family Sharing policy;
 - manual, automatic, phased, or scheduled release choice.
+
+A proposed English and Simplified Chinese listing is in
+`docs/app-store-metadata-draft.md`.

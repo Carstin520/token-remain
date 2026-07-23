@@ -118,6 +118,21 @@ CloudKit subscription pushes remain change hints only. They must not contain
 quota values, provider details, costs, or credentials, and notification
 authorization is not a prerequisite for sync.
 
+### Encryption export compliance
+
+The iPhone app deliberately uses CryptoKit AES-256-GCM in addition to Apple
+CloudKit/TLS protection. Do not answer “the app uses no encryption.” Before the
+first upload, use App Store Connect's App Encryption Documentation questionnaire
+to determine the applicable exemption and any storefront-specific paperwork.
+Apple's current reference says encryption limited to the Apple operating system
+does not require documentation, but the Account Holder remains responsible for
+the submitted determination. Only after App Store Connect confirms the result
+should `ITSAppUsesNonExemptEncryption` (and, if provided by Apple,
+`ITSEncryptionExportComplianceCode`) be fixed in the Release Info.plist.
+
+This branch intentionally leaves those keys unset so it cannot silently claim
+an unconfirmed legal exemption.
+
 ## Paid-upfront commercial state matrix
 
 The App Store is the install gate; the app contains no IAP entitlement state.
@@ -137,6 +152,9 @@ iCloud signed out, different iCloud accounts, App Store account different from
 iCloud account, either device offline, no CloudKit snapshot, missing sync key,
 AES failure, replay, main-Mac switch, stale provider data, and honest empty
 Widget/Watch rendering.
+
+The evidence mapping for every required commercial and sync state is maintained
+in `docs/commercial-sync-test-matrix.md`.
 
 ## Foreground latency acceptance
 
@@ -163,8 +181,11 @@ session and are intentionally not automated here:
    education/business availability, and Family Sharing policy if offered.
 4. Publish a public privacy-policy URL and enter the App Privacy answers.
 5. Complete age rating, category, copyright, support URL, marketing URL,
-   export compliance, and release method.
+   export compliance, third-party content-rights confirmation, and release method.
 6. Create/upload the distribution archive, wait for processing, and resolve all
    entitlement or privacy-manifest warnings.
 7. Run internal and external TestFlight on real iPhone and paired Watch.
 8. Attach the final screenshots and review notes, then submit for review.
+
+Draft listing copy is available in `docs/app-store-metadata-draft.md`; it is not
+an App Store Connect mutation or owner approval.
