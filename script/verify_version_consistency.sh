@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+VERSION_FILE="$ROOT_DIR/VERSION"
+BUILD_FILE="$ROOT_DIR/BUILD_NUMBER"
+MAC_INFO_PLIST="$ROOT_DIR/Resources/Info.plist"
+APPLE_PROJECT="$ROOT_DIR/apple/project.yml"
+
+fail() {
+  echo "version consistency verification failed: $*" >&2
+  exit 1
+}
+
+[[ -r "$VERSION_FILE" ]] || fail "VERSION is missing"
+[[ -r "$BUILD_FILE" ]] || fail "BUILD_NUMBER is missing"
+
+VERSION="$(/usr/bin/tr -d '[:space:]' < "$VERSION_FILE")"
+BUILD_NUMBER="$(/usr/bin/tr -d '[:space:]' < "$BUILD_FILE")"
+
+[[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] \
+  || fail "VERSION must use MAJOR.MINOR.PATCH"
+[[ "$BUILD_NUMBER" =~ ^[1-9][0-9]*$ ]] \
+  || fail "BUILD_NUMBER must be a positive integer"
+
+MAC_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$MAC_INFO_PLIST")"
+MAC_BUILD="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$MAC_INFO_PLIST")"
+APPLE_VERSION="$(/usr/bin/sed -n 's/^[[:space:]]*MARKETING_VERSION: "\(.*\)"/\1/p' "$APPLE_PROJECT" | /usr/bin/head -n 1)"
+APPLE_BUILD="$(/usr/bin/sed -n 's/^[[:space:]]*CURRENT_PROJECT_VERSION: "\(.*\)"/\1/p' "$APPLE_PROJECT" | /usr/bin/head -n 1)"
+
+[[ "$MAC_VERSION" == "$VERSION" ]] \
+  || fail "macOS marketing version $MAC_VERSION does not match $VERSION"
+[[ "$MAC_BUILD" == "$BUILD_NUMBER" ]] \
+  || fail "macOS build $MAC_BUILD does not match $BUILD_NUMBER"
+[[ "$APPLE_VERSION" == "$VERSION" ]] \
+  || fail "Apple project marketing version $APPLE_VERSION does not match $VERSION"
+[[ "$APPLE_BUILD" == "$BUILD_NUMBER" ]] \
+  || fail "Apple project build $APPLE_BUILD does not match $BUILD_NUMBER"
+
+echo "version consistency verified: $VERSION ($BUILD_NUMBER)"

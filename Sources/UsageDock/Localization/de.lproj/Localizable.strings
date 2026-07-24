@@ -384,7 +384,7 @@
 "sync.health.ready" = "Bereit";
 "sync.health.unavailable" = "Nicht verfügbar";
 "sync.keepalive" = "Keep-Alive-Synchronisierung";
-"sync.keepalive_interval" = "Alle 15 Minuten";
+"sync.keepalive_interval" = "Alle 5 Minuten";
 "sync.last_synced" = "Letzte sichere Synchronisierung: %1$@";
 "sync.last_uploaded" = "Zuletzt hochgeladen";
 "sync.preview.disclosure" = "Zu synchronisierende Daten anzeigen";
