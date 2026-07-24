@@ -3,6 +3,17 @@
 All notable product changes are recorded here. TokenRemain uses Semantic
 Versioning for public releases.
 
+## 1.1.2 — 2026-07-24
+
+### Fixed
+
+- Prevented a terminated provider subprocess from holding the automatic quota
+  refresh open indefinitely.
+- Applied each provider result immediately so a slow local probe no longer
+  delays fresh Mac data or CloudKit delivery.
+- Isolated ccusage history collection from the quota refresh lock and restored
+  a fixed one-minute automatic capture cadence.
+
 ## 1.1.1 — 2026-07-24
 
 ### Added
@@ -41,3 +52,4 @@ Versioning for public releases.
 [1.0.0]: https://github.com/Carstin520/token-remain/releases/tag/v1.0.0
 [1.1.0]: https://github.com/Carstin520/token-remain/releases/tag/v1.1.0
 [1.1.1]: https://github.com/Carstin520/token-remain/releases/tag/v1.1.1
+[1.1.2]: https://github.com/Carstin520/token-remain/releases/tag/v1.1.2
