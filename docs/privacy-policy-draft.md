@@ -1,7 +1,7 @@
 # TokenRemain Privacy Policy — release source
 
 The public English and Simplified Chinese policy is available at
-<https://tokenremain.jamescarstin520.chatgpt.site/privacy.html>. Legal review
+<https://tokenremain.com/privacy>. Legal review
 may still be appropriate for the selected storefronts. This text describes the
 current code and is not a claim that the App Store privacy response has been
 published.

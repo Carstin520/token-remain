@@ -14,7 +14,7 @@ LEGACY_INSTALLED_APPS=(
   "$INSTALL_DIR/UsageDock.app"
   "$INSTALL_DIR/Token Remain.app"
 )
-BROADCAST_BASE_URL="${TOKENREMAIN_BROADCAST_BASE_URL:-https://tokenremain-broadcast.jamescarstin520.workers.dev}"
+BROADCAST_BASE_URL="${TOKENREMAIN_BROADCAST_BASE_URL:-https://api.tokenremain.com}"
 APP_CONTENTS="$APP_BUNDLE/Contents"
 APP_MACOS="$APP_CONTENTS/MacOS"
 APP_RESOURCES="$APP_CONTENTS/Resources"

@@ -118,23 +118,23 @@ AI,额度,Claude,Codex,Cursor,用量,小组件,手表,开发者,趋势
 - Age rating: **13+** in 171 storefronts, **16+** in two storefronts, and
   **15+** in Korea based on the questionnaire completed on 2026-07-23
 - English Support URL:
-  <https://tokenremain.jamescarstin520.chatgpt.site/support.html>
+  <https://tokenremain.com/support>
 - Simplified Chinese Support URL:
-  <https://tokenremain.jamescarstin520.chatgpt.site/support.html?lang=zh>
-- English Marketing URL: <https://tokenremain.jamescarstin520.chatgpt.site>
+  <https://tokenremain.com/support?lang=zh>
+- English Marketing URL: <https://tokenremain.com>
 - Simplified Chinese Marketing URL:
-  <https://tokenremain.jamescarstin520.chatgpt.site/?lang=zh>
+  <https://tokenremain.com/?lang=zh>
 - English Privacy Policy URL:
-  <https://tokenremain.jamescarstin520.chatgpt.site/privacy.html>
+  <https://tokenremain.com/privacy>
 - Simplified Chinese Privacy Policy URL:
-  <https://tokenremain.jamescarstin520.chatgpt.site/privacy.html?lang=zh>
+  <https://tokenremain.com/privacy?lang=zh>
 - Copyright: `2026 Dongheng Li`
 - Review contact name: `Dongheng Li`
 - Review contact phone: `+1 2177786869`
 - Review contact email: `jamescarstin520@gmail.com`
 - Support email: `jamescarstin520@gmail.com`
 - Mac companion product/download page:
-  <https://tokenremain.jamescarstin520.chatgpt.site>
+  <https://tokenremain.com>
 - Candidate direct Mac release URL:
   <https://github.com/Carstin520/token-remain/releases/latest/download/TokenRemain.dmg>
   (must be replaced or verified against the final notarized release artifact)

@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://tokenremain.jamescarstin520.chatgpt.site/sitemap.xml
+Sitemap: https://tokenremain.com/sitemap.xml

@@ -58,7 +58,7 @@ targets:
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIUserInterfaceStyle: Dark
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
-        TOKENREMAIN_BROADCAST_BASE_URL: https://tokenremain-broadcast.jamescarstin520.workers.dev
+        TOKENREMAIN_BROADCAST_BASE_URL: https://api.tokenremain.com
         CODE_SIGN_ENTITLEMENTS: SupportFiles/TokenRemain.entitlements
       configs:
         Debug:

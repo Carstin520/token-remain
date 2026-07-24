@@ -368,7 +368,7 @@ The signed-in App Store Connect session established the following state on
   zone with the broadcast service. The app still contains no ads or behavioral
   analytics SDK.
 - public product, support, and privacy-policy pages deployed at
-  `https://tokenremain.jamescarstin520.chatgpt.site`, with English and
+  `https://tokenremain.com`, with English and
   Simplified Chinese URLs saved in App Store Connect; the public Mac button
   resolves through an aggregate-only D1 counter to the notarized GitHub Release
   DMG.

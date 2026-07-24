@@ -9,10 +9,10 @@
 <meta name="author" content="Dongheng Li">
 <meta name="robots" content="index, follow, max-image-preview:large">
 <meta name="theme-color" content="#070B12">
-<link rel="canonical" href="https://tokenremain.jamescarstin520.chatgpt.site/">
-<link rel="alternate" hreflang="en" href="https://tokenremain.jamescarstin520.chatgpt.site/">
-<link rel="alternate" hreflang="zh" href="https://tokenremain.jamescarstin520.chatgpt.site/?lang=zh">
-<link rel="alternate" hreflang="x-default" href="https://tokenremain.jamescarstin520.chatgpt.site/">
+<link rel="canonical" href="https://tokenremain.com/">
+<link rel="alternate" hreflang="en" href="https://tokenremain.com/">
+<link rel="alternate" hreflang="zh" href="https://tokenremain.com/?lang=zh">
+<link rel="alternate" hreflang="x-default" href="https://tokenremain.com/">
 <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
 
 <!-- Open Graph -->
@@ -20,8 +20,8 @@
 <meta property="og:site_name" content="TokenRemain">
 <meta property="og:title" content="TokenRemain — Your AI quota, always in the menu bar">
 <meta property="og:description" content="Remaining quota and reset countdowns for Claude Code, Codex, Cursor, Grok, GLM and 18+ services — right in your Mac menu bar. Credentials stay on your Mac.">
-<meta property="og:url" content="https://tokenremain.jamescarstin520.chatgpt.site/">
-<meta property="og:image" content="https://tokenremain.jamescarstin520.chatgpt.site/assets/dashboard.jpg">
+<meta property="og:url" content="https://tokenremain.com/">
+<meta property="og:image" content="https://tokenremain.com/assets/dashboard.jpg">
 <meta property="og:image:alt" content="TokenRemain dashboard showing remaining AI quota by provider">
 <meta property="og:locale" content="en_US">
 <meta property="og:locale:alternate" content="zh_CN">
@@ -30,7 +30,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="TokenRemain — Your AI quota, always in the menu bar">
 <meta name="twitter:description" content="Remaining quota and reset countdowns for Claude Code, Codex, Cursor, Grok, GLM and 18+ services — right in your Mac menu bar.">
-<meta name="twitter:image" content="https://tokenremain.jamescarstin520.chatgpt.site/assets/dashboard.jpg">
+<meta name="twitter:image" content="https://tokenremain.com/assets/dashboard.jpg">
 
 <!-- Structured data: software product -->
 <script type="application/ld+json">
@@ -41,9 +41,9 @@
   "alternateName": "Token Remain",
   "applicationCategory": "DeveloperApplication",
   "operatingSystem": "macOS 14+, iOS",
-  "url": "https://tokenremain.jamescarstin520.chatgpt.site/",
-  "downloadUrl": "https://tokenremain.jamescarstin520.chatgpt.site/#download",
-  "screenshot": "https://tokenremain.jamescarstin520.chatgpt.site/assets/dashboard.jpg",
+  "url": "https://tokenremain.com/",
+  "downloadUrl": "https://tokenremain.com/#download",
+  "screenshot": "https://tokenremain.com/assets/dashboard.jpg",
   "description": "A private macOS and iPhone companion that shows remaining quota and reset countdowns for Claude Code, Codex, Cursor, Grok, GLM and 18+ AI coding tools. Credentials stay on your Mac.",
   "author": { "@type": "Person", "name": "Dongheng Li" },
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
@@ -56,7 +56,7 @@
   "@type": "WebSite",
   "name": "TokenRemain",
   "alternateName": ["Token Remain", "TokenRemain — AI quota in the menu bar"],
-  "url": "https://tokenremain.jamescarstin520.chatgpt.site/",
+  "url": "https://tokenremain.com/",
   "publisher": { "@type": "Person", "name": "Dongheng Li" }
 }
 </script>
@@ -464,8 +464,8 @@ footer.site .disclaimer{
       <a href="#screens" data-i18n="nav-screens">Screens</a>
       <a href="#providers" data-i18n="nav-providers">Providers</a>
       <a href="#privacy" data-i18n="nav-privacy">Privacy</a>
-      <a href="privacy.html" data-i18n="nav-policy">Privacy Policy</a>
-      <a href="support.html" data-i18n="nav-support">Support</a>
+      <a href="/privacy" data-i18n="nav-policy">Privacy Policy</a>
+      <a href="/support" data-i18n="nav-support">Support</a>
       <a href="#limits" data-i18n="nav-limits">Limits</a>
       <a href="https://github.com/Carstin520/token-remain" rel="noopener">GitHub</a>
       <button class="lang" id="langBtn" type="button" aria-label="切换语言 / Switch language">中文</button>
@@ -483,7 +483,7 @@ footer.site .disclaimer{
         Provider credentials stay on your Mac. If you enable Apple-device sync, only an allowlisted AES-256-GCM encrypted quota snapshot moves through your own iCloud account.
       </p>
       <div class="cta-row">
-        <a id="macDownloadButton" class="btn btn-primary" href="https://tokenremain-broadcast.jamescarstin520.workers.dev/v1/downloads/macos">
+        <a id="macDownloadButton" class="btn btn-primary" href="https://api.tokenremain.com/v1/downloads/macos">
           <span data-i18n="h-dl">Download for Mac</span>
         </a>
         <a class="btn btn-ghost" href="https://github.com/Carstin520/token-remain" rel="noopener">
@@ -733,9 +733,9 @@ footer.site .disclaimer{
     <div class="frow">
       <span>© 2026 Dongheng Li</span>
       <span>
-        <a href="privacy.html" data-i18n="fp">Privacy Policy</a>
+        <a href="/privacy" data-i18n="fp">Privacy Policy</a>
         ·
-        <a href="support.html" data-i18n="fs">Support</a>
+        <a href="/support" data-i18n="fs">Support</a>
         ·
         <a href="https://github.com/Carstin520/token-remain/issues" rel="noopener" data-i18n="fi">Report an issue</a>
       </span>
@@ -845,7 +845,7 @@ function renderDownloadCount(){
   el.textContent=(zh?'累计下载：':'Total downloads: ')+downloadTotal.toLocaleString(zh?'zh-CN':'en-US');
 }
 (function(){
-  fetch('https://tokenremain-broadcast.jamescarstin520.workers.dev/v1/downloads/stats')
+  fetch('https://api.tokenremain.com/v1/downloads/stats')
     .then(function(response){if(!response.ok)throw new Error('stats unavailable');return response.json()})
     .then(function(payload){
       var value=payload&&payload.macos&&payload.macos.totalDownloads;

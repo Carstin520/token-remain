@@ -7,7 +7,7 @@ import Foundation
 enum FeedConfiguration {
     static let pollingIntervalSeconds: TimeInterval = 600
     private static let productionBaseURL =
-        "https://tokenremain-broadcast.jamescarstin520.workers.dev"
+        "https://api.tokenremain.com"
 
     static var baseURL: URL? {
         let environmentValue = ProcessInfo.processInfo.environment[

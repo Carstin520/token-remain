@@ -14,7 +14,7 @@
 ![Notarized](https://img.shields.io/badge/Apple-Notarized-34C759?logo=apple&logoColor=white)
 ![Version](https://img.shields.io/badge/version-1.0.0-22D3EE)
 
-[官网 / 下载](https://tokenremain.jamescarstin520.chatgpt.site) · [隐私政策](https://tokenremain.jamescarstin520.chatgpt.site/privacy.html) · [支持](https://tokenremain.jamescarstin520.chatgpt.site/support.html) · [问题反馈](https://github.com/Carstin520/token-remain/issues)
+[官网 / 下载](https://tokenremain.com) · [隐私政策](https://tokenremain.com/privacy) · [支持](https://tokenremain.com/support) · [问题反馈](https://github.com/Carstin520/token-remain/issues)
 
 **简体中文** · [English](README.en.md)
 
@@ -135,7 +135,7 @@ bash ./script/build_and_run.sh --verify
 
 构建完成后安装到 `~/Applications/UsageDock.app`。「登录时自动启动」使用 macOS 原生登录项管理（默认关闭，可在菜单中开启）。
 
-多平台工程（TokenRemain 的 Mac / iPhone / Watch App 与桌面小组件）见 `apple/TokenRemain.xcodeproj`，用 Xcode 打开即可。生产构建默认连接 `https://tokenremain-broadcast.jamescarstin520.workers.dev`，可用 `TOKENREMAIN_BROADCAST_BASE_URL` 覆盖。
+多平台工程（TokenRemain 的 Mac / iPhone / Watch App 与桌面小组件）见 `apple/TokenRemain.xcodeproj`，用 Xcode 打开即可。生产构建默认连接 `https://api.tokenremain.com`，可用 `TOKENREMAIN_BROADCAST_BASE_URL` 覆盖。
 
 ## 📁 仓库结构
 
