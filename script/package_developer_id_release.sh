@@ -9,6 +9,8 @@ BUILD="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$INFO_PLIST")"
 OUTPUT_DIR="${TOKENREMAIN_RELEASE_OUTPUT_DIR:-$ROOT_DIR/dist-release/$VERSION-$BUILD}"
 APP="$OUTPUT_DIR/TokenRemain.app"
 ZIP="$OUTPUT_DIR/TokenRemain-$VERSION-$BUILD-macOS.zip"
+APPCAST="$OUTPUT_DIR/appcast.xml"
+DMG="$OUTPUT_DIR/TokenRemain.dmg"
 PROFILE="${USAGEDOCK_SYNC_PROVISIONING_PROFILE:-}"
 IDENTITY="${USAGEDOCK_SYNC_SIGNING_IDENTITY:-}"
 NOTARY_PROFILE="${TOKENREMAIN_NOTARYTOOL_PROFILE:-}"
@@ -58,6 +60,13 @@ verify_app() {
 
   /usr/bin/codesign --verify --deep --strict "$app"
   [[ "$(/usr/libexec/PlistBuddy -c 'Print :TokenRemainBroadcastBaseURL' "$app/Contents/Info.plist")" == "$BROADCAST_BASE_URL" ]]
+  [[ "$(/usr/libexec/PlistBuddy -c 'Print :SUFeedURL' "$app/Contents/Info.plist")" == "https://github.com/Carstin520/token-remain/releases/latest/download/appcast.xml" ]]
+  [[ -n "$(/usr/libexec/PlistBuddy -c 'Print :SUPublicEDKey' "$app/Contents/Info.plist")" ]]
+  [[ "$(/usr/libexec/PlistBuddy -c 'Print :SUEnableAutomaticChecks' "$app/Contents/Info.plist")" == "true" ]]
+  [[ "$(/usr/libexec/PlistBuddy -c 'Print :SUAutomaticallyUpdate' "$app/Contents/Info.plist")" == "true" ]]
+  [[ "$(/usr/libexec/PlistBuddy -c 'Print :SURequireSignedFeed' "$app/Contents/Info.plist")" == "true" ]]
+  [[ -d "$app/Contents/Frameworks/Sparkle.framework" ]]
+  /usr/bin/codesign --verify --strict "$app/Contents/Frameworks/Sparkle.framework"
   /usr/bin/codesign -d --entitlements :- "$app/Contents/MacOS/UsageDock" > "$entitlements" 2>/dev/null
   [[ "$(/usr/libexec/PlistBuddy -c 'Print :com.apple.developer.icloud-container-environment' "$entitlements")" == "Production" ]]
   [[ "$(/usr/libexec/PlistBuddy -c 'Print :com.apple.developer.icloud-container-identifiers:0' "$entitlements")" == "iCloud.com.jamesli.tokenremain" ]]
@@ -72,6 +81,52 @@ verify_app() {
     exit 1
   fi
   rm -f "$entitlements"
+}
+
+generate_update_feed() {
+  local tool="$ROOT_DIR/.build/artifacts/sparkle/Sparkle/bin/generate_appcast"
+  if [[ ! -x "$tool" ]]; then
+    (cd "$ROOT_DIR" && /usr/bin/swift package resolve)
+  fi
+  [[ -x "$tool" ]] || {
+    echo "Sparkle generate_appcast tool is unavailable." >&2
+    exit 1
+  }
+  rm -f "$APPCAST"
+  "$tool" \
+    --download-url-prefix "https://github.com/Carstin520/token-remain/releases/download/v$VERSION/" \
+    --link "https://tokenremain.com" \
+    --maximum-deltas 0 \
+    "$OUTPUT_DIR"
+  [[ -s "$APPCAST" ]] || {
+    echo "Sparkle did not generate appcast.xml." >&2
+    exit 1
+  }
+  /usr/bin/xmllint --noout "$APPCAST"
+  /usr/bin/grep -Fq "TokenRemain-$VERSION-$BUILD-macOS.zip" "$APPCAST"
+  /usr/bin/grep -Fq 'sparkle:edSignature=' "$APPCAST"
+}
+
+build_notarized_dmg() {
+  local staging_dir
+  staging_dir="$(mktemp -d "${TMPDIR:-/tmp}/tokenremain-dmg.XXXXXX")"
+  /usr/bin/ditto "$APP" "$staging_dir/TokenRemain.app"
+  /bin/ln -s /Applications "$staging_dir/Applications"
+  rm -f "$DMG"
+  /usr/bin/hdiutil create \
+    -volname "TokenRemain" \
+    -srcfolder "$staging_dir" \
+    -format UDZO \
+    -ov \
+    "$DMG"
+  rm -rf "$staging_dir"
+
+  /usr/bin/codesign --force --sign "$IDENTITY" --timestamp "$DMG"
+  /usr/bin/codesign --verify --strict "$DMG"
+  /usr/bin/xcrun notarytool submit "$DMG" --keychain-profile "$NOTARY_PROFILE" --wait
+  /usr/bin/xcrun stapler staple "$DMG"
+  /usr/bin/xcrun stapler validate "$DMG"
+  /usr/sbin/spctl --assess --type open --context context:primary-signature --verbose=4 "$DMG"
 }
 
 build_app() {
@@ -106,12 +161,20 @@ case "$MODE" in
     /usr/sbin/spctl --assess --type execute --verbose=4 "$APP"
     rm -f "$ZIP"
     /usr/bin/ditto -c -k --sequesterRsrc --keepParent "$APP" "$ZIP"
-    echo "Notarized and stapled package created: $ZIP"
+    generate_update_feed
+    build_notarized_dmg
+    echo "Notarized packages and signed update feed created: $OUTPUT_DIR"
     ;;
   verify)
     verify_app "$APP"
     /usr/bin/xcrun stapler validate "$APP"
     /usr/sbin/spctl --assess --type execute --verbose=4 "$APP"
+    [[ -s "$APPCAST" ]]
+    /usr/bin/xmllint --noout "$APPCAST"
+    /usr/bin/grep -Fq 'sparkle:edSignature=' "$APPCAST"
+    /usr/bin/codesign --verify --strict "$DMG"
+    /usr/bin/xcrun stapler validate "$DMG"
+    /usr/sbin/spctl --assess --type open --context context:primary-signature --verbose=4 "$DMG"
     echo "Developer ID release verification passed: $APP"
     ;;
   *)
