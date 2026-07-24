@@ -61,6 +61,7 @@ STABLE_SYNC_APP="$INSTALL_DIR/TokenRemain.app"
 APP_CONTENTS="$APP_BUNDLE/Contents"
 APP_MACOS="$APP_CONTENTS/MacOS"
 APP_RESOURCES="$APP_CONTENTS/Resources"
+APP_FRAMEWORKS="$APP_CONTENTS/Frameworks"
 APP_BINARY="$APP_MACOS/$EXECUTABLE_NAME"
 
 resolve_signing_common_name() {
@@ -338,8 +339,60 @@ verify_development_isolation() {
   fi
 }
 
+sign_embedded_sparkle() {
+  local framework="$APP_FRAMEWORKS/Sparkle.framework"
+  local framework_version="$framework/Versions/B"
+  local timestamp_option="--timestamp=none"
+
+  [[ -d "$framework" ]] || {
+    echo "The packaged application is missing Sparkle.framework." >&2
+    exit 1
+  }
+  if [[ "$SYNC_SIGNING_COMMON_NAME" == "Developer ID Application:"* \
+    || "$SIGNING_IDENTITY" == "Developer ID Application:"* ]]; then
+    timestamp_option="--timestamp"
+  fi
+
+  # Sparkle's helpers have different entitlement requirements. Sign them
+  # individually, from the innermost services out, exactly as Sparkle's
+  # distribution guidance requires; do not use codesign --deep for mutation.
+  /usr/bin/codesign --force --sign "$SIGNING_IDENTITY" --options runtime "$timestamp_option" \
+    "$framework_version/XPCServices/Installer.xpc"
+  /usr/bin/codesign --force --sign "$SIGNING_IDENTITY" --options runtime "$timestamp_option" \
+    --preserve-metadata=entitlements \
+    "$framework_version/XPCServices/Downloader.xpc"
+  /usr/bin/codesign --force --sign "$SIGNING_IDENTITY" --options runtime "$timestamp_option" \
+    "$framework_version/Autoupdate"
+  /usr/bin/codesign --force --sign "$SIGNING_IDENTITY" --options runtime "$timestamp_option" \
+    "$framework_version/Updater.app"
+  /usr/bin/codesign --force --sign "$SIGNING_IDENTITY" --options runtime "$timestamp_option" \
+    "$framework"
+}
+
+verify_embedded_sparkle() {
+  local signed_app="$1"
+  local executable="$signed_app/Contents/MacOS/$EXECUTABLE_NAME"
+  local framework="$signed_app/Contents/Frameworks/Sparkle.framework"
+  local framework_version="$framework/Versions/B"
+
+  [[ -d "$framework" ]] || {
+    echo "Signed application is missing Sparkle.framework." >&2
+    exit 1
+  }
+  /usr/bin/otool -L "$executable" \
+    | /usr/bin/grep -Fq '@rpath/Sparkle.framework/Versions/B/Sparkle'
+  /usr/bin/otool -l "$executable" \
+    | /usr/bin/grep -Fq '@executable_path/../Frameworks'
+  /usr/bin/codesign --verify --strict "$framework_version/XPCServices/Installer.xpc"
+  /usr/bin/codesign --verify --strict "$framework_version/XPCServices/Downloader.xpc"
+  /usr/bin/codesign --verify --strict "$framework_version/Autoupdate"
+  /usr/bin/codesign --verify --strict "$framework_version/Updater.app"
+  /usr/bin/codesign --verify --strict "$framework"
+}
+
 verify_bundle_for_mode() {
   local signed_app="$1"
+  verify_embedded_sparkle "$signed_app"
   if [[ "$SYNC_RELEASE_MODE" == "1" ]]; then
     verify_sync_signature "$signed_app"
   else
@@ -364,10 +417,12 @@ fi
 swift build "${SWIFT_BUILD_ARGS[@]}"
 BUILD_DIR="$(swift build "${SWIFT_BUILD_ARGS[@]}" --show-bin-path)"
 BUILD_BINARY="$BUILD_DIR/$PRODUCT_NAME"
+BUILD_SPARKLE_FRAMEWORK="$BUILD_DIR/Sparkle.framework"
 
 rm -rf "$APP_BUNDLE"
-mkdir -p "$APP_MACOS" "$APP_RESOURCES"
+mkdir -p "$APP_MACOS" "$APP_RESOURCES" "$APP_FRAMEWORKS"
 cp "$BUILD_BINARY" "$APP_BINARY"
+/usr/bin/ditto "$BUILD_SPARKLE_FRAMEWORK" "$APP_FRAMEWORKS/Sparkle.framework"
 cp "$ROOT_DIR/Resources/Info.plist" "$APP_CONTENTS/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleExecutable $EXECUTABLE_NAME" "$APP_CONTENTS/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier $BUNDLE_ID" "$APP_CONTENTS/Info.plist"
@@ -419,6 +474,7 @@ if [[ "$SYNC_RELEASE_MODE" == "1" ]]; then
   # the locally built bundle, Gatekeeper treats this development app as an
   # internet-distributed, unnotarized app and kills it before main() runs.
   /usr/bin/xattr -c "$APP_CONTENTS/embedded.provisionprofile" 2>/dev/null || true
+  sign_embedded_sparkle
   if [[ "$SYNC_SIGNING_COMMON_NAME" == "Developer ID Application:"* ]]; then
     /usr/bin/codesign --force --sign "$SIGNING_IDENTITY" --options runtime --timestamp \
       --entitlements "$SYNC_RESOLVED_ENTITLEMENTS" "$APP_BUNDLE"
@@ -427,6 +483,7 @@ if [[ "$SYNC_RELEASE_MODE" == "1" ]]; then
       --entitlements "$SYNC_RESOLVED_ENTITLEMENTS" "$APP_BUNDLE"
   fi
 else
+  sign_embedded_sparkle
   /usr/bin/codesign --force --sign "$SIGNING_IDENTITY" --timestamp=none "$APP_BUNDLE"
 fi
 # On File Provider-backed workspaces, codesign itself can cause provenance
