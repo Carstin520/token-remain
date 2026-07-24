@@ -425,7 +425,10 @@ App Store Privacy Nutrition Label 不能仅凭“密文”就草率填写“未�
 
 ## 17. 2026-07-22 实施状态与联调门槛
 
-本地实现与 Development 环境真机联调均已完成；发布前仍需完成 Production schema、分发签名和 notarization。
+本地实现与 Development 环境真机联调均已完成；CloudKit Production
+schema 已于 2026-07-24 部署，已安装的 Developer ID Mac 包随后成功向
+Production private zone 写入 `TRCurrentSnapshot`。iPhone 的 Production
+接收仍应通过 App Store Connect / TestFlight 包完成验收。
 
 已完成：
 
@@ -463,4 +466,8 @@ App Store Privacy Nutrition Label 不能仅凭“密文”就草率填写“未�
 2. 已完成：iOS Debug 签名明确携带 `Development` CloudKit environment；Release 配置固定为 `Production`。Widget 和 Watch 没有 CloudKit/同步 key 权限。
 3. 已完成：Mac 上传 → CloudKit Private Database → iPhone 拉取、解密、校验和私有历史落盘的真实链路测试；Widget、Live Activity 与 Watch 继续只接收当前额度快照，不接收历史。
 4. 生成 iOS Distribution 与 macOS Developer ID Application 证书/profile。macOS 脚本会从 profile 推导 CloudKit 环境，并拒绝携带 `get-task-allow` 的 Production 包。
-5. 把 Development schema 部署到 Production，完成 notarization/stapling，并最终核对隐私政策与 App Store Privacy Nutrition Label。
+5. 已完成：把 Development schema 部署到 Production，并通过 Developer ID
+   Mac 包验证 Production private-zone `RecordSave` 成功。
+6. 发布 Mac v1.1 包时完成 notarization/stapling；iPhone 上架前最终核对隐私
+   政策与 App Store Privacy Nutrition Label，并通过 TestFlight 验证
+   Production 接收。

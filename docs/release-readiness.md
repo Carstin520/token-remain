@@ -1,6 +1,6 @@
 # TokenRemain release readiness
 
-Status date: 2026-07-23
+Status date: 2026-07-24
 
 This document separates repository work from Apple-controlled release proof.
 The selected product is a paid-upfront iPhone App Store download plus a full,
@@ -17,7 +17,7 @@ unsandboxed Developer ID Mac download.
 | StoreKit configuration | Not applicable | The app is paid upfront; there is no IAP product |
 | StoreKit Sandbox purchase | Not applicable | Paid storefront checkout is outside the app and is not simulated by TestFlight |
 | Developer ID package | Commit `f223643` is G2-signed with Production CloudKit/APNs entitlements; its App and DMG are notarized, stapled, Gatekeeper-accepted, and byte-verified through the public GitHub Release path | Complete a clean-customer Mac acceptance run |
-| CloudKit Production | Release entitlements are configured; the final zero-index/private-role deployment diff has been verified | Obtain explicit owner approval, deploy the reviewed schema, then test Production with release builds |
+| CloudKit Production | The reviewed `TRCurrentSnapshot` schema is deployed. A Production private-zone `RecordSave` from the installed Developer ID app succeeded at 2026-07-24 06:39:44 UTC (1 record, 7,026 bytes) | Complete the same-account Production receive test with the App Store/TestFlight iPhone build |
 | APNs Production | The public macOS build carries `aps-environment=production`; the APNs token credential and broadcast Worker have passed production authentication checks | Regenerate APNs-enabled iOS distribution profiles and verify delivery through TestFlight |
 | Foreground freshness | Timing instrumentation and simulator paths pass | Collect real Mac + iPhone samples and meet p50/p95/max gates |
 | App Store Connect | App record, pricing, storefronts, metadata, content rights, age rating, privacy draft, review notes, and manual release are configured as recorded below | Supply public URLs/contact/legal details, publish privacy, upload/process a build, and complete account compliance |
