@@ -384,7 +384,7 @@
 "sync.health.ready" = "Lista";
 "sync.health.unavailable" = "No disponible";
 "sync.keepalive" = "Sincronización de mantenimiento";
-"sync.keepalive_interval" = "Cada 15 minutos";
+"sync.keepalive_interval" = "Cada 5 minutos";
 "sync.last_synced" = "Última sincronización segura: %1$@";
 "sync.last_uploaded" = "Última subida";
 "sync.preview.disclosure" = "Ver qué se sincronizará";

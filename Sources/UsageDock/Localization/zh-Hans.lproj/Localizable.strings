@@ -385,7 +385,7 @@
 "sync.health.ready" = "已就绪";
 "sync.health.unavailable" = "不可用";
 "sync.keepalive" = "保活同步";
-"sync.keepalive_interval" = "每 15 分钟";
+"sync.keepalive_interval" = "每 5 分钟";
 "sync.last_synced" = "上次安全同步：%1$@";
 "sync.last_uploaded" = "最近上传";
 "sync.preview.disclosure" = "查看将要同步的数据";

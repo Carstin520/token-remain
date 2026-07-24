@@ -384,7 +384,7 @@
 "sync.health.ready" = "準備完了";
 "sync.health.unavailable" = "利用不可";
 "sync.keepalive" = "キープアライブ同期";
-"sync.keepalive_interval" = "15 分ごと";
+"sync.keepalive_interval" = "5 分ごと";
 "sync.last_synced" = "前回の安全同期:%1$@";
 "sync.last_uploaded" = "最終アップロード";
 "sync.preview.disclosure" = "同期されるデータを表示";

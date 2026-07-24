@@ -50,6 +50,7 @@ final class CrossDeviceSyncController: ObservableObject {
     static let shared = CrossDeviceSyncController()
     nonisolated static let cloudContainerIdentifier = "iCloud.com.jamesli.tokenremain"
     nonisolated static let keychainAccessGroup = "84397AQ22Y.com.jamesli.tokenremain.sync"
+    nonisolated static let heartbeatInterval: TimeInterval = 5 * 60
 
     @Published private(set) var isEnabled: Bool
     @Published private(set) var state: State
@@ -346,7 +347,7 @@ final class CrossDeviceSyncController: ObservableObject {
         guard heartbeatTask == nil else { return }
         heartbeatTask = Task { [weak self] in
             while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(15 * 60))
+                try? await Task.sleep(for: .seconds(Self.heartbeatInterval))
                 guard let self, !Task.isCancelled, self.isEnabled else { return }
                 await self.publishLatest(forceHeartbeat: true)
             }
