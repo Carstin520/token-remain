@@ -3,6 +3,19 @@
 All notable product changes are recorded here. TokenRemain uses Semantic
 Versioning for public releases.
 
+## 1.1.1 — 2026-07-24
+
+### Added
+
+- Added signed, automatic background updates for the Developer ID Mac app.
+- Added release-time appcast generation with EdDSA archive and feed
+  verification.
+
+### Fixed
+
+- Updated the iPhone production build so it reads the same CloudKit Production
+  database as the released Mac app.
+
 ## 1.1.0 — 2026-07-24
 
 ### Changed
@@ -27,3 +40,4 @@ Versioning for public releases.
 
 [1.0.0]: https://github.com/Carstin520/token-remain/releases/tag/v1.0.0
 [1.1.0]: https://github.com/Carstin520/token-remain/releases/tag/v1.1.0
+[1.1.1]: https://github.com/Carstin520/token-remain/releases/tag/v1.1.1
