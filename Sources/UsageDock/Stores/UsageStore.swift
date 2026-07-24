@@ -36,6 +36,7 @@ final class UsageStore: ObservableObject {
     private let tracked: TrackedProvidersStore
     private var cancellables = Set<AnyCancellable>()
     private var refreshTask: Task<Void, Never>?
+    private var historyRefreshTask: Task<Void, Never>?
     private var lastCCUsageRefresh: Date?
     private var lastClaudeAttempt: Date?
     private var lastCodexAPIAttempt: Date?
@@ -48,6 +49,14 @@ final class UsageStore: ObservableObject {
     private let historyCache = DailyHistoryCache()
     private let logger = Logger(subsystem: "com.jamesli.usagedock", category: "UsageRefresh")
     private let claudeRetryAfterKey = "claudeRetryAfter"
+    private var quotaErrorMessage: String?
+    private var historyErrorMessage: String?
+
+    private enum QuotaRefreshOutput {
+        case claude(Result<ProviderQuota, Error>)
+        case codex(Result<ProviderQuota, Error>)
+        case auxiliary(ProviderQuota.Provider, Result<ProviderQuota, Error>)
+    }
 
     var claudeRemainingText: String {
         remainingText(for: claude)
@@ -222,13 +231,23 @@ final class UsageStore: ObservableObject {
     func start() {
         guard refreshTask == nil else { return }
         refreshTask = Task { [weak self] in
+            let clock = ContinuousClock()
+            var nextRefresh = clock.now
+            var isInitialRefresh = true
             // A cached request timestamp must not make a freshly launched menu-bar app
             // display a completed countdown for another five minutes. The refresh method
             // still honors an active server-rate-limit backoff.
-            await self?.refresh(forceCCUsage: true, forceClaude: true)
             while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(60))
-                await self?.refresh(forceCCUsage: false)
+                await self?.refresh(
+                    forceCCUsage: isInitialRefresh,
+                    forceClaude: isInitialRefresh
+                )
+                isInitialRefresh = false
+                nextRefresh += .seconds(AdaptiveRefreshPolicy.activeInterval)
+                if nextRefresh < clock.now {
+                    nextRefresh = clock.now
+                }
+                try? await Task.sleep(until: nextRefresh, clock: clock)
             }
         }
     }
@@ -246,6 +265,7 @@ final class UsageStore: ObservableObject {
         guard !isRefreshing else { return }
         isRefreshing = true
         defer { isRefreshing = false }
+        scheduleCCUsageRefresh(force: forceCCUsage)
 
         let now = Date()
         // 普通直查节奏由用户偏好决定；启用 Apple 设备同步后由低延迟
@@ -277,17 +297,54 @@ final class UsageStore: ObservableObject {
             return autoDue(since: lastAuxProviderAttempts[provider])
         }
 
-        async let claudeResult: Result<ProviderQuota, Error>? = shouldRefreshClaude
-            ? result { try await ClaudeUsageService().fetch() }
-            : nil
-        async let codexResult: Result<ProviderQuota, Error>? = codexEnabled
-            ? result { try await CodexUsageService().fetch(preferAPI: codexAPIDue) }
-            : nil
-        async let auxResults = Self.fetchAux(providers: dueAuxProviders)
-        let quotaResults = await (claudeResult, codexResult, auxResults)
         var errors: [String] = []
+        await withTaskGroup(of: QuotaRefreshOutput.self) { group in
+            if shouldRefreshClaude {
+                group.addTask {
+                    .claude(await result { try await ClaudeUsageService().fetch() })
+                }
+            }
+            if codexEnabled {
+                group.addTask {
+                    .codex(
+                        await result {
+                            try await CodexUsageService().fetch(preferAPI: codexAPIDue)
+                        }
+                    )
+                }
+            }
+            for provider in dueAuxProviders {
+                guard let fetcher = Self.auxFetcher(for: provider) else { continue }
+                group.addTask {
+                    .auxiliary(provider, await result { try await fetcher() })
+                }
+            }
 
-        if let claudeResult = quotaResults.0 {
+            // Consume each provider as soon as it finishes. A slow local probe
+            // must not withhold fresh Claude/Codex data from the UI or CloudKit.
+            for await output in group {
+                applyQuotaRefreshOutput(
+                    output,
+                    attemptedAt: now,
+                    codexAPIDue: codexAPIDue,
+                    errors: &errors
+                )
+                quotaCache.save(currentSnapshot())
+            }
+        }
+
+        quotaErrorMessage = errors.isEmpty ? nil : errors.joined(separator: "\n")
+        publishErrors()
+    }
+
+    private func applyQuotaRefreshOutput(
+        _ output: QuotaRefreshOutput,
+        attemptedAt now: Date,
+        codexAPIDue: Bool,
+        errors: inout [String]
+    ) {
+        switch output {
+        case .claude(let claudeResult):
             lastClaudeAttempt = now
             switch claudeResult {
             case .success(let value):
@@ -306,57 +363,52 @@ final class UsageStore: ObservableObject {
                 logger.error("Claude quota refresh failed: \(error.localizedDescription, privacy: .public)")
                 errors.append("Claude: \(error.localizedDescription)")
             }
-        }
-        if codexAPIDue { lastCodexAPIAttempt = now }
-        if let codexResult = quotaResults.1 {
+
+        case .codex(let codexResult):
+            if codexAPIDue { lastCodexAPIAttempt = now }
             switch codexResult {
             case .success(let value):
                 providerNotices[.codex] = nil
-                // 快照补新绝不把界面回退到比当前更旧的数据;API 结果的
-                // capturedAt 是请求时刻,天然通过该检查。
                 if codex.map({ value.capturedAt > $0.capturedAt }) ?? true {
                     assign(value, to: .codex)
                 }
             case .failure(let error):
-                // 快照缺失对纯 API 用户是常态:间隙轮次失败且已有数据时不算错误。
                 if codexAPIDue || codex == nil {
                     providerNotices[.codex] = error.localizedDescription
                     errors.append("Codex: \(error.localizedDescription)")
                 }
             }
-        }
 
-        if !dueAuxProviders.isEmpty {
-            // 缓存数据继续展示;说明文字告诉用户为什么没有数据、怎么接入/恢复。
-            for provider in dueAuxProviders {
-                guard let auxResult = quotaResults.2[provider] else { continue }
-                lastAuxProviderAttempts[provider] = now
-                switch auxResult {
-                case .success:
-                    auxProviderFailureCounts[provider] = nil
-                    auxProviderRetryAfter[provider] = nil
-                case .failure:
-                    let failures = min((auxProviderFailureCounts[provider] ?? 0) + 1, 9)
-                    auxProviderFailureCounts[provider] = failures
-                    auxProviderRetryAfter[provider] = now.addingTimeInterval(
-                        AdaptiveRefreshPolicy.retryDelay(after: failures)
-                    )
-                }
-                apply(auxResult, to: provider) { self.assign($0, to: provider) }
+        case .auxiliary(let provider, let auxResult):
+            lastAuxProviderAttempts[provider] = now
+            switch auxResult {
+            case .success:
+                auxProviderFailureCounts[provider] = nil
+                auxProviderRetryAfter[provider] = nil
+            case .failure:
+                let failures = min((auxProviderFailureCounts[provider] ?? 0) + 1, 9)
+                auxProviderFailureCounts[provider] = failures
+                auxProviderRetryAfter[provider] = now.addingTimeInterval(
+                    AdaptiveRefreshPolicy.retryDelay(after: failures)
+                )
             }
+            apply(auxResult, to: provider) { self.assign($0, to: provider) }
         }
+    }
 
-        quotaCache.save(currentSnapshot())
-
-        let historyInterval = lowLatencySyncEnabled
-            ? AdaptiveRefreshPolicy.activeInterval
-            : AdaptiveRefreshPolicy.idleHistoryInterval
-        let shouldRefreshCCUsage = forceCCUsage
+    private func scheduleCCUsageRefresh(force: Bool) {
+        guard historyRefreshTask == nil else { return }
+        let historyInterval = AdaptiveRefreshPolicy.idleHistoryInterval
+        let shouldRefresh = force
             || lastCCUsageRefresh.map { Date().timeIntervalSince($0) >= historyInterval } != false
-        if shouldRefreshCCUsage {
+        guard shouldRefresh else { return }
+        lastCCUsageRefresh = .now
+
+        historyRefreshTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            var errors: [String] = []
             do {
                 daily = try await CCUsageService().fetch()
-                lastCCUsageRefresh = .now
             } catch {
                 errors.append("ccusage: \(error.localizedDescription)")
             }
@@ -367,9 +419,17 @@ final class UsageStore: ObservableObject {
             } catch {
                 errors.append(L10n.format("usage.ccusage_history_error", error.localizedDescription))
             }
+            historyErrorMessage = errors.isEmpty ? nil : errors.joined(separator: "\n")
+            historyRefreshTask = nil
+            publishErrors()
         }
+    }
 
-        errorMessage = errors.isEmpty ? nil : errors.joined(separator: "\n")
+    private func publishErrors() {
+        let combined = [quotaErrorMessage, historyErrorMessage]
+            .compactMap { $0 }
+            .joined(separator: "\n")
+        errorMessage = combined.isEmpty ? nil : combined
     }
 
     /// 保存用户在「数据源」页粘贴的 API Key(入钥匙串),随即直查一次。
@@ -433,7 +493,10 @@ final class UsageStore: ObservableObject {
         .init(byProvider: quotas)
     }
 
-    deinit { refreshTask?.cancel() }
+    deinit {
+        refreshTask?.cancel()
+        historyRefreshTask?.cancel()
+    }
 
     private func remainingText(for quota: ProviderQuota?) -> String {
         guard let quota else { return "—" }
