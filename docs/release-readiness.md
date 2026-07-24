@@ -1,6 +1,6 @@
 # TokenRemain release readiness
 
-Status date: 2026-07-23
+Status date: 2026-07-24
 
 This document separates repository work from Apple-controlled release proof.
 The selected product is a paid-upfront iPhone App Store download plus a full,
@@ -16,8 +16,8 @@ unsandboxed Developer ID Mac download.
 | Privacy manifests | Present and plist-valid in all four exported executable bundles | Validate App Store Connect's processed privacy report |
 | StoreKit configuration | Not applicable | The app is paid upfront; there is no IAP product |
 | StoreKit Sandbox purchase | Not applicable | Paid storefront checkout is outside the app and is not simulated by TestFlight |
-| Developer ID package | Commit `f223643` is G2-signed with Production CloudKit/APNs entitlements; its App and DMG are notarized, stapled, Gatekeeper-accepted, and byte-verified through the public GitHub Release path | Complete a clean-customer Mac acceptance run |
-| CloudKit Production | Release entitlements are configured; the final zero-index/private-role deployment diff has been verified | Obtain explicit owner approval, deploy the reviewed schema, then test Production with release builds |
+| Developer ID package | v1.1.0 build 2 is G2-signed with Production CloudKit/APNs entitlements; its App and signed DMG are notarized, stapled, and Gatekeeper-accepted | Publish the exact DMG, download it through the public customer URL, and byte-verify the result |
+| CloudKit Production | The reviewed `TRCurrentSnapshot` schema is deployed. A Production private-zone `RecordSave` from the installed Developer ID app succeeded at 2026-07-24 06:39:44 UTC (1 record, 7,026 bytes) | Complete the same-account Production receive test with the App Store/TestFlight iPhone build |
 | APNs Production | The public macOS build carries `aps-environment=production`; the APNs token credential and broadcast Worker have passed production authentication checks | Regenerate APNs-enabled iOS distribution profiles and verify delivery through TestFlight |
 | Foreground freshness | Timing instrumentation and simulator paths pass | Collect real Mac + iPhone samples and meet p50/p95/max gates |
 | App Store Connect | App record, pricing, storefronts, metadata, content rights, age rating, privacy draft, review notes, and manual release are configured as recorded below | Supply public URLs/contact/legal details, publish privacy, upload/process a build, and complete account compliance |
@@ -88,6 +88,15 @@ published as GitHub Release asset `TokenRemain.dmg`, is 10,403,721 bytes, and
 has SHA-256
 `92832512abb02ef1daf7b93394872cf56c438b0b375cd13d096b29f162e4bb9f`.
 A fresh HTTPS download of that public asset matched the byte count and digest.
+
+The v1.1.0 build 2 candidate was built from commit `3deacee`. Apple accepted
+App submission `121769e2-c1d0-4c66-b380-70395c27b672` and the final signed DMG
+submission `aff4cd7b-54c2-402a-bbef-0b0de61d50cd`. Both artifacts are stapled
+and accepted by Gatekeeper as `Notarized Developer ID`. Before publication,
+the 10,403,808-byte `TokenRemain.dmg` has SHA-256
+`ff04f571dc5fbb2f1e73a7eaade60e1a729a4658f2d0902e47b5f8f67a3bc7b9`;
+the 9,843,148-byte stapled ZIP has SHA-256
+`e7de05d5a1a97bff63935e983873b0ef05b5dd010f785ea0c19661ec25f76589`.
 
 ## Developer ID Mac release
 

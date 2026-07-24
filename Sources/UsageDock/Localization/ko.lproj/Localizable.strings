@@ -384,7 +384,7 @@
 "sync.health.ready" = "준비됨";
 "sync.health.unavailable" = "사용 불가";
 "sync.keepalive" = "연결 유지 동기화";
-"sync.keepalive_interval" = "15분마다";
+"sync.keepalive_interval" = "5분마다";
 "sync.last_synced" = "마지막 안전 동기화: %1$@";
 "sync.last_uploaded" = "최근 업로드";
 "sync.preview.disclosure" = "동기화될 데이터 보기";

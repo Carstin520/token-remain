@@ -20,5 +20,10 @@ struct CrossDeviceSyncDefaultsTests {
         let restored = CrossDeviceSyncController(defaults: defaults)
         #expect(restored.isEnabled == false)
     }
+
+    @Test("Mac heartbeat stays within the five-minute delivery ceiling")
+    func heartbeatCeiling() {
+        #expect(CrossDeviceSyncController.heartbeatInterval == 5 * 60)
+    }
 }
 #endif

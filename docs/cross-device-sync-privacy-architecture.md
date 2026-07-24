@@ -241,12 +241,12 @@ CloudKit Private Database 只在用户登录 iCloud 时可用，数据归该用�
 1. `UsageStore` 完成一轮刷新。
 2. `SyncRedactor` 从内存模型构造白名单 DTO。
 3. 对 DTO 做验证、稳定排序和内容 hash。
-4. 与上一次已上传 hash 相同则不上传；每 15 分钟允许一次 heartbeat 更新新鲜度。
+4. 与上一次已上传 hash 相同则不重复上传内容变化；每 5 分钟发送一次 heartbeat 更新新鲜度。
 5. 变化合并 4 秒，避免多个 provider 先后完成造成连续写入。
 6. 加密后覆盖 `current-v1`。
 7. 失败采用指数退避并保留“最后一份待上传快照”，不保存无界队列。
 
-当前刷新与延迟参数：启用 Apple 设备同步后，Mac 将 Provider 与本地历史检查节奏提升到 60 秒；单个 Provider 的错误按 60/120/240/300 秒独立退避。额度、窗口、历史或精选内容变化后合并等待 4 秒上传；仅 `capturedAt` 改变不重复上传整份密文，无变化时每 15 分钟发送一次 heartbeat。iPhone 前台每 45 秒兜底拉取，CloudKit 静默推送仍作为低延迟提示。实际端到端延迟还包括 CloudKit 上传和推送调度，Apple 不提供实时到达保证；因此额度页与概览优先显示 Provider 的真实 `capturedAt`，10 分钟标记 stale，24 小时后隐藏数值。
+当前刷新与延迟参数：启用 Apple 设备同步后，Mac 将 Provider 与本地历史检查节奏提升到 60 秒；单个 Provider 的错误按 60/120/240/300 秒独立退避。额度、窗口、历史或精选内容变化后合并等待 4 秒上传；仅 `capturedAt` 改变不重复上传整份密文，无变化时每 5 分钟发送一次 heartbeat。iPhone 前台每 45 秒兜底拉取，CloudKit 静默推送仍作为低延迟提示。实际端到端延迟还包括 CloudKit 上传和推送调度，Apple 不提供实时到达保证；因此额度页与概览优先显示 Provider 的真实 `capturedAt`，10 分钟标记 stale，24 小时后隐藏数值。
 
 ### 8.2 iPhone 接收
 
@@ -425,14 +425,17 @@ App Store Privacy Nutrition Label 不能仅凭“密文”就草率填写“未�
 
 ## 17. 2026-07-22 实施状态与联调门槛
 
-本地实现与 Development 环境真机联调均已完成；发布前仍需完成 Production schema、分发签名和 notarization。
+本地实现与 Development 环境真机联调均已完成；CloudKit Production
+schema 已于 2026-07-24 部署，已安装的 Developer ID Mac 包随后成功向
+Production private zone 写入 `TRCurrentSnapshot`。iPhone 的 Production
+接收仍应通过 App Store Connect / TestFlight 包完成验收。
 
 已完成：
 
 - macOS 端使用独立白名单 DTO；默认只传 provider ID、额度窗口、采集时间和状态。每日 token / 费用历史必须单独授权，且只含 Claude / Codex 最多 30 天按日聚合。公开 Feed 已从 CloudKit 快照移除并改由独立广播服务提供。
 - 快照先经过 AES-256-GCM 应用层加密，再写入 CloudKit Private Database 的 encrypted field；推送只作为“有变化”的静默提示，不携带额度。
 - 同步密钥使用独立 synchronizable Keychain item；iPhone 只能读取现有 key，不能自行创建错误的新 key。
-- Mac 端实现 4 秒变更 debounce、15 分钟 heartbeat、内容指纹去重、指数退避和单一主 Mac 接管确认。
+- Mac 端实现 4 秒变更 debounce、5 分钟 heartbeat、内容指纹去重、指数退避和单一主 Mac 接管确认。
 - iPhone 在启动、回到前台和 CloudKit 静默提示后拉取；验证 schema、大小、时间、来源和 sequence 后，统一写入 App Group，并刷新 App、Widget、Live Activity 和 Watch。
 - Mac 发布者覆盖当前全部 `SyncedProviderID` 白名单 Provider；只进入稳定 ID、窗口、采集时间和状态，任意原始响应、账号、凭证、路径与诊断字符串仍被拒绝。
 - iPhone 每日历史和公开 Feed 缓存只保存在主 App 私有目录；Widget、Live Activity 和 Watch 的 entitlement 与数据输入均未扩大。趋势页和概览卡使用真实每日聚合堆叠柱，不再把本机额度观察点绘制成曲线。
@@ -445,7 +448,7 @@ App Store Privacy Nutrition Label 不能仅凭“密文”就草率填写“未�
 - Mac 获得变化后等待 4 秒合并连续更新，再上传最新快照；仅采集时间变化不会重复上传大快照。
 - iPhone 前台每 45 秒兜底拉取并保留 CloudKit 静默提示；后台静默提示由系统调度，不承诺固定 SLA。
 - 工程验收目标是前台 p50 ≤ 60 秒、p95 ≤ 120 秒、最大 ≤ 180 秒；锁屏、挂起、强退、低电量与无网场景不作该承诺。
-- 即使内容不变，Mac 每 15 分钟发送一次 heartbeat，避免接收端无法区分“额度没变”和“Mac 已离线”。
+- 即使内容不变，Mac 每 5 分钟发送一次 heartbeat，避免接收端无法区分“额度没变”和“Mac 已离线”。
 - iPhone 主 App 在私有 Application Support 中滚动保存最多 240 条仅含 Provider slug 与时间戳的观测：`providerCapturedAt`、CloudKit server `macUploadedAt`、`phoneReceivedAt`、`phoneRenderedAt`。它不会进入 App Group 或 CloudKit，也不包含额度、凭证、账号或内容。
 - 设置页用 nearest-rank 计算并展示真实前台样本的 p50/p95；没有真实样本时不显示数字。当前代码、协议单测和模拟器路径已完成，正式时延目标仍必须用同一 iCloud 账户的 Mac + 真 iPhone 前台样本验收，不能以模拟器构建代替。
 
@@ -463,4 +466,9 @@ App Store Privacy Nutrition Label 不能仅凭“密文”就草率填写“未�
 2. 已完成：iOS Debug 签名明确携带 `Development` CloudKit environment；Release 配置固定为 `Production`。Widget 和 Watch 没有 CloudKit/同步 key 权限。
 3. 已完成：Mac 上传 → CloudKit Private Database → iPhone 拉取、解密、校验和私有历史落盘的真实链路测试；Widget、Live Activity 与 Watch 继续只接收当前额度快照，不接收历史。
 4. 生成 iOS Distribution 与 macOS Developer ID Application 证书/profile。macOS 脚本会从 profile 推导 CloudKit 环境，并拒绝携带 `get-task-allow` 的 Production 包。
-5. 把 Development schema 部署到 Production，完成 notarization/stapling，并最终核对隐私政策与 App Store Privacy Nutrition Label。
+5. 已完成：把 Development schema 部署到 Production，并通过 Developer ID
+   Mac 包验证 Production private-zone `RecordSave` 成功。
+6. 已完成：Mac v1.1 Developer ID App 与签名 DMG 均通过 Apple
+   notarization、stapling 和 Gatekeeper 验证。
+7. iPhone 上架前最终核对隐私政策与 App Store Privacy Nutrition Label，
+   并通过 TestFlight 验证 Production 接收。

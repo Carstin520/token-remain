@@ -2,23 +2,11 @@
 set -euo pipefail
 
 MODE="${1:-run}"
-APP_NAME="TokenRemain"
-EXECUTABLE_NAME="UsageDock"
-BUNDLE_ID="com.jamesli.usagedock"
+PRODUCT_NAME="UsageDock"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DIST_DIR="$ROOT_DIR/dist"
-APP_BUNDLE="$DIST_DIR/$APP_NAME.app"
 INSTALL_DIR="${USAGEDOCK_INSTALL_DIR:-/Users/jamesli/Applications}"
-INSTALLED_APP="$INSTALL_DIR/$APP_NAME.app"
-LEGACY_INSTALLED_APPS=(
-  "$INSTALL_DIR/UsageDock.app"
-  "$INSTALL_DIR/Token Remain.app"
-)
 BROADCAST_BASE_URL="${TOKENREMAIN_BROADCAST_BASE_URL:-https://api.tokenremain.com}"
-APP_CONTENTS="$APP_BUNDLE/Contents"
-APP_MACOS="$APP_CONTENTS/MacOS"
-APP_RESOURCES="$APP_CONTENTS/Resources"
-APP_BINARY="$APP_MACOS/$EXECUTABLE_NAME"
 # A stable signature lets macOS retain the user's "Always Allow" choice for
 # the Claude Code keychain item across UsageDock rebuilds.
 SIGNING_IDENTITY="${USAGEDOCK_SIGNING_IDENTITY:-}"
@@ -47,6 +35,33 @@ SYNC_EXPECTED_APNS_ENVIRONMENT=""
 SYNC_EXPECTED_GET_TASK_ALLOW="false"
 SYNC_SIGNING_COMMON_NAME=""
 ARCHIVE_DIR="${USAGEDOCK_ARCHIVE_DIR:-$ROOT_DIR/dist-release}"
+
+# A non-sync development build must never replace or stop the production sync
+# app. It gets its own bundle, bundle identifier, executable/process name, and
+# installed path. Only a profile-backed sync build may target TokenRemain.app.
+if [[ "$SYNC_RELEASE_MODE" == "1" ]]; then
+  APP_NAME="TokenRemain"
+  EXECUTABLE_NAME="UsageDock"
+  BUNDLE_ID="com.jamesli.usagedock"
+  LEGACY_INSTALLED_APPS=(
+    "$INSTALL_DIR/UsageDock.app"
+    "$INSTALL_DIR/Token Remain.app"
+  )
+else
+  APP_NAME="TokenRemain Dev"
+  EXECUTABLE_NAME="UsageDockDev"
+  BUNDLE_ID="com.jamesli.usagedock.dev"
+  LEGACY_INSTALLED_APPS=(
+    "$INSTALL_DIR/UsageDock Dev.app"
+  )
+fi
+APP_BUNDLE="$DIST_DIR/$APP_NAME.app"
+INSTALLED_APP="$INSTALL_DIR/$APP_NAME.app"
+STABLE_SYNC_APP="$INSTALL_DIR/TokenRemain.app"
+APP_CONTENTS="$APP_BUNDLE/Contents"
+APP_MACOS="$APP_CONTENTS/MacOS"
+APP_RESOURCES="$APP_CONTENTS/Resources"
+APP_BINARY="$APP_MACOS/$EXECUTABLE_NAME"
 
 resolve_signing_common_name() {
   local selector="$1"
@@ -290,24 +305,74 @@ verify_sync_signature() {
     echo "Final sync signature unexpectedly grants App Sandbox or an App Group." >&2
     exit 1
   fi
+  if [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$signed_app/Contents/Info.plist")" != "$BUNDLE_ID" \
+    || "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$signed_app/Contents/Info.plist")" != "$EXECUTABLE_NAME" ]]; then
+    echo "Final sync bundle has the wrong identifier or executable." >&2
+    exit 1
+  fi
+  if ! /usr/bin/grep -aFq 'iCloud.com.jamesli.tokenremain' "$signed_app/Contents/MacOS/$EXECUTABLE_NAME" \
+    || ! /usr/bin/grep -aFq 'Private sync upload succeeded' "$signed_app/Contents/MacOS/$EXECUTABLE_NAME"; then
+    echo "Final sync binary was built without the private CloudKit transport." >&2
+    exit 1
+  fi
 }
+
+verify_development_isolation() {
+  local signed_app="$1"
+  local entitlements
+  if [[ "$INSTALLED_APP" == "$STABLE_SYNC_APP" ]]; then
+    echo "A non-sync development build cannot target the stable sync app." >&2
+    exit 1
+  fi
+  /usr/bin/codesign --verify --deep --strict "$signed_app"
+  if [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$signed_app/Contents/Info.plist")" != "$BUNDLE_ID" \
+    || "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$signed_app/Contents/Info.plist")" != "$EXECUTABLE_NAME" ]]; then
+    echo "Development bundle isolation metadata is invalid." >&2
+    exit 1
+  fi
+  entitlements="$(/usr/bin/codesign -d --entitlements :- "$signed_app" 2>/dev/null || true)"
+  if [[ "$entitlements" == *"com.apple.developer.icloud-container-identifiers"* \
+    || "$entitlements" == *"84397AQ22Y.com.jamesli.tokenremain.sync"* ]]; then
+    echo "Development-only bundle unexpectedly carries production sync entitlements." >&2
+    exit 1
+  fi
+}
+
+verify_bundle_for_mode() {
+  local signed_app="$1"
+  if [[ "$SYNC_RELEASE_MODE" == "1" ]]; then
+    verify_sync_signature "$signed_app"
+  else
+    verify_development_isolation "$signed_app"
+  fi
+}
+
+if [[ "$MODE" == "--print-install-contract" || "$MODE" == "print-install-contract" ]]; then
+  printf 'sync_release=%s\napp_name=%s\nexecutable=%s\nbundle_id=%s\ninstalled_app=%s\nstable_sync_app=%s\n' \
+    "$SYNC_RELEASE_MODE" "$APP_NAME" "$EXECUTABLE_NAME" "$BUNDLE_ID" "$INSTALLED_APP" "$STABLE_SYNC_APP"
+  exit 0
+fi
 
 if [[ "$MODE" != "--archive" && "$MODE" != "archive" ]]; then
   pkill -x "$EXECUTABLE_NAME" >/dev/null 2>&1 || true
 fi
 cd "$ROOT_DIR"
-SWIFT_BUILD_ARGS=(--product "$EXECUTABLE_NAME")
+SWIFT_BUILD_ARGS=(--product "$PRODUCT_NAME")
 if [[ "$SYNC_RELEASE_MODE" == "1" ]]; then
   SWIFT_BUILD_ARGS+=(-Xswiftc -DTOKENREMAIN_CLOUD_SYNC)
 fi
 swift build "${SWIFT_BUILD_ARGS[@]}"
 BUILD_DIR="$(swift build "${SWIFT_BUILD_ARGS[@]}" --show-bin-path)"
-BUILD_BINARY="$BUILD_DIR/$EXECUTABLE_NAME"
+BUILD_BINARY="$BUILD_DIR/$PRODUCT_NAME"
 
 rm -rf "$APP_BUNDLE"
 mkdir -p "$APP_MACOS" "$APP_RESOURCES"
 cp "$BUILD_BINARY" "$APP_BINARY"
 cp "$ROOT_DIR/Resources/Info.plist" "$APP_CONTENTS/Info.plist"
+/usr/libexec/PlistBuddy -c "Set :CFBundleExecutable $EXECUTABLE_NAME" "$APP_CONTENTS/Info.plist"
+/usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier $BUNDLE_ID" "$APP_CONTENTS/Info.plist"
+/usr/libexec/PlistBuddy -c "Set :CFBundleName $APP_NAME" "$APP_CONTENTS/Info.plist"
+/usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName $APP_NAME" "$APP_CONTENTS/Info.plist"
 if [[ -n "$BROADCAST_BASE_URL" ]]; then
   if [[ "$BROADCAST_BASE_URL" != https://* && "$BROADCAST_BASE_URL" != http://localhost* \
     && "$BROADCAST_BASE_URL" != http://127.0.0.1* ]]; then
@@ -369,8 +434,9 @@ fi
 # signing does not change the code signature and prevents dyld launch stalls.
 /usr/bin/xattr -dr com.apple.provenance "$APP_BUNDLE" 2>/dev/null || true
 
+verify_bundle_for_mode "$APP_BUNDLE"
+
 if [[ "$MODE" == "--archive" || "$MODE" == "archive" ]]; then
-  verify_sync_signature "$APP_BUNDLE"
   mkdir -p "$ARCHIVE_DIR"
   ARCHIVED_APP="$ARCHIVE_DIR/$APP_NAME.app"
   rm -rf "$ARCHIVED_APP"
@@ -385,15 +451,26 @@ fi
 # app bundles inside File Provider-backed development folders, while the
 # installed path also gives Keychain and notification permissions a stable home.
 mkdir -p "$INSTALL_DIR"
-rm -rf "$INSTALLED_APP"
-/usr/bin/ditto "$APP_BUNDLE" "$INSTALLED_APP"
+INCOMING_APP="$INSTALL_DIR/.${APP_NAME}.incoming.$$"
+PREVIOUS_APP="$INSTALL_DIR/.${APP_NAME}.previous.$$"
+rm -rf "$INCOMING_APP" "$PREVIOUS_APP"
+/usr/bin/ditto "$APP_BUNDLE" "$INCOMING_APP"
 for attribute in com.apple.FinderInfo com.apple.fileprovider.fpfs#P com.apple.macl com.apple.provenance com.apple.quarantine; do
-  /usr/bin/xattr -dr "$attribute" "$INSTALLED_APP" 2>/dev/null || true
+  /usr/bin/xattr -dr "$attribute" "$INCOMING_APP" 2>/dev/null || true
 done
-/usr/bin/codesign --verify --deep --strict "$INSTALLED_APP"
-if [[ "$SYNC_RELEASE_MODE" == "1" ]]; then
-  verify_sync_signature "$INSTALLED_APP"
+verify_bundle_for_mode "$INCOMING_APP"
+if [[ -e "$INSTALLED_APP" ]]; then
+  /bin/mv "$INSTALLED_APP" "$PREVIOUS_APP"
 fi
+if ! /bin/mv "$INCOMING_APP" "$INSTALLED_APP"; then
+  if [[ -e "$PREVIOUS_APP" ]]; then
+    /bin/mv "$PREVIOUS_APP" "$INSTALLED_APP"
+  fi
+  echo "Could not install the verified app; the previous app was restored." >&2
+  exit 1
+fi
+rm -rf "$PREVIOUS_APP"
+verify_bundle_for_mode "$INSTALLED_APP"
 for legacy_app in "${LEGACY_INSTALLED_APPS[@]}"; do
   rm -rf "$legacy_app"
 done

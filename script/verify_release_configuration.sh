@@ -4,8 +4,10 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
+./script/verify_version_consistency.sh
 ./script/verify_distribution_model.sh
 ./script/verify_automatic_sync_contract.sh
+./script/verify_installation_isolation.sh
 
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' Resources/Info.plist)" == "com.jamesli.usagedock" ]]
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :com.apple.developer.icloud-container-identifiers:0' Resources/UsageDockSync.entitlements)" == "iCloud.com.jamesli.tokenremain" ]]
@@ -39,6 +41,8 @@ done
 /bin/bash -n script/build_and_run.sh
 /bin/bash -n script/package_developer_id_release.sh
 /bin/bash -n script/package_app_store_release.sh
+/bin/bash -n script/verify_installation_isolation.sh
+/bin/bash -n script/verify_version_consistency.sh
 
 echo "pre-upload release configuration verified: paid iOS + production Apple capabilities + Developer ID packaging guardrails"
 echo "external gate remains: confirm CryptoKit export compliance before setting the release Info.plist key and uploading"
