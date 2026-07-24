@@ -14,7 +14,7 @@ Remaining quota, reset countdowns and today's cost for Claude Code, Codex, Curso
 ![Notarized](https://img.shields.io/badge/Apple-Notarized-34C759?logo=apple&logoColor=white)
 ![Version](https://img.shields.io/badge/version-1.0.0-22D3EE)
 
-[Website / Download](https://tokenremain.jamescarstin520.chatgpt.site) · [Privacy Policy](https://tokenremain.jamescarstin520.chatgpt.site/privacy.html) · [Support](https://tokenremain.jamescarstin520.chatgpt.site/support.html) · [Report an issue](https://github.com/Carstin520/token-remain/issues)
+[Website / Download](https://tokenremain.com) · [Privacy Policy](https://tokenremain.com/privacy) · [Support](https://tokenremain.com/support) · [Report an issue](https://github.com/Carstin520/token-remain/issues)
 
 [简体中文](README.md) · **English**
 
@@ -135,7 +135,7 @@ bash ./script/build_and_run.sh --verify
 
 It installs to `~/Applications/UsageDock.app`. "Launch at login" uses the native macOS login-items API (off by default, toggleable from the menu).
 
-The multiplatform project — TokenRemain's Mac / iPhone / Watch apps and the Home Screen widgets — lives in `apple/TokenRemain.xcodeproj`; just open it in Xcode. Production builds default to `https://tokenremain-broadcast.jamescarstin520.workers.dev`, overridable with `TOKENREMAIN_BROADCAST_BASE_URL`.
+The multiplatform project — TokenRemain's Mac / iPhone / Watch apps and the Home Screen widgets — lives in `apple/TokenRemain.xcodeproj`; just open it in Xcode. Production builds default to `https://api.tokenremain.com`, overridable with `TOKENREMAIN_BROADCAST_BASE_URL`.
 
 ## 📁 Repository layout
 

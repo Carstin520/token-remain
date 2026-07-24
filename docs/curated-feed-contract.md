@@ -9,7 +9,7 @@ X API 凭证和内容筛选全部留在 TokenRemain Broadcast Worker。Apple 客
 - 两层都只接受独立原帖；查询端和入库端都会拒绝回复、转帖和引用帖。
 
 客户端默认使用不含凭证的生产广播根地址
-`https://tokenremain-broadcast.jamescarstin520.workers.dev`，并支持以下覆盖入口：
+`https://api.tokenremain.com`，并支持以下覆盖入口：
 
 - macOS：构建环境变量 `TOKENREMAIN_BROADCAST_BASE_URL`
 - iOS / iPadOS：同名 Xcode build setting

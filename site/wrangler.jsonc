@@ -1,0 +1,25 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "tokenremain-web",
+  "compatibility_date": "2026-07-24",
+  "workers_dev": true,
+  "routes": [
+    {
+      "pattern": "tokenremain.com",
+      "custom_domain": true
+    },
+    {
+      "pattern": "www.tokenremain.com",
+      "custom_domain": true
+    }
+  ],
+  "assets": {
+    "directory": "./dist/client",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page"
+  },
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  }
+}
