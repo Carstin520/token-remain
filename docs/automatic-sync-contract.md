@@ -20,6 +20,8 @@ Mac-to-iPhone path from drifting back to a manual refresh workflow.
 1. The Mac reads provider usage locally.
 2. The Mac redacts the payload, encrypts it with the synchronizable application
    key, and writes the envelope to the app's CloudKit private database.
+   Changed provider data is uploaded after a four-second debounce; even when
+   content is unchanged, a five-minute heartbeat refreshes snapshot freshness.
 3. CloudKit notifies the iPhone of changes. While the iPhone app is visible, an
    immediate pull plus bounded retries and a 45-second reconciliation loop cover
    missed or coalesced notifications.
@@ -47,3 +49,8 @@ bounded by the retry policy above.
 configuration verifier. Any change to defaults, foreground reconciliation,
 CloudKit account listeners, retry timing, or the manual-first UI prohibition
 must update this contract and its tests in the same commit.
+
+Normal local builds install as `TokenRemain Dev.app` with a separate bundle ID
+and process name. Only a profile-backed build containing the CloudKit transport
+and validated CloudKit/Keychain entitlements may replace the stable
+`TokenRemain.app`.

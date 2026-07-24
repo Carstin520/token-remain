@@ -46,6 +46,8 @@ require_literal 'A fresh installation enables private Mac sync without setup' "$
 require_literal 'func applicationDidBecomeActive' "$MAC_APP"
 require_literal 'CrossDeviceSyncController.shared.checkNow()' "$MAC_APP"
 require_literal 'NotificationCenter.default.publisher(for: .CKAccountChanged)' "$MAC_CONTROLLER"
+require_literal 'nonisolated static let heartbeatInterval: TimeInterval = 5 * 60' "$MAC_CONTROLLER"
+require_literal 'Mac heartbeat stays within the five-minute delivery ceiling' "$MAC_TEST"
 require_literal 'NotificationCenter.default.publisher(for: .CKAccountChanged)' "$IOS_APP"
 require_literal '.task(id: ForegroundSyncTaskID(' "$IOS_APP"
 require_literal 'await model.pullMacSync()' "$IOS_APP"

@@ -385,7 +385,7 @@
 "sync.health.ready" = "已就緒";
 "sync.health.unavailable" = "無法使用";
 "sync.keepalive" = "維持連線同步";
-"sync.keepalive_interval" = "每 15 分鐘";
+"sync.keepalive_interval" = "每 5 分鐘";
 "sync.last_synced" = "上次安全同步：%1$@";
 "sync.last_uploaded" = "最近上傳";
 "sync.preview.disclosure" = "查看將要同步的資料";

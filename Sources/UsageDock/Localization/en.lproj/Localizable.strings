@@ -385,7 +385,7 @@
 "sync.health.ready" = "Ready";
 "sync.health.unavailable" = "Unavailable";
 "sync.keepalive" = "Keep-alive sync";
-"sync.keepalive_interval" = "Every 15 minutes";
+"sync.keepalive_interval" = "Every 5 minutes";
 "sync.last_synced" = "Last secure sync: %1$@";
 "sync.last_uploaded" = "Last uploaded";
 "sync.preview.disclosure" = "See what will be synced";
