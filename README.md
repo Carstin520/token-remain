@@ -1,16 +1,12 @@
 <div align="center">
 
-<img src="apple/App/Assets.xcassets/AppIcon.appiconset/AppIcon.png" width="128" alt="TokenRemain" />
+<img src="site/assets/mascot.gif" width="150" alt="TokenRemain 吉祥物动画：剩余额度从 100% 递减到 0%，表情随之变化" />
 
 # TokenRemain
 
 **你的 AI 用量额度，常驻在 Mac 菜单栏**
 
 一个地方查看 Claude Code、Codex、Cursor、Grok、GLM 等 **18+** 家 AI 编码工具的剩余额度、重置倒计时与今日成本。凭证只留在本机，绝不刷新、绝不上传。
-
-<img src="site/assets/menubar.png" width="220" alt="菜单栏中的剩余额度" />
-
-<br/>
 
 ![macOS](https://img.shields.io/badge/macOS-14%2B_Sonoma-000?logo=apple&logoColor=white)
 ![Apple Silicon](https://img.shields.io/badge/Apple_Silicon-arm64-7C5CFF)
@@ -19,6 +15,8 @@
 ![Version](https://img.shields.io/badge/version-1.0.0-22D3EE)
 
 [官网 / 下载](https://tokenremain.jamescarstin520.chatgpt.site) · [隐私政策](https://tokenremain.jamescarstin520.chatgpt.site/privacy.html) · [支持](https://tokenremain.jamescarstin520.chatgpt.site/support.html) · [问题反馈](https://github.com/Carstin520/token-remain/issues)
+
+**简体中文** · [English](README.en.md)
 
 </div>
 
