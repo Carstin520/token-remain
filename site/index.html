@@ -186,8 +186,6 @@ nav .links a:hover{color:var(--text);text-decoration:none}
 .req-line .sep{color:var(--text-mute)}
 .releases-hint{font-size:13px;color:var(--text-mute);margin-top:10px}
 .releases-hint a{color:var(--cyan-dim)}
-.download-count{display:inline-flex;align-items:center;gap:6px;margin-left:8px;color:var(--cyan-dim)}
-.download-count::before{content:"·";color:var(--line)}
 
 /* ============ 3D stage ============ */
 .stage-wrap{perspective:1300px;perspective-origin:60% 40%;min-width:0;display:flex;justify-content:center}
@@ -496,7 +494,7 @@ footer.site .disclaimer{
         <span>Apple Silicon (arm64)</span><span class="sep">·</span>
         <span data-i18n="h-req3">Version 1.0.0 · Apple notarized</span>
       </p>
-      <p class="releases-hint"><span data-i18n="h-hint">Signed with Developer ID and notarized by Apple.</span><span class="download-count" id="downloadCount">Total downloads: —</span></p>
+      <p class="releases-hint"><span data-i18n="h-hint">Signed with Developer ID and notarized by Apple.</span></p>
     </div>
 
     <!-- ============ 3D stage · real popover screenshot ============ -->
@@ -822,7 +820,6 @@ var TITLES={en:"TokenRemain — Your AI quota, always in the menu bar",zh:"Token
     document.title=TITLES[l]||TITLES.en;
     btn.textContent=l==='zh'?'EN':'中文';
     store(l);
-    renderDownloadCount();
   }
   var param=new URLSearchParams(location.search).get('lang');
   var lang=(param==='zh'||param==='en')?param:(load()||'en');
@@ -830,29 +827,6 @@ var TITLES={en:"TokenRemain — Your AI quota, always in the menu bar",zh:"Token
   btn.addEventListener('click',function(){
     apply(document.documentElement.lang==='en'?'zh':'en');
   });
-})();
-
-/* ---------- privacy-preserving aggregate download count ---------- */
-var downloadTotal=null;
-function renderDownloadCount(){
-  var el=document.getElementById('downloadCount');
-  if(!el)return;
-  var zh=document.documentElement.lang==='zh-CN';
-  if(downloadTotal==null){
-    el.textContent=zh?'累计下载：—':'Total downloads: —';
-    return;
-  }
-  el.textContent=(zh?'累计下载：':'Total downloads: ')+downloadTotal.toLocaleString(zh?'zh-CN':'en-US');
-}
-(function(){
-  fetch('https://api.tokenremain.com/v1/downloads/stats')
-    .then(function(response){if(!response.ok)throw new Error('stats unavailable');return response.json()})
-    .then(function(payload){
-      var value=payload&&payload.macos&&payload.macos.totalDownloads;
-      if(Number.isSafeInteger(value)&&value>=0)downloadTotal=value;
-      renderDownloadCount();
-    })
-    .catch(function(){renderDownloadCount()});
 })();
 
 /* ---------- 14-segment minibars (featured provider cards) ---------- */
