@@ -31,4 +31,22 @@ struct ProcessRunnerTests {
         }
         #expect(Date().timeIntervalSince(startedAt) < 1)
     }
+
+    @Test("A descendant holding stdout open cannot defeat the deadline")
+    func inheritedPipeTimesOut() async {
+        let startedAt = Date()
+        do {
+            _ = try await ProcessRunner.run(
+                "/bin/sh",
+                arguments: ["-c", "sleep 5 &"],
+                timeout: 0.05
+            )
+            Issue.record("an inherited pipe must not hold the refresh open")
+        } catch let error as URLError {
+            #expect(error.code == .timedOut)
+        } catch {
+            Issue.record("unexpected timeout error: \(error)")
+        }
+        #expect(Date().timeIntervalSince(startedAt) < 1)
+    }
 }
