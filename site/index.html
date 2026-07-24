@@ -481,7 +481,7 @@ footer.site .disclaimer{
         Provider credentials stay on your Mac. If you enable Apple-device sync, only an allowlisted AES-256-GCM encrypted quota snapshot moves through your own iCloud account.
       </p>
       <div class="cta-row">
-        <a id="macDownloadButton" class="btn btn-primary" href="https://api.tokenremain.com/v1/downloads/macos">
+        <a id="macDownloadButton" class="btn btn-primary" href="https://github.com/Carstin520/token-remain/releases/latest/download/TokenRemain.dmg">
           <span data-i18n="h-dl">Download for Mac</span>
         </a>
         <a class="btn btn-ghost" href="https://github.com/Carstin520/token-remain" rel="noopener">
@@ -492,7 +492,7 @@ footer.site .disclaimer{
       <p class="req-line">
         <span>macOS 14+</span><span class="sep">·</span>
         <span>Apple Silicon (arm64)</span><span class="sep">·</span>
-        <span data-i18n="h-req3">Version 1.0.0 · Apple notarized</span>
+        <span id="releaseVersion" data-release-version="1.1.2" aria-live="polite">Version 1.1.2 · Apple notarized</span>
       </p>
       <p class="releases-hint"><span data-i18n="h-hint">Signed with Developer ID and notarized by Apple.</span></p>
     </div>
@@ -748,7 +748,7 @@ var ZH={
   "nav-dl":"下载","nav-screens":"界面","nav-providers":"支持的服务","nav-privacy":"隐私","nav-policy":"隐私政策","nav-support":"支持","nav-limits":"限制",
   "h-h1":"你的 AI 额度，<br><span class=\"accent\">常驻菜单栏</span>。",
   "h-sub":"一处看全 <strong>Claude Code、Codex、Cursor、Grok、GLM</strong> 等 <strong>18+ 服务</strong>的剩余额度与重置倒计时。Provider 凭证始终留在 Mac；启用 Apple 设备同步后，只有经过白名单过滤并使用 AES-256-GCM 加密的额度快照会通过你自己的 iCloud 账户传输。",
-  "h-dl":"下载 Mac 版","h-gh":"GitHub 仓库","h-req3":"版本 1.0.0 · Apple 已公证",
+  "h-dl":"下载 Mac 版","h-gh":"GitHub 仓库",
   "h-hint":"使用 Developer ID 签名并通过 Apple 公证。",
   "chip-grok":"Grok 周池",
   "s-h2":"三块屏幕，同一套像素语言",
@@ -808,8 +808,15 @@ var TITLES={en:"TokenRemain — Your AI quota, always in the menu bar",zh:"Token
   var EN={},nodes=document.querySelectorAll('[data-i18n]');
   nodes.forEach(function(el){EN[el.dataset.i18n]=el.innerHTML});
   var btn=document.getElementById('langBtn');
+  var releaseVersionEl=document.getElementById('releaseVersion');
+  var releaseVersion=releaseVersionEl.dataset.releaseVersion;
   function store(l){try{localStorage.setItem('tr-lang',l)}catch(e){}}
   function load(){try{return localStorage.getItem('tr-lang')}catch(e){return null}}
+  function renderReleaseVersion(l){
+    releaseVersionEl.textContent=l==='zh'
+      ? '版本 '+releaseVersion+' · Apple 已公证'
+      : 'Version '+releaseVersion+' · Apple notarized';
+  }
   function apply(l){
     var dict=l==='zh'?ZH:EN;
     nodes.forEach(function(el){
@@ -819,6 +826,7 @@ var TITLES={en:"TokenRemain — Your AI quota, always in the menu bar",zh:"Token
     document.documentElement.lang=l==='zh'?'zh-CN':'en';
     document.title=TITLES[l]||TITLES.en;
     btn.textContent=l==='zh'?'EN':'中文';
+    renderReleaseVersion(l);
     store(l);
   }
   var param=new URLSearchParams(location.search).get('lang');
@@ -827,6 +835,21 @@ var TITLES={en:"TokenRemain — Your AI quota, always in the menu bar",zh:"Token
   btn.addEventListener('click',function(){
     apply(document.documentElement.lang==='en'?'zh':'en');
   });
+  fetch('https://api.github.com/repos/Carstin520/token-remain/releases/latest',{
+    headers:{Accept:'application/vnd.github+json'}
+  })
+    .then(function(response){
+      if(!response.ok)throw new Error('release lookup failed');
+      return response.json();
+    })
+    .then(function(release){
+      var version=String(release.tag_name||'').replace(/^v/,'');
+      if(!/^\d+\.\d+\.\d+$/.test(version))return;
+      releaseVersion=version;
+      releaseVersionEl.dataset.releaseVersion=version;
+      renderReleaseVersion(document.documentElement.lang==='zh-CN'?'zh':'en');
+    })
+    .catch(function(){});
 })();
 
 /* ---------- 14-segment minibars (featured provider cards) ---------- */
