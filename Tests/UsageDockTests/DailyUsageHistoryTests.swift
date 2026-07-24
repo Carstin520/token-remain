@@ -37,6 +37,47 @@ struct DailyUsageHistoryTests {
         #expect(second.date > first.date)
     }
 
+    @Test("One offline ccusage report supplies both today and history")
+    func parsesUnifiedOfflineSnapshot() throws {
+        let data = payload("""
+        {"period":"2026-07-23","agents":[
+            {"agent":"claude","totalTokens":100,"totalCost":0.5}
+        ]},
+        {"period":"2026-07-24","agents":[
+            {"agent":"claude","totalTokens":300,"totalCost":1.5},
+            {"agent":"codex","totalTokens":200,"totalCost":1.0}
+        ]}
+        """)
+        var components = DateComponents()
+        components.year = 2026
+        components.month = 7
+        components.day = 24
+        components.hour = 12
+        let now = try #require(Calendar.current.date(from: components))
+
+        let snapshot = try CCUsageService.parseSnapshot(data, now: now)
+
+        #expect(snapshot.daily.date == "2026-07-24")
+        #expect(snapshot.daily.agents.reduce(0) { $0 + $1.tokens } == 500)
+        #expect(snapshot.history.days.count == 2)
+        #expect(snapshot.history.days.last?.totalTokens == 500)
+    }
+
+    @Test("Bundled ccusage invocation cannot contact npm or pricing services")
+    func bundledInvocationIsOffline() {
+        let arguments = CCUsageService.commandArguments(
+            since: "2026-07-01",
+            timeZone: TimeZone(identifier: "Asia/Shanghai")!
+        )
+
+        #expect(arguments.first == "daily")
+        #expect(arguments.contains("--offline"))
+        #expect(arguments.contains("--by-agent"))
+        #expect(arguments.contains("Asia/Shanghai"))
+        #expect(!arguments.joined(separator: " ").contains("npx"))
+        #expect(!arguments.joined(separator: " ").contains("latest"))
+    }
+
     @Test("A provider absent on a day defaults to zero, no fabricated value")
     func absentProviderIsZero() throws {
         let data = payload("""

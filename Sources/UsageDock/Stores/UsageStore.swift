@@ -406,20 +406,15 @@ final class UsageStore: ObservableObject {
 
         historyRefreshTask = Task { @MainActor [weak self] in
             guard let self else { return }
-            var errors: [String] = []
             do {
-                daily = try await CCUsageService().fetch()
+                let snapshot = try await CCUsageService().fetchSnapshot(days: 30)
+                daily = snapshot.daily
+                history = snapshot.history
+                historyCache.save(snapshot.history)
+                historyErrorMessage = nil
             } catch {
-                errors.append("ccusage: \(error.localizedDescription)")
+                historyErrorMessage = "ccusage: \(error.localizedDescription)"
             }
-            do {
-                let fetched = try await CCUsageService().fetchHistory(days: 30)
-                history = fetched
-                historyCache.save(fetched)
-            } catch {
-                errors.append(L10n.format("usage.ccusage_history_error", error.localizedDescription))
-            }
-            historyErrorMessage = errors.isEmpty ? nil : errors.joined(separator: "\n")
             historyRefreshTask = nil
             publishErrors()
         }

@@ -66,7 +66,10 @@ verify_app() {
   [[ "$(/usr/libexec/PlistBuddy -c 'Print :SUAutomaticallyUpdate' "$app/Contents/Info.plist")" == "true" ]]
   [[ "$(/usr/libexec/PlistBuddy -c 'Print :SURequireSignedFeed' "$app/Contents/Info.plist")" == "true" ]]
   [[ -d "$app/Contents/Frameworks/Sparkle.framework" ]]
+  [[ -x "$app/Contents/Helpers/ccusage" ]]
   /usr/bin/codesign --verify --strict "$app/Contents/Frameworks/Sparkle.framework"
+  /usr/bin/codesign --verify --strict "$app/Contents/Helpers/ccusage"
+  [[ "$("$app/Contents/Helpers/ccusage" --version)" == "ccusage 20.0.18" ]]
   /usr/bin/codesign -d --entitlements :- "$app/Contents/MacOS/UsageDock" > "$entitlements" 2>/dev/null
   [[ "$(/usr/libexec/PlistBuddy -c 'Print :com.apple.developer.icloud-container-environment' "$entitlements")" == "Production" ]]
   [[ "$(/usr/libexec/PlistBuddy -c 'Print :com.apple.developer.icloud-container-identifiers:0' "$entitlements")" == "iCloud.com.jamesli.tokenremain" ]]
