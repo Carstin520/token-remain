@@ -9,6 +9,7 @@ cd "$ROOT_DIR"
 ./script/verify_automatic_sync_contract.sh
 ./script/verify_automatic_update_contract.sh
 ./script/verify_installation_isolation.sh
+./script/verify_bundled_ccusage_contract.sh
 ./script/verify_website_release_contract.sh
 
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' Resources/Info.plist)" == "com.jamesli.usagedock" ]]
@@ -45,6 +46,7 @@ done
 /bin/bash -n script/package_app_store_release.sh
 /bin/bash -n script/verify_automatic_update_contract.sh
 /bin/bash -n script/verify_installation_isolation.sh
+/bin/bash -n script/verify_bundled_ccusage_contract.sh
 /bin/bash -n script/verify_version_consistency.sh
 /bin/bash -n script/verify_website_release_contract.sh
 

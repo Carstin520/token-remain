@@ -62,7 +62,13 @@ APP_CONTENTS="$APP_BUNDLE/Contents"
 APP_MACOS="$APP_CONTENTS/MacOS"
 APP_RESOURCES="$APP_CONTENTS/Resources"
 APP_FRAMEWORKS="$APP_CONTENTS/Frameworks"
+APP_HELPERS="$APP_CONTENTS/Helpers"
 APP_BINARY="$APP_MACOS/$EXECUTABLE_NAME"
+CCUSAGE_VERSION="20.0.18"
+CCUSAGE_SOURCE="$ROOT_DIR/Vendor/ccusage/$CCUSAGE_VERSION/darwin-arm64/ccusage"
+CCUSAGE_LICENSE="$ROOT_DIR/Vendor/ccusage/LICENSE"
+CCUSAGE_EXPECTED_SHA256="3179f6cabbd4bafe55946f2013c9e2ec3cdfb59fd8c152f3d2f3c7f2adaac6c5"
+CCUSAGE_HELPER="$APP_HELPERS/ccusage"
 
 resolve_signing_common_name() {
   local selector="$1"
@@ -369,6 +375,21 @@ sign_embedded_sparkle() {
     "$framework"
 }
 
+sign_embedded_ccusage() {
+  local timestamp_option="--timestamp=none"
+
+  [[ -x "$CCUSAGE_HELPER" ]] || {
+    echo "The packaged application is missing its bundled ccusage helper." >&2
+    exit 1
+  }
+  if [[ "$SYNC_SIGNING_COMMON_NAME" == "Developer ID Application:"* \
+    || "$SIGNING_IDENTITY" == "Developer ID Application:"* ]]; then
+    timestamp_option="--timestamp"
+  fi
+  /usr/bin/codesign --force --sign "$SIGNING_IDENTITY" --options runtime "$timestamp_option" \
+    "$CCUSAGE_HELPER"
+}
+
 verify_embedded_sparkle() {
   local signed_app="$1"
   local executable="$signed_app/Contents/MacOS/$EXECUTABLE_NAME"
@@ -390,9 +411,28 @@ verify_embedded_sparkle() {
   /usr/bin/codesign --verify --strict "$framework"
 }
 
+verify_embedded_ccusage() {
+  local signed_app="$1"
+  local helper="$signed_app/Contents/Helpers/ccusage"
+  local version
+
+  [[ -x "$helper" ]] || {
+    echo "Signed application is missing its bundled ccusage helper." >&2
+    exit 1
+  }
+  /usr/bin/file "$helper" | /usr/bin/grep -Fq 'Mach-O 64-bit executable arm64'
+  /usr/bin/codesign --verify --strict "$helper"
+  version="$("$helper" --version)"
+  [[ "$version" == "ccusage $CCUSAGE_VERSION" ]] || {
+    echo "Signed application contains unexpected ccusage version: $version" >&2
+    exit 1
+  }
+}
+
 verify_bundle_for_mode() {
   local signed_app="$1"
   verify_embedded_sparkle "$signed_app"
+  verify_embedded_ccusage "$signed_app"
   if [[ "$SYNC_RELEASE_MODE" == "1" ]]; then
     verify_sync_signature "$signed_app"
   else
@@ -420,7 +460,7 @@ BUILD_BINARY="$BUILD_DIR/$PRODUCT_NAME"
 BUILD_SPARKLE_FRAMEWORK="$BUILD_DIR/Sparkle.framework"
 
 rm -rf "$APP_BUNDLE"
-mkdir -p "$APP_MACOS" "$APP_RESOURCES" "$APP_FRAMEWORKS"
+mkdir -p "$APP_MACOS" "$APP_RESOURCES" "$APP_FRAMEWORKS" "$APP_HELPERS"
 cp "$BUILD_BINARY" "$APP_BINARY"
 /usr/bin/ditto "$BUILD_SPARKLE_FRAMEWORK" "$APP_FRAMEWORKS/Sparkle.framework"
 cp "$ROOT_DIR/Resources/Info.plist" "$APP_CONTENTS/Info.plist"
@@ -442,6 +482,23 @@ cp "$ROOT_DIR/Sources/UsageDock/Resources/claude.png" "$APP_RESOURCES/claude.png
 cp "$ROOT_DIR/Sources/UsageDock/Resources/TokenRemain.icns" "$APP_RESOURCES/TokenRemain.icns"
 cp -R "$ROOT_DIR/Sources/UsageDock/Resources/TokenRemainHeadStates" "$APP_RESOURCES/"
 cp -R "$ROOT_DIR/Sources/UsageDock/Resources/TokenRemainFullBodyStates" "$APP_RESOURCES/"
+[[ -x "$CCUSAGE_SOURCE" ]] || {
+  echo "Missing executable vendored ccusage $CCUSAGE_VERSION helper." >&2
+  exit 1
+}
+[[ -r "$CCUSAGE_LICENSE" ]] || {
+  echo "Missing vendored ccusage MIT license." >&2
+  exit 1
+}
+CCUSAGE_ACTUAL_SHA256="$(/usr/bin/shasum -a 256 "$CCUSAGE_SOURCE" | /usr/bin/awk '{print $1}')"
+[[ "$CCUSAGE_ACTUAL_SHA256" == "$CCUSAGE_EXPECTED_SHA256" ]] || {
+  echo "Vendored ccusage checksum mismatch." >&2
+  exit 1
+}
+cp "$CCUSAGE_SOURCE" "$CCUSAGE_HELPER"
+chmod +x "$CCUSAGE_HELPER"
+mkdir -p "$APP_RESOURCES/ThirdPartyLicenses"
+cp "$CCUSAGE_LICENSE" "$APP_RESOURCES/ThirdPartyLicenses/ccusage.txt"
 # Localized strings live in the app bundle so SwiftUI and NSLocalizedString
 # automatically follow the system language or the per-app macOS language.
 for localization in "$ROOT_DIR/Sources/UsageDock/Localization/"*.lproj; do
@@ -474,6 +531,7 @@ if [[ "$SYNC_RELEASE_MODE" == "1" ]]; then
   # the locally built bundle, Gatekeeper treats this development app as an
   # internet-distributed, unnotarized app and kills it before main() runs.
   /usr/bin/xattr -c "$APP_CONTENTS/embedded.provisionprofile" 2>/dev/null || true
+  sign_embedded_ccusage
   sign_embedded_sparkle
   if [[ "$SYNC_SIGNING_COMMON_NAME" == "Developer ID Application:"* ]]; then
     /usr/bin/codesign --force --sign "$SIGNING_IDENTITY" --options runtime --timestamp \
@@ -483,6 +541,7 @@ if [[ "$SYNC_RELEASE_MODE" == "1" ]]; then
       --entitlements "$SYNC_RESOLVED_ENTITLEMENTS" "$APP_BUNDLE"
   fi
 else
+  sign_embedded_ccusage
   sign_embedded_sparkle
   /usr/bin/codesign --force --sign "$SIGNING_IDENTITY" --timestamp=none "$APP_BUNDLE"
 fi
