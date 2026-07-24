@@ -468,6 +468,7 @@ Production private zone 写入 `TRCurrentSnapshot`。iPhone 的 Production
 4. 生成 iOS Distribution 与 macOS Developer ID Application 证书/profile。macOS 脚本会从 profile 推导 CloudKit 环境，并拒绝携带 `get-task-allow` 的 Production 包。
 5. 已完成：把 Development schema 部署到 Production，并通过 Developer ID
    Mac 包验证 Production private-zone `RecordSave` 成功。
-6. 发布 Mac v1.1 包时完成 notarization/stapling；iPhone 上架前最终核对隐私
-   政策与 App Store Privacy Nutrition Label，并通过 TestFlight 验证
-   Production 接收。
+6. 已完成：Mac v1.1 Developer ID App 与签名 DMG 均通过 Apple
+   notarization、stapling 和 Gatekeeper 验证。
+7. iPhone 上架前最终核对隐私政策与 App Store Privacy Nutrition Label，
+   并通过 TestFlight 验证 Production 接收。
