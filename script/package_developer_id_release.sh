@@ -111,18 +111,56 @@ generate_update_feed() {
 }
 
 build_notarized_dmg() {
-  local staging_dir
-  staging_dir="$(mktemp -d "${TMPDIR:-/tmp}/tokenremain-dmg.XXXXXX")"
+  local staging_dir work_dir mount_dir rw_dmg device size_mb
+  local dmg_assets="$ROOT_DIR/Resources/dmg"
+
+  for asset in background.png background@2x.png DS_Store; do
+    [[ -r "$dmg_assets/$asset" ]] || {
+      echo "Missing DMG asset $dmg_assets/$asset; regenerate with script/make_dmg_background.py." >&2
+      exit 1
+    }
+  done
+
+  work_dir="$(mktemp -d "${TMPDIR:-/tmp}/tokenremain-dmg.XXXXXX")"
+  staging_dir="$work_dir/stage"
+  mount_dir="$work_dir/mnt"
+  rw_dmg="$work_dir/rw.dmg"
+  /bin/mkdir -p "$staging_dir/.background" "$mount_dir"
+
   /usr/bin/ditto "$APP" "$staging_dir/TokenRemain.app"
   /bin/ln -s /Applications "$staging_dir/Applications"
+  # Multi-representation TIFF so the window art stays sharp on Retina.
+  /usr/bin/tiffutil -cathidpicheck \
+    "$dmg_assets/background.png" "$dmg_assets/background@2x.png" \
+    -out "$staging_dir/.background/background.tiff" >/dev/null
+  # Prebuilt Finder layout: window size, icon positions and background picture.
+  # Shipping it as a file keeps packaging headless — driving Finder over
+  # AppleScript would need Automation consent and a GUI session.
+  /usr/bin/ditto "$dmg_assets/DS_Store" "$staging_dir/.DS_Store"
+  /usr/bin/ditto "$APP/Contents/Resources/TokenRemain.icns" "$staging_dir/.VolumeIcon.icns"
+
   rm -f "$DMG"
+  size_mb=$(( $(/usr/bin/du -sm "$staging_dir" | /usr/bin/awk '{print $1}') + 60 ))
   /usr/bin/hdiutil create \
     -volname "TokenRemain" \
     -srcfolder "$staging_dir" \
-    -format UDZO \
+    -format UDRW \
+    -fs HFS+ \
+    -size "${size_mb}m" \
     -ov \
-    "$DMG"
-  rm -rf "$staging_dir"
+    "$rw_dmg"
+
+  # The custom-icon flag lives in the volume's catalog, so it can only be set
+  # while mounted. A private mountpoint avoids colliding with /Volumes.
+  device="$(/usr/bin/hdiutil attach "$rw_dmg" -readwrite -noverify -noautoopen \
+    -mountpoint "$mount_dir" | /usr/bin/grep -E '^/dev/' | /usr/bin/head -1 \
+    | /usr/bin/awk '{print $1}')"
+  /usr/bin/xcrun SetFile -a C "$mount_dir"
+  /bin/sync
+  /usr/bin/hdiutil detach "$device"
+
+  /usr/bin/hdiutil convert "$rw_dmg" -format UDZO -imagekey zlib-level=9 -o "$DMG"
+  rm -rf "$work_dir"
 
   /usr/bin/codesign --force --sign "$IDENTITY" --timestamp "$DMG"
   /usr/bin/codesign --verify --strict "$DMG"
