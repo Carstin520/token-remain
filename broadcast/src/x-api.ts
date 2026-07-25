@@ -9,6 +9,7 @@ export const PRIMARY_ACCOUNTS = [
   { username: "AnthropicAI", displayName: "Anthropic" },
   { username: "OpenAI", displayName: "OpenAI" },
   { username: "karpathy", displayName: "Andrej Karpathy" },
+  { username: "JensenHuang", displayName: "Jensen Huang" },
 ] as const;
 
 export const ROTATING_ACCOUNTS = [
