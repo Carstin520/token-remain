@@ -117,7 +117,7 @@
 "common.updated_at" = "Aktualisiert %1$@";
 "datasource.api_key_settings" = "API-Key-Einstellungen für %1$@";
 "datasource.broken" = "Verbindung unterbrochen";
-"datasource.ccusage_detail" = "npx ccusage wertet Tokens und geschätzte Kosten aus lokalen Logs aus";
+"datasource.ccusage_detail" = "Das integrierte ccusage liest lokale Logs; keine separate Installation nötig";
 "datasource.detail.antigravity" = "Direktabfrage des Cloud-Code-Kontingentpools (lokale Anmeldung nur lesend, wird nie stellvertretend erneuert)";
 "datasource.detail.claude" = "Direktabfrage der offiziellen oauth/usage-API (lokale Anmeldedaten nur lesend); bei Fehlern Fallback auf die /usage-Sonde";
 "datasource.detail.codex" = "Direktabfrage der Live-Server-API (nur Lesen von ~/.codex/auth.json); offline Fallback auf den lokalen Sitzungs-Snapshot";
@@ -336,6 +336,16 @@
 "settings.manual_only" = "Nur manuell";
 "settings.menubar_hidden" = "Nicht in der Menüleiste";
 "settings.menubar_hint" = "Apps auswählen, deren Text dauerhaft in der Menüleiste steht; am besten höchstens 3, damit sie schmal bleibt. Sind alle deaktiviert, wird „TR“ angezeigt.";
+"settings.menubar_mode_compact" = "Kompakt";
+"settings.menubar_mode_compact_description" = "Alle ausgewählten Apps nur als Symbol anzeigen; Prozente bleiben im Tooltip.";
+"settings.menubar_mode_full" = "Vollständig";
+"settings.menubar_mode_full_description" = "Symbol und verbleibenden Prozentsatz für jede ausgewählte App anzeigen.";
+"settings.menubar_mode_hint" = "Festlegen, wie die ausgewählten Apps den Platz in der Menüleiste nutzen.";
+"settings.menubar_mode_minimal" = "Minimal";
+"settings.menubar_mode_minimal_description" = "Nur die ausgewählte App mit dem geringsten Restkontingent anzeigen.";
+"settings.menubar_mode_not_selected" = "Nicht ausgewählt";
+"settings.menubar_mode_selected" = "Ausgewählt";
+"settings.menubar_mode_title" = "Anzeigemodus";
 "settings.menubar_shown" = "In der Menüleiste sichtbar";
 "settings.menubar_title" = "Menüleisten-Anzeige";
 "settings.minutes_format" = "%1$d Minuten";
@@ -427,7 +437,7 @@
 "trends.accumulating_title" = "Trenddaten sammeln sich Tag für Tag";
 "trends.chart_accessibility" = "Gestapeltes Balkendiagramm der täglichen Nutzung";
 "trends.chart_accessibility_empty" = "Balkendiagramm der täglichen Nutzung, kein Anbieter ausgewählt";
-"trends.daily_subtitle" = "Claude + Codex gestapelt · lokales ccusage";
+"trends.daily_subtitle" = "Ausgewählte Apps gestapelt · integriertes ccusage";
 "trends.daily_title" = "Täglicher Nutzungstrend";
 "trends.legend_hidden" = "Ausgeblendet";
 "trends.legend_hide" = "%1$@-Nutzung ausblenden";

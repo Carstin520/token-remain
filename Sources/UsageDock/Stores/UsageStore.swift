@@ -4,6 +4,21 @@ import OSLog
 
 @MainActor
 final class UsageStore: ObservableObject {
+    enum LocalUsageStatus: Equatable {
+        /// No bundled-helper result has completed in this process yet.
+        case loading
+        /// Today's report contains at least one real agent row.
+        case available
+        /// The helper completed successfully, but today has no local events.
+        case empty
+        /// The bundled helper could not be executed or its output was invalid.
+        case failed(String)
+    }
+
+    nonisolated static func localUsageStatus(for daily: DailyUsage) -> LocalUsageStatus {
+        daily.agents.isEmpty ? .empty : .available
+    }
+
     struct LogoQuotaSelection: Equatable {
         let provider: ProviderQuota.Provider
         let remainingPercent: Double
@@ -30,6 +45,8 @@ final class UsageStore: ObservableObject {
     @Published private(set) var providerNotices: [ProviderQuota.Provider: String] = [:]
     @Published private(set) var daily: DailyUsage?
     @Published private(set) var history: DailyUsageHistory?
+    @Published private(set) var localUsageStatus: LocalUsageStatus = .loading
+    @Published private(set) var isCCUsageRefreshing = false
     @Published private(set) var isRefreshing = false
     @Published private(set) var errorMessage: String?
 
@@ -262,10 +279,13 @@ final class UsageStore: ObservableObject {
     }
 
     func refresh(forceCCUsage: Bool = true, forceClaude: Bool = false) async {
+        // Local usage has its own task and must be scheduled before the quota
+        // refresh lock. Otherwise opening the UI while a provider request is
+        // running silently drops the user's forced ccusage refresh.
+        refreshLocalUsage(force: forceCCUsage)
         guard !isRefreshing else { return }
         isRefreshing = true
         defer { isRefreshing = false }
-        scheduleCCUsageRefresh(force: forceCCUsage)
 
         let now = Date()
         // 普通直查节奏由用户偏好决定；启用 Apple 设备同步后由低延迟
@@ -396,27 +416,43 @@ final class UsageStore: ObservableObject {
         }
     }
 
-    private func scheduleCCUsageRefresh(force: Bool) {
+    /// Refreshes only the bundled ccusage snapshot. Presentation surfaces use
+    /// this entry point so showing local totals does not also trigger network
+    /// provider requests.
+    func refreshLocalUsage(force: Bool = true) {
+        scheduleCCUsageRefresh(force: force)
+    }
+
+    private func scheduleCCUsageRefresh(force: Bool, now: Date = .now) {
         guard historyRefreshTask == nil else { return }
-        let historyInterval = AdaptiveRefreshPolicy.idleHistoryInterval
-        let shouldRefresh = force
-            || lastCCUsageRefresh.map { Date().timeIntervalSince($0) >= historyInterval } != false
-        guard shouldRefresh else { return }
-        lastCCUsageRefresh = .now
+        guard AdaptiveRefreshPolicy.localUsageRefreshIsDue(
+            lastRefresh: lastCCUsageRefresh,
+            now: now,
+            force: force
+        ) else { return }
+        lastCCUsageRefresh = now
+        isCCUsageRefreshing = true
 
         historyRefreshTask = Task { @MainActor [weak self] in
             guard let self else { return }
+            defer {
+                isCCUsageRefreshing = false
+                historyRefreshTask = nil
+                publishErrors()
+            }
             do {
                 let snapshot = try await CCUsageService().fetchSnapshot(days: 30)
                 daily = snapshot.daily
                 history = snapshot.history
                 historyCache.save(snapshot.history)
+                localUsageStatus = Self.localUsageStatus(for: snapshot.daily)
                 historyErrorMessage = nil
             } catch {
                 historyErrorMessage = "ccusage: \(error.localizedDescription)"
+                if daily == nil {
+                    localUsageStatus = .failed(error.localizedDescription)
+                }
             }
-            historyRefreshTask = nil
-            publishErrors()
         }
     }
 

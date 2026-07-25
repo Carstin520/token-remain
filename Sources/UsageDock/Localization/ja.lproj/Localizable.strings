@@ -117,7 +117,7 @@
 "common.updated_at" = "%1$@に更新";
 "datasource.api_key_settings" = "%1$@ APIキー設定";
 "datasource.broken" = "データ連携切れ";
-"datasource.ccusage_detail" = "npx ccusage がローカルログのトークンと推定コストを集計";
+"datasource.ccusage_detail" = "内蔵 ccusage がローカルログを読み取ります。別途インストールは不要です";
 "datasource.detail.antigravity" = "Cloud Code のクォータプールを直接照会(ログイン状態は読み取り専用、代理更新は一切なし)";
 "datasource.detail.claude" = "公式 oauth/usage API を直接照会(ローカル認証情報は読み取り専用)。エラー時は /usage プローブにフォールバック";
 "datasource.detail.codex" = "サーバーのリアルタイム API を直接照会(~/.codex/auth.json は読み取り専用)。オフライン時はローカルセッションスナップショットにフォールバック";
@@ -336,6 +336,16 @@
 "settings.manual_only" = "手動のみ";
 "settings.menubar_hidden" = "メニューバー非表示";
 "settings.menubar_hint" = "メニューバーにテキストを常駐させるアプリにチェックを入れます。幅が広がりすぎないよう 3 個以内をおすすめします。すべてオフの場合は「TR」と表示されます。";
+"settings.menubar_mode_compact" = "コンパクト";
+"settings.menubar_mode_compact_description" = "選択したすべてのアプリをアイコンのみで表示し、割合はツールヒントで確認できます。";
+"settings.menubar_mode_full" = "フル";
+"settings.menubar_mode_full_description" = "選択した各アプリのアイコンと残りの割合を表示します。";
+"settings.menubar_mode_hint" = "選択したアプリがメニューバーの領域をどう使うか選びます。";
+"settings.menubar_mode_minimal" = "最小";
+"settings.menubar_mode_minimal_description" = "選択した中で残りの割り当てが最も少ないアプリだけを表示します。";
+"settings.menubar_mode_not_selected" = "未選択";
+"settings.menubar_mode_selected" = "選択済み";
+"settings.menubar_mode_title" = "表示モード";
 "settings.menubar_shown" = "メニューバーに表示中";
 "settings.menubar_title" = "メニューバー表示";
 "settings.minutes_format" = "%1$d分";
@@ -427,7 +437,7 @@
 "trends.accumulating_title" = "推移データを日々蓄積中";
 "trends.chart_accessibility" = "日別使用量の積み上げ棒グラフ";
 "trends.chart_accessibility_empty" = "日別使用量の棒グラフ、プロバイダー未選択";
-"trends.daily_subtitle" = "Claude + Codex 積み上げ · ローカル ccusage";
+"trends.daily_subtitle" = "選択したアプリの積み上げ · 内蔵 ccusage";
 "trends.daily_title" = "日別使用量の推移";
 "trends.legend_hidden" = "非表示";
 "trends.legend_hide" = "%1$@の使用量を非表示";

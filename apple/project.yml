@@ -12,8 +12,8 @@ settings:
   base:
     SWIFT_VERSION: "6.0"
     SWIFT_STRICT_CONCURRENCY: complete
-    MARKETING_VERSION: "1.1.4"
-    CURRENT_PROJECT_VERSION: "6"
+    MARKETING_VERSION: "1.1.5"
+    CURRENT_PROJECT_VERSION: "7"
     GENERATE_INFOPLIST_FILE: YES
     ENABLE_USER_SCRIPT_SANDBOXING: YES
     # Automatic development signing is required for device builds so the

@@ -117,7 +117,7 @@
 "common.updated_at" = "Actualizado %1$@";
 "datasource.api_key_settings" = "Ajustes de API Key de %1$@";
 "datasource.broken" = "Conexión interrumpida";
-"datasource.ccusage_detail" = "npx ccusage calcula los tokens y el coste estimado a partir de los registros locales";
+"datasource.ccusage_detail" = "ccusage integrado lee los registros locales; no requiere instalación aparte";
 "datasource.detail.antigravity" = "Consulta directa del fondo de cuota de Cloud Code (solo lee la sesión local, nunca la renueva en tu nombre)";
 "datasource.detail.claude" = "Consulta directa de la API oficial oauth/usage (credenciales locales de solo lectura); si falla, recurre a la sonda /usage";
 "datasource.detail.codex" = "Consulta directa de la API del servidor en tiempo real (solo lectura de ~/.codex/auth.json); sin conexión, recurre a la instantánea local de sesión";
@@ -336,6 +336,16 @@
 "settings.manual_only" = "Solo manual";
 "settings.menubar_hidden" = "No se muestra en la barra de menús";
 "settings.menubar_hint" = "Marca las apps cuyo texto quieras fijar en la barra de menús; se recomiendan 3 o menos para que no se ensanche. Con todas desactivadas se muestra \"TR\".";
+"settings.menubar_mode_compact" = "Compacto";
+"settings.menubar_mode_compact_description" = "Muestra cada app seleccionada solo como icono; los porcentajes siguen en la ayuda.";
+"settings.menubar_mode_full" = "Completo";
+"settings.menubar_mode_full_description" = "Muestra el icono y el porcentaje restante de cada app seleccionada.";
+"settings.menubar_mode_hint" = "Elige cómo usan el espacio de la barra de menús las apps seleccionadas.";
+"settings.menubar_mode_minimal" = "Mínimo";
+"settings.menubar_mode_minimal_description" = "Muestra solo la app seleccionada con menos cuota restante.";
+"settings.menubar_mode_not_selected" = "No seleccionado";
+"settings.menubar_mode_selected" = "Seleccionado";
+"settings.menubar_mode_title" = "Modo de visualización";
 "settings.menubar_shown" = "Se muestra en la barra de menús";
 "settings.menubar_title" = "Visualización en la barra de menús";
 "settings.minutes_format" = "%1$d min";
@@ -427,7 +437,7 @@
 "trends.accumulating_title" = "Los datos de tendencia se acumulan día a día";
 "trends.chart_accessibility" = "Gráfico de barras apiladas de uso diario";
 "trends.chart_accessibility_empty" = "Gráfico de barras de uso diario, sin proveedor seleccionado";
-"trends.daily_subtitle" = "Claude + Codex apilados · ccusage local";
+"trends.daily_subtitle" = "Apps seleccionadas apiladas · ccusage integrado";
 "trends.daily_title" = "Tendencia de uso diario";
 "trends.legend_hidden" = "Oculto";
 "trends.legend_hide" = "Ocultar el uso de %1$@";

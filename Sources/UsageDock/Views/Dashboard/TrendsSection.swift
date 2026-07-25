@@ -5,11 +5,19 @@ import SwiftUI
 /// an honest "accumulating by day" empty state rather than fabricate a curve.
 struct TrendsSection: View {
     let insights: UsageInsights
+    let localUsageStatus: UsageStore.LocalUsageStatus
+    let isCCUsageRefreshing: Bool
+    let onRetryCCUsage: () -> Void
+    @ObservedObject var tracked: TrackedProvidersStore
 
     /// Real per-day history, oldest-first; nil / <2 days ⇒ honest empty state.
     private var trendDays: [DailyUsageHistory.Day]? {
         guard let days = insights.history?.days, days.count >= 2 else { return nil }
         return days
+    }
+
+    private var preferredAgentIDs: Set<String> {
+        Set(tracked.enabledOrdered.map(\.ccusageAgentID))
     }
 
     var body: some View {
@@ -20,14 +28,14 @@ struct TrendsSection: View {
             )
 
             if let trendDays {
-                UsageTrendCard(days: trendDays, capturedAt: insights.history?.capturedAt)
+                UsageTrendCard(
+                    days: trendDays,
+                    capturedAt: insights.history?.capturedAt,
+                    preferredAgentIDs: preferredAgentIDs
+                )
             } else {
                 DashboardCard {
-                    EmptyStateView(
-                        icon: "chart.bar.xaxis",
-                        title: L10n.text("trends.accumulating_title"),
-                        message: L10n.text("trends.accumulating_message")
-                    )
+                    historyEmptyState
                 }
             }
 
@@ -35,6 +43,41 @@ struct TrendsSection: View {
                 currentSnapshotPanel
                 roadmapPanel
             }
+        }
+    }
+
+    @ViewBuilder
+    private var historyEmptyState: some View {
+        switch localUsageStatus {
+        case .loading:
+            HStack(spacing: 10) {
+                ProgressView().controlSize(.small)
+                Text(L10n.text("usage.loading_ccusage"))
+                    .font(.system(size: 12))
+                    .foregroundStyle(DashboardTheme.secondaryText)
+            }
+            .frame(maxWidth: .infinity, minHeight: 110)
+
+        case .failed(let message):
+            VStack(spacing: 10) {
+                EmptyStateView(
+                    icon: "exclamationmark.triangle",
+                    title: L10n.text("datasource.broken"),
+                    message: message
+                )
+                Button(L10n.text("action.refresh")) {
+                    onRetryCCUsage()
+                }
+                .buttonStyle(.bordered)
+                .disabled(isCCUsageRefreshing)
+            }
+
+        case .available, .empty:
+            EmptyStateView(
+                icon: "chart.bar.xaxis",
+                title: L10n.text("trends.accumulating_title"),
+                message: L10n.text("trends.accumulating_message")
+            )
         }
     }
 
