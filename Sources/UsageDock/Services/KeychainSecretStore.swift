@@ -20,20 +20,21 @@ struct KeychainSecretStore: Sendable {
     let service: String
     let account: String
 
+    /// 读取走统一入口。这些条目是 app 自己写的、ACL 天然信任自己,但"几乎不会
+    /// 需要交互"不等于"不会阻塞",没有理由留一条能吊住调用方的裸读取。
     func read() throws -> String? {
-        var query = baseQuery
-        query[kSecReturnData as String] = true
-        query[kSecMatchLimit as String] = kSecMatchLimitOne
-
-        var result: CFTypeRef?
-        let status = SecItemCopyMatching(query as CFDictionary, &result)
-        if status == errSecItemNotFound {
+        let outcome = KeychainRead.genericPassword(
+            service: service,
+            account: account,
+            interaction: .disallowed
+        )
+        if outcome.status == errSecItemNotFound {
             return nil
         }
-        guard status == errSecSuccess else {
-            throw StoreError.unexpectedStatus(status)
+        guard outcome.status == errSecSuccess else {
+            throw StoreError.unexpectedStatus(outcome.status)
         }
-        guard let data = result as? Data, let value = String(data: data, encoding: .utf8) else {
+        guard let value = outcome.payload else {
             throw StoreError.invalidData
         }
         return value
