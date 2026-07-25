@@ -3,6 +3,34 @@
 All notable product changes are recorded here. TokenRemain uses Semantic
 Versioning for public releases.
 
+## Unreleased (1.1.4, build 6)
+
+### Added
+
+- Expanded the product website with a clearer AI Feed, privacy, and provider
+  story.
+- Added a secondary sync-details screen so advanced diagnostics remain
+  available without crowding the main settings page.
+
+### Changed
+
+- Ranked popular AI Feed posts consistently across Mac, broadcast delivery, and
+  iPhone.
+- Improved iPhone Feed typography and spacing for long author names, handles,
+  timestamps, and multi-line posts.
+- Made quota reset labels use weeks, days, or an `HH:mm:ss` countdown according
+  to the remaining interval.
+- Updated installer and Apple Watch artwork to match the current TokenRemain
+  brand.
+
+### Fixed
+
+- Prevented background provider refreshes from prompting for Keychain access.
+- Fixed stale Mac snapshot timestamps and ignored invalid past reset dates on
+  iPhone.
+- Added clearer sync security diagnostics while retaining the last known-good
+  snapshot after a failed validation.
+
 ## 1.1.2 — 2026-07-24
 
 ### Fixed
