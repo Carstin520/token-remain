@@ -38,4 +38,13 @@ struct OverviewLayoutStoreTests {
         store.show(.codex)
         #expect(store.visibleWidgets.contains(.codex))
     }
+
+    @Test("Feed post text collapses source whitespace for compact rows")
+    func feedPostTextNormalization() {
+        #expect(
+            CuratedFeedWidget.normalizedPostText(
+                "Introducing Claude Opus 5.\n\nIt's thoughtful\tand proactive."
+            ) == "Introducing Claude Opus 5. It's thoughtful and proactive."
+        )
+    }
 }

@@ -201,6 +201,26 @@ final class TokenRemainUITests: XCTestCase {
         XCTAssertTrue(start.waitForExistence(timeout: 5))
     }
 
+    func testSyncDiagnosticsLiveOnASecondarySettingsPage() {
+        let app = launch(["-tr-origin-macsync"])
+        app.tabBars.buttons["设置"].tap()
+
+        let health = app.descendants(matching: .any)["tr.settings.sync.health.icloud"]
+        XCTAssertFalse(health.exists, "low-level sync diagnostics must not crowd the main Settings page")
+
+        let syncToggle = app.switches["tr.settings.macSyncToggle"]
+        XCTAssertTrue(syncToggle.waitForExistence(timeout: 5))
+        XCTAssertEqual(syncToggle.value as? String, "1")
+
+        let details = app.descendants(matching: .any)["tr.settings.syncDetails"]
+        XCTAssertTrue(details.waitForExistence(timeout: 5))
+        details.tap()
+        XCTAssertTrue(
+            health.waitForExistence(timeout: 5),
+            "iCloud, key, and snapshot diagnostics must remain available in Sync details"
+        )
+    }
+
     /// Physical-device E2E coverage for the real privacy-preserving path.
     /// Unlike the deterministic gallery test above, this deliberately launches
     /// without a demo argument and requires the automatic Mac-sync source.
@@ -342,9 +362,17 @@ final class TokenRemainUITests: XCTestCase {
         let start = app.descendants(matching: .any)["tr.settings.startLiveActivity"]
         XCTAssertTrue(start.waitForExistence(timeout: 5))
 
+        let about = app.descendants(matching: .any)["tr.settings.about"]
+        for _ in 0..<4 where !about.isHittable {
+            app.swipeUp()
+        }
+        XCTAssertTrue(about.waitForExistence(timeout: 5), "the About submenu must remain reachable at AX5")
+        about.tap()
+
         let privacy = app.descendants(matching: .any)["tr.settings.privacy"]
-        app.swipeUp()
-        app.swipeUp()
+        if !privacy.waitForExistence(timeout: 3) {
+            app.swipeUp()
+        }
         XCTAssertTrue(privacy.waitForExistence(timeout: 5), "the privacy statement must remain reachable at AX5")
     }
 }

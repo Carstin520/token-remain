@@ -162,8 +162,7 @@ struct OverviewTab: View {
             return TRL10n.f(
                 "origin.macsync.freshness",
                 UsageFormatting.freshnessDescription(
-                    since: model.snapshot.providers.map(\.capturedAt).min()
-                        ?? model.snapshot.generatedAt,
+                    since: model.insights.lastUpdated ?? model.snapshot.generatedAt,
                     now: Date()
                 )
             )
@@ -261,26 +260,28 @@ struct OverviewTab: View {
                 Text(TRL10n.t("overview.reset.card"))
                     .font(.caption)
                     .foregroundStyle(TRTheme.textDim)
-                if let reset = model.insights.soonestReset {
-                    // Ticks only while foregrounded; nothing schedules work in the model.
-                    TimelineView(.periodic(from: .now, by: 1)) { context in
+                // Ticks only while foregrounded; nothing schedules work in the model.
+                // Resolve the next future reset on every tick so a provider's
+                // expired cached timestamp cannot pin this card at 00:00:00.
+                TimelineView(.periodic(from: .now, by: 1)) { context in
+                    if let reset = model.insights.soonestReset(after: context.date) {
                         // Cyberpunk experiment: dot-matrix countdown in cyan with a
                         // matching neon bloom.
                         PixelDigitText(
-                            UsageFormatting.shortCountdown(to: reset, now: context.date),
+                            UsageFormatting.resetCountdown(to: reset, now: context.date),
                             size: 28,
                             color: TRTheme.cyan
                         )
                         .neonGlow(TRTheme.cyan)
                         .accessibilityHidden(true)
+                        Text(UsageFormatting.absoluteReset(reset))
+                            .font(.caption)
+                            .foregroundStyle(TRTheme.textDim)
+                    } else {
+                        Text(TRL10n.t("limits.reset.unknown"))
+                            .font(.footnote)
+                            .foregroundStyle(TRTheme.textDim)
                     }
-                    Text(UsageFormatting.absoluteReset(reset))
-                        .font(.caption)
-                        .foregroundStyle(TRTheme.textDim)
-                } else {
-                    Text(TRL10n.t("limits.reset.unknown"))
-                        .font(.footnote)
-                        .foregroundStyle(TRTheme.textDim)
                 }
                 if model.liveActivityState == .active {
                     RecordingDot(animated: !reduceMotion)
@@ -294,8 +295,11 @@ struct OverviewTab: View {
     }
 
     private var countdownAccessibilityLabel: String {
-        guard let reset = model.insights.soonestReset else { return TRL10n.t("limits.reset.unknown") }
-        return "\(TRL10n.t("overview.reset.card")) \(UsageFormatting.durationUntil(reset, now: Date()))"
+        let now = Date()
+        guard let reset = model.insights.soonestReset(after: now) else {
+            return TRL10n.t("limits.reset.unknown")
+        }
+        return "\(TRL10n.t("overview.reset.card")) \(UsageFormatting.durationUntil(reset, now: now))"
     }
 
     private var ctaRow: some View {

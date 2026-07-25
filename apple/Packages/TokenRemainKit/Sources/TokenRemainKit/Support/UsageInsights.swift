@@ -157,9 +157,19 @@ public struct UsageInsights: Sendable, Equatable {
         return TRL10n.f("overview.pace.runout", UsageFormatting.durationUntil(runOutAt, now: now))
     }
 
-    /// The soonest upcoming reset among all windows that report one.
+    /// The earliest reported reset, retained for callers that need the raw
+    /// provider value without applying a clock boundary.
     public var soonestReset: Date? {
         windows.compactMap(\.resetsAt).min()
+    }
+
+    /// The soonest reset that is still in the future at `now`.
+    ///
+    /// Provider caches can legitimately retain the previous cycle's reset
+    /// timestamp until their next successful refresh. Presentation surfaces
+    /// must not turn that stale timestamp into a permanent `00:00:00`.
+    public func soonestReset(after now: Date) -> Date? {
+        windows.compactMap(\.resetsAt).filter { $0 > now }.min()
     }
 
     // MARK: - Today's token split (demo only)

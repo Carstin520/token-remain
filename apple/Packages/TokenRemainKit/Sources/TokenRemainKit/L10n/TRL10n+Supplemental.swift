@@ -27,7 +27,10 @@ duration.days_hours	%1$d 天 %2$d 小時	%1$d d %2$d h	%1$d T %2$d Std	%1$d日 %
 duration.hours_minutes	%1$d 小時 %2$d 分	%1$d h %2$d min	%1$d Std %2$d Min	%1$d時間 %2$d分	%1$d시간 %2$d분
 duration.minutes	%d 分鐘	%d min	%d Min	%d分	%d분
 duration.hours	%d 小時	%d h	%d Std	%d時間	%d시간
+duration.day	%d 天	%d día	%d Tag	%d日	%d일
 duration.days	%d 天	%d d	%d T	%d日	%d일
+duration.week	%d 週	%d semana	%d Woche	%d週間	%d주
+duration.weeks	%d 週	%d semanas	%d Wochen	%d週間	%d주
 duration.less_than_minute	不到 1 分鐘	Menos de 1 min	Weniger als 1 Min	1分未満	1분 미만
 freshness.just_now	剛剛	Ahora mismo	Gerade eben	たった今	방금
 freshness.minutes	%d 分鐘前	Hace %d min	Vor %d Min	%d分前	%d분 전
@@ -134,6 +137,9 @@ settings.macsync.confirm	確認改用這部 Mac	Confirmar este Mac como fuente	D
 settings.sync.automatic	自動同步	Sincronización automática	Automatische Synchronisierung	自動同期	자동 동기화
 settings.sync.automatic_on	已開啟	Activada	Ein	オン	켜짐
 settings.sync.automatic_detail	首次啟動時自動檢查；連線期間快速重試，連線後每 45 秒檢查。進入背景後由 iCloud 變更喚醒。	Realiza una autocomprobación al iniciarse por primera vez, reintenta rápidamente durante la conexión y después comprueba cada 45 segundos. Los cambios de iCloud la activan en segundo plano.	Führt beim ersten Start eine Selbstprüfung durch, versucht die Verbindung zunächst schnell erneut und prüft danach alle 45 Sekunden. iCloud-Änderungen wecken die App im Hintergrund.	初回起動時に自動診断し、接続中は短い間隔で再試行、接続後は45秒ごとに確認します。バックグラウンドでは iCloud の変更で起動します。	처음 실행할 때 자동 점검하고 연결 중에는 빠르게 재시도한 뒤 연결되면 45초마다 확인합니다. 백그라운드에서는 iCloud 변경으로 깨어납니다.
+settings.sync.details	同步詳情	Detalles de sincronización	Sync-Details	同期の詳細	동기화 세부 정보
+settings.sync.section.health	連線狀態	Estado de conexión	Verbindungsstatus	接続状況	연결 상태
+settings.sync.section.activity	同步記錄	Actividad de sincronización	Sync-Aktivität	同期履歴	동기화 기록
 settings.sync.health.icloud	iCloud	iCloud	iCloud	iCloud	iCloud
 settings.sync.health.key	同步金鑰	Clave de sincronización	Sync-Schlüssel	同期キー	동기화 키
 settings.sync.health.snapshot	Mac 快照	Captura del Mac	Mac-Snapshot	Mac スナップショット	Mac 스냅샷
@@ -174,7 +180,9 @@ settings.liveactivity.inactive	未執行	Inactiva	Nicht aktiv	停止中	실행 �
 settings.liveactivity.denied	系統已關閉此 App 的即時動態權限，請在 iOS「設定」中開啟。	Las Actividades en directo están desactivadas para esta app en Ajustes de iOS.	Live-Aktivitäten sind für diese App in den iOS-Einstellungen deaktiviert.	iOS の設定でこのアプリのライブアクティビティが無効になっています。	iOS 설정에서 이 앱의 실시간 현황이 비활성화되어 있습니다.
 settings.liveactivity.needsdemo	即時動態只顯示示範資料，請先開啟示範模式。	La Actividad en directo solo muestra datos de demostración; activa primero el modo de demostración.	Die Live-Aktivität zeigt nur Demodaten; zuerst den Demomodus aktivieren.	ライブアクティビティにはデモデータだけが表示されます。先にデモモードをオンにしてください。	실시간 현황은 데모 데이터만 표시합니다. 먼저 데모 모드를 켜세요.
 settings.liveactivity.needssource	連接 Mac 同步或開啟示範模式後才能開始。	Conecta la sincronización del Mac o activa el modo de demostración para empezar.	Zum Starten Mac-Synchronisierung verbinden oder Demomodus aktivieren.	Mac 同期に接続するかデモモードをオンにすると開始できます。	Mac 동기화를 연결하거나 데모 모드를 켜야 시작할 수 있습니다.
+settings.section.devices	裝置與延伸功能	Dispositivos y extensiones	Geräte & Erweiterungen	デバイスと拡張機能	기기 및 확장 기능
 settings.section.widgets	小工具	Widgets	Widgets	ウィジェット	위젯
+settings.widgets.subtitle	主畫面、鎖定畫面與動作按鈕	Pantalla de inicio, pantalla de bloqueo y botón de acción	Home-Bildschirm, Sperrbildschirm und Aktionstaste	ホーム画面、ロック画面、アクションボタン	홈 화면, 잠금 화면 및 동작 버튼
 settings.widgets.home	長按主畫面空白處 › 編輯 › 加入小工具 › TokenRemain	Mantén pulsada la pantalla de inicio › Editar › Añadir widget › TokenRemain	Home-Bildschirm gedrückt halten › Bearbeiten › Widget hinzufügen › TokenRemain	ホーム画面を長押し › 編集 › ウィジェットを追加 › TokenRemain	홈 화면 길게 누르기 › 편집 › 위젯 추가 › TokenRemain
 settings.widgets.lock	鎖定畫面 › 自訂 › 加入小工具 › TokenRemain	Pantalla de bloqueo › Personalizar › Añadir widgets › TokenRemain	Sperrbildschirm › Anpassen › Widgets hinzufügen › TokenRemain	ロック画面 › カスタマイズ › ウィジェットを追加 › TokenRemain	잠금 화면 › 사용자화 › 위젯 추가 › TokenRemain
 settings.widgets.control	設定 › 動作按鈕 › 控制項目 › 重新整理額度	Ajustes › Botón de acción › Controles › Actualizar cuota	Einstellungen › Aktionstaste › Steuerelemente › Kontingent aktualisieren	設定 › アクションボタン › コントロール › 上限を更新	설정 › 동작 버튼 › 제어 항목 › 한도 새로 고침
@@ -187,6 +195,7 @@ settings.watch.lastsync	上次同步 %@	Última sincronización %@	Letzte Synchr
 settings.watch.neversync	尚未同步	Nunca sincronizado	Noch nie synchronisiert	未同期	동기화한 적 없음
 settings.watch.unsupported	此裝置無法使用 WatchConnectivity	WatchConnectivity no está disponible en este dispositivo	WatchConnectivity ist auf diesem Gerät nicht verfügbar	このデバイスでは WatchConnectivity を利用できません	이 기기에서는 WatchConnectivity를 사용할 수 없습니다
 settings.section.about	關於	Acerca de	Über	情報	정보
+settings.about.title	關於 TokenRemain	Acerca de TokenRemain	Über TokenRemain	TokenRemain について	TokenRemain 정보
 settings.version	版本	Versión	Version	バージョン	버전
 intent.refresh.title	重新整理額度	Actualizar cuota	Kontingent aktualisieren	上限を更新	한도 새로 고침
 intent.refresh.done	已重新整理 · 最低 %@	Actualizado · mínimo %@	Aktualisiert · niedrigster Wert %@	更新済み · 最小 %@	새로 고침 완료 · 최소 %@

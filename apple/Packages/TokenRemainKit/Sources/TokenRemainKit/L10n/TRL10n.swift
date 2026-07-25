@@ -124,7 +124,10 @@ public enum TRL10n {
         "duration.hours_minutes": Entry("%1$d 小时 %2$d 分", "%1$dh %2$dm"),
         "duration.minutes": Entry("%d 分钟", "%d min"),
         "duration.hours": Entry("%d 小时", "%d hours"),
+        "duration.day": Entry("%d 天", "%d day"),
         "duration.days": Entry("%d 天", "%d days"),
+        "duration.week": Entry("%d 周", "%d week"),
+        "duration.weeks": Entry("%d 周", "%d weeks"),
         "duration.less_than_minute": Entry("不到 1 分钟", "under a minute"),
         "freshness.just_now": Entry("刚刚", "just now"),
         "freshness.minutes": Entry("%d 分钟前", "%d min ago"),
@@ -260,6 +263,9 @@ public enum TRL10n {
             "首次启动自动自检；等待连接时会快速重试，连接后每 45 秒检查。进入后台后由 iCloud 变更唤醒。",
             "Runs a self-check on first launch, retries quickly while connecting, then checks every 45 seconds. iCloud changes wake it in the background."
         ),
+        "settings.sync.details": Entry("同步详情", "Sync details"),
+        "settings.sync.section.health": Entry("连接状态", "Connection status"),
+        "settings.sync.section.activity": Entry("同步记录", "Sync activity"),
         "settings.sync.health.icloud": Entry("iCloud", "iCloud"),
         "settings.sync.health.key": Entry("同步密钥", "Sync key"),
         "settings.sync.health.snapshot": Entry("Mac 快照", "Mac snapshot"),
@@ -318,7 +324,9 @@ public enum TRL10n {
         "settings.liveactivity.denied": Entry("系统已关闭实时活动权限，请在「设置 › TokenRemain」中开启。", "Live Activities are disabled for this app in iOS Settings."),
         "settings.liveactivity.needsdemo": Entry("实时活动只显示演示数据，请先打开演示模式。", "Live Activity only shows demo data — turn on Demo Mode first."),
         "settings.liveactivity.needssource": Entry("连接 Mac 同步或打开演示模式后才能开始。", "Connect Mac sync or enable Demo Mode first."),
+        "settings.section.devices": Entry("设备与扩展", "Devices & extensions"),
         "settings.section.widgets": Entry("小组件", "Widgets"),
+        "settings.widgets.subtitle": Entry("主屏幕、锁屏与操作按钮", "Home Screen, Lock Screen, and Action Button"),
         "settings.widgets.home": Entry("长按主屏幕空白处 › 编辑 › 添加小组件 › TokenRemain", "Touch and hold the Home Screen › Edit › Add Widget › TokenRemain"),
         "settings.widgets.lock": Entry("锁定屏幕 › 自定义 › 添加小组件 › TokenRemain", "Lock Screen › Customize › Add Widgets › TokenRemain"),
         "settings.widgets.control": Entry("设置 › 操作按钮 › 控制 › 刷新额度", "Settings › Action Button › Controls › Refresh quota"),
@@ -331,6 +339,7 @@ public enum TRL10n {
         "settings.watch.neversync": Entry("尚未同步", "Never synced"),
         "settings.watch.unsupported": Entry("此设备不支持 WatchConnectivity", "WatchConnectivity is unavailable on this device"),
         "settings.section.about": Entry("关于", "About"),
+        "settings.about.title": Entry("关于 TokenRemain", "About TokenRemain"),
         "settings.version": Entry("版本", "Version"),
 
         // Intents / control

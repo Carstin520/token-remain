@@ -94,7 +94,7 @@ public struct TREntry: Sendable, Equatable {
         // two stable provider slots (Claude/Codex when available) while the
         // in-app Limits page renders the full set.
         providers = Array(allProviderLines.prefix(2))
-        soonestReset = insights.soonestReset
+        soonestReset = insights.soonestReset(after: now)
         let assessment = insights.paceAssessment(at: now)
         willLastUntilReset = assessment == nil
         runOutAt = assessment?.pace.estimatedRunOutAt

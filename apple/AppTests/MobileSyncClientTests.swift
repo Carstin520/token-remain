@@ -51,6 +51,14 @@ private actor FakeKeyStore: SyncKeyStoring {
 
 @Suite("iPhone private sync client")
 struct MobileSyncClientTests {
+    @Test("The deterministic Mac-sync launch seam selects the encrypted source")
+    @MainActor
+    func forcedMacSyncLaunchOrigin() {
+        let model = AppModel(arguments: ["TokenRemainTests", "-tr-origin-macsync"])
+        #expect(model.origin == .macSync)
+        #expect(model.isMacSyncEnabled)
+    }
+
     private let now = Date(timeIntervalSince1970: 1_784_764_800)
     private let containerID = MobileSyncClient.defaultContainerIdentifier
 

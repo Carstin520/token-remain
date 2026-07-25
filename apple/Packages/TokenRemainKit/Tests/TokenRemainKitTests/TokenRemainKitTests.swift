@@ -144,6 +144,40 @@ struct UsageInsightsTests {
         #expect(abs(reset.timeIntervalSince(now) - 9_480) < 0.001)
     }
 
+    @Test("Upcoming reset ignores expired provider timestamps")
+    func upcomingReset() throws {
+        let staleClaude = ProviderQuota(
+            provider: .claude,
+            primary: QuotaWindow(
+                usedPercent: 20,
+                windowMinutes: 300,
+                resetsAt: now - 60
+            ),
+            secondary: nil,
+            planName: nil,
+            capturedAt: now
+        )
+        let currentCodex = ProviderQuota(
+            provider: .codex,
+            primary: QuotaWindow(
+                usedPercent: 30,
+                windowMinutes: 10_080,
+                resetsAt: now + 3_600
+            ),
+            secondary: nil,
+            planName: nil,
+            capturedAt: now
+        )
+        let mixed = UsageInsights(
+            providers: [staleClaude, currentCodex],
+            dailyTokens: nil
+        )
+
+        #expect(mixed.soonestReset == now - 60)
+        #expect(mixed.soonestReset(after: now) == now + 3_600)
+        #expect(mixed.soonestReset(after: now + 3_600) == nil)
+    }
+
     @Test("A provider's lead window is its scarcest")
     func leadWindow() throws {
         let claude = try #require(insights.leadWindow(for: .claude))
@@ -493,6 +527,16 @@ struct UsageFormattingTests {
         #expect(UsageFormatting.countdown(to: now + 125, now: now) == "02:05")
         #expect(UsageFormatting.countdown(to: now - 60, now: now) == "00:00")
         #expect(UsageFormatting.shortCountdown(to: now + 9_480, now: now) == "02:38")
+    }
+
+    @Test("Overview reset countdown switches between week, day, and clock units")
+    func resetCountdown() {
+        #expect(UsageFormatting.resetCountdown(to: now + 14 * 86_400, now: now) == TRL10n.f("duration.weeks", 2))
+        #expect(UsageFormatting.resetCountdown(to: now + 7 * 86_400, now: now) == TRL10n.f("duration.week", 1))
+        #expect(UsageFormatting.resetCountdown(to: now + 2 * 86_400, now: now) == TRL10n.f("duration.days", 2))
+        #expect(UsageFormatting.resetCountdown(to: now + 86_400, now: now) == TRL10n.f("duration.day", 1))
+        #expect(UsageFormatting.resetCountdown(to: now + 9_485, now: now) == "02:38:05")
+        #expect(UsageFormatting.resetCountdown(to: now - 60, now: now) == "00:00:00")
     }
 
     @Test("Window names use the ported special cases")

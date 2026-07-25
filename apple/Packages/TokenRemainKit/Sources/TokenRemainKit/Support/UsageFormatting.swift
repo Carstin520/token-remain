@@ -37,6 +37,25 @@ public enum UsageFormatting {
         return String(format: "%02d:%02d", hours, minutes)
     }
 
+    /// Overview reset countdown with a stable unit at each useful scale:
+    /// weeks from seven days, days from 24 hours, otherwise a live HH:MM:SS clock.
+    public static func resetCountdown(to date: Date, now: Date) -> String {
+        let remaining = max(0, Int(date.timeIntervalSince(now)))
+        if remaining >= 7 * 86_400 {
+            let weeks = remaining / (7 * 86_400)
+            return TRL10n.f(weeks == 1 ? "duration.week" : "duration.weeks", weeks)
+        }
+        if remaining >= 86_400 {
+            let days = remaining / 86_400
+            return TRL10n.f(days == 1 ? "duration.day" : "duration.days", days)
+        }
+
+        let hours = remaining / 3_600
+        let minutes = (remaining % 3_600) / 60
+        let seconds = remaining % 60
+        return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
+    }
+
     /// Human reset label derived from a real reset date: a live countdown when
     /// the window resets within a day, otherwise an absolute weekday/date + time.
     public static func resetDescription(to date: Date, now: Date) -> String {

@@ -16,8 +16,7 @@ struct SettingsTab: View {
                 Form {
                     sourceSection($model)
                     liveActivitySection
-                    widgetsSection
-                    watchSection
+                    devicesSection
                     aboutSection
                 }
                 .scrollContentBackground(.hidden)
@@ -56,80 +55,24 @@ struct SettingsTab: View {
             .tint(TRTheme.indigo)
             .accessibilityIdentifier("tr.settings.macSyncToggle")
             if self.model.isMacSyncEnabled {
-                LabeledContent(TRL10n.t("settings.sync.automatic")) {
-                    Label(
-                        TRL10n.t("settings.sync.automatic_on"),
-                        systemImage: "checkmark.circle.fill"
-                    )
-                    .foregroundStyle(TRTheme.success)
-                }
-                Text(TRL10n.t("settings.sync.automatic_detail"))
-                    .font(.caption)
-                    .foregroundStyle(TRTheme.textDim)
-                LabeledContent(TRL10n.t("settings.sync.health.icloud")) {
-                    Label(iCloudHealthText, systemImage: iCloudHealthIcon)
-                        .foregroundStyle(iCloudHealthColor)
-                }
-                LabeledContent(TRL10n.t("settings.sync.health.key")) {
-                    Label(syncKeyHealthText, systemImage: syncKeyHealthIcon)
-                        .foregroundStyle(syncKeyHealthColor)
-                }
-                LabeledContent(TRL10n.t("settings.sync.health.snapshot")) {
-                    Label(macSnapshotHealthText, systemImage: macSnapshotHealthIcon)
-                        .foregroundStyle(macSnapshotHealthColor)
-                }
-                Text(mobileSyncStatus)
-                    .font(.footnote)
-                    .foregroundStyle(TRTheme.textDim)
-                if let checkedAt = self.model.lastAutomaticSyncCheckAt {
-                    LabeledContent(TRL10n.t("settings.sync.last_check")) {
-                        Text(checkedAt.formatted(
-                            Date.FormatStyle.dateTime
-                                .hour()
-                                .minute()
-                                .second()
-                                .locale(TRL10n.locale)
-                        ))
-                        .foregroundStyle(TRTheme.textDim)
+                NavigationLink {
+                    syncDetailsPage
+                } label: {
+                    Label {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(TRL10n.t("settings.sync.details"))
+                            Text(mobileSyncStatus)
+                                .font(.caption)
+                                .foregroundStyle(syncStatusColor)
+                                .lineLimit(2)
+                        }
+                    } icon: {
+                        Image(systemName: syncStatusIcon)
+                            .foregroundStyle(syncStatusColor)
                     }
                 }
-                if let timing = self.model.latestSyncTiming {
-                    LabeledContent(
-                        TRL10n.t("settings.sync.provider_captured")
-                    ) {
-                        Text(timing.providerCapturedAt.formatted(
-                            Date.FormatStyle.dateTime
-                                .hour()
-                                .minute()
-                                .second()
-                                .locale(TRL10n.locale)
-                        ))
-                            .foregroundStyle(TRTheme.textDim)
-                    }
-                    LabeledContent(
-                        TRL10n.t("settings.sync.phone_rendered")
-                    ) {
-                        Text(timing.phoneRenderedAt.formatted(
-                            Date.FormatStyle.dateTime
-                                .hour()
-                                .minute()
-                                .second()
-                                .locale(TRL10n.locale)
-                        ))
-                            .foregroundStyle(TRTheme.textDim)
-                    }
-                }
-                if let summary = self.model.syncLatencySummary {
-                    Text(TRL10n.f(
-                        "settings.sync.latency",
-                        summary.p50Seconds,
-                        summary.p95Seconds,
-                        summary.maximumSeconds,
-                        summary.sampleCount
-                    ))
-                    .font(.caption)
-                    .foregroundStyle(TRTheme.textDim)
-                }
+                .accessibilityIdentifier("tr.settings.syncDetails")
+
                 if case .sourceChangeRequiresConfirmation = self.model.mobileSyncState {
                     Button(TRL10n.t("settings.macsync.confirm")) {
                         self.model.acceptPendingMacSource()
@@ -155,9 +98,104 @@ struct SettingsTab: View {
             }
         } header: {
             Text(TRL10n.t("settings.section.source"))
-        } footer: {
-            Text(TRL10n.t("settings.demo.footer"))
         }
+    }
+
+    private var syncDetailsPage: some View {
+        Form {
+            Section(TRL10n.t("settings.sync.section.health")) {
+                LabeledContent(TRL10n.t("settings.sync.automatic")) {
+                    Label(
+                        TRL10n.t("settings.sync.automatic_on"),
+                        systemImage: "checkmark.circle.fill"
+                    )
+                    .foregroundStyle(TRTheme.success)
+                }
+                Text(TRL10n.t("settings.sync.automatic_detail"))
+                    .font(.caption)
+                    .foregroundStyle(TRTheme.textDim)
+                LabeledContent(TRL10n.t("settings.sync.health.icloud")) {
+                    Label(iCloudHealthText, systemImage: iCloudHealthIcon)
+                        .foregroundStyle(iCloudHealthColor)
+                }
+                .accessibilityIdentifier("tr.settings.sync.health.icloud")
+                LabeledContent(TRL10n.t("settings.sync.health.key")) {
+                    Label(syncKeyHealthText, systemImage: syncKeyHealthIcon)
+                        .foregroundStyle(syncKeyHealthColor)
+                }
+                LabeledContent(TRL10n.t("settings.sync.health.snapshot")) {
+                    Label(macSnapshotHealthText, systemImage: macSnapshotHealthIcon)
+                        .foregroundStyle(macSnapshotHealthColor)
+                }
+                Text(mobileSyncStatus)
+                    .font(.footnote)
+                    .foregroundStyle(syncStatusColor)
+
+                if case .sourceChangeRequiresConfirmation = model.mobileSyncState {
+                    Button(TRL10n.t("settings.macsync.confirm")) {
+                        model.acceptPendingMacSource()
+                    }
+                    .tint(TRTheme.indigo)
+                } else {
+                    Button(
+                        model.mobileSyncState.isFailure
+                            ? TRL10n.t("settings.macsync.retry")
+                            : TRL10n.t("settings.macsync.refresh")
+                    ) {
+                        Task { await model.pullMacSync() }
+                    }
+                    .disabled(model.mobileSyncState == .pulling)
+                }
+            }
+
+            Section(TRL10n.t("settings.sync.section.activity")) {
+                if let checkedAt = model.lastAutomaticSyncCheckAt {
+                    LabeledContent(TRL10n.t("settings.sync.last_check")) {
+                        Text(detailTime(checkedAt))
+                            .foregroundStyle(TRTheme.textDim)
+                    }
+                }
+                if let timing = model.latestSyncTiming {
+                    LabeledContent(TRL10n.t("settings.sync.provider_captured")) {
+                        Text(detailTime(timing.providerCapturedAt))
+                            .foregroundStyle(TRTheme.textDim)
+                    }
+                    LabeledContent(TRL10n.t("settings.sync.phone_rendered")) {
+                        Text(detailTime(timing.phoneRenderedAt))
+                            .foregroundStyle(TRTheme.textDim)
+                    }
+                }
+                if let summary = model.syncLatencySummary {
+                    Text(TRL10n.f(
+                        "settings.sync.latency",
+                        summary.p50Seconds,
+                        summary.p95Seconds,
+                        summary.maximumSeconds,
+                        summary.sampleCount
+                    ))
+                    .font(.caption)
+                    .foregroundStyle(TRTheme.textDim)
+                }
+                if model.lastAutomaticSyncCheckAt == nil,
+                   model.latestSyncTiming == nil,
+                   model.syncLatencySummary == nil {
+                    Text(TRL10n.t("settings.sync.health.pending"))
+                        .foregroundStyle(TRTheme.textDim)
+                }
+            }
+
+            Section(TRL10n.t("settings.section.about")) {
+                Text(TRL10n.t("settings.demo.footer"))
+                    .font(.footnote)
+                    .foregroundStyle(TRTheme.textDim)
+            }
+        }
+        .navigationTitle(TRL10n.t("settings.sync.details"))
+        .navigationBarTitleDisplayMode(.inline)
+        .scrollContentBackground(.hidden)
+        .background(TRTheme.ink)
+        .toolbar(.visible, for: .navigationBar)
+        .tint(TRTheme.indigo)
     }
 
     // MARK: - 实时活动
@@ -237,6 +275,36 @@ struct SettingsTab: View {
         case .untrustedRemotePayload, .localReplayStateUnavailable:
             return TRL10n.t("settings.sync.error.security")
         }
+    }
+
+    private var syncStatusIcon: String {
+        switch model.mobileSyncState {
+        case .synced: "checkmark.circle.fill"
+        case .failed: "exclamationmark.triangle.fill"
+        case .sourceChangeRequiresConfirmation: "desktopcomputer.trianglebadge.exclamationmark"
+        case .pulling: "arrow.triangle.2.circlepath"
+        case .waitingForMac, .waitingForKey: "clock"
+        case .off: "circle"
+        }
+    }
+
+    private var syncStatusColor: Color {
+        switch model.mobileSyncState {
+        case .synced: TRTheme.success
+        case .failed, .sourceChangeRequiresConfirmation: TRTheme.warning
+        case .pulling: TRTheme.indigo
+        case .waitingForMac, .waitingForKey, .off: TRTheme.textDim
+        }
+    }
+
+    private func detailTime(_ date: Date) -> String {
+        date.formatted(
+            Date.FormatStyle.dateTime
+                .hour()
+                .minute()
+                .second()
+                .locale(TRL10n.locale)
+        )
     }
 
     private var iCloudHealthText: String {
@@ -326,11 +394,39 @@ struct SettingsTab: View {
 
     /// Purely informational. Widgets and controls are added in system UI, so there
     /// are no fake in-app toggles pretending otherwise.
-    private var widgetsSection: some View {
-        Section(TRL10n.t("settings.section.widgets")) {
-            howTo("square.grid.2x2", TRL10n.t("settings.widgets.home"))
-            howTo("lock", TRL10n.t("settings.widgets.lock"))
-            howTo("button.horizontal.top.press", TRL10n.t("settings.widgets.control"))
+    private var devicesSection: some View {
+        Section(TRL10n.t("settings.section.devices")) {
+            NavigationLink {
+                widgetsDetailsPage
+            } label: {
+                Label {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(TRL10n.t("settings.section.widgets"))
+                        Text(TRL10n.t("settings.widgets.subtitle"))
+                            .font(.caption)
+                            .foregroundStyle(TRTheme.textDim)
+                    }
+                } icon: {
+                    Image(systemName: "square.grid.2x2")
+                        .foregroundStyle(TRTheme.indigo)
+                }
+            }
+
+            NavigationLink {
+                watchDetailsPage
+            } label: {
+                Label {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(TRL10n.t("settings.section.watch"))
+                        Text(watchSummary)
+                            .font(.caption)
+                            .foregroundStyle(TRTheme.textDim)
+                    }
+                } icon: {
+                    Image(systemName: "applewatch")
+                        .foregroundStyle(TRTheme.indigo)
+                }
+            }
         }
     }
 
@@ -345,52 +441,121 @@ struct SettingsTab: View {
         }
     }
 
-    // MARK: - Apple Watch
-
-    private var watchSection: some View {
-        Section(TRL10n.t("settings.section.watch")) {
-            let status = model.watchStatus
-            if status.isSupported {
-                LabeledContent(TRL10n.t("settings.section.watch")) {
-                    Text(status.isPaired ? TRL10n.t("settings.watch.paired") : TRL10n.t("settings.watch.notpaired"))
-                        .foregroundStyle(TRTheme.textDim)
-                }
-                Text(status.isWatchAppInstalled
-                    ? TRL10n.t("settings.watch.installed")
-                    : TRL10n.t("settings.watch.notinstalled"))
-                    .font(.footnote)
-                    .foregroundStyle(TRTheme.textDim)
-                Text(status.lastPushedAt.map {
-                    TRL10n.f("settings.watch.lastsync", UsageFormatting.freshnessDescription(since: $0, now: Date()))
-                } ?? TRL10n.t("settings.watch.neversync"))
-                    .font(.footnote)
-                    .foregroundStyle(TRTheme.textDim)
-            } else {
-                Text(TRL10n.t("settings.watch.unsupported"))
-                    .font(.footnote)
-                    .foregroundStyle(TRTheme.textDim)
+    private var widgetsDetailsPage: some View {
+        Form {
+            Section {
+                howTo("square.grid.2x2", TRL10n.t("settings.widgets.home"))
+                howTo("lock", TRL10n.t("settings.widgets.lock"))
+                howTo("button.horizontal.top.press", TRL10n.t("settings.widgets.control"))
             }
         }
+        .navigationTitle(TRL10n.t("settings.section.widgets"))
+        .navigationBarTitleDisplayMode(.inline)
+        .scrollContentBackground(.hidden)
+        .background(TRTheme.ink)
+        .toolbar(.visible, for: .navigationBar)
+        .tint(TRTheme.indigo)
+    }
+
+    // MARK: - Apple Watch
+
+    private var watchDetailsPage: some View {
+        Form {
+            Section {
+                watchDetails
+            }
+        }
+        .navigationTitle(TRL10n.t("settings.section.watch"))
+        .navigationBarTitleDisplayMode(.inline)
+        .scrollContentBackground(.hidden)
+        .background(TRTheme.ink)
+        .toolbar(.visible, for: .navigationBar)
+        .tint(TRTheme.indigo)
+    }
+
+    @ViewBuilder
+    private var watchDetails: some View {
+        let status = model.watchStatus
+        if status.isSupported {
+            LabeledContent(TRL10n.t("settings.section.watch")) {
+                Text(status.isPaired ? TRL10n.t("settings.watch.paired") : TRL10n.t("settings.watch.notpaired"))
+                    .foregroundStyle(TRTheme.textDim)
+            }
+            Text(status.isWatchAppInstalled
+                ? TRL10n.t("settings.watch.installed")
+                : TRL10n.t("settings.watch.notinstalled"))
+                .font(.footnote)
+                .foregroundStyle(TRTheme.textDim)
+            Text(status.lastPushedAt.map {
+                TRL10n.f("settings.watch.lastsync", UsageFormatting.freshnessDescription(since: $0, now: Date()))
+            } ?? TRL10n.t("settings.watch.neversync"))
+                .font(.footnote)
+                .foregroundStyle(TRTheme.textDim)
+        } else {
+            Text(TRL10n.t("settings.watch.unsupported"))
+                .font(.footnote)
+                .foregroundStyle(TRTheme.textDim)
+        }
+    }
+
+    private var watchSummary: String {
+        let status = model.watchStatus
+        guard status.isSupported else {
+            return TRL10n.t("settings.watch.unsupported")
+        }
+        return status.isPaired
+            ? TRL10n.t("settings.watch.paired")
+            : TRL10n.t("settings.watch.notpaired")
     }
 
     // MARK: - 关于
 
     private var aboutSection: some View {
         Section(TRL10n.t("settings.section.about")) {
-            LabeledContent(TRL10n.t("settings.version")) {
-                Text(Self.version).foregroundStyle(TRTheme.textDim)
+            NavigationLink {
+                aboutDetailsPage
+            } label: {
+                Label(TRL10n.t("settings.about.title"), systemImage: "info.circle")
             }
-            Text(TRL10n.t("privacy.statement"))
-                .font(.footnote)
-                .foregroundStyle(TRTheme.textDim)
-                .accessibilityIdentifier("tr.settings.privacy")
+            .accessibilityIdentifier("tr.settings.about")
         }
+    }
+
+    private var aboutDetailsPage: some View {
+        Form {
+            Section {
+                LabeledContent(TRL10n.t("settings.version")) {
+                    Text(Self.version).foregroundStyle(TRTheme.textDim)
+                }
+            }
+            Section {
+                Text(TRL10n.t("privacy.statement"))
+                    .font(.footnote)
+                    .foregroundStyle(TRTheme.textDim)
+                    .accessibilityIdentifier("tr.settings.privacy")
+            }
+        }
+        .navigationTitle(TRL10n.t("settings.about.title"))
+        .navigationBarTitleDisplayMode(.inline)
+        .scrollContentBackground(.hidden)
+        .background(TRTheme.ink)
+        .toolbar(.visible, for: .navigationBar)
+        .tint(TRTheme.indigo)
     }
 
     private static var version: String {
         let short = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
         return "\(short) (\(build))"
+    }
+}
+
+private extension MobileSyncState {
+    var isFailure: Bool {
+        if case .failed = self {
+            return true
+        }
+        return false
     }
 }
 

@@ -120,9 +120,12 @@ final class AppModel {
         // and independent of whatever the previous run persisted.
         let launchScenario = Self.launchScenario(in: arguments)
         let forcedNone = arguments.contains("-tr-origin-none")
+        let forcedMacSync = arguments.contains("-tr-origin-macsync")
         let resolvedOrigin: SnapshotOrigin
         if forcedNone {
             resolvedOrigin = .none
+        } else if forcedMacSync {
+            resolvedOrigin = .macSync
         } else if launchScenario != nil {
             resolvedOrigin = .demo
         } else {

@@ -295,8 +295,8 @@ struct OverviewProviderWindowRow: View {
     }
 }
 
-/// Displays only real, bounded public posts previously curated by the Mac. An
-/// empty feed is explicit: iPhone never invents posts or contacts X directly.
+/// Displays only real, bounded public posts ranked by the owner-managed
+/// broadcast service. iPhone never invents posts or contacts X directly.
 struct CuratedFeedWidget: View {
     let feed: SyncedCuratedFeed?
 
@@ -325,6 +325,7 @@ struct CuratedFeedWidget: View {
                         Link(destination: post.url) {
                             postRow(post)
                         }
+                        .buttonStyle(.plain)
                         .accessibilityIdentifier("tr.overview.feed.post.\(post.id)")
                         .accessibilityLabel("\(post.displayName)：\(post.text)")
                         .accessibilityHint(TRL10n.t("overview.feed.open.hint"))
@@ -346,31 +347,52 @@ struct CuratedFeedWidget: View {
                 .fill(priorityColor(post.priority))
                 .frame(width: 7, height: 7)
                 .padding(.top, 5)
-            VStack(alignment: .leading, spacing: 3) {
-                TRAdaptiveRow(spacing: 5) {
-                    Text(post.displayName)
-                        .font(.system(.caption, design: .monospaced).weight(.semibold))
-                        .foregroundStyle(TRTheme.text)
-                    Text("@\(post.username)")
-                        .font(.caption2)
-                        .foregroundStyle(TRTheme.textMute)
-                    Spacer(minLength: 6)
-                    Text(post.createdAt, style: .relative)
-                        .font(.caption2)
-                        .foregroundStyle(TRTheme.textMute)
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(alignment: .top, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(post.displayName)
+                            .font(.system(.caption, design: .monospaced).weight(.semibold))
+                            .foregroundStyle(TRTheme.text)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                        Text("@\(post.username)")
+                            .font(.caption2)
+                            .foregroundStyle(TRTheme.textMute)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .layoutPriority(1)
+
+                    HStack(spacing: 6) {
+                        Text(post.createdAt, style: .relative)
+                            .font(.caption2)
+                            .foregroundStyle(TRTheme.textMute)
+                        Image(systemName: "arrow.up.right")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(TRTheme.textMute)
+                            .accessibilityHidden(true)
+                    }
+                    .fixedSize(horizontal: true, vertical: false)
                 }
-                Text(post.text)
+
+                Text(Self.normalizedPostText(post.text))
                     .font(.footnote)
                     .foregroundStyle(TRTheme.textDim)
                     .lineLimit(3)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            Image(systemName: "arrow.up.right")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(TRTheme.textMute)
-                .padding(.top, 3)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
+    }
+
+    static func normalizedPostText(_ text: String) -> String {
+        text.split(whereSeparator: \.isWhitespace).joined(separator: " ")
     }
 
     private func priorityColor(_ priority: SyncedCuratedPost.Priority) -> Color {
