@@ -2,12 +2,13 @@ import { bearerToken, constantTimeEqual, HttpError, json, readJSON } from "./htt
 import type { AdminFeedItem } from "./validation";
 import type { Env, FeedItemRow } from "./types";
 import { enqueueItemBroadcast } from "./push";
+import { rankFeedItems } from "./selection";
 import { validateAdminFeedItem } from "./validation";
 
 export async function getFeed(env: Env): Promise<Response> {
   const result = await env.DB.prepare(
     `SELECT id, text, author_username, author_display_name, published_at, url,
-            priority, tier, likes, reposts, replies, status
+            priority, tier, likes, reposts, replies, selection_score, status
      FROM feed_items
      WHERE status = 'published'
        AND datetime(published_at) >= datetime('now', '-14 days')
@@ -16,7 +17,7 @@ export async function getFeed(env: Env): Promise<Response> {
   ).all<FeedItemRow>();
 
   const response = json({
-    items: result.results.map(publicFeedItem),
+    items: rankFeedItems(result.results).map(publicFeedItem),
   });
   response.headers.set("cache-control", "public, max-age=60, stale-while-revalidate=300");
   return response;

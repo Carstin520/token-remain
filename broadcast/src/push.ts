@@ -104,7 +104,7 @@ async function consumePush(job: PushJob, env: Env): Promise<void> {
   const item = delivery.item_id
     ? await env.DB.prepare(
       `SELECT id, text, author_username, author_display_name, published_at, url,
-              priority, tier, likes, reposts, replies, status
+              priority, tier, likes, reposts, replies, selection_score, status
        FROM feed_items WHERE id = ? AND status = 'published'`,
     )
       .bind(delivery.item_id)

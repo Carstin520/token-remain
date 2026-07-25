@@ -1,7 +1,7 @@
 import Foundation
 import TokenRemainSyncKit
 
-/// Main-app-only persistence for decrypted public X links. The feed never enters
+/// Main-app-only persistence for owner-curated public X links. The feed never enters
 /// the App Group, Widget, Live Activity, or Watch snapshot surfaces.
 struct MobileCuratedFeedStore: Sendable {
     private let directory: URL

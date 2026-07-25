@@ -26,9 +26,7 @@ final class AIFeedStore: ObservableObject {
         if let cached = cache.load() {
             let now = Date()
             let earliest = now.addingTimeInterval(-14 * 24 * 60 * 60)
-            posts = AIFeedPost.sortedForDisplay(
-                cached.posts.filter { $0.createdAt >= earliest && $0.createdAt <= now }
-            )
+            posts = cached.posts.filter { $0.createdAt >= earliest && $0.createdAt <= now }
             lastUpdated = cached.lastUpdated
         }
 
@@ -67,7 +65,7 @@ final class AIFeedStore: ObservableObject {
     }
 
     var topStories: [AIFeedPost] {
-        Array(AIFeedCollectionPolicy.sortForTrending(posts).prefix(2))
+        Array(posts.prefix(2))
     }
 
     var sourceTitle: String {
@@ -154,7 +152,9 @@ final class AIFeedStore: ObservableObject {
         do {
             let fetched = try await CuratedFeedService(endpoint: endpoint).fetch()
             let now = Date()
-            posts = Array(AIFeedPost.sortedForDisplay(fetched).prefix(50))
+            // The broadcast API owns compact-feed relevance and momentum
+            // ranking so every Apple client shows the same featured order.
+            posts = Array(fetched.prefix(50))
             lastUpdated = now
             errorMessage = nil
             cache.save(
