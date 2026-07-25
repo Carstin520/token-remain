@@ -12,9 +12,9 @@
 ![Apple Silicon](https://img.shields.io/badge/Apple_Silicon-arm64-7C5CFF)
 ![Companion](https://img.shields.io/badge/iPhone_·_Widgets_·_Watch-1F2933?logo=apple&logoColor=white)
 ![Notarized](https://img.shields.io/badge/Apple-Notarized-34C759?logo=apple&logoColor=white)
-![Latest](https://img.shields.io/badge/latest-v1.1.3-22D3EE)
+![Latest](https://img.shields.io/badge/latest-v1.1.4-22D3EE)
 
-**当前最新版本 `v1.1.3`**（build 5，Apple 已公证并装订）
+**当前最新版本 `v1.1.4`**（build 6，Apple 已公证并装订）
 
 [官网 / 下载](https://tokenremain.com) · [隐私政策](https://tokenremain.com/privacy) · [支持](https://tokenremain.com/support) · [问题反馈](https://github.com/Carstin520/token-remain/issues)
 
@@ -153,7 +153,7 @@ bash ./script/build_and_run.sh --verify
 
 ## 📦 当前发布
 
-- **版本**：`v1.1.3`（build 5）——App 与 DMG 均已 Apple 公证、装订并通过 Gatekeeper 校验。
+- **版本**：`v1.1.4`（build 6）——App 与 DMG 均已 Apple 公证、装订并通过 Gatekeeper 校验。
 - **平台**：macOS 14 Sonoma 及以上，仅 Apple Silicon（arm64），暂无 Intel 构建。
 - **分发**：公开 DMG 已 Developer ID 签名并经 Apple 公证，目前在 Mac App Store 之外分发；iPhone App Store 产品在开发与发布验证完成后再公布。
 - **成本口径**：成本为 API 标价估算，不等于订阅账单；凭证过期时数据会暂停并提示恢复方式。

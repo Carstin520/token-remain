@@ -12,9 +12,9 @@ Remaining quota, reset countdowns and today's cost for Claude Code, Codex, Curso
 ![Apple Silicon](https://img.shields.io/badge/Apple_Silicon-arm64-7C5CFF)
 ![Companion](https://img.shields.io/badge/iPhone_·_Widgets_·_Watch-1F2933?logo=apple&logoColor=white)
 ![Notarized](https://img.shields.io/badge/Apple-Notarized-34C759?logo=apple&logoColor=white)
-![Latest](https://img.shields.io/badge/latest-v1.1.3-22D3EE)
+![Latest](https://img.shields.io/badge/latest-v1.1.4-22D3EE)
 
-**Latest version `v1.1.3`** (build 5, Apple notarized and stapled)
+**Latest version `v1.1.4`** (build 6, Apple notarized and stapled)
 
 [Website / Download](https://tokenremain.com) · [Privacy Policy](https://tokenremain.com/privacy) · [Support](https://tokenremain.com/support) · [Report an issue](https://github.com/Carstin520/token-remain/issues)
 
@@ -153,7 +153,7 @@ The multiplatform project — TokenRemain's Mac / iPhone / Watch apps and the Ho
 
 ## 📦 Current release
 
-- **Version** — `v1.1.3` (build 5). Both the app and the DMG are Apple notarized, stapled and Gatekeeper-accepted.
+- **Version** — `v1.1.4` (build 6). Both the app and the DMG are Apple notarized, stapled and Gatekeeper-accepted.
 - **Platform** — macOS 14 Sonoma or later, Apple Silicon (arm64) only; no Intel build yet.
 - **Distribution** — The public DMG is Developer ID signed and Apple notarized, currently distributed outside the Mac App Store. An iPhone App Store product will be announced only after development and release validation are complete.
 - **Cost figures** — Costs are API list-price estimates, not your subscription bill. When a credential expires, data pauses and the app explains how to restore it.
