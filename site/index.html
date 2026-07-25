@@ -100,11 +100,19 @@ body{
 ::selection{background:var(--violet-dim);color:var(--text)}
 a{color:var(--cyan);text-decoration:none}
 a:hover{text-decoration:underline}
-a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offset:3px;border-radius:2px}
+a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--cyan);outline-offset:3px;border-radius:2px}
+img{max-width:100%}
 
 /* ============ canvas backdrop ============ */
 #bg{position:fixed;inset:0;z-index:0;display:block}
 .page{position:relative;z-index:1}
+
+/* ============ scroll progress ============ */
+#progress{
+  position:fixed;top:0;left:0;height:2px;width:0;z-index:60;
+  background:linear-gradient(90deg,var(--violet),var(--cyan));
+  pointer-events:none;
+}
 
 /* ============ shared ============ */
 .wrap{max-width:1080px;margin:0 auto;padding:0 28px}
@@ -127,15 +135,32 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offse
 .ticked::before{top:-1px;left:-1px;border-top:2px solid var(--border);border-left:2px solid var(--border)}
 .ticked::after{bottom:-1px;right:-1px;border-bottom:2px solid var(--border);border-right:2px solid var(--border)}
 
-/* ============ nav ============ */
-nav{
-  display:flex;align-items:center;justify-content:space-between;
-  padding:22px 0;
+/* card hover: lift + tick brighten (motion-safe only) */
+@media (prefers-reduced-motion:no-preference){
+  .lift{transition:transform .28s cubic-bezier(.2,.7,.3,1),border-color .28s ease,box-shadow .28s ease}
+  .lift:hover{transform:translateY(-3px);border-color:color-mix(in srgb,var(--cyan-dim) 55%,var(--border));box-shadow:0 14px 34px -20px rgba(0,0,0,.9)}
+  .lift.ticked::before,.lift.ticked::after{transition:border-color .28s ease}
+  .lift.ticked:hover::before{border-color:var(--cyan-dim)}
+  .lift.ticked:hover::after{border-color:var(--violet-dim)}
+}
+
+/* ============ topbar ============ */
+.topbar{
+  position:sticky;top:0;z-index:50;
+  background:color-mix(in srgb,var(--ink) 78%,transparent);
+  -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
+  border-bottom:1px solid transparent;
+  transition:border-color .3s ease;
+}
+.topbar.scrolled{border-bottom-color:var(--border)}
+.topbar nav{
+  display:flex;align-items:center;justify-content:space-between;gap:16px;
+  padding:16px 0;
 }
 .wordmark{font-family:var(--mono);font-size:15px;font-weight:700;letter-spacing:.06em;color:var(--text)}
 .wordmark em{font-style:normal;color:var(--violet)}
-nav .links{display:flex;gap:22px;align-items:center;flex-wrap:wrap}
-nav .links a{color:var(--text-dim);font-size:14px}
+nav .links{display:flex;gap:20px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+nav .links a{color:var(--text-dim);font-size:13.5px;white-space:nowrap}
 nav .links a:hover{color:var(--text);text-decoration:none}
 .lang{
   font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.06em;
@@ -144,12 +169,27 @@ nav .links a:hover{color:var(--text);text-decoration:none}
   padding:4px 10px;cursor:pointer;
 }
 .lang:hover{color:var(--cyan);border-color:var(--cyan-dim)}
+.navBtn{
+  display:none;background:var(--surface2);border:1px solid var(--border);border-radius:6px;
+  color:var(--text-dim);font-family:var(--mono);font-size:12px;font-weight:700;
+  padding:5px 11px;cursor:pointer;letter-spacing:.08em;
+}
+@media (max-width:860px){
+  .navBtn{display:inline-flex}
+  nav .links{
+    display:none;position:absolute;top:100%;right:28px;left:28px;
+    background:var(--surface);border:1px solid var(--border);border-radius:10px;
+    padding:16px 18px;flex-direction:column;align-items:flex-start;gap:12px;
+    box-shadow:0 24px 60px -20px rgba(0,0,0,.8);
+  }
+  nav .links.open{display:flex}
+}
 
 /* ============ hero ============ */
 .hero{
   display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);
   gap:48px;align-items:center;
-  min-height:calc(100vh - 88px);
+  min-height:calc(100vh - 148px);
   padding:36px 0 72px;
 }
 .hero h1{
@@ -169,12 +209,12 @@ nav .links a:hover{color:var(--text);text-decoration:none}
   font-family:var(--mono);font-size:14px;font-weight:700;letter-spacing:.02em;
   border-radius:8px;padding:14px 22px;
   display:inline-flex;align-items:center;gap:10px;
-  cursor:pointer;transition:transform .15s ease,background .15s ease,border-color .15s ease;
+  cursor:pointer;transition:transform .15s ease,background .15s ease,border-color .15s ease,box-shadow .2s ease;
 }
 .btn:hover{text-decoration:none;transform:translateY(-1px)}
 .btn:active{transform:translateY(0)}
 .btn-primary{background:var(--cyan);color:var(--ink);border:1px solid var(--cyan)}
-.btn-primary:hover{background:#5CDAE8}
+.btn-primary:hover{background:#5CDAE8;box-shadow:0 8px 28px -10px color-mix(in srgb,var(--cyan) 55%,transparent)}
 .btn-ghost{background:transparent;color:var(--text);border:1px solid var(--border)}
 .btn-ghost:hover{border-color:var(--cyan-dim);color:var(--cyan)}
 .btn svg{flex:none}
@@ -220,7 +260,7 @@ nav .links a:hover{color:var(--text);text-decoration:none}
   box-shadow:0 18px 40px -18px rgba(0,0,0,.8);
   white-space:nowrap;
 }
-.chip i{width:6px;height:6px;border-radius:1.5px}
+.chip:not(.mb) .brand-logo{width:15px;height:15px}
 .chip .v{color:var(--text);font-variant-numeric:tabular-nums}
 .chip.mb{padding:5px 10px;background:rgba(7,11,18,.92)}
 .chip.mb img{height:24px;width:auto;display:block}
@@ -230,12 +270,14 @@ nav .links a:hover{color:var(--text);text-decoration:none}
 .chip4{bottom:-42px;right:-3%;transform:translateZ(110px)}
 
 /* ============ sections ============ */
-section{padding:76px 0}
+section{padding:84px 0}
 .eyebrow{
   font-family:var(--mono);font-size:12px;font-weight:700;
   letter-spacing:.2em;text-transform:uppercase;color:var(--cyan);
-  margin-bottom:14px;
+  margin-bottom:14px;display:flex;align-items:center;gap:12px;
 }
+.eyebrow::before{content:attr(data-num);color:var(--text-mute);letter-spacing:.1em}
+.eyebrow::after{content:"";height:1px;width:36px;background:var(--cyan-dim);opacity:.55}
 h2{font-size:clamp(24px,3vw,32px);font-weight:700;letter-spacing:-.01em;text-wrap:balance;margin-bottom:14px}
 .lede{color:var(--text-dim);max-width:40em;margin-bottom:40px}
 .lede a{color:var(--cyan-dim)}
@@ -248,9 +290,13 @@ figure.shot.widgets{display:grid;gap:12px}
 figure.shot.widgets img{border-radius:16px}
 figure.shot{
   background:var(--surface);border:1px solid var(--border);border-radius:12px;
-  padding:12px;margin:0;
+  padding:12px;margin:0;overflow:hidden;
 }
 figure.shot img{width:100%;height:auto;display:block;border-radius:8px}
+@media (prefers-reduced-motion:no-preference){
+  figure.shot img{transition:transform .5s cubic-bezier(.2,.7,.3,1)}
+  figure.shot:hover img{transform:scale(1.015)}
+}
 figure.shot figcaption{
   display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;
   padding:12px 6px 2px;
@@ -268,8 +314,12 @@ figure.shot figcaption .cap{color:var(--text-dim);font-size:13.5px}
   padding:16px 16px 14px;
 }
 .prov .pn{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-weight:700;font-size:13.5px;margin-bottom:5px}
-.prov .pn i{width:7px;height:7px;border-radius:2px;flex:none;background:var(--text-mute)}
-.prov .pn svg{flex:none}
+.brand-logo{
+  width:18px;height:18px;display:block;object-fit:contain;flex:none;
+}
+.brand-logo.mono{
+  filter:brightness(0) invert(1);opacity:.9;
+}
 .prov p{color:var(--text-dim);font-size:12.5px;line-height:1.55}
 .prov p code{font-family:var(--mono);font-size:11px;color:var(--cyan-dim)}
 .prov .mode{
@@ -283,20 +333,88 @@ figure.shot figcaption .cap{color:var(--text-dim);font-size:13.5px}
   background:linear-gradient(135deg,color-mix(in srgb,var(--surface2) 65%,var(--surface)),var(--surface) 72%);
 }
 .prov.featp .pn{font-size:15px;gap:10px;margin-bottom:2px}
+.prov.featp .brand-logo{width:20px;height:20px}
 .prov.featp p{font-size:13.5px}
 .minibar{display:flex;gap:3px;height:7px;margin:12px 0 10px}
 .minibar b{flex:1;border-radius:2px;background:var(--track)}
 .prov.wide{grid-column:1/-1;display:flex;gap:18px;align-items:baseline;flex-wrap:wrap}
 .prov.wide .pn{margin-bottom:0}
 .prov.wide .names{display:flex;gap:8px;flex-wrap:wrap}
-.prov.wide .names span{
+.prov.wide .names>span{
   font-family:var(--mono);font-size:11.5px;font-weight:600;color:var(--text-dim);
   background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:2px 8px;
+  display:inline-flex;align-items:center;gap:6px;
 }
+.prov.wide .names .brand-logo{width:14px;height:14px}
 .prov-note{color:var(--text-mute);font-size:13px;margin-top:16px}
 .prov-note code{font-family:var(--mono);font-size:12px;color:var(--cyan-dim)}
 
-/* privacy — verifiable facts checklist */
+/* ============ AI feed ============ */
+.feed-split{display:grid;grid-template-columns:minmax(0,6fr) minmax(0,6fr);gap:44px;align-items:start}
+.feed-facts{display:grid;gap:14px}
+.fact{
+  background:var(--surface);border:1px solid var(--border);border-radius:10px;
+  padding:18px 20px;display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:start;
+}
+.fact .fk{
+  font-family:var(--mono);font-size:10px;font-weight:800;letter-spacing:.14em;
+  color:var(--cyan);border:1px solid color-mix(in srgb,var(--cyan-dim) 50%,transparent);
+  border-radius:4px;padding:2px 8px;white-space:nowrap;transform:translateY(3px);
+}
+.fact h3{font-size:15px;font-weight:700;margin-bottom:4px}
+.fact p{color:var(--text-dim);font-size:13.5px}
+.fact p code{font-family:var(--mono);font-size:11.5px;color:var(--cyan-dim)}
+/* mock panel */
+.feed-panel{
+  background:var(--surface);border:1px solid var(--border);border-radius:14px;
+  overflow:hidden;box-shadow:0 30px 70px -30px rgba(0,0,0,.8);
+}
+.feed-head{
+  display:flex;align-items:center;gap:10px;
+  padding:13px 18px;border-bottom:1px solid var(--border);
+  background:color-mix(in srgb,var(--surface2) 70%,var(--surface));
+}
+.feed-head .ttl{font-family:var(--mono);font-size:13px;font-weight:800;letter-spacing:.08em}
+.feed-head .live{
+  font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.14em;
+  color:var(--text-mute);margin-left:auto;display:flex;align-items:center;gap:6px;
+}
+.feed-head .live i{width:5px;height:5px;border-radius:50%;background:var(--success)}
+@media (prefers-reduced-motion:no-preference){
+  .feed-head .live i{animation:pulse 2.4s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+}
+.feed-item{padding:15px 18px;border-bottom:1px solid color-mix(in srgb,var(--border) 55%,transparent)}
+.feed-item:last-of-type{border-bottom:none}
+.feed-item .fi-top{display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap}
+.feed-item .pri{
+  font-family:var(--mono);font-size:9px;font-weight:800;letter-spacing:.13em;
+  border-radius:4px;padding:1.5px 7px;white-space:nowrap;
+}
+.pri.reset{color:var(--ink);background:var(--cyan)}
+.pri.major{color:#fff;background:var(--violet-dim)}
+.pri.norm{color:var(--text-mute);border:1px solid var(--border)}
+.feed-item .who{font-family:var(--mono);font-size:11.5px;font-weight:700;color:var(--text)}
+.feed-item .hnd{font-family:var(--mono);font-size:11px;color:var(--text-mute)}
+.feed-item .when{font-family:var(--mono);font-size:10.5px;color:var(--text-mute);margin-left:auto}
+.feed-item p{font-size:13.5px;color:var(--text-dim);line-height:1.6}
+.feed-item.pinned{background:color-mix(in srgb,var(--surface2) 55%,var(--surface))}
+.feed-item .fi-note{
+  font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--text-mute);
+  margin-top:7px;display:flex;gap:8px;align-items:center;
+}
+.feed-item .fi-note b{color:var(--cyan-dim);font-weight:700}
+.feed-foot{
+  display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;
+  padding:11px 18px;border-top:1px solid var(--border);
+  font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--text-mute);
+}
+.feed-sample{
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;color:var(--text-mute);
+  margin-top:10px;text-align:right;
+}
+
+/* ============ privacy ============ */
 .pipe-card{
   background:var(--surface);border:1px dashed var(--border);border-radius:10px;
   padding:14px 18px;margin-bottom:20px;
@@ -326,8 +444,135 @@ figure.shot figcaption .cap{color:var(--text-dim);font-size:13.5px}
 .priv h3{font-size:15.5px;font-weight:700}
 .priv p{color:var(--text-dim);font-size:13.5px}
 .priv p code{font-family:var(--mono);font-size:11.5px;color:var(--cyan-dim)}
+/* data ledger — one slim card, three columns */
+.ledger{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin:30px 0 8px;
+  background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;
+}
+.led{
+  padding:18px 20px;display:flex;flex-direction:column;gap:9px;
+  border-right:1px solid color-mix(in srgb,var(--border) 60%,transparent);
+}
+.led:last-child{border-right:none}
+.led .lh{
+  font-family:var(--mono);font-size:10.5px;font-weight:800;letter-spacing:.16em;
+  text-transform:uppercase;display:flex;align-items:center;gap:8px;
+}
+.led .lh i{width:7px;height:7px;border-radius:2px;flex:none}
+.led.stay .lh{color:var(--success)}.led.stay .lh i{background:var(--success)}
+.led.icloud .lh{color:var(--violet)}.led.icloud .lh i{background:var(--violet)}
+.led.server .lh{color:var(--cyan)}.led.server .lh i{background:var(--cyan)}
+.led ul{list-style:none;display:grid;gap:7px}
+.led li{
+  color:var(--text-dim);font-size:13px;line-height:1.55;
+  position:relative;padding-left:14px;
+}
+.led li::before{content:"·";color:var(--text-mute);font-family:var(--mono);position:absolute;left:2px}
+.led li strong{color:var(--text);font-weight:600}
+.led .ln{font-size:11.5px;color:var(--text-mute);margin-top:auto;padding-top:6px;border-top:1px dashed color-mix(in srgb,var(--border) 70%,transparent)}
+.priv-ctrl{
+  display:flex;gap:10px;flex-wrap:wrap;margin-top:26px;align-items:center;
+}
+.priv-ctrl .pc{
+  font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.06em;
+  color:var(--text-dim);background:var(--surface2);
+  border:1px solid var(--border);border-radius:5px;padding:5px 11px;
+  display:inline-flex;gap:7px;align-items:center;
+}
+.priv-ctrl .pc b{color:var(--success);font-weight:800}
+.priv-ctrl .more{font-size:13px;color:var(--cyan-dim);margin-left:auto}
 
-/* limitations — side-by-side split */
+/* ============ brand — one interactive "character lab" ============ */
+.lab{
+  background:var(--surface);border:1px solid var(--border);border-radius:14px;
+  overflow:hidden;margin-bottom:14px;
+}
+.lab-stage{
+  position:relative;display:flex;align-items:center;justify-content:center;gap:52px;
+  padding:40px 30px 34px;flex-wrap:wrap;
+  background:radial-gradient(ellipse 60% 90% at 62% 45%,color-mix(in srgb,var(--violet-dim) 20%,transparent),transparent 70%);
+}
+.lab-stage::after{ /* CRT scanlines */
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(7,11,18,.22) 3px 4px);
+}
+.lab-stage img{
+  width:190px;height:auto;position:relative;z-index:1;
+  filter:drop-shadow(0 24px 44px rgba(0,0,0,.55));
+}
+@media (prefers-reduced-motion:no-preference){
+  .lab-stage img{transition:transform .25s ease}
+  .lab-stage img.tick{transform:scale(1.05)}
+}
+.lab-read{position:relative;z-index:1;display:grid;gap:14px;justify-items:start}
+.mood-state{
+  display:flex;align-items:center;gap:12px;
+  font-family:var(--mono);font-weight:700;letter-spacing:.06em;
+}
+.mood-state .pct{font-size:30px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--text)}
+.mood-state .st{
+  border-radius:5px;padding:2px 10px;font-size:11px;letter-spacing:.12em;
+  display:inline-flex;gap:6px;align-items:center;
+}
+.mood-state .st.ok{color:var(--success);border:1px solid color-mix(in srgb,var(--success) 45%,transparent)}
+.mood-state .st.warn{color:var(--warning);border:1px solid color-mix(in srgb,var(--warning) 45%,transparent)}
+.mood-state .st.bad{color:var(--danger);border:1px solid color-mix(in srgb,var(--danger) 45%,transparent)}
+.mood-state .st.off{color:var(--text-mute);border:1px solid var(--border)}
+.mood-bar{display:flex;gap:4px;height:9px;width:min(230px,58vw)}
+.mood-bar b{flex:1;border-radius:2px;background:var(--track)}
+.mood-slider{width:min(230px,58vw);accent-color:var(--violet)}
+.mood-hint{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;color:var(--text-mute)}
+/* sprite-sheet selector: the 11 full-body states ARE the buttons */
+.lab-strip{display:flex;border-top:1px solid var(--border);overflow-x:auto;scrollbar-width:thin}
+.lab-strip button{
+  flex:1 0 62px;background:transparent;border:none;cursor:pointer;
+  border-right:1px solid color-mix(in srgb,var(--border) 55%,transparent);
+  padding:10px 4px 8px;text-align:center;
+}
+.lab-strip button:last-child{border-right:none}
+.lab-strip img{width:52px;height:auto;display:block;margin:0 auto}
+.lab-strip .sp{font-family:var(--mono);font-size:9.5px;font-weight:700;color:var(--text-mute);display:block;margin-top:4px}
+.lab-strip button[aria-pressed="true"]{
+  background:color-mix(in srgb,var(--violet-dim) 16%,transparent);
+  box-shadow:inset 0 2px 0 var(--violet);
+}
+.lab-strip button[aria-pressed="true"] .sp{color:var(--violet)}
+@media (prefers-reduced-motion:no-preference){
+  .lab-strip button{transition:background .2s ease}
+  .lab-strip button:hover{background:color-mix(in srgb,var(--surface2) 70%,transparent)}
+  .lab-strip button:hover img{transform:translateY(-2px)}
+  .lab-strip img{transition:transform .2s ease}
+}
+/* specimen tray: every other brand surface, one thin row */
+.tray{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.tray .sp-item{
+  background:var(--surface);border:1px solid var(--border);border-radius:10px;
+  padding:10px 8px 8px;text-align:center;
+}
+.tray .box{
+  height:66px;display:flex;align-items:center;justify-content:center;
+  border-radius:7px;margin-bottom:7px;background:var(--surface2);overflow:hidden;
+}
+.tray .box.split{background:linear-gradient(105deg,#0A0F18 0 50%,#F2F4F8 50% 100%)}
+.tray .box.inkbg{background:var(--ink)}
+.tray img.appic{width:52px;height:52px;border-radius:12px}
+.tray img.mbimg{height:26px;width:auto;image-rendering:pixelated}
+.tray img.mark{width:44px;height:44px}
+.tray img.mascotg{width:56px;height:56px;image-rendering:pixelated}
+.tray .wm{font-family:var(--mono);font-weight:800;font-size:14px;letter-spacing:.02em}
+.tray .wm em{font-style:normal;color:var(--violet)}
+.tray .lb{
+  font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--text-mute);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.tray .sub{
+  font-family:var(--mono);font-size:8.5px;letter-spacing:.08em;
+  color:color-mix(in srgb,var(--text-mute) 72%,transparent);
+  display:block;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.brand-note{color:var(--text-mute);font-size:13px;margin-top:16px}
+
+/* ============ limitations — side-by-side split ============ */
 .split{display:grid;grid-template-columns:minmax(240px,5fr) minmax(0,7fr);gap:48px;align-items:start}
 .split .lede{margin-bottom:0}
 .limit-card{
@@ -357,7 +602,7 @@ figure.shot figcaption .cap{color:var(--text-dim);font-size:13.5px}
   transform:translateY(-1px);
 }
 
-/* features — four compact */
+/* ============ features — four compact ============ */
 .feat-sub{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
 .feat{
   background:var(--surface);border:1px solid var(--border);border-radius:10px;
@@ -374,8 +619,9 @@ figure.shot figcaption .cap{color:var(--text-dim);font-size:13.5px}
 .feat h3{font-size:16.5px;font-weight:700;margin-bottom:8px}
 .feat p{color:var(--text-dim);font-size:14.5px}
 .feat p code{font-family:var(--mono);font-size:12.5px;color:var(--cyan);background:var(--surface2);padding:1px 6px;border-radius:4px}
+.feat p a{color:var(--cyan-dim)}
 
-/* install steps — connected timeline, numbering carries the sequence */
+/* ============ install steps ============ */
 .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:34px;counter-reset:step}
 .step{
   background:var(--surface);border:1px solid var(--border);border-radius:10px;
@@ -394,7 +640,7 @@ figure.shot figcaption .cap{color:var(--text-dim);font-size:13.5px}
 .step p{color:var(--text-dim);font-size:14px}
 .step p code{font-family:var(--mono);font-size:12.5px;color:var(--text);background:var(--surface2);padding:1px 6px;border-radius:4px}
 
-/* repo band */
+/* ============ repo band ============ */
 .repo-band{
   display:flex;align-items:center;justify-content:space-between;gap:24px;
   background:linear-gradient(120deg,color-mix(in srgb,var(--violet-dim) 22%,var(--surface)),var(--surface) 55%);
@@ -429,14 +675,21 @@ footer.site .disclaimer{
   .step:not(:last-child)::after{display:none}
   .prov-grid{grid-template-columns:1fr 1fr}
   .priv-grid{grid-template-columns:1fr 1fr}
+  .ledger{grid-template-columns:1fr}
+  .led{border-right:none;border-bottom:1px solid color-mix(in srgb,var(--border) 60%,transparent)}
+  .led:last-child{border-bottom:none}
   .split{grid-template-columns:1fr;gap:28px}
   .shot-row3{grid-template-columns:1fr}
   .repo-band{padding:28px}
+  .feed-split{grid-template-columns:1fr;gap:30px}
+  .lab-stage{gap:30px;padding:30px 22px 26px}
+  .tray{grid-template-columns:repeat(3,1fr)}
 }
 @media (max-width:560px){
   .feat-sub{grid-template-columns:1fr}
   .prov-grid,.priv-grid{grid-template-columns:1fr}
   .prov.featp{grid-column:span 1}
+  .tray{grid-template-columns:repeat(2,1fr)}
 }
 /* scroll reveal — motion only when allowed */
 @media (prefers-reduced-motion:no-preference){
@@ -452,23 +705,31 @@ footer.site .disclaimer{
 </head>
 <body>
 <canvas id="bg" aria-hidden="true"></canvas>
+<div id="progress" aria-hidden="true"></div>
 
-<div class="page wrap">
+<div class="page">
 
-  <nav>
-    <span class="wordmark">Token<em>Remain</em></span>
-    <span class="links">
-      <a href="#download" data-i18n="nav-dl">Download</a>
-      <a href="#screens" data-i18n="nav-screens">Screens</a>
-      <a href="#providers" data-i18n="nav-providers">Providers</a>
-      <a href="#privacy" data-i18n="nav-privacy">Privacy</a>
-      <a href="/privacy" data-i18n="nav-policy">Privacy Policy</a>
-      <a href="/support" data-i18n="nav-support">Support</a>
-      <a href="#limits" data-i18n="nav-limits">Limits</a>
-      <a href="https://github.com/Carstin520/token-remain" rel="noopener">GitHub</a>
-      <button class="lang" id="langBtn" type="button" aria-label="切换语言 / Switch language">中文</button>
-    </span>
-  </nav>
+  <div class="topbar" id="topbar">
+    <nav class="wrap">
+      <span class="wordmark">Token<em>Remain</em></span>
+      <button class="navBtn" id="navBtn" type="button" aria-expanded="false" aria-controls="navLinks" aria-label="Menu / 菜单">MENU</button>
+      <span class="links" id="navLinks">
+        <a href="#download" data-i18n="nav-dl">Download</a>
+        <a href="#screens" data-i18n="nav-screens">Screens</a>
+        <a href="#providers" data-i18n="nav-providers">Providers</a>
+        <a href="#feed" data-i18n="nav-feed">AI Feed</a>
+        <a href="#privacy" data-i18n="nav-privacy">Privacy</a>
+        <a href="#brand" data-i18n="nav-brand">Brand</a>
+        <a href="#limits" data-i18n="nav-limits">Limits</a>
+        <a href="/privacy" data-i18n="nav-policy">Privacy Policy</a>
+        <a href="/support" data-i18n="nav-support">Support</a>
+        <a href="https://github.com/Carstin520/token-remain" rel="noopener">GitHub</a>
+        <button class="lang" id="langBtn" type="button" aria-label="切换语言 / Switch language">中文</button>
+      </span>
+    </nav>
+  </div>
+
+  <div class="wrap">
 
   <!-- ================= hero ================= -->
   <header class="hero" id="download">
@@ -505,9 +766,9 @@ footer.site .disclaimer{
           <img class="pop-shot" src="assets/popover.png" width="720" height="1464" alt="">
 
           <span class="chip chip1 mb"><img src="assets/menubar.png" width="234" height="70" alt="Menu bar showing Claude 97% and Codex 29%"></span>
-          <span class="chip chip2"><i style="background:var(--cyan-dim)"></i><span data-i18n="chip-grok">Grok weekly</span> <span class="v">58%</span></span>
-          <span class="chip chip3"><i style="background:var(--violet-dim)"></i>GLM <span class="v">77%</span></span>
-          <span class="chip chip4"><i style="background:var(--text-mute)"></i>Copilot <span class="v">91%</span></span>
+          <span class="chip chip2"><img class="brand-logo mono" src="assets/providers/grok.svg" alt=""><span data-i18n="chip-grok">Grok weekly</span> <span class="v">58%</span></span>
+          <span class="chip chip3"><img class="brand-logo mono" src="assets/providers/zai.svg" alt="">GLM <span class="v">77%</span></span>
+          <span class="chip chip4"><img class="brand-logo" src="assets/providers/copilot.svg" alt="">Copilot <span class="v">91%</span></span>
         </div>
       </div>
     </div>
@@ -515,24 +776,24 @@ footer.site .disclaimer{
 
   <!-- ================= screens ================= -->
   <section id="screens">
-    <p class="eyebrow">Real UI</p>
+    <p class="eyebrow" data-num="01">Real UI</p>
     <h2 data-i18n="s-h2">Three screens, one pixel language</h2>
     <p class="lede" data-i18n="s-lede">You've met the menu bar popover above — everything below is a <strong style="color:var(--text)">live screenshot of the latest build</strong>: the desktop Dashboard, the iPhone app and Home Screen widgets.</p>
     <div class="shot-grid">
-      <figure class="shot ticked">
+      <figure class="shot ticked lift">
         <img src="assets/dashboard.jpg" width="1600" height="1065" alt="TokenRemain Dashboard overview: today's usage and cost donut, official quota bars (Claude coral / Codex blue), trending and risk hints" loading="lazy">
         <figcaption><span class="tag" data-i18n="cap-dash-t">Dashboard · Live</span><span class="cap" data-i18n="cap-dash-c">Real local usage: 202.16M tokens and $189.11 estimated cost today, split by provider; official quota progress and risk hints on the right.</span></figcaption>
       </figure>
       <div class="shot-row3">
-        <figure class="shot phone ticked">
+        <figure class="shot phone ticked lift">
           <img src="assets/phone-overview.jpg" width="720" height="1560" alt="TokenRemain iPhone overview: risk card synced from Mac, Claude 98% and Codex 40% bars, today's usage split and 30-day stats" loading="lazy">
           <figcaption><span class="tag" data-i18n="cap-pov-t">iPhone · Overview</span><span class="cap" data-i18n="cap-pov-c">Cross-device sync with your Mac — an allowlisted quota snapshot is encrypted before it enters your private iCloud database.</span></figcaption>
         </figure>
-        <figure class="shot phone ticked">
+        <figure class="shot phone ticked lift">
           <img src="assets/phone-trends.jpg" width="720" height="1560" alt="TokenRemain iPhone trends: daily stacked bars for Claude and Codex, 7/14/30-day ranges, tokens or cost, 1.9B tokens in the last 7 days" loading="lazy">
           <figcaption><span class="tag" data-i18n="cap-ptr-t">iPhone · Trends</span><span class="cap" data-i18n="cap-ptr-c">30 days of real history synced: daily stacks, 7 / 14 / 30-day ranges, tokens or cost.</span></figcaption>
         </figure>
-        <figure class="shot widgets ticked">
+        <figure class="shot widgets ticked lift">
           <img src="assets/widget-m.png" width="1118" height="522" alt="TokenRemain medium Home Screen widget: lowest remaining 40% in pixel LED, robot mascot, Claude and Codex bars, reset countdown" loading="lazy">
           <img src="assets/widget-s.png" width="522" height="503" alt="TokenRemain small Home Screen widget: lowest remaining 40%, per-provider bars and reset countdown" loading="lazy">
           <figcaption><span class="tag" data-i18n="cap-wg-t">Widgets</span><span class="cap" data-i18n="cap-wg-c">Medium and small Home Screen widgets: lowest remaining, per-provider bars and a reset countdown at a glance.</span></figcaption>
@@ -543,67 +804,133 @@ footer.site .disclaimer{
 
   <!-- ================= providers ================= -->
   <section id="providers">
-    <p class="eyebrow">Supported Providers</p>
+    <p class="eyebrow" data-num="02">Supported Providers</p>
     <h2 data-i18n="pv-h2">Supported services</h2>
     <p class="lede" data-i18n="pv-lede">Most services connect <strong style="color:var(--text)">automatically the moment you're signed in</strong>: TokenRemain only reads credentials that already live on your machine — no extra login, no token refreshing. Every card says where its data comes from.</p>
+    <!-- Provider artwork is bundled locally from @lobehub/icons-static-svg 1.94.0. -->
     <div class="prov-grid">
-      <div class="prov featp">
+      <div class="prov featp lift">
         <div class="pn">
-          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-            <g stroke="var(--claude-logo)" stroke-width="2.4" stroke-linecap="round">
-              <line x1="12" y1="12" x2="12" y2="3.2"/><line x1="12" y1="12" x2="12" y2="20.8"/>
-              <line x1="12" y1="12" x2="3.2" y2="12"/><line x1="12" y1="12" x2="20.8" y2="12"/>
-              <line x1="12" y1="12" x2="6.2" y2="6.2"/><line x1="12" y1="12" x2="17.8" y2="17.8"/>
-              <line x1="12" y1="12" x2="6.2" y2="17.8"/><line x1="12" y1="12" x2="17.8" y2="6.2"/>
-            </g>
-          </svg>
+          <img class="brand-logo" src="assets/providers/claude-code.svg" alt="">
           Claude Code<span class="mode">AUTO</span>
         </div>
         <span class="minibar" data-fill="13" data-color="#D97757"></span>
         <p data-i18n="pv-claude-d">Official 5-hour / 7-day windows with reset countdowns. Direct oauth/usage queries, degrading to a PTY probe when credentials misbehave — refresh tokens are never touched.</p>
       </div>
-      <div class="prov featp">
+      <div class="prov featp lift">
         <div class="pn">
-          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-            <defs><linearGradient id="cxg" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stop-color="#C49AF8"/><stop offset=".55" stop-color="#6A78FF"/><stop offset="1" stop-color="#245BFF"/>
-            </linearGradient></defs>
-            <g fill="url(#cxg)">
-              <ellipse cx="12" cy="5.6" rx="3.4" ry="5"/><ellipse cx="12" cy="18.4" rx="3.4" ry="5"/>
-              <ellipse cx="12" cy="5.6" rx="3.4" ry="5" transform="rotate(60 12 12)"/>
-              <ellipse cx="12" cy="18.4" rx="3.4" ry="5" transform="rotate(60 12 12)"/>
-              <ellipse cx="12" cy="5.6" rx="3.4" ry="5" transform="rotate(-60 12 12)"/>
-              <ellipse cx="12" cy="18.4" rx="3.4" ry="5" transform="rotate(-60 12 12)"/>
-            </g>
-            <text x="12" y="14.8" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="7.5" font-weight="800" fill="#fff">&gt;_</text>
-          </svg>
+          <img class="brand-logo" src="assets/providers/codex.svg" alt="">
           Codex<span class="mode">AUTO</span>
         </div>
         <span class="minibar" data-fill="6" data-color="#5C7FD8"></span>
         <p data-i18n="pv-codex-d">Live 5-hour / 7-day windows for the main account. Direct server queries with local snapshot fallback; burn-ahead ETA when you're running hot.</p>
       </div>
-      <div class="prov"><div class="pn"><i style="background:var(--indigo)"></i>Cursor<span class="mode">AUTO</span></div><p data-i18n="pv-cursor-d">Monthly billing-cycle quota and reset countdown. Read-only queries of <code>state.vscdb</code>.</p></div>
-      <div class="prov"><div class="pn"><i style="background:var(--cyan-dim)"></i>Grok<span class="mode">AUTO</span></div><p data-i18n="pv-grok-d">Weekly pool remaining. Reads the Grok CLI's existing credentials.</p></div>
-      <div class="prov"><div class="pn"><i style="background:var(--violet-dim)"></i>Z.ai GLM<span class="mode key">API KEY</span></div><p data-i18n="pv-zai-d">Coding Plan session / weekly windows. The key lives only in your Keychain.</p></div>
-      <div class="prov"><div class="pn"><i></i>Copilot<span class="mode">AUTO</span></div><p data-i18n="pv-copilot-d">Monthly credits. Reads your local GitHub sign-in.</p></div>
-      <div class="prov"><div class="pn"><i></i>Devin<span class="mode">AUTO</span></div><p data-i18n="pv-devin-d">Daily / weekly quotas.</p></div>
-      <div class="prov"><div class="pn"><i></i>OpenRouter<span class="mode key">API KEY</span></div><p data-i18n="pv-or-d">Prepaid credit balance.</p></div>
-      <div class="prov"><div class="pn"><i></i>Antigravity<span class="mode">AUTO</span></div><p data-i18n="pv-ag-d">Quota pools. Reads the local sign-in state.</p></div>
-      <div class="prov"><div class="pn"><i style="background:var(--olive)"></i>OpenCode<span class="mode">LOCAL</span></div><p data-i18n="pv-oc-d">Go plan usage, estimated from a local database scan — fully offline.</p></div>
-      <div class="prov wide">
-        <div class="pn"><i style="background:var(--magenta)"></i><span data-i18n="pv-compat-n">token-monitor compatibility layer</span></div>
+      <div class="prov lift"><div class="pn"><img class="brand-logo mono" src="assets/providers/cursor.svg" alt="">Cursor<span class="mode">AUTO</span></div><p data-i18n="pv-cursor-d">Monthly billing-cycle quota and reset countdown. Read-only queries of <code>state.vscdb</code>.</p></div>
+      <div class="prov lift"><div class="pn"><img class="brand-logo mono" src="assets/providers/grok.svg" alt="">Grok<span class="mode">AUTO</span></div><p data-i18n="pv-grok-d">Weekly pool remaining. Reads the Grok CLI's existing credentials.</p></div>
+      <div class="prov lift"><div class="pn"><img class="brand-logo mono" src="assets/providers/zai.svg" alt="">Z.ai GLM<span class="mode key">API KEY</span></div><p data-i18n="pv-zai-d">Coding Plan session / weekly windows. The key lives only in your Keychain.</p></div>
+      <div class="prov lift"><div class="pn"><img class="brand-logo" src="assets/providers/copilot.svg" alt="">Copilot<span class="mode">AUTO</span></div><p data-i18n="pv-copilot-d">Monthly credits. Reads your local GitHub sign-in.</p></div>
+      <div class="prov lift"><div class="pn"><img class="brand-logo" src="assets/providers/devin.svg" alt="">Devin<span class="mode">AUTO</span></div><p data-i18n="pv-devin-d">Daily / weekly quotas.</p></div>
+      <div class="prov lift"><div class="pn"><img class="brand-logo" src="assets/providers/openrouter.svg" alt="">OpenRouter<span class="mode key">API KEY</span></div><p data-i18n="pv-or-d">Prepaid credit balance.</p></div>
+      <div class="prov lift"><div class="pn"><img class="brand-logo" src="assets/providers/antigravity.svg" alt="">Antigravity<span class="mode">AUTO</span></div><p data-i18n="pv-ag-d">Quota pools. Reads the local sign-in state.</p></div>
+      <div class="prov lift"><div class="pn"><img class="brand-logo mono" src="assets/providers/opencode.svg" alt="">OpenCode<span class="mode">LOCAL</span></div><p data-i18n="pv-oc-d">Go plan usage, estimated from a local database scan — fully offline.</p></div>
+      <div class="prov wide lift">
+        <div class="pn"><span data-i18n="pv-compat-n">token-monitor compatibility layer</span></div>
         <div class="names">
-          <span>DeepSeek</span><span>Kimi</span><span>MiniMax</span><span>MiMo Code</span>
-          <span>Qoder</span><span>Kiro</span><span data-i18n="pv-volc">Volcengine</span><span>Ollama</span>
+          <span><img class="brand-logo" src="assets/providers/deepseek.svg" alt="">DeepSeek</span>
+          <span><img class="brand-logo" src="assets/providers/kimi.svg" alt="">Kimi</span>
+          <span><img class="brand-logo" src="assets/providers/minimax.svg" alt="">MiniMax</span>
+          <span><img class="brand-logo mono" src="assets/providers/mimo.svg" alt="">MiMo Code</span>
+          <span><img class="brand-logo" src="assets/providers/qoder.svg" alt="">Qoder</span>
+          <span><img class="brand-logo" src="assets/providers/kiro.svg" alt="">Kiro</span>
+          <span><img class="brand-logo" src="assets/providers/volcengine.svg" alt=""><span data-i18n="pv-volc">Volcengine</span></span>
+          <span><img class="brand-logo mono" src="assets/providers/ollama.svg" alt="">Ollama</span>
         </div>
       </div>
     </div>
     <p class="prov-note" data-i18n="pv-note">Credential locations and endpoints for every service are documented in the repo <code>README</code>; pace prediction uses real window progress and official reset times to judge whether your current pace lasts until reset.</p>
   </section>
 
-  <!-- ================= privacy ================= -->
+  <!-- ================= AI feed ================= -->
+  <section id="feed">
+    <p class="eyebrow" data-num="03">AI Feed</p>
+    <h2 data-i18n="fe-h2">The AI news that moves your quota, pre-sorted</h2>
+    <p class="lede" data-i18n="fe-lede">A curated feed of AI-industry posts, read straight inside the app. Quota, rate-limit and reset changes get <strong style="color:var(--text)">pinned to the top and pushed as notifications</strong>; ordinary industry chatter stays quiet below. No X account, no login, no keyword soup.</p>
+    <div class="feed-split">
+      <div class="feed-facts">
+        <div class="fact ticked lift">
+          <span class="fk">ROSTER</span>
+          <div>
+            <h3 data-i18n="fe1t">A fixed, curated roster — not an algorithm</h3>
+            <p data-i18n="fe1d">Tier one follows official and first-party voices (<code>@claudeai</code>, <code>@AnthropicAI</code>, <code>@OpenAI</code>, <code>@sama</code>…) checked every 10 minutes. Tier two rotates a fixed 12-account whitelist ranked by real engagement. Original posts only — replies, reposts and quotes are rejected.</p>
+          </div>
+        </div>
+        <div class="fact ticked lift">
+          <span class="fk">PRIORITY</span>
+          <div>
+            <h3 data-i18n="fe2t">Two priorities that actually matter</h3>
+            <p data-i18n="fe2d"><strong style="color:var(--text)">TOKEN RESET</strong> — quota, rate-limit or reset changes; <strong style="color:var(--text)">MAJOR UPDATE</strong> — big model, API or price moves. Both are pinned and trigger a notification. Everything else scrolls by quietly as NORMAL.</p>
+          </div>
+        </div>
+        <div class="fact ticked lift">
+          <span class="fk">ZERO-CRED</span>
+          <div>
+            <h3 data-i18n="fe3t">Reads like a public bulletin board</h3>
+            <p data-i18n="fe3d">The app fetches the curated result as public data from the TokenRemain broadcast service. Your provider credentials, usage numbers and identity are never attached to the request — the feed doesn't know who you are.</p>
+          </div>
+        </div>
+        <div class="fact ticked lift">
+          <span class="fk">NOTIFY</span>
+          <div>
+            <h3 data-i18n="fe4t">Notifications on your terms</h3>
+            <p data-i18n="fe4d">Major-update notifications are optional and delivered through macOS / iOS system notifications. Turn them off and the feed simply stays a reading list.</p>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="feed-panel ticked" role="img" aria-label="Illustration of the AI Feed panel with pinned priority items / AI Feed 面板示意，含置顶优先级条目">
+          <div class="feed-head">
+            <span class="ttl">AI FEED</span>
+            <span class="live"><i></i><span data-i18n="fe-live">CHECKED EVERY 10 MIN</span></span>
+          </div>
+          <div class="feed-item pinned">
+            <div class="fi-top">
+              <span class="pri reset">TOKEN RESET</span>
+              <span class="who">Claude</span><span class="hnd">@claudeai</span>
+              <span class="when">08:30</span>
+            </div>
+            <p>Claude usage limits now reset every five hours.</p>
+            <p class="fi-note"><b data-i18n="fe-pin1">📌 PINNED · NOTIFIED</b></p>
+          </div>
+          <div class="feed-item pinned">
+            <div class="fi-top">
+              <span class="pri major">MAJOR UPDATE</span>
+              <span class="who">OpenAI</span><span class="hnd">@OpenAI</span>
+              <span class="when">11:04</span>
+            </div>
+            <p>Introducing our next frontier model — rolling out to all paid plans this week.</p>
+            <p class="fi-note"><b data-i18n="fe-pin2">📌 PINNED · NOTIFIED</b></p>
+          </div>
+          <div class="feed-item">
+            <div class="fi-top">
+              <span class="pri norm">NORMAL</span>
+              <span class="who">Andrej Karpathy</span><span class="hnd">@karpathy</span>
+              <span class="when">13:47</span>
+            </div>
+            <p>Long-horizon agents are mostly a memory problem now, not a reasoning problem.</p>
+          </div>
+          <div class="feed-foot">
+            <span data-i18n="fe-foot-l">FIXED WHITELIST · ORIGINAL POSTS ONLY</span>
+            <span data-i18n="fe-foot-r">MAX 50 / DAY</span>
+          </div>
+        </div>
+        <p class="feed-sample" data-i18n="fe-sample">— Illustrative sample items —</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= privacy & data security ================= -->
   <section id="privacy">
-    <p class="eyebrow">Private by Design</p>
+    <p class="eyebrow" data-num="04">Data Security &amp; Privacy</p>
     <h2 data-i18n="pr-h2">Privacy isn't a promise. It's the architecture.</h2>
     <p class="lede" data-i18n="pr-lede">Every line below is a verifiable technical fact, not privacy-policy boilerplate — you can trace each one in the source.</p>
     <div class="pipe-card" aria-hidden="true">
@@ -616,38 +943,126 @@ footer.site .disclaimer{
       </div>
     </div>
     <div class="priv-grid">
-      <div class="priv ticked">
+      <div class="priv ticked lift">
         <div class="row"><span class="ck">✓</span><h3 data-i18n="pr1t">Read-only credentials, never refreshed</h3></div>
         <p data-i18n="pr1d">Reads the access tokens your tools already maintain. Refresh tokens are never touched, nothing is written back — no fighting Claude Code or Cursor for their sessions.</p>
       </div>
-      <div class="priv ticked">
+      <div class="priv ticked lift">
         <div class="row"><span class="ck">✓</span><h3 data-i18n="pr2t">Keys live in the Keychain</h3></div>
         <p data-i18n="pr2d">Manually added API keys (Z.ai, OpenRouter…) are stored only in the macOS Keychain — never in source, bundles or logs.</p>
       </div>
-      <div class="priv ticked">
+      <div class="priv ticked lift">
         <div class="row"><span class="ck">✓</span><h3 data-i18n="pr3t">No credential relay</h3></div>
         <p data-i18n="pr3d">Quota queries go straight to each provider's official API. The public feed, push service, and aggregate download counter never receive provider credentials; optional Apple-device sync uses your private iCloud database.</p>
       </div>
-      <div class="priv ticked">
+      <div class="priv ticked lift">
         <div class="row"><span class="ck">✓</span><h3 data-i18n="pr4t">No behavioral tracking</h3></div>
         <p data-i18n="pr4d">No telemetry, ads, cookies, or analytics SDK. The website keeps only one anonymous aggregate Mac download count.</p>
       </div>
-      <div class="priv ticked">
+      <div class="priv ticked lift">
         <div class="row"><span class="ck">✓</span><h3 data-i18n="pr5t">No account required</h3></div>
         <p data-i18n="pr5d">You never sign up for TokenRemain — being signed in to your local tools is enough.</p>
       </div>
-      <div class="priv ticked">
+      <div class="priv ticked lift">
         <div class="row"><span class="ck">✓</span><h3 data-i18n="pr6t">Cache and stats stay local</h3></div>
         <p data-i18n="pr6d">Mac caches and cost statistics stay local. Only when you enable sync does an allowlisted, encrypted display snapshot enter your private iCloud database.</p>
       </div>
     </div>
+
+    <!-- where each byte lives -->
+    <div class="ledger ticked">
+      <div class="led stay">
+        <span class="lh"><i></i><span data-i18n="lg1h">Stays on your Mac</span></span>
+        <ul>
+          <li data-i18n="lg1a"><strong>Provider credentials</strong> — read in place, never copied out.</li>
+          <li data-i18n="lg1b"><strong>API keys</strong> — macOS Keychain only.</li>
+          <li data-i18n="lg1c"><strong>Usage cache &amp; cost stats</strong> — computed and kept locally.</li>
+        </ul>
+        <span class="ln" data-i18n="lg1n">Default state. Nothing here requires the network beyond the providers' own APIs.</span>
+      </div>
+      <div class="led icloud">
+        <span class="lh"><i></i><span data-i18n="lg2h">Your iCloud — optional</span></span>
+        <ul>
+          <li data-i18n="lg2a"><strong>Allowlisted quota snapshot</strong> — percentages, countdowns, risk level.</li>
+          <li data-i18n="lg2b"><strong>AES-256-GCM encrypted</strong> before it enters your private database.</li>
+          <li data-i18n="lg2c"><strong>Off by default</strong> — one switch, and only between your own devices.</li>
+        </ul>
+        <span class="ln" data-i18n="lg2n">Snapshot fields are allowlisted in code — credentials can't be synced even by mistake.</span>
+      </div>
+      <div class="led server">
+        <span class="lh"><i></i><span data-i18n="lg3h">tokenremain.com servers</span></span>
+        <ul>
+          <li data-i18n="lg3a"><strong>One anonymous integer</strong> — the aggregate DMG download count.</li>
+          <li data-i18n="lg3b"><strong>The public AI feed</strong> — served to every client identically.</li>
+          <li data-i18n="lg3c"><strong>Never received</strong> — credentials, usage numbers, or identifiers.</li>
+        </ul>
+        <span class="ln" data-i18n="lg3n">No IP logs, no user agents, no per-download events — a single counter and its timestamp.</span>
+      </div>
+    </div>
+    <div class="priv-ctrl">
+      <span class="pc"><b>✓</b><span data-i18n="pc1">Sync: opt-in</span></span>
+      <span class="pc"><b>✓</b><span data-i18n="pc2">Notifications: opt-in</span></span>
+      <span class="pc"><b>✓</b><span data-i18n="pc3">Every card labels its data source</span></span>
+      <span class="pc"><b>✓</b><span data-i18n="pc4">All source public &amp; auditable</span></span>
+      <a class="more" href="/privacy" data-i18n="pc-more">Read the full privacy policy →</a>
+    </div>
+  </section>
+
+  <!-- ================= brand ================= -->
+  <section id="brand">
+    <p class="eyebrow" data-num="05">Brand</p>
+    <h2 data-i18n="br-h2">A logo that works for a living</h2>
+    <p class="lede" data-i18n="br-lede">The robot isn't decoration — <strong style="color:var(--text)">its face is a gauge</strong>. One mascot drives the popover, Dashboard, iPhone app and widgets; your lowest remaining quota picks one of its eleven expressions. Meet them all:</p>
+
+    <div class="lab ticked">
+      <div class="lab-stage">
+        <img id="moodImg" src="assets/brand/head/head-70.png" width="256" height="256" alt="TokenRemain robot head, calm expression at 70% remaining">
+        <div class="lab-read">
+          <div class="mood-state">
+            <span class="pct" id="moodPct">70%</span>
+            <span class="st ok" id="moodSt"><span id="moodSym">✓</span><span id="moodLbl">CALM</span></span>
+          </div>
+          <div class="mood-bar" id="moodBar" aria-hidden="true"></div>
+          <div>
+            <input class="mood-slider" id="moodSlider" type="range" min="0" max="100" step="10" value="70" aria-label="Demo: remaining quota percentage / 演示：剩余额度百分比">
+            <p class="mood-hint" data-i18n="br-hint">DRAG — OR PICK A SPRITE BELOW</p>
+          </div>
+        </div>
+      </div>
+      <div class="lab-strip" id="labStrip" role="group" aria-label="All eleven robot states, full body / 全部 11 档全身像状态"></div>
+    </div>
+
+    <div class="tray">
+      <div class="sp-item lift">
+        <span class="box inkbg"><img class="appic" src="assets/brand/appicon-mac.png" width="512" height="512" alt="TokenRemain app icon: dimensional pixel robot head over Claude and Codex quota bars — identical on macOS, iOS and watchOS" loading="lazy"></span>
+        <span class="lb" data-i18n="ty1">App icon</span>
+        <span class="sub" data-i18n="ty1s">macOS · iOS · watchOS</span>
+      </div>
+      <div class="sp-item lift">
+        <span class="box inkbg"><img class="mbimg" src="assets/menubar.png" width="234" height="70" alt="Close-up of the TokenRemain menu bar capsule: Claude 97%, Codex 29%" loading="lazy"></span>
+        <span class="lb" data-i18n="ty3">Menu bar</span>
+      </div>
+      <div class="sp-item lift">
+        <span class="box split"><img class="mark" src="assets/favicon.svg" width="64" height="64" alt="TokenRemain vector mark shown across a dark and light split background" loading="lazy"></span>
+        <span class="lb" data-i18n="ty4">Mark · dark/light</span>
+      </div>
+      <div class="sp-item lift">
+        <span class="box inkbg"><span class="wm">Token<em>Remain</em></span></span>
+        <span class="lb" data-i18n="ty5">Wordmark</span>
+      </div>
+      <div class="sp-item lift">
+        <span class="box inkbg"><img class="mascotg" src="assets/mascot.gif" width="256" height="256" alt="Animated TokenRemain mascot, full body" loading="lazy"></span>
+        <span class="lb" data-i18n="ty6">Mascot · motion</span>
+      </div>
+    </div>
+    <p class="brand-note" data-i18n="br-note">All marks shown at their production aspect ratios — nothing cropped, stretched or recolored. Provider glyphs (Claude starburst, Codex petals) follow each provider's official identity and never bleed into TokenRemain's own violet / cyan.</p>
   </section>
 
   <!-- ================= limitations ================= -->
   <section id="limits">
     <div class="split">
     <div>
-    <p class="eyebrow">Current Release</p>
+    <p class="eyebrow" data-num="06">Current Release</p>
     <h2 data-i18n="lm-h2">Known limits of the Mac release</h2>
     <p class="lede" data-i18n="lm-lede">The notarized Mac release is available now. These limits are deliberate trade-offs — data safety always outranks feature coverage.</p>
     </div>
@@ -666,46 +1081,46 @@ footer.site .disclaimer{
 
   <!-- ================= features ================= -->
   <section>
-    <p class="eyebrow">Features</p>
+    <p class="eyebrow" data-num="07">Features</p>
     <h2 data-i18n="ft-h2">Keep your pace in hand</h2>
     <div class="feat-sub">
-      <div class="feat ticked">
+      <div class="feat ticked lift">
         <div class="glyph">PACE</div>
         <h3 data-i18n="ft1t">Pace prediction</h3>
         <p data-i18n="ft1d">Real window progress plus official reset times decide whether you'll make it to reset — with an ETA when you won't.</p>
       </div>
-      <div class="feat ticked">
+      <div class="feat ticked lift">
         <div class="glyph">MENU BAR</div>
         <h3 data-i18n="ft2t">Menu bar &amp; floating window</h3>
         <p data-i18n="ft2d">Choose which apps show in the menu bar; refresh every 1/5/15/30 min or manually; a floating window stays on top across Spaces.</p>
       </div>
-      <div class="feat ticked">
+      <div class="feat ticked lift">
         <div class="glyph">COST</div>
         <h3 data-i18n="ft3t">Today's cost estimate</h3>
         <p data-i18n="ft3d">ccusage counts today's tokens and estimated API cost, split by provider, all computed locally.</p>
       </div>
-      <div class="feat ticked">
+      <div class="feat ticked lift">
         <div class="glyph">AI FEED</div>
         <h3 data-i18n="ft4t">AI feed</h3>
-        <p data-i18n="ft4d">Quota resets, rate-limit changes and major model releases get pinned and trigger local macOS notifications.</p>
+        <p data-i18n="ft4d">Quota resets, rate-limit changes and major model releases get pinned and trigger local macOS notifications. <a href="#feed" data-i18n-skip>→</a></p>
       </div>
     </div>
   </section>
 
   <!-- ================= release ================= -->
   <section>
-    <p class="eyebrow">Release</p>
+    <p class="eyebrow" data-num="08">Release</p>
     <h2 data-i18n="in-h2">Download and install</h2>
     <div class="steps">
-      <div class="step">
+      <div class="step lift">
         <h3 data-i18n="st1t">Download the notarized DMG</h3>
         <p data-i18n="st1d">Use the official button above. The download is signed with Developer ID and notarized by Apple.</p>
       </div>
-      <div class="step">
+      <div class="step lift">
         <h3 data-i18n="st2t">Move TokenRemain to Applications</h3>
         <p data-i18n="st2d">Open the DMG and drag TokenRemain into the Applications shortcut.</p>
       </div>
-      <div class="step">
+      <div class="step lift">
         <h3 data-i18n="st3t">Open and choose your providers</h3>
         <p data-i18n="st3d">Launch TokenRemain from Applications, choose the local tools you use, and optionally enable Apple-device sync and daily AI feed notifications.</p>
       </div>
@@ -740,12 +1155,13 @@ footer.site .disclaimer{
     </div>
   </footer>
 
-</div>
+  </div><!-- /.wrap -->
+</div><!-- /.page -->
 
 <script>
 /* ---------- i18n: English inline (default), Chinese dictionary ---------- */
 var ZH={
-  "nav-dl":"下载","nav-screens":"界面","nav-providers":"支持的服务","nav-privacy":"隐私","nav-policy":"隐私政策","nav-support":"支持","nav-limits":"限制",
+  "nav-dl":"下载","nav-screens":"界面","nav-providers":"支持的服务","nav-feed":"AI 动态","nav-privacy":"隐私","nav-brand":"品牌","nav-policy":"隐私政策","nav-support":"支持","nav-limits":"限制",
   "h-h1":"你的 AI 额度，<br><span class=\"accent\">常驻菜单栏</span>。",
   "h-sub":"一处看全 <strong>Claude Code、Codex、Cursor、Grok、GLM</strong> 等 <strong>18+ 服务</strong>的剩余额度与重置倒计时。Provider 凭证始终留在 Mac；启用 Apple 设备同步后，只有经过白名单过滤并使用 AES-256-GCM 加密的额度快照会通过你自己的 iCloud 账户传输。",
   "h-dl":"下载 Mac 版","h-gh":"GitHub 仓库",
@@ -771,6 +1187,20 @@ var ZH={
   "pv-oc-d":"Go 套餐用量。本地数据库扫描估算，纯本地。",
   "pv-compat-n":"token-monitor 兼容层","pv-volc":"火山引擎",
   "pv-note":"各服务的凭证位置与接口方式在仓库 <code>README</code> 有完整说明；节奏预测基于真实窗口进度与官方重置时间，判断当前用量能否撑到重置。",
+  "fe-h2":"影响额度的 AI 动态，替你排好序",
+  "fe-lede":"应用内置一条精选的 AI 行业动态流。额度、速率限制与重置变化会<strong style=\"color:var(--text)\">自动置顶并推送通知</strong>；普通行业消息安静地排在下面。不需要 X 账号、不用登录、没有关键词轰炸。",
+  "fe1t":"固定精选名单，不是推荐算法",
+  "fe1d":"第一梯队盯官方与一手信源（<code>@claudeai</code>、<code>@AnthropicAI</code>、<code>@OpenAI</code>、<code>@sama</code>…），每 10 分钟检查一次；第二梯队从固定 12 个账号的白名单里按真实互动热度轮换。只收独立原帖——回复、转帖、引用一律拒绝。",
+  "fe2t":"只有两种真正重要的优先级",
+  "fe2d":"<strong style=\"color:var(--text)\">TOKEN RESET</strong>——额度、速率限制或重置变化；<strong style=\"color:var(--text)\">MAJOR UPDATE</strong>——重大模型、API 或价格变动。两者都会置顶并触发通知，其余按 NORMAL 安静排列。",
+  "fe3t":"像读公共公告栏一样",
+  "fe3d":"应用从 TokenRemain 广播服务拉取的是完全公开的精选结果。请求里绝不携带你的 Provider 凭证、用量数字或任何身份信息——Feed 不知道你是谁。",
+  "fe4t":"通知与否，由你决定",
+  "fe4d":"重大更新通知是可选项，通过 macOS / iOS 系统通知送达。关掉它，Feed 就只是一份安静的阅读列表。",
+  "fe-live":"每 10 分钟检查",
+  "fe-pin1":"📌 已置顶 · 已通知","fe-pin2":"📌 已置顶 · 已通知",
+  "fe-foot-l":"固定白名单 · 只收独立原帖","fe-foot-r":"每日最多 50 条",
+  "fe-sample":"— 以上为示意内容 —",
   "pr-h2":"隐私不是承诺，是架构。",
   "pr-lede":"下面每一条都是可验证的技术事实，不是隐私政策里的套话——对应实现都能在源码里逐行找到。",
   "pipe-n1":"本机已有凭证","pipe-a1":"─ 只读 ─▶","pipe-n2":"各服务官方接口","pipe-n3":"本地渲染 · 本地缓存",
@@ -780,6 +1210,28 @@ var ZH={
   "pr4t":"无行为追踪","pr4d":"不埋点、无广告、无 Cookie、没有分析 SDK；官网只保留一个匿名的 Mac 累计下载整数。",
   "pr5t":"无需注册账户","pr5d":"不需要为 TokenRemain 注册任何账号——登录本机已有工具即自动接入。",
   "pr6t":"本地缓存，可选加密同步","pr6d":"Mac 缓存与成本统计留在本机；只有你主动启用同步时，经过白名单过滤的加密展示快照才会进入你的 iCloud 私有数据库。",
+  "lg1h":"留在你的 Mac",
+  "lg1a":"<strong>Provider 凭证</strong>——原地读取，绝不外拷。",
+  "lg1b":"<strong>API Key</strong>——只存 macOS 钥匙串。",
+  "lg1c":"<strong>用量缓存与成本统计</strong>——本地计算、本地保存。",
+  "lg1n":"这是默认状态。除各服务官方接口外，不需要任何网络。",
+  "lg2h":"你的 iCloud——可选",
+  "lg2a":"<strong>白名单额度快照</strong>——百分比、倒计时、风险等级。",
+  "lg2b":"<strong>AES-256-GCM 加密</strong>后才进入你的私有数据库。",
+  "lg2c":"<strong>默认关闭</strong>——一个开关，且只在你自己的设备之间。",
+  "lg2n":"快照字段在代码里逐项白名单——凭证即使出错也同步不出去。",
+  "lg3h":"tokenremain.com 服务器",
+  "lg3a":"<strong>一个匿名整数</strong>——DMG 累计下载次数。",
+  "lg3b":"<strong>公开 AI Feed</strong>——对所有客户端一视同仁。",
+  "lg3c":"<strong>从未收到过</strong>——凭证、用量数字或任何标识符。",
+  "lg3n":"没有 IP 日志、没有 User-Agent、没有逐次下载记录——只有一个计数和更新时间。",
+  "pc1":"同步：主动开启","pc2":"通知：主动开启","pc3":"每张卡片注明数据来源","pc4":"源码全部公开可审计",
+  "pc-more":"阅读完整隐私政策 →",
+  "br-h2":"一个「上班」的 Logo",
+  "br-lede":"机器人不是装饰——<strong style=\"color:var(--text)\">它的表情就是仪表盘</strong>。同一只吉祥物驱动弹窗、Dashboard、iPhone 应用与小组件；最低剩余额度决定它的十一种表情之一。认识一下它们：",
+  "br-hint":"拖动滑杆 — 或在下方点选",
+  "ty1":"应用图标","ty1s":"macOS · iOS · watchOS","ty3":"菜单栏","ty4":"矢量标 · 深浅通用","ty5":"字标","ty6":"动态吉祥物",
+  "br-note":"以上所有标识均按生产比例展示——不裁切、不拉伸、不改色。Provider 形象（Claude 星芒、Codex 花瓣）遵循各家官方识别，绝不与 TokenRemain 自己的紫罗兰 / 青混用。",
   "lm-h2":"Mac 正式版的已知限制",
   "lm-lede":"已公证的 Mac 版本现已开放下载。以下限制是刻意的取舍——数据安全永远排在功能覆盖前面。",
   "lm-head":"已知限制",
@@ -792,7 +1244,7 @@ var ZH={
   "ft1t":"节奏预测","ft1d":"基于真实窗口进度与官方重置时间判断能否撑到重置，可能提前用尽时给出预计时长。",
   "ft2t":"菜单栏与浮窗","ft2d":"菜单栏显示哪些应用自选；刷新 1/5/15/30 分钟或仅手动；桌面浮窗跨空间常驻。",
   "ft3t":"今日成本估算","ft3d":"ccusage 统计今日 token 与估算 API 成本，按服务商拆分，全部本地计算。",
-  "ft4t":"AI 动态聚合","ft4d":"额度重置、速率限制变化与重大模型更新自动置顶并触发 macOS 本地通知。",
+  "ft4t":"AI 动态聚合","ft4d":"额度重置、速率限制变化与重大模型更新自动置顶并触发 macOS 本地通知。 <a href=\"#feed\">→</a>",
   "in-h2":"下载与安装",
   "st1t":"下载已公证 DMG","st1d":"使用页面顶部的官方下载按钮。安装包已使用 Developer ID 签名并通过 Apple 公证。",
   "st2t":"拖入“应用程序”","st2d":"打开 DMG，把 TokenRemain 拖到“应用程序”快捷方式。",
@@ -828,12 +1280,21 @@ var TITLES={en:"TokenRemain — Your AI quota, always in the menu bar",zh:"Token
     btn.textContent=l==='zh'?'EN':'中文';
     renderReleaseVersion(l);
     store(l);
+    dispatchEvent(new CustomEvent('tr-lang',{detail:l}));
+  }
+  function switchTo(l){
+    var reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if(document.startViewTransition&&!reduced){
+      document.startViewTransition(function(){apply(l)});
+    }else{
+      apply(l);
+    }
   }
   var param=new URLSearchParams(location.search).get('lang');
   var lang=(param==='zh'||param==='en')?param:(load()||'en');
   if(lang==='zh')apply('zh');
   btn.addEventListener('click',function(){
-    apply(document.documentElement.lang==='en'?'zh':'en');
+    switchTo(document.documentElement.lang==='en'?'zh':'en');
   });
   fetch('https://api.github.com/repos/Carstin520/token-remain/releases/latest',{
     headers:{Accept:'application/vnd.github+json'}
@@ -852,6 +1313,33 @@ var TITLES={en:"TokenRemain — Your AI quota, always in the menu bar",zh:"Token
     .catch(function(){});
 })();
 
+/* ---------- topbar: mobile menu + scrolled state + progress ---------- */
+(function(){
+  var topbar=document.getElementById('topbar');
+  var navBtn=document.getElementById('navBtn');
+  var links=document.getElementById('navLinks');
+  var progress=document.getElementById('progress');
+  navBtn.addEventListener('click',function(){
+    var open=links.classList.toggle('open');
+    navBtn.setAttribute('aria-expanded',open?'true':'false');
+  });
+  links.addEventListener('click',function(e){
+    if(e.target.tagName==='A'){links.classList.remove('open');navBtn.setAttribute('aria-expanded','false')}
+  });
+  var ticking=false;
+  function onScroll(){
+    if(ticking)return;ticking=true;
+    requestAnimationFrame(function(){
+      topbar.classList.toggle('scrolled',scrollY>8);
+      var h=document.documentElement.scrollHeight-innerHeight;
+      progress.style.width=(h>0?Math.min(100,scrollY/h*100):0)+'%';
+      ticking=false;
+    });
+  }
+  addEventListener('scroll',onScroll,{passive:true});
+  onScroll();
+})();
+
 /* ---------- 14-segment minibars (featured provider cards) ---------- */
 document.querySelectorAll('.minibar').forEach(function(bar){
   var fill=+bar.dataset.fill,color=bar.dataset.color;
@@ -862,11 +1350,81 @@ document.querySelectorAll('.minibar').forEach(function(bar){
   }
 });
 
-/* ---------- scroll reveal ---------- */
+/* ---------- brand: mood slider + state wall ---------- */
+(function(){
+  var STATES=[
+    {p:0,  en:"OFFLINE", zh:"离线", cls:"off", sym:"×"},
+    {p:10, en:"CRYING",  zh:"告急", cls:"bad", sym:"‼"},
+    {p:20, en:"DIZZY",   zh:"眩晕", cls:"bad", sym:"‼"},
+    {p:30, en:"TENSE",   zh:"紧绷", cls:"warn",sym:"!"},
+    {p:40, en:"WORRIED", zh:"担忧", cls:"warn",sym:"!"},
+    {p:50, en:"NEUTRAL", zh:"平稳", cls:"ok",  sym:"✓"},
+    {p:60, en:"FOCUSED", zh:"专注", cls:"ok",  sym:"✓"},
+    {p:70, en:"CALM",    zh:"从容", cls:"ok",  sym:"✓"},
+    {p:80, en:"SPARKLE", zh:"闪亮", cls:"ok",  sym:"✓"},
+    {p:90, en:"HAPPY",   zh:"开心", cls:"ok",  sym:"✓"},
+    {p:100,en:"EXCITED", zh:"兴奋", cls:"ok",  sym:"✓"}
+  ];
+  var slider=document.getElementById('moodSlider');
+  var img=document.getElementById('moodImg');
+  var pct=document.getElementById('moodPct');
+  var st=document.getElementById('moodSt');
+  var sym=document.getElementById('moodSym');
+  var lbl=document.getElementById('moodLbl');
+  var barEl=document.getElementById('moodBar');
+  var strip=document.getElementById('labStrip');
+  if(!slider)return;
+  var segs=[];
+  for(var i=0;i<10;i++){var b=document.createElement('b');barEl.appendChild(b);segs.push(b)}
+  /* preload heads so slider switches instantly */
+  STATES.forEach(function(s){var im=new Image();im.src='assets/brand/head/head-'+s.p+'.png'});
+  /* build the sprite-sheet selector from the full-body states */
+  STATES.forEach(function(s){
+    var cell=document.createElement('button');
+    cell.type='button';
+    cell.setAttribute('aria-pressed','false');
+    cell.setAttribute('aria-label',s.p+'% '+s.en+' / '+s.zh);
+    cell.innerHTML='<img src="assets/brand/body/body-'+s.p+'.png" width="192" height="192" loading="lazy" alt="">'+
+      '<span class="sp">'+s.p+'%</span>';
+    cell.addEventListener('click',function(){slider.value=s.p;render()});
+    strip.appendChild(cell);
+  });
+  var reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function zh(){return document.documentElement.lang!=='en'}
+  function render(){
+    var v=+slider.value;
+    var s=STATES[Math.round(v/10)];
+    img.src='assets/brand/head/head-'+s.p+'.png';
+    img.alt='TokenRemain robot head at '+s.p+'% remaining — '+s.en;
+    pct.textContent=s.p+'%';
+    st.className='st '+s.cls;
+    sym.textContent=s.sym;
+    lbl.textContent=zh()?s.zh:s.en;
+    var fillColor=s.cls==='ok'?'var(--success)':s.cls==='warn'?'var(--warning)':s.cls==='bad'?'var(--danger)':'var(--track)';
+    segs.forEach(function(b,i){b.style.background=i<s.p/10?fillColor:'var(--track)'});
+    strip.querySelectorAll('button').forEach(function(c,i){
+      c.setAttribute('aria-pressed',STATES[i].p===s.p?'true':'false');
+    });
+    if(!reduced){
+      img.classList.add('tick');
+      setTimeout(function(){img.classList.remove('tick')},220);
+    }
+  }
+  slider.addEventListener('input',render);
+  addEventListener('tr-lang',render);
+  render();
+})();
+
+/* ---------- scroll reveal with stagger ---------- */
 (function(){
   if(matchMedia('(prefers-reduced-motion: reduce)').matches||!('IntersectionObserver' in window))return;
-  var els=document.querySelectorAll('figure.shot,.prov,.priv,.pipe-card,.limit-card,.feat,.step,.repo-band');
-  els.forEach(function(el){el.classList.add('reveal')});
+  var els=document.querySelectorAll('figure.shot,.prov,.priv,.pipe-card,.limit-card,.feat,.step,.repo-band,.fact,.feed-panel,.ledger,.lab,.sp-item');
+  els.forEach(function(el){
+    el.classList.add('reveal');
+    var sibs=el.parentElement?Array.prototype.filter.call(el.parentElement.children,function(c){return c.classList.contains('reveal')}):[];
+    var idx=sibs.indexOf(el);
+    if(idx>0)el.style.transitionDelay=Math.min(idx,5)*70+'ms';
+  });
   var io=new IntersectionObserver(function(entries){
     entries.forEach(function(e){
       if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}
