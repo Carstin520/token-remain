@@ -3,7 +3,7 @@
 All notable product changes are recorded here. TokenRemain uses Semantic
 Versioning for public releases.
 
-## Unreleased (1.1.4, build 6)
+## 1.1.4 — 2026-07-25
 
 ### Added
 
@@ -30,6 +30,20 @@ Versioning for public releases.
   iPhone.
 - Added clearer sync security diagnostics while retaining the last known-good
   snapshot after a failed validation.
+
+## 1.1.3 — 2026-07-24
+
+### Added
+
+- Bundled the official native arm64 ccusage 20.0.18 helper so a new Mac no
+  longer needs Node or npm for local usage history.
+- Added a branded drag-to-Applications DMG window.
+
+### Changed
+
+- Collected today's totals and 30-day history in one offline ccusage pass.
+- Added release checks for the bundled helper's version, architecture, hash,
+  and signature.
 
 ## 1.1.2 — 2026-07-24
 
@@ -81,3 +95,5 @@ Versioning for public releases.
 [1.1.0]: https://github.com/Carstin520/token-remain/releases/tag/v1.1.0
 [1.1.1]: https://github.com/Carstin520/token-remain/releases/tag/v1.1.1
 [1.1.2]: https://github.com/Carstin520/token-remain/releases/tag/v1.1.2
+[1.1.3]: https://github.com/Carstin520/token-remain/releases/tag/v1.1.3
+[1.1.4]: https://github.com/Carstin520/token-remain/releases/tag/v1.1.4
