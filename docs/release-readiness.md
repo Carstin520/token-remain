@@ -1,6 +1,6 @@
 # TokenRemain release readiness
 
-Status date: 2026-07-24
+Status date: 2026-07-25
 
 This document separates repository work from Apple-controlled release proof.
 The selected product is a paid-upfront iPhone App Store download plus a full,
@@ -16,7 +16,7 @@ unsandboxed Developer ID Mac download.
 | Privacy manifests | Present and plist-valid in all four exported executable bundles | Validate App Store Connect's processed privacy report |
 | StoreKit configuration | Not applicable | The app is paid upfront; there is no IAP product |
 | StoreKit Sandbox purchase | Not applicable | Paid storefront checkout is outside the app and is not simulated by TestFlight |
-| Developer ID package | v1.1.2 build 4 is G2-signed with Production CloudKit/APNs entitlements and Sparkle; its App and signed DMG are notarized, stapled, and Gatekeeper-accepted | Publish the exact DMG, ZIP, and signed appcast; then download them through the public customer URLs and byte-verify the results |
+| Developer ID package | v1.1.4 build 6 is G2-signed with Production CloudKit/APNs entitlements and Sparkle; its App and signed DMG are notarized, stapled, and Gatekeeper-accepted | Publish the exact DMG, ZIP, and signed appcast; then download them through the public customer URLs and byte-verify the results |
 | CloudKit Production | The reviewed `TRCurrentSnapshot` schema is deployed. A Production private-zone `RecordSave` from the installed Developer ID app succeeded at 2026-07-24 06:39:44 UTC (1 record, 7,026 bytes) | Complete the same-account Production receive test with the App Store/TestFlight iPhone build |
 | APNs Production | The public macOS build carries `aps-environment=production`; the APNs token credential and broadcast Worker have passed production authentication checks | Regenerate APNs-enabled iOS distribution profiles and verify delivery through TestFlight |
 | Foreground freshness | Timing instrumentation and simulator paths pass | Collect real Mac + iPhone samples and meet p50/p95/max gates |
@@ -122,6 +122,19 @@ the 10,915,604-byte ZIP has SHA-256
 `086a774a44459751dfbb2bae33bc22dc6bf91d48056ed6c8cc604b7c148ea669`;
 and the signed `appcast.xml` has SHA-256
 `910a3a3e708f93659d1554c5e55baa05cfc969bbe144b8474a18b9a6cecc6c79`.
+
+The v1.1.4 build 6 candidate adds consistent popular-post ranking across Mac,
+iPhone, and broadcast delivery; simplifies iPhone sync diagnostics; improves
+reset and snapshot freshness labels; and prevents background Keychain prompts.
+Apple accepted App submission `02ec5422-7cf4-4049-bbbe-f47009562aef` and
+signed DMG submission `c1f06886-4123-4de5-a24e-c9c3b866605e`. Both the App
+and DMG are stapled and Gatekeeper-accepted. Before publication, the
+15,084,359-byte `TokenRemain.dmg` has SHA-256
+`32a55a469d962e4fb7c628a7931347f8257f44902853aa7959d9973548764bdc`;
+the 12,666,104-byte ZIP has SHA-256
+`c29c52f48aeb123e60ade37c3791c46e4747837cbc0b91a32b5aea2095429394`;
+and the signed `appcast.xml` has SHA-256
+`550e8767211b9bfbf79beaa81aa692560d76763dff3fdafe5283fa78a6285a17`.
 
 ## Developer ID Mac release
 
