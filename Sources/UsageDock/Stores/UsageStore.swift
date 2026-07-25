@@ -117,6 +117,10 @@ final class UsageStore: ObservableObject {
         tracked.connectedOrdered
     }
 
+    var dataSourceProviders: [ProviderQuota.Provider] {
+        tracked.dataSourceOrdered
+    }
+
     private func assign(_ value: ProviderQuota?, to provider: ProviderQuota.Provider) {
         if value != nil {
             tracked.markConnected(provider)

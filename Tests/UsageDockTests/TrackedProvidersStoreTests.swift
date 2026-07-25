@@ -58,6 +58,49 @@ struct TrackedProvidersStoreTests {
         #expect(!store.isEnabled(.cursor))
     }
 
+    @Test("Manual credential sources are visible before their first connection")
+    func manualCredentialSourcesAreVisibleForSetup() {
+        let store = TrackedProvidersStore(defaults: testDefaults())
+        store.completeOnboarding(enabled: [.cursor, .zai, .openrouter, .deepseek])
+
+        #expect(store.connectedOrdered.isEmpty)
+        #expect(store.dataSourceOrdered == [.openrouter, .zai, .deepseek])
+
+        store.markConnected(.cursor)
+        #expect(store.dataSourceOrdered == [.cursor, .openrouter, .zai, .deepseek])
+    }
+
+    @Test("Every manual credential provider has a first-use data source entry")
+    func everyManualCredentialProviderIsVisibleForSetup() {
+        let expected = Set(
+            [.zai, .openrouter]
+                + ProviderSecretStore.descriptors.map(\.provider)
+        )
+        let classified = Set(
+            TrackedProvidersStore.allProviders.filter(
+                TrackedProvidersStore.requiresManualCredential
+            )
+        )
+        #expect(classified == expected)
+
+        let store = TrackedProvidersStore(defaults: testDefaults())
+        store.completeOnboarding(enabled: expected)
+        #expect(Set(store.dataSourceOrdered) == expected)
+    }
+
+    @Test("A disabled unconnected credential source is not shown")
+    func disabledCredentialSourceIsHiddenUntilConnected() {
+        let store = TrackedProvidersStore(defaults: testDefaults())
+        store.completeOnboarding(enabled: [.zai])
+        #expect(store.dataSourceOrdered == [.zai])
+
+        store.setEnabled(.zai, false)
+        #expect(store.dataSourceOrdered.isEmpty)
+
+        store.markConnected(.zai)
+        #expect(store.dataSourceOrdered == [.zai])
+    }
+
     @Test("Dashboard card order survives a new store instance")
     func providerOrderPersists() {
         let defaults = testDefaults()
@@ -91,15 +134,82 @@ struct TrackedProvidersStoreTests {
             at: home.appending(path: ".grok"), withIntermediateDirectories: true
         )
         try Data("{}".utf8).write(to: home.appending(path: ".grok/auth.json"))
+        let localBin = home.appending(path: ".local/bin")
+        try FileManager.default.createDirectory(at: localBin, withIntermediateDirectories: true)
+        let claudeExecutable = localBin.appending(path: "claude")
+        try Data("#!/bin/sh\n".utf8).write(to: claudeExecutable)
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0o755],
+            ofItemAtPath: claudeExecutable.path
+        )
 
         let detections = TrackedProvidersStore.detections(home: home, environment: [:])
         let byProvider = Dictionary(uniqueKeysWithValues: detections.map { ($0.provider, $0.installed) })
 
         #expect(detections.map(\.provider) == TrackedProvidersStore.allProviders)
-        #expect(byProvider[.claude] == false)
+        #expect(byProvider[.claude] == true)
         #expect(byProvider[.codex] == true)
         #expect(byProvider[.grok] == true)
         #expect(byProvider[.zai] == false)
+    }
+
+    @Test("Automatic scans exclude every manual credential provider")
+    func automaticScansExcludeManualCredentials() {
+        let home = FileManager.default.temporaryDirectory
+            .appendingPathComponent("usagedock-auto-detection-\(UUID().uuidString)", isDirectory: true)
+        let detections = TrackedProvidersStore.automaticDetections(
+            home: home,
+            environment: [
+                "ZAI_API_KEY": "zai-test",
+                "OPENROUTER_API_KEY": "openrouter-test",
+                "DEEPSEEK_API_KEY": "deepseek-test"
+            ]
+        )
+        #expect(
+            detections.allSatisfy {
+                !TrackedProvidersStore.requiresManualCredential($0.provider)
+            }
+        )
+    }
+
+    @Test("A tool installed later is suggested once and accepted into tracking")
+    func laterInstallationIsSuggestedOnce() {
+        let defaults = testDefaults()
+        let store = TrackedProvidersStore(defaults: defaults)
+        store.completeOnboarding(enabled: [])
+
+        #expect(store.applyAutomaticDetections([]).isEmpty)
+        let claude = TrackedProvidersStore.Detection(
+            provider: .claude,
+            installed: true,
+            detail: "Found Claude Code"
+        )
+        #expect(store.applyAutomaticDetections([claude]) == [claude])
+        #expect(store.pendingDetectionSuggestions == [claude])
+
+        store.acceptNextDetectionSuggestion()
+        #expect(store.isEnabled(.claude))
+        #expect(store.pendingDetectionSuggestions.isEmpty)
+        #expect(store.applyAutomaticDetections([claude]).isEmpty)
+    }
+
+    @Test("Installations found while TokenRemain was closed are compared with the saved baseline")
+    func offlineInstallationIsSuggestedOnNextLaunch() {
+        let defaults = testDefaults()
+        var store = TrackedProvidersStore(defaults: defaults)
+        store.completeOnboarding(enabled: [])
+        store.applyAutomaticDetections([])
+
+        store = TrackedProvidersStore(defaults: defaults)
+        let codex = TrackedProvidersStore.Detection(
+            provider: .codex,
+            installed: true,
+            detail: "Found Codex"
+        )
+        #expect(store.applyAutomaticDetections([codex]) == [codex])
+        store.dismissNextDetectionSuggestion()
+        #expect(store.applyAutomaticDetections([codex]).isEmpty)
+        #expect(!store.isEnabled(.codex))
     }
 
     @Test("A configured ZAI_API_KEY marks Z.ai as detected")
