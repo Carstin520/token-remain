@@ -8,10 +8,11 @@ Design notes
 ------------
 * Palette follows design/palette.md (site CSS tokens).
 * The arrow reuses the brand's segmented quota-bar language.
-* The two icon "slots" sit at relative luminance ~0.18. Finder renders icon
-  labels in white under Dark Mode and black under Light Mode, and 0.18 is the
-  luminance that maximises the *worst-case* contrast of the two (~4.6:1), so the
-  "TokenRemain" / "Applications" labels stay readable in either appearance.
+* Nothing is drawn in the icon label band (y 262-292). Finder renders those
+  labels in white under Dark Mode and black under Light Mode, so on this dark
+  background the names read well in Dark Mode and poorly in Light Mode. That is
+  a deliberate trade for a clean window; re-adding a light plate behind the band
+  is what buys back Light Mode legibility.
 """
 
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
@@ -42,29 +43,6 @@ def font(path, size, weight=None, index=None):
     return f
 
 
-def _lin(c):
-    c /= 255.0
-    return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
-
-
-def luminance(rgb):
-    r, g, b = (_lin(c) for c in rgb)
-    return 0.2126 * r + 0.7152 * g + 0.0722 * b
-
-
-def at_luminance(rgb, target):
-    """Scale an RGB triple until it hits the requested relative luminance."""
-    lo, hi = 0.0, 4.0
-    for _ in range(60):
-        k = (lo + hi) / 2
-        cand = tuple(min(255, max(0, round(c * k))) for c in rgb)
-        if luminance(cand) < target:
-            lo = k
-        else:
-            hi = k
-    return tuple(min(255, max(0, round(c * (lo + hi) / 2))) for c in rgb)
-
-
 def lerp(a, b, t):
     return tuple(round(x + (y - x) * t) for x, y in zip(a, b))
 
@@ -72,12 +50,6 @@ def lerp(a, b, t):
 def px(v):
     return v * S
 
-
-# Violet-tinted slate pinned to the dual-appearance sweet spot. L=0.18 is where
-# the worse of {white text, black text} peaks at ~4.6:1; the halo blur below
-# costs ~0.012, so aim slightly high and let the blur settle onto the target.
-SLOT      = at_luminance((0x9A, 0x93, 0xB4), 0.193)
-SLOT_EDGE = at_luminance((0xB9, 0xB2, 0xD2), 0.30)
 
 img = Image.new("RGB", (px(W), px(H)), INK)
 
@@ -105,8 +77,6 @@ draw = ImageDraw.Draw(img, "RGBA")
 # background; only a soft pool of light marks where each one belongs.
 LEFT_CX, RIGHT_CX = 168, 472
 ICON_CY = 196
-LABEL_Y0, LABEL_Y1 = 264, 292
-PLATE_W = 156
 
 pool = Image.new("L", (px(W), px(H)), 0)
 pd = ImageDraw.Draw(pool)
@@ -114,20 +84,6 @@ for cx in (LEFT_CX, RIGHT_CX):
     pd.ellipse([px(cx - 96), px(ICON_CY - 74), px(cx + 96), px(ICON_CY + 84)], fill=90)
 pool = pool.filter(ImageFilter.GaussianBlur(px(26)))
 img = Image.composite(Image.new("RGB", img.size, (0x3A, 0x30, 0x6E)), img, pool)
-draw = ImageDraw.Draw(img, "RGBA")
-
-# Only the Finder label needs guaranteed contrast, so the tinted patch is kept
-# to the text band instead of covering the whole icon. It is blurred into a soft
-# halo: the centre keeps the target luminance while the edges dissolve, which
-# reads as lighting rather than as a clickable button.
-halo = Image.new("L", (px(W), px(H)), 0)
-hd = ImageDraw.Draw(halo)
-for cx in (LEFT_CX, RIGHT_CX):
-    hd.rounded_rectangle(
-        [px(cx - PLATE_W // 2), px(LABEL_Y0), px(cx + PLATE_W // 2), px(LABEL_Y1)],
-        radius=px(13), fill=255)
-halo = halo.filter(ImageFilter.GaussianBlur(px(7)))
-img = Image.composite(Image.new("RGB", img.size, SLOT), img, halo)
 draw = ImageDraw.Draw(img, "RGBA")
 
 # --- segmented arrow, in the brand's quota-bar language ---------------------
@@ -181,5 +137,4 @@ os.makedirs(out_dir, exist_ok=True)
 img.save(os.path.join(out_dir, "background@2x.png"))
 img.resize((W, H), Image.LANCZOS).save(os.path.join(out_dir, "background.png"))
 
-print(f"slot fill {SLOT} L={luminance(SLOT):.3f}  edge {SLOT_EDGE} L={luminance(SLOT_EDGE):.3f}")
 print(f"wrote {W}x{H} and {W*S}x{H*S} to Resources/dmg/")
