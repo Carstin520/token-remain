@@ -16,7 +16,7 @@ unsandboxed Developer ID Mac download.
 | Privacy manifests | Present and plist-valid in all four exported executable bundles | Validate App Store Connect's processed privacy report |
 | StoreKit configuration | Not applicable | The app is paid upfront; there is no IAP product |
 | StoreKit Sandbox purchase | Not applicable | Paid storefront checkout is outside the app and is not simulated by TestFlight |
-| Developer ID package | v1.1.4 build 6 is G2-signed with Production CloudKit/APNs entitlements and Sparkle; its App and signed DMG are notarized, stapled, and Gatekeeper-accepted | Publish the exact DMG, ZIP, and signed appcast; then download them through the public customer URLs and byte-verify the results |
+| Developer ID package | v1.1.5 build 7 is G2-signed with Production CloudKit/APNs entitlements and Sparkle; its App and signed DMG are notarized, stapled, and Gatekeeper-accepted | Publish the exact DMG, ZIP, and signed appcast; then download them through the public customer URLs and byte-verify the results |
 | CloudKit Production | The reviewed `TRCurrentSnapshot` schema is deployed. A Production private-zone `RecordSave` from the installed Developer ID app succeeded at 2026-07-24 06:39:44 UTC (1 record, 7,026 bytes) | Complete the same-account Production receive test with the App Store/TestFlight iPhone build |
 | APNs Production | The public macOS build carries `aps-environment=production`; the APNs token credential and broadcast Worker have passed production authentication checks | Regenerate APNs-enabled iOS distribution profiles and verify delivery through TestFlight |
 | Foreground freshness | Timing instrumentation and simulator paths pass | Collect real Mac + iPhone samples and meet p50/p95/max gates |
@@ -135,6 +135,19 @@ the 12,666,104-byte ZIP has SHA-256
 `c29c52f48aeb123e60ade37c3791c46e4747837cbc0b91a32b5aea2095429394`;
 and the signed `appcast.xml` has SHA-256
 `550e8767211b9bfbf79beaa81aa692560d76763dff3fdafe5283fa78a6285a17`.
+
+The v1.1.5 build 7 candidate adds persistent full, compact, and minimal menu bar
+display modes; expands local usage history to every detected agent; and keeps
+missing, sparse, and all-zero usage trends structurally stable. Apple accepted
+App submission `31914007-a792-415a-b50a-e4e259b980c3` and signed DMG
+submission `10501da1-3f75-4973-afaa-b506f77a056c`. Both the App and DMG are
+stapled and Gatekeeper-accepted. Before publication, the 15,177,487-byte
+`TokenRemain.dmg` has SHA-256
+`8112970bec9674447fd753028e0816b8900777235ae62befea59b6f5cf3b8b9f`;
+the 12,776,474-byte ZIP has SHA-256
+`3dc0c30b9cd448ff6debf35ff3ed3ccc5859a79ad81d03b3f5112c17215e68ca`;
+and the signed `appcast.xml` has SHA-256
+`959027325e8d28a233a0ae3e0ecd5278c53359f27f787be635771874f1e7d97f`.
 
 ## Developer ID Mac release
 
