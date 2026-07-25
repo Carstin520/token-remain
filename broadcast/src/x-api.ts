@@ -1,4 +1,5 @@
 import { upsertFeedItem } from "./feed";
+import { isRelevantRotatingPost } from "./selection";
 import type { Env, FeedPriority, FeedTier } from "./types";
 import type { AdminFeedItem } from "./validation";
 
@@ -138,6 +139,10 @@ export async function syncRotatingPosts(
     .filter((candidate) => (
       rotatingByUsername.has(candidate.authorUsername.toLowerCase())
       && !primaryByUsername.has(candidate.authorUsername.toLowerCase())
+      && isRelevantRotatingPost({
+        priority: candidate.priority,
+        text: candidate.text,
+      })
     ))
     .sort((left, right) => {
       if (right.selectionScore !== left.selectionScore) {

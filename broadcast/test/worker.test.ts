@@ -14,6 +14,8 @@ import {
   ROTATING_DAILY_LIMIT,
   ROTATING_PER_AUTHOR_DAILY_LIMIT,
 } from "../src/x-api";
+import { rankFeedItems, topicRelevanceScore } from "../src/selection";
+import type { FeedItemRow } from "../src/types";
 
 describe("TokenRemain broadcast worker", () => {
   it("reports a server-curated health contract", async () => {
@@ -163,6 +165,50 @@ describe("TokenRemain broadcast worker", () => {
     expect(classify("Usage quota resets every five hours.")).toBe("token_reset");
     expect(classify("Introducing our new model today.")).toBe("major_update");
     expect(classify("A quiet day at the office.")).toBe("normal");
+  });
+
+  it("ranks one server-curated featured order and removes off-topic rotating posts", () => {
+    const now = new Date("2026-07-25T03:00:00Z");
+    const rows = [
+      feedRow({
+        id: "space",
+        username: "elonmusk",
+        text: "Starship as seen from Starlink satellites",
+        publishedAt: "2026-07-25T02:00:00Z",
+        likes: 50_000,
+        reposts: 5_000,
+        replies: 3_000,
+        selectionScore: 9_000,
+      }),
+      feedRow({
+        id: "claude",
+        username: "emollick",
+        text: "Claude model update improves agent reliability",
+        publishedAt: "2026-07-25T01:30:00Z",
+        likes: 100,
+        reposts: 10,
+        replies: 5,
+        selectionScore: 100,
+      }),
+      feedRow({
+        id: "codex",
+        username: "OpenAI",
+        text: "Codex API usage limit update is rolling out",
+        publishedAt: "2026-07-25T01:00:00Z",
+        likes: 80,
+        reposts: 8,
+        replies: 4,
+        selectionScore: 90,
+        tier: "primary",
+        priority: "token_reset",
+      }),
+    ];
+
+    expect(topicRelevanceScore(rows[0].text)).toBeLessThan(40);
+    expect(rankFeedItems(rows, now).map((row) => row.id)).toEqual([
+      "codex",
+      "claude",
+    ]);
   });
 
   it("builds two-tier searches that exclude replies, reposts, and quote posts", () => {
@@ -393,5 +439,34 @@ function candidate(input: {
     tier: input.tier,
     metrics: { likes: 10, reposts: 2, replies: 1 },
     selectionScore: input.selectionScore,
+  };
+}
+
+function feedRow(input: {
+  id: string;
+  username: string;
+  text: string;
+  publishedAt: string;
+  likes: number;
+  reposts: number;
+  replies: number;
+  selectionScore: number;
+  tier?: "primary" | "rotating";
+  priority?: "token_reset" | "major_update" | "normal";
+}): FeedItemRow {
+  return {
+    id: input.id,
+    text: input.text,
+    author_username: input.username,
+    author_display_name: input.username,
+    published_at: input.publishedAt,
+    url: `https://x.com/${input.username}/status/${input.id}`,
+    priority: input.priority ?? "normal",
+    tier: input.tier ?? "rotating",
+    likes: input.likes,
+    reposts: input.reposts,
+    replies: input.replies,
+    selection_score: input.selectionScore,
+    status: "published",
   };
 }

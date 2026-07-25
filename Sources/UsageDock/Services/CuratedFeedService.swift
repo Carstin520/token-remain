@@ -41,7 +41,7 @@ struct CuratedFeedService: Sendable {
         }
         let payload = try decoder.decode(CuratedFeedPayload.self, from: data)
 
-        return AIFeedPost.sortedForDisplay(payload.items.map { item in
+        return payload.items.map { item in
             AIFeedPost(
                 id: item.id,
                 text: item.text,
@@ -54,7 +54,7 @@ struct CuratedFeedService: Sendable {
                 externalURL: item.url,
                 tier: item.tier?.appTier ?? .primary
             )
-        })
+        }
     }
 
     private static func decodeDate(_ decoder: Decoder) throws -> Date {

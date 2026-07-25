@@ -35,6 +35,7 @@ export interface FeedItemRow {
   likes: number;
   reposts: number;
   replies: number;
+  selection_score: number;
   status: "draft" | "published" | "archived";
 }
 
