@@ -65,20 +65,15 @@ Versioning for public releases.
 
 ### Changed
 
-- Ranked popular AI Feed posts consistently across Mac, broadcast delivery, and
-  iPhone.
-- Improved iPhone Feed typography and spacing for long author names, handles,
-  timestamps, and multi-line posts.
+- Ranked popular AI Feed posts consistently across Mac and broadcast delivery.
 - Made quota reset labels use weeks, days, or an `HH:mm:ss` countdown according
   to the remaining interval.
-- Updated installer and Apple Watch artwork to match the current TokenRemain
-  brand.
+- Updated installer artwork to match the current TokenRemain brand.
 
 ### Fixed
 
 - Prevented background provider refreshes from prompting for Keychain access.
-- Fixed stale Mac snapshot timestamps and ignored invalid past reset dates on
-  iPhone.
+- Fixed stale Mac snapshot timestamps.
 - Added clearer sync security diagnostics while retaining the last known-good
   snapshot after a failed validation.
 
@@ -114,11 +109,6 @@ Versioning for public releases.
 - Added signed, automatic background updates for the Developer ID Mac app.
 - Added release-time appcast generation with EdDSA archive and feed
   verification.
-
-### Fixed
-
-- Updated the iPhone production build so it reads the same CloudKit Production
-  database as the released Mac app.
 
 ## 1.1.0 — 2026-07-24
 

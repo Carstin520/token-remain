@@ -87,7 +87,7 @@ directions were:
 
 - **A — Mac App Store only:** accept provider changes to OAuth/API key and
   explicit folder authorization, and replace shell/CLI-dependent history.
-- **B — iOS App Store + Developer ID macOS download:** retain the current full
+- **B — Private companion + Developer ID macOS download:** retain the current full
   automatic local integration on macOS; notarization replaces Mac App Store
   distribution.
 - **C — Two macOS editions:** maintain a sandboxed Mac App Store edition with a

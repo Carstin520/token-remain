@@ -45,10 +45,6 @@ the urgency signal; the bar color remains a stable provider identity.
 
 ## Platform behavior
 
-- **iPhone system App Icon:** use `app-icon-static-calm.png`. Do not imply live
-  quota in the primary system icon.
-- **iPhone app UI, Widget, Live Activity, Dynamic Island:** render the current
-  mood plus responsive meter from snapshot data.
 - **Mac app UI:** render the current mood plus responsive meter.
 - **Mac runtime Dock icon:** may use the current mood and meter while the app is
   running. The bundled icon remains the static calm master.

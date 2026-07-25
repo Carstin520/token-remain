@@ -25,16 +25,16 @@ fail() {
 #      套用 KeychainRead;它自己处理 interactionNotAllowed。
 ALLOWED=(
   "Sources/UsageDock/Support/KeychainRead.swift"
-  "apple/Packages/TokenRemainKit/Sources/TokenRemainSyncKit/SynchronizableSyncKeyStore.swift"
+  "Packages/TokenRemainSyncKit/Sources/TokenRemainSyncKit/SynchronizableSyncKeyStore.swift"
 )
-# 扫描范围包含 apple/Packages:同一个进程里的裸读取,不会因为换了个 target 就安全。
+# 扫描范围包含桌面同步包：同一个进程里的裸读取不会因为换了 target 就安全。
 while IFS= read -r offender; do
   [[ -z "$offender" ]] && continue
   for allowed in "${ALLOWED[@]}"; do
     [[ "$offender" == "$allowed" ]] && continue 2
   done
   fail "$offender calls SecItemCopyMatching directly; route it through KeychainRead instead"
-done < <(/usr/bin/grep -rl --include='*.swift' 'SecItemCopyMatching' Sources apple/Packages || true)
+done < <(/usr/bin/grep -rl --include='*.swift' 'SecItemCopyMatching' Sources Packages || true)
 
 # 2. 禁止交互必须用 SecKeychainSetUserInteractionAllowed。
 #    kSecUseAuthenticationContext / kSecUseAuthenticationUIFail 对 legacy
@@ -68,7 +68,7 @@ done
 #    绕不过变量转发(例如 ClaudeCredentialsReader 就在转发自己的参数)。
 #    注释里提到 `.allowed` 是合法的(那里正需要解释这个契约),所以先用 awk 砍掉
 #    `//` 之后的部分再判断。副作用:同一行里 URL 之后的代码会被一起砍掉,概率极低。
-ALLOWED_LITERALS="$(/usr/bin/grep -rn --include='*.swift' '\.allowed\b' Sources apple/Packages \
+ALLOWED_LITERALS="$(/usr/bin/grep -rn --include='*.swift' '\.allowed\b' Sources Packages \
   | /usr/bin/grep -v 'Support/KeychainRead.swift' \
   | /usr/bin/awk -F'//' '$1 ~ /\.allowed/ { print }' || true)"
 if [[ -n "$ALLOWED_LITERALS" ]]; then

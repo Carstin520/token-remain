@@ -10,7 +10,6 @@
 
 ![macOS](https://img.shields.io/badge/macOS-14%2B_Sonoma-000?logo=apple&logoColor=white)
 ![Apple Silicon](https://img.shields.io/badge/Apple_Silicon-arm64-7C5CFF)
-![Companion](https://img.shields.io/badge/iPhone_·_Widgets_·_Watch-1F2933?logo=apple&logoColor=white)
 ![Notarized](https://img.shields.io/badge/Apple-Notarized-34C759?logo=apple&logoColor=white)
 ![Latest](https://img.shields.io/badge/latest-v1.1.6-22D3EE)
 
@@ -32,7 +31,7 @@
 - 🧭 **统一额度面板** — Claude Code / Codex 的官方 5 小时 · 7 天窗口与重置倒计时，Cursor 月度账期，Grok 周池，GLM 会话/周窗口……全部并排展示。
 - ⏱️ **节奏预测** — 结合真实窗口进度与官方重置时间，判断当前节奏能否撑到重置；可能提前用尽时给出预计可用时长。
 - 💰 **今日成本** — ccusage 在本地统计 Claude Code / Codex 今日 token 与按 API 标价估算的成本（非订阅账单）。
-- 📱 **跨 Apple 设备** — Mac 是唯一真实数据来源；开启同步后，仅一份加密的展示快照经你自己的 iCloud 私有库送到 iPhone / Home Screen 小组件 / Watch。
+- 🔐 **可选加密同步发布器** — Mac 始终是唯一真实数据来源；开启后，只把经过白名单过滤并加密的展示快照写入用户自己的 iCloud 私有库。
 - 📡 **AI Feed** — 服务端精选 Anthropic、OpenAI 等官方账号的公开动态，重大更新触发本机通知。
 - 🪟 **随手可见** — 菜单栏文字自选显示哪些应用、桌面浮窗跨空间置顶、刷新频率 1/5/15/30 分钟或仅手动。
 - 🎨 **原生质感** — macOS 26 使用系统 Liquid Glass 与原生侧栏；macOS 14/15 自动回退深色卡片样式。
@@ -52,26 +51,6 @@
     <td align="center" width="38%">
       <img src="site/assets/popover.png" alt="菜单栏弹窗" /><br/>
       <sub><b>菜单栏弹窗</b> — 一眼看完最紧张的窗口、今日成本与 AI 动态</sub>
-    </td>
-  </tr>
-</table>
-
-### iPhone 与 Home Screen 小组件
-
-<table>
-  <tr>
-    <td align="center" width="25%">
-      <img src="site/assets/phone-overview.jpg" alt="iPhone 概览" /><br/>
-      <sub><b>iPhone · 概览</b><br/>来自 Mac 的加密快照</sub>
-    </td>
-    <td align="center" width="25%">
-      <img src="site/assets/phone-trends.jpg" alt="iPhone 趋势" /><br/>
-      <sub><b>iPhone · 趋势</b><br/>30 天真实历史</sub>
-    </td>
-    <td align="center" width="50%">
-      <img src="site/assets/widget-m.png" alt="中号小组件" /><br/>
-      <img src="site/assets/widget-s.png" width="150" alt="小号小组件" /><br/>
-      <sub><b>桌面小组件</b> — 最低剩余、逐 provider 进度条与重置倒计时</sub>
     </td>
   </tr>
 </table>
@@ -137,14 +116,14 @@ bash ./script/build_and_run.sh --verify
 
 构建完成后安装到 `~/Applications/UsageDock.app`。「登录时自动启动」使用 macOS 原生登录项管理（默认关闭，可在菜单中开启）。
 
-多平台工程（TokenRemain 的 Mac / iPhone / Watch App 与桌面小组件）见 `apple/TokenRemain.xcodeproj`，用 Xcode 打开即可。生产构建默认连接 `https://api.tokenremain.com`，可用 `TOKENREMAIN_BROADCAST_BASE_URL` 覆盖。
+本公开仓库只包含 TokenRemain 的 macOS Desktop 客户端及其必要的服务、网站和发布支持；移动客户端源码独立维护，不属于本仓库的开源范围。
 
 ## 📁 仓库结构
 
 | 目录 | 内容 |
 | :-- | :-- |
 | `Sources/UsageDock/` · `Package.swift` | SwiftPM 菜单栏 App（内部代号 UsageDock） |
-| `apple/` | Xcode 多平台工程：TokenRemain 的 Mac / iPhone / Watch App 与小组件 |
+| `Packages/TokenRemainSyncKit/` | Desktop 使用的最小加密同步协议包 |
 | `broadcast/` | Cloudflare Workers AI Feed 后端（D1 + Queues + APNs） |
 | `site/` | 官网、隐私政策与支持页 |
 | `docs/` | 发布、隐私与架构文档 |
@@ -155,7 +134,7 @@ bash ./script/build_and_run.sh --verify
 
 - **版本**：`v1.1.6`（build 8）——App 与 DMG 均已 Apple 公证、装订并通过 Gatekeeper 校验。
 - **平台**：macOS 14 Sonoma 及以上，仅 Apple Silicon（arm64），暂无 Intel 构建。
-- **分发**：公开 DMG 已 Developer ID 签名并经 Apple 公证，目前在 Mac App Store 之外分发；iPhone App Store 产品在开发与发布验证完成后再公布。
+- **分发**：公开 DMG 已 Developer ID 签名并经 Apple 公证，目前在 Mac App Store 之外分发。
 - **成本口径**：成本为 API 标价估算，不等于订阅账单；凭证过期时数据会暂停并提示恢复方式。
 
 ---

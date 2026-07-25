@@ -8,7 +8,7 @@ enum ProcessRunner {
     }
 
     /// A provider probe participates in a shared refresh round. A wedged or
-    /// interactive CLI must not suspend automatic Mac-to-iPhone delivery.
+    /// interactive CLI must not suspend automatic desktop snapshot delivery.
     static func run(
         _ executable: String,
         arguments: [String],

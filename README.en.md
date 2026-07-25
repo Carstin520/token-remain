@@ -10,7 +10,6 @@ Remaining quota, reset countdowns and today's cost for Claude Code, Codex, Curso
 
 ![macOS](https://img.shields.io/badge/macOS-14%2B_Sonoma-000?logo=apple&logoColor=white)
 ![Apple Silicon](https://img.shields.io/badge/Apple_Silicon-arm64-7C5CFF)
-![Companion](https://img.shields.io/badge/iPhone_·_Widgets_·_Watch-1F2933?logo=apple&logoColor=white)
 ![Notarized](https://img.shields.io/badge/Apple-Notarized-34C759?logo=apple&logoColor=white)
 ![Latest](https://img.shields.io/badge/latest-v1.1.6-22D3EE)
 
@@ -32,7 +31,7 @@ Remaining quota, reset countdowns and today's cost for Claude Code, Codex, Curso
 - 🧭 **One unified quota panel** — Claude Code / Codex official 5-hour · 7-day windows with reset countdowns, Cursor's monthly billing cycle, Grok's weekly pool, GLM session/weekly windows — all side by side.
 - ⏱️ **Pace prediction** — Real window progress plus official reset times decide whether your current pace lasts until reset, with an ETA when it won't.
 - 💰 **Today's cost** — ccusage counts today's Claude Code / Codex tokens and estimated API list-price cost, computed locally (not your subscription bill).
-- 📱 **Across Apple devices** — The Mac is the only source of real data. With sync enabled, an allowlisted encrypted snapshot travels through *your own* private iCloud database to iPhone / Home Screen widgets / Watch.
+- 🔐 **Optional encrypted sync publisher** — The Mac remains the only source of real data. When enabled, it writes only an allowlisted, encrypted display snapshot to your own private iCloud database.
 - 📡 **AI Feed** — A curated server-side feed of public posts from Anthropic, OpenAI and other official accounts; major updates trigger a local notification.
 - 🪟 **Always in reach** — Pick which apps appear in the menu bar, keep a floating window on top across Spaces, refresh every 1/5/15/30 minutes or manually.
 - 🎨 **Native feel** — macOS 26 uses system Liquid Glass and the native sidebar; macOS 14/15 falls back to the dark card style.
@@ -52,26 +51,6 @@ Remaining quota, reset countdowns and today's cost for Claude Code, Codex, Curso
     <td align="center" width="38%">
       <img src="site/assets/popover.png" alt="Menu bar popover" /><br/>
       <sub><b>Menu bar popover</b> — the tightest window, today's cost and the AI feed at a glance</sub>
-    </td>
-  </tr>
-</table>
-
-### iPhone and Home Screen widgets
-
-<table>
-  <tr>
-    <td align="center" width="25%">
-      <img src="site/assets/phone-overview.jpg" alt="iPhone overview" /><br/>
-      <sub><b>iPhone · Overview</b><br/>encrypted snapshot from your Mac</sub>
-    </td>
-    <td align="center" width="25%">
-      <img src="site/assets/phone-trends.jpg" alt="iPhone trends" /><br/>
-      <sub><b>iPhone · Trends</b><br/>30 days of real history</sub>
-    </td>
-    <td align="center" width="50%">
-      <img src="site/assets/widget-m.png" alt="Medium widget" /><br/>
-      <img src="site/assets/widget-s.png" width="150" alt="Small widget" /><br/>
-      <sub><b>Home Screen widgets</b> — lowest remaining, per-provider bars and a reset countdown</sub>
     </td>
   </tr>
 </table>
@@ -137,14 +116,14 @@ bash ./script/build_and_run.sh --verify
 
 It installs to `~/Applications/UsageDock.app`. "Launch at login" uses the native macOS login-items API (off by default, toggleable from the menu).
 
-The multiplatform project — TokenRemain's Mac / iPhone / Watch apps and the Home Screen widgets — lives in `apple/TokenRemain.xcodeproj`; just open it in Xcode. Production builds default to `https://api.tokenremain.com`, overridable with `TOKENREMAIN_BROADCAST_BASE_URL`.
+This public repository contains only the TokenRemain macOS desktop client and its required service, website, and release support. Mobile client source is maintained separately and is outside this repository's open-source scope.
 
 ## 📁 Repository layout
 
 | Path | Contents |
 | :-- | :-- |
 | `Sources/UsageDock/` · `Package.swift` | SwiftPM menu bar app (internal codename UsageDock) |
-| `apple/` | Xcode multiplatform project: TokenRemain Mac / iPhone / Watch apps and widgets |
+| `Packages/TokenRemainSyncKit/` | Minimal encrypted-sync protocol used by the desktop client |
 | `broadcast/` | Cloudflare Workers AI Feed backend (D1 + Queues + APNs) |
 | `site/` | Marketing site, privacy policy and support pages |
 | `docs/` | Release, privacy and architecture documents |
@@ -155,7 +134,7 @@ The multiplatform project — TokenRemain's Mac / iPhone / Watch apps and the Ho
 
 - **Version** — `v1.1.6` (build 8). Both the app and the DMG are Apple notarized, stapled and Gatekeeper-accepted.
 - **Platform** — macOS 14 Sonoma or later, Apple Silicon (arm64) only; no Intel build yet.
-- **Distribution** — The public DMG is Developer ID signed and Apple notarized, currently distributed outside the Mac App Store. An iPhone App Store product will be announced only after development and release validation are complete.
+- **Distribution** — The public DMG is Developer ID signed and Apple notarized, currently distributed outside the Mac App Store.
 - **Cost figures** — Costs are API list-price estimates, not your subscription bill. When a credential expires, data pauses and the app explains how to restore it.
 
 ---

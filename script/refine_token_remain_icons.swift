@@ -300,9 +300,9 @@ private func renderSquareIcon(face: Face, remainingPercent: Double, destinationU
 }
 
 let arguments = CommandLine.arguments
-guard arguments.count == 4 else {
+guard arguments.count == 3 else {
     FileHandle.standardError.write(Data(
-        "usage: refine_token_remain_icons.swift <design-state-directory> <mac-state-directory> <ios-app-icon>\n".utf8
+        "usage: refine_token_remain_icons.swift <design-state-directory> <mac-state-directory>\n".utf8
     ))
     exit(2)
 }
@@ -310,10 +310,8 @@ guard arguments.count == 4 else {
 let fileManager = FileManager.default
 let designDirectory = URL(fileURLWithPath: arguments[1], isDirectory: true)
 let macStateDirectory = URL(fileURLWithPath: arguments[2], isDirectory: true)
-let iOSAppIcon = URL(fileURLWithPath: arguments[3])
 try fileManager.createDirectory(at: designDirectory, withIntermediateDirectories: true)
 try fileManager.createDirectory(at: macStateDirectory, withIntermediateDirectories: true)
-try fileManager.createDirectory(at: iOSAppIcon.deletingLastPathComponent(), withIntermediateDirectories: true)
 
 for (fileName, face, remainingPercent) in states {
     try renderSquareIcon(
@@ -328,6 +326,3 @@ for (fileName, face, remainingPercent) in states {
     )
     print("rendered Orbit state \(fileName)")
 }
-
-try renderSquareIcon(face: .calmDots, remainingPercent: 70, destinationURL: iOSAppIcon)
-print("rendered Apple App Icon \(iOSAppIcon.path)")

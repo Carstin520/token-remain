@@ -12,7 +12,6 @@ X API 凭证和内容筛选全部留在 TokenRemain Broadcast Worker。Apple 客
 `https://api.tokenremain.com`，并支持以下覆盖入口：
 
 - macOS：构建环境变量 `TOKENREMAIN_BROADCAST_BASE_URL`
-- iOS / iPadOS：同名 Xcode build setting
 - 运行时读取的 Info.plist 键：`TokenRemainBroadcastBaseURL`
 
 ## 官网 DMG 下载统计

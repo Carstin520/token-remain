@@ -8,7 +8,7 @@ increasing Apple build numbers.
 - `VERSION` contains the next public marketing version as `MAJOR.MINOR.PATCH`.
 - `BUILD_NUMBER` contains the positive integer used by Apple bundles.
 - `script/verify_version_consistency.sh` requires the macOS Info.plist and the
-  iOS/watchOS XcodeGen project to match both files.
+  two version files to match.
 - `CHANGELOG.md` records the current unreleased cycle and every tagged release.
 
 ## Branches and tags
@@ -26,8 +26,7 @@ increasing Apple build numbers.
 - Patch: compatible fixes that do not add a product capability.
 - Minor: compatible new capabilities or material workflow improvements.
 - Major: incompatible product, storage, or public-contract changes.
-- `BUILD_NUMBER` increases for every App Store/TestFlight submission, including
-  resubmissions of the same marketing version.
+- `BUILD_NUMBER` increases for every macOS bundle release.
 
 ## Release gate
 
@@ -35,7 +34,7 @@ Before creating a release tag:
 
 1. Move the matching Changelog section from `Unreleased` to its release date.
 2. Run `script/verify_release_configuration.sh` and the full test suite.
-3. Build and inspect the distribution-signed macOS and iOS artifacts.
+3. Build and inspect the distribution-signed macOS artifact.
 4. Complete external production prerequisites, including the reviewed CloudKit
    schema deployment when the release depends on cross-device sync.
 5. Merge the reviewed release commit to `main`.

@@ -1,9 +1,8 @@
 # Desktop pixel restyle — 2026-07-20
 
-Restyled the TokenRemain macOS popover and Dashboard to the confirmed mobile
-pixel-tech, low-contrast, three-color robot design system
-(`design/mobile/token-remain-apple-system-concept-2026-07-20.png`,
-`apple/FABLE-FUNCTIONAL-SPEC.md` §3). Visual/theme only — no data logic, refresh
+Restyled the TokenRemain macOS popover and Dashboard to the confirmed
+pixel-tech, low-contrast, three-color robot design system. Visual/theme only —
+no data logic, refresh
 behavior, or copy semantics changed. zh-Hans copy preserved.
 
 ## Screenshots
@@ -40,7 +39,7 @@ Captured with `screencapture -l <windowID>` against the running installed app
 surface path is exercised; the pixel tick ornament + new accent/text tokens are
 layered on top of the system glass without opaque fills.
 
-## Palette (DashboardTheme → mobile TRTheme)
+## Palette (DashboardTheme)
 - Surfaces: canvas #070B12, surface #0D1420, surface2 #141D2C, surface3 #1B2536,
   border #223044, track #1B2536.
 - Text: #E9EDF5 / secondary #8B97AB / muted #55617A.

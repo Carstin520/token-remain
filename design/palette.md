@@ -1,6 +1,6 @@
 # TokenRemain 调色板 v1.1(2026-07-20)
 
-桌面端(`Sources/UsageDock/Views/Theme/DashboardTheme.swift`)与移动端(`apple/FABLE-FUNCTIONAL-SPEC.md` §3 `TRTheme`)共用的颜色令牌。可视化色块板:见 Claude Artifact「TokenRemain 色板」。
+macOS Desktop 端颜色令牌的规范来源，代码入口为 `Sources/UsageDock/Views/Theme/DashboardTheme.swift`。可视化色块板见 Claude Artifact「TokenRemain 色板」。
 
 核心原则:**身份与语义分离** —— 紫罗兰/青只表达品牌身份与强调(Claude、Codex、选中、链接);红黄绿只表达状态好坏,且永远与图形符号(✓ / ! / ‼)+ 文字标签同时出现。
 

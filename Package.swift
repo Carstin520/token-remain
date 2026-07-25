@@ -9,13 +9,13 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/sparkle-project/Sparkle", exact: "2.9.4"),
-        .package(path: "apple/Packages/TokenRemainKit")
+        .package(path: "Packages/TokenRemainSyncKit")
     ],
     targets: [
         .executableTarget(
             name: "UsageDock",
             dependencies: [
-                .product(name: "TokenRemainSyncKit", package: "TokenRemainKit"),
+                .product(name: "TokenRemainSyncKit", package: "TokenRemainSyncKit"),
                 .product(name: "Sparkle", package: "Sparkle")
             ],
             path: "Sources/UsageDock",

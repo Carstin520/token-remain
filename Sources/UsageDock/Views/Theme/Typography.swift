@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Typography tokens synced to the mobile design system
-/// (`apple/FABLE-FUNCTIONAL-SPEC.md` §3.2).
+/// shared by the desktop dashboard and menu-bar surfaces.
 ///
 /// Rules:
 /// - Body text and labels use **system SF**. There is no third-party pixel
