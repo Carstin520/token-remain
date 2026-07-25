@@ -3,6 +3,29 @@
 All notable product changes are recorded here. TokenRemain uses Semantic
 Versioning for public releases.
 
+## 1.1.6 — 2026-07-25
+
+### Added
+
+- Added a quiet sidebar update reminder that appears only when Sparkle finds a
+  newer signed release and opens the verified install flow on demand.
+- Added continuous local detection for supported coding tools installed after
+  onboarding, with an explicit prompt before tracking begins.
+
+### Changed
+
+- Expanded installed-tool discovery across app bundles, executable search
+  paths, local data directories, and editor extensions.
+- Show enabled API key and Cookie sources in Data Sources before their first
+  successful connection so credentials can be entered immediately.
+
+### Fixed
+
+- Restored the missing first-use credential entry point for Z.ai, OpenRouter,
+  and other manually configured providers.
+- Prevented background installation scans from polling manual credentials or
+  triggering Keychain interaction.
+
 ## 1.1.5 — 2026-07-25
 
 ### Added
@@ -126,3 +149,4 @@ Versioning for public releases.
 [1.1.3]: https://github.com/Carstin520/token-remain/releases/tag/v1.1.3
 [1.1.4]: https://github.com/Carstin520/token-remain/releases/tag/v1.1.4
 [1.1.5]: https://github.com/Carstin520/token-remain/releases/tag/v1.1.5
+[1.1.6]: https://github.com/Carstin520/token-remain/releases/tag/v1.1.6
