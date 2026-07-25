@@ -47,6 +47,137 @@ private struct FlowToggleRow: View {
     }
 }
 
+/// A picture-first chooser: each option previews the exact menu-bar density
+/// before the user applies it.
+private struct MenuBarDisplayModePicker: View {
+    let selectedMode: MenuBarDisplayMode
+    let select: (MenuBarDisplayMode) -> Void
+
+    private let columns = [
+        GridItem(.adaptive(minimum: 180, maximum: 260), spacing: 10)
+    ]
+
+    var body: some View {
+        LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
+            ForEach(MenuBarDisplayMode.allCases) { mode in
+                let isSelected = mode == selectedMode
+                Button {
+                    select(mode)
+                } label: {
+                    VStack(alignment: .leading, spacing: 9) {
+                        HStack {
+                            Text(title(for: mode))
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(DashboardTheme.text)
+                            Spacer(minLength: 6)
+                            Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundStyle(
+                                    isSelected ? DashboardTheme.violet : DashboardTheme.mutedText
+                                )
+                        }
+
+                        MenuBarModePreview(mode: mode)
+
+                        Text(description(for: mode))
+                            .font(.system(size: 10.5))
+                            .foregroundStyle(DashboardTheme.secondaryText)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, minHeight: 30, alignment: .topLeading)
+                    }
+                    .padding(10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(
+                        RoundedRectangle(cornerRadius: 11, style: .continuous)
+                            .fill(isSelected ? DashboardTheme.surface3 : DashboardTheme.surface2)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 11, style: .continuous)
+                            .stroke(
+                                isSelected ? DashboardTheme.violet : DashboardTheme.border,
+                                lineWidth: isSelected ? 1.5 : 1
+                            )
+                    )
+                    .contentShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(title(for: mode))
+                .accessibilityValue(
+                    isSelected
+                        ? L10n.text("settings.menubar_mode_selected")
+                        : L10n.text("settings.menubar_mode_not_selected")
+                )
+                .accessibilityHint(description(for: mode))
+            }
+        }
+    }
+
+    private func title(for mode: MenuBarDisplayMode) -> String {
+        switch mode {
+        case .full: return L10n.text("settings.menubar_mode_full")
+        case .compact: return L10n.text("settings.menubar_mode_compact")
+        case .minimal: return L10n.text("settings.menubar_mode_minimal")
+        }
+    }
+
+    private func description(for mode: MenuBarDisplayMode) -> String {
+        switch mode {
+        case .full: return L10n.text("settings.menubar_mode_full_description")
+        case .compact: return L10n.text("settings.menubar_mode_compact_description")
+        case .minimal: return L10n.text("settings.menubar_mode_minimal_description")
+        }
+    }
+}
+
+private struct MenuBarModePreview: View {
+    let mode: MenuBarDisplayMode
+
+    private var segments: [(ProviderQuota.Provider, String?)] {
+        switch mode {
+        case .full:
+            return [(.claude, "99%"), (.codex, "52%")]
+        case .compact:
+            return [(.claude, nil), (.codex, nil)]
+        case .minimal:
+            return [(.codex, "52%")]
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Spacer(minLength: 0)
+            ForEach(Array(segments.enumerated()), id: \.offset) { index, segment in
+                if index > 0 {
+                    Text(mode == .compact ? "" : "·")
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundStyle(Color.white.opacity(0.82))
+                }
+                BrandIcon(provider: segment.0, color: .white)
+                    .foregroundStyle(.white)
+                    .frame(width: 13, height: 13)
+                if let value = segment.1 {
+                    Text(value)
+                        .font(.system(size: 11, weight: .medium, design: .monospaced))
+                        .foregroundStyle(Color.white.opacity(0.92))
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 10)
+        .frame(maxWidth: .infinity, minHeight: 34)
+        .background(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(Color.black.opacity(0.72))
+        )
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(Color.white.opacity(0.08))
+                .frame(height: 1)
+        }
+        .accessibilityHidden(true)
+    }
+}
+
 /// Dashboard Settings: the fuller home for the popover's legacy actions —
 /// launch-at-login, manual refresh, restart, quit — plus about / privacy info.
 /// Every control is wired to the same live objects as the popover.
@@ -104,6 +235,19 @@ struct SettingsSection: View {
                             providers: tracked.enabledOrdered,
                             isOn: { preferences.isInMenuBar($0) },
                             toggle: { preferences.toggleMenuBar($0) }
+                        )
+                    }
+
+                    VStack(alignment: .leading, spacing: 7) {
+                        Text(L10n.text("settings.menubar_mode_title"))
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(DashboardTheme.text)
+                        Text(L10n.text("settings.menubar_mode_hint"))
+                            .font(.system(size: 11))
+                            .foregroundStyle(DashboardTheme.secondaryText)
+                        MenuBarDisplayModePicker(
+                            selectedMode: preferences.menuBarDisplayMode,
+                            select: { preferences.setMenuBarDisplayMode($0) }
                         )
                     }
 

@@ -5,6 +5,9 @@ import SwiftUI
 /// that would require multi-day history lives in the Trends section instead.
 struct OverviewSection: View {
     let insights: UsageInsights
+    let localUsageStatus: UsageStore.LocalUsageStatus
+    let isCCUsageRefreshing: Bool
+    let onRetryCCUsage: () -> Void
     @ObservedObject var feedStore: AIFeedStore
     let errorMessage: String?
 
@@ -19,7 +22,12 @@ struct OverviewSection: View {
             kpiRow
 
             HStack(alignment: .top, spacing: 14) {
-                UsageCostCompositionCard(insights: insights)
+                UsageCostCompositionCard(
+                    insights: insights,
+                    localUsageStatus: localUsageStatus,
+                    isRefreshing: isCCUsageRefreshing,
+                    onRetry: onRetryCCUsage
+                )
                 officialQuotaPanel
             }
 

@@ -76,11 +76,13 @@ struct DataSourcesSection: View {
         case feed
     }
 
-    /// Provider 用持久化的成功连接历史过滤；内置来源只有在确实产出过
-    /// 数据后才出现，避免把“支持但从未工作过”误呈现成已连接。
+    /// Provider 用持久化的成功连接历史过滤；ccusage 是安装包内置来源，
+    /// 首次读取结束后即展示，即使结果为空或失败也能被用户诊断。
     private var visibleSources: [VisibleSource] {
         var sources = store.connectedProviders.map(VisibleSource.provider)
-        if insights.daily != nil { sources.append(.ccusage) }
+        if store.localUsageStatus != .loading || insights.daily != nil {
+            sources.append(.ccusage)
+        }
         if feedStore.lastUpdated != nil { sources.append(.feed) }
         return sources
     }
@@ -100,9 +102,9 @@ struct DataSourcesSection: View {
         case .ccusage:
             SourceHealthRow(
                 name: "ccusage",
-                detail: L10n.text("datasource.ccusage_detail"),
-                healthy: true,
-                capturedAt: insights.daily?.capturedAt
+                detail: ccusageDetail,
+                healthy: ccusageHealthy,
+                capturedAt: insights.daily?.capturedAt ?? insights.history?.capturedAt
             )
         case .feed:
             SourceHealthRow(
@@ -111,6 +113,20 @@ struct DataSourcesSection: View {
                 healthy: true,
                 capturedAt: feedStore.lastUpdated
             )
+        }
+    }
+
+    private var ccusageDetail: String {
+        if case .failed(let message) = store.localUsageStatus {
+            return message
+        }
+        return L10n.text("datasource.ccusage_detail")
+    }
+
+    private var ccusageHealthy: Bool {
+        switch store.localUsageStatus {
+        case .available, .empty: true
+        case .loading, .failed: false
         }
     }
 

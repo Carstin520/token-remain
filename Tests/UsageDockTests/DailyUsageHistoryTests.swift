@@ -8,12 +8,13 @@ struct DailyUsageHistoryTests {
         Data("{\"daily\":[\(rows)]}".utf8)
     }
 
-    @Test("Parses per-day Claude / Codex split from ccusage by-agent JSON")
+    @Test("Parses every per-day agent from ccusage by-agent JSON")
     func parsesSplit() throws {
         let data = payload("""
         {"period":"2026-07-18","agents":[
             {"agent":"claude","totalTokens":300,"totalCost":1.5},
-            {"agent":"codex","totalTokens":100,"totalCost":0.5}
+            {"agent":"codex","totalTokens":100,"totalCost":0.5},
+            {"agent":"gemini","totalTokens":40,"totalCost":0.1}
         ]},
         {"period":"2026-07-19","agents":[
             {"agent":"codex","totalTokens":250,"totalCost":2.0},
@@ -28,8 +29,9 @@ struct DailyUsageHistoryTests {
         let first = history.days[0]
         #expect(first.claudeTokens == 300)
         #expect(first.codexTokens == 100)
-        #expect(first.totalTokens == 400)
-        #expect(first.totalCost == 2.0)
+        #expect(first.totalTokens == 440)
+        #expect(first.totalCost == 2.1)
+        #expect(first.tokens(forAgentID: "gemini") == 40)
 
         let second = history.days[1]
         #expect(second.claudeTokens == 50)
@@ -107,23 +109,88 @@ struct DailyUsageHistoryTests {
         #expect(UsageTrendChart.selectedTotal(
             day,
             metric: .tokens,
-            visibleProviders: [.claude, .codex]
+            visibleAgentIDs: ["claude", "codex"]
         ) == 400)
         #expect(UsageTrendChart.selectedTotal(
             day,
             metric: .tokens,
-            visibleProviders: [.codex]
+            visibleAgentIDs: ["codex"]
         ) == 100)
         #expect(UsageTrendChart.selectedTotal(
             day,
             metric: .cost,
-            visibleProviders: [.claude]
+            visibleAgentIDs: ["claude"]
         ) == 1.5)
         #expect(UsageTrendChart.selectedTotal(
             day,
             metric: .tokens,
-            visibleProviders: []
+            visibleAgentIDs: []
         ) == 0)
+    }
+
+    @Test("A newly discovered agent can be selected without a code change")
+    func dynamicAgentSelection() throws {
+        let data = payload("""
+        {"period":"2026-07-20","agents":[
+            {"agent":"gemini","totalTokens":275,"totalCost":0.75}
+        ]}
+        """)
+        let day = try #require(try CCUsageService.parseHistory(data).days.first)
+        #expect(UsageTrendChart.selectedTotal(
+            day,
+            metric: .tokens,
+            visibleAgentIDs: ["gemini"]
+        ) == 275)
+        #expect(UsageInsights.displayName(for: "gemini") == "Gemini")
+    }
+
+    @Test("An empty successful report is no-usage, not an endless loading state")
+    func emptyReportState() throws {
+        let snapshot = try CCUsageService.parseSnapshot(payload(""))
+        #expect(snapshot.daily.agents.isEmpty)
+        #expect(UsageStore.localUsageStatus(for: snapshot.daily) == .empty)
+    }
+
+    @Test("Pre-dynamic history cache decodes without losing Claude and Codex")
+    func legacyCacheMigration() throws {
+        let json = """
+        {
+          "days": [{
+            "date": 0,
+            "claudeTokens": 300,
+            "claudeCost": 1.5,
+            "codexTokens": 100,
+            "codexCost": 0.5
+          }],
+          "capturedAt": 0
+        }
+        """
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .secondsSince1970
+        let history = try decoder.decode(DailyUsageHistory.self, from: Data(json.utf8))
+        let day = try #require(history.days.first)
+        #expect(day.tokens(forAgentID: "claude") == 300)
+        #expect(day.tokens(forAgentID: "codex") == 100)
+        #expect(day.totalCost == 2)
+    }
+
+    @Test("Dynamic history cache round-trips unknown agents")
+    func dynamicCacheRoundTrip() throws {
+        let history = DailyUsageHistory(
+            days: [
+                .init(
+                    date: Date(timeIntervalSince1970: 1_000),
+                    agents: [.init(id: "gemini", tokens: 123, cost: 0.45)]
+                )
+            ],
+            capturedAt: Date(timeIntervalSince1970: 2_000)
+        )
+        let decoded = try JSONDecoder().decode(
+            DailyUsageHistory.self,
+            from: JSONEncoder().encode(history)
+        )
+        #expect(decoded.days.first?.tokens(forAgentID: "gemini") == 123)
+        #expect(decoded.days.first?.cost(forAgentID: "gemini") == 0.45)
     }
 
     @Test("Rows with unparseable periods are dropped rather than guessed")

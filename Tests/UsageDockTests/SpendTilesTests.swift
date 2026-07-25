@@ -46,11 +46,17 @@ struct SpendTilesTests {
         #expect(tiles[0].tokens == 240_300_000)
         #expect(tiles[1].cost == 218.04)
         #expect(tiles[1].tokens == 438_500_000)
-        #expect(tiles[2].cost == 219.04)
-        #expect(tiles[2].tokens == 438_501_000)
+        #expect(tiles[2].cost == 337.94)
+        #expect(tiles[2].tokens == 678_801_000)
+
+        let trend = insights.dailyTokenTrend(now: now, calendar: calendar)
+        #expect(trend.count == 30)
+        #expect(trend[24] == 1_000)
+        #expect(trend[28] == 438_500_000)
+        #expect(trend[29] == 240_300_000)
     }
 
-    @Test("Missing history still yields a today tile; empty data yields none")
+    @Test("Missing history fills every summary and trend day with explicit zeros")
     func partialData() {
         let now = Date(timeIntervalSince1970: 1_784_000_000)
         let onlyToday = UsageInsights(
@@ -59,11 +65,20 @@ struct SpendTilesTests {
             daily: DailyUsage(date: "d", agents: [.init(id: "claude", tokens: 5, estimatedCost: 1)], capturedAt: now),
             history: nil
         )
-        #expect(onlyToday.spendTiles(now: now).map(\.id) == ["today"])
+        let onlyTodayTiles = onlyToday.spendTiles(now: now)
+        #expect(onlyTodayTiles.map(\.id) == ["today", "yesterday", "last30"])
+        #expect(onlyTodayTiles.map(\.tokens) == [5, 0, 5])
+        #expect(onlyTodayTiles.map(\.cost) == [1, 0, 1])
+        #expect(onlyToday.dailyTokenTrend(now: now).count == 30)
+        #expect(onlyToday.dailyTokenTrend(now: now).dropLast().allSatisfy { $0 == 0 })
+        #expect(onlyToday.dailyTokenTrend(now: now).last == 5)
 
         let empty = UsageInsights(claude: nil, codex: nil, daily: nil, history: nil)
-        #expect(empty.spendTiles(now: now).isEmpty)
-        #expect(empty.dailyTokenTrend.isEmpty)
+        let emptyTiles = empty.spendTiles(now: now)
+        #expect(emptyTiles.map(\.id) == ["today", "yesterday", "last30"])
+        #expect(emptyTiles.allSatisfy { $0.tokens == 0 && $0.cost == 0 })
+        #expect(empty.dailyTokenTrend(now: now).count == 30)
+        #expect(empty.dailyTokenTrend(now: now).allSatisfy { $0 == 0 })
     }
 
     @Test("Claude extra_usage parses spent credits and optional monthly cap")

@@ -22,6 +22,32 @@ struct AdaptiveRefreshPolicyTests {
         #expect(AdaptiveRefreshPolicy.retryDelay(after: 9) == 300)
     }
 
+    @Test("Local usage refreshes every minute and presentation can force it immediately")
+    func localUsageCadence() {
+        let now = Date(timeIntervalSince1970: 1_784_966_400)
+
+        #expect(AdaptiveRefreshPolicy.localUsageRefreshIsDue(
+            lastRefresh: nil,
+            now: now,
+            force: false
+        ))
+        #expect(!AdaptiveRefreshPolicy.localUsageRefreshIsDue(
+            lastRefresh: now.addingTimeInterval(-59),
+            now: now,
+            force: false
+        ))
+        #expect(AdaptiveRefreshPolicy.localUsageRefreshIsDue(
+            lastRefresh: now.addingTimeInterval(-60),
+            now: now,
+            force: false
+        ))
+        #expect(AdaptiveRefreshPolicy.localUsageRefreshIsDue(
+            lastRefresh: now,
+            now: now,
+            force: true
+        ))
+    }
+
     #if TOKENREMAIN_CLOUD_SYNC
     @Test("Sync fingerprint ignores capture-only churn but detects quota changes")
     func contentFingerprint() {

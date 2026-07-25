@@ -257,13 +257,26 @@ struct DashboardView: View {
         case .overview:
             OverviewSection(
                 insights: insights,
+                localUsageStatus: store.localUsageStatus,
+                isCCUsageRefreshing: store.isCCUsageRefreshing,
+                onRetryCCUsage: {
+                    Task { await store.refresh(forceCCUsage: true, forceClaude: false) }
+                },
                 feedStore: feedStore,
                 errorMessage: store.errorMessage
             )
         case .limits:
             LimitsSection(insights: insights, notices: store.providerNotices)
         case .trends:
-            TrendsSection(insights: insights)
+            TrendsSection(
+                insights: insights,
+                localUsageStatus: store.localUsageStatus,
+                isCCUsageRefreshing: store.isCCUsageRefreshing,
+                onRetryCCUsage: {
+                    Task { await store.refresh(forceCCUsage: true, forceClaude: false) }
+                },
+                tracked: tracked
+            )
         case .devices:
             DevicesSection(insights: insights)
         case .dataSources:

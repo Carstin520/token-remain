@@ -99,6 +99,11 @@ struct UsageMenuView: View {
         case .localUsage:
             LocalUsageCard(
                 insights: insights,
+                localUsageStatus: store.localUsageStatus,
+                isRefreshing: store.isCCUsageRefreshing,
+                onRetry: {
+                    Task { await store.refresh(forceCCUsage: true, forceClaude: false) }
+                },
                 layout: layout,
                 draggingWidget: $draggingWidget
             )

@@ -44,12 +44,40 @@ enum TrendMetric: CaseIterable, Identifiable {
 /// Backed entirely by real ccusage `daily --by-agent` history — the caller only
 /// shows this when at least two days exist.
 struct UsageTrendCard: View {
+    private static let hiddenAgentIDsKey = "tokenRemain.trendHiddenAgentIDs.v1"
+
     let days: [DailyUsageHistory.Day]
     var capturedAt: Date?
+    let preferredAgentIDs: Set<String>?
 
     @State private var range: TrendRange = .twoWeeks
     @State private var metric: TrendMetric = .tokens
-    @State private var visibleProviders: Set<ProviderQuota.Provider> = [.claude, .codex]
+    @State private var visibleAgentIDs: Set<String>
+
+    init(
+        days: [DailyUsageHistory.Day],
+        capturedAt: Date? = nil,
+        preferredAgentIDs: Set<String>? = nil
+    ) {
+        self.days = days
+        self.capturedAt = capturedAt
+        self.preferredAgentIDs = preferredAgentIDs
+        let available = Self.agentIDs(in: days)
+        let initiallyVisible: [String]
+        if let preferredAgentIDs {
+            initiallyVisible = available.filter {
+                preferredAgentIDs.contains($0) || UsageInsights.provider(for: $0) == nil
+            }
+        } else {
+            initiallyVisible = available
+        }
+        let hidden = Set(UserDefaults.standard.stringArray(forKey: Self.hiddenAgentIDsKey) ?? [])
+        _visibleAgentIDs = State(initialValue: Set(initiallyVisible).subtracting(hidden))
+    }
+
+    private var availableAgentIDs: [String] {
+        Self.agentIDs(in: days)
+    }
 
     /// Most recent `range` days (or everything, if less history exists).
     private var shown: [DailyUsageHistory.Day] {
@@ -70,17 +98,37 @@ struct UsageTrendCard: View {
                 UsageTrendChart(
                     days: shown,
                     metric: metric,
-                    visibleProviders: visibleProviders
+                    visibleAgentIDs: visibleAgentIDs
                 )
                     .frame(height: 208)
             }
         }
         .frame(maxWidth: .infinity)
+        .onChange(of: visibleAgentIDs) { _, updated in
+            UserDefaults.standard.set(
+                availableAgentIDs.filter { !updated.contains($0) },
+                forKey: Self.hiddenAgentIDsKey
+            )
+        }
+        .onChange(of: availableAgentIDs) { _, updatedIDs in
+            let hidden = Set(
+                UserDefaults.standard.stringArray(forKey: Self.hiddenAgentIDsKey) ?? []
+            )
+            let eligible = updatedIDs.filter { agentID in
+                guard let preferredAgentIDs else { return true }
+                return preferredAgentIDs.contains(agentID)
+                    || UsageInsights.provider(for: agentID) == nil
+            }
+            visibleAgentIDs = Set(eligible).subtracting(hidden)
+        }
     }
 
     private var controls: some View {
         HStack(alignment: .center, spacing: 12) {
-            TrendLegend(visibleProviders: $visibleProviders)
+            TrendLegend(
+                agentIDs: availableAgentIDs,
+                visibleAgentIDs: $visibleAgentIDs
+            )
             Spacer(minLength: 8)
             PixelSegmentedControl(
                 options: TrendRange.allCases.map { ($0, $0.label) },
@@ -99,10 +147,10 @@ struct UsageTrendCard: View {
             UsageTrendChart.selectedTotal(
                 day,
                 metric: metric,
-                visibleProviders: visibleProviders
+                visibleAgentIDs: visibleAgentIDs
             )
         }
-        if !visibleProviders.isEmpty, totals.count > 1 {
+        if !visibleAgentIDs.isEmpty, totals.count > 1 {
             HStack(spacing: 8) {
                 Text(L10n.text("trends.total_sparkline"))
                     .font(.system(size: 9, weight: .medium))
@@ -113,6 +161,18 @@ struct UsageTrendCard: View {
                     .frame(height: 20)
             }
         }
+    }
+
+    private static func agentIDs(in days: [DailyUsageHistory.Day]) -> [String] {
+        let present = Set(days.flatMap(\.agents).map { $0.id.lowercased() })
+        let known = ProviderQuota.Provider.displayOrder
+            .map(\.ccusageAgentID)
+            .filter(present.contains)
+        var seen = Set(known)
+        let unknown = days.flatMap(\.agents)
+            .map { $0.id.lowercased() }
+            .filter { seen.insert($0).inserted }
+        return known + unknown
     }
 }
 
@@ -125,7 +185,7 @@ struct UsageTrendCard: View {
 struct UsageTrendChart: View {
     let days: [DailyUsageHistory.Day]
     let metric: TrendMetric
-    let visibleProviders: Set<ProviderQuota.Provider>
+    let visibleAgentIDs: Set<String>
 
     @State private var activeIndex: Int?
 
@@ -134,20 +194,22 @@ struct UsageTrendChart: View {
     private let segmentGap: CGFloat = 2
     private let gridlineFractions: [Double] = [0.25, 0.5, 0.75, 1.0]
 
-    private var claudeColor: Color { DashboardTheme.providerSlots[0] }
-    private var codexColor: Color { DashboardTheme.providerSlots[1] }
-    private var hasVisibleSeries: Bool { !visibleProviders.isEmpty }
+    private var series: [String] {
+        var seen = Set<String>()
+        return days.flatMap(\.agents)
+            .map { $0.id.lowercased() }
+            .filter { visibleAgentIDs.contains($0) && seen.insert($0).inserted }
+    }
+    private var hasVisibleSeries: Bool { !series.isEmpty }
 
-    private func claudeValue(_ day: DailyUsageHistory.Day) -> Double {
-        guard visibleProviders.contains(.claude) else { return 0 }
-        return metric == .tokens ? Double(day.claudeTokens) : day.claudeCost
+    private func value(_ day: DailyUsageHistory.Day, agentID: String) -> Double {
+        metric == .tokens
+            ? Double(day.tokens(forAgentID: agentID))
+            : day.cost(forAgentID: agentID)
     }
-    private func codexValue(_ day: DailyUsageHistory.Day) -> Double {
-        guard visibleProviders.contains(.codex) else { return 0 }
-        return metric == .tokens ? Double(day.codexTokens) : day.codexCost
-    }
+
     private func total(_ day: DailyUsageHistory.Day) -> Double {
-        claudeValue(day) + codexValue(day)
+        series.reduce(0) { $0 + value(day, agentID: $1) }
     }
 
     /// Rounded-up axis ceiling so the tallest stack clears the top gridline.
@@ -173,17 +235,21 @@ struct UsageTrendChart: View {
 
                 ForEach(Array(days.enumerated()), id: \.element.id) { index, day in
                     let centerX = leftGutter + columnW * (CGFloat(index) + 0.5)
-                    let claudeH = barHeight(claudeValue(day), plotH: plotH)
-                    let codexH = barHeight(codexValue(day), plotH: plotH)
+                    let segments = series.compactMap { agentID -> TrendBarSegment? in
+                        let height = barHeight(value(day, agentID: agentID), plotH: plotH)
+                        guard height > 0 else { return nil }
+                        return TrendBarSegment(
+                            id: agentID,
+                            height: height,
+                            color: Self.color(forAgentID: agentID)
+                        )
+                    }
                     let dimmed = activeIndex != nil && activeIndex != index
 
                     BarColumn(
-                        claudeHeight: claudeH,
-                        codexHeight: codexH,
+                        segments: segments,
                         barWidth: barW,
                         gap: segmentGap,
-                        claudeColor: claudeColor,
-                        codexColor: codexColor,
                         dimmed: dimmed
                     )
                     .frame(width: columnW, height: plotH)
@@ -230,7 +296,7 @@ struct UsageTrendChart: View {
                 }
             }
             .animation(.easeOut(duration: 0.12), value: activeIndex)
-            .animation(.easeOut(duration: 0.18), value: visibleProviders)
+            .animation(.easeOut(duration: 0.18), value: visibleAgentIDs)
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(
@@ -330,20 +396,23 @@ struct UsageTrendChart: View {
             Swift.max(centerX, leftGutter + tooltipW / 2),
             size.width - tooltipW / 2
         )
-        let stackTop = plotH - barHeight(total(day), plotH: plotH) - (codexValue(day) > 0 ? segmentGap : 0)
+        let nonZeroSeriesCount = series.filter { value(day, agentID: $0) > 0 }.count
+        let stackTop = plotH
+            - barHeight(total(day), plotH: plotH)
+            - CGFloat(max(0, nonZeroSeriesCount - 1)) * segmentGap
         let y = Swift.max(46, stackTop - 44)
 
         TrendTooltip(
             title: Self.fullDayLabel(day.date),
-            claude: visibleProviders.contains(.claude)
-                ? valueLabel(claudeValue(day))
-                : nil,
-            codex: visibleProviders.contains(.codex)
-                ? valueLabel(codexValue(day))
-                : nil,
-            total: valueLabel(total(day)),
-            claudeColor: claudeColor,
-            codexColor: codexColor
+            rows: series.map {
+                TrendTooltipRow(
+                    id: $0,
+                    name: UsageInsights.displayName(for: $0),
+                    value: valueLabel(value(day, agentID: $0)),
+                    color: Self.color(forAgentID: $0)
+                )
+            },
+            total: valueLabel(total(day))
         )
         .frame(width: tooltipW)
         .position(x: clampedX, y: y)
@@ -391,11 +460,10 @@ struct UsageTrendChart: View {
 
     private func accessibilityLabel(for day: DailyUsageHistory.Day) -> String {
         var parts = [Self.fullDayLabel(day.date)]
-        if visibleProviders.contains(.claude) {
-            parts.append("Claude \(valueLabel(claudeValue(day)))")
-        }
-        if visibleProviders.contains(.codex) {
-            parts.append("Codex \(valueLabel(codexValue(day)))")
+        for agentID in series {
+            parts.append(
+                "\(UsageInsights.displayName(for: agentID)) \(valueLabel(value(day, agentID: agentID)))"
+            )
         }
         if hasVisibleSeries {
             parts.append(L10n.format("trends.total_format", valueLabel(total(day))))
@@ -437,51 +505,58 @@ struct UsageTrendChart: View {
     static func selectedTotal(
         _ day: DailyUsageHistory.Day,
         metric: TrendMetric,
-        visibleProviders: Set<ProviderQuota.Provider>
+        visibleAgentIDs: Set<String>
     ) -> Double {
-        visibleProviders.reduce(0) { total, provider in
+        visibleAgentIDs.reduce(0) { total, agentID in
             switch metric {
             case .tokens:
-                return total + Double(day.tokens(for: provider))
+                return total + Double(day.tokens(forAgentID: agentID))
             case .cost:
-                return total + day.cost(for: provider)
+                return total + day.cost(forAgentID: agentID)
             }
         }
+    }
+
+    static func color(forAgentID id: String) -> Color {
+        if let provider = UsageInsights.provider(for: id) {
+            return DashboardTheme.accent(for: provider)
+        }
+        let scalarSum = id.unicodeScalars.reduce(0) { $0 + Int($1.value) }
+        return DashboardTheme.providerSlots[scalarSum % DashboardTheme.providerSlots.count]
     }
 }
 
 // MARK: - Bar column
 
-/// One day's stacked bar. Claude anchors to the baseline; Codex sits above with
-/// a canvas-colored gap. Only the topmost non-zero segment rounds its top (the
-/// data-end), matching the pixel segment aesthetic; zero values draw nothing.
+/// One day's dynamic stacked bar. Only the topmost non-zero segment rounds its
+/// top (the data-end); zero values draw nothing.
+private struct TrendBarSegment: Identifiable {
+    let id: String
+    let height: CGFloat
+    let color: Color
+}
+
 private struct BarColumn: View {
-    let claudeHeight: CGFloat
-    let codexHeight: CGFloat
+    let segments: [TrendBarSegment]
     let barWidth: CGFloat
     let gap: CGFloat
-    let claudeColor: Color
-    let codexColor: Color
     let dimmed: Bool
-
-    private var claudeIsTop: Bool { codexHeight <= 0 }
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            if claudeHeight > 0 {
-                segment(rounded: claudeIsTop)
-                    .fill(claudeColor.opacity(dimmed ? 0.4 : 1))
-                    .frame(width: barWidth, height: claudeHeight)
-            }
-            if codexHeight > 0 {
-                segment(rounded: true)
-                    .fill(codexColor.opacity(dimmed ? 0.4 : 1))
-                    .frame(width: barWidth, height: codexHeight)
-                    .offset(y: -(claudeHeight + (claudeHeight > 0 ? gap : 0)))
+            ForEach(Array(segments.enumerated()), id: \.element.id) { index, item in
+                segment(rounded: index == segments.count - 1)
+                    .fill(item.color.opacity(dimmed ? 0.4 : 1))
+                    .frame(width: barWidth, height: item.height)
+                    .offset(y: -offset(before: index))
             }
         }
         .frame(maxHeight: .infinity, alignment: .bottom)
         .accessibilityElement(children: .ignore)
+    }
+
+    private func offset(before index: Int) -> CGFloat {
+        segments.prefix(index).reduce(0) { $0 + $1.height + gap }
     }
 
     /// Top-only 2pt rounding for the stack's data-end; square everywhere else so
@@ -499,78 +574,112 @@ private struct BarColumn: View {
 
 // MARK: - Legend
 
-/// Interactive two-series legend. Each provider toggles independently, including
-/// the valid states where one or neither provider is visible.
+/// Dynamic series picker. Visible agents are chips; the plus menu contains
+/// hidden agents discovered in the user's real ccusage history.
 struct TrendLegend: View {
-    @Binding var visibleProviders: Set<ProviderQuota.Provider>
+    let agentIDs: [String]
+    @Binding var visibleAgentIDs: Set<String>
 
     var body: some View {
-        HStack(spacing: 14) {
-            item(provider: .claude, name: "Claude", color: DashboardTheme.providerSlots[0])
-            item(provider: .codex, name: "Codex", color: DashboardTheme.providerSlots[1])
+        HStack(spacing: 10) {
+            ForEach(agentIDs.filter(visibleAgentIDs.contains), id: \.self) { agentID in
+                item(agentID: agentID)
+            }
+            addMenu
         }
     }
 
-    private func item(provider: ProviderQuota.Provider, name: String, color: Color) -> some View {
-        let isVisible = visibleProviders.contains(provider)
+    private func item(agentID: String) -> some View {
+        let name = UsageInsights.displayName(for: agentID)
+        let color = UsageTrendChart.color(forAgentID: agentID)
         return Button {
-            if isVisible {
-                visibleProviders.remove(provider)
-            } else {
-                visibleProviders.insert(provider)
-            }
+            visibleAgentIDs.remove(agentID)
         } label: {
             HStack(spacing: 5) {
-                BrandIcon(provider: provider)
-                    .foregroundStyle(color)
-                    .frame(width: 11, height: 11)
+                if let provider = UsageInsights.provider(for: agentID) {
+                    BrandIcon(provider: provider)
+                        .foregroundStyle(color)
+                        .frame(width: 11, height: 11)
+                } else {
+                    Circle()
+                        .fill(color)
+                        .frame(width: 8, height: 8)
+                }
                 Text(name)
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(
-                        isVisible ? DashboardTheme.secondaryText : DashboardTheme.mutedText
-                    )
+                    .foregroundStyle(DashboardTheme.secondaryText)
                 RoundedRectangle(cornerRadius: 2, style: .continuous)
-                    .fill(isVisible ? color : DashboardTheme.surface2)
+                    .fill(color)
                     .frame(width: 12, height: 6)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 2, style: .continuous)
-                            .strokeBorder(
-                                isVisible ? Color.clear : DashboardTheme.mutedText,
-                                lineWidth: 1
-                            )
-                    )
             }
-            .opacity(isVisible ? 1 : 0.42)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .help(isVisible ? L10n.format("trends.legend_hide", name) : L10n.format("trends.legend_show", name))
+        .help(L10n.format("trends.legend_hide", name))
         .accessibilityLabel(L10n.format("trends.legend_label", name))
-        .accessibilityValue(isVisible ? L10n.text("trends.legend_visible") : L10n.text("trends.legend_hidden"))
-        .accessibilityAddTraits(isVisible ? [.isButton, .isSelected] : .isButton)
+        .accessibilityValue(L10n.text("trends.legend_visible"))
+        .accessibilityAddTraits([.isButton, .isSelected])
+    }
+
+    private var addMenu: some View {
+        let hidden = agentIDs.filter { !visibleAgentIDs.contains($0) }
+        return Menu {
+            if hidden.isEmpty {
+                Button(L10n.text("widget.all_visible")) {}.disabled(true)
+            } else {
+                ForEach(hidden, id: \.self) { agentID in
+                    Button {
+                        visibleAgentIDs.insert(agentID)
+                    } label: {
+                        Label(
+                            UsageInsights.displayName(for: agentID),
+                            systemImage: "plus.circle"
+                        )
+                    }
+                }
+            }
+        } label: {
+            Image(systemName: "plus")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(DashboardTheme.text)
+                .frame(width: 22, height: 22)
+                .background(
+                    DashboardTheme.surface2,
+                    in: RoundedRectangle(cornerRadius: 6, style: .continuous)
+                )
+                .overlay {
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .strokeBorder(DashboardTheme.border, lineWidth: 1)
+                }
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .help(L10n.text("limits.add_app"))
+        .accessibilityLabel(L10n.text("limits.add_app_accessibility"))
     }
 }
 
 // MARK: - Tooltip
 
+private struct TrendTooltipRow: Identifiable {
+    let id: String
+    let name: String
+    let value: String
+    let color: Color
+}
+
 private struct TrendTooltip: View {
     let title: String
-    let claude: String?
-    let codex: String?
+    let rows: [TrendTooltipRow]
     let total: String
-    let claudeColor: Color
-    let codexColor: Color
 
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
             Text(title)
                 .font(.system(size: 10, weight: .semibold))
                 .foregroundStyle(DashboardTheme.text)
-            if let claude {
-                row(color: claudeColor, name: "Claude", value: claude)
-            }
-            if let codex {
-                row(color: codexColor, name: "Codex", value: codex)
+            ForEach(rows) { item in
+                row(color: item.color, name: item.name, value: item.value)
             }
             Divider().overlay(DashboardTheme.border)
             HStack {
