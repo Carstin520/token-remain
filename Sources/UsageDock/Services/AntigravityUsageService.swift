@@ -159,8 +159,8 @@ struct AntigravityTokenReader {
         KeychainRead.genericPassword(
             service: "gemini",
             account: "antigravity",
-            allowUserInteraction: false
-        )
+            interaction: .disallowed
+        ).payload
     }
 
     func load() -> Token? {

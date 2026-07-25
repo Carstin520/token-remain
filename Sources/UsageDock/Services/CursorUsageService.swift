@@ -1,6 +1,5 @@
 import Foundation
 import OSLog
-import Security
 
 /// Cursor 月度额度直查。参考 OpenUsage(MIT)的 Cursor provider,但坚持
 /// 只读原则:读取 Cursor IDE 自己维护的 access token(`state.vscdb` 优先、
@@ -166,7 +165,7 @@ struct CursorAuthReader {
         fileURLWithPath: (stateDBPath as NSString).expandingTildeInPath
     )
     var keychainPayload: @Sendable () -> String? = {
-        Self.readGenericPassword(service: "cursor-access-token")
+        KeychainRead.genericPassword(service: "cursor-access-token", interaction: .disallowed).payload
     }
 
     func load() async -> Auth? {
@@ -199,20 +198,5 @@ struct CursorAuthReader {
             text = String(text.dropFirst().dropLast())
         }
         return text.isEmpty ? nil : text
-    }
-
-    private static func readGenericPassword(service: String) -> String? {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
-        ]
-        var result: CFTypeRef?
-        guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess,
-              let data = result as? Data else {
-            return nil
-        }
-        return String(data: data, encoding: .utf8)
     }
 }

@@ -1,5 +1,4 @@
 import Foundation
-import Security
 
 /// Claude 限额 API 直查。参考 OpenUsage(MIT)的 provider pipeline:
 /// 只读 Claude Code 已有的 OAuth access token,调用官方 oauth/usage 接口
@@ -184,8 +183,9 @@ enum ClaudeOAuthUsageParser {
 
 /// 只读发现 Claude Code 的 OAuth 凭证。查找顺序:
 /// 1. `$CLAUDE_CONFIG_DIR/.credentials.json` 或 `~/.claude/.credentials.json`(无需授权提示)
-/// 2. 钥匙串 `Claude Code-credentials`(首次读取会弹 macOS 授权;构建脚本的稳定签名
-///    让"始终允许"跨重建生效)
+/// 2. 钥匙串 `Claude Code-credentials`。自动刷新走 `.disallowed`:已在 ACL 里
+///    授权过的条目照常读到,未授权则立即失败(绝不弹框、绝不阻塞),由调用方
+///    降级到 PTY `/usage` 探针。构建脚本的稳定签名让"始终允许"跨重建生效。
 /// 已过期(或即将过期)的 token 直接跳过,继续尝试下一个来源;绝不续期。
 struct ClaudeCredentialsReader {
     struct Credentials: Sendable {
@@ -196,22 +196,32 @@ struct ClaudeCredentialsReader {
 
     var environment: [String: String] = ProcessInfo.processInfo.environment
     var homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser
-    var keychainPayload: () -> String? = {
-        Self.readGenericPassword(service: "Claude Code-credentials")
+    static let keychainService = "Claude Code-credentials"
+
+    var keychainPayload: (KeychainRead.Interaction) -> String? = { interaction in
+        KeychainRead.genericPassword(
+            service: ClaudeCredentialsReader.keychainService,
+            interaction: interaction
+        ).payload
     }
 
     /// token 剩余寿命低于该值时视同过期:一次刷新周期内的边界 token
     /// 会在请求途中失效,不如直接走降级路径。
     static let expiryMargin: TimeInterval = 120
 
-    func load(now: Date = .now) -> Credentials? {
+    func load(
+        now: Date = .now,
+        keychainInteraction: KeychainRead.Interaction = .disallowed
+    ) -> Credentials? {
         for payload in filePayloads() {
             if let credentials = Self.parse(payload, now: now) {
                 return credentials
             }
         }
-        // 钥匙串放在最后且按需读取:命中文件时绝不触发 macOS 授权提示。
-        guard let payload = keychainPayload() else { return nil }
+        // 自动额度刷新永远不应召唤系统密码框。已选择过“始终允许”的钥匙串
+        // 项目仍能成功读取；尚未授权时立即静默失败，由调用方降级到 Claude
+        // CLI /usage 探针。只有明确的用户操作才能传 `.allowed`。
+        guard let payload = keychainPayload(keychainInteraction) else { return nil }
         return Self.parse(payload, now: now)
     }
 
@@ -254,20 +264,4 @@ struct ClaudeCredentialsReader {
         }
     }
 
-    /// 按 service 名查询(不限定 account):Claude Code 以当前用户名作为 account
-    /// 写入,限定死 account 反而会在用户名变化时漏读。
-    private static func readGenericPassword(service: String) -> String? {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
-        ]
-        var result: CFTypeRef?
-        guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess,
-              let data = result as? Data else {
-            return nil
-        }
-        return String(data: data, encoding: .utf8)
-    }
 }

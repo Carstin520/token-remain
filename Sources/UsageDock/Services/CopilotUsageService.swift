@@ -162,7 +162,7 @@ enum CopilotUsageParser {
 struct CopilotTokenReader {
     var homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser
     var keychainPayload: @Sendable () -> String? = {
-        KeychainRead.genericPassword(service: "gh:github.com")
+        KeychainRead.genericPassword(service: "gh:github.com", interaction: .disallowed).payload
     }
 
     func load() -> String? {

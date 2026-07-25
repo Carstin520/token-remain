@@ -127,7 +127,7 @@ struct ClaudeCredentialsReaderTests {
 
         var reader = ClaudeCredentialsReader()
         reader.environment = ["CLAUDE_CONFIG_DIR": directory.path]
-        reader.keychainPayload = {
+        reader.keychainPayload = { _ in
             Issue.record("keychain must not be consulted when the file already answers")
             return nil
         }
@@ -140,7 +140,59 @@ struct ClaudeCredentialsReaderTests {
         reader.environment = [:]
         reader.homeDirectory = FileManager.default.temporaryDirectory
             .appendingPathComponent("usagedock-missing-\(UUID().uuidString)", isDirectory: true)
-        reader.keychainPayload = { #"{"claudeAiOauth": {"accessToken": "sk-ant-oat01-keychain"}}"# }
+        reader.keychainPayload = { _ in
+            #"{"claudeAiOauth": {"accessToken": "sk-ant-oat01-keychain"}}"#
+        }
         #expect(reader.load()?.accessToken == "sk-ant-oat01-keychain")
+    }
+
+    /// 这两个只验证"意图有没有传到 KeychainRead 门口"。禁止交互究竟有没有生效
+    /// 是 `KeychainReadTests` 的职责 —— 上一版回归时,恰恰是这一层全绿而那一层
+    /// 根本没被测到。
+    @Test("Background fallback asks for a non-interactive keychain read")
+    func backgroundFallbackIsNoninteractive() {
+        var observed: KeychainRead.Interaction?
+        var reader = ClaudeCredentialsReader()
+        reader.environment = [:]
+        reader.homeDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("usagedock-missing-\(UUID().uuidString)", isDirectory: true)
+        reader.keychainPayload = { interaction in
+            observed = interaction
+            return #"{"claudeAiOauth": {"accessToken": "sk-ant-oat01-keychain"}}"#
+        }
+
+        #expect(reader.load()?.accessToken == "sk-ant-oat01-keychain")
+        #expect(observed == .disallowed)
+    }
+
+    @Test("An explicit user action may opt into Keychain interaction")
+    func explicitActionCanAllowInteraction() {
+        var observed: KeychainRead.Interaction?
+        var reader = ClaudeCredentialsReader()
+        reader.environment = [:]
+        reader.homeDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("usagedock-missing-\(UUID().uuidString)", isDirectory: true)
+        reader.keychainPayload = { interaction in
+            observed = interaction
+            return #"{"claudeAiOauth": {"accessToken": "sk-ant-oat01-keychain"}}"#
+        }
+
+        #expect(
+            reader.load(keychainInteraction: .allowed)?.accessToken
+                == "sk-ant-oat01-keychain"
+        )
+        #expect(observed == .allowed)
+    }
+
+    /// 凭据不可用时 `fetch()` 必须抛错让 `ClaudeUsageService` 走 PTY 兜底,
+    /// 而不是把刷新任务卡在钥匙串上。
+    @Test("Unavailable credentials surface as nil so the fallback chain can engage")
+    func unavailableCredentialsYieldNil() {
+        var reader = ClaudeCredentialsReader()
+        reader.environment = [:]
+        reader.homeDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("usagedock-missing-\(UUID().uuidString)", isDirectory: true)
+        reader.keychainPayload = { _ in nil }
+        #expect(reader.load() == nil)
     }
 }
