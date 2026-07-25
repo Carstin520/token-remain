@@ -6,8 +6,9 @@ receive or store an X credential.
 
 ## Collection policy
 
-- Primary: `btibor91`, `sama`, `claudeai`, `AnthropicAI`, `OpenAI`, and
-  `karpathy`; checked every 10 minutes, with an aggregate UTC-day limit of 30.
+- Primary: `btibor91`, `sama`, `claudeai`, `AnthropicAI`, `OpenAI`,
+  `karpathy`, and `JensenHuang`; checked every 10 minutes, with an aggregate
+  UTC-day limit of 30.
 - Rotating: only `Kimi_Moonshot`, `AIatMeta`, `GoogleDeepMind`, `xai`,
   `MistralAI`, `deepseek_ai`, `OpenRouterAI`, `perplexity_ai`, `simonw`,
   `emollick`, `ArtificialAnlys`, and `elonmusk`. The Worker checks this strict
