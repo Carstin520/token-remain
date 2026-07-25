@@ -8,11 +8,20 @@ struct CCUsageService {
 
     enum ServiceError: LocalizedError {
         case bundledExecutableMissing
+        case helperTimedOut
+        case invalidOutput
+        case helperFailed(String)
 
         var errorDescription: String? {
             switch self {
             case .bundledExecutableMissing:
                 return "TokenRemain 安装不完整：缺少内置 ccusage 组件。请重新安装最新版。"
+            case .helperTimedOut:
+                return "内置 ccusage 读取超时。请先重试；若持续失败，请重新安装最新版 TokenRemain。"
+            case .invalidOutput:
+                return "内置 ccusage 返回了无法识别的数据。请重试或重新安装最新版 TokenRemain。"
+            case .helperFailed(let detail):
+                return "内置 ccusage 无法读取本机日志：\(detail)"
             }
         }
     }
@@ -35,12 +44,25 @@ struct CCUsageService {
         guard FileManager.default.isExecutableFile(atPath: executable.path) else {
             throw ServiceError.bundledExecutableMissing
         }
-        let data = try await ProcessRunner.run(
-            executable.path,
-            arguments: Self.commandArguments(since: since),
-            timeout: 30
-        )
-        return try Self.parseSnapshot(data, now: now)
+        let data: Data
+        do {
+            data = try await ProcessRunner.run(
+                executable.path,
+                arguments: Self.commandArguments(since: since),
+                timeout: 30
+            )
+        } catch let error as URLError where error.code == .timedOut {
+            throw ServiceError.helperTimedOut
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            throw ServiceError.helperFailed(error.localizedDescription)
+        }
+        do {
+            return try Self.parseSnapshot(data, now: now)
+        } catch {
+            throw ServiceError.invalidOutput
+        }
     }
 
     static func commandArguments(
@@ -84,8 +106,8 @@ struct CCUsageService {
 
     /// Decodes a ccusage `daily --by-agent --json` payload into a stacked-per-day
     /// history. Split out from the fetch so it is exercised by unit tests without
-    /// shelling out. Days are returned oldest-first; the Claude/Codex split is
-    /// keyed off the agent id and defaults to zero for a provider absent that day.
+    /// shelling out. Days are returned oldest-first and every detected agent is
+    /// retained; the UI chooses which series are visible.
     static func parseHistory(_ data: Data, now: Date = .now) throws -> DailyUsageHistory {
         let payload = try JSONDecoder().decode(Response.self, from: data)
         return parseHistory(payload, now: now)
@@ -130,28 +152,15 @@ struct CCUsageService {
     ) -> DailyUsageHistory {
         let days = payload.daily.compactMap { row -> DailyUsageHistory.Day? in
             guard let date = periodFormatter.date(from: row.period) else { return nil }
-            var claudeTokens: Int64 = 0
-            var claudeCost = 0.0
-            var codexTokens: Int64 = 0
-            var codexCost = 0.0
-            for agent in row.agents ?? [] {
-                switch agent.agent.lowercased() {
-                case "claude":
-                    claudeTokens = agent.totalTokens
-                    claudeCost = agent.totalCost
-                case "codex":
-                    codexTokens = agent.totalTokens
-                    codexCost = agent.totalCost
-                default:
-                    break
-                }
-            }
             return DailyUsageHistory.Day(
                 date: date,
-                claudeTokens: claudeTokens,
-                claudeCost: claudeCost,
-                codexTokens: codexTokens,
-                codexCost: codexCost
+                agents: (row.agents ?? []).map {
+                    DailyUsageHistory.Agent(
+                        id: $0.agent.lowercased(),
+                        tokens: $0.totalTokens,
+                        cost: $0.totalCost
+                    )
+                }
             )
         }
         .sorted { $0.date < $1.date }

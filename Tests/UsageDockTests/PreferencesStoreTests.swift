@@ -9,9 +9,20 @@ struct PreferencesStoreTests {
     func defaults() {
         let store = PreferencesStore(defaults: testDefaults())
         #expect(store.menuBarProviders == [.claude, .codex])
+        #expect(store.menuBarDisplayMode == .full)
         #expect(store.refreshMinutes == 5)
         #expect(store.refreshInterval == 300)
         #expect(!store.floatingWidgetEnabled)
+    }
+
+    @Test("Menu bar display mode persists and rejects unknown stored values")
+    func menuBarDisplayMode() {
+        let defaults = testDefaults()
+        PreferencesStore(defaults: defaults).setMenuBarDisplayMode(.compact)
+        #expect(PreferencesStore(defaults: defaults).menuBarDisplayMode == .compact)
+
+        defaults.set("future-mode", forKey: PreferencesStore.menuBarDisplayModeKey)
+        #expect(PreferencesStore(defaults: defaults).menuBarDisplayMode == .full)
     }
 
     @Test("Menu bar selection keeps display order and persists")

@@ -1,7 +1,8 @@
 import SwiftUI
 
 /// OpenUsage 式迷你柱状趋势:一行等宽小柱,按最大值归一,末柱(最新一天)
-/// 用实色强调,其余用弱化色。纯展示,不可交互;空数据渲染为空白。
+/// 用实色强调,其余用弱化色。零值用贴近基线的小点表达,不会与缺少
+/// 视图混淆；纯展示,不可交互。
 struct MiniBarChart: View {
     let values: [Double]
     var accent: Color = DashboardTheme.secondaryText
@@ -10,24 +11,26 @@ struct MiniBarChart: View {
 
     var body: some View {
         Canvas { context, size in
-            guard !values.isEmpty, let peak = values.max(), peak > 0 else { return }
+            guard !values.isEmpty else { return }
+            let peak = max(values.max() ?? 0, 0)
             let count = CGFloat(values.count)
-            let barWidth = max(1, (size.width - barSpacing * (count - 1)) / count)
+            let slotWidth = size.width / count
+            let barWidth = max(2, min(12, slotWidth - barSpacing))
             for (index, value) in values.enumerated() {
-                // 有量的日子至少画出一个可见短柱,零值留空。
-                let ratio = value <= 0 ? 0 : max(minBarHeightRatio, value / peak)
-                guard ratio > 0 else { continue }
-                let height = size.height * ratio
+                let isZero = value <= 0 || peak <= 0
+                let ratio = isZero ? 0 : max(minBarHeightRatio, value / peak)
+                let height = isZero ? min(2, size.height) : size.height * ratio
+                let width = isZero ? min(3, barWidth) : barWidth
                 let rect = CGRect(
-                    x: CGFloat(index) * (barWidth + barSpacing),
+                    x: CGFloat(index) * slotWidth + (slotWidth - width) / 2,
                     y: size.height - height,
-                    width: barWidth,
+                    width: width,
                     height: height
                 )
                 let isLatest = index == values.count - 1
                 context.fill(
-                    Path(roundedRect: rect, cornerRadius: barWidth * 0.3),
-                    with: .color(accent.opacity(isLatest ? 1 : 0.55))
+                    Path(roundedRect: rect, cornerRadius: min(width, height) / 2),
+                    with: .color(accent.opacity(isZero ? 0.36 : (isLatest ? 1 : 0.55)))
                 )
             }
         }

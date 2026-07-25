@@ -117,7 +117,7 @@
 "common.updated_at" = "%1$@ 업데이트";
 "datasource.api_key_settings" = "%1$@ API Key 설정";
 "datasource.broken" = "데이터 연결 끊김";
-"datasource.ccusage_detail" = "npx ccusage가 로컬 로그의 token과 예상 비용을 집계합니다";
+"datasource.ccusage_detail" = "내장 ccusage가 로컬 로그를 읽으며 별도 설치가 필요하지 않습니다";
 "datasource.detail.antigravity" = "Cloud Code 할당량 풀 직접 조회 (로컬 로그인 상태 읽기 전용, 절대 대신 갱신하지 않음)";
 "datasource.detail.claude" = "공식 oauth/usage API 직접 조회 (로컬 자격 증명 읽기 전용); 오류 시 /usage 프로브로 대체";
 "datasource.detail.codex" = "서버 실시간 API 직접 조회 (~/.codex/auth.json 읽기 전용); 오프라인 시 로컬 세션 스냅샷으로 대체";
@@ -336,6 +336,16 @@
 "settings.manual_only" = "수동 전용";
 "settings.menubar_hidden" = "메뉴 막대에 표시 안 됨";
 "settings.menubar_hint" = "메뉴 막대에 텍스트로 표시할 앱을 선택하세요. 너무 넓어지지 않도록 3개 이하를 권장합니다. 모두 끄면 “TR”이 표시됩니다.";
+"settings.menubar_mode_compact" = "간결";
+"settings.menubar_mode_compact_description" = "선택한 모든 앱을 아이콘으로만 표시하며 백분율은 도움말에서 확인할 수 있습니다.";
+"settings.menubar_mode_full" = "전체";
+"settings.menubar_mode_full_description" = "선택한 각 앱의 아이콘과 남은 백분율을 표시합니다.";
+"settings.menubar_mode_hint" = "선택한 앱이 메뉴 막대 공간을 사용하는 방식을 고르세요.";
+"settings.menubar_mode_minimal" = "최소";
+"settings.menubar_mode_minimal_description" = "선택한 앱 중 남은 할당량이 가장 적은 앱만 표시합니다.";
+"settings.menubar_mode_not_selected" = "선택 안 됨";
+"settings.menubar_mode_selected" = "선택됨";
+"settings.menubar_mode_title" = "표시 모드";
 "settings.menubar_shown" = "메뉴 막대에 표시됨";
 "settings.menubar_title" = "메뉴 막대 표시";
 "settings.minutes_format" = "%1$d분";
@@ -427,7 +437,7 @@
 "trends.accumulating_title" = "추세 데이터가 일 단위로 쌓이는 중";
 "trends.chart_accessibility" = "일별 사용량 누적 막대 차트";
 "trends.chart_accessibility_empty" = "일별 사용량 막대 차트, 선택된 제공업체 없음";
-"trends.daily_subtitle" = "Claude + Codex 누적 · 로컬 ccusage";
+"trends.daily_subtitle" = "선택한 앱 누적 · 내장 ccusage";
 "trends.daily_title" = "일별 사용량 추세";
 "trends.legend_hidden" = "숨김";
 "trends.legend_hide" = "%1$@ 사용량 숨기기";
