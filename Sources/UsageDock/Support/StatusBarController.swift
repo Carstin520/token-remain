@@ -2,6 +2,33 @@ import AppKit
 import Combine
 import SwiftUI
 
+enum StatusBarPresentation {
+    /// Menu-bar choices are display preferences, not ranking candidates. Keep
+    /// every configured provider that is still tracked, in the user's order.
+    static func visibleProviders(
+        configured: [ProviderQuota.Provider],
+        tracked: Set<ProviderQuota.Provider>
+    ) -> [ProviderQuota.Provider] {
+        configured.filter(tracked.contains)
+    }
+
+    /// The display mode controls density only. The provider selection remains
+    /// the user's source of truth; only minimal mode intentionally reduces it.
+    static func displayedProviders(
+        mode: MenuBarDisplayMode,
+        selected: [ProviderQuota.Provider],
+        remainingPercent: [ProviderQuota.Provider: Double]
+    ) -> [ProviderQuota.Provider] {
+        guard mode == .minimal else { return selected }
+        guard let mostConstrained = selected.min(by: { lhs, rhs in
+            (remainingPercent[lhs] ?? .infinity) < (remainingPercent[rhs] ?? .infinity)
+        }) else {
+            return []
+        }
+        return [mostConstrained]
+    }
+}
+
 @MainActor
 final class StatusBarController: NSObject {
     private let store: UsageStore
@@ -39,6 +66,7 @@ final class StatusBarController: NSObject {
             floatingControllerCreated = true
             popoverLayout.prepareForPresentation()
             floatingWidgetController.show()
+            store.refreshLocalUsage()
         } else if floatingControllerCreated {
             floatingWidgetController.hide()
         }
@@ -61,6 +89,10 @@ final class StatusBarController: NSObject {
         self.launchAtLogin = launchAtLogin
         super.init()
 
+        // AppKit cannot choose a fixed right-edge position: macOS owns status
+        // item ordering and the user may Command-drag it. A stable autosave name
+        // preserves that user-selected position and visibility across launches.
+        statusItem.autosaveName = "TokenRemainPrimaryStatusItem"
         popover.behavior = .transient
         popover.animates = true
         popover.appearance = NSAppearance(named: .darkAqua)
@@ -103,6 +135,11 @@ final class StatusBarController: NSObject {
             .sink { [weak self] _ in self?.updateStatusImage() }
             .store(in: &cancellables)
 
+        PreferencesStore.shared.$menuBarDisplayMode
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.updateStatusImage() }
+            .store(in: &cancellables)
+
         // 桌面浮窗随设置开关。
         PreferencesStore.shared.$floatingWidgetEnabled
             .receive(on: RunLoop.main)
@@ -111,7 +148,10 @@ final class StatusBarController: NSObject {
 
         NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)
             .receive(on: RunLoop.main)
-            .sink { [weak self] _ in self?.updateStatusImage() }
+            .sink { [weak self] _ in
+                self?.updateStatusImage()
+                self?.store.refreshLocalUsage()
+            }
             .store(in: &cancellables)
 
         updateStatusImage()
@@ -129,13 +169,14 @@ final class StatusBarController: NSObject {
         } else {
             popoverLayout.prepareForPresentation()
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-            Task { await store.refresh(forceCCUsage: false, forceClaude: false) }
+            store.refreshLocalUsage()
         }
     }
 
     private func openDashboard(_ section: DashboardSection) {
         popover.performClose(nil)
         dashboardController.show(section: section)
+        store.refreshLocalUsage()
     }
 
     /// Opens the primary desktop window from app launch, Dock reopen, or menu UI.
@@ -153,6 +194,7 @@ final class StatusBarController: NSObject {
     /// `--open-popover`. Regular launches still wait for a status-item click.
     func openPopoverForPreview() {
         popoverLayout.prepareForPresentation()
+        store.refreshLocalUsage()
 #if DEBUG
         popoverPreviewController.show()
 #else
@@ -168,16 +210,30 @@ final class StatusBarController: NSObject {
             .font: font,
             .foregroundColor: NSColor.labelColor
         ]
-        // 菜单栏内容由用户在设置里自选(任意追踪中的 provider);
-        // 全部关掉时退化为品牌字样,状态项保持可点击。
+        // provider 选择与显示密度是两个独立设置。完整/紧凑模式保留全部
+        // 勾选项；只有用户明确选择极简模式时才显示最低余额的一项。
         let tracked = TrackedProvidersStore.shared
-        let segments: [(ProviderQuota.Provider, String)] = PreferencesStore.shared.menuBarProviders
-            .filter(tracked.isEnabled)
-            .map { provider in
-                let remaining = store.quotaValue(for: provider)
-                    .map { UsageFormatting.percent(max(0, 100 - $0.primary.usedPercent)) } ?? "—"
-                return (provider, remaining)
+        let selectedProviders = StatusBarPresentation.visibleProviders(
+            configured: PreferencesStore.shared.menuBarProviders,
+            tracked: tracked.enabled
+        )
+        let remainingPercent = Dictionary(
+            uniqueKeysWithValues: selectedProviders.compactMap { provider in
+                store.quotaValue(for: provider).map {
+                    (provider, max(0, 100 - $0.primary.usedPercent))
+                }
             }
+        )
+        let displayMode = PreferencesStore.shared.menuBarDisplayMode
+        let displayedProviders = StatusBarPresentation.displayedProviders(
+            mode: displayMode,
+            selected: selectedProviders,
+            remainingPercent: remainingPercent
+        )
+        let segments: [(ProviderQuota.Provider, String)] = displayedProviders.map { provider in
+            let remaining = remainingPercent[provider].map(UsageFormatting.percent) ?? "—"
+            return (provider, remaining)
+        }
 
         let title = NSMutableAttributedString()
         if segments.isEmpty {
@@ -185,10 +241,13 @@ final class StatusBarController: NSObject {
         }
         for (index, segment) in segments.enumerated() {
             if index > 0 {
-                title.append(NSAttributedString(string: " · ", attributes: attributes))
+                let separator = displayMode == .compact ? " " : " · "
+                title.append(NSAttributedString(string: separator, attributes: attributes))
             }
             title.append(statusIcon(segment.0, size: iconSize))
-            title.append(NSAttributedString(string: " \(segment.1)", attributes: attributes))
+            if displayMode != .compact {
+                title.append(NSAttributedString(string: " \(segment.1)", attributes: attributes))
+            }
         }
 
         let claudeRemaining = UsageStore.logoQuotaSelection(from: [store.quotaValue(for: .claude)])?.remainingPercent
@@ -222,7 +281,7 @@ final class StatusBarController: NSObject {
             tooltipLines.append(L10n.format("statusbar.tooltip_remaining", provider.displayName, remaining))
         }
         statusItem.button?.toolTip = tooltipLines.joined(separator: L10n.text("statusbar.tooltip_separator"))
-        statusItem.length = ceil(title.size().width) + 8
+        statusItem.length = ceil(title.size().width) + 4
     }
 
     private func statusIcon(

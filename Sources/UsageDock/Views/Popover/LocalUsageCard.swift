@@ -4,6 +4,9 @@ import SwiftUI
 /// All values are real; before ccusage returns it shows a reading state.
 struct LocalUsageCard: View {
     let insights: UsageInsights
+    let localUsageStatus: UsageStore.LocalUsageStatus
+    let isRefreshing: Bool
+    let onRetry: () -> Void
     @ObservedObject var layout: PopoverLayoutStore
     @Binding var draggingWidget: PopoverWidget?
     var allowsDragging = true
@@ -81,13 +84,7 @@ struct LocalUsageCard: View {
                         }
                     }
                 } else {
-                    HStack(spacing: 8) {
-                        ProgressView().controlSize(.small)
-                        Text(L10n.text("usage.loading_ccusage"))
-                            .font(.system(size: 12))
-                            .foregroundStyle(DashboardTheme.secondaryText)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    localUsageEmptyState
                 }
 
                 spendTilesSection
@@ -107,6 +104,9 @@ struct LocalUsageCard: View {
             AnyView(
                 LocalUsageCard(
                     insights: insights,
+                    localUsageStatus: localUsageStatus,
+                    isRefreshing: isRefreshing,
+                    onRetry: onRetry,
                     layout: layout,
                     draggingWidget: .constant(nil),
                     allowsDragging: false
@@ -114,6 +114,55 @@ struct LocalUsageCard: View {
                 .frame(width: 348)
                 .preferredColorScheme(.dark)
             )
+        }
+    }
+
+    @ViewBuilder
+    private var localUsageEmptyState: some View {
+        switch localUsageStatus {
+        case .loading:
+            HStack(spacing: 8) {
+                ProgressView().controlSize(.small)
+                Text(L10n.text("usage.loading_ccusage"))
+                    .font(.system(size: 12))
+                    .foregroundStyle(DashboardTheme.secondaryText)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+        case .empty, .available:
+            Label {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(L10n.text("usage.no_local_today_title"))
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(DashboardTheme.text)
+                    Text(L10n.text("usage.no_local_today_message"))
+                        .font(.system(size: 10))
+                        .foregroundStyle(DashboardTheme.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            } icon: {
+                Image(systemName: "moon.zzz")
+                    .foregroundStyle(DashboardTheme.mutedText)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+        case .failed(let message):
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(DashboardTheme.warning)
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(message)
+                        .font(.system(size: 10))
+                        .foregroundStyle(DashboardTheme.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Button(L10n.text("action.refresh")) {
+                        onRetry()
+                    }
+                    .buttonStyle(.link)
+                    .disabled(isRefreshing)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 

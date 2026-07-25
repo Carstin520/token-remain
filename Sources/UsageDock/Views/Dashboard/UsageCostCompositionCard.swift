@@ -8,6 +8,9 @@ import SwiftUI
 /// explicit labels beside each provider instead.
 struct UsageCostCompositionCard: View {
     let insights: UsageInsights
+    let localUsageStatus: UsageStore.LocalUsageStatus
+    let isRefreshing: Bool
+    let onRetry: () -> Void
 
     private var entries: [UsageInsights.ProviderUsage] {
         insights.providerUsage
@@ -25,11 +28,7 @@ struct UsageCostCompositionCard: View {
                 PanelHeader(title: L10n.text("usage.today_cost_title"), subtitle: L10n.text("usage.today_cost_subtitle"))
 
                 if entries.isEmpty {
-                    EmptyStateView(
-                        icon: "chart.pie",
-                        title: L10n.text("usage.no_local_today_title"),
-                        message: L10n.text("usage.no_local_today_message")
-                    )
+                    emptyState
                 } else {
                     HStack(alignment: .center, spacing: 18) {
                         ring
@@ -48,6 +47,41 @@ struct UsageCostCompositionCard: View {
             }
         }
         .frame(maxWidth: .infinity)
+    }
+
+    @ViewBuilder
+    private var emptyState: some View {
+        switch localUsageStatus {
+        case .loading:
+            HStack(spacing: 10) {
+                ProgressView().controlSize(.small)
+                Text(L10n.text("usage.loading_ccusage"))
+                    .font(.system(size: 12))
+                    .foregroundStyle(DashboardTheme.secondaryText)
+            }
+            .frame(maxWidth: .infinity, minHeight: 108)
+
+        case .empty, .available:
+            EmptyStateView(
+                icon: "chart.pie",
+                title: L10n.text("usage.no_local_today_title"),
+                message: L10n.text("usage.no_local_today_message")
+            )
+
+        case .failed(let message):
+            VStack(spacing: 10) {
+                EmptyStateView(
+                    icon: "exclamationmark.triangle",
+                    title: L10n.text("datasource.broken"),
+                    message: message
+                )
+                Button(L10n.text("action.refresh")) {
+                    onRetry()
+                }
+                .buttonStyle(.bordered)
+                .disabled(isRefreshing)
+            }
+        }
     }
 
     private var ring: some View {

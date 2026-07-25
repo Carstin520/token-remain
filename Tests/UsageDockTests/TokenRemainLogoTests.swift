@@ -3,6 +3,45 @@ import XCTest
 @testable import UsageDock
 
 final class TokenRemainLogoTests: XCTestCase {
+    func testMenuBarKeepsEveryConfiguredTrackedProviderInUserOrder() {
+        let providers = StatusBarPresentation.visibleProviders(
+            configured: [.claude, .codex, .cursor],
+            tracked: [.claude, .codex]
+        )
+
+        XCTAssertEqual(providers, [.claude, .codex])
+    }
+
+    func testMenuBarModesKeepSelectionUnlessMinimalWasExplicitlyChosen() {
+        let selected: [ProviderQuota.Provider] = [.claude, .codex]
+        let remaining: [ProviderQuota.Provider: Double] = [.claude: 99, .codex: 52]
+
+        XCTAssertEqual(
+            StatusBarPresentation.displayedProviders(
+                mode: .full,
+                selected: selected,
+                remainingPercent: remaining
+            ),
+            selected
+        )
+        XCTAssertEqual(
+            StatusBarPresentation.displayedProviders(
+                mode: .compact,
+                selected: selected,
+                remainingPercent: remaining
+            ),
+            selected
+        )
+        XCTAssertEqual(
+            StatusBarPresentation.displayedProviders(
+                mode: .minimal,
+                selected: selected,
+                remainingPercent: remaining
+            ),
+            [.codex]
+        )
+    }
+
     func testEmotionBandsCoverFullQuotaRange() {
         XCTAssertEqual(TokenRemainLogoState.resolve(remainingPercent: 100), .excitedStars)
         XCTAssertEqual(TokenRemainLogoState.resolve(remainingPercent: 90), .happyCarets)

@@ -91,38 +91,137 @@ struct DailyUsage: Sendable {
 
 /// Multi-day per-agent usage history, sourced from ccusage's `daily --by-agent`
 /// report. Unlike `DailyUsage` (today's snapshot only) this carries one entry
-/// per calendar day so the Trends section can plot a real stacked trend. Claude
-/// and Codex are kept as fixed columns so the stack order never shuffles.
+/// per calendar day so the Trends section can plot a real stacked trend.
+///
+/// The agent collection is intentionally dynamic. ccusage can discover new
+/// coding clients without requiring TokenRemain to add another fixed database
+/// column or ship a new chart implementation.
 struct DailyUsageHistory: Sendable, Codable {
+    struct Agent: Sendable, Codable, Identifiable, Equatable {
+        let id: String
+        let tokens: Int64
+        let cost: Double
+    }
+
     struct Day: Sendable, Codable, Identifiable {
         /// Local midnight of the usage day (parsed from ccusage's `yyyy-MM-dd`).
         let date: Date
-        let claudeTokens: Int64
-        let claudeCost: Double
-        let codexTokens: Int64
-        let codexCost: Double
+        let agents: [Agent]
 
         var id: Date { date }
-        var totalTokens: Int64 { claudeTokens + codexTokens }
-        var totalCost: Double { claudeCost + codexCost }
+        var totalTokens: Int64 { agents.reduce(0) { $0 + $1.tokens } }
+        var totalCost: Double { agents.reduce(0) { $0 + $1.cost } }
+
+        /// Compatibility accessors keep the encrypted mobile-history allowlist
+        /// limited to the two providers supported by the current phone schema.
+        var claudeTokens: Int64 { tokens(forAgentID: "claude") }
+        var claudeCost: Double { cost(forAgentID: "claude") }
+        var codexTokens: Int64 { tokens(forAgentID: "codex") }
+        var codexCost: Double { cost(forAgentID: "codex") }
 
         func tokens(for provider: ProviderQuota.Provider) -> Int64 {
-            switch provider {
-            case .claude: return claudeTokens
-            case .codex: return codexTokens
-            default: return 0
+            tokens(forAgentID: provider.ccusageAgentID)
+        }
+
+        func cost(for provider: ProviderQuota.Provider) -> Double {
+            cost(forAgentID: provider.ccusageAgentID)
+        }
+
+        func tokens(forAgentID id: String) -> Int64 {
+            agents.first { $0.id.caseInsensitiveCompare(id) == .orderedSame }?.tokens ?? 0
+        }
+
+        func cost(forAgentID id: String) -> Double {
+            agents.first { $0.id.caseInsensitiveCompare(id) == .orderedSame }?.cost ?? 0
+        }
+
+        init(date: Date, agents: [Agent]) {
+            self.date = date
+            self.agents = agents
+        }
+
+        /// Source-compatible initializer for the existing sync/tests and for
+        /// decoding the pre-1.1.5 cache shape.
+        init(
+            date: Date,
+            claudeTokens: Int64,
+            claudeCost: Double,
+            codexTokens: Int64,
+            codexCost: Double
+        ) {
+            self.date = date
+            agents = [
+                Agent(id: "claude", tokens: claudeTokens, cost: claudeCost),
+                Agent(id: "codex", tokens: codexTokens, cost: codexCost)
+            ].filter { $0.tokens != 0 || $0.cost != 0 }
+        }
+
+        private enum CodingKeys: String, CodingKey {
+            case date
+            case agents
+            case claudeTokens
+            case claudeCost
+            case codexTokens
+            case codexCost
+        }
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            date = try container.decode(Date.self, forKey: .date)
+            if let decoded = try container.decodeIfPresent([Agent].self, forKey: .agents) {
+                agents = decoded
+            } else {
+                agents = [
+                    Agent(
+                        id: "claude",
+                        tokens: try container.decodeIfPresent(Int64.self, forKey: .claudeTokens) ?? 0,
+                        cost: try container.decodeIfPresent(Double.self, forKey: .claudeCost) ?? 0
+                    ),
+                    Agent(
+                        id: "codex",
+                        tokens: try container.decodeIfPresent(Int64.self, forKey: .codexTokens) ?? 0,
+                        cost: try container.decodeIfPresent(Double.self, forKey: .codexCost) ?? 0
+                    )
+                ].filter { $0.tokens != 0 || $0.cost != 0 }
             }
         }
-        func cost(for provider: ProviderQuota.Provider) -> Double {
-            switch provider {
-            case .claude: return claudeCost
-            case .codex: return codexCost
-            default: return 0
-            }
+
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(date, forKey: .date)
+            try container.encode(agents, forKey: .agents)
         }
     }
 
     /// Days in ascending date order (oldest first, most recent last).
     let days: [Day]
     let capturedAt: Date
+}
+
+extension ProviderQuota.Provider {
+    /// ccusage's stable lower-case agent identifier. Keeping this mapping next
+    /// to the provider type lets trend selection reuse the user's tracked-app
+    /// choices without coupling the history model to display names.
+    var ccusageAgentID: String {
+        switch self {
+        case .claude: "claude"
+        case .codex: "codex"
+        case .cursor: "cursor"
+        case .grok: "grok"
+        case .zai: "zai"
+        case .copilot: "copilot"
+        case .devin: "devin"
+        case .openrouter: "openrouter"
+        case .antigravity: "antigravity"
+        case .opencode: "opencode"
+        case .deepseek: "deepseek"
+        case .kimi: "kimi"
+        case .minimax: "minimax"
+        case .mimo: "mimo"
+        case .qoder: "qoder"
+        case .kiro: "kiro"
+        case .volcengine: "volcengine"
+        case .ollama: "ollama"
+        }
+    }
 }

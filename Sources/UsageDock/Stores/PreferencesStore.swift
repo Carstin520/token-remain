@@ -1,14 +1,23 @@
 import Combine
 import Foundation
 
+enum MenuBarDisplayMode: String, CaseIterable, Identifiable, Sendable {
+    case full
+    case compact
+    case minimal
+
+    var id: String { rawValue }
+}
+
 /// 显示与刷新的用户偏好(参考 token-monitor 的配置自由度):
-/// 菜单栏显示哪些 provider、API 直查频率、桌面浮窗开关。
+/// 菜单栏显示哪些 provider、显示模式、API 直查频率、桌面浮窗开关。
 /// 全部持久化在 UserDefaults,即改即生效。
 @MainActor
 final class PreferencesStore: ObservableObject {
     static let shared = PreferencesStore()
 
     static let menuBarKey = "tokenRemain.menuBarProviders.v1"
+    static let menuBarDisplayModeKey = "tokenRemain.menuBarDisplayMode.v1"
     static let refreshKey = "tokenRemain.refreshMinutes.v1"
     static let floatingKey = "tokenRemain.floatingWidget.v1"
 
@@ -17,6 +26,8 @@ final class PreferencesStore: ObservableObject {
 
     /// 菜单栏文字里显示的 provider(有序子集)。默认沿用历史行为:Claude + Codex。
     @Published private(set) var menuBarProviders: [ProviderQuota.Provider]
+    /// 菜单栏所选 provider 的呈现密度。默认完整显示以兼容历史行为。
+    @Published private(set) var menuBarDisplayMode: MenuBarDisplayMode
     /// Claude 与各直查 provider 的自动刷新间隔(分钟);0 = 仅手动。
     @Published private(set) var refreshMinutes: Int
     /// 桌面浮窗(置顶的挂件面板)。
@@ -31,6 +42,8 @@ final class PreferencesStore: ObservableObject {
         } else {
             menuBarProviders = [.claude, .codex]
         }
+        menuBarDisplayMode = defaults.string(forKey: Self.menuBarDisplayModeKey)
+            .flatMap(MenuBarDisplayMode.init(rawValue:)) ?? .full
         let storedMinutes = defaults.object(forKey: Self.refreshKey) as? Int
         refreshMinutes = storedMinutes.map { Self.refreshChoices.contains($0) ? $0 : 5 } ?? 5
         floatingWidgetEnabled = defaults.bool(forKey: Self.floatingKey)
@@ -50,6 +63,11 @@ final class PreferencesStore: ObservableObject {
         }
         menuBarProviders = ProviderQuota.Provider.displayOrder.filter(set.contains)
         defaults.set(menuBarProviders.map(\.rawValue), forKey: Self.menuBarKey)
+    }
+
+    func setMenuBarDisplayMode(_ mode: MenuBarDisplayMode) {
+        menuBarDisplayMode = mode
+        defaults.set(mode.rawValue, forKey: Self.menuBarDisplayModeKey)
     }
 
     func setRefreshMinutes(_ minutes: Int) {

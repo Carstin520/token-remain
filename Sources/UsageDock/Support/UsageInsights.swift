@@ -236,40 +236,105 @@ struct UsageInsights {
         let tokens: Int64
     }
 
-    /// OpenUsage 式消费瓦片:今日取 `daily`(最鲜),昨日与近 30 天取
-    /// `history`。没有对应数据的瓦片直接缺席,不渲染零值占位。
+    /// OpenUsage 式消费瓦片:今日优先取 `daily`(最鲜),昨日与近 30 天取
+    /// `history`。ccusage 不会为无活动日期返回行，因此缺失自然日必须
+    /// 归一为零；三个固定摘要不能因为新用户或历史不可用而改变布局。
     func spendTiles(now: Date = .now, calendar: Calendar = .current) -> [SpendTile] {
-        var tiles: [SpendTile] = []
-        if let daily, !daily.agents.isEmpty {
-            tiles.append(SpendTile(
+        let today = calendar.startOfDay(for: now)
+        let byDate = localUsageByDate(now: now, calendar: calendar)
+        let todayUsage = byDate[today] ?? .zero
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: today)
+            .map(calendar.startOfDay(for:))
+        let yesterdayUsage = yesterday.flatMap { byDate[$0] } ?? .zero
+        let last30 = (0..<30).reduce(LocalUsageTotal.zero) { partial, offset in
+            guard let date = calendar.date(byAdding: .day, value: -offset, to: today) else {
+                return partial
+            }
+            return partial + (byDate[calendar.startOfDay(for: date)] ?? .zero)
+        }
+
+        return [
+            SpendTile(
                 id: "today",
                 labelKey: "usage.spend_today",
-                cost: daily.agents.reduce(0) { $0 + $1.estimatedCost },
-                tokens: daily.agents.reduce(0) { $0 + $1.tokens }
-            ))
-        }
-        guard let history, !history.days.isEmpty else { return tiles }
-        if let yesterday = calendar.date(byAdding: .day, value: -1, to: calendar.startOfDay(for: now)),
-           let day = history.days.first(where: { calendar.isDate($0.date, inSameDayAs: yesterday) }) {
-            tiles.append(SpendTile(
+                cost: todayUsage.cost,
+                tokens: todayUsage.tokens
+            ),
+            SpendTile(
                 id: "yesterday",
                 labelKey: "usage.spend_yesterday",
-                cost: day.totalCost,
-                tokens: day.totalTokens
-            ))
-        }
-        tiles.append(SpendTile(
-            id: "last30",
-            labelKey: "usage.spend_last30",
-            cost: history.days.reduce(0) { $0 + $1.totalCost },
-            tokens: history.days.reduce(0) { $0 + $1.totalTokens }
-        ))
-        return tiles
+                cost: yesterdayUsage.cost,
+                tokens: yesterdayUsage.tokens
+            ),
+            SpendTile(
+                id: "last30",
+                labelKey: "usage.spend_last30",
+                cost: last30.cost,
+                tokens: last30.tokens
+            )
+        ]
     }
 
-    /// 近 30 天逐日 token 总量(旧→新),供卡片内迷你趋势条使用。
+    /// 最近 30 个自然日的 token 总量(旧→新),供菜单栏迷你柱状图使用。
+    /// ccusage 只返回有记录的日期；固定窗口会把缺失日补为零，让新用户、
+    /// 单日历史与完整历史使用相同的密度，且最右侧始终代表今天。
+    func dailyTokenTrend(
+        now: Date = .now,
+        calendar: Calendar = .current,
+        days count: Int = 30
+    ) -> [Double] {
+        let count = max(2, count)
+        let today = calendar.startOfDay(for: now)
+        let byDate = localUsageByDate(now: now, calendar: calendar)
+        return (0..<count).map { offset in
+            guard let date = calendar.date(
+                byAdding: .day,
+                value: offset - (count - 1),
+                to: today
+            ) else { return 0 }
+            return Double(byDate[calendar.startOfDay(for: date)]?.tokens ?? 0)
+        }
+    }
+
     var dailyTokenTrend: [Double] {
-        history?.days.map { Double($0.totalTokens) } ?? []
+        dailyTokenTrend()
+    }
+
+    private struct LocalUsageTotal {
+        let tokens: Int64
+        let cost: Double
+
+        static let zero = LocalUsageTotal(tokens: 0, cost: 0)
+
+        static func + (lhs: LocalUsageTotal, rhs: LocalUsageTotal) -> LocalUsageTotal {
+            LocalUsageTotal(
+                tokens: lhs.tokens + rhs.tokens,
+                cost: lhs.cost + rhs.cost
+            )
+        }
+    }
+
+    /// Builds one canonical per-day map. A live `daily` snapshot overrides the
+    /// same calendar day from cached history; missing dates are supplied by the
+    /// fixed-window callers as zero rather than represented as absent UI.
+    private func localUsageByDate(
+        now: Date,
+        calendar: Calendar
+    ) -> [Date: LocalUsageTotal] {
+        var result: [Date: LocalUsageTotal] = [:]
+        for day in history?.days ?? [] {
+            result[calendar.startOfDay(for: day.date)] = LocalUsageTotal(
+                tokens: day.totalTokens,
+                cost: day.totalCost
+            )
+        }
+        if let daily {
+            result[calendar.startOfDay(for: now)] = LocalUsageTotal(
+                tokens: daily.agents.reduce(0) { $0 + $1.tokens },
+                cost: daily.agents.reduce(0) { $0 + $1.estimatedCost }
+            )
+        }
+        return result
     }
 
     // MARK: - Freshness
@@ -283,21 +348,14 @@ struct UsageInsights {
     // MARK: - Helpers
 
     static func displayName(for agentID: String) -> String {
-        switch agentID.lowercased() {
-        case "claude": return "Claude"
-        case "codex": return "Codex"
-        default: return agentID.capitalized
-        }
+        provider(for: agentID)?.displayName ?? agentID.capitalized
     }
 
     static func provider(for agentID: String) -> ProviderQuota.Provider? {
-        switch agentID.lowercased() {
-        case "claude": return .claude
-        case "codex": return .codex
-        case "cursor": return .cursor
-        case "grok": return .grok
-        case "zai", "z.ai": return .zai
-        default: return nil
+        let normalized = agentID.lowercased()
+        if normalized == "z.ai" { return .zai }
+        return ProviderQuota.Provider.displayOrder.first {
+            $0.ccusageAgentID == normalized
         }
     }
 
