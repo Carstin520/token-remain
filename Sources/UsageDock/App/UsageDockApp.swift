@@ -1,8 +1,5 @@
 import AppKit
 import SwiftUI
-#if TOKENREMAIN_CLOUD_SYNC
-import Sparkle
-#endif
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -11,19 +8,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var launchAtLogin = LaunchAtLoginManager()
     private var statusBarController: StatusBarController?
     private var feedNotificationObserver: NSObjectProtocol?
-#if TOKENREMAIN_CLOUD_SYNC
-    // Website-distributed production builds update themselves through the
-    // signed Sparkle appcast. Development builds never start this controller,
-    // so they cannot replace the stable CloudKit-enabled application.
-    private let updaterController = SPUStandardUpdaterController(
-        startingUpdater: true,
-        updaterDelegate: nil,
-        userDriverDelegate: nil
-    )
-#endif
-
     func applicationDidFinishLaunching(_ notification: Notification) {
         let arguments = ProcessInfo.processInfo.arguments
+#if DEBUG
+        AppUpdateController.shared.configurePreview(arguments: arguments)
+#endif
 #if TOKENREMAIN_APP_STORE_CANDIDATE
         if arguments.contains("--provider-compatibility-audit") {
             let environment = argument(after: "--audit-environment", in: arguments) ?? "unspecified"
@@ -56,6 +45,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 #if TOKENREMAIN_CLOUD_SYNC
+        // Website-distributed production builds update themselves through the
+        // signed Sparkle appcast. Development builds never start the updater,
+        // so they cannot replace the stable CloudKit-enabled application.
+        AppUpdateController.shared.start()
         CrossDeviceSyncController.shared.attach(to: store)
 #endif
 

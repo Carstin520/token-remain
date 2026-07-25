@@ -20,6 +20,7 @@ struct DashboardView: View {
     @ObservedObject var launchAtLogin: LaunchAtLoginManager
     @ObservedObject var navigator: DashboardNavigator
     @ObservedObject var tracked: TrackedProvidersStore = .shared
+    @ObservedObject private var appUpdater = AppUpdateController.shared
 #if TOKENREMAIN_CLOUD_SYNC
     @ObservedObject private var cloudSync = CrossDeviceSyncController.shared
 #endif
@@ -35,6 +36,34 @@ struct DashboardView: View {
     }
 
     var body: some View {
+        dashboardWithSyncGuidance
+            .alert(item: detectedProviderBinding) { detection in
+                Alert(
+                    title: Text(
+                        L10n.format(
+                            "provider.detect.prompt_title",
+                            detection.provider.displayName
+                        )
+                    ),
+                    message: Text(
+                        L10n.format(
+                            "provider.detect.prompt_message",
+                            detection.provider.displayName
+                        )
+                    ),
+                    primaryButton: .default(Text(L10n.text("provider.detect.connect"))) {
+                        tracked.acceptNextDetectionSuggestion()
+                        navigator.selection = .limits
+                    },
+                    secondaryButton: .cancel(Text(L10n.text("provider.detect.not_now"))) {
+                        tracked.dismissNextDetectionSuggestion()
+                    }
+                )
+            }
+    }
+
+    @ViewBuilder
+    private var dashboardWithSyncGuidance: some View {
 #if TOKENREMAIN_CLOUD_SYNC
         dashboardContent
             .alert(item: syncGuidanceBinding) { guidance in
@@ -53,6 +82,15 @@ struct DashboardView: View {
 #else
         dashboardContent
 #endif
+    }
+
+    private var detectedProviderBinding: Binding<TrackedProvidersStore.Detection?> {
+        Binding(
+            get: { tracked.pendingDetectionSuggestions.first },
+            // Alert 的两个按钮会明确消费队首；setter 保持无副作用，避免
+            // SwiftUI 自动写 nil 时误删紧随其后的第二条检测建议。
+            set: { _ in }
+        )
     }
 
     @ViewBuilder
@@ -146,7 +184,7 @@ struct DashboardView: View {
                 .padding(.vertical, 6)
             }
 
-            syncFooter
+            sidebarFooter
                 .padding(14)
         }
         .usageDockSidebarBackground()
@@ -221,6 +259,38 @@ struct DashboardView: View {
         .padding(11)
         .frame(maxWidth: .infinity, alignment: .leading)
         .usageDockGlassSurface(cornerRadius: 11)
+    }
+
+    private var sidebarFooter: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let version = appUpdater.availableVersion {
+                Button {
+                    appUpdater.presentAvailableUpdate()
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "arrow.down.circle.fill")
+                            .font(.system(size: 13, weight: .semibold))
+                        Text(L10n.format("update.available_format", version))
+                            .font(.system(size: 11, weight: .semibold))
+                            .lineLimit(1)
+                        Spacer(minLength: 0)
+                    }
+                    .foregroundStyle(Color.white)
+                    .padding(.horizontal, 11)
+                    .padding(.vertical, 9)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(
+                        RoundedRectangle(cornerRadius: 9, style: .continuous)
+                            .fill(DashboardTheme.violet)
+                    )
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help(L10n.text("update.install_help"))
+                .accessibilityLabel(L10n.format("update.available_accessibility", version))
+            }
+            syncFooter
+        }
     }
 
     private var syncColor: Color {

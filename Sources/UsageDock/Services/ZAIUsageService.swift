@@ -2,8 +2,8 @@ import Foundation
 import OSLog
 
 /// Z.ai(智谱 GLM Coding Plan)额度直查。参考 OpenUsage(MIT)的 Z.ai
-/// provider。Z.ai 没有本地工具凭证可复用,是唯一需要用户手动提供
-/// API Key 的 provider:优先读环境变量与 CLI 惯用配置文件,最后读
+/// provider。Z.ai 没有本地工具凭证可复用，需要用户手动提供
+/// API Key：优先读环境变量与 CLI 惯用配置文件，最后读
 /// 用户在「数据源」页粘贴、存入钥匙串的 Key。
 struct ZAIUsageService {
     enum ServiceError: LocalizedError, Sendable {
