@@ -136,12 +136,8 @@ struct SettingsTab: View {
                         model.acceptPendingMacSource()
                     }
                     .tint(TRTheme.indigo)
-                } else {
-                    Button(
-                        model.mobileSyncState.isFailure
-                            ? TRL10n.t("settings.macsync.retry")
-                            : TRL10n.t("settings.macsync.refresh")
-                    ) {
+                } else if case .failed = model.mobileSyncState {
+                    Button(TRL10n.t("settings.macsync.retry")) {
                         Task { await model.pullMacSync() }
                     }
                     .disabled(model.mobileSyncState == .pulling)
