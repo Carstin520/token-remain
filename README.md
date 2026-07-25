@@ -130,6 +130,13 @@ bash ./script/build_and_run.sh --verify
 | `design/` | 品牌、色板（`design/palette.md`）与 UI 源 |
 | `script/` | 构建、打包与校验脚本 |
 
+## 📄 开源许可
+
+除另有说明外，本仓库的源代码与源文档采用
+[Apache License 2.0](LICENSE) 开源。TokenRemain 名称、Logo、App 图标、机器人形象、
+截图与原创设计素材不包含在该授权中；复制或分发前请阅读
+[品牌与素材许可说明](ASSET-LICENSE.md)。第三方组件与服务商标识继续适用各自的许可与权利声明。
+
 ## 📦 当前发布
 
 - **版本**：`v1.1.6`（build 8）——App 与 DMG 均已 Apple 公证、装订并通过 Gatekeeper 校验。

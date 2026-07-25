@@ -130,6 +130,16 @@ This public repository contains only the TokenRemain macOS desktop client and it
 | `design/` | Brand, palette (`design/palette.md`) and UI sources |
 | `script/` | Build, packaging and verification scripts |
 
+## 📄 License
+
+Unless otherwise noted, source code and source documentation in this
+repository are available under the [Apache License 2.0](LICENSE). The
+TokenRemain name, logos, app icons, robot character, screenshots and original
+design assets are not included in that grant; read the
+[brand and asset licensing terms](ASSET-LICENSE.md) before copying or
+redistributing them. Third-party components and provider marks remain subject
+to their respective terms.
+
 ## 📦 Current release
 
 - **Version** — `v1.1.6` (build 8). Both the app and the DMG are Apple notarized, stapled and Gatekeeper-accepted.
