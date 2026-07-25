@@ -16,7 +16,7 @@ unsandboxed Developer ID Mac download.
 | Privacy manifests | Present and plist-valid in all four exported executable bundles | Validate App Store Connect's processed privacy report |
 | StoreKit configuration | Not applicable | The app is paid upfront; there is no IAP product |
 | StoreKit Sandbox purchase | Not applicable | Paid storefront checkout is outside the app and is not simulated by TestFlight |
-| Developer ID package | v1.1.5 build 7 is G2-signed with Production CloudKit/APNs entitlements and Sparkle; its App and signed DMG are notarized, stapled, and Gatekeeper-accepted | Publish the exact DMG, ZIP, and signed appcast; then download them through the public customer URLs and byte-verify the results |
+| Developer ID package | v1.1.6 build 8 is G2-signed with Production CloudKit/APNs entitlements and Sparkle; its App and signed DMG are notarized, stapled, and Gatekeeper-accepted | Publish the exact DMG, ZIP, and signed appcast; then download them through the public customer URLs and byte-verify the results |
 | CloudKit Production | The reviewed `TRCurrentSnapshot` schema is deployed. A Production private-zone `RecordSave` from the installed Developer ID app succeeded at 2026-07-24 06:39:44 UTC (1 record, 7,026 bytes) | Complete the same-account Production receive test with the App Store/TestFlight iPhone build |
 | APNs Production | The public macOS build carries `aps-environment=production`; the APNs token credential and broadcast Worker have passed production authentication checks | Regenerate APNs-enabled iOS distribution profiles and verify delivery through TestFlight |
 | Foreground freshness | Timing instrumentation and simulator paths pass | Collect real Mac + iPhone samples and meet p50/p95/max gates |
@@ -148,6 +148,19 @@ the 12,776,474-byte ZIP has SHA-256
 `3dc0c30b9cd448ff6debf35ff3ed3ccc5859a79ad81d03b3f5112c17215e68ca`;
 and the signed `appcast.xml` has SHA-256
 `959027325e8d28a233a0ae3e0ecd5278c53359f27f787be635771874f1e7d97f`.
+
+The v1.1.6 build 8 candidate restores first-use credential setup, detects
+supported coding tools installed after onboarding, and adds a quiet Sparkle
+update reminder in the Dashboard sidebar. Apple accepted App submission
+`c341a5c5-ae21-447a-b510-3756e1447fc8` and signed DMG submission
+`d24e9cea-9f6a-4818-924b-cd2e7f452a95`. Both the App and DMG are stapled and
+Gatekeeper-accepted. Before publication, the 15,216,742-byte
+`TokenRemain.dmg` has SHA-256
+`38cbfc2f9a2887e002d499b2b6632b1fbaec2067f2811bbd8bb215f108f84e13`;
+the 12,818,144-byte ZIP has SHA-256
+`874f58d989d1e636581cede134302e71ae3b3497e4d64e29713dde4850febc8a`;
+and the signed `appcast.xml` has SHA-256
+`2d84c6d78035090577b2944c2adc4b9e1de1d26494681afddee71ad9b8f0379e`.
 
 ## Developer ID Mac release
 
