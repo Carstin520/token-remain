@@ -31,9 +31,15 @@ done
 /usr/bin/grep -Fq '.package(url: "https://github.com/sparkle-project/Sparkle", exact: "2.9.4")' \
   "$ROOT_DIR/Package.swift" \
   || fail "Sparkle dependency is not exactly pinned"
-/usr/bin/grep -Fq 'private let updaterController = SPUStandardUpdaterController(' \
-  "$ROOT_DIR/Sources/UsageDock/App/UsageDockApp.swift" \
+/usr/bin/grep -Fq 'SPUStandardUpdaterController(' \
+  "$ROOT_DIR/Sources/UsageDock/Services/AppUpdateController.swift" \
   || fail "the production updater controller is missing"
+/usr/bin/grep -Fq 'supportsGentleScheduledUpdateReminders' \
+  "$ROOT_DIR/Sources/UsageDock/Services/AppUpdateController.swift" \
+  || fail "the gentle scheduled update reminder is missing"
+/usr/bin/grep -Fq 'appUpdater.presentAvailableUpdate()' \
+  "$ROOT_DIR/Sources/UsageDock/Views/Dashboard/DashboardView.swift" \
+  || fail "the Dashboard update action is missing"
 /usr/bin/grep -Fq '#if TOKENREMAIN_CLOUD_SYNC' \
   "$ROOT_DIR/Sources/UsageDock/App/UsageDockApp.swift" \
   || fail "the updater is not isolated to production sync builds"
@@ -42,4 +48,4 @@ done
 /usr/bin/grep -Fq 'generate_update_feed' "$ROOT_DIR/script/package_developer_id_release.sh" \
   || fail "release packaging does not generate a signed appcast"
 
-echo "automatic update contract verified: signed feed + production-only updater + silent defaults"
+echo "automatic update contract verified: signed feed + production-only updater + gentle sidebar reminder"

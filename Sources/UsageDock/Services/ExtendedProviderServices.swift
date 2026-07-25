@@ -436,9 +436,18 @@ struct KiroUsageService {
         return try Self.parse(String(data: output, encoding: .utf8) ?? "", now: now)
     }
 
-    static func cliPath() -> String? {
-        let home = FileManager.default.homeDirectoryForCurrentUser.path
-        let candidates = ["\(home)/.local/bin/kiro-cli", "/opt/homebrew/bin/kiro-cli", "/usr/local/bin/kiro-cli"]
+    static func cliPath(
+        home: URL = FileManager.default.homeDirectoryForCurrentUser,
+        environment: [String: String] = ProcessInfo.processInfo.environment
+    ) -> String? {
+        var candidates = [
+            home.appending(path: ".local/bin/kiro-cli").path,
+            "/opt/homebrew/bin/kiro-cli",
+            "/usr/local/bin/kiro-cli"
+        ]
+        if let path = environment["PATH"] {
+            candidates.append(contentsOf: path.split(separator: ":").map { "\($0)/kiro-cli" })
+        }
         return candidates.first { FileManager.default.isExecutableFile(atPath: $0) }
     }
 
