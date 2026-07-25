@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Dashboard Data Sources: live status of each local source UsageDock reads,
-/// per-provider onboarding (automatic for everything except Z.ai's API key),
+/// automatic local-app discovery plus explicit credential setup where required,
 /// any current error surfaced verbatim, and the privacy posture. All real.
 struct DataSourcesSection: View {
     @ObservedObject var store: UsageStore
@@ -76,10 +76,11 @@ struct DataSourcesSection: View {
         case feed
     }
 
-    /// Provider 用持久化的成功连接历史过滤；ccusage 是安装包内置来源，
-    /// 首次读取结束后即展示，即使结果为空或失败也能被用户诊断。
+    /// Provider 保留持久化的成功连接历史，同时让当前追踪的手动凭据型
+    /// 来源在首次连接前就显示输入框；ccusage 是安装包内置来源，首次读取
+    /// 结束后即展示，即使结果为空或失败也能被用户诊断。
     private var visibleSources: [VisibleSource] {
-        var sources = store.connectedProviders.map(VisibleSource.provider)
+        var sources = store.dataSourceProviders.map(VisibleSource.provider)
         if store.localUsageStatus != .loading || insights.daily != nil {
             sources.append(.ccusage)
         }
@@ -197,7 +198,7 @@ struct DataSourcesSection: View {
     }
 }
 
-/// 需要 API Key 的 provider(Z.ai / OpenRouter)的一次性接入入口:
+/// 需要 API Key / Cookie 的 provider 的一次性接入入口:
 /// 粘贴 → 存钥匙串 → 立即直查。已接入时显示替换/清除;Key 永不回显。
 private struct APIKeyRow: View {
     @ObservedObject var store: UsageStore

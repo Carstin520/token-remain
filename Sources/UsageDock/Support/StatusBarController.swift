@@ -130,6 +130,15 @@ final class StatusBarController: NSObject {
             .sink { [weak self] _ in self?.updateStatusImage() }
             .store(in: &cancellables)
 
+        // TokenRemain 运行期间检测到用户后来安装的新工具时，主动打开额度页
+        // 并由 Dashboard 询问是否接入。队列只包含尚未追踪的新安装。
+        TrackedProvidersStore.shared.$pendingDetectionSuggestions
+            .dropFirst()
+            .compactMap { $0.first }
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.openDashboard(.limits) }
+            .store(in: &cancellables)
+
         PreferencesStore.shared.$menuBarProviders
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.updateStatusImage() }
@@ -151,6 +160,7 @@ final class StatusBarController: NSObject {
             .sink { [weak self] _ in
                 self?.updateStatusImage()
                 self?.store.refreshLocalUsage()
+                TrackedProvidersStore.shared.scanForNewInstallations()
             }
             .store(in: &cancellables)
 
@@ -160,6 +170,7 @@ final class StatusBarController: NSObject {
         }
         store.start()
         feedStore.start()
+        TrackedProvidersStore.shared.startDetectionMonitoring()
     }
 
     @objc private func togglePopover() {
