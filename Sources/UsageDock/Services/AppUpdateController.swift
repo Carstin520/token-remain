@@ -22,6 +22,10 @@ final class AppUpdateController: NSObject, ObservableObject, @preconcurrency SPU
     /// Starts Sparkle only for the signed website-distribution build.
     func start() {
         guard updaterController == nil else { return }
+        // Sparkle replaces the running bundle in place. On the first launch of
+        // that replacement, also recycle known historical stable install paths
+        // so Finder/Spotlight cannot keep exposing an older TokenRemain copy.
+        LegacyInstallationCleaner.shared.removeOlderStableCopiesAfterRelaunch()
         updaterController = SPUStandardUpdaterController(
             startingUpdater: true,
             updaterDelegate: nil,

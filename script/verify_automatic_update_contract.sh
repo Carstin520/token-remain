@@ -37,6 +37,9 @@ done
 /usr/bin/grep -Fq 'supportsGentleScheduledUpdateReminders' \
   "$ROOT_DIR/Sources/UsageDock/Services/AppUpdateController.swift" \
   || fail "the gentle scheduled update reminder is missing"
+/usr/bin/grep -Fq 'removeOlderStableCopiesAfterRelaunch' \
+  "$ROOT_DIR/Sources/UsageDock/Services/AppUpdateController.swift" \
+  || fail "post-update stale installation cleanup is missing"
 /usr/bin/grep -Fq 'appUpdater.presentAvailableUpdate()' \
   "$ROOT_DIR/Sources/UsageDock/Views/Dashboard/DashboardView.swift" \
   || fail "the Dashboard update action is missing"
@@ -47,5 +50,8 @@ done
   || fail "Sparkle nested-code signing is not part of packaging"
 /usr/bin/grep -Fq 'generate_update_feed' "$ROOT_DIR/script/package_developer_id_release.sh" \
   || fail "release packaging does not generate a signed appcast"
+/usr/bin/grep -Fq 'trap cleanup_release_artifacts EXIT' \
+  "$ROOT_DIR/script/package_developer_id_release.sh" \
+  || fail "release packaging can leave an expanded app registered"
 
-echo "automatic update contract verified: signed feed + production-only updater + gentle sidebar reminder"
+echo "automatic update contract verified: signed feed + replacement cleanup + gentle sidebar reminder"

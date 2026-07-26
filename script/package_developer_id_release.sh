@@ -6,6 +6,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 INFO_PLIST="$ROOT_DIR/Resources/Info.plist"
 VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$INFO_PLIST")"
 BUILD="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$INFO_PLIST")"
+CCUSAGE_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :TokenRemainBundledCCUsageVersion' "$INFO_PLIST")"
 OUTPUT_DIR="${TOKENREMAIN_RELEASE_OUTPUT_DIR:-$ROOT_DIR/dist-release/$VERSION-$BUILD}"
 APP="$OUTPUT_DIR/TokenRemain.app"
 ZIP="$OUTPUT_DIR/TokenRemain-$VERSION-$BUILD-macOS.zip"
@@ -16,6 +17,41 @@ IDENTITY="${USAGEDOCK_SYNC_SIGNING_IDENTITY:-}"
 NOTARY_PROFILE="${TOKENREMAIN_NOTARYTOOL_PROFILE:-}"
 BROADCAST_BASE_URL="${TOKENREMAIN_BROADCAST_BASE_URL:-https://api.tokenremain.com}"
 IDENTITY_COMMON_NAME=""
+VERIFY_WORK_DIR=""
+VERIFICATION_APP=""
+
+cleanup_release_artifacts() {
+  if [[ -n "$VERIFY_WORK_DIR" && -d "$VERIFY_WORK_DIR" ]]; then
+    /bin/rm -rf "$VERIFY_WORK_DIR"
+  fi
+  # TokenRemain.app is a generated staging bundle. Leaving it expanded inside
+  # dist-release makes Spotlight and LaunchServices expose it as another
+  # installed version. ZIP/DMG/appcast/checksum artifacts remain canonical.
+  if [[ -d "$APP" ]]; then
+    /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister \
+      -u "$APP" >/dev/null 2>&1 || true
+    /bin/rm -rf "$APP"
+  fi
+}
+trap cleanup_release_artifacts EXIT
+
+materialize_verification_app() {
+  if [[ -d "$APP" ]]; then
+    VERIFICATION_APP="$APP"
+    return
+  fi
+  [[ -s "$ZIP" ]] || {
+    echo "Release verification needs either the expanded app or signed ZIP." >&2
+    exit 1
+  }
+  VERIFY_WORK_DIR="$(mktemp -d "${TMPDIR:-/tmp}/tokenremain-release-verify.XXXXXX")"
+  /usr/bin/ditto -x -k "$ZIP" "$VERIFY_WORK_DIR"
+  VERIFICATION_APP="$VERIFY_WORK_DIR/TokenRemain.app"
+  [[ -d "$VERIFICATION_APP" ]] || {
+    echo "Signed ZIP did not contain TokenRemain.app." >&2
+    exit 1
+  }
+}
 
 export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
 
@@ -69,7 +105,8 @@ verify_app() {
   [[ -x "$app/Contents/Helpers/ccusage" ]]
   /usr/bin/codesign --verify --strict "$app/Contents/Frameworks/Sparkle.framework"
   /usr/bin/codesign --verify --strict "$app/Contents/Helpers/ccusage"
-  [[ "$("$app/Contents/Helpers/ccusage" --version)" == "ccusage 20.0.18" ]]
+  [[ "$("$app/Contents/Helpers/ccusage" --version)" == "ccusage $CCUSAGE_VERSION" ]]
+  [[ "$(/usr/libexec/PlistBuddy -c 'Print :TokenRemainBundledCCUsageVersion' "$app/Contents/Info.plist")" == "$CCUSAGE_VERSION" ]]
   /usr/bin/codesign -d --entitlements :- "$app/Contents/MacOS/UsageDock" > "$entitlements" 2>/dev/null
   [[ "$(/usr/libexec/PlistBuddy -c 'Print :com.apple.developer.icloud-container-environment' "$entitlements")" == "Production" ]]
   [[ "$(/usr/libexec/PlistBuddy -c 'Print :com.apple.developer.icloud-container-identifiers:0' "$entitlements")" == "iCloud.com.jamesli.tokenremain" ]]
@@ -171,6 +208,7 @@ build_notarized_dmg() {
 }
 
 build_app() {
+  "$ROOT_DIR/script/verify_ccusage_freshness.sh"
   require_signing_inputs
   mkdir -p "$OUTPUT_DIR"
   USAGEDOCK_SYNC_RELEASE=1 \
@@ -207,16 +245,17 @@ case "$MODE" in
     echo "Notarized packages and signed update feed created: $OUTPUT_DIR"
     ;;
   verify)
-    verify_app "$APP"
-    /usr/bin/xcrun stapler validate "$APP"
-    /usr/sbin/spctl --assess --type execute --verbose=4 "$APP"
+    materialize_verification_app
+    verify_app "$VERIFICATION_APP"
+    /usr/bin/xcrun stapler validate "$VERIFICATION_APP"
+    /usr/sbin/spctl --assess --type execute --verbose=4 "$VERIFICATION_APP"
     [[ -s "$APPCAST" ]]
     /usr/bin/xmllint --noout "$APPCAST"
     /usr/bin/grep -Fq 'sparkle:edSignature=' "$APPCAST"
     /usr/bin/codesign --verify --strict "$DMG"
     /usr/bin/xcrun stapler validate "$DMG"
     /usr/sbin/spctl --assess --type open --context context:primary-signature --verbose=4 "$DMG"
-    echo "Developer ID release verification passed: $APP"
+    echo "Developer ID release verification passed: $VERIFICATION_APP"
     ;;
   *)
     echo "usage: $0 [build|notarize|verify]" >&2
