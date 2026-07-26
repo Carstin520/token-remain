@@ -21,15 +21,13 @@ struct QuotaCard: View {
                 if let quota {
                     QuotaWindowRow(
                         window: quota.primary,
-                        provider: provider,
-                        serviceStatus: serviceStatus
+                        provider: provider
                     )
                     if let secondary = quota.secondary {
                         Divider().overlay(DashboardTheme.border)
                         QuotaWindowRow(
                             window: secondary,
-                            provider: provider,
-                            serviceStatus: serviceStatus
+                            provider: provider
                         )
                     }
                     if let extraUsage = quota.extraUsage {
@@ -160,7 +158,6 @@ struct ExtraUsageRow: View {
 struct QuotaWindowRow: View {
     let window: QuotaWindow
     let provider: ProviderQuota.Provider
-    var serviceStatus: ProviderServiceStatus?
     var showsDetails = true
 
     private var remainingPercent: Double {
@@ -174,9 +171,6 @@ struct QuotaWindowRow: View {
                     Text(L10n.format("quota.window", UsageFormatting.windowName(minutes: window.windowMinutes)))
                         .font(.system(size: 13))
                         .foregroundStyle(DashboardTheme.secondaryText)
-                    if let serviceStatus {
-                        ServiceStatusBadge(status: serviceStatus)
-                    }
                     Spacer()
                     if let pace = UsagePace(window: window, now: context.date),
                        pace.showsRemainingWarning {

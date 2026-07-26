@@ -77,7 +77,6 @@ struct PopoverQuotaWidget: View {
                     QuotaWindowRow(
                         window: shortestWindow,
                         provider: provider,
-                        serviceStatus: visibleServiceStatus,
                         showsDetails: isExpanded
                     )
 
@@ -86,8 +85,7 @@ struct PopoverQuotaWidget: View {
                             Divider().overlay(DashboardTheme.border)
                             QuotaWindowRow(
                                 window: window,
-                                provider: provider,
-                                serviceStatus: visibleServiceStatus
+                                provider: provider
                             )
                         }
                         if let extraUsage = quota.extraUsage {

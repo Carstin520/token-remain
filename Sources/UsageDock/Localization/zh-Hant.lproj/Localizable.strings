@@ -496,6 +496,12 @@
 "service_status.major_outage" = "嚴重中斷";
 "service_status.maintenance" = "維護中";
 "service_status.unknown" = "狀態未知";
+"service_status.description.operational" = "相關服務運作正常。";
+"service_status.description.degraded" = "服務仍可使用，但回應可能變慢，逾時或失敗也可能比平時更頻繁。";
+"service_status.description.partial_outage" = "部分使用者或功能暫時無法使用，請求可能間歇性失敗。";
+"service_status.description.major_outage" = "大範圍故障正在影響多數使用者或核心功能。";
+"service_status.description.maintenance" = "服務商正在進行計劃內或緊急維護，期間可用性可能受限。";
+"service_status.description.unknown" = "TokenRemain 暫時無法確認官方服務狀態；這不代表服務已經中斷。";
 "datasource.ccusage_checking" = "內建 ccusage %1$@ · 正在檢查更新";
 "datasource.ccusage_current" = "內建 ccusage %1$@ · 已是最新版本";
 "datasource.ccusage_update_available" = "內建版本 %1$@，最新版本 %2$@；請更新 TokenRemain 以更新已簽署元件";

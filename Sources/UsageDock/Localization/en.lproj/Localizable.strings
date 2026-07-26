@@ -496,6 +496,12 @@
 "service_status.major_outage" = "Major outage";
 "service_status.maintenance" = "Maintenance";
 "service_status.unknown" = "Unknown";
+"service_status.description.operational" = "The provider reports that the relevant services are operating normally.";
+"service_status.description.degraded" = "The service is still available, but responses may be slower and errors or timeouts may be more frequent than usual.";
+"service_status.description.partial_outage" = "Some users or features are unavailable; requests may fail intermittently.";
+"service_status.description.major_outage" = "A widespread outage is affecting most users or core functions.";
+"service_status.description.maintenance" = "The provider is performing scheduled or emergency maintenance; availability may be limited.";
+"service_status.description.unknown" = "TokenRemain could not verify the official service status. This does not mean the service is down.";
 "datasource.ccusage_checking" = "Built-in ccusage %1$@ · checking for updates";
 "datasource.ccusage_current" = "Built-in ccusage %1$@ · up to date";
 "datasource.ccusage_update_available" = "Built-in %1$@; %2$@ is available. Update TokenRemain to refresh the signed helper.";

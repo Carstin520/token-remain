@@ -495,6 +495,12 @@
 "service_status.major_outage" = "Schwerer Ausfall";
 "service_status.maintenance" = "Wartung";
 "service_status.unknown" = "Unbekannt";
+"service_status.description.operational" = "Der Anbieter meldet, dass die relevanten Dienste normal funktionieren.";
+"service_status.description.degraded" = "Der Dienst ist weiterhin verfügbar, aber Antworten können langsamer sein und Fehler oder Zeitüberschreitungen häufiger auftreten.";
+"service_status.description.partial_outage" = "Einige Benutzer oder Funktionen sind nicht verfügbar; Anfragen können zeitweise fehlschlagen.";
+"service_status.description.major_outage" = "Ein großflächiger Ausfall betrifft die meisten Benutzer oder Kernfunktionen.";
+"service_status.description.maintenance" = "Der Anbieter führt geplante oder dringende Wartungsarbeiten durch; die Verfügbarkeit kann eingeschränkt sein.";
+"service_status.description.unknown" = "TokenRemain konnte den offiziellen Dienststatus nicht prüfen. Das bedeutet nicht, dass der Dienst ausgefallen ist.";
 "datasource.ccusage_checking" = "Integriertes ccusage %1$@ · Updates werden geprüft";
 "datasource.ccusage_current" = "Integriertes ccusage %1$@ · aktuell";
 "datasource.ccusage_update_available" = "Integriert ist %1$@; %2$@ ist verfügbar. TokenRemain aktualisieren, um die signierte Komponente zu erneuern.";

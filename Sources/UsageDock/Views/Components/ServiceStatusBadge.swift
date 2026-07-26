@@ -1,9 +1,11 @@
 import SwiftUI
 
-/// Compact provider-health indicator used beside quota-window names and, only
-/// during an incident, beside the provider name in the menu-bar popover.
+/// Compact, clickable provider-health indicator shown once beside the provider
+/// name. Detailed status context stays available without repeating the badge on
+/// every quota window.
 struct ServiceStatusBadge: View {
     let status: ProviderServiceStatus
+    @State private var isShowingDetails = false
 
     private var title: String {
         switch status.level {
@@ -25,15 +27,11 @@ struct ServiceStatusBadge: View {
         }
     }
 
-    private var helpText: String {
-        let names = status.affectedComponentNames.isEmpty
-            ? status.componentNames
-            : status.affectedComponentNames
-        let componentText = names.isEmpty ? status.provider.displayName : names.joined(separator: ", ")
-        return "\(componentText) · \(title)\n\(status.statusPageURL.absoluteString)"
+    private var explanation: String {
+        L10n.text(status.level.explanationLocalizationKey)
     }
 
-    var body: some View {
+    private var badgeLabel: some View {
         HStack(spacing: 4) {
             Circle()
                 .fill(tint)
@@ -46,9 +44,99 @@ struct ServiceStatusBadge: View {
         .padding(.horizontal, 5)
         .padding(.vertical, 2)
         .background(tint.opacity(0.11), in: Capsule())
+        .contentShape(Capsule())
         .fixedSize()
+    }
+
+    private var helpText: String {
+        "\(title)：\(explanation)"
+    }
+
+    var body: some View {
+        Button {
+            isShowingDetails.toggle()
+        } label: {
+            badgeLabel
+        }
+        .buttonStyle(.plain)
         .help(helpText)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(title)
+        .popover(isPresented: $isShowingDetails, arrowEdge: .bottom) {
+            ServiceStatusDetails(status: status, title: title, tint: tint)
+        }
+        .accessibilityLabel("\(status.provider.displayName) \(title)")
+        .accessibilityHint(explanation)
+    }
+}
+
+private struct ServiceStatusDetails: View {
+    let status: ProviderServiceStatus
+    let title: String
+    let tint: Color
+
+    private var explanation: String {
+        L10n.text(status.level.explanationLocalizationKey)
+    }
+
+    private var componentText: String? {
+        let names = status.affectedComponentNames.isEmpty
+            ? status.componentNames
+            : status.affectedComponentNames
+        return names.isEmpty ? nil : names.joined(separator: ", ")
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 7) {
+                Circle()
+                    .fill(tint)
+                    .frame(width: 7, height: 7)
+                Text("\(status.provider.displayName) · \(title)")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(DashboardTheme.text)
+            }
+
+            Text(explanation)
+                .font(.system(size: 11))
+                .foregroundStyle(DashboardTheme.secondaryText)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if let componentText {
+                Label(componentText, systemImage: "square.stack.3d.up")
+                    .font(.system(size: 10))
+                    .foregroundStyle(DashboardTheme.mutedText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Divider()
+                .overlay(DashboardTheme.border)
+
+            HStack(spacing: 8) {
+                TimelineView(.periodic(from: .now, by: 60)) { context in
+                    Label(
+                        UsageFormatting.freshnessDescription(
+                            since: status.checkedAt,
+                            now: context.date
+                        ),
+                        systemImage: "clock"
+                    )
+                }
+                .font(.system(size: 10))
+                .foregroundStyle(DashboardTheme.mutedText)
+
+                Spacer(minLength: 6)
+
+                Link(destination: status.statusPageURL) {
+                    Label(
+                        status.statusPageURL.host ?? status.statusPageURL.absoluteString,
+                        systemImage: "arrow.up.right.square"
+                    )
+                    .font(.system(size: 10, weight: .medium))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(DashboardTheme.secondaryText)
+            }
+        }
+        .padding(14)
+        .frame(width: 300, alignment: .leading)
     }
 }

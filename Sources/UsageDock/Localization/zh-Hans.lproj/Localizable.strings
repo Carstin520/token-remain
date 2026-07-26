@@ -496,6 +496,12 @@
 "service_status.major_outage" = "严重中断";
 "service_status.maintenance" = "维护中";
 "service_status.unknown" = "状态未知";
+"service_status.description.operational" = "相关服务运行正常。";
+"service_status.description.degraded" = "服务仍可使用，但响应可能变慢，超时或失败也可能比平时更频繁。";
+"service_status.description.partial_outage" = "部分用户或功能暂不可用，请求可能间歇性失败。";
+"service_status.description.major_outage" = "大范围故障正在影响多数用户或核心功能。";
+"service_status.description.maintenance" = "服务商正在进行计划内或紧急维护，期间可用性可能受限。";
+"service_status.description.unknown" = "TokenRemain 暂时无法确认官方服务状态；这不代表服务已经中断。";
 "datasource.ccusage_checking" = "内置 ccusage %1$@ · 正在检查更新";
 "datasource.ccusage_current" = "内置 ccusage %1$@ · 已是最新版本";
 "datasource.ccusage_update_available" = "内置版本 %1$@，最新版本 %2$@；请更新 TokenRemain 以更新已签名组件";
