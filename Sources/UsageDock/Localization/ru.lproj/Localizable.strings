@@ -104,3 +104,9 @@
 "quota.extra_usage" = "Доп. расход";
 "quota.spent" = "%@ потрачено";
 "duration.total" = "Всего";
+"service_status.operational" = "Работает";
+"service_status.degraded" = "Снижена производительность";
+"service_status.partial_outage" = "Частичный сбой";
+"service_status.major_outage" = "Крупный сбой";
+"service_status.maintenance" = "Обслуживание";
+"service_status.unknown" = "Неизвестно";

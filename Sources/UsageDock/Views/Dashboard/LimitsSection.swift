@@ -9,6 +9,7 @@ import UniformTypeIdentifiers
 struct LimitsSection: View {
     let insights: UsageInsights
     var notices: [ProviderQuota.Provider: String] = [:]
+    var serviceStatuses: [ProviderQuota.Provider: ProviderServiceStatus] = [:]
     @ObservedObject var tracked: TrackedProvidersStore = .shared
     @State private var draggingProvider: ProviderQuota.Provider?
 
@@ -33,6 +34,7 @@ struct LimitsSection: View {
                     QuotaCard(
                         provider: provider,
                         quota: quota(for: provider),
+                        serviceStatus: serviceStatuses[provider],
                         notice: notices[provider],
                         draggingProvider: $draggingProvider
                     )

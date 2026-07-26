@@ -12,6 +12,7 @@ struct UsageInsights {
     let quotasByProvider: [ProviderQuota.Provider: ProviderQuota]
     let daily: DailyUsage?
     let history: DailyUsageHistory?
+    let quotaUsageHistory: QuotaUsageHistory
 
     init(
         claude: ProviderQuota?,
@@ -21,7 +22,8 @@ struct UsageInsights {
         zai: ProviderQuota? = nil,
         others: [ProviderQuota] = [],
         daily: DailyUsage?,
-        history: DailyUsageHistory? = nil
+        history: DailyUsageHistory? = nil,
+        quotaUsageHistory: QuotaUsageHistory = .empty
     ) {
         var map: [ProviderQuota.Provider: ProviderQuota] = [:]
         for quota in [claude, codex, cursor, grok, zai].compactMap({ $0 }) + others {
@@ -30,6 +32,7 @@ struct UsageInsights {
         quotasByProvider = map
         self.daily = daily
         self.history = history
+        self.quotaUsageHistory = quotaUsageHistory
     }
 
     var claude: ProviderQuota? { quotasByProvider[.claude] }

@@ -104,3 +104,9 @@
 "quota.extra_usage" = "Utilizzo extra";
 "quota.spent" = "%@ spesi";
 "duration.total" = "Totale";
+"service_status.operational" = "Operativo";
+"service_status.degraded" = "Prestazioni ridotte";
+"service_status.partial_outage" = "Interruzione parziale";
+"service_status.major_outage" = "Interruzione grave";
+"service_status.maintenance" = "Manutenzione";
+"service_status.unknown" = "Sconosciuto";

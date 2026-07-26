@@ -301,7 +301,6 @@ final class StatusBarController: NSObject {
     ) -> NSAttributedString {
         let image = BrandIcon.image(for: provider).copy() as! NSImage
         image.size = NSSize(width: size, height: size)
-        image.isTemplate = provider == .claude
 
         let attachment = NSTextAttachment()
         attachment.attachmentCell = NSTextAttachmentCell(imageCell: image)

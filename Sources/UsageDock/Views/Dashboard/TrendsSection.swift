@@ -39,6 +39,11 @@ struct TrendsSection: View {
                 }
             }
 
+            QuotaConsumptionTrendCard(
+                history: insights.quotaUsageHistory,
+                enabledProviders: tracked.enabledOrdered
+            )
+
             HStack(alignment: .top, spacing: 14) {
                 currentSnapshotPanel
                 roadmapPanel

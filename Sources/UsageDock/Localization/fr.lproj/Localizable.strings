@@ -104,3 +104,9 @@
 "quota.extra_usage" = "Usage supplémentaire";
 "quota.spent" = "%@ dépensés";
 "duration.total" = "Cumul";
+"service_status.operational" = "Opérationnel";
+"service_status.degraded" = "Dégradé";
+"service_status.partial_outage" = "Panne partielle";
+"service_status.major_outage" = "Panne majeure";
+"service_status.maintenance" = "Maintenance";
+"service_status.unknown" = "Inconnu";

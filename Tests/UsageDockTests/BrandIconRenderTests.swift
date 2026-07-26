@@ -4,6 +4,34 @@ import Testing
 
 @Suite("Brand icon rendering")
 struct BrandIconRenderTests {
+    @Test("Every non-Claude/Codex provider has one distinct bundled brand asset")
+    func authenticArtworkCoverage() throws {
+        let resourceProviders = ProviderQuota.Provider.displayOrder.filter {
+            $0 != .claude && $0 != .codex
+        }
+        var resourceNames = Set<String>()
+
+        for provider in resourceProviders {
+            let artwork = try #require(
+                BrandIcon.artwork(for: provider),
+                "\(provider.displayName) is missing an explicit brand artwork mapping"
+            )
+            #expect(
+                resourceNames.insert(artwork.resourceName).inserted,
+                "\(provider.displayName) reuses another provider's brand resource"
+            )
+
+            let resourceURL = try #require(
+                BrandIcon.resourceURL(for: artwork),
+                "\(provider.displayName) artwork is not available to the renderer"
+            )
+            #expect(resourceURL.pathExtension == "png")
+            #expect(FileManager.default.fileExists(atPath: resourceURL.path))
+        }
+
+        #expect(resourceNames.count == resourceProviders.count)
+    }
+
     @Test("Menu-bar brand images render with visible content for every provider")
     @MainActor
     func rendersAllProviders() throws {
@@ -26,7 +54,9 @@ struct BrandIconRenderTests {
             let samples = (bitmap.pixelsWide / sampleStep) * (bitmap.pixelsHigh / sampleStep)
             let coverage = Double(opaque) / Double(max(1, samples))
             #expect(coverage > 0.05, "\(provider.displayName) icon looks empty (coverage \(coverage))")
-            #expect(coverage < 0.95, "\(provider.displayName) icon is a solid block (coverage \(coverage))")
+            // Official app-tile marks such as Kiro intentionally fill almost
+            // the entire square, so reject only a truly opaque fallback block.
+            #expect(coverage < 0.99, "\(provider.displayName) icon is a solid block (coverage \(coverage))")
 
             if let outputDirectory,
                let png = bitmap.representation(using: .png, properties: [:]) {

@@ -3,6 +3,7 @@ import SwiftUI
 struct PopoverQuotaWidget: View {
     let provider: ProviderQuota.Provider
     let quota: ProviderQuota?
+    var serviceStatus: ProviderServiceStatus?
     /// Provider 级状态说明(如 Cursor 登录过期的恢复提示),数据仍在时
     /// 跟随在窗口行之后,无数据时替代加载态。
     var notice: String?
@@ -16,6 +17,18 @@ struct PopoverQuotaWidget: View {
 
     private var isExpanded: Bool {
         layout.isExpanded(widget)
+    }
+
+    /// The Dashboard always shows verified status. The compact menu-bar
+    /// surface stays quiet unless the provider needs attention.
+    private var visibleServiceStatus: ProviderServiceStatus? {
+        Self.visibleServiceStatus(serviceStatus)
+    }
+
+    static func visibleServiceStatus(
+        _ status: ProviderServiceStatus?
+    ) -> ProviderServiceStatus? {
+        status?.isAbnormal == true ? status : nil
     }
 
     private var orderedWindows: [QuotaWindow] {
@@ -52,7 +65,9 @@ struct PopoverQuotaWidget: View {
                     onMoveUp: { layout.moveUp(widget) },
                     onMoveDown: { layout.moveDown(widget) }
                 ) {
-                    EmptyView()
+                    if let visibleServiceStatus {
+                        ServiceStatusBadge(status: visibleServiceStatus)
+                    }
                 }
 
                 if let quota, let shortestWindow = orderedWindows.first {
@@ -62,13 +77,18 @@ struct PopoverQuotaWidget: View {
                     QuotaWindowRow(
                         window: shortestWindow,
                         provider: provider,
+                        serviceStatus: visibleServiceStatus,
                         showsDetails: isExpanded
                     )
 
                     if isExpanded {
                         ForEach(Array(orderedWindows.dropFirst().enumerated()), id: \.offset) { _, window in
                             Divider().overlay(DashboardTheme.border)
-                            QuotaWindowRow(window: window, provider: provider)
+                            QuotaWindowRow(
+                                window: window,
+                                provider: provider,
+                                serviceStatus: visibleServiceStatus
+                            )
                         }
                         if let extraUsage = quota.extraUsage {
                             Divider().overlay(DashboardTheme.border)
@@ -101,6 +121,7 @@ struct PopoverQuotaWidget: View {
                 PopoverQuotaWidget(
                     provider: provider,
                     quota: quota,
+                    serviceStatus: serviceStatus,
                     notice: notice,
                     layout: layout,
                     draggingWidget: .constant(nil),

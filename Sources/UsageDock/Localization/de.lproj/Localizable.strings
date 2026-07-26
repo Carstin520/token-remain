@@ -452,6 +452,15 @@
 "trends.metric_cost" = "Kosten";
 "trends.no_local_usage_today" = "Heute noch keine lokale Nutzung.";
 "trends.no_provider_selected" = "Kein Anbieter ausgewählt";
+"trends.quota_accumulating_message" = "TokenRemain zeichnet nach einer erfolgreichen Kontingentaktualisierung auf. Alle verbundenen Anbieter erscheinen automatisch; frühere Daten können nicht nachgetragen werden.";
+"trends.quota_accumulating_title" = "Kontingenttrend wird aufgebaut";
+"trends.quota_history" = "Trend";
+"trends.quota_provider" = "App";
+"trends.quota_row_accessibility" = "%1$@, %2$@-Fenster, %3$@ verbraucht";
+"trends.quota_subtitle" = "Primäres Kontingentfenster je App · lokale Momentaufnahmen";
+"trends.quota_title" = "Kontingentverbrauch im Verlauf";
+"trends.quota_used" = "Verbraucht";
+"trends.quota_window" = "Fenster";
 "trends.range_days" = "%1$d T";
 "trends.roadmap.cost_share_history" = "Entwicklung der Kostenanteile je Anbieter";
 "trends.roadmap.heatmap" = "Wöchentliche Nutzungs-Heatmap";
@@ -480,3 +489,9 @@
 "update.available_format" = "Auf %1$@ aktualisieren";
 "update.available_accessibility" = "TokenRemain %1$@ ist verfügbar";
 "update.install_help" = "TokenRemain herunterladen, prüfen, installieren und neu starten";
+"service_status.operational" = "Betriebsbereit";
+"service_status.degraded" = "Beeinträchtigt";
+"service_status.partial_outage" = "Teilweiser Ausfall";
+"service_status.major_outage" = "Schwerer Ausfall";
+"service_status.maintenance" = "Wartung";
+"service_status.unknown" = "Unbekannt";

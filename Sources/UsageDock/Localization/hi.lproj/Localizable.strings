@@ -104,3 +104,9 @@
 "quota.extra_usage" = "अतिरिक्त उपयोग";
 "quota.spent" = "%@ खर्च";
 "duration.total" = "कुल";
+"service_status.operational" = "चालू";
+"service_status.degraded" = "प्रदर्शन कम";
+"service_status.partial_outage" = "आंशिक बाधा";
+"service_status.major_outage" = "बड़ी बाधा";
+"service_status.maintenance" = "रखरखाव";
+"service_status.unknown" = "अज्ञात";

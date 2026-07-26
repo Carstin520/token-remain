@@ -39,44 +39,28 @@ enum TrendMetric: CaseIterable, Identifiable {
 
 // MARK: - Card
 
-/// Trends card: range / metric toggles, an independently filterable provider
-/// legend, an ornamental total sparkline, and the stacked daily bar chart.
+/// Trends card: range / metric toggles, a provider legend, an ornamental total
+/// sparkline, and the stacked daily bar chart.
 /// Backed entirely by real ccusage `daily --by-agent` history — the caller only
 /// shows this when at least two days exist.
 struct UsageTrendCard: View {
-    private static let hiddenAgentIDsKey = "tokenRemain.trendHiddenAgentIDs.v1"
-
     let days: [DailyUsageHistory.Day]
     var capturedAt: Date?
     let preferredAgentIDs: Set<String>?
 
     @State private var range: TrendRange = .twoWeeks
     @State private var metric: TrendMetric = .tokens
-    @State private var visibleAgentIDs: Set<String>
-
-    init(
-        days: [DailyUsageHistory.Day],
-        capturedAt: Date? = nil,
-        preferredAgentIDs: Set<String>? = nil
-    ) {
-        self.days = days
-        self.capturedAt = capturedAt
-        self.preferredAgentIDs = preferredAgentIDs
-        let available = Self.agentIDs(in: days)
-        let initiallyVisible: [String]
-        if let preferredAgentIDs {
-            initiallyVisible = available.filter {
-                preferredAgentIDs.contains($0) || UsageInsights.provider(for: $0) == nil
-            }
-        } else {
-            initiallyVisible = available
-        }
-        let hidden = Set(UserDefaults.standard.stringArray(forKey: Self.hiddenAgentIDsKey) ?? [])
-        _visibleAgentIDs = State(initialValue: Set(initiallyVisible).subtracting(hidden))
-    }
 
     private var availableAgentIDs: [String] {
         Self.agentIDs(in: days)
+    }
+
+    private var visibleAgentIDs: Set<String> {
+        Set(availableAgentIDs.filter { agentID in
+            guard let preferredAgentIDs else { return true }
+            return preferredAgentIDs.contains(agentID)
+                || UsageInsights.provider(for: agentID) == nil
+        })
     }
 
     /// Most recent `range` days (or everything, if less history exists).
@@ -104,31 +88,13 @@ struct UsageTrendCard: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .onChange(of: visibleAgentIDs) { _, updated in
-            UserDefaults.standard.set(
-                availableAgentIDs.filter { !updated.contains($0) },
-                forKey: Self.hiddenAgentIDsKey
-            )
-        }
-        .onChange(of: availableAgentIDs) { _, updatedIDs in
-            let hidden = Set(
-                UserDefaults.standard.stringArray(forKey: Self.hiddenAgentIDsKey) ?? []
-            )
-            let eligible = updatedIDs.filter { agentID in
-                guard let preferredAgentIDs else { return true }
-                return preferredAgentIDs.contains(agentID)
-                    || UsageInsights.provider(for: agentID) == nil
-            }
-            visibleAgentIDs = Set(eligible).subtracting(hidden)
-        }
     }
 
     private var controls: some View {
         HStack(alignment: .center, spacing: 12) {
-            TrendLegend(
-                agentIDs: availableAgentIDs,
-                visibleAgentIDs: $visibleAgentIDs
-            )
+            ScrollView(.horizontal, showsIndicators: false) {
+                TrendLegend(agentIDs: availableAgentIDs.filter(visibleAgentIDs.contains))
+            }
             Spacer(minLength: 8)
             PixelSegmentedControl(
                 options: TrendRange.allCases.map { ($0, $0.label) },
@@ -574,88 +540,42 @@ private struct BarColumn: View {
 
 // MARK: - Legend
 
-/// Dynamic series picker. Visible agents are chips; the plus menu contains
-/// hidden agents discovered in the user's real ccusage history.
+/// Static series legend for agents discovered in the user's real ccusage
+/// history. Series selection belongs on the tracked-app surface, so the trend
+/// card no longer exposes a misleading add-app control.
 struct TrendLegend: View {
     let agentIDs: [String]
-    @Binding var visibleAgentIDs: Set<String>
 
     var body: some View {
         HStack(spacing: 10) {
-            ForEach(agentIDs.filter(visibleAgentIDs.contains), id: \.self) { agentID in
+            ForEach(agentIDs, id: \.self) { agentID in
                 item(agentID: agentID)
             }
-            addMenu
         }
     }
 
     private func item(agentID: String) -> some View {
         let name = UsageInsights.displayName(for: agentID)
         let color = UsageTrendChart.color(forAgentID: agentID)
-        return Button {
-            visibleAgentIDs.remove(agentID)
-        } label: {
-            HStack(spacing: 5) {
-                if let provider = UsageInsights.provider(for: agentID) {
-                    BrandIcon(provider: provider)
-                        .foregroundStyle(color)
-                        .frame(width: 11, height: 11)
-                } else {
-                    Circle()
-                        .fill(color)
-                        .frame(width: 8, height: 8)
-                }
-                Text(name)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(DashboardTheme.secondaryText)
-                RoundedRectangle(cornerRadius: 2, style: .continuous)
+        return HStack(spacing: 5) {
+            if let provider = UsageInsights.provider(for: agentID) {
+                BrandIcon(provider: provider)
+                    .foregroundStyle(color)
+                    .frame(width: 11, height: 11)
+            } else {
+                Circle()
                     .fill(color)
-                    .frame(width: 12, height: 6)
+                    .frame(width: 8, height: 8)
             }
-            .contentShape(Rectangle())
+            Text(name)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(DashboardTheme.secondaryText)
+            RoundedRectangle(cornerRadius: 2, style: .continuous)
+                .fill(color)
+                .frame(width: 12, height: 6)
         }
-        .buttonStyle(.plain)
-        .help(L10n.format("trends.legend_hide", name))
         .accessibilityLabel(L10n.format("trends.legend_label", name))
         .accessibilityValue(L10n.text("trends.legend_visible"))
-        .accessibilityAddTraits([.isButton, .isSelected])
-    }
-
-    private var addMenu: some View {
-        let hidden = agentIDs.filter { !visibleAgentIDs.contains($0) }
-        return Menu {
-            if hidden.isEmpty {
-                Button(L10n.text("widget.all_visible")) {}.disabled(true)
-            } else {
-                ForEach(hidden, id: \.self) { agentID in
-                    Button {
-                        visibleAgentIDs.insert(agentID)
-                    } label: {
-                        Label(
-                            UsageInsights.displayName(for: agentID),
-                            systemImage: "plus.circle"
-                        )
-                    }
-                }
-            }
-        } label: {
-            Image(systemName: "plus")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(DashboardTheme.text)
-                .frame(width: 22, height: 22)
-                .background(
-                    DashboardTheme.surface2,
-                    in: RoundedRectangle(cornerRadius: 6, style: .continuous)
-                )
-                .overlay {
-                    RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .strokeBorder(DashboardTheme.border, lineWidth: 1)
-                }
-        }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
-        .help(L10n.text("limits.add_app"))
-        .accessibilityLabel(L10n.text("limits.add_app_accessibility"))
     }
 }
 
