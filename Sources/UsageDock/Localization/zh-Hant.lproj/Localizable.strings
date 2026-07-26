@@ -118,7 +118,7 @@
 "common.updated_at" = "更新於 %1$@";
 "datasource.api_key_settings" = "%1$@ API Key 設定";
 "datasource.broken" = "資料鏈失效";
-"datasource.ccusage_detail" = "內建 ccusage 讀取本機編碼應用程式記錄，無需另行安裝";
+"datasource.ccusage_detail" = "內建 ccusage 在本機讀取編碼應用程式記錄；TokenRemain 只下載公開價格表，不上傳用量資料";
 "datasource.detail.antigravity" = "Cloud Code 配額池直接查詢（唯讀本機登入狀態，絕不代為重新整理）";
 "datasource.detail.claude" = "官方 oauth/usage API 直接查詢（唯讀本機憑證）；異常時改用 /usage 探針";
 "datasource.detail.codex" = "伺服器即時 API 直接查詢（唯讀 ~/.codex/auth.json）；離線時改用本機工作階段快照";
@@ -244,7 +244,7 @@
 "pace.ahead_warning" = "目前用量節奏超前";
 "privacy.cost_estimate" = "ccusage 成本為 API 定價估算，不等於訂閱帳單。";
 "privacy.feed_managed" = "AI 精選動態由內建策略自動同步；使用者無需選擇帳號或管理資料來源。";
-"privacy.local_only" = "本機用量資料全部留在本機，TokenRemain 不做任何上傳。";
+"privacy.local_only" = "本機記錄、Token 明細、模型使用記錄和憑證留在本機；TokenRemain 只下載公開價格表。";
 "privacy.readonly_credentials" = "所有工具憑證皆為唯讀：絕不重新整理 token、絕不寫回，驗證始終由各工具自行處理。";
 "privacy.title" = "隱私權";
 "privacy.zai_key" = "Z.ai API Key 僅儲存在本機鑰匙圈，不會進入原始碼、記錄或任何網路請求（額度查詢本身除外）。";

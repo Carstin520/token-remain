@@ -118,7 +118,7 @@
 "common.updated_at" = "更新于 %1$@";
 "datasource.api_key_settings" = "%1$@ API Key 设置";
 "datasource.broken" = "数据链失效";
-"datasource.ccusage_detail" = "内置 ccusage 读取本机编码应用日志，无需另行安装";
+"datasource.ccusage_detail" = "内置 ccusage 在本机读取编码应用日志；TokenRemain 只下载公开价格表，不上传用量数据";
 "datasource.detail.antigravity" = "Cloud Code 配额池直查（只读本机登录态，绝不代刷）";
 "datasource.detail.claude" = "官方 oauth/usage 接口直查（只读本机凭证）；异常时回退 /usage 探针";
 "datasource.detail.codex" = "服务端实时接口直查（只读 ~/.codex/auth.json）；离线回退本地会话快照";
@@ -244,7 +244,7 @@
 "pace.ahead_warning" = "当前用量节奏超前";
 "privacy.cost_estimate" = "ccusage 成本是 API 标价估算，不等于订阅账单。";
 "privacy.feed_managed" = "AI 精选动态由内置策略自动同步；用户无需选择账号或管理数据源。";
-"privacy.local_only" = "本机用量数据全部留在本地，TokenRemain 不做任何上传。";
+"privacy.local_only" = "本机日志、Token 明细、模型使用记录和凭证留在本机；TokenRemain 只下载公开价格表。";
 "privacy.readonly_credentials" = "所有工具凭证均为只读：绝不刷新 token、绝不写回，认证始终由各工具自行处理。";
 "privacy.title" = "隐私";
 "privacy.zai_key" = "Z.ai API Key 仅保存在本机钥匙串，不进入源码、日志或任何网络请求（额度查询本身除外）。";

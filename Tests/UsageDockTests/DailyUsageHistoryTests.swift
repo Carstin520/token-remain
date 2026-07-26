@@ -122,17 +122,21 @@ struct DailyUsageHistoryTests {
         #expect(day.unpricedModels == ["claude-opus-5"])
     }
 
-    @Test("Bundled ccusage invocation cannot contact npm or pricing services")
+    @Test("Bundled ccusage stays offline while accepting an app-owned price config")
     func bundledInvocationIsOffline() {
+        let configURL = URL(fileURLWithPath: "/tmp/tokenremain-ccusage-pricing.json")
         let arguments = CCUsageService.commandArguments(
             since: "2026-07-01",
-            timeZone: TimeZone(identifier: "Asia/Shanghai")!
+            timeZone: TimeZone(identifier: "Asia/Shanghai")!,
+            pricingConfigurationURL: configURL
         )
 
         #expect(arguments.first == "daily")
         #expect(arguments.contains("--offline"))
         #expect(arguments.contains("--by-agent"))
         #expect(arguments.contains("Asia/Shanghai"))
+        #expect(arguments.contains("--config"))
+        #expect(arguments.contains(configURL.path))
         #expect(!arguments.joined(separator: " ").contains("npx"))
         #expect(!arguments.joined(separator: " ").contains("latest"))
     }

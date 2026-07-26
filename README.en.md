@@ -30,7 +30,7 @@ Remaining quota, reset countdowns and today's cost for Claude Code, Codex, Curso
 
 - 🧭 **One unified quota panel** — Claude Code / Codex official 5-hour · 7-day windows with reset countdowns, Cursor's monthly billing cycle, Grok's weekly pool, GLM session/weekly windows — all side by side.
 - ⏱️ **Pace prediction** — Real window progress plus official reset times decide whether your current pace lasts until reset, with an ETA when it won't.
-- 💰 **Today's cost** — ccusage counts today's Claude Code / Codex tokens and estimated API list-price cost, computed locally (not your subscription bill).
+- 💰 **Today's cost** — ccusage counts today's Claude Code / Codex tokens and estimated API list-price cost locally; TokenRemain downloads the complete public price table at most once a day and never uploads local usage details (not your subscription bill).
 - 🔐 **Optional encrypted sync publisher** — The Mac remains the only source of real data. When enabled, it writes only an allowlisted, encrypted display snapshot to your own private iCloud database.
 - 📡 **AI Feed** — A curated server-side feed of public posts from Anthropic, OpenAI and other official accounts; major updates trigger a local notification.
 - 🪟 **Always in reach** — Pick which apps appear in the menu bar, keep a floating window on top across Spaces, refresh every 1/5/15/30 minutes or manually.
@@ -97,6 +97,7 @@ Credentials already on your machine ──read-only──▶ Official provider A
 - **Manual keys live in the Keychain** — API keys you add by hand (Z.ai, OpenRouter…) are stored only in the macOS Keychain, never in source, build artifacts or logs. Z.ai also accepts the `ZAI_API_KEY` environment variable or `~/.config/zai/key.json`.
 - **No credential relay** — Quota queries go straight to each provider's official API. The AI feed, the push service and the anonymous download counter **never receive** provider credentials.
 - **No behavioral tracking** — No telemetry, ads, cookies or analytics SDK. The website keeps only one anonymous aggregate Mac download count.
+- **Price updates never upload usage** — At most once a day, a fixed bodyless GET downloads the complete public LiteLLM price table. The request carries no credentials, model names, token counts, prompts, projects, conversations or usage history. Prices are cached locally and ccusage still processes logs offline. GitHub may process ordinary connection metadata such as IP address and request time under its policies.
 - **No account required** — You never sign up for TokenRemain; being signed in to your local tools is enough.
 - **Cache and stats stay local** — Mac caches and cost statistics stay on the machine (`~/Library/Caches/com.jamesli.usagedock/`). Only when you enable sync does an allowlisted, encrypted display snapshot enter your own private iCloud database.
 

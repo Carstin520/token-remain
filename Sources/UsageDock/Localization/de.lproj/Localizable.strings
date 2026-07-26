@@ -117,7 +117,7 @@
 "common.updated_at" = "Aktualisiert %1$@";
 "datasource.api_key_settings" = "API-Key-Einstellungen für %1$@";
 "datasource.broken" = "Verbindung unterbrochen";
-"datasource.ccusage_detail" = "Das integrierte ccusage liest lokale Logs; keine separate Installation nötig";
+"datasource.ccusage_detail" = "Das integrierte ccusage liest Agent-Logs lokal; TokenRemain lädt nur eine öffentliche Preistabelle herunter und keine Nutzungsdaten hoch";
 "datasource.detail.antigravity" = "Direktabfrage des Cloud-Code-Kontingentpools (lokale Anmeldung nur lesend, wird nie stellvertretend erneuert)";
 "datasource.detail.claude" = "Direktabfrage der offiziellen oauth/usage-API (lokale Anmeldedaten nur lesend); bei Fehlern Fallback auf die /usage-Sonde";
 "datasource.detail.codex" = "Direktabfrage der Live-Server-API (nur Lesen von ~/.codex/auth.json); offline Fallback auf den lokalen Sitzungs-Snapshot";
@@ -243,7 +243,7 @@
 "pace.ahead_warning" = "Nutzungstempo liegt über dem Soll";
 "privacy.cost_estimate" = "ccusage-Kosten sind eine Schätzung nach API-Listenpreisen, nicht deine Abo-Rechnung.";
 "privacy.feed_managed" = "Der kuratierte KI-Feed synchronisiert sich automatisch über integrierte Regeln; keine Konten auszuwählen, keine Quellen zu verwalten.";
-"privacy.local_only" = "Alle lokalen Nutzungsdaten bleiben auf diesem Mac; TokenRemain lädt nichts hoch.";
+"privacy.local_only" = "Lokale Logs, Token-Details, Modellnutzung und Zugangsdaten bleiben auf diesem Mac; TokenRemain lädt nur eine öffentliche Preistabelle herunter.";
 "privacy.readonly_credentials" = "Alle Tool-Zugangsdaten sind schreibgeschützt: Tokens werden nie erneuert oder zurückgeschrieben; die Anmeldung übernimmt stets das jeweilige Tool selbst.";
 "privacy.title" = "Datenschutz";
 "privacy.zai_key" = "Der Z.ai API Key liegt nur im lokalen Schlüsselbund und gelangt nie in Quellcode, Logs oder Netzwerkanfragen (außer der Kontingentabfrage selbst).";

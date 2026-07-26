@@ -117,7 +117,7 @@
 "common.updated_at" = "%1$@ 업데이트";
 "datasource.api_key_settings" = "%1$@ API Key 설정";
 "datasource.broken" = "데이터 연결 끊김";
-"datasource.ccusage_detail" = "내장 ccusage가 로컬 로그를 읽으며 별도 설치가 필요하지 않습니다";
+"datasource.ccusage_detail" = "내장 ccusage는 에이전트 로그를 로컬에서 읽습니다. TokenRemain은 공개 가격표만 다운로드하며 사용량 데이터는 업로드하지 않습니다";
 "datasource.detail.antigravity" = "Cloud Code 할당량 풀 직접 조회 (로컬 로그인 상태 읽기 전용, 절대 대신 갱신하지 않음)";
 "datasource.detail.claude" = "공식 oauth/usage API 직접 조회 (로컬 자격 증명 읽기 전용); 오류 시 /usage 프로브로 대체";
 "datasource.detail.codex" = "서버 실시간 API 직접 조회 (~/.codex/auth.json 읽기 전용); 오프라인 시 로컬 세션 스냅샷으로 대체";
@@ -243,7 +243,7 @@
 "pace.ahead_warning" = "현재 사용 속도가 예상보다 빠릅니다";
 "privacy.cost_estimate" = "ccusage 비용은 API 정가 기준 추정치이며 구독 요금과 다릅니다.";
 "privacy.feed_managed" = "AI 큐레이션 피드는 내장 정책에 따라 자동 동기화됩니다. 계정을 선택하거나 소스를 관리할 필요가 없습니다.";
-"privacy.local_only" = "로컬 사용량 데이터는 모두 이 Mac에만 보관되며 TokenRemain은 아무것도 업로드하지 않습니다.";
+"privacy.local_only" = "로컬 로그, 토큰 세부 정보, 모델 사용 기록과 자격 증명은 이 Mac에만 남으며 TokenRemain은 공개 가격표만 다운로드합니다.";
 "privacy.readonly_credentials" = "모든 도구 자격 증명은 읽기 전용입니다. token을 절대 갱신하거나 다시 쓰지 않으며, 인증은 항상 각 도구가 직접 처리합니다.";
 "privacy.title" = "개인정보 보호";
 "privacy.zai_key" = "Z.ai API Key는 로컬 키체인에만 저장되며 소스 코드, 로그, 어떤 네트워크 요청에도 포함되지 않습니다 (할당량 조회 자체 제외).";

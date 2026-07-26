@@ -117,7 +117,7 @@
 "common.updated_at" = "%1$@に更新";
 "datasource.api_key_settings" = "%1$@ APIキー設定";
 "datasource.broken" = "データ連携切れ";
-"datasource.ccusage_detail" = "内蔵 ccusage がローカルログを読み取ります。別途インストールは不要です";
+"datasource.ccusage_detail" = "内蔵 ccusage はエージェントのログをローカルで読み取ります。TokenRemain は公開価格表のみをダウンロードし、使用量データはアップロードしません";
 "datasource.detail.antigravity" = "Cloud Code のクォータプールを直接照会(ログイン状態は読み取り専用、代理更新は一切なし)";
 "datasource.detail.claude" = "公式 oauth/usage API を直接照会(ローカル認証情報は読み取り専用)。エラー時は /usage プローブにフォールバック";
 "datasource.detail.codex" = "サーバーのリアルタイム API を直接照会(~/.codex/auth.json は読み取り専用)。オフライン時はローカルセッションスナップショットにフォールバック";
@@ -243,7 +243,7 @@
 "pace.ahead_warning" = "現在の使用ペースが先行しています";
 "privacy.cost_estimate" = "ccusage のコストは API 定価による推定であり、サブスクリプションの請求額ではありません。";
 "privacy.feed_managed" = "AI 厳選フィードは内蔵ポリシーで自動同期されます。アカウントの選択やデータソースの管理は不要です。";
-"privacy.local_only" = "ローカルの使用量データはすべてこの Mac に保存され、TokenRemain は一切アップロードしません。";
+"privacy.local_only" = "ローカルログ、トークン詳細、モデル使用記録、認証情報はこの Mac に留まり、TokenRemain は公開価格表のみをダウンロードします。";
 "privacy.readonly_credentials" = "すべてのツール認証情報は読み取り専用です。トークンの更新や書き戻しは一切行わず、認証は常に各ツール自身が処理します。";
 "privacy.title" = "プライバシー";
 "privacy.zai_key" = "Z.ai APIキーはローカルのキーチェーンにのみ保存され、ソースコード、ログ、ネットワークリクエストには一切含まれません(クォータ照会そのものを除く)。";

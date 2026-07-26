@@ -43,6 +43,7 @@
           <h2>Data processed on the Mac</h2>
           <p>Depending on the providers enabled, TokenRemain may read local configuration files, local databases, command-line output, localhost services, or credentials already stored by those tools. It may send authenticated requests directly to a selected provider to retrieve quota or usage information.</p>
           <p>Provider credentials—including access tokens, API keys, cookies, and account sessions—remain on the Mac. TokenRemain does not upload them to iCloud or a TokenRemain-operated server, refresh third-party OAuth tokens, or upload prompts, projects, conversations, account names, email addresses, or request-level history.</p>
+          <p>To keep cost estimates current, TokenRemain sends a fixed, bodyless GET request at most once per day to download the complete public LiteLLM model-pricing table from GitHub. The request contains no Provider credential, model identifier, token count, prompt, project, conversation, or usage history. GitHub may receive ordinary connection metadata such as the IP address and request time. The validated table is cached locally, and ccusage continues to process usage logs offline.</p>
           <p>Settings, quota caches, aggregate history, and optional feed data are stored locally for dashboards, trends, alerts, and offline states.</p>
         </section>
         <section class="callout">
@@ -116,6 +117,7 @@
           <h2>Mac 上处理的数据</h2>
           <p>根据用户启用的 Provider，TokenRemain 可能读取本地配置文件、数据库、命令行输出、localhost 服务，或这些工具已保存的凭证，也可能直接向所选 Provider 发送认证请求以获取额度或用量。</p>
           <p>Access token、API key、cookie 和账号会话等 Provider 凭证始终留在 Mac。TokenRemain 不会把它们上传到 iCloud 或 TokenRemain 运营的服务器，不代替第三方工具刷新 OAuth token，也不上传提示词、项目、对话、账号名、邮箱或逐请求历史。</p>
+          <p>为保持费用估算准确，TokenRemain 每天最多一次向 GitHub 发出固定且无请求正文的 GET 请求，下载完整的公开 LiteLLM 模型价格表。请求不包含 Provider 凭证、模型标识、Token 数、提示词、项目、对话或用量历史；GitHub 可能收到 IP 地址和请求时间等普通连接元数据。通过校验的价格表只缓存在本机，ccusage 仍以离线方式处理本机用量日志。</p>
           <p>设置、额度缓存、聚合历史与可选精选内容保存在本地，用于 Dashboard、趋势、提醒和离线状态。</p>
         </section>
         <section class="callout">

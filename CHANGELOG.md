@@ -3,6 +3,16 @@
 All notable product changes are recorded here. TokenRemain uses Semantic
 Versioning for public releases.
 
+## Unreleased
+
+### Changed
+
+- Refresh the complete public LiteLLM model-price table at most once per day,
+  cache only validated pricing locally, and keep every ccusage log scan in
+  offline mode with the signed embedded snapshot as fallback.
+- Clarify that price refreshes contain no credentials or usage-derived fields,
+  while ordinary connection metadata may be visible to GitHub.
+
 ## 1.1.9 — 2026-07-26
 
 ### Added

@@ -1,6 +1,12 @@
 import Foundation
 
 struct CCUsageService {
+    private let pricingService: CCUsagePricingService
+
+    init(pricingService: CCUsagePricingService = .shared) {
+        self.pricingService = pricingService
+    }
+
     struct Snapshot {
         let daily: DailyUsage
         let history: DailyUsageHistory
@@ -35,8 +41,9 @@ struct CCUsageService {
     }
 
     /// Reads today's totals and multi-day history from one invocation of the
-    /// bundled native ccusage helper. `--offline` prevents a local statistics
-    /// refresh from ever becoming an npm or pricing-network request.
+    /// bundled native ccusage helper. Public prices are refreshed separately
+    /// on a fixed daily cadence; `--offline` guarantees that the helper itself
+    /// never sends local usage-derived data to a pricing or package service.
     func fetchSnapshot(days: Int = 30, now: Date = .now) async throws -> Snapshot {
         let start = Calendar.current.date(byAdding: .day, value: -(max(1, days) - 1), to: now) ?? now
         let since = Self.dateFormatter.string(from: start)
@@ -44,11 +51,15 @@ struct CCUsageService {
         guard FileManager.default.isExecutableFile(atPath: executable.path) else {
             throw ServiceError.bundledExecutableMissing
         }
+        let pricingConfigurationURL = await pricingService.configurationURL(now: now)
         let data: Data
         do {
             data = try await ProcessRunner.run(
                 executable.path,
-                arguments: Self.commandArguments(since: since),
+                arguments: Self.commandArguments(
+                    since: since,
+                    pricingConfigurationURL: pricingConfigurationURL
+                ),
                 timeout: 30
             )
         } catch let error as URLError where error.code == .timedOut {
@@ -67,9 +78,10 @@ struct CCUsageService {
 
     static func commandArguments(
         since: String,
-        timeZone: TimeZone = .current
+        timeZone: TimeZone = .current,
+        pricingConfigurationURL: URL? = nil
     ) -> [String] {
-        [
+        var arguments = [
             "daily",
             "--json",
             "--by-agent",
@@ -78,6 +90,10 @@ struct CCUsageService {
             "--timezone", timeZone.identifier,
             "--since", since
         ]
+        if let pricingConfigurationURL {
+            arguments.append(contentsOf: ["--config", pricingConfigurationURL.path])
+        }
+        return arguments
     }
 
     static func bundledExecutableURL(bundle: Bundle = .main) -> URL {
