@@ -11,9 +11,9 @@
 ![macOS](https://img.shields.io/badge/macOS-14%2B_Sonoma-000?logo=apple&logoColor=white)
 ![Apple Silicon](https://img.shields.io/badge/Apple_Silicon-arm64-7C5CFF)
 ![Notarized](https://img.shields.io/badge/Apple-Notarized-34C759?logo=apple&logoColor=white)
-![Latest](https://img.shields.io/badge/latest-v1.1.6-22D3EE)
+![Latest](https://img.shields.io/badge/latest-v1.1.7-22D3EE)
 
-**当前最新版本 `v1.1.6`**（build 8，Apple 已公证并装订）
+**当前最新版本 `v1.1.7`**（build 9，Apple 已公证并装订）
 
 [官网 / 下载](https://tokenremain.com) · [隐私政策](https://tokenremain.com/privacy) · [支持](https://tokenremain.com/support) · [问题反馈](https://github.com/Carstin520/token-remain/issues)
 
@@ -139,7 +139,7 @@ bash ./script/build_and_run.sh --verify
 
 ## 📦 当前发布
 
-- **版本**：`v1.1.6`（build 8）——App 与 DMG 均已 Apple 公证、装订并通过 Gatekeeper 校验。
+- **版本**：`v1.1.7`（build 9）——App 与 DMG 均已 Apple 公证、装订并通过 Gatekeeper 校验。
 - **平台**：macOS 14 Sonoma 及以上，仅 Apple Silicon（arm64），暂无 Intel 构建。
 - **分发**：公开 DMG 已 Developer ID 签名并经 Apple 公证，目前在 Mac App Store 之外分发。
 - **成本口径**：成本为 API 标价估算，不等于订阅账单；凭证过期时数据会暂停并提示恢复方式。
