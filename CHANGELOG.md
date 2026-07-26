@@ -3,7 +3,7 @@
 All notable product changes are recorded here. TokenRemain uses Semantic
 Versioning for public releases.
 
-## Unreleased
+## 1.1.10 — 2026-07-26
 
 ### Changed
 
@@ -208,3 +208,4 @@ Versioning for public releases.
 [1.1.7]: https://github.com/Carstin520/token-remain/releases/tag/v1.1.7
 [1.1.8]: https://github.com/Carstin520/token-remain/releases/tag/v1.1.8
 [1.1.9]: https://github.com/Carstin520/token-remain/releases/tag/v1.1.9
+[1.1.10]: https://github.com/Carstin520/token-remain/releases/tag/v1.1.10
