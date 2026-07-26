@@ -495,6 +495,12 @@
 "service_status.major_outage" = "대규모 중단";
 "service_status.maintenance" = "유지 보수 중";
 "service_status.unknown" = "알 수 없음";
+"service_status.description.operational" = "관련 서비스가 정상적으로 운영 중이라고 제공업체가 보고했습니다.";
+"service_status.description.degraded" = "서비스는 계속 사용할 수 있지만 응답이 느려지거나 시간 초과 및 오류가 평소보다 자주 발생할 수 있습니다.";
+"service_status.description.partial_outage" = "일부 사용자 또는 기능을 사용할 수 없으며 요청이 간헐적으로 실패할 수 있습니다.";
+"service_status.description.major_outage" = "광범위한 장애가 대부분의 사용자 또는 핵심 기능에 영향을 주고 있습니다.";
+"service_status.description.maintenance" = "제공업체가 예정되었거나 긴급한 유지 보수를 진행 중이므로 사용이 제한될 수 있습니다.";
+"service_status.description.unknown" = "TokenRemain이 공식 서비스 상태를 확인하지 못했습니다. 서비스가 중단되었다는 뜻은 아닙니다.";
 "datasource.ccusage_checking" = "내장 ccusage %1$@ · 업데이트 확인 중";
 "datasource.ccusage_current" = "내장 ccusage %1$@ · 최신 버전";
 "datasource.ccusage_update_available" = "내장 버전은 %1$@이며 %2$@을 사용할 수 있습니다. 서명된 구성 요소를 갱신하려면 TokenRemain을 업데이트하세요.";

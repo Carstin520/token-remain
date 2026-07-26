@@ -495,6 +495,12 @@
 "service_status.major_outage" = "重大障害";
 "service_status.maintenance" = "メンテナンス中";
 "service_status.unknown" = "不明";
+"service_status.description.operational" = "関連サービスは正常に稼働しているとプロバイダーから報告されています。";
+"service_status.description.degraded" = "サービスは利用できますが、応答の遅延、タイムアウト、エラーが通常より多く発生する可能性があります。";
+"service_status.description.partial_outage" = "一部のユーザーまたは機能を利用できず、リクエストが断続的に失敗する可能性があります。";
+"service_status.description.major_outage" = "広範囲な障害が大多数のユーザーまたは主要機能に影響しています。";
+"service_status.description.maintenance" = "計画メンテナンスまたは緊急メンテナンス中のため、利用が制限される可能性があります。";
+"service_status.description.unknown" = "TokenRemain は公式のサービス状態を確認できませんでした。サービス停止を意味するものではありません。";
 "datasource.ccusage_checking" = "内蔵 ccusage %1$@ · 更新を確認中";
 "datasource.ccusage_current" = "内蔵 ccusage %1$@ · 最新";
 "datasource.ccusage_update_available" = "内蔵版は %1$@、最新版は %2$@ です。署名済みコンポーネントを更新するには TokenRemain を更新してください。";

@@ -19,6 +19,19 @@ struct ProviderServiceStatus: Sendable, Equatable {
             }
         }
 
+        /// Kept on the status model so every value the provider can return has
+        /// an explicit, testable explanation in the UI.
+        var explanationLocalizationKey: String {
+            switch self {
+            case .operational: "service_status.description.operational"
+            case .degradedPerformance: "service_status.description.degraded"
+            case .partialOutage: "service_status.description.partial_outage"
+            case .majorOutage: "service_status.description.major_outage"
+            case .maintenance: "service_status.description.maintenance"
+            case .unknown: "service_status.description.unknown"
+            }
+        }
+
         fileprivate var severity: Int {
             switch self {
             case .operational: 0

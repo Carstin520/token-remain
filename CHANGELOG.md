@@ -3,6 +3,22 @@
 All notable product changes are recorded here. TokenRemain uses Semantic
 Versioning for public releases.
 
+## 1.1.9 — 2026-07-26
+
+### Added
+
+- Added clickable provider service-status details with a clear explanation,
+  affected components, freshness, and a direct link to the official status
+  page.
+- Added complete service-status explanations in every fully localized language.
+
+### Changed
+
+- Show provider health once beside the provider instead of repeating the same
+  badge on every quota window.
+- Refreshed the website with current English and Chinese iPhone and Home Screen
+  widget captures, including an explicit demo-data disclosure.
+
 ## 1.1.8 — 2026-07-26
 
 ### Added
@@ -181,3 +197,4 @@ Versioning for public releases.
 [1.1.6]: https://github.com/Carstin520/token-remain/releases/tag/v1.1.6
 [1.1.7]: https://github.com/Carstin520/token-remain/releases/tag/v1.1.7
 [1.1.8]: https://github.com/Carstin520/token-remain/releases/tag/v1.1.8
+[1.1.9]: https://github.com/Carstin520/token-remain/releases/tag/v1.1.9

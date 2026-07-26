@@ -753,7 +753,7 @@ footer.site .disclaimer{
       <p class="req-line">
         <span>macOS 14+</span><span class="sep">·</span>
         <span>Apple Silicon (arm64)</span><span class="sep">·</span>
-        <span id="releaseVersion" data-release-version="1.1.8" aria-live="polite">Version 1.1.8 · Apple notarized</span>
+        <span id="releaseVersion" data-release-version="1.1.9" aria-live="polite">Version 1.1.9 · Apple notarized</span>
       </p>
       <p class="releases-hint"><span data-i18n="h-hint">Signed with Developer ID and notarized by Apple.</span></p>
     </div>
@@ -783,7 +783,7 @@ footer.site .disclaimer{
   <section id="screens">
     <p class="eyebrow" data-num="01">Real UI</p>
     <h2 data-i18n="s-h2">Three screens, one pixel language</h2>
-    <p class="lede" data-i18n="s-lede">You've met the menu bar popover above — everything below is a <strong style="color:var(--text)">live screenshot of the latest build</strong>: the desktop Dashboard, the iPhone app and Home Screen widgets.</p>
+    <p class="lede" data-i18n="s-lede">You've met the menu bar popover above — everything below is a <strong style="color:var(--text)">live screenshot of the latest build</strong>: the desktop Dashboard, the iPhone app and Home Screen widgets. The iPhone shots run the app's built-in demo scenario, so they carry its DEMO mark.</p>
     <div class="shot-grid">
       <figure class="shot ticked lift">
         <img src="assets/dashboard.jpg" width="1600" height="1065" alt="TokenRemain Dashboard overview: today's usage and cost donut, official quota bars (Claude coral / Codex blue), trending and risk hints" loading="lazy"
@@ -792,16 +792,20 @@ footer.site .disclaimer{
       </figure>
       <div class="shot-row3">
         <figure class="shot phone ticked lift">
-          <img src="assets/phone-overview.jpg" width="720" height="1560" alt="TokenRemain iPhone overview: risk card synced from Mac, Claude 98% and Codex 40% bars, today's usage split and 30-day stats" loading="lazy">
+          <img src="assets/phone-overview.jpg" width="720" height="1565" alt="TokenRemain iPhone overview: quota risk card at 46% lowest remaining, Codex and Claude bars, today's usage split and multi-day stats" loading="lazy"
+               data-shot-en="assets/phone-overview.jpg" data-shot-zh="assets/phone-overview-zh.jpg">
           <figcaption><span class="tag" data-i18n="cap-pov-t">iPhone · Overview</span><span class="cap" data-i18n="cap-pov-c">Cross-device sync with your Mac — an allowlisted quota snapshot is encrypted before it enters your private iCloud database.</span></figcaption>
         </figure>
         <figure class="shot phone ticked lift">
-          <img src="assets/phone-trends.jpg" width="720" height="1560" alt="TokenRemain iPhone trends: daily stacked bars for Claude and Codex, 7/14/30-day ranges, tokens or cost, 1.9B tokens in the last 7 days" loading="lazy">
-          <figcaption><span class="tag" data-i18n="cap-ptr-t">iPhone · Trends</span><span class="cap" data-i18n="cap-ptr-c">30 days of real history synced: daily stacks, 7 / 14 / 30-day ranges, tokens or cost.</span></figcaption>
+          <img src="assets/phone-trends.jpg" width="720" height="1565" alt="TokenRemain iPhone trends: remaining-quota curve over time plus daily stacked bars for Claude and Codex, 7/14/30-day ranges, tokens or cost" loading="lazy"
+               data-shot-en="assets/phone-trends.jpg" data-shot-zh="assets/phone-trends-zh.jpg">
+          <figcaption><span class="tag" data-i18n="cap-ptr-t">iPhone · Trends</span><span class="cap" data-i18n="cap-ptr-c">A remaining-quota curve over the synced history, plus daily stacks: 7 / 14 / 30-day ranges, tokens or cost.</span></figcaption>
         </figure>
         <figure class="shot widgets ticked lift">
-          <img src="assets/widget-m.png" width="1118" height="522" alt="TokenRemain medium Home Screen widget: lowest remaining 40% in pixel LED, robot mascot, Claude and Codex bars, reset countdown" loading="lazy">
-          <img src="assets/widget-s.png" width="522" height="503" alt="TokenRemain small Home Screen widget: lowest remaining 40%, per-provider bars and reset countdown" loading="lazy">
+          <img src="assets/widget-m.png" width="1144" height="562" alt="TokenRemain medium Home Screen widget: lowest remaining 46%, LOW risk badge, robot mascot, Codex and Claude bars, reset countdown" loading="lazy"
+               data-shot-en="assets/widget-m.png" data-shot-zh="assets/widget-m-zh.png">
+          <img src="assets/widget-s.png" width="562" height="562" alt="TokenRemain small Home Screen widget: lowest remaining 46%, per-provider bars and reset countdown" loading="lazy"
+               data-shot-en="assets/widget-s.png" data-shot-zh="assets/widget-s-zh.png">
           <figcaption><span class="tag" data-i18n="cap-wg-t">Widgets</span><span class="cap" data-i18n="cap-wg-c">Medium and small Home Screen widgets: lowest remaining, per-provider bars and a reset countdown at a glance.</span></figcaption>
         </figure>
       </div>
@@ -1176,10 +1180,10 @@ var ZH={
   "h-hint":"使用 Developer ID 签名并通过 Apple 公证。",
   "chip-grok":"Grok 周池",
   "s-h2":"三块屏幕，同一套像素语言",
-  "s-lede":"菜单栏弹窗在上方已经见过——下面全部是<strong style=\"color:var(--text)\">正在运行的最新版实机截图</strong>：桌面 Dashboard、iPhone 版与桌面小组件。",
+  "s-lede":"菜单栏弹窗在上方已经见过——下面全部是<strong style=\"color:var(--text)\">正在运行的最新版实机截图</strong>：桌面 Dashboard、iPhone 版与桌面小组件。iPhone 部分跑的是 App 内置的演示场景，所以画面里带着它的 DEMO 标记。",
   "cap-dash-t":"Dashboard · 实机","cap-dash-c":"真实本地用量：今日 202.16M tokens、$189.11 估算成本按服务商拆分；右侧官方额度实时进度与风险提示。",
   "cap-pov-t":"iPhone · 概览","cap-pov-c":"与 Mac 跨设备同步：白名单额度快照在进入你的 iCloud 私有数据库前即完成加密。",
-  "cap-ptr-t":"iPhone · 趋势","cap-ptr-c":"已同步 30 天真实历史：每日堆叠、7 / 14 / 30 天与 Tokens / 费用双口径。",
+  "cap-ptr-t":"iPhone · 趋势","cap-ptr-c":"同步历史上的剩余额度曲线，加每日堆叠：7 / 14 / 30 天与 Tokens / 费用双口径。",
   "cap-wg-t":"Widgets · 小组件","cap-wg-c":"中 / 小两档桌面小组件：最低剩余、双 provider 段条与重置倒计时，一眼扫完。",
   "pv-h2":"支持的服务",
   "pv-lede":"绝大多数服务<strong style=\"color:var(--text)\">登录即自动接入</strong>：只读各工具已经存在本机的凭证，不额外登录、不代刷。每张卡片注明数据从哪来。",

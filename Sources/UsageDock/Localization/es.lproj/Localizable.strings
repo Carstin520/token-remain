@@ -495,6 +495,12 @@
 "service_status.major_outage" = "Interrupción grave";
 "service_status.maintenance" = "Mantenimiento";
 "service_status.unknown" = "Desconocido";
+"service_status.description.operational" = "El proveedor informa de que los servicios relacionados funcionan con normalidad.";
+"service_status.description.degraded" = "El servicio sigue disponible, pero las respuestas pueden ser más lentas y los errores o tiempos de espera más frecuentes.";
+"service_status.description.partial_outage" = "Algunos usuarios o funciones no están disponibles; las solicitudes pueden fallar de forma intermitente.";
+"service_status.description.major_outage" = "Una interrupción generalizada afecta a la mayoría de los usuarios o a las funciones principales.";
+"service_status.description.maintenance" = "El proveedor está realizando mantenimiento programado o de emergencia; la disponibilidad puede ser limitada.";
+"service_status.description.unknown" = "TokenRemain no ha podido verificar el estado oficial. Esto no significa que el servicio esté interrumpido.";
 "datasource.ccusage_checking" = "ccusage integrado %1$@ · buscando actualizaciones";
 "datasource.ccusage_current" = "ccusage integrado %1$@ · actualizado";
 "datasource.ccusage_update_available" = "Versión integrada %1$@; está disponible %2$@. Actualiza TokenRemain para renovar el componente firmado.";

@@ -74,6 +74,15 @@ struct ProviderStatusServiceTests {
         #expect(ProviderServiceStatus.Level.maintenance.isAbnormal)
     }
 
+    @Test("Every provider status level has localized explanatory copy")
+    func statusExplanationCoverage() {
+        let keys = ProviderServiceStatus.Level.allCases.map(\.explanationLocalizationKey)
+        #expect(Set(keys).count == ProviderServiceStatus.Level.allCases.count)
+        for key in keys {
+            #expect(L10n.text(key) != key)
+        }
+    }
+
     @Test("Menu-bar popover hides healthy status and keeps provider incidents")
     func popoverVisibilityContract() throws {
         let page = try #require(URL(string: "https://status.openai.com"))
