@@ -82,6 +82,21 @@ struct DailyUsage: Sendable {
         let id: String
         let tokens: Int64
         let estimatedCost: Double
+        /// Model identifiers that produced tokens but had no usable price in
+        /// ccusage. A zero from those rows is unknown, not a free API call.
+        let unpricedModels: [String]
+
+        init(
+            id: String,
+            tokens: Int64,
+            estimatedCost: Double,
+            unpricedModels: [String] = []
+        ) {
+            self.id = id
+            self.tokens = tokens
+            self.estimatedCost = estimatedCost
+            self.unpricedModels = unpricedModels
+        }
     }
 
     let date: String
@@ -101,6 +116,42 @@ struct DailyUsageHistory: Sendable, Codable {
         let id: String
         let tokens: Int64
         let cost: Double
+        let unpricedModels: [String]
+
+        init(id: String, tokens: Int64, cost: Double, unpricedModels: [String] = []) {
+            self.id = id
+            self.tokens = tokens
+            self.cost = cost
+            self.unpricedModels = unpricedModels
+        }
+
+        private enum CodingKeys: String, CodingKey {
+            case id
+            case tokens
+            case cost
+            case unpricedModels
+        }
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            id = try container.decode(String.self, forKey: .id)
+            tokens = try container.decode(Int64.self, forKey: .tokens)
+            cost = try container.decode(Double.self, forKey: .cost)
+            unpricedModels = try container.decodeIfPresent(
+                [String].self,
+                forKey: .unpricedModels
+            ) ?? []
+        }
+
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(id, forKey: .id)
+            try container.encode(tokens, forKey: .tokens)
+            try container.encode(cost, forKey: .cost)
+            if !unpricedModels.isEmpty {
+                try container.encode(unpricedModels, forKey: .unpricedModels)
+            }
+        }
     }
 
     struct Day: Sendable, Codable, Identifiable {
@@ -110,7 +161,15 @@ struct DailyUsageHistory: Sendable, Codable {
 
         var id: Date { date }
         var totalTokens: Int64 { agents.reduce(0) { $0 + $1.tokens } }
-        var totalCost: Double { agents.reduce(0) { $0 + $1.cost } }
+        var totalCost: Double? {
+            guard hasCompletePricing else { return nil }
+            return agents.reduce(0) { $0 + $1.cost }
+        }
+        var knownTotalCost: Double { agents.reduce(0) { $0 + $1.cost } }
+        var hasCompletePricing: Bool { agents.allSatisfy { $0.unpricedModels.isEmpty } }
+        var unpricedModels: [String] {
+            Array(Set(agents.flatMap(\.unpricedModels))).sorted()
+        }
 
         /// Compatibility accessors keep the encrypted mobile-history allowlist
         /// limited to the two providers supported by the current phone schema.

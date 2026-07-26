@@ -496,3 +496,11 @@
 "service_status.major_outage" = "嚴重中斷";
 "service_status.maintenance" = "維護中";
 "service_status.unknown" = "狀態未知";
+"datasource.ccusage_checking" = "內建 ccusage %1$@ · 正在檢查更新";
+"datasource.ccusage_current" = "內建 ccusage %1$@ · 已是最新版本";
+"datasource.ccusage_update_available" = "內建版本 %1$@，最新版本 %2$@；請更新 TokenRemain 以更新已簽署元件";
+"datasource.ccusage_check_failed" = "內建 ccusage %1$@ · 暫時無法檢查更新，稍後自動重試";
+"usage.price_unavailable" = "價格暫不可用";
+"usage.unpriced_models_format" = "ccusage 暫無以下模型的價格，成本合計已隱藏：%1$@";
+"usage.provider_price_unavailable_accessibility" = "%1$@，%2$@ tokens，價格暫不可用";
+"trends.unpriced_history_format" = "以下模型缺少價格，歷史成本趨勢不完整：%1$@";

@@ -43,6 +43,10 @@ struct LocalUsageCard: View {
                             .lineLimit(1)
                             .minimumScaleFactor(0.8)
                             .layoutPriority(1)
+                    } else if !insights.unpricedModels.isEmpty {
+                        Text(L10n.text("usage.price_unavailable"))
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(DashboardTheme.warning)
                     }
                 }
 
@@ -82,6 +86,18 @@ struct LocalUsageCard: View {
                                 hoveredProviderID = nil
                             }
                         }
+                    }
+                    if !insights.unpricedModels.isEmpty {
+                        Label(
+                            L10n.format(
+                                "usage.unpriced_models_format",
+                                insights.unpricedModels.joined(separator: L10n.text("common.list_separator"))
+                            ),
+                            systemImage: "exclamationmark.triangle.fill"
+                        )
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundStyle(DashboardTheme.warning)
+                        .fixedSize(horizontal: false, vertical: true)
                     }
                 } else {
                     localUsageEmptyState
@@ -180,7 +196,7 @@ struct LocalUsageCard: View {
                             .font(.system(size: 11, weight: .medium))
                             .foregroundStyle(DashboardTheme.secondaryText)
                         Spacer(minLength: 8)
-                        Text("\(UsageFormatting.compactUSD(tile.cost)) · \(UsageFormatting.compactNumber(tile.tokens)) tokens")
+                        Text("\(tile.cost.map(UsageFormatting.compactUSD) ?? L10n.text("usage.price_unavailable")) · \(UsageFormatting.compactNumber(tile.tokens)) tokens")
                             .numericFont(11)
                             .foregroundStyle(DashboardTheme.text)
                     }
@@ -207,7 +223,9 @@ struct LocalUsageCard: View {
     }
 
     private var ringCenterText: String? {
-        hoveredEntry.map { L10n.usd($0.cost) }
+        hoveredEntry.map {
+            $0.hasCompletePricing ? L10n.usd($0.cost) : L10n.text("usage.price_unavailable")
+        }
     }
 
     private var ringCenterCaption: String? {
@@ -216,6 +234,9 @@ struct LocalUsageCard: View {
 
     private func providerRow(_ entry: UsageInsights.ProviderUsage) -> some View {
         let isHovered = hoveredProviderID == entry.id
+        let costText = entry.hasCompletePricing
+            ? L10n.usd(entry.cost)
+            : L10n.text("usage.price_unavailable")
         return HStack(spacing: 6) {
             Circle()
                 .fill(UsageInsights.color(for: entry.id))
@@ -252,7 +273,7 @@ struct LocalUsageCard: View {
         .help(L10n.format(
             "usage.provider_help",
             entry.displayName,
-            L10n.usd(entry.cost),
+            costText,
             UsageFormatting.compactNumber(entry.tokens),
             UsageFormatting.percent(insights.tokenShare(for: entry))
         ))
@@ -261,7 +282,7 @@ struct LocalUsageCard: View {
         .accessibilityValue(L10n.format(
             "usage.provider_accessibility",
             UsageFormatting.percent(insights.tokenShare(for: entry)),
-            L10n.usd(entry.cost),
+            costText,
             UsageFormatting.compactNumber(entry.tokens)
         ))
     }

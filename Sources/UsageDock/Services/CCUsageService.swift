@@ -92,7 +92,12 @@ struct CCUsageService {
         let today = dateFormatter.string(from: now)
         let row = payload.daily.first(where: { $0.period == today })
         let agents = (row?.agents ?? []).map {
-            DailyUsage.Agent(id: $0.agent, tokens: $0.totalTokens, estimatedCost: $0.totalCost)
+            DailyUsage.Agent(
+                id: $0.agent,
+                tokens: $0.totalTokens,
+                estimatedCost: $0.totalCost,
+                unpricedModels: unpricedModels(in: $0)
+            )
         }
         return Snapshot(
             daily: DailyUsage(
@@ -144,6 +149,39 @@ struct CCUsageService {
         let agent: String
         let totalTokens: Int64
         let totalCost: Double
+        let modelsUsed: [String]?
+        let modelBreakdowns: [ModelBreakdown]?
+    }
+    private struct ModelBreakdown: Decodable {
+        let modelName: String
+        let cost: Double
+        let inputTokens: Int64
+        let outputTokens: Int64
+        let cacheCreationTokens: Int64
+        let cacheReadTokens: Int64
+
+        var totalTokens: Int64 {
+            inputTokens + outputTokens + cacheCreationTokens + cacheReadTokens
+        }
+    }
+
+    private static func unpricedModels(in agent: Agent) -> [String] {
+        // Ollama is intentionally local and has no API list price. For hosted
+        // agents, a model row with tokens and a zero cost is indistinguishable
+        // from a missing price in ccusage, so present it as unavailable rather
+        // than claiming the usage was free.
+        guard agent.agent.caseInsensitiveCompare("ollama") != .orderedSame else { return [] }
+        let rows = agent.modelBreakdowns ?? []
+        let missing = rows
+            .filter { $0.totalTokens > 0 && $0.cost == 0 && $0.modelName != "<synthetic>" }
+            .map(\.modelName)
+        if !missing.isEmpty {
+            return Array(Set(missing)).sorted()
+        }
+        if agent.totalTokens > 0, agent.totalCost == 0, rows.isEmpty {
+            return Array(Set(agent.modelsUsed ?? [])).sorted()
+        }
+        return []
     }
 
     private static func parseHistory(
@@ -158,7 +196,8 @@ struct CCUsageService {
                     DailyUsageHistory.Agent(
                         id: $0.agent.lowercased(),
                         tokens: $0.totalTokens,
-                        cost: $0.totalCost
+                        cost: $0.totalCost,
+                        unpricedModels: unpricedModels(in: $0)
                     )
                 }
             )
