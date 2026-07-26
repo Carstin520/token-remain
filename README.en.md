@@ -11,9 +11,9 @@ Remaining quota, reset countdowns and today's cost for Claude Code, Codex, Curso
 ![macOS](https://img.shields.io/badge/macOS-14%2B_Sonoma-000?logo=apple&logoColor=white)
 ![Apple Silicon](https://img.shields.io/badge/Apple_Silicon-arm64-7C5CFF)
 ![Notarized](https://img.shields.io/badge/Apple-Notarized-34C759?logo=apple&logoColor=white)
-![Latest](https://img.shields.io/badge/latest-v1.1.7-22D3EE)
+![Latest](https://img.shields.io/badge/latest-v1.1.8-22D3EE)
 
-**Latest version `v1.1.7`** (build 9, Apple notarized and stapled)
+**Latest version `v1.1.8`** (build 10, Apple notarized and stapled)
 
 [Website / Download](https://tokenremain.com) · [Privacy Policy](https://tokenremain.com/privacy) · [Support](https://tokenremain.com/support) · [Report an issue](https://github.com/Carstin520/token-remain/issues)
 
@@ -142,7 +142,7 @@ to their respective terms.
 
 ## 📦 Current release
 
-- **Version** — `v1.1.7` (build 9). Both the app and the DMG are Apple notarized, stapled and Gatekeeper-accepted.
+- **Version** — `v1.1.8` (build 10). Both the app and the DMG are Apple notarized, stapled and Gatekeeper-accepted.
 - **Platform** — macOS 14 Sonoma or later, Apple Silicon (arm64) only; no Intel build yet.
 - **Distribution** — The public DMG is Developer ID signed and Apple notarized, currently distributed outside the Mac App Store.
 - **Cost figures** — Costs are API list-price estimates, not your subscription bill. When a credential expires, data pauses and the app explains how to restore it.
