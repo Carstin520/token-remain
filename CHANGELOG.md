@@ -3,6 +3,30 @@
 All notable product changes are recorded here. TokenRemain uses Semantic
 Versioning for public releases.
 
+## 1.1.8 — 2026-07-26
+
+### Added
+
+- Added ccusage price-coverage reporting and a privacy-preserving freshness
+  check against the official npm package metadata.
+- Added language-specific English and Chinese product screenshots to the
+  website and repository documentation.
+
+### Changed
+
+- Serialized Mac CloudKit snapshot publishing, advanced sequence numbers past
+  the authenticated remote value, and retried one stale-record conflict after
+  refetching the server record.
+- Refined the curated AI feed source set and accepted original quote posts while
+  continuing to reject replies, retweets, and nullcasts.
+
+### Fixed
+
+- Prevented incomplete model pricing from being shown as a misleading zero-cost
+  total.
+- Removed stale stable app copies after a verified Sparkle replacement and kept
+  generated release app bundles out of LaunchServices discovery.
+
 ## 1.1.7 — 2026-07-26
 
 ### Added
@@ -156,3 +180,4 @@ Versioning for public releases.
 [1.1.5]: https://github.com/Carstin520/token-remain/releases/tag/v1.1.5
 [1.1.6]: https://github.com/Carstin520/token-remain/releases/tag/v1.1.6
 [1.1.7]: https://github.com/Carstin520/token-remain/releases/tag/v1.1.7
+[1.1.8]: https://github.com/Carstin520/token-remain/releases/tag/v1.1.8
