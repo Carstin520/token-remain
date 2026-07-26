@@ -118,7 +118,7 @@
 "common.updated_at" = "Updated %1$@";
 "datasource.api_key_settings" = "%1$@ API key settings";
 "datasource.broken" = "Link broken";
-"datasource.ccusage_detail" = "Built-in ccusage reads local coding-agent logs; no separate install is required";
+"datasource.ccusage_detail" = "Built-in ccusage reads coding-agent logs locally; TokenRemain only downloads a public price table and never uploads usage data";
 "datasource.detail.antigravity" = "Direct Cloud Code quota-pool query (read-only local login, never refreshes on your behalf)";
 "datasource.detail.claude" = "Direct official oauth/usage API query (read-only local credentials); falls back to the /usage probe on errors";
 "datasource.detail.codex" = "Direct live server API query (read-only ~/.codex/auth.json); falls back to the local session snapshot offline";
@@ -244,7 +244,7 @@
 "pace.ahead_warning" = "Current usage is ahead of pace";
 "privacy.cost_estimate" = "ccusage cost is an API list-price estimate, not your subscription bill.";
 "privacy.feed_managed" = "The curated AI feed syncs automatically via built-in policies; there are no accounts to pick or sources to manage.";
-"privacy.local_only" = "All local usage data stays on this Mac; TokenRemain uploads nothing.";
+"privacy.local_only" = "Local logs, token details, model-use records, and credentials stay on this Mac; TokenRemain only downloads a public price table.";
 "privacy.readonly_credentials" = "All tool credentials are read-only: tokens are never refreshed or written back; each tool always handles its own authentication.";
 "privacy.title" = "Privacy";
 "privacy.zai_key" = "The Z.ai API key is stored only in the local keychain and never appears in source, logs, or any network request (except the quota query itself).";

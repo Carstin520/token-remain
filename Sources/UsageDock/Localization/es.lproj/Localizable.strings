@@ -117,7 +117,7 @@
 "common.updated_at" = "Actualizado %1$@";
 "datasource.api_key_settings" = "Ajustes de API Key de %1$@";
 "datasource.broken" = "Conexión interrumpida";
-"datasource.ccusage_detail" = "ccusage integrado lee los registros locales; no requiere instalación aparte";
+"datasource.ccusage_detail" = "ccusage integrado lee localmente los registros de los agentes; TokenRemain solo descarga una tabla pública de precios y nunca sube datos de uso";
 "datasource.detail.antigravity" = "Consulta directa del fondo de cuota de Cloud Code (solo lee la sesión local, nunca la renueva en tu nombre)";
 "datasource.detail.claude" = "Consulta directa de la API oficial oauth/usage (credenciales locales de solo lectura); si falla, recurre a la sonda /usage";
 "datasource.detail.codex" = "Consulta directa de la API del servidor en tiempo real (solo lectura de ~/.codex/auth.json); sin conexión, recurre a la instantánea local de sesión";
@@ -243,7 +243,7 @@
 "pace.ahead_warning" = "El ritmo de uso actual va adelantado";
 "privacy.cost_estimate" = "El coste de ccusage es una estimación según el precio de lista de la API, no tu factura de suscripción.";
 "privacy.feed_managed" = "Las novedades de IA seleccionadas se sincronizan automáticamente con políticas integradas; no hay cuentas que elegir ni fuentes que gestionar.";
-"privacy.local_only" = "Todos los datos de uso locales permanecen en este Mac; TokenRemain no sube nada.";
+"privacy.local_only" = "Los registros locales, los detalles de tokens, el uso de modelos y las credenciales permanecen en este Mac; TokenRemain solo descarga una tabla pública de precios.";
 "privacy.readonly_credentials" = "Todas las credenciales de las herramientas son de solo lectura: los tokens nunca se renuevan ni se reescriben; cada herramienta gestiona siempre su propia autenticación.";
 "privacy.title" = "Privacidad";
 "privacy.zai_key" = "La API Key de Z.ai se guarda solo en el llavero local y nunca aparece en el código, los registros ni ninguna solicitud de red (excepto la propia consulta de cuota).";

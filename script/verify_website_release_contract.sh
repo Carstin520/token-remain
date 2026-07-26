@@ -5,6 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VERSION="$(/usr/bin/tr -d '[:space:]' < "$ROOT_DIR/VERSION")"
 INDEX="$ROOT_DIR/site/index.html"
 SUPPORT="$ROOT_DIR/site/support.html"
+PRIVACY="$ROOT_DIR/site/privacy.html"
 DOWNLOAD_URL="https://github.com/Carstin520/token-remain/releases/latest/download/TokenRemain.dmg"
 PUBLIC_URL="https://tokenremain.com"
 
@@ -15,6 +16,7 @@ fail() {
 
 [[ -r "$INDEX" ]] || fail "site/index.html is missing"
 [[ -r "$SUPPORT" ]] || fail "site/support.html is missing"
+[[ -r "$PRIVACY" ]] || fail "site/privacy.html is missing"
 
 /usr/bin/grep -Fq "data-release-version=\"$VERSION\"" "$INDEX" \
   || fail "static website fallback does not match VERSION $VERSION"
@@ -28,6 +30,14 @@ fail() {
   || fail "Mac download button must use GitHub's stable latest-release asset URL"
 /usr/bin/grep -Fq "$DOWNLOAD_URL" "$SUPPORT" \
   || fail "support page Mac download must use GitHub's stable latest-release asset URL"
+/usr/bin/grep -Fq \
+  'fixed, bodyless GET request at most once per day' \
+  "$PRIVACY" \
+  || fail "English privacy policy does not disclose the public pricing refresh"
+/usr/bin/grep -Fq \
+  '每天最多一次向 GitHub 发出固定且无请求正文的 GET 请求' \
+  "$PRIVACY" \
+  || fail "Chinese privacy policy does not disclose the public pricing refresh"
 
 echo "website release contract verified: static $VERSION fallback + dynamic latest release + stable DMG download"
 
