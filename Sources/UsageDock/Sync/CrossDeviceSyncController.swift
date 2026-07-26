@@ -80,6 +80,9 @@ final class CrossDeviceSyncController: ObservableObject {
     private var historySubscription: AnyCancellable?
     private var accountSubscription: AnyCancellable?
     private var uploadTask: Task<Void, Never>?
+    private var publishTask: Task<Void, Never>?
+    private var publishRequested = false
+    private var forceHeartbeatRequested = false
     private var heartbeatTask: Task<Void, Never>?
     private var retryAttempt = 0
     private var allowsSourceTakeoverOnce = false
@@ -148,6 +151,9 @@ final class CrossDeviceSyncController: ObservableObject {
         } else {
             uploadTask?.cancel()
             uploadTask = nil
+            publishTask?.cancel()
+            publishRequested = false
+            forceHeartbeatRequested = false
             heartbeatTask?.cancel()
             heartbeatTask = nil
             state = .off
@@ -197,7 +203,13 @@ final class CrossDeviceSyncController: ObservableObject {
             return
         }
         uploadTask?.cancel()
+        publishTask?.cancel()
+        publishRequested = false
+        forceHeartbeatRequested = false
         heartbeatTask?.cancel()
+        isEnabled = false
+        usageStore?.setLowLatencySyncEnabled(false)
+        defaults.set(false, forKey: DefaultsKey.enabled)
         do {
             let cloud = CloudKitPrivateSnapshotStore(containerIdentifier: Self.cloudContainerIdentifier)
             let keys = SynchronizableSyncKeyStore(accessGroup: Self.keychainAccessGroup)
@@ -209,13 +221,11 @@ final class CrossDeviceSyncController: ObservableObject {
             defaults.removeObject(forKey: DefaultsKey.lastUploadedAt)
             defaults.removeObject(forKey: DefaultsKey.syncUsageHistory)
             lastUploadedAt = nil
-            isEnabled = false
             syncUsageHistoryEnabled = false
             previewHistoryDays = 0
             iCloudAvailable = nil
             syncKeyAvailable = nil
             clearGuidanceIssue()
-            defaults.set(false, forKey: DefaultsKey.enabled)
             state = .off
             logger.info("Private sync data deleted")
         } catch {
@@ -233,11 +243,40 @@ final class CrossDeviceSyncController: ObservableObject {
                 try? await Task.sleep(for: .seconds(seconds))
             }
             guard !Task.isCancelled else { return }
-            await self.publishLatest(forceHeartbeat: forceHeartbeat)
+            self.uploadTask = nil
+            self.requestPublish(forceHeartbeat: forceHeartbeat)
         }
     }
 
-    private func publishLatest(forceHeartbeat: Bool) async {
+    /// Coalesces every trigger into one serialized publisher. A task that is
+    /// already inside a CloudKit await is never replaced by a newer debounce;
+    /// the newer request is drained immediately after the active write.
+    private func requestPublish(forceHeartbeat: Bool) {
+        guard isEnabled else { return }
+        publishRequested = true
+        forceHeartbeatRequested = forceHeartbeatRequested || forceHeartbeat
+        guard publishTask == nil else { return }
+        publishTask = Task { [weak self] in
+            await self?.drainPublishQueue()
+        }
+    }
+
+    private func drainPublishQueue() async {
+        defer {
+            publishTask = nil
+            if isEnabled, publishRequested {
+                requestPublish(forceHeartbeat: false)
+            }
+        }
+        while isEnabled, publishRequested, !Task.isCancelled {
+            let forceHeartbeat = forceHeartbeatRequested
+            publishRequested = false
+            forceHeartbeatRequested = false
+            await publishLatestOnce(forceHeartbeat: forceHeartbeat)
+        }
+    }
+
+    private func publishLatestOnce(forceHeartbeat: Bool) async {
         guard isEnabled else { return }
         let checkedAt = Date()
         lastAutomaticCheckAt = checkedAt
@@ -280,7 +319,8 @@ final class CrossDeviceSyncController: ObservableObject {
                 return
             }
 
-            if let existing = try await cloud.fetch(),
+            let existing = try await cloud.fetch()
+            if let existing,
                existing.envelope.sourceInstanceID != localSourceID,
                !allowsSourceTakeoverOnce {
                 // The CloudKit record header is cleartext operational metadata.
@@ -297,8 +337,14 @@ final class CrossDeviceSyncController: ObservableObject {
                     return
                 }
             }
+            guard isEnabled, !Task.isCancelled else { return }
             state = .uploading
-            let sequence = nextSequence()
+            let remoteSequence = existing?.envelope.sourceInstanceID == localSourceID
+                ? existing?.envelope.sequence
+                : nil
+            guard let sequence = nextSequence(after: remoteSequence) else {
+                throw SyncValidationError.invalidSequence
+            }
             let preparedAt = Date()
             let snapshot = MobileSnapshotRedactor.makeSnapshot(
                 from: latestQuotas,
@@ -326,6 +372,7 @@ final class CrossDeviceSyncController: ObservableObject {
             state = .synced(uploadedAt)
             logger.info("Private sync upload succeeded; sequence \(sequence, privacy: .public)")
         } catch {
+            guard isEnabled, !Task.isCancelled else { return }
             let failure = Self.failure(for: error)
             state = .failed(failure)
             if failure == .iCloudUnavailable {
@@ -349,7 +396,7 @@ final class CrossDeviceSyncController: ObservableObject {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(Self.heartbeatInterval))
                 guard let self, !Task.isCancelled, self.isEnabled else { return }
-                await self.publishLatest(forceHeartbeat: true)
+                self.requestPublish(forceHeartbeat: true)
             }
         }
     }
@@ -418,9 +465,12 @@ final class CrossDeviceSyncController: ObservableObject {
         previewHistoryDays = syncUsageHistoryEnabled ? (latestHistory?.days.count ?? 0) : 0
     }
 
-    private func nextSequence() -> UInt64 {
+    private func nextSequence(after remoteSequence: UInt64?) -> UInt64? {
         let current = UInt64(max(0, defaults.integer(forKey: DefaultsKey.sequence)))
-        let next = current == UInt64.max ? 1 : current + 1
+        guard let next = SyncSequencePolicy.next(
+            localSequence: current,
+            remoteSequence: remoteSequence
+        ) else { return nil }
         defaults.set(Int(clamping: next), forKey: DefaultsKey.sequence)
         return next
     }
@@ -457,6 +507,14 @@ final class CrossDeviceSyncController: ObservableObject {
         if error is SyncProtocolError { return "protocol" }
         if error is SyncValidationError { return "validation" }
         return "unknown"
+    }
+}
+
+enum SyncSequencePolicy {
+    static func next(localSequence: UInt64, remoteSequence: UInt64?) -> UInt64? {
+        let floor = max(localSequence, remoteSequence ?? 0)
+        guard floor < UInt64.max else { return nil }
+        return floor + 1
     }
 }
 

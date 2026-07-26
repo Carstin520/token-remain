@@ -64,7 +64,7 @@ APP_RESOURCES="$APP_CONTENTS/Resources"
 APP_FRAMEWORKS="$APP_CONTENTS/Frameworks"
 APP_HELPERS="$APP_CONTENTS/Helpers"
 APP_BINARY="$APP_MACOS/$EXECUTABLE_NAME"
-CCUSAGE_VERSION="20.0.18"
+CCUSAGE_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :TokenRemainBundledCCUsageVersion' "$ROOT_DIR/Resources/Info.plist")"
 CCUSAGE_SOURCE="$ROOT_DIR/Vendor/ccusage/$CCUSAGE_VERSION/darwin-arm64/ccusage"
 CCUSAGE_LICENSE="$ROOT_DIR/Vendor/ccusage/LICENSE"
 CCUSAGE_EXPECTED_SHA256="3179f6cabbd4bafe55946f2013c9e2ec3cdfb59fd8c152f3d2f3c7f2adaac6c5"
@@ -593,7 +593,10 @@ for legacy_app in "${LEGACY_INSTALLED_APPS[@]}"; do
 done
 
 open_app() {
-  /usr/bin/open -n "$INSTALLED_APP"
+  # LaunchServices may have already restored the login item after the pre-build
+  # stop. Reuse that instance so a verified rebuild never creates two competing
+  # CloudKit publishers.
+  /usr/bin/open "$INSTALLED_APP"
 }
 
 case "$MODE" in

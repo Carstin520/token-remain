@@ -179,6 +179,14 @@ struct SyncStorageFoundationTests {
         #expect(CloudKitPrivateSnapshotStore.map(code: .unknownItem) == .recordNotFound)
     }
 
+    @Test("A stale CloudKit change tag is refetched exactly once")
+    func conflictRetryPolicy() {
+        #expect(CloudKitPrivateSnapshotStore.maximumConflictSaveAttempts == 2)
+        #expect(CloudKitPrivateSnapshotStore.shouldRetrySave(.conflict, afterAttempt: 0))
+        #expect(!CloudKitPrivateSnapshotStore.shouldRetrySave(.conflict, afterAttempt: 1))
+        #expect(!CloudKitPrivateSnapshotStore.shouldRetrySave(.networkUnavailable, afterAttempt: 0))
+    }
+
     @Test("The push subscription is a fixed-zone, content-free record-zone subscription")
     func fixedZoneSubscription() {
         let subscription = CloudKitSyncRecordCodec.zoneSubscription(subscriptionID: CloudKitPrivateSnapshotStore.subscriptionID)
