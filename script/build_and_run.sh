@@ -479,6 +479,7 @@ if [[ -n "$BROADCAST_BASE_URL" ]]; then
     "$APP_CONTENTS/Info.plist"
 fi
 cp "$ROOT_DIR/Sources/UsageDock/Resources/claude.png" "$APP_RESOURCES/claude.png"
+cp -R "$ROOT_DIR/Sources/UsageDock/Resources/ProviderIcons" "$APP_RESOURCES/"
 cp "$ROOT_DIR/Sources/UsageDock/Resources/TokenRemain.icns" "$APP_RESOURCES/TokenRemain.icns"
 cp -R "$ROOT_DIR/Sources/UsageDock/Resources/TokenRemainHeadStates" "$APP_RESOURCES/"
 cp -R "$ROOT_DIR/Sources/UsageDock/Resources/TokenRemainFullBodyStates" "$APP_RESOURCES/"

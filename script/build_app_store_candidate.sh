@@ -54,6 +54,7 @@ stage_bundle() {
   fi
   cp "$ROOT_DIR/Sources/UsageDock/Resources/claude.png" "$app_resources/claude.png"
   cp "$ROOT_DIR/Sources/UsageDock/Resources/openai.png" "$app_resources/openai.png"
+  cp -R "$ROOT_DIR/Sources/UsageDock/Resources/ProviderIcons" "$app_resources/"
   cp "$ROOT_DIR/Sources/UsageDock/Resources/TokenRemain.icns" "$app_resources/TokenRemain.icns"
   cp -R "$ROOT_DIR/Sources/UsageDock/Resources/TokenRemainHeadStates" "$app_resources/"
   cp -R "$ROOT_DIR/Sources/UsageDock/Resources/TokenRemainFullBodyStates" "$app_resources/"

@@ -12,7 +12,8 @@ Copyright 2026 Dongheng Li. All rights reserved.
 
 This exclusion applies in particular to:
 
-- `Sources/UsageDock/Resources/`
+- first-party artwork in `Sources/UsageDock/Resources/` (excluding
+  `ProviderIcons/`, whose provenance is documented in that directory)
 - image and artwork files under `Resources/dmg/`
 - `design/`
 - first-party screenshots and artwork under `site/assets/`
@@ -23,6 +24,7 @@ of this repository. Redistribution, commercial use, or use in a derived
 product requires separate permission or replacement assets.
 
 Third-party names, logos, trademarks, and assets—including provider marks
-under `site/assets/providers/`—belong to their respective owners and are not
-licensed by the TokenRemain project. Third-party software under `Vendor/` and
-external dependencies remain subject to their own license terms.
+under `site/assets/providers/` and `Sources/UsageDock/Resources/ProviderIcons/`—
+belong to their respective owners and are not licensed by the TokenRemain
+project. Third-party software under `Vendor/` and external dependencies remain
+subject to their own license terms.
