@@ -6,7 +6,7 @@ receive or store an X credential.
 
 ## Collection policy
 
-- Primary: `btibor91`, `sama`, `claudeai`, `AnthropicAI`, `OpenAI`,
+- Primary: `thsottiaux`, `sama`, `claudeai`, `AnthropicAI`, `OpenAI`,
   `karpathy`, and `JensenHuang`; checked every 10 minutes, with an aggregate
   UTC-day limit of 30.
 - Rotating: only `Kimi_Moonshot`, `AIatMeta`, `GoogleDeepMind`, `xai`,
@@ -17,8 +17,9 @@ receive or store an X credential.
   Stronger posts discovered later can replace weaker rotating items without
   exceeding the daily public limit. Primary accounts are not present in this
   allowlist and are rejected if returned for the rotating tier.
-- Both queries and ingestion reject replies, reposts, quote posts, and
-  nullcasts. Apple clients receive only the resulting public feed.
+- Both queries and ingestion accept original and quote posts while rejecting
+  replies, reposts, and nullcasts. Apple clients receive only the resulting
+  public feed.
 
 ## Local, no-secret validation
 

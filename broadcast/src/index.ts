@@ -21,7 +21,13 @@ export default {
           status: "ok",
           delivery: "server-curated",
           xCredentialsInClient: false,
-          originalPostsOnly: true,
+          originalPostsOnly: false,
+          postTypes: {
+            original: true,
+            quote: true,
+            reply: false,
+            repost: false,
+          },
           collection: {
             primary: {
               accounts: PRIMARY_ACCOUNTS.map((account) => account.username),
