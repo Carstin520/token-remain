@@ -3,6 +3,21 @@
 All notable product changes are recorded here. TokenRemain uses Semantic
 Versioning for public releases.
 
+## 1.1.7 — 2026-07-26
+
+### Added
+
+- Added a local percentage-based quota consumption trend for every connected
+  provider with an available primary quota window.
+- Added official Claude Code and Codex service-health checks to quota cards,
+  with menu-bar alerts shown only when a provider is degraded or unavailable.
+- Bundled authentic provider artwork with documented upstream provenance.
+
+### Changed
+
+- Removed the misleading add-series control from the ccusage trend legend;
+  tracked applications now determine which available series are displayed.
+
 ## 1.1.6 — 2026-07-25
 
 ### Added
@@ -140,3 +155,4 @@ Versioning for public releases.
 [1.1.4]: https://github.com/Carstin520/token-remain/releases/tag/v1.1.4
 [1.1.5]: https://github.com/Carstin520/token-remain/releases/tag/v1.1.5
 [1.1.6]: https://github.com/Carstin520/token-remain/releases/tag/v1.1.6
+[1.1.7]: https://github.com/Carstin520/token-remain/releases/tag/v1.1.7
