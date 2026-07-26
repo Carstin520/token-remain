@@ -453,6 +453,15 @@
 "trends.metric_cost" = "成本";
 "trends.no_local_usage_today" = "今日暫無本機用量。";
 "trends.no_provider_selected" = "未選擇服務商";
+"trends.quota_accumulating_message" = "TokenRemain 會在額度成功重新整理後開始記錄；所有已連接應用都會自動出現，過往資料無法回填。";
+"trends.quota_accumulating_title" = "額度趨勢正在累積";
+"trends.quota_history" = "趨勢";
+"trends.quota_provider" = "應用";
+"trends.quota_row_accessibility" = "%1$@，%2$@視窗，已用 %3$@";
+"trends.quota_subtitle" = "按應用主要額度視窗 · 本機快照";
+"trends.quota_title" = "額度消耗趨勢";
+"trends.quota_used" = "已用";
+"trends.quota_window" = "視窗";
 "trends.range_days" = "%1$d 天";
 "trends.roadmap.cost_share_history" = "服務商成本佔比的歷史變化";
 "trends.roadmap.heatmap" = "每週使用熱度圖";
@@ -481,3 +490,9 @@
 "update.available_format" = "更新至 %1$@";
 "update.available_accessibility" = "TokenRemain %1$@ 已可更新";
 "update.install_help" = "下載並驗證更新，安裝後重新啟動 TokenRemain";
+"service_status.operational" = "正常";
+"service_status.degraded" = "效能下降";
+"service_status.partial_outage" = "部分中斷";
+"service_status.major_outage" = "嚴重中斷";
+"service_status.maintenance" = "維護中";
+"service_status.unknown" = "狀態未知";

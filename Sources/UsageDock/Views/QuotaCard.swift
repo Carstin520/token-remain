@@ -6,6 +6,7 @@ import SwiftUI
 struct QuotaCard: View {
     let provider: ProviderQuota.Provider
     let quota: ProviderQuota?
+    var serviceStatus: ProviderServiceStatus?
     /// Provider 级状态说明(如 Cursor 登录过期的恢复提示)。
     var notice: String?
     /// Dashboard 额度页传入此绑定后，卡片顶部成为拖拽把手。
@@ -18,10 +19,18 @@ struct QuotaCard: View {
                 header
 
                 if let quota {
-                    QuotaWindowRow(window: quota.primary, provider: provider)
+                    QuotaWindowRow(
+                        window: quota.primary,
+                        provider: provider,
+                        serviceStatus: serviceStatus
+                    )
                     if let secondary = quota.secondary {
                         Divider().overlay(DashboardTheme.border)
-                        QuotaWindowRow(window: secondary, provider: provider)
+                        QuotaWindowRow(
+                            window: secondary,
+                            provider: provider,
+                            serviceStatus: serviceStatus
+                        )
                     }
                     if let extraUsage = quota.extraUsage {
                         Divider().overlay(DashboardTheme.border)
@@ -79,6 +88,9 @@ struct QuotaCard: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.82)
                 .layoutPriority(1)
+            if let serviceStatus, serviceStatus.isAbnormal {
+                ServiceStatusBadge(status: serviceStatus)
+            }
             Spacer()
             if let plan = quota?.planName, !plan.isEmpty {
                 TagPill(text: plan)
@@ -103,6 +115,7 @@ struct QuotaCard: View {
                         QuotaCard(
                             provider: provider,
                             quota: quota,
+                            serviceStatus: serviceStatus,
                             notice: notice,
                             draggingProvider: nil
                         )
@@ -147,6 +160,7 @@ struct ExtraUsageRow: View {
 struct QuotaWindowRow: View {
     let window: QuotaWindow
     let provider: ProviderQuota.Provider
+    var serviceStatus: ProviderServiceStatus?
     var showsDetails = true
 
     private var remainingPercent: Double {
@@ -160,6 +174,9 @@ struct QuotaWindowRow: View {
                     Text(L10n.format("quota.window", UsageFormatting.windowName(minutes: window.windowMinutes)))
                         .font(.system(size: 13))
                         .foregroundStyle(DashboardTheme.secondaryText)
+                    if let serviceStatus {
+                        ServiceStatusBadge(status: serviceStatus)
+                    }
                     Spacer()
                     if let pace = UsagePace(window: window, now: context.date),
                        pace.showsRemainingWarning {

@@ -121,6 +121,7 @@ struct UsageMenuView: View {
             PopoverQuotaWidget(
                 provider: provider,
                 quota: store.quotaValue(for: provider),
+                serviceStatus: store.serviceStatuses[provider],
                 notice: store.providerNotices[provider],
                 layout: layout,
                 draggingWidget: $draggingWidget

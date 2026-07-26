@@ -452,6 +452,15 @@
 "trends.metric_cost" = "コスト";
 "trends.no_local_usage_today" = "今日のローカル使用量はまだありません。";
 "trends.no_provider_selected" = "プロバイダー未選択";
+"trends.quota_accumulating_message" = "割り当ての更新に成功すると TokenRemain が記録を開始します。接続済みのすべてのプロバイダーが自動的に表示され、過去のデータは遡って取得できません。";
+"trends.quota_accumulating_title" = "割り当て推移を蓄積中";
+"trends.quota_history" = "推移";
+"trends.quota_provider" = "アプリ";
+"trends.quota_row_accessibility" = "%1$@、%2$@ウィンドウ、%3$@使用済み";
+"trends.quota_subtitle" = "アプリ別の主要割り当てウィンドウ · ローカルスナップショット";
+"trends.quota_title" = "割り当て消費の推移";
+"trends.quota_used" = "使用済み";
+"trends.quota_window" = "ウィンドウ";
 "trends.range_days" = "%1$d日";
 "trends.roadmap.cost_share_history" = "プロバイダー別コスト構成比の推移";
 "trends.roadmap.heatmap" = "週別使用ヒートマップ";
@@ -480,3 +489,9 @@
 "update.available_format" = "%1$@ にアップデート";
 "update.available_accessibility" = "TokenRemain %1$@ を利用できます";
 "update.install_help" = "TokenRemain をダウンロード、検証、インストールして再起動します";
+"service_status.operational" = "正常";
+"service_status.degraded" = "性能低下";
+"service_status.partial_outage" = "一部停止";
+"service_status.major_outage" = "重大障害";
+"service_status.maintenance" = "メンテナンス中";
+"service_status.unknown" = "不明";

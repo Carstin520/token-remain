@@ -453,6 +453,15 @@
 "trends.metric_cost" = "Cost";
 "trends.no_local_usage_today" = "No local usage today.";
 "trends.no_provider_selected" = "No provider selected";
+"trends.quota_accumulating_message" = "TokenRemain starts recording after a successful quota refresh. Every connected provider will appear automatically; past data cannot be backfilled.";
+"trends.quota_accumulating_title" = "Quota trend is accumulating";
+"trends.quota_history" = "Trend";
+"trends.quota_provider" = "App";
+"trends.quota_row_accessibility" = "%1$@, %2$@ window, %3$@ used";
+"trends.quota_subtitle" = "Primary quota window by app · local snapshots";
+"trends.quota_title" = "Quota Consumption Trend";
+"trends.quota_used" = "Used";
+"trends.quota_window" = "Window";
 "trends.range_days" = "%1$d d";
 "trends.roadmap.cost_share_history" = "Provider cost-share over time";
 "trends.roadmap.heatmap" = "Weekly usage heatmap";
@@ -481,3 +490,9 @@
 "update.available_format" = "Update to %1$@";
 "update.available_accessibility" = "TokenRemain %1$@ is available";
 "update.install_help" = "Download, verify, install, and relaunch TokenRemain";
+"service_status.operational" = "Operational";
+"service_status.degraded" = "Degraded";
+"service_status.partial_outage" = "Partial outage";
+"service_status.major_outage" = "Major outage";
+"service_status.maintenance" = "Maintenance";
+"service_status.unknown" = "Unknown";

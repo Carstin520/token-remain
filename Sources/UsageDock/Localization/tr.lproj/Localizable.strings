@@ -104,3 +104,9 @@
 "quota.extra_usage" = "Ek kullanım";
 "quota.spent" = "%@ harcandı";
 "duration.total" = "Toplam";
+"service_status.operational" = "Çalışıyor";
+"service_status.degraded" = "Düşük performans";
+"service_status.partial_outage" = "Kısmi kesinti";
+"service_status.major_outage" = "Büyük kesinti";
+"service_status.maintenance" = "Bakım";
+"service_status.unknown" = "Bilinmiyor";

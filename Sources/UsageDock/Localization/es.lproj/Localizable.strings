@@ -452,6 +452,15 @@
 "trends.metric_cost" = "Coste";
 "trends.no_local_usage_today" = "Sin uso local hoy.";
 "trends.no_provider_selected" = "Sin proveedor seleccionado";
+"trends.quota_accumulating_message" = "TokenRemain empieza a registrar tras una actualización correcta de la cuota. Todos los proveedores conectados aparecerán automáticamente; los datos anteriores no se pueden recuperar.";
+"trends.quota_accumulating_title" = "La tendencia de cuota se está acumulando";
+"trends.quota_history" = "Tendencia";
+"trends.quota_provider" = "Aplicación";
+"trends.quota_row_accessibility" = "%1$@, ventana de %2$@, %3$@ usado";
+"trends.quota_subtitle" = "Ventana de cuota principal por aplicación · instantáneas locales";
+"trends.quota_title" = "Tendencia de consumo de cuota";
+"trends.quota_used" = "Usado";
+"trends.quota_window" = "Ventana";
 "trends.range_days" = "%1$d d";
 "trends.roadmap.cost_share_history" = "Evolución del reparto de coste por proveedor";
 "trends.roadmap.heatmap" = "Mapa de calor de uso semanal";
@@ -480,3 +489,9 @@
 "update.available_format" = "Actualizar a %1$@";
 "update.available_accessibility" = "TokenRemain %1$@ está disponible";
 "update.install_help" = "Descargar, verificar, instalar y reiniciar TokenRemain";
+"service_status.operational" = "Operativo";
+"service_status.degraded" = "Rendimiento reducido";
+"service_status.partial_outage" = "Interrupción parcial";
+"service_status.major_outage" = "Interrupción grave";
+"service_status.maintenance" = "Mantenimiento";
+"service_status.unknown" = "Desconocido";

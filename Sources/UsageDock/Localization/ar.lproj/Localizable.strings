@@ -104,3 +104,9 @@
 "quota.extra_usage" = "استخدام إضافي";
 "quota.spent" = "تم إنفاق %@";
 "duration.total" = "الإجمالي";
+"service_status.operational" = "يعمل";
+"service_status.degraded" = "أداء متدهور";
+"service_status.partial_outage" = "انقطاع جزئي";
+"service_status.major_outage" = "انقطاع كبير";
+"service_status.maintenance" = "صيانة";
+"service_status.unknown" = "غير معروف";

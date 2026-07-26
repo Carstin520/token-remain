@@ -452,6 +452,15 @@
 "trends.metric_cost" = "비용";
 "trends.no_local_usage_today" = "오늘 로컬 사용량이 없습니다.";
 "trends.no_provider_selected" = "선택된 제공업체 없음";
+"trends.quota_accumulating_message" = "할당량을 성공적으로 새로 고치면 TokenRemain이 기록을 시작합니다. 연결된 모든 제공업체가 자동으로 표시되며 이전 데이터는 채울 수 없습니다.";
+"trends.quota_accumulating_title" = "할당량 추세 누적 중";
+"trends.quota_history" = "추세";
+"trends.quota_provider" = "앱";
+"trends.quota_row_accessibility" = "%1$@, %2$@ 창, %3$@ 사용";
+"trends.quota_subtitle" = "앱별 기본 할당량 창 · 로컬 스냅샷";
+"trends.quota_title" = "할당량 소비 추세";
+"trends.quota_used" = "사용";
+"trends.quota_window" = "창";
 "trends.range_days" = "%1$d일";
 "trends.roadmap.cost_share_history" = "제공업체별 비용 비중의 시간별 변화";
 "trends.roadmap.heatmap" = "주간 사용 히트맵";
@@ -480,3 +489,9 @@
 "update.available_format" = "%1$@(으)로 업데이트";
 "update.available_accessibility" = "TokenRemain %1$@ 업데이트 사용 가능";
 "update.install_help" = "TokenRemain을 다운로드하고 확인한 뒤 설치 및 재시작";
+"service_status.operational" = "정상";
+"service_status.degraded" = "성능 저하";
+"service_status.partial_outage" = "일부 중단";
+"service_status.major_outage" = "대규모 중단";
+"service_status.maintenance" = "유지 보수 중";
+"service_status.unknown" = "알 수 없음";

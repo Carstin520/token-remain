@@ -31,7 +31,8 @@ struct DashboardView: View {
             codex: nil,
             others: Array(store.quotas.values),
             daily: store.daily,
-            history: store.history
+            history: store.history,
+            quotaUsageHistory: store.quotaUsageHistory
         )
     }
 
@@ -336,7 +337,11 @@ struct DashboardView: View {
                 errorMessage: store.errorMessage
             )
         case .limits:
-            LimitsSection(insights: insights, notices: store.providerNotices)
+            LimitsSection(
+                insights: insights,
+                notices: store.providerNotices,
+                serviceStatuses: store.serviceStatuses
+            )
         case .trends:
             TrendsSection(
                 insights: insights,

@@ -104,3 +104,9 @@
 "quota.extra_usage" = "Penggunaan ekstra";
 "quota.spent" = "%@ terpakai";
 "duration.total" = "Total";
+"service_status.operational" = "Operasional";
+"service_status.degraded" = "Performa menurun";
+"service_status.partial_outage" = "Gangguan sebagian";
+"service_status.major_outage" = "Gangguan besar";
+"service_status.maintenance" = "Pemeliharaan";
+"service_status.unknown" = "Tidak diketahui";

@@ -104,3 +104,9 @@
 "quota.extra_usage" = "Sử dụng thêm";
 "quota.spent" = "Đã dùng %@";
 "duration.total" = "Tổng";
+"service_status.operational" = "Hoạt động";
+"service_status.degraded" = "Hiệu suất giảm";
+"service_status.partial_outage" = "Gián đoạn một phần";
+"service_status.major_outage" = "Gián đoạn nghiêm trọng";
+"service_status.maintenance" = "Bảo trì";
+"service_status.unknown" = "Không rõ";

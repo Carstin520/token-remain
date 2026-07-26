@@ -45,6 +45,10 @@ final class UsageStore: ObservableObject {
     @Published private(set) var providerNotices: [ProviderQuota.Provider: String] = [:]
     @Published private(set) var daily: DailyUsage?
     @Published private(set) var history: DailyUsageHistory?
+    @Published private(set) var quotaUsageHistory: QuotaUsageHistory = .empty
+    /// Official public service status for providers that publish a dedicated
+    /// coding-product component (currently Claude Code and Codex).
+    @Published private(set) var serviceStatuses: [ProviderQuota.Provider: ProviderServiceStatus] = [:]
     @Published private(set) var localUsageStatus: LocalUsageStatus = .loading
     @Published private(set) var isCCUsageRefreshing = false
     @Published private(set) var isRefreshing = false
@@ -57,6 +61,7 @@ final class UsageStore: ObservableObject {
     private var lastCCUsageRefresh: Date?
     private var lastClaudeAttempt: Date?
     private var lastCodexAPIAttempt: Date?
+    private var lastServiceStatusAttempt: Date?
     private var lastAuxProviderAttempts: [ProviderQuota.Provider: Date] = [:]
     private var auxProviderFailureCounts: [ProviderQuota.Provider: Int] = [:]
     private var auxProviderRetryAfter: [ProviderQuota.Provider: Date] = [:]
@@ -64,8 +69,10 @@ final class UsageStore: ObservableObject {
     private var lowLatencySyncEnabled = false
     private let quotaCache = QuotaCache()
     private let historyCache = DailyHistoryCache()
+    private let quotaUsageHistoryCache = QuotaUsageHistoryCache()
     private let logger = Logger(subsystem: "com.jamesli.usagedock", category: "UsageRefresh")
     private let claudeRetryAfterKey = "claudeRetryAfter"
+    private let serviceStatusRefreshInterval: TimeInterval = 300
     private var quotaErrorMessage: String?
     private var historyErrorMessage: String?
 
@@ -73,6 +80,7 @@ final class UsageStore: ObservableObject {
         case claude(Result<ProviderQuota, Error>)
         case codex(Result<ProviderQuota, Error>)
         case auxiliary(ProviderQuota.Provider, Result<ProviderQuota, Error>)
+        case serviceStatuses([ProviderQuota.Provider: ProviderServiceStatus])
     }
 
     var claudeRemainingText: String {
@@ -126,6 +134,13 @@ final class UsageStore: ObservableObject {
             tracked.markConnected(provider)
         }
         quotas[provider] = value
+        if let value {
+            let updated = quotaUsageHistory.recording(value)
+            if updated != quotaUsageHistory {
+                quotaUsageHistory = updated
+                quotaUsageHistoryCache.save(updated)
+            }
+        }
     }
 
     private static func auxFetcher(
@@ -218,6 +233,7 @@ final class UsageStore: ObservableObject {
             lastClaudeAttempt = cached.byProvider[.claude]?.capturedAt
         }
         history = historyCache.load()
+        quotaUsageHistory = quotaUsageHistoryCache.load() ?? .empty
         claudeRetryAfter = UserDefaults.standard.object(forKey: claudeRetryAfterKey) as? Date
         pruneDisabledProviders()
 
@@ -246,6 +262,7 @@ final class UsageStore: ObservableObject {
             assign(nil, to: provider)
         }
         providerNotices = providerNotices.filter { tracked.isEnabled($0.key) }
+        serviceStatuses = serviceStatuses.filter { tracked.isEnabled($0.key) }
         quotaCache.save(currentSnapshot())
     }
 
@@ -310,6 +327,17 @@ final class UsageStore: ObservableObject {
         // 同步关闭时仍回到用户设置的刷新偏好。
         let codexAPIDue = forceClaude || autoDue(since: lastCodexAPIAttempt)
 
+        // Status pages are independent of account refresh preferences. Poll at
+        // a restrained five-minute cadence and allow the user's refresh action
+        // to check immediately.
+        let statusProviders: [ProviderQuota.Provider] = [.claude, .codex].filter(tracked.isEnabled)
+        let serviceStatusDue = !statusProviders.isEmpty && (
+            forceClaude
+                || lastServiceStatusAttempt.map {
+                    now.timeIntervalSince($0) >= serviceStatusRefreshInterval
+                } ?? true
+        )
+
         // async-let 的子任务不在主 actor 上,启用判断先在这里(主 actor)取好。
         let codexEnabled = tracked.isEnabled(.codex)
         let dueAuxProviders = Self.auxProviders.filter { provider in
@@ -341,6 +369,16 @@ final class UsageStore: ObservableObject {
                 guard let fetcher = Self.auxFetcher(for: provider) else { continue }
                 group.addTask {
                     .auxiliary(provider, await result { try await fetcher() })
+                }
+            }
+            if serviceStatusDue {
+                group.addTask {
+                    .serviceStatuses(
+                        await ProviderStatusService().fetch(
+                            providers: statusProviders,
+                            checkedAt: now
+                        )
+                    )
                 }
             }
 
@@ -417,6 +455,12 @@ final class UsageStore: ObservableObject {
                 )
             }
             apply(auxResult, to: provider) { self.assign($0, to: provider) }
+
+        case .serviceStatuses(let statuses):
+            lastServiceStatusAttempt = now
+            for (provider, status) in statuses {
+                serviceStatuses[provider] = status
+            }
         }
     }
 
