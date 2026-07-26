@@ -753,7 +753,7 @@ footer.site .disclaimer{
       <p class="req-line">
         <span>macOS 14+</span><span class="sep">·</span>
         <span>Apple Silicon (arm64)</span><span class="sep">·</span>
-        <span id="releaseVersion" data-release-version="1.1.7" aria-live="polite">Version 1.1.7 · Apple notarized</span>
+        <span id="releaseVersion" data-release-version="1.1.8" aria-live="polite">Version 1.1.8 · Apple notarized</span>
       </p>
       <p class="releases-hint"><span data-i18n="h-hint">Signed with Developer ID and notarized by Apple.</span></p>
     </div>
@@ -763,9 +763,14 @@ footer.site .disclaimer{
       <div class="stage" id="stage">
         <div class="float">
 
-          <img class="pop-shot" src="assets/popover.png" width="720" height="1464" alt="">
+          <img class="pop-shot" src="assets/popover.png" width="720" height="1419" alt=""
+               data-shot-en="assets/popover.png" data-size-en="720x1419"
+               data-shot-zh="assets/popover-zh.png" data-size-zh="720x1464">
 
-          <span class="chip chip1 mb"><img src="assets/menubar.png" width="234" height="70" alt="Menu bar showing Claude 97% and Codex 29%"></span>
+          <span class="chip chip1 mb"><img src="assets/menubar.png" width="234" height="70"
+               alt="Menu bar showing Claude 89% and Codex 91%"
+               data-shot-en="assets/menubar.png" data-alt-en="Menu bar showing Claude 89% and Codex 91%"
+               data-shot-zh="assets/menubar-zh.png" data-alt-zh="菜单栏显示 Claude 97%、Codex 29%"></span>
           <span class="chip chip2"><img class="brand-logo mono" src="assets/providers/grok.svg" alt=""><span data-i18n="chip-grok">Grok weekly</span> <span class="v">58%</span></span>
           <span class="chip chip3"><img class="brand-logo mono" src="assets/providers/zai.svg" alt="">GLM <span class="v">77%</span></span>
           <span class="chip chip4"><img class="brand-logo" src="assets/providers/copilot.svg" alt="">Copilot <span class="v">91%</span></span>
@@ -781,8 +786,9 @@ footer.site .disclaimer{
     <p class="lede" data-i18n="s-lede">You've met the menu bar popover above — everything below is a <strong style="color:var(--text)">live screenshot of the latest build</strong>: the desktop Dashboard, the iPhone app and Home Screen widgets.</p>
     <div class="shot-grid">
       <figure class="shot ticked lift">
-        <img src="assets/dashboard.jpg" width="1600" height="1065" alt="TokenRemain Dashboard overview: today's usage and cost donut, official quota bars (Claude coral / Codex blue), trending and risk hints" loading="lazy">
-        <figcaption><span class="tag" data-i18n="cap-dash-t">Dashboard · Live</span><span class="cap" data-i18n="cap-dash-c">Real local usage: 202.16M tokens and $189.11 estimated cost today, split by provider; official quota progress and risk hints on the right.</span></figcaption>
+        <img src="assets/dashboard.jpg" width="1600" height="1065" alt="TokenRemain Dashboard overview: today's usage and cost donut, official quota bars (Claude coral / Codex blue), trending and risk hints" loading="lazy"
+             data-shot-en="assets/dashboard.jpg" data-shot-zh="assets/dashboard-zh.jpg">
+        <figcaption><span class="tag" data-i18n="cap-dash-t">Dashboard · Live</span><span class="cap" data-i18n="cap-dash-c">Real local usage: 150.04M tokens and $52.15 estimated cost today, split by provider; official quota progress and risk hints on the right.</span></figcaption>
       </figure>
       <div class="shot-row3">
         <figure class="shot phone ticked lift">
@@ -1039,7 +1045,9 @@ footer.site .disclaimer{
         <span class="sub" data-i18n="ty1s">macOS · iOS · watchOS</span>
       </div>
       <div class="sp-item lift">
-        <span class="box inkbg"><img class="mbimg" src="assets/menubar.png" width="234" height="70" alt="Close-up of the TokenRemain menu bar capsule: Claude 97%, Codex 29%" loading="lazy"></span>
+        <span class="box inkbg"><img class="mbimg" src="assets/menubar.png" width="234" height="70" alt="Close-up of the TokenRemain menu bar capsule: Claude 89%, Codex 91%" loading="lazy"
+             data-shot-en="assets/menubar.png" data-alt-en="Close-up of the TokenRemain menu bar capsule: Claude 89%, Codex 91%"
+             data-shot-zh="assets/menubar-zh.png" data-alt-zh="TokenRemain 菜单栏胶囊特写：Claude 97%、Codex 29%"></span>
         <span class="lb" data-i18n="ty3">Menu bar</span>
       </div>
       <div class="sp-item lift">
@@ -1269,12 +1277,26 @@ var TITLES={en:"TokenRemain — Your AI quota, always in the menu bar",zh:"Token
       ? '版本 '+releaseVersion+' · Apple 已公证'
       : 'Version '+releaseVersion+' · Apple notarized';
   }
+  // Desktop UI screenshots exist per language — the app itself is localized,
+  // so the shot has to follow the page language.
+  var shots=document.querySelectorAll('img[data-shot-en]');
+  function applyShots(l){
+    shots.forEach(function(img){
+      var src=img.getAttribute('data-shot-'+l);
+      if(src)img.setAttribute('src',src);
+      var alt=img.getAttribute('data-alt-'+l);
+      if(alt!=null)img.setAttribute('alt',alt);
+      var size=(img.getAttribute('data-size-'+l)||'').split('x');
+      if(size.length===2){img.setAttribute('width',size[0]);img.setAttribute('height',size[1]);}
+    });
+  }
   function apply(l){
     var dict=l==='zh'?ZH:EN;
     nodes.forEach(function(el){
       var v=dict[el.dataset.i18n];
       if(v!=null)el.innerHTML=v;
     });
+    applyShots(l);
     document.documentElement.lang=l==='zh'?'zh-CN':'en';
     document.title=TITLES[l]||TITLES.en;
     btn.textContent=l==='zh'?'EN':'中文';

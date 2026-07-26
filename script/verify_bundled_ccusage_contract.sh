@@ -2,10 +2,11 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-VERSION="20.0.18"
+VERSION="$(/usr/libexec/PlistBuddy -c 'Print :TokenRemainBundledCCUsageVersion' "$ROOT_DIR/Resources/Info.plist")"
 BINARY="$ROOT_DIR/Vendor/ccusage/$VERSION/darwin-arm64/ccusage"
 LICENSE="$ROOT_DIR/Vendor/ccusage/LICENSE"
 SERVICE="$ROOT_DIR/Sources/UsageDock/Services/CCUsageService.swift"
+UPDATE_CHECKER="$ROOT_DIR/Sources/UsageDock/Services/CCUsageUpdateChecker.swift"
 BUILD_SCRIPT="$ROOT_DIR/script/build_and_run.sh"
 EXPECTED_SHA256="3179f6cabbd4bafe55946f2013c9e2ec3cdfb59fd8c152f3d2f3c7f2adaac6c5"
 
@@ -35,5 +36,9 @@ fi
   || fail "build script does not package the ccusage helper"
 /usr/bin/grep -Fq 'sign_embedded_ccusage' "$BUILD_SCRIPT" \
   || fail "build script does not sign the nested ccusage helper"
+/usr/bin/grep -Fq 'registry.npmjs.org/%40ccusage%2Fccusage-darwin-arm64/latest' "$UPDATE_CHECKER" \
+  || fail "runtime ccusage version check no longer uses the official npm package metadata"
+/usr/bin/grep -Fq 'unpricedModels' "$SERVICE" \
+  || fail "ccusage parser no longer preserves missing-price model identifiers"
 
 echo "bundled ccusage contract verified: native $VERSION arm64 helper + offline single-process collection"

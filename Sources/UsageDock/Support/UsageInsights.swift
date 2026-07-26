@@ -176,6 +176,9 @@ struct UsageInsights {
         let provider: ProviderQuota.Provider?
         let tokens: Int64
         let cost: Double
+        let unpricedModels: [String]
+
+        var hasCompletePricing: Bool { unpricedModels.isEmpty }
     }
 
     /// Today's per-agent token / cost split, highest tokens first.
@@ -187,7 +190,8 @@ struct UsageInsights {
                     displayName: Self.displayName(for: agent.id),
                     provider: Self.provider(for: agent.id),
                     tokens: agent.tokens,
-                    cost: agent.estimatedCost
+                    cost: agent.estimatedCost,
+                    unpricedModels: agent.unpricedModels
                 )
             }
             .sorted { $0.tokens > $1.tokens }
@@ -213,7 +217,16 @@ struct UsageInsights {
 
     var totalCost: Double? {
         guard let agents = daily?.agents, !agents.isEmpty else { return nil }
+        guard agents.allSatisfy({ $0.unpricedModels.isEmpty }) else { return nil }
         return agents.reduce(0) { $0 + $1.estimatedCost }
+    }
+
+    var unpricedModels: [String] {
+        Array(Set((daily?.agents ?? []).flatMap(\.unpricedModels))).sorted()
+    }
+
+    var historyUnpricedModels: [String] {
+        Array(Set((history?.days ?? []).flatMap(\.unpricedModels))).sorted()
     }
 
     /// One provider's share of today's total token usage, expressed as 0...100.
@@ -235,7 +248,7 @@ struct UsageInsights {
     struct SpendTile: Identifiable {
         let id: String
         let labelKey: String
-        let cost: Double
+        let cost: Double?
         let tokens: Int64
     }
 
@@ -305,14 +318,14 @@ struct UsageInsights {
 
     private struct LocalUsageTotal {
         let tokens: Int64
-        let cost: Double
+        let cost: Double?
 
         static let zero = LocalUsageTotal(tokens: 0, cost: 0)
 
         static func + (lhs: LocalUsageTotal, rhs: LocalUsageTotal) -> LocalUsageTotal {
             LocalUsageTotal(
                 tokens: lhs.tokens + rhs.tokens,
-                cost: lhs.cost + rhs.cost
+                cost: lhs.cost.flatMap { lhsCost in rhs.cost.map { lhsCost + $0 } }
             )
         }
     }
@@ -334,7 +347,9 @@ struct UsageInsights {
         if let daily {
             result[calendar.startOfDay(for: now)] = LocalUsageTotal(
                 tokens: daily.agents.reduce(0) { $0 + $1.tokens },
-                cost: daily.agents.reduce(0) { $0 + $1.estimatedCost }
+                cost: daily.agents.allSatisfy { $0.unpricedModels.isEmpty }
+                    ? daily.agents.reduce(0) { $0 + $1.estimatedCost }
+                    : nil
             )
         }
         return result

@@ -4,7 +4,7 @@ import type { Env, FeedPriority, FeedTier } from "./types";
 import type { AdminFeedItem } from "./validation";
 
 export const PRIMARY_ACCOUNTS = [
-  { username: "btibor91", displayName: "Tibor Blaho" },
+  { username: "thsottiaux", displayName: "Tibo" },
   { username: "sama", displayName: "Sam Altman" },
   { username: "claudeai", displayName: "Claude" },
   { username: "AnthropicAI", displayName: "Anthropic" },
@@ -32,7 +32,7 @@ export const PRIMARY_DAILY_LIMIT = 30;
 export const ROTATING_DAILY_LIMIT = 20;
 export const ROTATING_PER_AUTHOR_DAILY_LIMIT = 3;
 
-const originalPostFilters = "-is:reply -is:retweet -is:quote -is:nullcast";
+const authoredPostFilters = "-is:reply -is:retweet -is:nullcast";
 const primaryByUsername = new Map(
   PRIMARY_ACCOUNTS.map((account) => [account.username.toLowerCase(), account]),
 );
@@ -97,14 +97,14 @@ export function buildPrimaryQuery(): string {
   const accounts = PRIMARY_ACCOUNTS
     .map((account) => `from:${account.username}`)
     .join(" OR ");
-  return `(${accounts}) ${originalPostFilters}`;
+  return `(${accounts}) ${authoredPostFilters}`;
 }
 
 export function buildRotatingQuery(): string {
   const accounts = ROTATING_ACCOUNTS
     .map((account) => `from:${account.username}`)
     .join(" OR ");
-  return `(${accounts}) ${originalPostFilters}`;
+  return `(${accounts}) ${authoredPostFilters}`;
 }
 
 export async function syncPrimaryPosts(
@@ -282,7 +282,10 @@ export async function ingestCandidates(
 export function isOriginalPost(
   post: Pick<XPost, "in_reply_to_user_id" | "referenced_tweets">,
 ): boolean {
-  return !post.in_reply_to_user_id && (post.referenced_tweets?.length ?? 0) === 0;
+  return !post.in_reply_to_user_id
+    && !(post.referenced_tweets ?? []).some(
+      (reference) => reference.type === "retweeted" || reference.type === "replied_to",
+    );
 }
 
 async function searchRecent(

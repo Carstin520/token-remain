@@ -25,7 +25,13 @@ describe("TokenRemain broadcast worker", () => {
       status: "ok",
       delivery: "server-curated",
       xCredentialsInClient: false,
-      originalPostsOnly: true,
+      originalPostsOnly: false,
+      postTypes: {
+        original: true,
+        quote: true,
+        reply: false,
+        repost: false,
+      },
       collection: {
         primary: {
           accounts: PRIMARY_ACCOUNTS.map((account) => account.username),
@@ -211,10 +217,12 @@ describe("TokenRemain broadcast worker", () => {
     ]);
   });
 
-  it("builds two-tier searches that exclude replies, reposts, and quote posts", () => {
+  it("includes quote posts while excluding replies and reposts", () => {
     const primary = buildPrimaryQuery();
     const rotating = buildRotatingQuery();
 
+    expect(primary).toContain("from:thsottiaux");
+    expect(primary).not.toContain("from:btibor91");
     for (const account of PRIMARY_ACCOUNTS) {
       expect(primary).toContain(`from:${account.username}`);
       expect(rotating).not.toMatch(
@@ -224,15 +232,23 @@ describe("TokenRemain broadcast worker", () => {
     for (const account of ROTATING_ACCOUNTS) {
       expect(rotating).toContain(`from:${account.username}`);
     }
-    for (const filter of ["-is:reply", "-is:retweet", "-is:quote"]) {
+    for (const filter of ["-is:reply", "-is:retweet", "-is:nullcast"]) {
       expect(primary).toContain(filter);
       expect(rotating).toContain(filter);
     }
+    expect(primary).not.toContain("-is:quote");
+    expect(rotating).not.toContain("-is:quote");
     expect(rotating.length).toBeLessThanOrEqual(512);
     expect(isOriginalPost({})).toBe(true);
     expect(isOriginalPost({ in_reply_to_user_id: "123" })).toBe(false);
     expect(isOriginalPost({
       referenced_tweets: [{ id: "456", type: "quoted" }],
+    })).toBe(true);
+    expect(isOriginalPost({
+      referenced_tweets: [{ id: "789", type: "retweeted" }],
+    })).toBe(false);
+    expect(isOriginalPost({
+      referenced_tweets: [{ id: "012", type: "replied_to" }],
     })).toBe(false);
     expect(isEligibleRotatingAuthor(
       {

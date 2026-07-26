@@ -4,9 +4,9 @@ X API 凭证和内容筛选全部留在 TokenRemain Broadcast Worker。Apple 客
 
 服务端收集规则：
 
-- 第一梯队：`btibor91`、`sama`、`claudeai`、`AnthropicAI`、`OpenAI`、`karpathy`，每 10 分钟检查一次，UTC 自然日合计最多发布 30 条。
+- 第一梯队：`thsottiaux`、`sama`、`claudeai`、`AnthropicAI`、`OpenAI`、`karpathy`、`JensenHuang`，每 10 分钟检查一次，UTC 自然日合计最多发布 30 条。
 - 第二梯队：只从 `Kimi_Moonshot`、`AIatMeta`、`GoogleDeepMind`、`xai`、`MistralAI`、`deepseek_ai`、`OpenRouterAI`、`perplexity_ai`、`simonw`、`emollick`、`ArtificialAnlys`、`elonmusk` 这 12 个固定账号中选取，不再进行全网关键词搜索。每小时结合帖子互动、账号影响力、账号活跃度和时效排序，UTC 自然日始终保留分数最高的 20 条；后出现的强热点可以替换较弱条目，同一账号每天最多占 3 条。第一梯队账号会被明确排除，名单外账号即使热度高也不会进入。
-- 两层都只接受独立原帖；查询端和入库端都会拒绝回复、转帖和引用帖。
+- 两层都接受独立原帖和引用帖；查询端和入库端继续拒绝回复、纯转帖和 nullcast。
 
 客户端默认使用不含凭证的生产广播根地址
 `https://api.tokenremain.com`，并支持以下覆盖入口：

@@ -33,6 +33,18 @@ struct TrendsSection: View {
                     capturedAt: insights.history?.capturedAt,
                     preferredAgentIDs: preferredAgentIDs
                 )
+                if !insights.historyUnpricedModels.isEmpty {
+                    Label(
+                        L10n.format(
+                            "trends.unpriced_history_format",
+                            insights.historyUnpricedModels.joined(separator: L10n.text("common.list_separator"))
+                        ),
+                        systemImage: "exclamationmark.triangle.fill"
+                    )
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(DashboardTheme.warning)
+                    .fixedSize(horizontal: false, vertical: true)
+                }
             } else {
                 DashboardCard {
                     historyEmptyState
@@ -102,7 +114,7 @@ struct TrendsSection: View {
                     ForEach(insights.providerUsage) { usage in
                         InfoRow(
                             label: usage.displayName,
-                            value: "\(UsageFormatting.compactNumber(usage.tokens)) · \(String(format: "$%.2f", usage.cost))"
+                            value: "\(UsageFormatting.compactNumber(usage.tokens)) · \(usage.hasCompletePricing ? String(format: "$%.2f", usage.cost) : L10n.text("usage.price_unavailable"))"
                         )
                     }
                 }

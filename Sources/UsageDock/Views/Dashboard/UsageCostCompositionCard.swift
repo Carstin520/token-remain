@@ -19,7 +19,8 @@ struct UsageCostCompositionCard: View {
     /// Only providers with a positive cost can be drawn as ring arcs; a
     /// zero-cost provider still deserves a row, just no wedge.
     private var costedEntries: [UsageInsights.ProviderUsage] {
-        entries.filter { $0.cost > 0 }
+        guard insights.totalCost != nil else { return [] }
+        return entries.filter { $0.cost > 0 }
     }
 
     var body: some View {
@@ -34,10 +35,28 @@ struct UsageCostCompositionCard: View {
                         ring
                         VStack(alignment: .leading, spacing: 10) {
                             ForEach(entries) { entry in
-                                ProviderUsageRow(usage: entry, share: insights.costShare(for: entry))
+                                ProviderUsageRow(
+                                    usage: entry,
+                                    share: insights.totalCost == nil
+                                        ? nil
+                                        : insights.costShare(for: entry)
+                                )
                             }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+
+                    if !insights.unpricedModels.isEmpty {
+                        Label(
+                            L10n.format(
+                                "usage.unpriced_models_format",
+                                insights.unpricedModels.joined(separator: L10n.text("common.list_separator"))
+                            ),
+                            systemImage: "exclamationmark.triangle.fill"
+                        )
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(DashboardTheme.warning)
+                        .fixedSize(horizontal: false, vertical: true)
                     }
 
                     Text(L10n.text("usage.snapshot_note"))
@@ -91,7 +110,9 @@ struct UsageCostCompositionCard: View {
             },
             lineWidth: 16,
             centerText: insights.totalCost.map { String(format: "$%.2f", $0) } ?? "—",
-            centerCaption: L10n.text("usage.today_estimate"),
+            centerCaption: insights.unpricedModels.isEmpty
+                ? L10n.text("usage.today_estimate")
+                : L10n.text("usage.price_unavailable"),
             centerTextSize: 17
         )
         .frame(width: 108, height: 108)
@@ -106,9 +127,12 @@ struct UsageCostCompositionCard: View {
 /// tokens and dollars read as supporting detail.
 private struct ProviderUsageRow: View {
     let usage: UsageInsights.ProviderUsage
-    let share: Double
+    let share: Double?
 
     var body: some View {
+        let costText = usage.hasCompletePricing
+            ? String(format: "$%.2f", usage.cost)
+            : L10n.text("usage.price_unavailable")
         HStack(spacing: 8) {
             Circle()
                 .fill(UsageInsights.color(for: usage.id))
@@ -121,25 +145,29 @@ private struct ProviderUsageRow: View {
 
             Spacer(minLength: 6)
 
-            Text("\(UsageFormatting.compactNumber(usage.tokens)) · \(String(format: "$%.2f", usage.cost))")
+            Text("\(UsageFormatting.compactNumber(usage.tokens)) · \(costText)")
                 .numericFont(10)
                 .foregroundStyle(DashboardTheme.secondaryText)
                 .lineLimit(1)
 
-            Text(UsageFormatting.percent(share))
+            Text(share.map(UsageFormatting.percent) ?? "—")
                 .numericFont(12, .bold)
                 .foregroundStyle(DashboardTheme.text)
                 .frame(width: 46, alignment: .trailing)
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(
-            L10n.format(
+        .accessibilityLabel(usage.hasCompletePricing && share != nil
+            ? L10n.format(
                 "usage.provider_cost_accessibility",
                 usage.displayName,
                 UsageFormatting.compactNumber(usage.tokens),
                 usage.cost,
-                UsageFormatting.percent(share)
+                UsageFormatting.percent(share ?? 0)
             )
-        )
+            : L10n.format(
+                "usage.provider_price_unavailable_accessibility",
+                usage.displayName,
+                UsageFormatting.compactNumber(usage.tokens)
+            ))
     }
 }

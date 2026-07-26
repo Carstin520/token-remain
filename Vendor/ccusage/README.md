@@ -14,3 +14,11 @@ or a first-launch package download.
 The release build copies the executable to `TokenRemain.app/Contents/Helpers`,
 signs it with the same identity as the application, and verifies its version and
 signature before packaging.
+
+At runtime TokenRemain checks the official npm `latest` metadata every six
+hours (and on a manual refresh). This metadata-only request never includes local
+usage logs. Developer ID packaging also runs `script/verify_ccusage_freshness.sh`
+and fails closed if the signed helper is older than the official latest package.
+Usage collection itself remains offline; when the helper has no price for a
+token-bearing model, the UI reports that the price is unavailable instead of
+displaying a misleading `$0.00`.

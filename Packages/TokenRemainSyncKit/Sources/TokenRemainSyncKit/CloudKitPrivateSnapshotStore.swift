@@ -307,6 +307,7 @@ public protocol SyncCloudSnapshotStoring: Sendable {
 
 public actor CloudKitPrivateSnapshotStore: SyncCloudSnapshotStoring {
     public static let subscriptionID = "TokenRemainSync-current-v1"
+    public static let maximumConflictSaveAttempts = 2
 
     private let container: CKContainer
     private let database: CKDatabase
@@ -340,6 +341,21 @@ public actor CloudKitPrivateSnapshotStore: SyncCloudSnapshotStoring {
 
     public func save(_ envelope: EncryptedSyncEnvelope) async throws {
         try await ensureZone()
+        for attempt in 0..<Self.maximumConflictSaveAttempts {
+            do {
+                try await saveOnce(envelope)
+                return
+            } catch let error as SyncCloudStoreError {
+                guard Self.shouldRetrySave(error, afterAttempt: attempt) else {
+                    throw error
+                }
+            }
+        }
+    }
+
+    /// Refetches the fixed record for every attempt so a CloudKit
+    /// `serverRecordChanged` response is retried with the newest change tag.
+    private func saveOnce(_ envelope: EncryptedSyncEnvelope) async throws {
         var record: CKRecord
         do {
             record = try await database.record(for: CloudKitSyncRecordCodec.currentRecordID())
@@ -365,6 +381,10 @@ public actor CloudKitPrivateSnapshotStore: SyncCloudSnapshotStoring {
         } catch {
             throw Self.map(error)
         }
+    }
+
+    static func shouldRetrySave(_ error: SyncCloudStoreError, afterAttempt attempt: Int) -> Bool {
+        error == .conflict && attempt + 1 < maximumConflictSaveAttempts
     }
 
     public func fetch() async throws -> SyncCloudStoredEnvelope? {

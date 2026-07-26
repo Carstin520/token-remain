@@ -495,3 +495,11 @@
 "service_status.major_outage" = "Interrupción grave";
 "service_status.maintenance" = "Mantenimiento";
 "service_status.unknown" = "Desconocido";
+"datasource.ccusage_checking" = "ccusage integrado %1$@ · buscando actualizaciones";
+"datasource.ccusage_current" = "ccusage integrado %1$@ · actualizado";
+"datasource.ccusage_update_available" = "Versión integrada %1$@; está disponible %2$@. Actualiza TokenRemain para renovar el componente firmado.";
+"datasource.ccusage_check_failed" = "ccusage integrado %1$@ · comprobación no disponible; se reintentará automáticamente";
+"usage.price_unavailable" = "Precio no disponible";
+"usage.unpriced_models_format" = "ccusage no tiene precio para estos modelos; se ocultan los totales de coste: %1$@";
+"usage.provider_price_unavailable_accessibility" = "%1$@, %2$@ tokens, precio no disponible";
+"trends.unpriced_history_format" = "El historial de costes está incompleto porque estos modelos no tienen precio: %1$@";

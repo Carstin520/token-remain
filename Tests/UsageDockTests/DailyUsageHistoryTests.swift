@@ -65,6 +65,63 @@ struct DailyUsageHistoryTests {
         #expect(snapshot.history.days.last?.totalTokens == 500)
     }
 
+    @Test("A token-bearing model without a price is unavailable, never free")
+    func preservesMissingPrice() throws {
+        let data = payload("""
+        {"period":"2026-07-26","agents":[{
+            "agent":"claude",
+            "totalTokens":99960288,
+            "totalCost":0,
+            "modelsUsed":["claude-opus-5"],
+            "modelBreakdowns":[{
+                "modelName":"claude-opus-5",
+                "cost":0,
+                "inputTokens":9736,
+                "outputTokens":284382,
+                "cacheCreationTokens":1701645,
+                "cacheReadTokens":97964525
+            }]
+        }]}
+        """)
+        var components = DateComponents()
+        components.year = 2026
+        components.month = 7
+        components.day = 26
+        components.hour = 12
+        let now = try #require(Calendar.current.date(from: components))
+
+        let snapshot = try CCUsageService.parseSnapshot(data, now: now)
+        let agent = try #require(snapshot.daily.agents.first)
+        let insights = UsageInsights(claude: nil, codex: nil, daily: snapshot.daily)
+
+        #expect(agent.tokens == 99_960_288)
+        #expect(agent.unpricedModels == ["claude-opus-5"])
+        #expect(insights.totalCost == nil)
+        #expect(insights.unpricedModels == ["claude-opus-5"])
+        #expect(snapshot.history.days.first?.totalCost == nil)
+    }
+
+    @Test("One missing model makes a mixed provider total incomplete")
+    func mixedModelsRemainIncomplete() throws {
+        let data = payload("""
+        {"period":"2026-07-25","agents":[{
+            "agent":"claude",
+            "totalTokens":200,
+            "totalCost":1.5,
+            "modelsUsed":["claude-fable-5","claude-opus-5"],
+            "modelBreakdowns":[
+                {"modelName":"claude-fable-5","cost":1.5,"inputTokens":10,"outputTokens":10,"cacheCreationTokens":10,"cacheReadTokens":10},
+                {"modelName":"claude-opus-5","cost":0,"inputTokens":40,"outputTokens":40,"cacheCreationTokens":40,"cacheReadTokens":40}
+            ]
+        }]}
+        """)
+
+        let day = try #require(try CCUsageService.parseHistory(data).days.first)
+        #expect(day.knownTotalCost == 1.5)
+        #expect(day.totalCost == nil)
+        #expect(day.unpricedModels == ["claude-opus-5"])
+    }
+
     @Test("Bundled ccusage invocation cannot contact npm or pricing services")
     func bundledInvocationIsOffline() {
         let arguments = CCUsageService.commandArguments(

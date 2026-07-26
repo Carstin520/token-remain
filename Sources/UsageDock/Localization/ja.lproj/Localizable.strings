@@ -495,3 +495,11 @@
 "service_status.major_outage" = "重大障害";
 "service_status.maintenance" = "メンテナンス中";
 "service_status.unknown" = "不明";
+"datasource.ccusage_checking" = "内蔵 ccusage %1$@ · 更新を確認中";
+"datasource.ccusage_current" = "内蔵 ccusage %1$@ · 最新";
+"datasource.ccusage_update_available" = "内蔵版は %1$@、最新版は %2$@ です。署名済みコンポーネントを更新するには TokenRemain を更新してください。";
+"datasource.ccusage_check_failed" = "内蔵 ccusage %1$@ · 更新を確認できません。後で自動再試行します";
+"usage.price_unavailable" = "価格を取得できません";
+"usage.unpriced_models_format" = "ccusage に次のモデルの価格がないため、コスト合計を非表示にしました：%1$@";
+"usage.provider_price_unavailable_accessibility" = "%1$@、%2$@ tokens、価格を取得できません";
+"trends.unpriced_history_format" = "次のモデルに価格がないため、過去のコスト推移は不完全です：%1$@";

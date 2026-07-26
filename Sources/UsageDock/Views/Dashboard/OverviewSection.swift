@@ -67,8 +67,12 @@ struct OverviewSection: View {
                 MetricCard(
                     label: L10n.text("usage.today_est_cost"),
                     value: insights.totalCost.map { String(format: "$%.2f", $0) } ?? "—",
-                    caption: L10n.text("usage.api_price_estimate"),
-                    captionColor: DashboardTheme.secondaryText
+                    caption: insights.unpricedModels.isEmpty
+                        ? L10n.text("usage.api_price_estimate")
+                        : L10n.text("usage.price_unavailable"),
+                    captionColor: insights.unpricedModels.isEmpty
+                        ? DashboardTheme.secondaryText
+                        : DashboardTheme.warning
                 )
                 sustainabilityMetric(at: context.date)
             }

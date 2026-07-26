@@ -25,5 +25,13 @@ struct CrossDeviceSyncDefaultsTests {
     func heartbeatCeiling() {
         #expect(CrossDeviceSyncController.heartbeatInterval == 5 * 60)
     }
+
+    @Test("Publishing advances beyond the authenticated remote sequence")
+    func remoteSequenceFloor() {
+        #expect(SyncSequencePolicy.next(localSequence: 12, remoteSequence: 42) == 43)
+        #expect(SyncSequencePolicy.next(localSequence: 50, remoteSequence: 42) == 51)
+        #expect(SyncSequencePolicy.next(localSequence: 0, remoteSequence: nil) == 1)
+        #expect(SyncSequencePolicy.next(localSequence: .max, remoteSequence: 42) == nil)
+    }
 }
 #endif

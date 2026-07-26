@@ -45,11 +45,11 @@
 <table>
   <tr>
     <td align="center" width="62%">
-      <img src="site/assets/dashboard.jpg" alt="Dashboard 概览" /><br/>
+      <img src="site/assets/dashboard-zh.jpg" alt="Dashboard 概览" /><br/>
       <sub><b>Dashboard · 概览</b> — 今日用量与成本按 provider 拆分，右侧是官方额度进度与风险提示</sub>
     </td>
     <td align="center" width="38%">
-      <img src="site/assets/popover.png" alt="菜单栏弹窗" /><br/>
+      <img src="site/assets/popover-zh.png" alt="菜单栏弹窗" /><br/>
       <sub><b>菜单栏弹窗</b> — 一眼看完最紧张的窗口、今日成本与 AI 动态</sub>
     </td>
   </tr>
@@ -102,7 +102,7 @@
 
 ## 📡 AI Feed
 
-`broadcast/` 是 Cloudflare Workers + D1 + Queues 后端。第一梯队每十分钟收集 `AnthropicAI`、`OpenAI`、`claudeai`、`sama`、`karpathy`、`btibor91` 的原帖（每天最多 30 条）；第二梯队每小时只从 `Kimi_Moonshot`、`AIatMeta`、`GoogleDeepMind`、`xai`、`MistralAI`、`deepseek_ai`、`OpenRouterAI`、`perplexity_ai`、`simonw`、`emollick`、`ArtificialAnlys`、`elonmusk` 中按互动热度、账号影响力与时效选取原帖（每天最多 20 条）。两层都排除回复、转帖与引用帖，第一梯队账号不会重复进入第二梯队。
+`broadcast/` 是 Cloudflare Workers + D1 + Queues 后端。第一梯队每十分钟收集 `AnthropicAI`、`OpenAI`、`claudeai`、`sama`、`karpathy`、`thsottiaux`、`JensenHuang` 的独立原帖与引用帖（每天最多 30 条）；第二梯队每小时只从 `Kimi_Moonshot`、`AIatMeta`、`GoogleDeepMind`、`xai`、`MistralAI`、`deepseek_ai`、`OpenRouterAI`、`perplexity_ai`、`simonw`、`emollick`、`ArtificialAnlys`、`elonmusk` 中按互动热度、账号影响力与时效选取独立原帖和引用帖（每天最多 20 条）。两层都继续排除回复、纯转帖和 nullcast，第一梯队账号不会重复进入第二梯队。
 
 服务公开提供 `GET /v1/ai-feed`，并按设备时区每天发送一次 APNs 摘要。用户无需账号，也看不到任何 X API 配置入口；设备注册只用随机安装 ID、设备生成的撤销密钥与 APNs device token。X、APNs 私钥与后台令牌只存在 Cloudflare Worker Secret 中，绝不写入客户端或源码。完整链路见 [`docs/curated-feed-contract.md`](docs/curated-feed-contract.md) 与 [`broadcast/README.md`](broadcast/README.md)。
 
