@@ -9,11 +9,11 @@
 Remaining quota, reset countdowns and today's cost for Claude Code, Codex, Cursor, Grok, GLM and **18+** AI coding tools — all in one place. Credentials stay on your machine: never refreshed, never uploaded.
 
 ![macOS](https://img.shields.io/badge/macOS-14%2B_Sonoma-000?logo=apple&logoColor=white)
-![Apple Silicon](https://img.shields.io/badge/Apple_Silicon-arm64-7C5CFF)
+![Universal](https://img.shields.io/badge/Universal-Apple_Silicon_%2B_Intel-7C5CFF)
 ![Notarized](https://img.shields.io/badge/Apple-Notarized-34C759?logo=apple&logoColor=white)
-![Latest](https://img.shields.io/badge/latest-v1.1.10-22D3EE)
+![Latest](https://img.shields.io/badge/latest-v1.1.11-22D3EE)
 
-**Latest version `v1.1.10`** (build 12, Apple notarized and stapled)
+**Latest version `v1.1.11`** (build 13, Universal Mac build)
 
 [Website / Download](https://tokenremain.com) · [Privacy Policy](https://tokenremain.com/privacy) · [Support](https://tokenremain.com/support) · [Report an issue](https://github.com/Carstin520/token-remain/issues)
 
@@ -143,9 +143,9 @@ to their respective terms.
 
 ## 📦 Current release
 
-- **Version** — `v1.1.10` (build 12). Both the app and the DMG are Apple notarized, stapled and Gatekeeper-accepted.
-- **Platform** — macOS 14 Sonoma or later, Apple Silicon (arm64) only; no Intel build yet.
-- **Distribution** — The public DMG is Developer ID signed and Apple notarized, currently distributed outside the Mac App Store.
+- **Version** — `v1.1.11` (build 13), the Universal Mac release candidate.
+- **Platform** — macOS 14 Sonoma or later on Apple Silicon (arm64) and Intel (x86_64).
+- **Distribution** — The website always downloads the latest `TokenRemain.dmg`; each GitHub Release also retains a DMG named with its version and build.
 - **Cost figures** — Costs are API list-price estimates, not your subscription bill. When a credential expires, data pauses and the app explains how to restore it.
 
 ---

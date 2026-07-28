@@ -501,10 +501,6 @@
 "service_status.description.major_outage" = "Ein großflächiger Ausfall betrifft die meisten Benutzer oder Kernfunktionen.";
 "service_status.description.maintenance" = "Der Anbieter führt geplante oder dringende Wartungsarbeiten durch; die Verfügbarkeit kann eingeschränkt sein.";
 "service_status.description.unknown" = "TokenRemain konnte den offiziellen Dienststatus nicht prüfen. Das bedeutet nicht, dass der Dienst ausgefallen ist.";
-"datasource.ccusage_checking" = "Integriertes ccusage %1$@ · Updates werden geprüft";
-"datasource.ccusage_current" = "Integriertes ccusage %1$@ · aktuell";
-"datasource.ccusage_update_available" = "Integriert ist %1$@; %2$@ ist verfügbar. TokenRemain aktualisieren, um die signierte Komponente zu erneuern.";
-"datasource.ccusage_check_failed" = "Integriertes ccusage %1$@ · Update-Prüfung nicht verfügbar; automatischer Neuversuch";
 "usage.price_unavailable" = "Preis nicht verfügbar";
 "usage.unpriced_models_format" = "ccusage hat für diese Modelle keinen Preis; Kostensummen werden ausgeblendet: %1$@";
 "usage.provider_price_unavailable_accessibility" = "%1$@, %2$@ Tokens, Preis nicht verfügbar";

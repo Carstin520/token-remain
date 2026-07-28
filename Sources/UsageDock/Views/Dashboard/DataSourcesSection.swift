@@ -103,7 +103,7 @@ struct DataSourcesSection: View {
         case .ccusage:
             SourceHealthRow(
                 name: "ccusage",
-                detail: ccusageDetail,
+                detail: L10n.text("datasource.ccusage_detail"),
                 healthy: ccusageHealthy,
                 capturedAt: insights.daily?.capturedAt ?? insights.history?.capturedAt
             )
@@ -117,28 +117,7 @@ struct DataSourcesSection: View {
         }
     }
 
-    private var ccusageDetail: String {
-        if case .failed(let message) = store.localUsageStatus {
-            return message
-        }
-        switch store.ccusageUpdateStatus {
-        case .checking(let installedVersion):
-            return L10n.format("datasource.ccusage_checking", installedVersion)
-        case .current(let installedVersion, _):
-            return L10n.format("datasource.ccusage_current", installedVersion)
-        case .updateAvailable(let installedVersion, let latestVersion, _):
-            return L10n.format(
-                "datasource.ccusage_update_available",
-                installedVersion,
-                latestVersion
-            )
-        case .checkFailed(let installedVersion):
-            return L10n.format("datasource.ccusage_check_failed", installedVersion)
-        }
-    }
-
     private var ccusageHealthy: Bool {
-        guard !store.ccusageUpdateStatus.needsUpdate else { return false }
         switch store.localUsageStatus {
         case .available, .empty: return true
         case .loading, .failed: return false

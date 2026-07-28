@@ -9,11 +9,11 @@
 一个地方查看 Claude Code、Codex、Cursor、Grok、GLM 等 **18+** 家 AI 编码工具的剩余额度、重置倒计时与今日成本。凭证只留在本机，绝不刷新、绝不上传。
 
 ![macOS](https://img.shields.io/badge/macOS-14%2B_Sonoma-000?logo=apple&logoColor=white)
-![Apple Silicon](https://img.shields.io/badge/Apple_Silicon-arm64-7C5CFF)
+![Universal](https://img.shields.io/badge/Universal-Apple_Silicon_%2B_Intel-7C5CFF)
 ![Notarized](https://img.shields.io/badge/Apple-Notarized-34C759?logo=apple&logoColor=white)
-![Latest](https://img.shields.io/badge/latest-v1.1.10-22D3EE)
+![Latest](https://img.shields.io/badge/latest-v1.1.11-22D3EE)
 
-**当前最新版本 `v1.1.10`**（build 12，Apple 已公证并装订）
+**当前最新版本 `v1.1.11`**（build 13，Universal Mac 构建）
 
 [官网 / 下载](https://tokenremain.com) · [隐私政策](https://tokenremain.com/privacy) · [支持](https://tokenremain.com/support) · [问题反馈](https://github.com/Carstin520/token-remain/issues)
 
@@ -140,9 +140,9 @@ bash ./script/build_and_run.sh --verify
 
 ## 📦 当前发布
 
-- **版本**：`v1.1.10`（build 12）——App 与 DMG 均已 Apple 公证、装订并通过 Gatekeeper 校验。
-- **平台**：macOS 14 Sonoma 及以上，仅 Apple Silicon（arm64），暂无 Intel 构建。
-- **分发**：公开 DMG 已 Developer ID 签名并经 Apple 公证，目前在 Mac App Store 之外分发。
+- **版本**：`v1.1.11`（build 13）——Universal Mac 发布候选版。
+- **平台**：macOS 14 Sonoma 及以上，同时支持 Apple Silicon（arm64）与 Intel（x86_64）。
+- **分发**：官网始终下载最新的 `TokenRemain.dmg`；GitHub Release 同时保留带版本与 build 号的 DMG 归档。
 - **成本口径**：成本为 API 标价估算，不等于订阅账单；凭证过期时数据会暂停并提示恢复方式。
 
 ---

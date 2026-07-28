@@ -752,8 +752,8 @@ footer.site .disclaimer{
       </div>
       <p class="req-line">
         <span>macOS 14+</span><span class="sep">·</span>
-        <span>Apple Silicon (arm64)</span><span class="sep">·</span>
-        <span id="releaseVersion" data-release-version="1.1.10" aria-live="polite">Version 1.1.10 · Apple notarized</span>
+        <span>Universal (Apple Silicon + Intel)</span><span class="sep">·</span>
+        <span id="releaseVersion" data-release-version="1.1.11" aria-live="polite">Version 1.1.11 · Universal Mac</span>
       </p>
       <p class="releases-hint"><span data-i18n="h-hint">Signed with Developer ID and notarized by Apple.</span></p>
     </div>
@@ -1081,7 +1081,7 @@ footer.site .disclaimer{
     <div class="limit-card ticked">
       <div class="head"><span class="sym">!</span><span data-i18n="lm-head">Known limitations</span></div>
       <ul>
-        <li><span class="k" data-i18n="lmk1">CHIP</span><span data-i18n="lm1"><strong>Apple Silicon (arm64) only</strong> — no Intel builds yet.</span></li>
+        <li><span class="k" data-i18n="lmk1">CHIP</span><span data-i18n="lm1"><strong>Universal Mac build</strong> — supports Apple Silicon (arm64) and Intel (x86_64).</span></li>
         <li><span class="k" data-i18n="lmk2">OS</span><span data-i18n="lm2">Requires <strong>macOS 14 Sonoma or later</strong>; macOS 26 gets native Liquid Glass, 14/15 fall back to the dark card style.</span></li>
         <li><span class="k" data-i18n="lmk3">DIST</span><span data-i18n="lm3"><strong>The public DMG is Developer ID signed and Apple notarized.</strong> It is currently distributed outside the Mac App Store.</span></li>
         <li><span class="k" data-i18n="lmk4">DEPS</span><span data-i18n="lm4">Direct quota queries need the <strong>matching tools signed in on this Mac</strong> (Claude Code, Codex CLI, Cursor…); services that aren't signed in show setup hints. Z.ai is the only one that needs a pasted API key.</span></li>
@@ -1247,7 +1247,7 @@ var ZH={
   "lm-h2":"Mac 正式版的已知限制",
   "lm-lede":"已公证的 Mac 版本现已开放下载。以下限制是刻意的取舍——数据安全永远排在功能覆盖前面。",
   "lm-head":"已知限制",
-  "lmk1":"芯片","lm1":"<strong>仅支持 Apple Silicon（arm64）</strong>，Intel Mac 暂不提供构建。",
+  "lmk1":"芯片","lm1":"<strong>Universal Mac 构建</strong>，同时支持 Apple Silicon（arm64）与 Intel（x86_64）。",
   "lmk2":"系统","lm2":"需要 <strong>macOS 14 Sonoma 或更高</strong>；macOS 26 可启用原生 Liquid Glass 样式，14/15 自动回退深色卡片。",
   "lmk3":"分发","lm3":"<strong>公开 DMG 已使用 Developer ID 签名并通过 Apple 公证。</strong> 当前通过 Mac App Store 之外的官网渠道分发。",
   "lmk4":"依赖","lm4":"额度直查依赖<strong>本机已登录的对应工具</strong>（Claude Code、Codex CLI、Cursor 等）；未登录的服务会显示接入指引。Z.ai 是唯一需要手动粘贴 API Key 的服务。",

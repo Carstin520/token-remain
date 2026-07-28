@@ -65,9 +65,11 @@ APP_FRAMEWORKS="$APP_CONTENTS/Frameworks"
 APP_HELPERS="$APP_CONTENTS/Helpers"
 APP_BINARY="$APP_MACOS/$EXECUTABLE_NAME"
 CCUSAGE_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :TokenRemainBundledCCUsageVersion' "$ROOT_DIR/Resources/Info.plist")"
-CCUSAGE_SOURCE="$ROOT_DIR/Vendor/ccusage/$CCUSAGE_VERSION/darwin-arm64/ccusage"
+CCUSAGE_RELATIVE_PATH="$CCUSAGE_VERSION/darwin-universal/ccusage"
+CCUSAGE_SOURCE="$ROOT_DIR/Vendor/ccusage/$CCUSAGE_RELATIVE_PATH"
 CCUSAGE_LICENSE="$ROOT_DIR/Vendor/ccusage/LICENSE"
-CCUSAGE_EXPECTED_SHA256="3179f6cabbd4bafe55946f2013c9e2ec3cdfb59fd8c152f3d2f3c7f2adaac6c5"
+CCUSAGE_CHECKSUM_FILE="$ROOT_DIR/Vendor/ccusage/SHA256"
+CCUSAGE_EXPECTED_SHA256="$(/usr/bin/awk -v path="$CCUSAGE_RELATIVE_PATH" '$2 == path { print $1 }' "$CCUSAGE_CHECKSUM_FILE")"
 CCUSAGE_HELPER="$APP_HELPERS/ccusage"
 
 resolve_signing_common_name() {
@@ -400,10 +402,24 @@ verify_embedded_sparkle() {
     echo "Signed application is missing Sparkle.framework." >&2
     exit 1
   }
+  # Universal Mach-O output is large enough that grep -q can close the pipe
+  # before otool finishes; with pipefail that looks like a false verification
+  # failure. Read the complete output while discarding matching lines instead.
   /usr/bin/otool -L "$executable" \
-    | /usr/bin/grep -Fq '@rpath/Sparkle.framework/Versions/B/Sparkle'
+    | /usr/bin/grep -F '@rpath/Sparkle.framework/Versions/B/Sparkle' >/dev/null
   /usr/bin/otool -l "$executable" \
-    | /usr/bin/grep -Fq '@executable_path/../Frameworks'
+    | /usr/bin/grep -F '@executable_path/../Frameworks' >/dev/null
+  for universal_executable in \
+    "$framework_version/Sparkle" \
+    "$framework_version/Autoupdate" \
+    "$framework_version/Updater.app/Contents/MacOS/Updater" \
+    "$framework_version/XPCServices/Installer.xpc/Contents/MacOS/Installer" \
+    "$framework_version/XPCServices/Downloader.xpc/Contents/MacOS/Downloader"; do
+    /usr/bin/lipo "$universal_executable" -verify_arch arm64 x86_64 || {
+      echo "Sparkle contains a non-universal executable: $universal_executable" >&2
+      exit 1
+    }
+  done
   /usr/bin/codesign --verify --strict "$framework_version/XPCServices/Installer.xpc"
   /usr/bin/codesign --verify --strict "$framework_version/XPCServices/Downloader.xpc"
   /usr/bin/codesign --verify --strict "$framework_version/Autoupdate"
@@ -420,7 +436,10 @@ verify_embedded_ccusage() {
     echo "Signed application is missing its bundled ccusage helper." >&2
     exit 1
   }
-  /usr/bin/file "$helper" | /usr/bin/grep -Fq 'Mach-O 64-bit executable arm64'
+  /usr/bin/lipo "$helper" -verify_arch arm64 x86_64 || {
+    echo "Signed application contains a non-universal ccusage helper." >&2
+    exit 1
+  }
   /usr/bin/codesign --verify --strict "$helper"
   version="$("$helper" --version)"
   [[ "$version" == "ccusage $CCUSAGE_VERSION" ]] || {
@@ -431,6 +450,10 @@ verify_embedded_ccusage() {
 
 verify_bundle_for_mode() {
   local signed_app="$1"
+  /usr/bin/lipo "$signed_app/Contents/MacOS/$EXECUTABLE_NAME" -verify_arch arm64 x86_64 || {
+    echo "Signed application executable is not universal." >&2
+    exit 1
+  }
   verify_embedded_sparkle "$signed_app"
   verify_embedded_ccusage "$signed_app"
   if [[ "$SYNC_RELEASE_MODE" == "1" ]]; then
@@ -450,7 +473,7 @@ if [[ "$MODE" != "--archive" && "$MODE" != "archive" ]]; then
   pkill -x "$EXECUTABLE_NAME" >/dev/null 2>&1 || true
 fi
 cd "$ROOT_DIR"
-SWIFT_BUILD_ARGS=(--product "$PRODUCT_NAME")
+SWIFT_BUILD_ARGS=(--product "$PRODUCT_NAME" --arch arm64 --arch x86_64)
 if [[ "$SYNC_RELEASE_MODE" == "1" ]]; then
   SWIFT_BUILD_ARGS+=(-Xswiftc -DTOKENREMAIN_CLOUD_SYNC)
 fi
@@ -489,6 +512,10 @@ cp -R "$ROOT_DIR/Sources/UsageDock/Resources/TokenRemainFullBodyStates" "$APP_RE
 }
 [[ -r "$CCUSAGE_LICENSE" ]] || {
   echo "Missing vendored ccusage MIT license." >&2
+  exit 1
+}
+[[ "$CCUSAGE_EXPECTED_SHA256" =~ ^[0-9a-f]{64}$ ]] || {
+  echo "Missing universal ccusage checksum entry." >&2
   exit 1
 }
 CCUSAGE_ACTUAL_SHA256="$(/usr/bin/shasum -a 256 "$CCUSAGE_SOURCE" | /usr/bin/awk '{print $1}')"

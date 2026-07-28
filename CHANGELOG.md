@@ -3,6 +3,24 @@
 All notable product changes are recorded here. TokenRemain uses Semantic
 Versioning for public releases.
 
+## 1.1.11 — 2026-07-28
+
+### Changed
+
+- Build and validate Universal macOS packages for both Apple Silicon and Intel,
+  including the app executable, Sparkle helpers, and the bundled ccusage helper.
+- Removed runtime ccusage version notices; installed apps only report whether
+  the bundled helper can read local usage successfully.
+- Made release preflight and packaging update the bundled ccusage helper to the
+  latest verified stable npm package before signing a new TokenRemain version.
+- Publish both the stable `TokenRemain.dmg` download name and a byte-identical
+  versioned DMG so each release remains directly identifiable and downloadable.
+
+### Fixed
+
+- Report an explicit Claude Code signed-out state immediately instead of
+  waiting for the fallback terminal probe to time out at the login screen.
+
 ## 1.1.10 — 2026-07-26
 
 ### Changed
@@ -209,3 +227,4 @@ Versioning for public releases.
 [1.1.8]: https://github.com/Carstin520/token-remain/releases/tag/v1.1.8
 [1.1.9]: https://github.com/Carstin520/token-remain/releases/tag/v1.1.9
 [1.1.10]: https://github.com/Carstin520/token-remain/releases/tag/v1.1.10
+[1.1.11]: https://github.com/Carstin520/token-remain/releases/tag/v1.1.11

@@ -502,10 +502,6 @@
 "service_status.description.major_outage" = "大範圍故障正在影響多數使用者或核心功能。";
 "service_status.description.maintenance" = "服務商正在進行計劃內或緊急維護，期間可用性可能受限。";
 "service_status.description.unknown" = "TokenRemain 暫時無法確認官方服務狀態；這不代表服務已經中斷。";
-"datasource.ccusage_checking" = "內建 ccusage %1$@ · 正在檢查更新";
-"datasource.ccusage_current" = "內建 ccusage %1$@ · 已是最新版本";
-"datasource.ccusage_update_available" = "內建版本 %1$@，最新版本 %2$@；請更新 TokenRemain 以更新已簽署元件";
-"datasource.ccusage_check_failed" = "內建 ccusage %1$@ · 暫時無法檢查更新，稍後自動重試";
 "usage.price_unavailable" = "價格暫不可用";
 "usage.unpriced_models_format" = "ccusage 暫無以下模型的價格，成本合計已隱藏：%1$@";
 "usage.provider_price_unavailable_accessibility" = "%1$@，%2$@ tokens，價格暫不可用";

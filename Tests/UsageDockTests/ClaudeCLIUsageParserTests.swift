@@ -2,6 +2,21 @@ import Foundation
 import Testing
 @testable import UsageDock
 
+@Suite("Claude CLI auth status parser")
+struct ClaudeCLIAuthStatusParserTests {
+    @Test("Recognizes an explicit logged-out status")
+    func recognizesLoggedOutStatus() {
+        let output = #"{"loggedIn":false,"authMethod":"none","apiProvider":"firstParty"}"#
+        #expect(ClaudeCLIAuthStatusParser.isExplicitlyLoggedOut(Data(output.utf8)))
+    }
+
+    @Test("Does not treat logged-in or malformed output as logged out")
+    func ignoresOtherOutput() {
+        #expect(!ClaudeCLIAuthStatusParser.isExplicitlyLoggedOut(Data(#"{"loggedIn":true}"#.utf8)))
+        #expect(!ClaudeCLIAuthStatusParser.isExplicitlyLoggedOut(Data("not json".utf8)))
+    }
+}
+
 @Suite("Claude CLI usage parser")
 struct ClaudeCLIUsageParserTests {
     @Test("Parses the current Claude usage screen in reading order")

@@ -12,6 +12,7 @@ APP="$OUTPUT_DIR/TokenRemain.app"
 ZIP="$OUTPUT_DIR/TokenRemain-$VERSION-$BUILD-macOS.zip"
 APPCAST="$OUTPUT_DIR/appcast.xml"
 DMG="$OUTPUT_DIR/TokenRemain.dmg"
+VERSIONED_DMG="$OUTPUT_DIR/TokenRemain-$VERSION-$BUILD.dmg"
 PROFILE="${USAGEDOCK_SYNC_PROVISIONING_PROFILE:-}"
 IDENTITY="${USAGEDOCK_SYNC_SIGNING_IDENTITY:-}"
 NOTARY_PROFILE="${TOKENREMAIN_NOTARYTOOL_PROFILE:-}"
@@ -103,6 +104,9 @@ verify_app() {
   [[ "$(/usr/libexec/PlistBuddy -c 'Print :SURequireSignedFeed' "$app/Contents/Info.plist")" == "true" ]]
   [[ -d "$app/Contents/Frameworks/Sparkle.framework" ]]
   [[ -x "$app/Contents/Helpers/ccusage" ]]
+  /usr/bin/lipo "$app/Contents/MacOS/UsageDock" -verify_arch arm64 x86_64
+  /usr/bin/lipo "$app/Contents/Frameworks/Sparkle.framework/Versions/B/Sparkle" -verify_arch arm64 x86_64
+  /usr/bin/lipo "$app/Contents/Helpers/ccusage" -verify_arch arm64 x86_64
   /usr/bin/codesign --verify --strict "$app/Contents/Frameworks/Sparkle.framework"
   /usr/bin/codesign --verify --strict "$app/Contents/Helpers/ccusage"
   [[ "$("$app/Contents/Helpers/ccusage" --version)" == "ccusage $CCUSAGE_VERSION" ]]
@@ -176,7 +180,7 @@ build_notarized_dmg() {
   /usr/bin/ditto "$dmg_assets/DS_Store" "$staging_dir/.DS_Store"
   /usr/bin/ditto "$APP/Contents/Resources/TokenRemain.icns" "$staging_dir/.VolumeIcon.icns"
 
-  rm -f "$DMG"
+  rm -f "$DMG" "$VERSIONED_DMG"
   size_mb=$(( $(/usr/bin/du -sm "$staging_dir" | /usr/bin/awk '{print $1}') + 60 ))
   /usr/bin/hdiutil create \
     -volname "TokenRemain" \
@@ -205,10 +209,23 @@ build_notarized_dmg() {
   /usr/bin/xcrun stapler staple "$DMG"
   /usr/bin/xcrun stapler validate "$DMG"
   /usr/sbin/spctl --assess --type open --context context:primary-signature --verbose=4 "$DMG"
+  /bin/cp "$DMG" "$VERSIONED_DMG"
+  /usr/bin/cmp -s "$DMG" "$VERSIONED_DMG" || {
+    echo "Versioned DMG does not match the stable download artifact." >&2
+    exit 1
+  }
 }
 
 build_app() {
-  "$ROOT_DIR/script/verify_ccusage_freshness.sh"
+  local previous_ccusage_version="$CCUSAGE_VERSION"
+  "$ROOT_DIR/script/verify_ccusage_freshness.sh" --update
+  CCUSAGE_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :TokenRemainBundledCCUsageVersion' "$INFO_PLIST")"
+  if [[ "$CCUSAGE_VERSION" != "$previous_ccusage_version" ]]; then
+    echo "Bundled ccusage was updated from $previous_ccusage_version to $CCUSAGE_VERSION." >&2
+    echo "Commit and push the verified helper update before packaging the release, then rerun this command." >&2
+    exit 1
+  fi
+  "$ROOT_DIR/script/verify_bundled_ccusage_contract.sh"
   require_signing_inputs
   mkdir -p "$OUTPUT_DIR"
   USAGEDOCK_SYNC_RELEASE=1 \
@@ -255,6 +272,11 @@ case "$MODE" in
     /usr/bin/codesign --verify --strict "$DMG"
     /usr/bin/xcrun stapler validate "$DMG"
     /usr/sbin/spctl --assess --type open --context context:primary-signature --verbose=4 "$DMG"
+    [[ -s "$VERSIONED_DMG" ]]
+    /usr/bin/cmp -s "$DMG" "$VERSIONED_DMG"
+    /usr/bin/codesign --verify --strict "$VERSIONED_DMG"
+    /usr/bin/xcrun stapler validate "$VERSIONED_DMG"
+    /usr/sbin/spctl --assess --type open --context context:primary-signature --verbose=4 "$VERSIONED_DMG"
     echo "Developer ID release verification passed: $VERIFICATION_APP"
     ;;
   *)
