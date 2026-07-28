@@ -12,6 +12,7 @@ APP="$OUTPUT_DIR/TokenRemain.app"
 ZIP="$OUTPUT_DIR/TokenRemain-$VERSION-$BUILD-macOS.zip"
 APPCAST="$OUTPUT_DIR/appcast.xml"
 DMG="$OUTPUT_DIR/TokenRemain.dmg"
+VERSIONED_DMG="$OUTPUT_DIR/TokenRemain-$VERSION-$BUILD.dmg"
 PROFILE="${USAGEDOCK_SYNC_PROVISIONING_PROFILE:-}"
 IDENTITY="${USAGEDOCK_SYNC_SIGNING_IDENTITY:-}"
 NOTARY_PROFILE="${TOKENREMAIN_NOTARYTOOL_PROFILE:-}"
@@ -179,7 +180,7 @@ build_notarized_dmg() {
   /usr/bin/ditto "$dmg_assets/DS_Store" "$staging_dir/.DS_Store"
   /usr/bin/ditto "$APP/Contents/Resources/TokenRemain.icns" "$staging_dir/.VolumeIcon.icns"
 
-  rm -f "$DMG"
+  rm -f "$DMG" "$VERSIONED_DMG"
   size_mb=$(( $(/usr/bin/du -sm "$staging_dir" | /usr/bin/awk '{print $1}') + 60 ))
   /usr/bin/hdiutil create \
     -volname "TokenRemain" \
@@ -208,6 +209,11 @@ build_notarized_dmg() {
   /usr/bin/xcrun stapler staple "$DMG"
   /usr/bin/xcrun stapler validate "$DMG"
   /usr/sbin/spctl --assess --type open --context context:primary-signature --verbose=4 "$DMG"
+  /bin/cp "$DMG" "$VERSIONED_DMG"
+  /usr/bin/cmp -s "$DMG" "$VERSIONED_DMG" || {
+    echo "Versioned DMG does not match the stable download artifact." >&2
+    exit 1
+  }
 }
 
 build_app() {
@@ -266,6 +272,11 @@ case "$MODE" in
     /usr/bin/codesign --verify --strict "$DMG"
     /usr/bin/xcrun stapler validate "$DMG"
     /usr/sbin/spctl --assess --type open --context context:primary-signature --verbose=4 "$DMG"
+    [[ -s "$VERSIONED_DMG" ]]
+    /usr/bin/cmp -s "$DMG" "$VERSIONED_DMG"
+    /usr/bin/codesign --verify --strict "$VERSIONED_DMG"
+    /usr/bin/xcrun stapler validate "$VERSIONED_DMG"
+    /usr/sbin/spctl --assess --type open --context context:primary-signature --verbose=4 "$VERSIONED_DMG"
     echo "Developer ID release verification passed: $VERIFICATION_APP"
     ;;
   *)

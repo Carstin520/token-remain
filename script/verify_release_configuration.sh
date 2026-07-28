@@ -18,6 +18,8 @@ cd "$ROOT_DIR"
 
 /bin/bash -n script/build_and_run.sh
 /bin/bash -n script/package_developer_id_release.sh
+/usr/bin/grep -Fq 'TokenRemain-$VERSION-$BUILD.dmg' script/package_developer_id_release.sh
+/usr/bin/grep -Fq '/usr/bin/cmp -s "$DMG" "$VERSIONED_DMG"' script/package_developer_id_release.sh
 /bin/bash -n script/verify_automatic_update_contract.sh
 /bin/bash -n script/verify_installation_isolation.sh
 /bin/bash -n script/verify_bundled_ccusage_contract.sh

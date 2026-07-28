@@ -142,7 +142,7 @@ bash ./script/build_and_run.sh --verify
 
 - **版本**：`v1.1.11`（build 13）——Universal Mac 发布候选版。
 - **平台**：macOS 14 Sonoma 及以上，同时支持 Apple Silicon（arm64）与 Intel（x86_64）。
-- **分发**：公开 DMG 已 Developer ID 签名并经 Apple 公证，目前在 Mac App Store 之外分发。
+- **分发**：官网始终下载最新的 `TokenRemain.dmg`；GitHub Release 同时保留带版本与 build 号的 DMG 归档。
 - **成本口径**：成本为 API 标价估算，不等于订阅账单；凭证过期时数据会暂停并提示恢复方式。
 
 ---

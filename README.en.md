@@ -145,7 +145,7 @@ to their respective terms.
 
 - **Version** — `v1.1.11` (build 13), the Universal Mac release candidate.
 - **Platform** — macOS 14 Sonoma or later on Apple Silicon (arm64) and Intel (x86_64).
-- **Distribution** — The public DMG is Developer ID signed and Apple notarized, currently distributed outside the Mac App Store.
+- **Distribution** — The website always downloads the latest `TokenRemain.dmg`; each GitHub Release also retains a DMG named with its version and build.
 - **Cost figures** — Costs are API list-price estimates, not your subscription bill. When a credential expires, data pauses and the app explains how to restore it.
 
 ---

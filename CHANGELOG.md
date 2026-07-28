@@ -13,6 +13,8 @@ Versioning for public releases.
   the bundled helper can read local usage successfully.
 - Made release preflight and packaging update the bundled ccusage helper to the
   latest verified stable npm package before signing a new TokenRemain version.
+- Publish both the stable `TokenRemain.dmg` download name and a byte-identical
+  versioned DMG so each release remains directly identifiable and downloadable.
 
 ### Fixed
 
