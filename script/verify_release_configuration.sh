@@ -7,6 +7,7 @@ cd "$ROOT_DIR"
 ./script/verify_version_consistency.sh
 ./script/verify_automatic_update_contract.sh
 ./script/verify_installation_isolation.sh
+./script/verify_ccusage_freshness.sh --update
 ./script/verify_bundled_ccusage_contract.sh
 ./script/verify_ccusage_freshness.sh --local
 ./script/verify_keychain_read_contract.sh

@@ -501,10 +501,6 @@
 "service_status.description.major_outage" = "광범위한 장애가 대부분의 사용자 또는 핵심 기능에 영향을 주고 있습니다.";
 "service_status.description.maintenance" = "제공업체가 예정되었거나 긴급한 유지 보수를 진행 중이므로 사용이 제한될 수 있습니다.";
 "service_status.description.unknown" = "TokenRemain이 공식 서비스 상태를 확인하지 못했습니다. 서비스가 중단되었다는 뜻은 아닙니다.";
-"datasource.ccusage_checking" = "내장 ccusage %1$@ · 업데이트 확인 중";
-"datasource.ccusage_current" = "내장 ccusage %1$@ · 최신 버전";
-"datasource.ccusage_update_available" = "내장 버전은 %1$@이며 %2$@을 사용할 수 있습니다. 서명된 구성 요소를 갱신하려면 TokenRemain을 업데이트하세요.";
-"datasource.ccusage_check_failed" = "내장 ccusage %1$@ · 업데이트를 확인할 수 없어 나중에 자동 재시도합니다";
 "usage.price_unavailable" = "가격을 사용할 수 없음";
 "usage.unpriced_models_format" = "ccusage에 다음 모델의 가격이 없어 비용 합계를 숨겼습니다: %1$@";
 "usage.provider_price_unavailable_accessibility" = "%1$@, %2$@ tokens, 가격을 사용할 수 없음";

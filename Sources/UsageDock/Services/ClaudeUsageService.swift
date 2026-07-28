@@ -6,6 +6,7 @@ struct ClaudeUsageService {
     enum ServiceError: LocalizedError, Sendable {
         case cliNotFound
         case cliTimedOut
+        case credentialsUnavailable
         case cliLaunchFailed(String)
         case invalidUsageOutput
         case rateLimited(retryAfterSeconds: Int?)
@@ -16,6 +17,8 @@ struct ClaudeUsageService {
                 return L10n.text("service.claude.cli_not_found")
             case .cliTimedOut:
                 return L10n.text("service.claude.cli_timeout")
+            case .credentialsUnavailable:
+                return L10n.text("service.claude.credentials_unavailable")
             case .cliLaunchFailed(let detail):
                 return L10n.format("service.claude.probe_launch_failed", detail)
             case .invalidUsageOutput:
@@ -51,6 +54,15 @@ struct ClaudeUsageService {
             if case .rateLimited(let seconds) = error {
                 throw ServiceError.rateLimited(retryAfterSeconds: seconds)
             }
+            // Missing/expired credentials normally fall through to the PTY so
+            // Claude Code can refresh them. When Claude itself explicitly says
+            // it is logged out, however, the PTY can only sit on the login
+            // screen until our 30-second deadline. Surface the real recovery
+            // action immediately instead of misclassifying it as a timeout.
+            if case .credentialsUnavailable = error,
+               await ClaudeCLIUsageProbe.isExplicitlyLoggedOut() {
+                throw ServiceError.credentialsUnavailable
+            }
             logger.info("Claude API path unavailable (\(error.localizedDescription, privacy: .public)); falling back to PTY probe")
         } catch {
             // 网络层错误(离线、超时)同样交给 PTY 兜底。
@@ -58,6 +70,16 @@ struct ClaudeUsageService {
         }
         let output = try await ClaudeCLIUsageProbe.run()
         return try ClaudeCLIUsageParser.parse(output)
+    }
+}
+
+enum ClaudeCLIAuthStatusParser {
+    static func isExplicitlyLoggedOut(_ data: Data) -> Bool {
+        guard let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+              let loggedIn = object["loggedIn"] as? Bool else {
+            return false
+        }
+        return !loggedIn
     }
 }
 
@@ -242,6 +264,50 @@ enum ClaudeCLIUsageParser {
 }
 
 private enum ClaudeCLIUsageProbe {
+    static func isExplicitlyLoggedOut(timeout: TimeInterval = 2) async -> Bool {
+        await Task.detached(priority: .utility) {
+            guard let executable = claudeExecutable() else { return false }
+
+            let process = Process()
+            let stdout = Pipe()
+            let stderr = Pipe()
+            process.executableURL = executable
+            process.arguments = ["auth", "status", "--json"]
+            process.standardOutput = stdout
+            process.standardError = stderr
+
+            do {
+                try process.run()
+            } catch {
+                return false
+            }
+
+            let deadline = Date().addingTimeInterval(max(0.1, timeout))
+            while process.isRunning && Date() < deadline {
+                usleep(25_000)
+            }
+            guard !process.isRunning else {
+                process.terminate()
+                let terminationDeadline = Date().addingTimeInterval(0.1)
+                while process.isRunning && Date() < terminationDeadline {
+                    usleep(10_000)
+                }
+                if process.isRunning {
+                    _ = Darwin.kill(process.processIdentifier, SIGKILL)
+                }
+                return false
+            }
+
+            process.waitUntilExit()
+            let output = stdout.fileHandleForReading.readDataToEndOfFile()
+            if ClaudeCLIAuthStatusParser.isExplicitlyLoggedOut(output) {
+                return true
+            }
+            let errorOutput = stderr.fileHandleForReading.readDataToEndOfFile()
+            return ClaudeCLIAuthStatusParser.isExplicitlyLoggedOut(errorOutput)
+        }.value
+    }
+
     static func run(timeout: TimeInterval = 30) async throws -> Data {
         try await Task.detached(priority: .utility) {
             guard let executable = claudeExecutable() else {

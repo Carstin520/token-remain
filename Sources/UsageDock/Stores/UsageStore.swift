@@ -50,7 +50,6 @@ final class UsageStore: ObservableObject {
     /// coding-product component (currently Claude Code and Codex).
     @Published private(set) var serviceStatuses: [ProviderQuota.Provider: ProviderServiceStatus] = [:]
     @Published private(set) var localUsageStatus: LocalUsageStatus = .loading
-    @Published private(set) var ccusageUpdateStatus: CCUsageUpdateStatus
     @Published private(set) var isCCUsageRefreshing = false
     @Published private(set) var isRefreshing = false
     @Published private(set) var errorMessage: String?
@@ -59,9 +58,7 @@ final class UsageStore: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     private var refreshTask: Task<Void, Never>?
     private var historyRefreshTask: Task<Void, Never>?
-    private var ccusageUpdateTask: Task<Void, Never>?
     private var lastCCUsageRefresh: Date?
-    private var lastCCUsageUpdateAttempt: Date?
     private var lastClaudeAttempt: Date?
     private var lastCodexAPIAttempt: Date?
     private var lastServiceStatusAttempt: Date?
@@ -73,15 +70,9 @@ final class UsageStore: ObservableObject {
     private let quotaCache = QuotaCache()
     private let historyCache = DailyHistoryCache()
     private let quotaUsageHistoryCache = QuotaUsageHistoryCache()
-    private let ccusageUpdateChecker: CCUsageUpdateChecker
-    private let defaults: UserDefaults
     private let logger = Logger(subsystem: "com.jamesli.usagedock", category: "UsageRefresh")
     private let claudeRetryAfterKey = "claudeRetryAfter"
-    private let ccusageLatestVersionKey = "ccusageLatestVersion"
-    private let ccusageVersionCheckedAtKey = "ccusageVersionCheckedAt"
     private let serviceStatusRefreshInterval: TimeInterval = 300
-    private let ccusageUpdateCheckInterval: TimeInterval = 6 * 60 * 60
-    private let ccusageUpdateRetryInterval: TimeInterval = 30 * 60
     private var quotaErrorMessage: String?
     private var historyErrorMessage: String?
 
@@ -230,27 +221,8 @@ final class UsageStore: ObservableObject {
         self.init(tracked: TrackedProvidersStore.shared)
     }
 
-    init(
-        tracked: TrackedProvidersStore,
-        ccusageUpdateChecker: CCUsageUpdateChecker = CCUsageUpdateChecker(),
-        defaults: UserDefaults = .standard
-    ) {
+    init(tracked: TrackedProvidersStore) {
         self.tracked = tracked
-        self.ccusageUpdateChecker = ccusageUpdateChecker
-        self.defaults = defaults
-        let installedVersion = CCUsageUpdateChecker.bundledVersion() ?? "unknown"
-        if let latestVersion = defaults.string(forKey: ccusageLatestVersionKey),
-           let checkedAt = defaults.object(forKey: ccusageVersionCheckedAtKey) as? Date {
-            ccusageUpdateStatus = CCUsageUpdateChecker.isNewer(latestVersion, than: installedVersion)
-                ? .updateAvailable(
-                    installedVersion: installedVersion,
-                    latestVersion: latestVersion,
-                    checkedAt: checkedAt
-                )
-                : .current(installedVersion: installedVersion, checkedAt: checkedAt)
-        } else {
-            ccusageUpdateStatus = .checking(installedVersion: installedVersion)
-        }
         if let cached = quotaCache.load() {
             quotas = cached.byProvider
             // 升级兼容：旧版没有独立连接历史，已有成功快照就是最可靠的
@@ -500,7 +472,6 @@ final class UsageStore: ObservableObject {
     }
 
     private func scheduleCCUsageRefresh(force: Bool, now: Date = .now) {
-        scheduleCCUsageUpdateCheck(force: force, now: now)
         guard historyRefreshTask == nil else { return }
         guard AdaptiveRefreshPolicy.localUsageRefreshIsDue(
             lastRefresh: lastCCUsageRefresh,
@@ -529,48 +500,6 @@ final class UsageStore: ObservableObject {
                 if daily == nil {
                     localUsageStatus = .failed(error.localizedDescription)
                 }
-            }
-        }
-    }
-
-    private func scheduleCCUsageUpdateCheck(force: Bool, now: Date) {
-        guard ccusageUpdateTask == nil else { return }
-        let retryInterval = if case .checkFailed = ccusageUpdateStatus {
-            ccusageUpdateRetryInterval
-        } else {
-            ccusageUpdateCheckInterval
-        }
-        if !force,
-           let lastCCUsageUpdateAttempt,
-           now.timeIntervalSince(lastCCUsageUpdateAttempt) < retryInterval {
-            return
-        }
-
-        lastCCUsageUpdateAttempt = now
-        let installedVersion = ccusageUpdateStatus.installedVersion
-        ccusageUpdateStatus = .checking(installedVersion: installedVersion)
-        ccusageUpdateTask = Task { @MainActor [weak self] in
-            guard let self else { return }
-            defer { ccusageUpdateTask = nil }
-            do {
-                let check = try await ccusageUpdateChecker.check(
-                    installedVersion: installedVersion,
-                    now: now
-                )
-                defaults.set(check.latestVersion, forKey: ccusageLatestVersionKey)
-                defaults.set(check.checkedAt, forKey: ccusageVersionCheckedAtKey)
-                ccusageUpdateStatus = check.updateAvailable
-                    ? .updateAvailable(
-                        installedVersion: check.installedVersion,
-                        latestVersion: check.latestVersion,
-                        checkedAt: check.checkedAt
-                    )
-                    : .current(
-                        installedVersion: check.installedVersion,
-                        checkedAt: check.checkedAt
-                    )
-            } catch {
-                ccusageUpdateStatus = .checkFailed(installedVersion: installedVersion)
             }
         }
     }
