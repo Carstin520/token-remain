@@ -106,7 +106,6 @@ struct DevicesSection: View {
         case .needsSignedCapabilities: return L10n.text("sync.state.needs_capabilities")
         case .waitingForMacData: return L10n.text("sync.state.waiting_data")
         case .checkingICloud: return L10n.text("sync.state.checking_icloud")
-        case .anotherMacIsPrimary: return L10n.text("sync.state.other_mac_primary")
         case .uploading: return L10n.text("sync.state.uploading")
         case .synced: return L10n.text("sync.state.synced")
         case .failed: return L10n.text("sync.state.failed")
@@ -116,7 +115,7 @@ struct DevicesSection: View {
     private var syncStatusColor: Color {
         switch sync.state {
         case .synced: return DashboardTheme.success
-        case .failed, .needsSignedCapabilities, .anotherMacIsPrimary: return DashboardTheme.warning
+        case .failed, .needsSignedCapabilities: return DashboardTheme.warning
         default: return DashboardTheme.secondaryText
         }
     }

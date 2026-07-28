@@ -9,6 +9,7 @@ private let keyID = UUID(uuidString: "00000000-0000-4000-8000-000000000002")!
 private let containerID = "iCloud.com.jamesli.tokenremain"
 
 private func snapshot(
+    sourceInstanceID: UUID = sourceID,
     sequence: UInt64 = 1,
     generatedAt: Date = fixedNow,
     expiresAt: Date = fixedNow + 600,
@@ -18,7 +19,7 @@ private func snapshot(
     curatedFeed: SyncedCuratedFeed? = nil
 ) -> MobileUsageSnapshot {
     MobileUsageSnapshot(
-        sourceInstanceID: sourceID,
+        sourceInstanceID: sourceInstanceID,
         sequence: sequence,
         generatedAt: generatedAt,
         expiresAt: expiresAt,
@@ -417,44 +418,209 @@ struct SyncProtocolTests {
         #expect(received.providers.map(\.providerID) == [SyncedProviderID.claude])
     }
 
-    @Test("Replay helper accepts forward progress and rejects rollbacks")
-    func replayOrdering() throws {
-        var replay = SyncReplayGuard()
-        #expect(try replay.evaluate(snapshot(sequence: 2), configuration: fixedConfiguration) == .accepted)
-        #expect(try replay.evaluate(snapshot(sequence: 1), configuration: fixedConfiguration) == .replayedOlderSequence)
-        #expect(try replay.evaluate(snapshot(sequence: 2), configuration: fixedConfiguration) == .duplicate)
+    @Test("Per-source replay registry keeps independent Mac LWW state")
+    func perSourceReplayOrdering() throws {
+        let secondSource = UUID(uuidString: "00000000-0000-4000-8000-000000000003")!
+        var replay = SyncReplayRegistry()
 
-        let conflicting = snapshot(sequence: 2, generatedAt: fixedNow - 1, expiresAt: fixedNow + 600)
-        #expect(try replay.evaluate(conflicting, configuration: fixedConfiguration) == .conflictingSequence)
-
-        let newSource = MobileUsageSnapshot(
-            sourceInstanceID: UUID(uuidString: "00000000-0000-4000-8000-000000000003")!,
-            sequence: 1,
-            generatedAt: fixedNow,
-            expiresAt: fixedNow + 600,
-            providers: snapshot().providers
-        )
-        #expect(try replay.evaluate(newSource, configuration: fixedConfiguration) == .sourceChangeRequiresConfirmation)
-        let wrongConfirmation = SyncReplayMarker(
-            sourceInstanceID: UUID(),
-            sequence: newSource.sequence,
-            generatedAt: newSource.generatedAt
-        )
         #expect(try replay.evaluate(
-            newSource,
-            confirmedSourceChange: wrongConfirmation,
-            configuration: fixedConfiguration
-        ) == .sourceChangeRequiresConfirmation)
-        let exactConfirmation = SyncReplayMarker(
-            sourceInstanceID: newSource.sourceInstanceID,
-            sequence: newSource.sequence,
-            generatedAt: newSource.generatedAt
-        )
-        #expect(try replay.evaluate(
-            newSource,
-            confirmedSourceChange: exactConfirmation,
+            snapshot(sourceInstanceID: sourceID, sequence: 4),
             configuration: fixedConfiguration
         ) == .accepted)
+        #expect(try replay.evaluate(
+            snapshot(sourceInstanceID: secondSource, sequence: 1),
+            configuration: fixedConfiguration
+        ) == .accepted)
+        #expect(replay.count == 2)
+        #expect(replay.marker(for: sourceID)?.sequence == 4)
+        #expect(replay.marker(for: secondSource)?.sequence == 1)
+
+        #expect(try replay.evaluate(
+            snapshot(sourceInstanceID: sourceID, sequence: 3),
+            configuration: fixedConfiguration
+        ) == .replayedOlderSequence)
+        #expect(try replay.evaluate(
+            snapshot(sourceInstanceID: secondSource, sequence: 2),
+            configuration: fixedConfiguration
+        ) == .accepted)
+        #expect(replay.marker(for: sourceID)?.sequence == 4)
+        #expect(replay.marker(for: secondSource)?.sequence == 2)
+    }
+
+    @Test("Same source and sequence with altered payload is a conflict")
+    func replayPayloadConflict() throws {
+        var replay = SyncReplayRegistry()
+        let original = snapshot(sequence: 7)
+        let alteredProvider = SyncedProviderQuota(
+            providerID: SyncedProviderID.claude,
+            windows: [SyncedQuotaWindow(usedPercent: 91, windowMinutes: 300, resetsAt: fixedNow + 9_000)],
+            capturedAt: fixedNow,
+            statusCode: .available
+        )
+        let altered = snapshot(sequence: 7, providers: [alteredProvider])
+
+        #expect(try replay.evaluate(original, configuration: fixedConfiguration) == .accepted)
+        #expect(try replay.evaluate(original, configuration: fixedConfiguration) == .duplicate)
+        #expect(try replay.evaluate(altered, configuration: fixedConfiguration) == .conflictingSequence)
+    }
+
+    @Test("Per-source replay registry persists deterministic authenticated markers")
+    func replayRegistryPersistence() throws {
+        let secondSource = UUID(uuidString: "00000000-0000-4000-8000-000000000003")!
+        var replay = SyncReplayRegistry()
+        _ = try replay.evaluate(snapshot(sequence: 2), configuration: fixedConfiguration)
+        _ = try replay.evaluate(
+            snapshot(sourceInstanceID: secondSource, sequence: 9),
+            configuration: fixedConfiguration
+        )
+
+        let data = try JSONEncoder().encode(replay)
+        let decoded = try JSONDecoder().decode(SyncReplayRegistry.self, from: data)
+
+        #expect(decoded == replay)
+        #expect(decoded.markers.allSatisfy { $0.payloadDigest?.count == 64 })
+    }
+
+    @Test("Legacy replay markers decode without a payload digest")
+    func legacyReplayMarkerCompatibility() throws {
+        struct LegacyReplayMarker: Codable {
+            let sourceInstanceID: UUID
+            let sequence: UInt64
+            let generatedAt: Date
+        }
+
+        let data = try JSONEncoder().encode(LegacyReplayMarker(
+            sourceInstanceID: sourceID,
+            sequence: 5,
+            generatedAt: fixedNow
+        ))
+        let marker = try JSONDecoder().decode(SyncReplayMarker.self, from: data)
+        var replay = try SyncReplayRegistry(validating: [marker])
+
+        #expect(marker.payloadDigest == nil)
+        #expect(try replay.evaluate(
+            snapshot(sequence: 5),
+            configuration: fixedConfiguration
+        ) == .duplicate)
+        #expect(try replay.evaluate(
+            snapshot(sequence: 6),
+            configuration: fixedConfiguration
+        ) == .accepted)
+        #expect(replay.marker(for: sourceID)?.payloadDigest?.count == 64)
+    }
+
+    @Test("Per-source replay registry enforces its device budget")
+    func replayRegistrySourceLimit() throws {
+        let markers = (0..<SyncReplayRegistry.maximumSourceCount).map { index in
+            SyncReplayMarker(
+                sourceInstanceID: UUID(uuidString: String(
+                    format: "00000000-0000-4000-8000-%012x",
+                    index + 1
+                ))!,
+                sequence: 1,
+                generatedAt: fixedNow
+            )
+        }
+        var replay = try SyncReplayRegistry(validating: markers)
+        let overflowSource = UUID(uuidString: "00000000-0000-4000-8000-000000000099")!
+
+        #expect(throws: SyncReplayRegistryError.tooManySources) {
+            try replay.evaluate(
+                snapshot(sourceInstanceID: overflowSource),
+                configuration: fixedConfiguration
+            )
+        }
+    }
+
+    @Test("Multi-Mac aggregation selects fresh quotas and sums opt-in daily usage")
+    func multiMacAggregation() throws {
+        let secondSource = UUID(uuidString: "00000000-0000-4000-8000-000000000003")!
+        let firstHistory = SyncedDailyUsageHistory(
+            days: [SyncedDailyUsageDay(
+                day: "2026-07-21",
+                claudeTokens: 10,
+                claudeCost: 1.5,
+                codexTokens: 20,
+                codexCost: 2.5
+            )],
+            capturedAt: fixedNow
+        )
+        let secondHistory = SyncedDailyUsageHistory(
+            days: [SyncedDailyUsageDay(
+                day: "2026-07-21",
+                claudeTokens: 30,
+                claudeCost: 3.5,
+                codexTokens: 40,
+                codexCost: 4.5
+            )],
+            capturedAt: fixedNow + 1
+        )
+        let staleClaude = SyncedProviderQuota(
+            providerID: SyncedProviderID.claude,
+            windows: [SyncedQuotaWindow(usedPercent: 20, windowMinutes: 300, resetsAt: nil)],
+            capturedAt: fixedNow - 60,
+            statusCode: .available
+        )
+        let freshClaude = SyncedProviderQuota(
+            providerID: SyncedProviderID.claude,
+            windows: [SyncedQuotaWindow(usedPercent: 75, windowMinutes: 300, resetsAt: nil)],
+            capturedAt: fixedNow,
+            statusCode: .available
+        )
+        let codex = SyncedProviderQuota(
+            providerID: SyncedProviderID.codex,
+            windows: [SyncedQuotaWindow(usedPercent: 35, windowMinutes: 10_080, resetsAt: nil)],
+            capturedAt: fixedNow,
+            statusCode: .available
+        )
+
+        let aggregated = try MobileUsageSnapshotAggregator.aggregate([
+            snapshot(providers: [staleClaude], dailyUsageHistory: firstHistory),
+            snapshot(
+                sourceInstanceID: secondSource,
+                sequence: 2,
+                generatedAt: fixedNow + 1,
+                expiresAt: fixedNow + 300,
+                providers: [freshClaude, codex],
+                dailyUsageHistory: secondHistory
+            ),
+        ], now: fixedNow)
+        let aggregate = try #require(aggregated)
+
+        #expect(aggregate.sourceInstanceID == MobileUsageSnapshotAggregator.aggregateSourceInstanceID)
+        #expect(aggregate.generatedAt == fixedNow)
+        #expect(aggregate.expiresAt == fixedNow + 300)
+        #expect(aggregate.providers.map(\.providerID) == [SyncedProviderID.claude, SyncedProviderID.codex])
+        #expect(aggregate.providers[0].windows[0].usedPercent == 75)
+        let day = try #require(aggregate.dailyUsageHistory?.days.first)
+        #expect(day.claudeTokens == 40)
+        #expect(day.claudeCost == 5)
+        #expect(day.codexTokens == 60)
+        #expect(day.codexCost == 7)
+    }
+
+    @Test("Multi-Mac aggregation rejects duplicate source identities")
+    func multiMacAggregationRejectsDuplicateSources() {
+        #expect(throws: MobileUsageAggregationError.duplicateSource) {
+            try MobileUsageSnapshotAggregator.aggregate(
+                [snapshot(sequence: 1), snapshot(sequence: 2)],
+                now: fixedNow
+            )
+        }
+    }
+
+    @Test("Multi-Mac aggregation enforces its authenticated source budget")
+    func multiMacAggregationRejectsTooManySources() {
+        let sources = (0...SyncReplayRegistry.maximumSourceCount).map { index in
+            snapshot(sourceInstanceID: UUID(uuidString: String(
+                format: "00000000-0000-4000-8000-%012x",
+                index + 1
+            ))!)
+        }
+
+        #expect(throws: MobileUsageAggregationError.tooManySources) {
+            try MobileUsageSnapshotAggregator.aggregate(sources, now: fixedNow)
+        }
     }
 
     @Test("Credential canaries never enter the DTO JSON or encrypted payload plaintext")

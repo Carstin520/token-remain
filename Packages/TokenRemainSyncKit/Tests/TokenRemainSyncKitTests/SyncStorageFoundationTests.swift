@@ -1,3 +1,4 @@
+@preconcurrency import CloudKit
 import Foundation
 import Testing
 @testable import TokenRemainSyncKit
@@ -8,9 +9,14 @@ private let storageSourceID = UUID(uuidString: "10000000-0000-4000-8000-00000000
 private let storageKeyID = UUID(uuidString: "10000000-0000-4000-8000-000000000002")!
 private let storageContainerID = "iCloud.com.jamesli.tokenremain"
 
-private func storageEnvelope(sequence: UInt64 = 1) throws -> EncryptedSyncEnvelope {
+private struct StorageResultError: Error {}
+
+private func storageEnvelope(
+    sourceInstanceID: UUID = storageSourceID,
+    sequence: UInt64 = 1
+) throws -> EncryptedSyncEnvelope {
     let snapshot = MobileUsageSnapshot(
-        sourceInstanceID: storageSourceID,
+        sourceInstanceID: sourceInstanceID,
         sequence: sequence,
         generatedAt: storageNow,
         expiresAt: storageNow + 15 * 60,
@@ -29,6 +35,26 @@ private func storageEnvelope(sequence: UInt64 = 1) throws -> EncryptedSyncEnvelo
         keyID: storageKeyID,
         containerID: storageContainerID,
         configuration: storageConfiguration
+    )
+}
+
+private func storageStoredEnvelope(
+    sourceInstanceID: UUID = storageSourceID,
+    sequence: UInt64
+) throws -> SyncCloudStoredEnvelope {
+    let envelope = try storageEnvelope(
+        sourceInstanceID: sourceInstanceID,
+        sequence: sequence
+    )
+    return SyncCloudStoredEnvelope(
+        envelope: envelope,
+        metadata: SyncCloudRecordMetadata(
+            envelopeVersion: envelope.envelopeVersion,
+            keyID: envelope.keyID,
+            sourceInstanceID: envelope.sourceInstanceID,
+            sequence: envelope.sequence,
+            generatedAt: envelope.generatedAt
+        )
     )
 }
 
@@ -145,6 +171,106 @@ struct SyncStorageFoundationTests {
         #expect(try CloudKitSyncRecordCodec.storedEnvelope(from: fetchedRecord).envelope == second)
     }
 
+    @Test("Each Mac source uses one canonical record ID in the existing zone and type")
+    func sourceRecordRoundTrip() throws {
+        let envelope = try storageEnvelope(sequence: 7)
+        let record = try CloudKitSyncRecordCodec.sourceRecord(for: envelope)
+
+        #expect(record.recordType == CloudKitSyncRecordCodec.recordType)
+        #expect(record.recordID == CloudKitSyncRecordCodec.sourceRecordID(for: storageSourceID))
+        #expect(record.recordID.recordName == "source-v2-\(storageSourceID.uuidString.lowercased())")
+        #expect(try CloudKitSyncRecordCodec.recordKind(for: record.recordID) == .source(storageSourceID))
+        #expect(try CloudKitSyncRecordCodec.storedEnvelope(from: record).envelope == envelope)
+
+        let otherSource = UUID(uuidString: "10000000-0000-4000-8000-000000000003")!
+        let mismatchedRecord = CKRecord(
+            recordType: CloudKitSyncRecordCodec.recordType,
+            recordID: CloudKitSyncRecordCodec.sourceRecordID(for: otherSource)
+        )
+        #expect(throws: SyncCloudRecordValidationError.metadataMismatch(
+            CloudKitSyncRecordCodec.sourceInstanceIDField
+        )) {
+            try CloudKitSyncRecordCodec.overwrite(mismatchedRecord, with: envelope)
+        }
+    }
+
+    @Test("Source record names fail closed when the device ID is malformed or noncanonical")
+    func sourceRecordNameValidation() throws {
+        let zoneID = CloudKitSyncRecordCodec.zoneID()
+        let futureRecord = CKRecord.ID(recordName: "future-v3", zoneID: zoneID)
+        #expect(try CloudKitSyncRecordCodec.recordKind(for: futureRecord) == nil)
+
+        let malformed = CKRecord.ID(
+            recordName: "\(CloudKitSyncRecordCodec.sourceRecordPrefix)not-a-uuid",
+            zoneID: zoneID
+        )
+        #expect(throws: SyncCloudRecordValidationError.unexpectedRecordID) {
+            try CloudKitSyncRecordCodec.recordKind(for: malformed)
+        }
+
+        let mixedCaseSource = UUID(uuidString: "ABCDEFAB-CDEF-4ABC-8DEF-ABCDEFABCDEF")!
+        let uppercase = CKRecord.ID(
+            recordName: "\(CloudKitSyncRecordCodec.sourceRecordPrefix)\(mixedCaseSource.uuidString)",
+            zoneID: zoneID
+        )
+        #expect(throws: SyncCloudRecordValidationError.unexpectedRecordID) {
+            try CloudKitSyncRecordCodec.recordKind(for: uppercase)
+        }
+
+        let foreignOwner = CKRecord.ID(
+            recordName: CloudKitSyncRecordCodec.sourceRecordName(for: storageSourceID),
+            zoneID: CKRecordZone.ID(
+                zoneName: CloudKitSyncRecordCodec.zoneName,
+                ownerName: "foreign-owner"
+            )
+        )
+        #expect(throws: SyncCloudRecordValidationError.unexpectedRecordID) {
+            try CloudKitSyncRecordCodec.recordKind(for: foreignOwner)
+        }
+    }
+
+    @Test("Same-source upsert accepts only monotonic sequence progress")
+    func sourceUpsertSequencePolicy() throws {
+        let first = try storageEnvelope(sequence: 4)
+        let next = try storageEnvelope(sequence: 5)
+        let older = try storageEnvelope(sequence: 3)
+        let resealedSameSequence = try storageEnvelope(sequence: 4)
+        let otherSource = try storageEnvelope(sourceInstanceID: UUID(), sequence: 5)
+
+        #expect(SyncCloudSourceUpsertPolicy.decision(existing: nil, candidate: first) == .create)
+        #expect(SyncCloudSourceUpsertPolicy.decision(existing: first, candidate: first) == .duplicate)
+        #expect(SyncCloudSourceUpsertPolicy.decision(existing: first, candidate: next) == .overwrite)
+        #expect(SyncCloudSourceUpsertPolicy.decision(existing: first, candidate: older) == .rejectConflict)
+        #expect(SyncCloudSourceUpsertPolicy.decision(
+            existing: first,
+            candidate: resealedSameSequence
+        ) == .rejectConflict)
+        #expect(SyncCloudSourceUpsertPolicy.decision(
+            existing: first,
+            candidate: otherSource
+        ) == .rejectConflict)
+    }
+
+    @Test("Incremental source changes isolate rejected records and preserve tombstones")
+    func sourceChangeReduction() throws {
+        let otherSource = UUID(uuidString: "10000000-0000-4000-8000-000000000003")!
+        var reducer = SyncCloudSourceChangeReducer()
+
+        reducer.recordChange(try storageStoredEnvelope(sequence: 4))
+        reducer.recordChange(try storageStoredEnvelope(sequence: 5))
+        reducer.recordChange(try storageStoredEnvelope(sequence: 3))
+        reducer.recordChange(try storageStoredEnvelope(sourceInstanceID: otherSource, sequence: 1))
+        reducer.recordDeletion(otherSource)
+        reducer.recordRejection("source-v2-not-a-uuid")
+
+        #expect(reducer.changedSources.map(\.envelope.sequence) == [5])
+        #expect(reducer.deletedSourceInstanceIDs == [otherSource])
+        #expect(reducer.rejectedRecordNames == [
+            CloudKitSyncRecordCodec.sourceRecordName(for: storageSourceID),
+            "source-v2-not-a-uuid",
+        ])
+    }
+
     @Test("Missing, oversized, and inconsistent CloudKit fields are rejected before decryption")
     func recordValidationFailures() throws {
         let envelope = try storageEnvelope()
@@ -177,6 +303,62 @@ struct SyncStorageFoundationTests {
         #expect(CloudKitPrivateSnapshotStore.map(code: .requestRateLimited, retryAfterSeconds: 12) == .requestRateLimited(retryAfterSeconds: 12))
         #expect(CloudKitPrivateSnapshotStore.map(code: .serverRecordChanged) == .conflict)
         #expect(CloudKitPrivateSnapshotStore.map(code: .unknownItem) == .recordNotFound)
+        #expect(CloudKitPrivateSnapshotStore.map(code: .changeTokenExpired) == .changeTokenExpired)
+        #expect(CloudKitPrivateSnapshotStore.map(code: .userDeletedZone) == .zoneNotFound)
+        #expect(CloudKitPrivateSnapshotStore.map(code: .zoneBusy) == .requestRateLimited(retryAfterSeconds: nil))
+        #expect(CloudKitPrivateSnapshotStore.map(code: .serverResponseLost) == .serviceUnavailable)
+    }
+
+    @Test("CloudKit zone mutations require a successful per-zone result")
+    func zoneMutationResultValidation() throws {
+        let zoneID = CloudKitSyncRecordCodec.zoneID()
+        let zone = CKRecordZone(zoneID: zoneID)
+        #expect(throws: Never.self) {
+            try CloudKitPrivateSnapshotStore.validateZoneSaveResult(
+                .success(zone),
+                zoneID: zoneID
+            )
+        }
+        #expect(throws: SyncCloudStoreError.unknown) {
+            try CloudKitPrivateSnapshotStore.validateZoneSaveResult(nil, zoneID: zoneID)
+        }
+        #expect(throws: SyncCloudStoreError.unknown) {
+            try CloudKitPrivateSnapshotStore.validateZoneSaveResult(
+                .failure(StorageResultError()),
+                zoneID: zoneID
+            )
+        }
+        #expect(throws: Never.self) {
+            try CloudKitPrivateSnapshotStore.validateZoneDeleteResult(.success(()))
+        }
+        #expect(throws: SyncCloudStoreError.unknown) {
+            try CloudKitPrivateSnapshotStore.validateZoneDeleteResult(nil)
+        }
+        #expect(throws: SyncCloudStoreError.unknown) {
+            try CloudKitPrivateSnapshotStore.validateZoneDeleteResult(
+                .failure(StorageResultError())
+            )
+        }
+    }
+
+    @Test("Persisted CloudKit change tokens have strict local size and decode bounds")
+    func changeTokenValidation() throws {
+        #expect(throws: SyncCloudStoreError.invalidChangeToken) {
+            try SyncCloudChangeToken(encodedValue: Data())
+        }
+        #expect(throws: SyncCloudStoreError.invalidChangeToken) {
+            try SyncCloudChangeToken(encodedValue: Data(
+                repeating: 0,
+                count: SyncCloudChangeToken.maximumEncodedBytes + 1
+            ))
+        }
+
+        let malformed = try SyncCloudChangeToken(encodedValue: Data([1, 2, 3]))
+        let encoded = try JSONEncoder().encode(malformed)
+        #expect(try JSONDecoder().decode(SyncCloudChangeToken.self, from: encoded) == malformed)
+        #expect(throws: SyncCloudStoreError.invalidChangeToken) {
+            try malformed.serverToken()
+        }
     }
 
     @Test("A stale CloudKit change tag is refetched exactly once")

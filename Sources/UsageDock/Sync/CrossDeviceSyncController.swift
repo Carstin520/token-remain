@@ -25,7 +25,6 @@ final class CrossDeviceSyncController: ObservableObject {
         case needsSignedCapabilities
         case waitingForMacData
         case checkingICloud
-        case anotherMacIsPrimary
         case uploading
         case synced(Date)
         case failed(Failure)
@@ -65,7 +64,6 @@ final class CrossDeviceSyncController: ObservableObject {
 
     private enum DefaultsKey {
         static let enabled = "crossDeviceSync.enabled"
-        static let sourceInstanceID = "crossDeviceSync.sourceInstanceID"
         static let sequence = "crossDeviceSync.sequence"
         static let lastFingerprint = "crossDeviceSync.lastFingerprint"
         static let lastUploadedAt = "crossDeviceSync.lastUploadedAt"
@@ -73,6 +71,7 @@ final class CrossDeviceSyncController: ObservableObject {
     }
 
     private let defaults: UserDefaults
+    private let sourceIdentityStore: SourceIdentityStore
     private let logger = Logger(subsystem: "com.jamesli.usagedock", category: "PrivateSync")
     private var latestQuotas: [ProviderQuota.Provider: ProviderQuota] = [:]
     private var latestHistory: DailyUsageHistory?
@@ -85,14 +84,17 @@ final class CrossDeviceSyncController: ObservableObject {
     private var forceHeartbeatRequested = false
     private var heartbeatTask: Task<Void, Never>?
     private var retryAttempt = 0
-    private var allowsSourceTakeoverOnce = false
     private weak var usageStore: UsageStore?
     private var currentGuidanceIssue: Guidance?
     private var guidanceIssueBeganAt: Date?
     private var dismissedGuidanceIssue: Guidance?
 
-    init(defaults: UserDefaults = .standard) {
+    init(
+        defaults: UserDefaults = .standard,
+        sourceIdentityStore: SourceIdentityStore? = nil
+    ) {
         self.defaults = defaults
+        self.sourceIdentityStore = sourceIdentityStore ?? SourceIdentityStore(defaults: defaults)
         // Fresh installs participate automatically. Once the user turns sync
         // off, the explicit stored false remains authoritative.
         let enabled = (defaults.object(forKey: DefaultsKey.enabled) as? Bool) ?? true
@@ -188,12 +190,6 @@ final class CrossDeviceSyncController: ObservableObject {
         }
     }
 
-    func takeOverAsPrimaryMac() {
-        guard isEnabled else { return }
-        allowsSourceTakeoverOnce = true
-        scheduleUpload(after: 0, forceHeartbeat: true)
-    }
-
     /// Deletes only the app's fixed private CloudKit zone and dedicated sync
     /// key service. Provider credentials and ordinary local quota caches are
     /// outside both stores and cannot be removed by this operation.
@@ -202,12 +198,15 @@ final class CrossDeviceSyncController: ObservableObject {
             state = .needsSignedCapabilities
             return
         }
+        isEnabled = false
         uploadTask?.cancel()
+        uploadTask = nil
         publishTask?.cancel()
+        publishTask = nil
         publishRequested = false
         forceHeartbeatRequested = false
         heartbeatTask?.cancel()
-        isEnabled = false
+        heartbeatTask = nil
         usageStore?.setLowLatencySyncEnabled(false)
         defaults.set(false, forKey: DefaultsKey.enabled)
         do {
@@ -215,7 +214,7 @@ final class CrossDeviceSyncController: ObservableObject {
             let keys = SynchronizableSyncKeyStore(accessGroup: Self.keychainAccessGroup)
             try await cloud.deleteZone()
             try await keys.deleteAll()
-            defaults.removeObject(forKey: DefaultsKey.sourceInstanceID)
+            try sourceIdentityStore.delete()
             defaults.removeObject(forKey: DefaultsKey.sequence)
             defaults.removeObject(forKey: DefaultsKey.lastFingerprint)
             defaults.removeObject(forKey: DefaultsKey.lastUploadedAt)
@@ -294,7 +293,7 @@ final class CrossDeviceSyncController: ObservableObject {
                 throw SyncCloudStoreError.accountUnavailable
             }
             iCloudAvailable = true
-            let localSourceID = sourceInstanceID()
+            let localSourceID = try sourceIdentityStore.loadOrCreate()
             let keys = SynchronizableSyncKeyStore(accessGroup: Self.keychainAccessGroup)
             let keyRecord = try await keys.loadOrCreate()
             syncKeyAvailable = true
@@ -311,7 +310,34 @@ final class CrossDeviceSyncController: ObservableObject {
                 history: latestHistory,
                 includesUsageHistory: syncUsageHistoryEnabled
             )
+            let existingSource = try await cloud.fetchSource(
+                sourceInstanceID: localSourceID
+            )
+            let authenticatedRemoteSequence: UInt64?
+            if let existingSource {
+                // The per-source record name and clear header are lookup hints,
+                // not trust boundaries. Authenticate the encrypted payload
+                // before using its sequence as the local monotonic floor. This
+                // intentionally accepts an expired *own* payload: its quota is
+                // never displayed here, but its authenticated sequence must not
+                // be rolled back after a reinstall or long offline interval.
+                let authenticatedSourceID = try await MacSyncRemoteSourceAuthenticator.sourceInstanceID(
+                    from: existingSource,
+                    keyStore: keys,
+                    containerIdentifier: Self.cloudContainerIdentifier,
+                    now: existingSource.envelope.generatedAt
+                )
+                guard authenticatedSourceID == localSourceID else {
+                    throw SyncCloudStoreError.malformedRecord(
+                        .metadataMismatch(CloudKitSyncRecordCodec.sourceInstanceIDField)
+                    )
+                }
+                authenticatedRemoteSequence = existingSource.envelope.sequence
+            } else {
+                authenticatedRemoteSequence = nil
+            }
             if !forceHeartbeat,
+               existingSource != nil,
                fingerprint == defaults.string(forKey: DefaultsKey.lastFingerprint),
                let lastUploadedAt,
                checkedAt.timeIntervalSince(lastUploadedAt) < 15 * 60 {
@@ -319,30 +345,9 @@ final class CrossDeviceSyncController: ObservableObject {
                 return
             }
 
-            let existing = try await cloud.fetch()
-            if let existing,
-               existing.envelope.sourceInstanceID != localSourceID,
-               !allowsSourceTakeoverOnce {
-                // The CloudKit record header is cleartext operational metadata.
-                // Authenticate the envelope before trusting it to arbitrate the
-                // primary Mac; a forged header must never block this publisher.
-                let authenticatedSourceID = try await MacSyncRemoteSourceAuthenticator.sourceInstanceID(
-                    from: existing,
-                    keyStore: keys,
-                    containerIdentifier: Self.cloudContainerIdentifier,
-                    now: Date()
-                )
-                if authenticatedSourceID != localSourceID {
-                    state = .anotherMacIsPrimary
-                    return
-                }
-            }
             guard isEnabled, !Task.isCancelled else { return }
             state = .uploading
-            let remoteSequence = existing?.envelope.sourceInstanceID == localSourceID
-                ? existing?.envelope.sequence
-                : nil
-            guard let sequence = nextSequence(after: remoteSequence) else {
+            guard let sequence = nextSequence(after: authenticatedRemoteSequence) else {
                 throw SyncValidationError.invalidSequence
             }
             let preparedAt = Date()
@@ -361,16 +366,22 @@ final class CrossDeviceSyncController: ObservableObject {
                 containerID: Self.cloudContainerIdentifier,
                 configuration: .current(now: preparedAt)
             )
-            try await cloud.save(envelope)
+            try await cloud.saveSource(envelope)
+            await publishLegacyCompatibilityEnvelope(
+                envelope,
+                cloud: cloud,
+                keyStore: keys,
+                localSourceID: localSourceID,
+                now: checkedAt
+            )
             let uploadedAt = Date()
 
             retryAttempt = 0
-            allowsSourceTakeoverOnce = false
             defaults.set(fingerprint, forKey: DefaultsKey.lastFingerprint)
             defaults.set(uploadedAt, forKey: DefaultsKey.lastUploadedAt)
             lastUploadedAt = uploadedAt
             state = .synced(uploadedAt)
-            logger.info("Private sync upload succeeded; sequence \(sequence, privacy: .public)")
+            logger.info("Private sync source upload succeeded; sequence \(sequence, privacy: .public)")
         } catch {
             guard isEnabled, !Task.isCancelled else { return }
             let failure = Self.failure(for: error)
@@ -387,6 +398,57 @@ final class CrossDeviceSyncController: ObservableObject {
             retryAttempt = min(retryAttempt + 1, 8)
             let delay = min(pow(2, Double(retryAttempt)), 300)
             scheduleUpload(after: delay, forceHeartbeat: forceHeartbeat)
+        }
+    }
+
+    /// `current-v1` remains a best-effort bridge for pre-v1.2 iPhone builds.
+    /// A foreign authenticated owner keeps that record; every Mac still writes
+    /// its independent source record and is never blocked by the legacy bridge.
+    private func publishLegacyCompatibilityEnvelope(
+        _ envelope: EncryptedSyncEnvelope,
+        cloud: CloudKitPrivateSnapshotStore,
+        keyStore: any SyncKeyStoring,
+        localSourceID: UUID,
+        now: Date
+    ) async {
+        do {
+            let existing = try await cloud.fetch()
+            let authenticatedOwner: UUID?
+            let currentRecordIsExpired: Bool
+            if let existing {
+                do {
+                    authenticatedOwner = try await MacSyncRemoteSourceAuthenticator.sourceInstanceID(
+                        from: existing,
+                        keyStore: keyStore,
+                        containerIdentifier: Self.cloudContainerIdentifier,
+                        now: now
+                    )
+                    currentRecordIsExpired = false
+                } catch SyncValidationError.snapshotExpired {
+                    // AES-GCM authentication completed before freshness
+                    // validation. An expired compatibility snapshot must not
+                    // reserve current-v1 forever, so a live source may replace it.
+                    authenticatedOwner = nil
+                    currentRecordIsExpired = true
+                }
+            } else {
+                authenticatedOwner = nil
+                currentRecordIsExpired = false
+            }
+            guard LegacyCompatibilityWritePolicy.shouldWrite(
+                localSourceID: localSourceID,
+                currentRecordExists: existing != nil,
+                authenticatedOwner: authenticatedOwner,
+                currentRecordIsExpired: currentRecordIsExpired
+            ) else {
+                return
+            }
+            try await cloud.save(envelope)
+        } catch {
+            // The v1.2 source record is already durable. Keep this compatibility
+            // failure separate so a malformed/stale legacy record cannot make
+            // the multi-source publisher report a false total failure.
+            logger.error("Legacy sync compatibility write skipped: \(Self.errorCode(error), privacy: .public)")
         }
     }
 
@@ -437,16 +499,6 @@ final class CrossDeviceSyncController: ObservableObject {
         guidance = nil
     }
 
-    private func sourceInstanceID() -> UUID {
-        if let value = defaults.string(forKey: DefaultsKey.sourceInstanceID),
-           let identifier = UUID(uuidString: value) {
-            return identifier
-        }
-        let identifier = UUID()
-        defaults.set(identifier.uuidString.lowercased(), forKey: DefaultsKey.sourceInstanceID)
-        return identifier
-    }
-
     private func updatePreview() {
         previewProviders = MobileSnapshotRedactor.publishedProviders.compactMap { provider in
             guard let quota = latestQuotas[provider] else { return nil }
@@ -466,12 +518,22 @@ final class CrossDeviceSyncController: ObservableObject {
     }
 
     private func nextSequence(after remoteSequence: UInt64?) -> UInt64? {
-        let current = UInt64(max(0, defaults.integer(forKey: DefaultsKey.sequence)))
+        let current: UInt64
+        switch defaults.object(forKey: DefaultsKey.sequence) {
+        case let stored as String:
+            current = UInt64(stored) ?? 0
+        case let legacy as NSNumber:
+            current = legacy.int64Value > 0 ? UInt64(legacy.int64Value) : 0
+        default:
+            current = 0
+        }
         guard let next = SyncSequencePolicy.next(
             localSequence: current,
             remoteSequence: remoteSequence
         ) else { return nil }
-        defaults.set(Int(clamping: next), forKey: DefaultsKey.sequence)
+        // UserDefaults integer APIs are signed. Persist the full UInt64 domain
+        // as decimal text so an extreme sequence cannot silently clamp.
+        defaults.set(String(next), forKey: DefaultsKey.sequence)
         return next
     }
 
@@ -492,11 +554,17 @@ final class CrossDeviceSyncController: ObservableObject {
             switch cloud {
             case .accountUnavailable, .notAuthenticated, .permissionDenied: return .iCloudUnavailable
             case .networkUnavailable: return .networkUnavailable
-            case .serviceUnavailable, .requestRateLimited, .conflict: return .serviceUnavailable
+            case .serviceUnavailable, .requestRateLimited, .conflict,
+                 .changeTokenExpired, .invalidChangeToken:
+                return .serviceUnavailable
             case .recordNotFound, .zoneNotFound, .malformedRecord, .unknown: return .unknown
             }
         }
-        if error is SyncKeyStoreError { return .keychainUnavailable }
+        if error is SyncKeyStoreError ||
+            error is KeychainSecretStore.StoreError ||
+            error is SourceIdentityStoreError {
+            return .keychainUnavailable
+        }
         if error is SyncProtocolError || error is SyncValidationError { return .encryptionFailed }
         return .unknown
     }
@@ -504,6 +572,9 @@ final class CrossDeviceSyncController: ObservableObject {
     private static func errorCode(_ error: Error) -> String {
         if let cloud = error as? SyncCloudStoreError { return "cloud:\(String(describing: cloud))" }
         if let keychain = error as? SyncKeyStoreError { return "keychain:\(String(describing: keychain))" }
+        if error is KeychainSecretStore.StoreError || error is SourceIdentityStoreError {
+            return "source_identity"
+        }
         if error is SyncProtocolError { return "protocol" }
         if error is SyncValidationError { return "validation" }
         return "unknown"
@@ -515,6 +586,20 @@ enum SyncSequencePolicy {
         let floor = max(localSequence, remoteSequence ?? 0)
         guard floor < UInt64.max else { return nil }
         return floor + 1
+    }
+}
+
+enum LegacyCompatibilityWritePolicy {
+    static func shouldWrite(
+        localSourceID: UUID,
+        currentRecordExists: Bool,
+        authenticatedOwner: UUID?,
+        currentRecordIsExpired: Bool
+    ) -> Bool {
+        guard currentRecordExists else { return true }
+        if currentRecordIsExpired { return true }
+        guard let authenticatedOwner else { return false }
+        return authenticatedOwner == localSourceID
     }
 }
 

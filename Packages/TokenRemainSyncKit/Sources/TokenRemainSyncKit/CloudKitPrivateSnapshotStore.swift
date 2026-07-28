@@ -40,10 +40,17 @@ public enum SyncCloudStoreError: Error, Sendable, Equatable {
     case serviceUnavailable
     case requestRateLimited(retryAfterSeconds: Double?)
     case conflict
+    case changeTokenExpired
+    case invalidChangeToken
     case recordNotFound
     case zoneNotFound
     case malformedRecord(SyncCloudRecordValidationError)
     case unknown
+}
+
+public enum SyncCloudRecordKind: Sendable, Equatable {
+    case legacyCurrent
+    case source(UUID)
 }
 
 public enum SyncCloudRecordValidationError: Error, Sendable, Equatable {
@@ -85,6 +92,91 @@ public struct SyncCloudStoredEnvelope: Sendable, Equatable {
     }
 }
 
+/// Opaque, locally persisted cursor for incremental custom-zone changes.
+/// Clients must not inspect or derive ordering from its contents.
+public struct SyncCloudChangeToken: Codable, Sendable, Equatable {
+    public static let maximumEncodedBytes = 64 * 1_024
+
+    public let encodedValue: Data
+
+    public init(encodedValue: Data) throws {
+        guard !encodedValue.isEmpty,
+              encodedValue.count <= Self.maximumEncodedBytes else {
+            throw SyncCloudStoreError.invalidChangeToken
+        }
+        self.encodedValue = encodedValue
+    }
+
+    init(serverToken: CKServerChangeToken) throws {
+        let data = try NSKeyedArchiver.archivedData(
+            withRootObject: serverToken,
+            requiringSecureCoding: true
+        )
+        try self.init(encodedValue: data)
+    }
+
+    func serverToken() throws -> CKServerChangeToken {
+        do {
+            guard let token = try NSKeyedUnarchiver.unarchivedObject(
+                ofClass: CKServerChangeToken.self,
+                from: encodedValue
+            ) else {
+                throw SyncCloudStoreError.invalidChangeToken
+            }
+            return token
+        } catch let error as SyncCloudStoreError {
+            throw error
+        } catch {
+            throw SyncCloudStoreError.invalidChangeToken
+        }
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case encodedValue
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let data = try container.decode(Data.self, forKey: .encodedValue)
+        do {
+            try self.init(encodedValue: data)
+        } catch {
+            throw DecodingError.dataCorruptedError(
+                forKey: .encodedValue,
+                in: container,
+                debugDescription: "Invalid CloudKit change token"
+            )
+        }
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(encodedValue, forKey: .encodedValue)
+    }
+}
+
+public struct SyncCloudSourceChangeBatch: Sendable, Equatable {
+    public let changedSources: [SyncCloudStoredEnvelope]
+    public let deletedSourceInstanceIDs: [UUID]
+    /// Record names skipped because their source-v2 identity or payload was
+    /// malformed. The zone token still advances so one permanently bad record
+    /// cannot poison every subsequent incremental fetch.
+    public let rejectedRecordNames: [String]
+    public let nextChangeToken: SyncCloudChangeToken
+
+    public init(
+        changedSources: [SyncCloudStoredEnvelope],
+        deletedSourceInstanceIDs: [UUID],
+        rejectedRecordNames: [String] = [],
+        nextChangeToken: SyncCloudChangeToken
+    ) {
+        self.changedSources = changedSources
+        self.deletedSourceInstanceIDs = deletedSourceInstanceIDs
+        self.rejectedRecordNames = rejectedRecordNames
+        self.nextChangeToken = nextChangeToken
+    }
+}
+
 /// Fixed, opaque record codec for the private CloudKit database. Keeping this
 /// as pure record conversion lets the suite verify field allowlisting without
 /// making a network or iCloud Keychain request.
@@ -92,6 +184,7 @@ public enum CloudKitSyncRecordCodec {
     public static let zoneName = "TokenRemainSync-v1"
     public static let recordType = "TRCurrentSnapshot"
     public static let currentRecordName = "current-v1"
+    public static let sourceRecordPrefix = "source-v2-"
 
     public static let encryptedEnvelopeField = "encryptedEnvelope"
     public static let envelopeVersionField = "envelopeVersion"
@@ -108,9 +201,57 @@ public enum CloudKitSyncRecordCodec {
         CKRecord.ID(recordName: currentRecordName, zoneID: zoneID())
     }
 
+    public static func sourceRecordName(for sourceInstanceID: UUID) -> String {
+        sourceRecordPrefix + sourceInstanceID.uuidString.lowercased()
+    }
+
+    public static func sourceRecordID(for sourceInstanceID: UUID) -> CKRecord.ID {
+        CKRecord.ID(
+            recordName: sourceRecordName(for: sourceInstanceID),
+            zoneID: zoneID()
+        )
+    }
+
+    /// Returns nil for future/unknown records in the app-owned zone so newer
+    /// record families can coexist. A malformed `source-v2-` name fails closed.
+    public static func recordKind(for recordID: CKRecord.ID) throws -> SyncCloudRecordKind? {
+        guard recordID.zoneID.zoneName == zoneName,
+              recordID.zoneID.ownerName == CKCurrentUserDefaultName else {
+            throw SyncCloudRecordValidationError.unexpectedRecordID
+        }
+        if recordID.recordName == currentRecordName {
+            return .legacyCurrent
+        }
+        guard recordID.recordName.hasPrefix(sourceRecordPrefix) else {
+            return nil
+        }
+        let suffix = String(recordID.recordName.dropFirst(sourceRecordPrefix.count))
+        guard let sourceInstanceID = UUID(uuidString: suffix),
+              sourceInstanceID != syncCloudStoreZeroUUID,
+              recordID.recordName == sourceRecordName(for: sourceInstanceID) else {
+            throw SyncCloudRecordValidationError.unexpectedRecordID
+        }
+        return .source(sourceInstanceID)
+    }
+
     public static func record(for envelope: EncryptedSyncEnvelope) throws -> CKRecord {
+        try record(for: envelope, recordID: currentRecordID())
+    }
+
+    public static func sourceRecord(for envelope: EncryptedSyncEnvelope) throws -> CKRecord {
+        try record(
+            for: envelope,
+            recordID: sourceRecordID(for: envelope.sourceInstanceID)
+        )
+    }
+
+    private static func record(
+        for envelope: EncryptedSyncEnvelope,
+        recordID: CKRecord.ID
+    ) throws -> CKRecord {
         let encodedEnvelope = try envelope.encoded()
-        let record = CKRecord(recordType: recordType, recordID: currentRecordID())
+        let record = CKRecord(recordType: recordType, recordID: recordID)
+        try validate(recordID: recordID, for: envelope)
         applyAllowlistedFields(to: record, encodedEnvelope: encodedEnvelope, envelope: envelope)
         return record
     }
@@ -124,9 +265,7 @@ public enum CloudKitSyncRecordCodec {
         guard record.recordType == recordType else {
             throw SyncCloudRecordValidationError.unexpectedRecordType
         }
-        guard record.recordID == currentRecordID() else {
-            throw SyncCloudRecordValidationError.unexpectedRecordID
-        }
+        try validate(recordID: record.recordID, for: envelope)
         let encodedEnvelope = try envelope.encoded()
         let encryptedKeys = Set(record.encryptedValues.allKeys())
         for key in record.allKeys() where !encryptedKeys.contains(key) {
@@ -170,9 +309,7 @@ public enum CloudKitSyncRecordCodec {
         guard record.recordType == recordType else {
             throw SyncCloudRecordValidationError.unexpectedRecordType
         }
-        guard record.recordID.recordName == currentRecordName,
-              record.recordID.zoneID.zoneName == zoneName,
-              record.recordID.zoneID.ownerName == CKCurrentUserDefaultName else {
+        guard let kind = try recordKind(for: record.recordID) else {
             throw SyncCloudRecordValidationError.unexpectedRecordID
         }
 
@@ -192,6 +329,10 @@ public enum CloudKitSyncRecordCodec {
             throw SyncCloudRecordValidationError.metadataMismatch(keyIDField)
         }
         guard metadata.sourceInstanceID == envelope.sourceInstanceID else {
+            throw SyncCloudRecordValidationError.metadataMismatch(sourceInstanceIDField)
+        }
+        if case .source(let recordSourceInstanceID) = kind,
+           recordSourceInstanceID != envelope.sourceInstanceID {
             throw SyncCloudRecordValidationError.metadataMismatch(sourceInstanceIDField)
         }
         guard metadata.sequence == envelope.sequence else {
@@ -290,11 +431,45 @@ public enum CloudKitSyncRecordCodec {
         try SyncTimestamp.milliseconds(lhs, field: .generatedAt) ==
             SyncTimestamp.milliseconds(rhs, field: .generatedAt)
     }
+
+    private static func validate(
+        recordID: CKRecord.ID,
+        for envelope: EncryptedSyncEnvelope
+    ) throws {
+        guard let kind = try recordKind(for: recordID) else {
+            throw SyncCloudRecordValidationError.unexpectedRecordID
+        }
+        if case .source(let sourceInstanceID) = kind,
+           sourceInstanceID != envelope.sourceInstanceID {
+            throw SyncCloudRecordValidationError.metadataMismatch(sourceInstanceIDField)
+        }
+    }
 }
 
-/// Transport boundary for a user's CloudKit private database. This store owns
-/// one custom zone and one fixed record; it never queries arbitrary records or
-/// stores a plaintext DTO.
+enum SyncCloudSourceUpsertDecision: Sendable, Equatable {
+    case create
+    case overwrite
+    case duplicate
+    case rejectConflict
+}
+
+enum SyncCloudSourceUpsertPolicy {
+    static func decision(
+        existing: EncryptedSyncEnvelope?,
+        candidate: EncryptedSyncEnvelope
+    ) -> SyncCloudSourceUpsertDecision {
+        guard let existing else { return .create }
+        guard existing.sourceInstanceID == candidate.sourceInstanceID else {
+            return .rejectConflict
+        }
+        if candidate.sequence > existing.sequence { return .overwrite }
+        if candidate.sequence < existing.sequence { return .rejectConflict }
+        return candidate == existing ? .duplicate : .rejectConflict
+    }
+}
+
+/// Legacy transport boundary retained while v1.1 clients still read the fixed
+/// `current-v1` compatibility record.
 public protocol SyncCloudSnapshotStoring: Sendable {
     func accountStatus() async throws -> SyncCloudAccountStatus
     func ensureZone() async throws
@@ -305,7 +480,18 @@ public protocol SyncCloudSnapshotStoring: Sendable {
     func ensureSubscription() async throws
 }
 
-public actor CloudKitPrivateSnapshotStore: SyncCloudSnapshotStoring {
+/// v1.2 per-Mac transport. Source records share the existing record type and
+/// encrypted field allowlist, but use one deterministic record ID per source.
+public protocol SyncCloudSourceStoring: SyncCloudSnapshotStoring {
+    func saveSource(_ envelope: EncryptedSyncEnvelope) async throws
+    func fetchSource(sourceInstanceID: UUID) async throws -> SyncCloudStoredEnvelope?
+    func deleteSource(sourceInstanceID: UUID) async throws
+    func fetchSourceChanges(
+        since changeToken: SyncCloudChangeToken?
+    ) async throws -> SyncCloudSourceChangeBatch
+}
+
+public actor CloudKitPrivateSnapshotStore: SyncCloudSourceStoring {
     public static let subscriptionID = "TokenRemainSync-current-v1"
     public static let maximumConflictSaveAttempts = 2
 
@@ -332,18 +518,51 @@ public actor CloudKitPrivateSnapshotStore: SyncCloudSnapshotStoring {
 
     public func ensureZone() async throws {
         do {
-            let zone = CKRecordZone(zoneID: CloudKitSyncRecordCodec.zoneID())
-            _ = try await database.modifyRecordZones(saving: [zone], deleting: [])
+            let zoneID = CloudKitSyncRecordCodec.zoneID()
+            let zone = CKRecordZone(zoneID: zoneID)
+            let results = try await database.modifyRecordZones(
+                saving: [zone],
+                deleting: []
+            )
+            try Self.validateZoneSaveResult(results.saveResults[zoneID], zoneID: zoneID)
+        } catch let mapped as SyncCloudStoreError {
+            throw mapped
         } catch {
             throw Self.map(error)
         }
     }
 
     public func save(_ envelope: EncryptedSyncEnvelope) async throws {
+        try await save(
+            envelope,
+            recordID: CloudKitSyncRecordCodec.currentRecordID(),
+            enforcesSourceSequence: false
+        )
+    }
+
+    public func saveSource(_ envelope: EncryptedSyncEnvelope) async throws {
+        try await save(
+            envelope,
+            recordID: CloudKitSyncRecordCodec.sourceRecordID(
+                for: envelope.sourceInstanceID
+            ),
+            enforcesSourceSequence: true
+        )
+    }
+
+    private func save(
+        _ envelope: EncryptedSyncEnvelope,
+        recordID: CKRecord.ID,
+        enforcesSourceSequence: Bool
+    ) async throws {
         try await ensureZone()
         for attempt in 0..<Self.maximumConflictSaveAttempts {
             do {
-                try await saveOnce(envelope)
+                try await saveOnce(
+                    envelope,
+                    recordID: recordID,
+                    enforcesSourceSequence: enforcesSourceSequence
+                )
                 return
             } catch let error as SyncCloudStoreError {
                 guard Self.shouldRetrySave(error, afterAttempt: attempt) else {
@@ -353,12 +572,30 @@ public actor CloudKitPrivateSnapshotStore: SyncCloudSnapshotStoring {
         }
     }
 
-    /// Refetches the fixed record for every attempt so a CloudKit
+    /// Refetches the target record for every attempt so a CloudKit
     /// `serverRecordChanged` response is retried with the newest change tag.
-    private func saveOnce(_ envelope: EncryptedSyncEnvelope) async throws {
+    private func saveOnce(
+        _ envelope: EncryptedSyncEnvelope,
+        recordID: CKRecord.ID,
+        enforcesSourceSequence: Bool
+    ) async throws {
         var record: CKRecord
         do {
-            record = try await database.record(for: CloudKitSyncRecordCodec.currentRecordID())
+            record = try await database.record(for: recordID)
+            if enforcesSourceSequence {
+                let stored = try CloudKitSyncRecordCodec.storedEnvelope(from: record)
+                switch SyncCloudSourceUpsertPolicy.decision(
+                    existing: stored.envelope,
+                    candidate: envelope
+                ) {
+                case .duplicate:
+                    return
+                case .overwrite:
+                    break
+                case .create, .rejectConflict:
+                    throw SyncCloudStoreError.conflict
+                }
+            }
             try CloudKitSyncRecordCodec.overwrite(record, with: envelope)
         } catch let error as SyncCloudRecordValidationError {
             throw SyncCloudStoreError.malformedRecord(error)
@@ -368,7 +605,9 @@ public actor CloudKitPrivateSnapshotStore: SyncCloudSnapshotStoring {
             switch Self.map(error) {
             case .recordNotFound:
                 do {
-                    record = try CloudKitSyncRecordCodec.record(for: envelope)
+                    record = enforcesSourceSequence
+                        ? try CloudKitSyncRecordCodec.sourceRecord(for: envelope)
+                        : try CloudKitSyncRecordCodec.record(for: envelope)
                 } catch {
                     throw SyncCloudStoreError.malformedRecord(.invalidEnvelope)
                 }
@@ -388,9 +627,21 @@ public actor CloudKitPrivateSnapshotStore: SyncCloudSnapshotStoring {
     }
 
     public func fetch() async throws -> SyncCloudStoredEnvelope? {
+        try await fetch(recordID: CloudKitSyncRecordCodec.currentRecordID())
+    }
+
+    public func fetchSource(
+        sourceInstanceID: UUID
+    ) async throws -> SyncCloudStoredEnvelope? {
+        try await fetch(
+            recordID: CloudKitSyncRecordCodec.sourceRecordID(for: sourceInstanceID)
+        )
+    }
+
+    private func fetch(recordID: CKRecord.ID) async throws -> SyncCloudStoredEnvelope? {
         do {
             try await ensureZone()
-            let record = try await database.record(for: CloudKitSyncRecordCodec.currentRecordID())
+            let record = try await database.record(for: recordID)
             do {
                 return try CloudKitSyncRecordCodec.storedEnvelope(from: record)
             } catch let validationError as SyncCloudRecordValidationError {
@@ -409,8 +660,18 @@ public actor CloudKitPrivateSnapshotStore: SyncCloudSnapshotStoring {
     }
 
     public func deleteCurrent() async throws {
+        try await delete(recordID: CloudKitSyncRecordCodec.currentRecordID())
+    }
+
+    public func deleteSource(sourceInstanceID: UUID) async throws {
+        try await delete(
+            recordID: CloudKitSyncRecordCodec.sourceRecordID(for: sourceInstanceID)
+        )
+    }
+
+    private func delete(recordID: CKRecord.ID) async throws {
         do {
-            _ = try await database.deleteRecord(withID: CloudKitSyncRecordCodec.currentRecordID())
+            _ = try await database.deleteRecord(withID: recordID)
         } catch {
             switch Self.map(error) {
             case .recordNotFound, .zoneNotFound:
@@ -421,12 +682,107 @@ public actor CloudKitPrivateSnapshotStore: SyncCloudSnapshotStoring {
         }
     }
 
+    public func fetchSourceChanges(
+        since changeToken: SyncCloudChangeToken?
+    ) async throws -> SyncCloudSourceChangeBatch {
+        try await ensureZone()
+        let previousServerChangeToken = try changeToken?.serverToken()
+        let zoneID = CloudKitSyncRecordCodec.zoneID()
+        let configuration = CKFetchRecordZoneChangesOperation.ZoneConfiguration(
+            previousServerChangeToken: previousServerChangeToken,
+            desiredKeys: [
+                CloudKitSyncRecordCodec.encryptedEnvelopeField,
+                CloudKitSyncRecordCodec.envelopeVersionField,
+                CloudKitSyncRecordCodec.keyIDField,
+                CloudKitSyncRecordCodec.sourceInstanceIDField,
+                CloudKitSyncRecordCodec.sequenceField,
+                CloudKitSyncRecordCodec.generatedAtField,
+            ]
+        )
+        let operation = CKFetchRecordZoneChangesOperation(
+            recordZoneIDs: [zoneID],
+            configurationsByRecordZoneID: [zoneID: configuration]
+        )
+        operation.fetchAllChanges = true
+        operation.qualityOfService = .utility
+        let accumulator = SyncCloudZoneChangeAccumulator()
+
+        return try await withCheckedThrowingContinuation { continuation in
+            operation.recordWasChangedBlock = { recordID, result in
+                do {
+                    guard let kind = try CloudKitSyncRecordCodec.recordKind(for: recordID),
+                          case .source = kind else {
+                        return
+                    }
+                    let record = try result.get()
+                    guard record.recordID == recordID else {
+                        throw SyncCloudRecordValidationError.unexpectedRecordID
+                    }
+                    let stored = try CloudKitSyncRecordCodec.storedEnvelope(from: record)
+                    accumulator.recordChange(stored)
+                } catch is SyncCloudRecordValidationError {
+                    accumulator.recordRejection(recordID.recordName)
+                } catch {
+                    accumulator.recordFailure(Self.map(error))
+                }
+            }
+            operation.recordWithIDWasDeletedBlock = { recordID, _ in
+                do {
+                    guard let kind = try CloudKitSyncRecordCodec.recordKind(for: recordID),
+                          case .source(let sourceInstanceID) = kind else {
+                        return
+                    }
+                    accumulator.recordDeletion(sourceInstanceID)
+                } catch is SyncCloudRecordValidationError {
+                    accumulator.recordRejection(recordID.recordName)
+                } catch {
+                    accumulator.recordFailure(Self.map(error))
+                }
+            }
+            operation.recordZoneFetchResultBlock = { fetchedZoneID, result in
+                guard fetchedZoneID == zoneID else {
+                    accumulator.recordFailure(.zoneNotFound)
+                    return
+                }
+                switch result {
+                case .success(let response):
+                    accumulator.recordServerToken(response.serverChangeToken)
+                case .failure(let error):
+                    accumulator.recordFailure(Self.map(error))
+                }
+            }
+            operation.fetchRecordZoneChangesResultBlock = { result in
+                if case .failure(let error) = result {
+                    accumulator.recordFailure(Self.map(error))
+                }
+                do {
+                    continuation.resume(returning: try accumulator.finalBatch())
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+            database.add(operation)
+        }
+    }
+
     public func deleteZone() async throws {
         do {
-            _ = try await database.modifyRecordZones(saving: [], deleting: [CloudKitSyncRecordCodec.zoneID()])
+            let zoneID = CloudKitSyncRecordCodec.zoneID()
+            let results = try await database.modifyRecordZones(
+                saving: [],
+                deleting: [zoneID]
+            )
+            try Self.validateZoneDeleteResult(results.deleteResults[zoneID])
+        } catch let mapped as SyncCloudStoreError {
+            switch mapped {
+            case .zoneNotFound, .recordNotFound:
+                return
+            case let other:
+                throw other
+            }
         } catch {
             switch Self.map(error) {
-            case .zoneNotFound:
+            case .zoneNotFound, .recordNotFound:
                 return
             case let mapped:
                 throw mapped
@@ -434,9 +790,9 @@ public actor CloudKitPrivateSnapshotStore: SyncCloudSnapshotStoring {
         }
     }
 
-    /// Installs one custom-zone silent-push subscription. The receiving app
-    /// treats the notification as a hint and always refetches/decrypts the fixed
-    /// record, so notification payloads never contain quota data.
+    /// Installs one custom-zone silent-push subscription. Receivers treat the
+    /// notification as a hint and refetch authenticated zone records (legacy
+    /// clients still refetch current-v1), so payloads never contain quota data.
     public func ensureSubscription() async throws {
         try await ensureZone()
         do {
@@ -481,17 +837,154 @@ public actor CloudKitPrivateSnapshotStore: SyncCloudSnapshotStoring {
             return .networkUnavailable
         case .serviceUnavailable:
             return .serviceUnavailable
-        case .requestRateLimited:
+        case .accountTemporarilyUnavailable, .serverResponseLost:
+            return .serviceUnavailable
+        case .requestRateLimited, .zoneBusy, .limitExceeded:
             return .requestRateLimited(retryAfterSeconds: retryAfterSeconds)
         case .serverRecordChanged, .batchRequestFailed:
             return .conflict
+        case .changeTokenExpired:
+            return .changeTokenExpired
         case .unknownItem:
             return .recordNotFound
         case .zoneNotFound:
             return .zoneNotFound
+        case .userDeletedZone:
+            return .zoneNotFound
         default:
             return .unknown
         }
+    }
+
+    static func validateZoneSaveResult(
+        _ result: Result<CKRecordZone, any Error>?,
+        zoneID: CKRecordZone.ID
+    ) throws {
+        guard let result else { throw SyncCloudStoreError.unknown }
+        do {
+            let savedZone = try result.get()
+            guard savedZone.zoneID == zoneID else {
+                throw SyncCloudStoreError.unknown
+            }
+        } catch let mapped as SyncCloudStoreError {
+            throw mapped
+        } catch {
+            throw map(error)
+        }
+    }
+
+    static func validateZoneDeleteResult(
+        _ result: Result<Void, any Error>?
+    ) throws {
+        guard let result else { throw SyncCloudStoreError.unknown }
+        do {
+            try result.get()
+        } catch {
+            throw map(error)
+        }
+    }
+}
+
+struct SyncCloudSourceChangeReducer: Sendable {
+    private var changes: [UUID: SyncCloudStoredEnvelope] = [:]
+    private var deletions: Set<UUID> = []
+    private var rejections: Set<String> = []
+
+    mutating func recordChange(_ stored: SyncCloudStoredEnvelope) {
+        let sourceInstanceID = stored.envelope.sourceInstanceID
+        if let existing = changes[sourceInstanceID] {
+            switch SyncCloudSourceUpsertPolicy.decision(
+                existing: existing.envelope,
+                candidate: stored.envelope
+            ) {
+            case .overwrite:
+                changes[sourceInstanceID] = stored
+            case .duplicate:
+                break
+            case .create, .rejectConflict:
+                recordRejection(
+                    CloudKitSyncRecordCodec.sourceRecordName(for: sourceInstanceID)
+                )
+            }
+        } else {
+            changes[sourceInstanceID] = stored
+        }
+        deletions.remove(sourceInstanceID)
+    }
+
+    mutating func recordDeletion(_ sourceInstanceID: UUID) {
+        changes.removeValue(forKey: sourceInstanceID)
+        deletions.insert(sourceInstanceID)
+    }
+
+    mutating func recordRejection(_ recordName: String) {
+        rejections.insert(recordName)
+    }
+
+    var changedSources: [SyncCloudStoredEnvelope] {
+        changes.values.sorted {
+            $0.envelope.sourceInstanceID.uuidString <
+                $1.envelope.sourceInstanceID.uuidString
+        }
+    }
+
+    var deletedSourceInstanceIDs: [UUID] {
+        deletions.sorted { $0.uuidString < $1.uuidString }
+    }
+
+    var rejectedRecordNames: [String] {
+        rejections.sorted()
+    }
+}
+
+private final class SyncCloudZoneChangeAccumulator: @unchecked Sendable {
+    private let lock = NSLock()
+    private var reducer = SyncCloudSourceChangeReducer()
+    private var serverToken: CKServerChangeToken?
+    private var failure: SyncCloudStoreError?
+
+    func recordChange(_ stored: SyncCloudStoredEnvelope) {
+        lock.lock()
+        defer { lock.unlock() }
+        reducer.recordChange(stored)
+    }
+
+    func recordDeletion(_ sourceInstanceID: UUID) {
+        lock.lock()
+        defer { lock.unlock() }
+        reducer.recordDeletion(sourceInstanceID)
+    }
+
+    func recordRejection(_ recordName: String) {
+        lock.lock()
+        defer { lock.unlock() }
+        reducer.recordRejection(recordName)
+    }
+
+    func recordServerToken(_ token: CKServerChangeToken) {
+        lock.lock()
+        defer { lock.unlock() }
+        serverToken = token
+    }
+
+    func recordFailure(_ error: SyncCloudStoreError) {
+        lock.lock()
+        defer { lock.unlock() }
+        failure = failure ?? error
+    }
+
+    func finalBatch() throws -> SyncCloudSourceChangeBatch {
+        lock.lock()
+        defer { lock.unlock() }
+        if let failure { throw failure }
+        guard let serverToken else { throw SyncCloudStoreError.invalidChangeToken }
+        let token = try SyncCloudChangeToken(serverToken: serverToken)
+        return SyncCloudSourceChangeBatch(
+            changedSources: reducer.changedSources,
+            deletedSourceInstanceIDs: reducer.deletedSourceInstanceIDs,
+            rejectedRecordNames: reducer.rejectedRecordNames,
+            nextChangeToken: token
+        )
     }
 }
 

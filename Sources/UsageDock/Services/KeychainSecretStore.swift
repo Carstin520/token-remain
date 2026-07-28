@@ -2,6 +2,20 @@ import Foundation
 import Security
 
 struct KeychainSecretStore: Sendable {
+    enum Accessibility: Sendable {
+        case afterFirstUnlock
+        case afterFirstUnlockThisDeviceOnly
+
+        var securityValue: CFString {
+            switch self {
+            case .afterFirstUnlock:
+                kSecAttrAccessibleAfterFirstUnlock
+            case .afterFirstUnlockThisDeviceOnly:
+                kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+            }
+        }
+    }
+
     enum StoreError: LocalizedError {
         case invalidData
         case unexpectedStatus(OSStatus)
@@ -19,6 +33,17 @@ struct KeychainSecretStore: Sendable {
 
     let service: String
     let account: String
+    let accessibility: Accessibility
+
+    init(
+        service: String,
+        account: String,
+        accessibility: Accessibility = .afterFirstUnlock
+    ) {
+        self.service = service
+        self.account = account
+        self.accessibility = accessibility
+    }
 
     /// 读取走统一入口。这些条目是 app 自己写的、ACL 天然信任自己,但"几乎不会
     /// 需要交互"不等于"不会阻塞",没有理由留一条能吊住调用方的裸读取。
@@ -41,14 +66,12 @@ struct KeychainSecretStore: Sendable {
     }
 
     func save(_ value: String) throws {
-        let data = Data(value.utf8)
-        let attributes = [kSecValueData as String: data]
+        let attributes = valueAttributes(value)
         let updateStatus = SecItemUpdate(baseQuery as CFDictionary, attributes as CFDictionary)
 
         if updateStatus == errSecItemNotFound {
             var query = baseQuery
-            query[kSecValueData as String] = data
-            query[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
+            query.merge(attributes) { _, new in new }
             let addStatus = SecItemAdd(query as CFDictionary, nil)
             guard addStatus == errSecSuccess else {
                 throw StoreError.unexpectedStatus(addStatus)
@@ -65,11 +88,24 @@ struct KeychainSecretStore: Sendable {
         }
     }
 
-    private var baseQuery: [String: Any] {
+    var baseQuery: [String: Any] {
         [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecAttrAccount as String: account
+            kSecAttrAccount as String: account,
+            // This store never reads or mutates a synchronizable item. The
+            // explicit selector prevents a pre-existing synced item with the
+            // same service/account from weakening a ThisDeviceOnly caller.
+            kSecAttrSynchronizable as String: false,
+        ]
+    }
+
+    func valueAttributes(_ value: String) -> [String: Any] {
+        [
+            kSecValueData as String: Data(value.utf8),
+            // Reassert the requested protection class on updates as well as
+            // creation; otherwise SecItemUpdate would retain an older class.
+            kSecAttrAccessible as String: accessibility.securityValue,
         ]
     }
 }

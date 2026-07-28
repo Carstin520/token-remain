@@ -133,6 +133,45 @@ struct MobileSnapshotRedactorTests {
         }
     }
 
+    @Test("Daily history day keys are canonical UTC across the local midnight boundary")
+    func dailyHistoryUsesUTCDayKeys() throws {
+        let utcMidnight = Date(timeIntervalSince1970: 1_784_764_800)
+        let now = utcMidnight.addingTimeInterval(30 * 60)
+        let history = DailyUsageHistory(
+            days: [
+                DailyUsageHistory.Day(
+                    date: utcMidnight.addingTimeInterval(-30 * 60),
+                    claudeTokens: 1,
+                    claudeCost: 0,
+                    codexTokens: 0,
+                    codexCost: 0
+                ),
+                DailyUsageHistory.Day(
+                    date: now,
+                    claudeTokens: 2,
+                    claudeCost: 0,
+                    codexTokens: 0,
+                    codexCost: 0
+                )
+            ],
+            capturedAt: now
+        )
+
+        let snapshot = MobileSnapshotRedactor.makeSnapshot(
+            from: [:],
+            history: history,
+            includesUsageHistory: true,
+            sourceInstanceID: UUID(),
+            sequence: 1,
+            generatedAt: now
+        )
+
+        #expect(try #require(snapshot.dailyUsageHistory).days.map(\.day) == [
+            "2026-07-22",
+            "2026-07-23"
+        ])
+    }
+
     @Test("Every macOS provider has a well-formed stable wire identifier")
     func stableProviderIdentifiers() {
         let identifiers = ProviderQuota.Provider.displayOrder.map(MobileSnapshotRedactor.stableID)
@@ -166,8 +205,8 @@ struct MobileSnapshotRedactorTests {
         }
     }
 
-    @Test("A foreign primary-Mac header is trusted only after authentication")
-    func authenticatesRemotePrimarySource() async throws {
+    @Test("A remote source header is trusted only after envelope authentication")
+    func authenticatesRemoteSource() async throws {
         let now = Date(timeIntervalSince1970: 1_784_764_800)
         let key = try SyncKeyRecord(keyID: UUID(), key: .random())
         let sourceID = UUID()

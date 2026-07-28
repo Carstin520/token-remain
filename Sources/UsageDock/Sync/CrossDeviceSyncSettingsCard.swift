@@ -102,11 +102,7 @@ struct CrossDeviceSyncSettingsCard: View {
                 Divider().overlay(DashboardTheme.border)
 
                 HStack(spacing: 10) {
-                    if sync.state == .anotherMacIsPrimary {
-                        Button(L10n.text("sync.action.use_this_mac"), role: .destructive) {
-                            sync.takeOverAsPrimaryMac()
-                        }
-                    } else if case .failed = sync.state {
+                    if case .failed = sync.state {
                         Button(L10n.text("sync.action.recheck")) { sync.checkNow() }
                             .disabled(!sync.isEnabled)
                     }
@@ -147,7 +143,6 @@ struct CrossDeviceSyncSettingsCard: View {
         case .needsSignedCapabilities: return L10n.text("sync.status.needs_capabilities")
         case .waitingForMacData: return L10n.text("sync.status.waiting_for_mac_data")
         case .checkingICloud: return L10n.text("sync.status.checking_icloud")
-        case .anotherMacIsPrimary: return L10n.text("sync.status.another_mac_primary")
         case .uploading: return L10n.text("sync.status.uploading")
         case .synced(let date):
             return L10n.format("sync.last_synced", date.formatted(date: .omitted, time: .shortened))
@@ -159,7 +154,6 @@ struct CrossDeviceSyncSettingsCard: View {
         switch sync.state {
         case .synced: "checkmark.shield.fill"
         case .uploading, .checkingICloud: "arrow.triangle.2.circlepath.icloud"
-        case .anotherMacIsPrimary: "desktopcomputer.trianglebadge.exclamationmark"
         case .failed, .needsSignedCapabilities: "exclamationmark.triangle.fill"
         case .off, .waitingForMacData: "lock.icloud"
         }
@@ -168,7 +162,7 @@ struct CrossDeviceSyncSettingsCard: View {
     private var statusColor: Color {
         switch sync.state {
         case .synced: DashboardTheme.success
-        case .failed, .needsSignedCapabilities, .anotherMacIsPrimary: DashboardTheme.warning
+        case .failed, .needsSignedCapabilities: DashboardTheme.warning
         default: DashboardTheme.secondaryText
         }
     }

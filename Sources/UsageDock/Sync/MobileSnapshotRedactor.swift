@@ -46,7 +46,10 @@ enum MobileSnapshotRedactor {
     ) -> SyncedDailyUsageHistory {
         var calendar = Calendar(identifier: .gregorian)
         calendar.locale = Locale(identifier: "en_US_POSIX")
-        calendar.timeZone = .current
+        // Wire day keys are canonical UTC. The receiver validates against the
+        // same UTC calendar, so a local/UTC midnight crossing cannot make an
+        // otherwise live snapshot invalid before its authenticated expiry.
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
         let start = calendar.startOfDay(for: now)
         let earliest = calendar.date(
             byAdding: .day,

@@ -33,5 +33,42 @@ struct CrossDeviceSyncDefaultsTests {
         #expect(SyncSequencePolicy.next(localSequence: 0, remoteSequence: nil) == 1)
         #expect(SyncSequencePolicy.next(localSequence: .max, remoteSequence: 42) == nil)
     }
+
+    @Test("Legacy current record never blocks independent source publishing")
+    func legacyCompatibilityWritePolicy() {
+        let local = UUID(uuidString: "00000000-0000-4000-8000-000000000021")!
+        let foreign = UUID(uuidString: "00000000-0000-4000-8000-000000000022")!
+
+        #expect(LegacyCompatibilityWritePolicy.shouldWrite(
+            localSourceID: local,
+            currentRecordExists: false,
+            authenticatedOwner: nil,
+            currentRecordIsExpired: false
+        ))
+        #expect(LegacyCompatibilityWritePolicy.shouldWrite(
+            localSourceID: local,
+            currentRecordExists: true,
+            authenticatedOwner: local,
+            currentRecordIsExpired: false
+        ))
+        #expect(!LegacyCompatibilityWritePolicy.shouldWrite(
+            localSourceID: local,
+            currentRecordExists: true,
+            authenticatedOwner: foreign,
+            currentRecordIsExpired: false
+        ))
+        #expect(!LegacyCompatibilityWritePolicy.shouldWrite(
+            localSourceID: local,
+            currentRecordExists: true,
+            authenticatedOwner: nil,
+            currentRecordIsExpired: false
+        ))
+        #expect(LegacyCompatibilityWritePolicy.shouldWrite(
+            localSourceID: local,
+            currentRecordExists: true,
+            authenticatedOwner: nil,
+            currentRecordIsExpired: true
+        ))
+    }
 }
 #endif

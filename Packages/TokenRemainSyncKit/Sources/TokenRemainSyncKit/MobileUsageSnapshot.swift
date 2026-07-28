@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 /// Stable provider identifiers understood by the current Apple clients. The
@@ -26,11 +27,12 @@ public enum SyncedProviderID {
     /// A receiving client filters unknown IDs rather than treating them as a
     /// malformed payload. Senders must still use a stable, non-account-specific
     /// identifier that passes ``isWellFormed(_:)``.
-    public static let supportedOnCurrentMobile: Set<String> = [
+    public static let canonicalMobileOrder: [String] = [
         claude, codex, cursor, grok, zai, copilot, devin, openrouter,
         antigravity, opencode, deepseek, kimi, minimax, mimo, qoder,
         kiro, volcengine, ollama,
     ]
+    public static let supportedOnCurrentMobile = Set(canonicalMobileOrder)
 
     /// A deliberately narrow wire format: lower-case ASCII product slugs only.
     /// It rejects account names, display strings, paths, and arbitrary provider
@@ -674,68 +676,163 @@ public enum SyncValidationError: Error, Sendable, Equatable {
     case invalidCuratedFeed
 }
 
-/// Tracks the highest accepted value from a single Mac source. A new source is
-/// deliberately a separate decision so UI can ask the user before a second Mac
-/// becomes the primary writer.
-public struct SyncReplayGuard: Sendable, Equatable {
-    public private(set) var latest: SyncReplayMarker?
+public struct SyncReplayMarker: Codable, Sendable, Equatable {
+    public let sourceInstanceID: UUID
+    public let sequence: UInt64
+    public let generatedAt: Date
+    /// SHA-256 of the normalized authenticated snapshot. Older persisted replay
+    /// markers decode with nil and retain timestamp-only duplicate semantics
+    /// until a higher sequence is accepted.
+    public let payloadDigest: String?
 
-    public init(latest: SyncReplayMarker? = nil) {
-        self.latest = latest
+    public init(
+        sourceInstanceID: UUID,
+        sequence: UInt64,
+        generatedAt: Date,
+        payloadDigest: String? = nil
+    ) {
+        self.sourceInstanceID = sourceInstanceID
+        self.sequence = sequence
+        self.generatedAt = generatedAt
+        self.payloadDigest = payloadDigest
+    }
+
+    init(snapshot: MobileUsageSnapshot) throws {
+        self.init(
+            sourceInstanceID: snapshot.sourceInstanceID,
+            sequence: snapshot.sequence,
+            generatedAt: snapshot.generatedAt,
+            payloadDigest: try SyncReplayFingerprint.digest(snapshot)
+        )
+    }
+}
+
+/// Per-source replay/LWW state for the v1.2 multi-Mac protocol. Unlike the
+/// legacy single-source guard, a newly authenticated source is independent and
+/// never replaces another Mac's marker.
+public struct SyncReplayRegistry: Codable, Sendable, Equatable {
+    public static let maximumSourceCount = 16
+
+    private var markersBySource: [UUID: SyncReplayMarker]
+
+    public init() {
+        markersBySource = [:]
+    }
+
+    public init(validating markers: [SyncReplayMarker]) throws {
+        guard markers.count <= Self.maximumSourceCount else {
+            throw SyncReplayRegistryError.tooManySources
+        }
+
+        var storage: [UUID: SyncReplayMarker] = [:]
+        for marker in markers {
+            try Self.validate(marker)
+            guard storage.updateValue(marker, forKey: marker.sourceInstanceID) == nil else {
+                throw SyncReplayRegistryError.duplicateSource(marker.sourceInstanceID)
+            }
+        }
+        markersBySource = storage
+    }
+
+    public var count: Int { markersBySource.count }
+
+    public var markers: [SyncReplayMarker] {
+        markersBySource.values.sorted {
+            $0.sourceInstanceID.uuidString < $1.sourceInstanceID.uuidString
+        }
+    }
+
+    public func marker(for sourceInstanceID: UUID) -> SyncReplayMarker? {
+        markersBySource[sourceInstanceID]
     }
 
     @discardableResult
     public mutating func evaluate(
         _ snapshot: MobileUsageSnapshot,
-        confirmedSourceChange: SyncReplayMarker? = nil,
         configuration: SyncValidationConfiguration = .current()
     ) throws -> SyncReplayDecision {
-        _ = try snapshot.validatedForTransport(configuration: configuration)
-        let candidate = SyncReplayMarker(snapshot: snapshot)
+        let validated = try snapshot
+            .validatedForConsumption(configuration: configuration)
+            .normalizedForWire()
+        let candidate = try SyncReplayMarker(snapshot: validated)
 
-        guard let latest else {
-            self.latest = candidate
-            return .accepted
-        }
-        guard candidate.sourceInstanceID == latest.sourceInstanceID else {
-            // Confirmation is bound to the exact authenticated candidate the UI
-            // displayed. If the record changes between prompt and confirmation,
-            // return a fresh prompt instead of accepting a different Mac source.
-            guard confirmedSourceChange == candidate else {
-                return .sourceChangeRequiresConfirmation
+        guard let latest = markersBySource[candidate.sourceInstanceID] else {
+            guard markersBySource.count < Self.maximumSourceCount else {
+                throw SyncReplayRegistryError.tooManySources
             }
-            self.latest = candidate
+            markersBySource[candidate.sourceInstanceID] = candidate
             return .accepted
         }
         if candidate.sequence > latest.sequence {
-            self.latest = candidate
+            markersBySource[candidate.sourceInstanceID] = candidate
             return .accepted
         }
         if candidate.sequence < latest.sequence {
             return .replayedOlderSequence
         }
-        return candidate.generatedAt == latest.generatedAt ? .duplicate : .conflictingSequence
+        guard candidate.generatedAt == latest.generatedAt else {
+            return .conflictingSequence
+        }
+        if let candidateDigest = candidate.payloadDigest,
+           let latestDigest = latest.payloadDigest,
+           candidateDigest != latestDigest {
+            return .conflictingSequence
+        }
+        return .duplicate
+    }
+
+    public mutating func remove(sourceInstanceID: UUID) {
+        markersBySource.removeValue(forKey: sourceInstanceID)
+    }
+
+    public mutating func removeAll() {
+        markersBySource.removeAll(keepingCapacity: false)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case markers
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let markers = try container.decode([SyncReplayMarker].self, forKey: .markers)
+        do {
+            try self.init(validating: markers)
+        } catch {
+            throw DecodingError.dataCorruptedError(
+                forKey: .markers,
+                in: container,
+                debugDescription: "Invalid per-source replay registry"
+            )
+        }
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(markers, forKey: .markers)
+    }
+
+    private static func validate(_ marker: SyncReplayMarker) throws {
+        guard marker.sourceInstanceID != .syncProtocolZero,
+              marker.sequence > 0,
+              marker.generatedAt.timeIntervalSince1970.isFinite else {
+            throw SyncReplayRegistryError.invalidMarker(marker.sourceInstanceID)
+        }
+        if let digest = marker.payloadDigest {
+            guard digest.utf8.count == 64,
+                  digest.utf8.allSatisfy({ byte in
+                      (byte >= 48 && byte <= 57) || (byte >= 97 && byte <= 102)
+                  }) else {
+                throw SyncReplayRegistryError.invalidMarker(marker.sourceInstanceID)
+            }
+        }
     }
 }
 
-public struct SyncReplayMarker: Codable, Sendable, Equatable {
-    public let sourceInstanceID: UUID
-    public let sequence: UInt64
-    public let generatedAt: Date
-
-    public init(sourceInstanceID: UUID, sequence: UInt64, generatedAt: Date) {
-        self.sourceInstanceID = sourceInstanceID
-        self.sequence = sequence
-        self.generatedAt = generatedAt
-    }
-
-    init(snapshot: MobileUsageSnapshot) {
-        self.init(
-            sourceInstanceID: snapshot.sourceInstanceID,
-            sequence: snapshot.sequence,
-            generatedAt: snapshot.generatedAt
-        )
-    }
+public enum SyncReplayRegistryError: Error, Sendable, Equatable {
+    case tooManySources
+    case duplicateSource(UUID)
+    case invalidMarker(UUID)
 }
 
 public enum SyncReplayDecision: Sendable, Equatable {
@@ -743,7 +840,13 @@ public enum SyncReplayDecision: Sendable, Equatable {
     case duplicate
     case replayedOlderSequence
     case conflictingSequence
-    case sourceChangeRequiresConfirmation
+}
+
+private enum SyncReplayFingerprint {
+    static func digest(_ snapshot: MobileUsageSnapshot) throws -> String {
+        let data = try SyncPayloadCodec.encode(snapshot)
+        return SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+    }
 }
 
 enum SyncPayloadCodec {
