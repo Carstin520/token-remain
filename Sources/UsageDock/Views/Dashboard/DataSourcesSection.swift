@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Dashboard Data Sources: live status of each local source UsageDock reads,
 /// automatic local-app discovery plus explicit credential setup where required,
@@ -8,6 +9,7 @@ struct DataSourcesSection: View {
     let insights: UsageInsights
     @ObservedObject var feedStore: AIFeedStore
     let errorMessage: String?
+    @State private var isChoosingTraeDirectory = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -38,6 +40,16 @@ struct DataSourcesSection: View {
                             sourceRow(source)
                         }
                     }
+                }
+            }
+            .fileImporter(
+                isPresented: $isChoosingTraeDirectory,
+                allowedContentTypes: [.folder],
+                allowsMultipleSelection: true
+            ) { result in
+                guard case .success(let urls) = result else { return }
+                for url in urls {
+                    store.addTraeAgentDirectory(url)
                 }
             }
 
@@ -73,6 +85,8 @@ struct DataSourcesSection: View {
     private enum VisibleSource: Hashable {
         case provider(ProviderQuota.Provider)
         case ccusage
+        case localAgent(String)
+        case traeConfiguration
         case feed
     }
 
@@ -84,6 +98,8 @@ struct DataSourcesSection: View {
         if store.localUsageStatus != .loading || insights.daily != nil {
             sources.append(.ccusage)
         }
+        sources.append(contentsOf: store.localUsageSourceIDs.map(VisibleSource.localAgent))
+        sources.append(.traeConfiguration)
         if feedStore.lastUpdated != nil { sources.append(.feed) }
         return sources
     }
@@ -107,6 +123,22 @@ struct DataSourcesSection: View {
                 healthy: ccusageHealthy,
                 capturedAt: insights.daily?.capturedAt ?? insights.history?.capturedAt
             )
+        case .localAgent(let id):
+            LocalUsageSourceRow(
+                id: id,
+                enabled: Binding(
+                    get: { store.isLocalUsageSourceEnabled(id) },
+                    set: { store.setLocalUsageSourceEnabled($0, id: id) }
+                ),
+                capturedAt: localCapturedAt(for: id)
+            )
+        case .traeConfiguration:
+            TraeAgentDirectoryRow(
+                directories: store.traeAgentDirectories,
+                removableDirectories: Set(store.configuredTraeAgentDirectories.map(\.path)),
+                onChoose: { isChoosingTraeDirectory = true },
+                onRemove: store.removeTraeAgentDirectory
+            )
         case .feed:
             SourceHealthRow(
                 name: L10n.text("datasource.feed_name"),
@@ -115,6 +147,19 @@ struct DataSourcesSection: View {
                 capturedAt: feedStore.lastUpdated
             )
         }
+    }
+
+    private func localCapturedAt(for id: String) -> Date? {
+        let canonical = LocalUsageSourceCatalog.canonicalID(id)
+        let hasDaily = insights.daily?.agents.contains {
+            LocalUsageSourceCatalog.canonicalID($0.id) == canonical
+        } == true
+        let hasHistory = insights.history?.days.contains { day in
+            day.agents.contains { LocalUsageSourceCatalog.canonicalID($0.id) == canonical }
+        } == true
+        return hasDaily || hasHistory
+            ? insights.daily?.capturedAt ?? insights.history?.capturedAt
+            : nil
     }
 
     private var ccusageHealthy: Bool {
@@ -127,6 +172,8 @@ struct DataSourcesSection: View {
     @ViewBuilder
     private func providerCredentialRow(for provider: ProviderQuota.Provider) -> some View {
         switch provider {
+        case .claude, .codex:
+            ProviderAuthorizationRow(store: store, provider: provider)
         case .openrouter:
             APIKeyRow(
                 store: store,
@@ -169,6 +216,7 @@ struct DataSourcesSection: View {
         case .cursor: return L10n.text("datasource.detail.cursor")
         case .copilot: return L10n.text("datasource.detail.copilot")
         case .devin: return L10n.text("datasource.detail.devin")
+        case .windsurf: return L10n.text("datasource.detail.windsurf")
         case .grok: return L10n.text("datasource.detail.grok")
         case .openrouter: return L10n.text("datasource.detail.openrouter")
         case .antigravity: return L10n.text("datasource.detail.antigravity")
@@ -188,6 +236,148 @@ struct DataSourcesSection: View {
         feedStore.lastUpdated == nil
             ? L10n.text("datasource.feed_waiting")
             : L10n.text("datasource.feed_active")
+    }
+}
+
+/// Claude/Codex 的凭证归官方客户端所有。这里只提供两种显式操作：
+/// 允许 TokenRemain 发起一次只读钥匙串读取，或打开官方应用完成登录/续期。
+private struct ProviderAuthorizationRow: View {
+    @ObservedObject var store: UsageStore
+    let provider: ProviderQuota.Provider
+    @State private var isAuthorizing = false
+
+    private var appName: String {
+        switch provider {
+        case .claude: "Claude"
+        case .codex: "ChatGPT / Codex"
+        default: provider.displayName
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                Button(
+                    isAuthorizing
+                        ? L10n.text("datasource.authorizing")
+                        : L10n.text("datasource.authorize_read")
+                ) {
+                    isAuthorizing = true
+                    Task {
+                        _ = await store.authorizeProviderCredentials(provider)
+                        isAuthorizing = false
+                    }
+                }
+                .disabled(isAuthorizing)
+
+                if ProviderDesktopAppService.applicationURL(for: provider) != nil {
+                    Button(L10n.format("datasource.open_provider_app", appName)) {
+                        ProviderDesktopAppService.open(provider)
+                    }
+                    .disabled(isAuthorizing)
+                }
+            }
+            .controlSize(.small)
+
+            Text(L10n.text("datasource.authorization_note"))
+                .font(.system(size: 10))
+                .foregroundStyle(DashboardTheme.mutedText)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.top, 8)
+        .padding(.leading, 20)
+    }
+}
+
+private struct LocalUsageSourceRow: View {
+    let id: String
+    @Binding var enabled: Bool
+    let capturedAt: Date?
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Circle()
+                .fill(enabled ? DashboardTheme.success : DashboardTheme.mutedText)
+                .frame(width: 8, height: 8)
+                .padding(.top, 5)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(LocalUsageSourceCatalog.displayName(for: id))
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(DashboardTheme.text)
+                Text(L10n.text("datasource.local_agent_detail"))
+                    .font(.system(size: 11))
+                    .foregroundStyle(DashboardTheme.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 12)
+            VStack(alignment: .trailing, spacing: 3) {
+                Toggle("", isOn: $enabled)
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+                    .accessibilityLabel(
+                        L10n.format(
+                            "datasource.local_agent_toggle",
+                            LocalUsageSourceCatalog.displayName(for: id)
+                        )
+                    )
+                if let capturedAt {
+                    Text(capturedAt.formatted(date: .omitted, time: .shortened))
+                        .numericFont(10)
+                        .foregroundStyle(DashboardTheme.mutedText)
+                }
+            }
+        }
+    }
+}
+
+private struct TraeAgentDirectoryRow: View {
+    let directories: [URL]
+    let removableDirectories: Set<String>
+    let onChoose: () -> Void
+    let onRemove: (URL) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "folder.badge.plus")
+                    .foregroundStyle(DashboardTheme.secondaryText)
+                    .frame(width: 8)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(L10n.text("datasource.trae_agent_title"))
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(DashboardTheme.text)
+                    Text(L10n.text("datasource.trae_agent_detail"))
+                        .font(.system(size: 11))
+                        .foregroundStyle(DashboardTheme.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 12)
+                Button(L10n.text("datasource.choose_folder"), action: onChoose)
+                    .controlSize(.small)
+            }
+            ForEach(directories, id: \.path) { directory in
+                HStack(spacing: 8) {
+                    Text(directory.path)
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundStyle(DashboardTheme.mutedText)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                    Spacer(minLength: 8)
+                    if removableDirectories.contains(directory.path) {
+                        Button {
+                            onRemove(directory)
+                        } label: {
+                            Image(systemName: "xmark.circle")
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(DashboardTheme.mutedText)
+                        .accessibilityLabel(L10n.text("datasource.remove_folder"))
+                    }
+                }
+                .padding(.leading, 20)
+            }
+        }
     }
 }
 

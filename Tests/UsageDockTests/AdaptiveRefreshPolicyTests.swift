@@ -22,26 +22,61 @@ struct AdaptiveRefreshPolicyTests {
         #expect(AdaptiveRefreshPolicy.retryDelay(after: 9) == 300)
     }
 
-    @Test("Local usage refreshes every minute and presentation can force it immediately")
+    @Test("Local usage keeps minute cadence only for visible UI or Apple sync")
+    func localUsageInterval() {
+        // 同步或任一本地用量界面可见 → 分钟级。
+        #expect(AdaptiveRefreshPolicy.localUsageInterval(
+            preferred: 300, lowLatencySyncEnabled: true, localUsageUIVisible: false
+        ) == 60)
+        #expect(AdaptiveRefreshPolicy.localUsageInterval(
+            preferred: nil, lowLatencySyncEnabled: false, localUsageUIVisible: true
+        ) == 60)
+        // 后台空闲 → 跟随用户偏好;"仅手动"档不做后台扫描。
+        #expect(AdaptiveRefreshPolicy.localUsageInterval(
+            preferred: 300, lowLatencySyncEnabled: false, localUsageUIVisible: false
+        ) == 300)
+        #expect(AdaptiveRefreshPolicy.localUsageInterval(
+            preferred: nil, lowLatencySyncEnabled: false, localUsageUIVisible: false
+        ) == nil)
+    }
+
+    @Test("Local usage due check honors the interval and presentation can force it")
     func localUsageCadence() {
         let now = Date(timeIntervalSince1970: 1_784_966_400)
 
         #expect(AdaptiveRefreshPolicy.localUsageRefreshIsDue(
+            interval: 60,
             lastRefresh: nil,
             now: now,
             force: false
         ))
         #expect(!AdaptiveRefreshPolicy.localUsageRefreshIsDue(
+            interval: 60,
             lastRefresh: now.addingTimeInterval(-59),
             now: now,
             force: false
         ))
         #expect(AdaptiveRefreshPolicy.localUsageRefreshIsDue(
+            interval: 60,
             lastRefresh: now.addingTimeInterval(-60),
             now: now,
             force: false
         ))
         #expect(AdaptiveRefreshPolicy.localUsageRefreshIsDue(
+            interval: 300,
+            lastRefresh: now.addingTimeInterval(-299),
+            now: now,
+            force: false
+        ) == false)
+        // "仅手动"档没有自动节奏,但打开界面的强制刷新永远放行。
+        #expect(!AdaptiveRefreshPolicy.localUsageRefreshIsDue(
+            interval: nil,
+            lastRefresh: nil,
+            now: now,
+            force: false
+        ))
+        #expect(AdaptiveRefreshPolicy.localUsageRefreshIsDue(
+            interval: nil,
             lastRefresh: now,
             now: now,
             force: true

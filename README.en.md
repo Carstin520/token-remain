@@ -6,14 +6,14 @@
 
 **Your AI quota, always in the Mac menu bar**
 
-Remaining quota, reset countdowns and today's cost for Claude Code, Codex, Cursor, Grok, GLM and **18+** AI coding tools — all in one place. Credentials stay on your machine: never refreshed, never uploaded.
+Remaining quota, reset countdowns and today's cost for Claude Code, Codex, Cursor, Windsurf, Grok, GLM and **19+** AI coding tools — all in one place. Credentials stay on your machine: never refreshed, never uploaded.
 
 ![macOS](https://img.shields.io/badge/macOS-14%2B_Sonoma-000?logo=apple&logoColor=white)
 ![Universal](https://img.shields.io/badge/Universal-Apple_Silicon_%2B_Intel-7C5CFF)
 ![Notarized](https://img.shields.io/badge/Apple-Notarized-34C759?logo=apple&logoColor=white)
-![Latest](https://img.shields.io/badge/latest-v1.1.11-22D3EE)
+![Latest](https://img.shields.io/badge/latest-v1.2.0-22D3EE)
 
-**Latest version `v1.1.11`** (build 13, Universal Mac build)
+**1.2 release `v1.2.0`** (build 14, Universal Mac build)
 
 [Website / Download](https://tokenremain.com) · [Privacy Policy](https://tokenremain.com/privacy) · [Support](https://tokenremain.com/support) · [Report an issue](https://github.com/Carstin520/token-remain/issues)
 
@@ -30,11 +30,20 @@ Remaining quota, reset countdowns and today's cost for Claude Code, Codex, Curso
 
 - 🧭 **One unified quota panel** — Claude Code / Codex official 5-hour · 7-day windows with reset countdowns, Cursor's monthly billing cycle, Grok's weekly pool, GLM session/weekly windows — all side by side.
 - ⏱️ **Pace prediction** — Real window progress plus official reset times decide whether your current pace lasts until reset, with an ETA when it won't.
-- 💰 **Today's cost** — ccusage counts today's Claude Code / Codex tokens and estimated API list-price cost locally; TokenRemain downloads the complete public price table at most once a day and never uploads local usage details (not your subscription bill).
+- 💰 **Today's cost** — ccusage counts tokens from multiple coding agents locally; OpenClaw and relay model names map back to the corresponding official-model API list price. TokenRemain downloads the complete public price table at most once a day and never uploads local usage details (not a subscription or relay bill).
 - 🔐 **Optional encrypted sync publisher** — The Mac remains the only source of real data. When enabled, it writes only an allowlisted, encrypted display snapshot to your own private iCloud database.
 - 📡 **AI Feed** — A curated server-side feed of public posts from Anthropic, OpenAI and other official accounts; major updates trigger a local notification.
 - 🪟 **Always in reach** — Pick which apps appear in the menu bar, keep a floating window on top across Spaces, refresh every 1/5/15/30 minutes or manually.
 - 🎨 **Native feel** — macOS 26 uses system Liquid Glass and the native sidebar; macOS 14/15 falls back to the dark card style.
+
+## 🆕 What's new in 1.2
+
+- 🖥️ **Encrypted multi-Mac aggregation** — Every Mac owns an independent, stable private source record; the iPhone can authenticate and combine quota snapshots from up to 16 Macs. One stale, malformed, replayed, or deleted source cannot roll back healthy sources.
+- 🧰 **Source management and safe diagnostics** — See each Mac's status on Data Sources, export anonymous field-bounded health/data diagnostics, remove one source, and clearly distinguish disconnecting this Mac from deleting all iCloud sync data.
+- 📊 **More local usage sources** — ccusage dynamically discovers 15+ local agents; Trae reads only timestamps, model names, and token counters from a folder you select; Windsurf adds independent daily/weekly quota with cross-device display support.
+- 🔑 **Explicit Keychain consent** — Cross-app read-only access for Claude and Codex begins only from a user action. Background refreshes stay silent and never surprise you with a system authorization prompt.
+- ⬆️ **Always update to the latest release** — Adaptive signed-feed checks run about four times a day when current, twice while an update is pending, and use bounded retry backoff after failures. Clicking Update performs a fresh lookup and installs the newest release available then, not merely the version after yours.
+- ⚙️ **Lighter, more reliable refreshes** — Codex session caching tolerates bounded clock skew and prunes deleted records; AI Feed polling pauses while hidden; tool discovery runs every five minutes; expired countdown and Dock artwork-cache issues are fixed.
 
 ## 📸 Real screenshots
 
@@ -59,7 +68,7 @@ Remaining quota, reset countdowns and today's cost for Claude Code, Codex, Curso
 
 Most services **connect automatically the moment you're signed in**: TokenRemain only reads credentials that already live on your machine — no extra login, no token refreshing. Every card says where its data comes from, and services that aren't connected show setup hints.
 
-### Native providers (10)
+### Native providers (11)
 
 | Service | Connection | Notes |
 | :-- | :-- | :-- |
@@ -69,6 +78,7 @@ Most services **connect automatically the moment you're signed in**: TokenRemain
 | **Grok** (xAI) | 🟢 Auto | Weekly pool remaining; reads the Grok CLI's existing credentials |
 | **GitHub Copilot** | 🟢 Auto | Monthly credits; reads your local GitHub sign-in |
 | **Devin** | 🟢 Auto | Daily / weekly quotas |
+| **Windsurf** | 🟢 Auto | Daily / weekly quotas; reads Windsurf's own `state.vscdb` login state read-only |
 | **Antigravity** | 🟢 Auto | Quota pools; reads the local sign-in state |
 | **OpenCode** | 💾 Local only | Go plan usage, estimated from a local database scan — fully offline |
 | **Z.ai** (GLM Coding Plan) | 🔑 API key | Coding Plan session / weekly windows; the key lives only in your Keychain |
@@ -85,6 +95,20 @@ Most services **connect automatically the moment you're signed in**: TokenRemain
 | **MiniMax** | API key | | **Volcengine** | AK:SK signing |
 | **MiMo Code** | Cookie | | **Ollama** | Session cookie |
 
+### Local token and cost sources
+
+The bundled ccusage collector dynamically discovers Claude Code, Codex,
+OpenCode, Amp, Droid, Codebuff, Hermes Agent, pi-agent, Goose, OpenClaw, Kilo
+Code, Kimi CLI, Qwen CLI, GitHub Copilot CLI, and Gemini. New sources do not
+require fixed database columns, and each discovered source can be included or
+excluded from totals on the Data Sources page.
+
+Trae Agent connects through a user-selected `trajectories` folder. TokenRemain
+decodes only timestamps, provider/model names, and token counters; prompts,
+messages, code, tool arguments, and model responses are ignored. Recognized
+hosted models use the official-model API list-price estimate, while explicit
+local providers such as Ollama retain zero API cost.
+
 ## 🔒 Data and privacy
 
 > Privacy isn't a promise — it's the architecture. Every line below is verifiable in the source.
@@ -97,7 +121,7 @@ Credentials already on your machine ──read-only──▶ Official provider A
 - **Manual keys live in the Keychain** — API keys you add by hand (Z.ai, OpenRouter…) are stored only in the macOS Keychain, never in source, build artifacts or logs. Z.ai also accepts the `ZAI_API_KEY` environment variable or `~/.config/zai/key.json`.
 - **No credential relay** — Quota queries go straight to each provider's official API. The AI feed, the push service and the anonymous download counter **never receive** provider credentials.
 - **No behavioral tracking** — No telemetry, ads, cookies or analytics SDK. The website keeps only one anonymous aggregate Mac download count.
-- **Price updates never upload usage** — At most once a day, a fixed bodyless GET downloads the complete public LiteLLM price table. The request carries no credentials, model names, token counts, prompts, projects, conversations or usage history. Prices are cached locally and ccusage still processes logs offline. GitHub may process ordinary connection metadata such as IP address and request time under its policies.
+- **Price updates never upload usage** — At most once a day, a fixed bodyless GET downloads the complete public LiteLLM price table. The request carries no credentials, model names, token counts, prompts, projects, conversations, Trae trajectories, or usage history. Prices are cached locally; ccusage and Trae parsing stay local. GitHub may process ordinary connection metadata such as IP address and request time under its policies.
 - **No account required** — You never sign up for TokenRemain; being signed in to your local tools is enough.
 - **Cache and stats stay local** — Mac caches and cost statistics stay on the machine (`~/Library/Caches/com.jamesli.usagedock/`). Only when you enable sync does an allowlisted, encrypted display snapshot enter your own private iCloud database.
 
@@ -143,7 +167,7 @@ to their respective terms.
 
 ## 📦 Current release
 
-- **Version** — `v1.1.11` (build 13), the Universal Mac release candidate.
+- **Version** — `v1.2.0` (build 14), the Universal Mac release.
 - **Platform** — macOS 14 Sonoma or later on Apple Silicon (arm64) and Intel (x86_64).
 - **Distribution** — The website always downloads the latest `TokenRemain.dmg`; each GitHub Release also retains a DMG named with its version and build.
 - **Cost figures** — Costs are API list-price estimates, not your subscription bill. When a credential expires, data pauses and the app explains how to restore it.

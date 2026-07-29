@@ -5,25 +5,44 @@ import Testing
 
 @Suite("Cross-device sync defaults")
 struct CrossDeviceSyncDefaultsTests {
-    @Test("A fresh Mac installation enables private sync automatically")
+    @Test("A fresh Mac installation keeps private sync off until the user opts in")
     @MainActor
-    func freshInstallDefaultsToEnabled() {
+    func freshInstallDefaultsToDisabled() {
         let suite = "TokenRemainMacSyncDefaults.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         defaults.removePersistentDomain(forName: suite)
         defer { defaults.removePersistentDomain(forName: suite) }
 
         let controller = CrossDeviceSyncController(defaults: defaults)
-        #expect(controller.isEnabled)
+        #expect(controller.isEnabled == false)
 
-        controller.setEnabled(false)
+        controller.setEnabled(true)
+        let restored = CrossDeviceSyncController(defaults: defaults)
+        #expect(restored.isEnabled)
+    }
+
+    @Test("An upgrade keeps sync on for installs that have already uploaded")
+    @MainActor
+    func upgradeGrandfathersActiveSync() {
+        let suite = "TokenRemainMacSyncDefaults.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defaults.removePersistentDomain(forName: suite)
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        // 旧版默认开启的安装若已成功上传过,视为 iPhone 端在用。
+        defaults.set(Date(), forKey: "crossDeviceSync.lastUploadedAt")
+        let upgraded = CrossDeviceSyncController(defaults: defaults)
+        #expect(upgraded.isEnabled)
+
+        // 用户显式关过的安装不因上传历史被重新打开。
+        upgraded.setEnabled(false)
         let restored = CrossDeviceSyncController(defaults: defaults)
         #expect(restored.isEnabled == false)
     }
 
-    @Test("Mac heartbeat stays within the five-minute delivery ceiling")
+    @Test("Mac heartbeat stays far inside the 24-hour snapshot lifetime")
     func heartbeatCeiling() {
-        #expect(CrossDeviceSyncController.heartbeatInterval == 5 * 60)
+        #expect(CrossDeviceSyncController.heartbeatInterval == 15 * 60)
     }
 
     @Test("Publishing advances beyond the authenticated remote sequence")

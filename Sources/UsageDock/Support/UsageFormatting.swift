@@ -31,8 +31,18 @@ enum UsageFormatting {
         let seconds = remaining % 60
 
         if days > 0 { return L10n.format("duration.days_hours_minutes", days, hours, minutes) }
-        if hours > 0 { return String(format: "%02d:%02d:%02d", hours, minutes, seconds) }
+        // 一小时以上的倒计时按分钟粒度呈现:秒数在这个量级没有决策
+        // 价值,展示层也因此不必为它维持秒级刷新。
+        if hours > 0 { return L10n.format("duration.hours_minutes", hours, minutes) }
         return String(format: "%02d:%02d", minutes, seconds)
+    }
+
+    /// 秒级滚动只服务于"最后一小时"的活倒计时。已过期(≤0)的重置
+    /// 时间显示静态的"正在重置",绝不允许它把 1 秒刷新永久钉在常驻
+    /// 浮窗上——provider 刷新失败、旧快照长期保留时就会出现这种输入。
+    static func showsLiveSecondCountdown(to date: Date, now: Date) -> Bool {
+        let interval = date.timeIntervalSince(now)
+        return interval > 0 && interval < 3_600
     }
 
     /// Human reset label derived from a real reset date: a live countdown when

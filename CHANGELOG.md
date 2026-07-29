@@ -3,6 +3,59 @@
 All notable product changes are recorded here. TokenRemain uses Semantic
 Versioning for public releases.
 
+## 1.2.0 — 2026-07-29
+
+### Added
+
+- Added encrypted multi-Mac `source-v2` synchronization: every Mac owns a
+  stable private source record, the iPhone authenticates and aggregates up to
+  16 independent sources, and stale, malformed, replayed, or deleted sources
+  are isolated without rolling back healthy data.
+- Added per-Mac source visibility and management, anonymous health/data
+  exports, single-source removal, and separate controls for disconnecting this
+  Mac versus deleting all iCloud sync data.
+- Added dynamic local-usage sources for every agent discovered by the bundled
+  ccusage collector, with per-source inclusion controls and stable names for
+  Claude, Codex, OpenCode, Amp, Droid, Codebuff, Hermes, pi, Goose, OpenClaw,
+  Kilo, Kimi, Qwen, Copilot, and Gemini.
+- Added a privacy-minimized Trae Agent trajectory reader that decodes only
+  timestamps, provider/model names, and aggregate token counters from
+  user-selected local trajectory folders.
+- Added an independent Windsurf quota provider, local app detection, official
+  brand artwork, and cross-device provider support.
+- Added an explicit, user-initiated read-only Keychain authorization action for
+  Claude and Codex while keeping every background credential read silent.
+
+### Changed
+
+- Parse unchanged Codex session files from cache, tolerate bounded filesystem
+  clock skew, and prune deleted-session entries instead of rescanning history.
+- Pause AI Feed polling while all Feed surfaces are hidden and refresh stale
+  content when a surface becomes visible again.
+- Reduce background installed-tool detection from every ten seconds to every
+  five minutes while retaining immediate foreground scans.
+- Replace Sparkle's cached automatic-download cycle with adaptive signed-feed
+  probes: four checks per day when current, two while an update reminder is
+  pending, bounded retry backoff after failures, and a fresh latest-version
+  check immediately before the user starts an update.
+
+### Fixed
+
+- Recalculate recognized OpenClaw and relay model usage from token counts when
+  a source records a zero cost, and normalize relay model names back to direct
+  official-model API list-price entries. Explicit user ccusage cost modes and
+  custom price overrides remain authoritative.
+- Keep expired quota reset labels static instead of leaving a one-second
+  TimelineView active indefinitely.
+- Include provider identity and row presence in Dock artwork cache keys so
+  same-level Claude and Codex meters cannot reuse the wrong colour rendering.
+
+### Privacy
+
+- Public price refreshes remain fixed, bodyless complete-table downloads. No
+  locally observed model name, token count, prompt, response, project, or
+  trajectory content is sent to the pricing source.
+
 ## 1.1.11 — 2026-07-28
 
 ### Changed
@@ -228,3 +281,4 @@ Versioning for public releases.
 [1.1.9]: https://github.com/Carstin520/token-remain/releases/tag/v1.1.9
 [1.1.10]: https://github.com/Carstin520/token-remain/releases/tag/v1.1.10
 [1.1.11]: https://github.com/Carstin520/token-remain/releases/tag/v1.1.11
+[1.2.0]: https://github.com/Carstin520/token-remain/releases/tag/v1.2.0

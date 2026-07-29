@@ -99,8 +99,11 @@ verify_app() {
   [[ "$(/usr/libexec/PlistBuddy -c 'Print :TokenRemainBroadcastBaseURL' "$app/Contents/Info.plist")" == "$BROADCAST_BASE_URL" ]]
   [[ "$(/usr/libexec/PlistBuddy -c 'Print :SUFeedURL' "$app/Contents/Info.plist")" == "https://github.com/Carstin520/token-remain/releases/latest/download/appcast.xml" ]]
   [[ -n "$(/usr/libexec/PlistBuddy -c 'Print :SUPublicEDKey' "$app/Contents/Info.plist")" ]]
-  [[ "$(/usr/libexec/PlistBuddy -c 'Print :SUEnableAutomaticChecks' "$app/Contents/Info.plist")" == "true" ]]
-  [[ "$(/usr/libexec/PlistBuddy -c 'Print :SUAutomaticallyUpdate' "$app/Contents/Info.plist")" == "true" ]]
+  [[ "$(/usr/libexec/PlistBuddy -c 'Print :SUEnableAutomaticChecks' "$app/Contents/Info.plist")" == "false" ]]
+  [[ "$(/usr/libexec/PlistBuddy -c 'Print :SUAutomaticallyUpdate' "$app/Contents/Info.plist")" == "false" ]]
+  [[ "$(/usr/libexec/PlistBuddy -c 'Print :SUAllowsAutomaticUpdates' "$app/Contents/Info.plist")" == "false" ]]
+  ! /usr/libexec/PlistBuddy -c 'Print :SUScheduledCheckInterval' "$app/Contents/Info.plist" >/dev/null 2>&1
+  ! /usr/libexec/PlistBuddy -c 'Print :SUScheduledImpatientCheckInterval' "$app/Contents/Info.plist" >/dev/null 2>&1
   [[ "$(/usr/libexec/PlistBuddy -c 'Print :SURequireSignedFeed' "$app/Contents/Info.plist")" == "true" ]]
   [[ -d "$app/Contents/Frameworks/Sparkle.framework" ]]
   [[ -x "$app/Contents/Helpers/ccusage" ]]

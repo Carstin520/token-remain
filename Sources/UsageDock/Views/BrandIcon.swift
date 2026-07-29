@@ -115,6 +115,8 @@ struct BrandIcon: View {
             return Artwork(resourceName: "github-copilot", isTemplate: true)
         case .devin:
             return Artwork(resourceName: "devin", isTemplate: false)
+        case .windsurf:
+            return Artwork(resourceName: "windsurf", isTemplate: false)
         case .openrouter:
             return Artwork(resourceName: "openrouter", isTemplate: false)
         case .antigravity:

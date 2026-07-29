@@ -1,4 +1,5 @@
 import Foundation
+import Security
 import Testing
 @testable import UsageDock
 
@@ -122,6 +123,199 @@ struct CodexAuthReaderTests {
         var reader = CodexAuthReader()
         reader.environment = ["CODEX_HOME": directory.path]
         #expect(reader.load()?.accountID == "acct-9")
+    }
+
+    @Test("Falls through to the Codex keychain when auth.json is absent")
+    func keychainFallback() {
+        var reader = CodexAuthReader()
+        reader.environment = [:]
+        reader.homeDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("usagedock-codex-missing-\(UUID().uuidString)", isDirectory: true)
+        reader.keychainPayload = { account, interaction in
+            #expect(account.hasPrefix("cli|"))
+            #expect(account.count == 20)
+            #expect(interaction == .disallowed)
+            return KeychainRead.Outcome(
+                payload: #"{"tokens":{"access_token":"abc.def.ghi","account_id":"acct-keychain"}}"#,
+                status: errSecSuccess
+            )
+        }
+
+        let result = reader.read()
+        #expect(result.auth?.accountID == "acct-keychain")
+        #expect(result.source == .keychain)
+        #expect(result.keychainStatus == errSecSuccess)
+    }
+
+    @Test("A valid auth.json wins without touching another app's keychain")
+    func filePrecedesKeychain() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("usagedock-codex-file-first-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try Data(#"{"tokens":{"access_token":"abc.def.ghi","account_id":"acct-file"}}"#.utf8)
+            .write(to: directory.appendingPathComponent("auth.json"))
+
+        var reader = CodexAuthReader()
+        reader.environment = ["CODEX_HOME": directory.path]
+        reader.keychainPayload = { _, _ in
+            Issue.record("keychain must not be consulted while auth.json is usable")
+            return KeychainRead.Outcome(payload: nil, status: errSecItemNotFound)
+        }
+
+        let result = reader.read()
+        #expect(result.auth?.accountID == "acct-file")
+        #expect(result.source == .file)
+        #expect(result.keychainStatus == nil)
+    }
+
+    @Test("An expired auth.json yields to a fresh Codex keychain credential")
+    func expiredFileYieldsToKeychain() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("usagedock-codex-expired-file-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let expired = fakeJWT(exp: 1_700_000_000)
+        try Data(#"{"tokens":{"access_token":"\#(expired)","account_id":"acct-expired"}}"#.utf8)
+            .write(to: directory.appendingPathComponent("auth.json"))
+
+        var reader = CodexAuthReader()
+        reader.environment = ["CODEX_HOME": directory.path]
+        reader.keychainPayload = { _, _ in
+            KeychainRead.Outcome(
+                payload: #"{"tokens":{"access_token":"\#(fakeJWT(exp: 1_900_000_000))","account_id":"acct-fresh"}}"#,
+                status: errSecSuccess
+            )
+        }
+
+        let result = reader.read(now: Date(timeIntervalSince1970: 1_800_000_000))
+        #expect(result.auth?.accountID == "acct-fresh")
+        #expect(result.source == .keychain)
+    }
+
+    @Test("A malformed auth.json also falls through to the Codex keychain")
+    func malformedFileYieldsToKeychain() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("usagedock-codex-malformed-file-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try Data("not-json".utf8).write(to: directory.appendingPathComponent("auth.json"))
+
+        var reader = CodexAuthReader()
+        reader.environment = ["CODEX_HOME": directory.path]
+        reader.keychainPayload = { _, _ in
+            KeychainRead.Outcome(
+                payload: #"{"tokens":{"access_token":"abc.def.ghi","account_id":"acct-keychain"}}"#,
+                status: errSecSuccess
+            )
+        }
+        #expect(reader.read().source == .keychain)
+    }
+
+    @Test("An explicit user action may allow Codex keychain interaction")
+    func explicitKeychainAuthorization() {
+        let observed = LockedValue<KeychainRead.Interaction?>(nil)
+        var reader = CodexAuthReader()
+        reader.environment = [:]
+        reader.homeDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("usagedock-codex-authorize-\(UUID().uuidString)", isDirectory: true)
+        reader.keychainPayload = { _, interaction in
+            observed.set(interaction)
+            return KeychainRead.Outcome(payload: nil, status: errSecAuthFailed)
+        }
+
+        let result = reader.read(keychainInteraction: .allowed)
+        #expect(observed.get() == .allowed)
+        #expect(result.auth == nil)
+        #expect(result.needsAuthorization)
+    }
+
+    @Test("A suppressed prompt is surfaced as requiring explicit authorization")
+    func suppressedPromptNeedsAuthorization() {
+        var reader = CodexAuthReader()
+        reader.environment = [:]
+        reader.homeDirectory = URL(fileURLWithPath: "/tmp/tokenremain-codex-auth-required")
+        reader.keychainPayload = { _, _ in
+            KeychainRead.Outcome(payload: nil, status: errSecInteractionNotAllowed)
+        }
+        #expect(reader.read().needsAuthorization)
+    }
+
+    @Test("A readable but unknown Codex keychain schema is classified as invalid")
+    func invalidKeychainPayload() {
+        var reader = CodexAuthReader()
+        reader.environment = [:]
+        reader.homeDirectory = URL(fileURLWithPath: "/tmp/tokenremain-codex-invalid-payload")
+        reader.keychainPayload = { _, _ in
+            KeychainRead.Outcome(payload: #"{"future_schema":true}"#, status: errSecSuccess)
+        }
+        let result = reader.read()
+        #expect(result.auth == nil)
+        #expect(result.source == nil)
+        #expect(result.hasInvalidKeychainPayload)
+        #expect(!result.needsAuthorization)
+    }
+
+    @Test("Codex keychain account is stable for a normalized CODEX_HOME")
+    func stableKeychainAccount() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("usagedock-codex-account-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        var first = CodexAuthReader()
+        first.environment = ["CODEX_HOME": directory.path]
+        var second = CodexAuthReader()
+        second.environment = ["CODEX_HOME": directory.appending(path: ".").path]
+
+        #expect(first.keychainAccount() == second.keychainAccount())
+        #expect(first.keychainAccount().hasPrefix("cli|"))
+        #expect(first.keychainAccount().count == 20)
+    }
+
+    @Test("Codex keychain account matches the upstream SHA-256 golden vector")
+    func keychainAccountGoldenVector() {
+        var reader = CodexAuthReader()
+        reader.environment = ["CODEX_HOME": "/tmp/tokenremain-codex-home-fixture"]
+        #expect(reader.keychainAccount() == "cli|c3c75cdbc51596f5")
+    }
+
+    @Test("A symlinked CODEX_HOME hashes its canonical destination")
+    func symlinkedCodexHome() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("usagedock-codex-symlink-\(UUID().uuidString)", isDirectory: true)
+        let destination = root.appending(path: "real")
+        let link = root.appending(path: "alias")
+        try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: destination)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        var destinationReader = CodexAuthReader()
+        destinationReader.environment = ["CODEX_HOME": destination.path]
+        var linkReader = CodexAuthReader()
+        linkReader.environment = ["CODEX_HOME": link.path]
+        #expect(linkReader.keychainAccount() == destinationReader.keychainAccount())
+    }
+}
+
+private final class LockedValue<Value>: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value: Value
+
+    init(_ value: Value) {
+        self.value = value
+    }
+
+    func set(_ value: Value) {
+        lock.lock()
+        self.value = value
+        lock.unlock()
+    }
+
+    func get() -> Value {
+        lock.lock()
+        defer { lock.unlock() }
+        return value
     }
 }
 

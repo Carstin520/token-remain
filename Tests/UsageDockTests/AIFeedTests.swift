@@ -5,6 +5,13 @@ import UserNotifications
 
 @Suite("AI Feed")
 struct AIFeedTests {
+    @Test("Background polling follows the injected Feed UI visibility")
+    func backgroundPollingRequiresVisibleUI() {
+        #expect(AIFeedStore.shouldRefreshWhilePolling(uiIsVisible: nil))
+        #expect(AIFeedStore.shouldRefreshWhilePolling(uiIsVisible: true))
+        #expect(!AIFeedStore.shouldRefreshWhilePolling(uiIsVisible: false))
+    }
+
     @Test("Notifications stay off until the user explicitly enables reminders")
     func notificationPermissionIsUserInitiated() {
         #expect(AIFeedStore.resolvedNotificationsEnabled(storedValue: nil) == false)

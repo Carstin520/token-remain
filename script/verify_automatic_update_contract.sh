@@ -16,17 +16,26 @@ fail() {
   || fail "the Sparkle public EdDSA key is missing"
 
 for key in \
-  SUEnableAutomaticChecks \
-  SUAutomaticallyUpdate \
-  SUAllowsAutomaticUpdates \
   SUVerifyUpdateBeforeExtraction \
   SURequireSignedFeed; do
   [[ "$(/usr/libexec/PlistBuddy -c "Print :$key" "$INFO_PLIST")" == "true" ]] \
     || fail "$key must be enabled"
 done
 
-[[ "$(/usr/libexec/PlistBuddy -c 'Print :SUScheduledCheckInterval' "$INFO_PLIST")" == "3600" ]] \
-  || fail "automatic checks must use Sparkle's one-hour minimum interval"
+for key in \
+  SUEnableAutomaticChecks \
+  SUAutomaticallyUpdate \
+  SUAllowsAutomaticUpdates; do
+  [[ "$(/usr/libexec/PlistBuddy -c "Print :$key" "$INFO_PLIST")" == "false" ]] \
+    || fail "$key must be disabled so no stale update is downloaded or pinned"
+done
+
+if /usr/libexec/PlistBuddy -c 'Print :SUScheduledCheckInterval' "$INFO_PLIST" >/dev/null 2>&1; then
+  fail "Sparkle's automatic schedule must not compete with the adaptive probe schedule"
+fi
+if /usr/libexec/PlistBuddy -c 'Print :SUScheduledImpatientCheckInterval' "$INFO_PLIST" >/dev/null 2>&1; then
+  fail "the fixed impatient interval must not pin an already discovered update"
+fi
 
 /usr/bin/grep -Fq '.package(url: "https://github.com/sparkle-project/Sparkle", exact: "2.9.4")' \
   "$ROOT_DIR/Package.swift" \
@@ -34,6 +43,27 @@ done
 /usr/bin/grep -Fq 'SPUStandardUpdaterController(' \
   "$ROOT_DIR/Sources/UsageDock/Services/AppUpdateController.swift" \
   || fail "the production updater controller is missing"
+/usr/bin/grep -Fq 'updaterDelegate: self' \
+  "$ROOT_DIR/Sources/UsageDock/Services/AppUpdateController.swift" \
+  || fail "the adaptive updater delegate is missing"
+/usr/bin/grep -Fq 'controller.updater.automaticallyChecksForUpdates = false' \
+  "$ROOT_DIR/Sources/UsageDock/Services/AppUpdateController.swift" \
+  || fail "legacy automatic-check preferences are not disabled"
+/usr/bin/grep -Fq 'controller.updater.automaticallyDownloadsUpdates = false' \
+  "$ROOT_DIR/Sources/UsageDock/Services/AppUpdateController.swift" \
+  || fail "legacy automatic-download preferences are not disabled"
+/usr/bin/grep -Fq 'updater.checkForUpdateInformation()' \
+  "$ROOT_DIR/Sources/UsageDock/Services/AppUpdateController.swift" \
+  || fail "background checks must be non-downloading information probes"
+/usr/bin/grep -Fq 'updaterController.checkForUpdates(nil)' \
+  "$ROOT_DIR/Sources/UsageDock/Services/AppUpdateController.swift" \
+  || fail "the user action must perform a fresh latest-version check"
+/usr/bin/grep -Fq 'static let noUpdateInterval: TimeInterval = 6 * 60 * 60' \
+  "$ROOT_DIR/Sources/UsageDock/Services/AppUpdateController.swift" \
+  || fail "the bounded current-version probe interval is missing"
+/usr/bin/grep -Fq 'static let updateAvailableInterval: TimeInterval = 12 * 60 * 60' \
+  "$ROOT_DIR/Sources/UsageDock/Services/AppUpdateController.swift" \
+  || fail "the quiet pending-update recheck interval is missing"
 /usr/bin/grep -Fq 'supportsGentleScheduledUpdateReminders' \
   "$ROOT_DIR/Sources/UsageDock/Services/AppUpdateController.swift" \
   || fail "the gentle scheduled update reminder is missing"
@@ -54,4 +84,4 @@ done
   "$ROOT_DIR/script/package_developer_id_release.sh" \
   || fail "release packaging can leave an expanded app registered"
 
-echo "automatic update contract verified: signed feed + replacement cleanup + gentle sidebar reminder"
+echo "automatic update contract verified: adaptive signed probes + fresh latest install check + gentle reminder"

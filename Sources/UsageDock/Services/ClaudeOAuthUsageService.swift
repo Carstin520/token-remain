@@ -1,4 +1,5 @@
 import Foundation
+import Security
 
 /// Claude 限额 API 直查。参考 OpenUsage(MIT)的 provider pipeline:
 /// 只读 Claude Code 已有的 OAuth access token,调用官方 oauth/usage 接口
@@ -11,6 +12,9 @@ import Foundation
 struct ClaudeOAuthUsageService {
     enum APIError: LocalizedError, Sendable {
         case credentialsUnavailable
+        case credentialsAuthorizationRequired
+        case credentialsExpired
+        case invalidStoredCredentials
         case tokenRejected(Int)
         case rateLimited(retryAfterSeconds: Int?)
         case requestFailed(Int)
@@ -20,6 +24,12 @@ struct ClaudeOAuthUsageService {
             switch self {
             case .credentialsUnavailable:
                 return L10n.text("service.claude.credentials_unavailable")
+            case .credentialsAuthorizationRequired:
+                return L10n.text("service.claude.authorization_required")
+            case .credentialsExpired:
+                return L10n.text("service.claude.session_expired")
+            case .invalidStoredCredentials:
+                return L10n.text("service.claude.invalid_stored_credentials")
             case .tokenRejected(let status):
                 return L10n.format("service.common.token_rejected_plain", "Claude", status)
             case .rateLimited(let seconds):
@@ -37,8 +47,24 @@ struct ClaudeOAuthUsageService {
 
     private static let usageURL = URL(string: "https://api.anthropic.com/api/oauth/usage")!
 
-    func fetch(now: Date = .now) async throws -> ProviderQuota {
-        guard let credentials = ClaudeCredentialsReader().load(now: now) else {
+    func fetch(
+        now: Date = .now,
+        keychainInteraction: KeychainRead.Interaction = .disallowed
+    ) async throws -> ProviderQuota {
+        let result = ClaudeCredentialsReader().read(
+            now: now,
+            keychainInteraction: keychainInteraction
+        )
+        guard let credentials = result.credentials else {
+            if result.needsAuthorization {
+                throw APIError.credentialsAuthorizationRequired
+            }
+            if result.hasExpiredCredentials {
+                throw APIError.credentialsExpired
+            }
+            if result.hasInvalidKeychainPayload {
+                throw APIError.invalidStoredCredentials
+            }
             throw APIError.credentialsUnavailable
         }
 
@@ -188,21 +214,51 @@ enum ClaudeOAuthUsageParser {
 ///    降级到 PTY `/usage` 探针。构建脚本的稳定签名让"始终允许"跨重建生效。
 /// 已过期(或即将过期)的 token 直接跳过,继续尝试下一个来源;绝不续期。
 struct ClaudeCredentialsReader {
+    enum Source: Equatable, Sendable {
+        case file
+        case keychain
+    }
+
     struct Credentials: Sendable {
         let accessToken: String
         let subscriptionType: String?
         let rateLimitTier: String?
     }
 
+    struct ReadResult: Sendable {
+        let credentials: Credentials?
+        let source: Source?
+        let keychainStatus: OSStatus?
+        let hasExpiredCredentials: Bool
+
+        var needsAuthorization: Bool {
+            guard let keychainStatus else { return false }
+            return keychainStatus == errSecAuthFailed
+                || keychainStatus == errSecInteractionNotAllowed
+                || keychainStatus == errSecUserCanceled
+        }
+
+        var hasInvalidKeychainPayload: Bool {
+            keychainStatus == errSecSuccess
+                && credentials == nil
+                && !hasExpiredCredentials
+        }
+    }
+
+    private struct ParsedCredentials {
+        let credentials: Credentials
+        let expiresAt: Date?
+    }
+
     var environment: [String: String] = ProcessInfo.processInfo.environment
     var homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser
     static let keychainService = "Claude Code-credentials"
 
-    var keychainPayload: (KeychainRead.Interaction) -> String? = { interaction in
+    var keychainPayload: @Sendable (KeychainRead.Interaction) -> KeychainRead.Outcome = { interaction in
         KeychainRead.genericPassword(
             service: ClaudeCredentialsReader.keychainService,
             interaction: interaction
-        ).payload
+        )
     }
 
     /// token 剩余寿命低于该值时视同过期:一次刷新周期内的边界 token
@@ -213,19 +269,52 @@ struct ClaudeCredentialsReader {
         now: Date = .now,
         keychainInteraction: KeychainRead.Interaction = .disallowed
     ) -> Credentials? {
+        read(now: now, keychainInteraction: keychainInteraction).credentials
+    }
+
+    func read(
+        now: Date = .now,
+        keychainInteraction: KeychainRead.Interaction = .disallowed
+    ) -> ReadResult {
+        var foundExpiredCredentials = false
         for payload in filePayloads() {
-            if let credentials = Self.parse(payload, now: now) {
-                return credentials
+            guard let parsed = Self.decode(payload) else { continue }
+            if Self.isUsable(parsed, now: now) {
+                return ReadResult(
+                    credentials: parsed.credentials,
+                    source: .file,
+                    keychainStatus: nil,
+                    hasExpiredCredentials: false
+                )
             }
+            foundExpiredCredentials = true
         }
         // 自动额度刷新永远不应召唤系统密码框。已选择过“始终允许”的钥匙串
         // 项目仍能成功读取；尚未授权时立即静默失败，由调用方降级到 Claude
         // CLI /usage 探针。只有明确的用户操作才能传 `.allowed`。
-        guard let payload = keychainPayload(keychainInteraction) else { return nil }
-        return Self.parse(payload, now: now)
+        let outcome = keychainPayload(keychainInteraction)
+        let parsed = outcome.payload.flatMap(Self.decode)
+        let credentials = parsed.flatMap {
+            Self.isUsable($0, now: now) ? $0.credentials : nil
+        }
+        foundExpiredCredentials = foundExpiredCredentials
+            || (parsed != nil && credentials == nil)
+        return ReadResult(
+            credentials: credentials,
+            source: credentials == nil ? nil : .keychain,
+            keychainStatus: outcome.status,
+            hasExpiredCredentials: foundExpiredCredentials
+        )
     }
 
     static func parse(_ payload: String, now: Date = .now) -> Credentials? {
+        guard let parsed = decode(payload), isUsable(parsed, now: now) else {
+            return nil
+        }
+        return parsed.credentials
+    }
+
+    private static func decode(_ payload: String) -> ParsedCredentials? {
         guard let data = payload.data(using: .utf8),
               let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
               let oauth = object["claudeAiOauth"] as? [String: Any],
@@ -234,16 +323,22 @@ struct ClaudeCredentialsReader {
               !accessToken.isEmpty else {
             return nil
         }
-        if let expiresAt = (oauth["expiresAt"] as? NSNumber)?.doubleValue {
+        let expiresAt = (oauth["expiresAt"] as? NSNumber).map {
             // Claude Code 写入的是 epoch 毫秒。
-            let expiry = Date(timeIntervalSince1970: expiresAt / 1000)
-            guard expiry.timeIntervalSince(now) > expiryMargin else { return nil }
+            Date(timeIntervalSince1970: $0.doubleValue / 1000)
         }
-        return Credentials(
-            accessToken: accessToken,
-            subscriptionType: oauth["subscriptionType"] as? String,
-            rateLimitTier: oauth["rateLimitTier"] as? String
+        return ParsedCredentials(
+            credentials: Credentials(
+                accessToken: accessToken,
+                subscriptionType: oauth["subscriptionType"] as? String,
+                rateLimitTier: oauth["rateLimitTier"] as? String
+            ),
+            expiresAt: expiresAt
         )
+    }
+
+    private static func isUsable(_ parsed: ParsedCredentials, now: Date) -> Bool {
+        parsed.expiresAt.map { $0.timeIntervalSince(now) > expiryMargin } ?? true
     }
 
     private func filePayloads() -> [String] {

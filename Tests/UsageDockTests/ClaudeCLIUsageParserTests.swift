@@ -17,6 +17,41 @@ struct ClaudeCLIAuthStatusParserTests {
     }
 }
 
+@Suite("Claude recovery without the CLI")
+struct ClaudeNoCLIFallbackTests {
+    @Test("Preserves actionable credential states")
+    func mapsCredentialFailures() throws {
+        let authorization = try #require(
+            ClaudeUsageService.noCLIFallbackError(
+                for: .credentialsAuthorizationRequired
+            ) as? ClaudeUsageService.ServiceError
+        )
+        let rejected = try #require(
+            ClaudeUsageService.noCLIFallbackError(
+                for: .credentialsExpired
+            ) as? ClaudeUsageService.ServiceError
+        )
+        let invalid = try #require(
+            ClaudeUsageService.noCLIFallbackError(
+                for: .invalidResponse
+            ) as? ClaudeUsageService.ServiceError
+        )
+
+        guard case .credentialsAuthorizationRequired = authorization else {
+            Issue.record("blocked Keychain access must request explicit authorization")
+            return
+        }
+        guard case .sessionExpired = rejected else {
+            Issue.record("a rejected token must direct the user to renew the desktop session")
+            return
+        }
+        guard case .invalidUsageOutput = invalid else {
+            Issue.record("an invalid API response must retain its diagnostic meaning")
+            return
+        }
+    }
+}
+
 @Suite("Claude CLI usage parser")
 struct ClaudeCLIUsageParserTests {
     @Test("Parses the current Claude usage screen in reading order")

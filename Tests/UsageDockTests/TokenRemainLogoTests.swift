@@ -3,6 +3,40 @@ import XCTest
 @testable import UsageDock
 
 final class TokenRemainLogoTests: XCTestCase {
+    func testDockRenderKeyDistinguishesProviderIdentityAndPresence() {
+        // Claude 单条与 Codex 单条颜色不同,同档位也必须是不同的 key;
+        // key 相同则跳过 Dock 重绘,混淆会让图标停在另一家的颜色上。
+        XCTAssertNotEqual(
+            TokenRemainHeadLogoArtwork.renderKey(claudeRemaining: 45, codexRemaining: nil),
+            TokenRemainHeadLogoArtwork.renderKey(claudeRemaining: nil, codexRemaining: 45)
+        )
+        // 双条与单条、无数据分别可区分。
+        XCTAssertNotEqual(
+            TokenRemainHeadLogoArtwork.renderKey(claudeRemaining: 45, codexRemaining: 45),
+            TokenRemainHeadLogoArtwork.renderKey(claudeRemaining: 45, codexRemaining: nil)
+        )
+        XCTAssertNotEqual(
+            TokenRemainHeadLogoArtwork.renderKey(claudeRemaining: nil, codexRemaining: nil),
+            TokenRemainHeadLogoArtwork.renderKey(claudeRemaining: 45, codexRemaining: nil)
+        )
+        // 相同输入必须稳定,内容去重才有意义。
+        XCTAssertEqual(
+            TokenRemainHeadLogoArtwork.renderKey(claudeRemaining: 45, codexRemaining: 12),
+            TokenRemainHeadLogoArtwork.renderKey(claudeRemaining: 45, codexRemaining: 12)
+        )
+    }
+
+    func testLiveSecondCountdownOnlyInsideTheFinalHour() {
+        let now = Date(timeIntervalSince1970: 1_784_966_400)
+        // 已过期的重置时间必须走静态展示,不允许钉住秒级刷新。
+        XCTAssertFalse(UsageFormatting.showsLiveSecondCountdown(to: now.addingTimeInterval(-5), now: now))
+        XCTAssertFalse(UsageFormatting.showsLiveSecondCountdown(to: now, now: now))
+        XCTAssertTrue(UsageFormatting.showsLiveSecondCountdown(to: now.addingTimeInterval(1_800), now: now))
+        XCTAssertTrue(UsageFormatting.showsLiveSecondCountdown(to: now.addingTimeInterval(3_599), now: now))
+        XCTAssertFalse(UsageFormatting.showsLiveSecondCountdown(to: now.addingTimeInterval(3_600), now: now))
+        XCTAssertFalse(UsageFormatting.showsLiveSecondCountdown(to: now.addingTimeInterval(7_200), now: now))
+    }
+
     func testMenuBarKeepsEveryConfiguredTrackedProviderInUserOrder() {
         let providers = StatusBarPresentation.visibleProviders(
             configured: [.claude, .codex, .cursor],

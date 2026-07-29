@@ -6,14 +6,14 @@
 
 **你的 AI 用量额度，常驻在 Mac 菜单栏**
 
-一个地方查看 Claude Code、Codex、Cursor、Grok、GLM 等 **18+** 家 AI 编码工具的剩余额度、重置倒计时与今日成本。凭证只留在本机，绝不刷新、绝不上传。
+一个地方查看 Claude Code、Codex、Cursor、Windsurf、Grok、GLM 等 **19+** 家 AI 编码工具的剩余额度、重置倒计时与今日成本。凭证只留在本机，绝不刷新、绝不上传。
 
 ![macOS](https://img.shields.io/badge/macOS-14%2B_Sonoma-000?logo=apple&logoColor=white)
 ![Universal](https://img.shields.io/badge/Universal-Apple_Silicon_%2B_Intel-7C5CFF)
 ![Notarized](https://img.shields.io/badge/Apple-Notarized-34C759?logo=apple&logoColor=white)
-![Latest](https://img.shields.io/badge/latest-v1.1.11-22D3EE)
+![Latest](https://img.shields.io/badge/latest-v1.2.0-22D3EE)
 
-**当前最新版本 `v1.1.11`**（build 13，Universal Mac 构建）
+**1.2 正式版 `v1.2.0`**（build 14，Universal Mac 构建）
 
 [官网 / 下载](https://tokenremain.com) · [隐私政策](https://tokenremain.com/privacy) · [支持](https://tokenremain.com/support) · [问题反馈](https://github.com/Carstin520/token-remain/issues)
 
@@ -30,11 +30,20 @@
 
 - 🧭 **统一额度面板** — Claude Code / Codex 的官方 5 小时 · 7 天窗口与重置倒计时，Cursor 月度账期，Grok 周池，GLM 会话/周窗口……全部并排展示。
 - ⏱️ **节奏预测** — 结合真实窗口进度与官方重置时间，判断当前节奏能否撑到重置；可能提前用尽时给出预计可用时长。
-- 💰 **今日成本** — ccusage 在本地统计 Claude Code / Codex 今日 token 与按 API 标价估算的成本；TokenRemain 每天最多一次下载完整公开价格表，始终不上传本机用量明细（非订阅账单）。
+- 💰 **今日成本** — ccusage 在本地统计多种编码 Agent 的 token；OpenClaw / 中转站模型名会映射到对应官方模型 API 标价。TokenRemain 每天最多一次下载完整公开价格表，始终不上传本机用量明细（非订阅或中转站账单）。
 - 🔐 **可选加密同步发布器** — Mac 始终是唯一真实数据来源；开启后，只把经过白名单过滤并加密的展示快照写入用户自己的 iCloud 私有库。
 - 📡 **AI Feed** — 服务端精选 Anthropic、OpenAI 等官方账号的公开动态，重大更新触发本机通知。
 - 🪟 **随手可见** — 菜单栏文字自选显示哪些应用、桌面浮窗跨空间置顶、刷新频率 1/5/15/30 分钟或仅手动。
 - 🎨 **原生质感** — macOS 26 使用系统 Liquid Glass 与原生侧栏；macOS 14/15 自动回退深色卡片样式。
+
+## 🆕 1.2 版本亮点
+
+- 🖥️ **多 Mac 加密聚合** — 每台 Mac 都拥有独立、稳定的私有来源记录；iPhone 可认证并聚合最多 16 台 Mac 的额度快照。单个来源过期、损坏、重放或删除时，不会拖累其他健康来源。
+- 🧰 **来源管理与安全诊断** — 在「数据来源」中查看每台 Mac 的状态，导出经过匿名化和字段限制的健康/数据诊断，单独移除某一来源，并明确区分“断开这台 Mac”与“删除全部 iCloud 同步数据”。
+- 📊 **更多本地用量来源** — ccusage 动态发现 15+ 种本地 Agent；Trae 只读取用户所选轨迹目录中的时间、模型与 Token 计数；Windsurf 提供独立日/周额度，并支持跨设备展示。
+- 🔑 **明确的钥匙串授权** — Claude 与 Codex 的跨 App 只读访问由用户主动触发；后台刷新始终静默，不会突然弹出系统授权窗口。
+- ⬆️ **始终更新到最新版** — 自适应检查签名更新源：无更新时每天约四次、有待安装更新时每天约两次，失败后有界退避；用户点击更新时会重新查询最新发布，直接安装当时的最新版本，而不是当前版本的“下一个版本”。
+- ⚙️ **更轻、更稳的后台刷新** — Codex 会话缓存可容忍有限时钟偏差并清理已删除记录；AI Feed 只在界面可见时轮询；工具发现降至每五分钟一次，同时修复过期倒计时与 Dock 图形缓存问题。
 
 ## 📸 实机截图
 
@@ -57,24 +66,25 @@
 
 ## 🔌 支持接入的应用
 
-大多数服务**登录即自动接入**：TokenRemain 只读取本机已存在的凭证，无需额外登录、绝不刷新 token。每张卡片都会标注数据来源；未接入的服务会显示具体接入指引。
+大多数服务**登录即自动接入**：TokenRemain 只读取本机已存在的凭证，无需在 TokenRemain 内再次登录、绝不刷新 token。Claude/Codex 用户可以使用官方桌面 App，无需另装 CLI；首次跨 App 读取钥匙串时，可在「数据来源」页主动授权一次只读访问。
 
-### 原生 Provider（10 家）
+### 原生 Provider（11 家）
 
 | 应用 | 接入方式 | 说明 |
 | :-- | :-- | :-- |
-| **Claude Code** | 🟢 自动 | 官方 5 小时 / 7 天窗口与重置倒计时；`oauth/usage` 直查，凭证异常时降级 PTY 探针 |
-| **Codex** | 🟢 自动 | 主账户实时 5 小时 / 7 天窗口；服务端直查 + 本地快照兜底；节奏偏快给出提前用尽 ETA |
+| **Claude Code** | 🟢 自动 | 可读取 Claude App / Code 登录凭证；`oauth/usage` 直查，已安装 CLI 时才使用 PTY 探针兜底 |
+| **Codex** | 🟢 自动 | 可读取 ChatGPT/Codex 维护的钥匙串凭证或兼容 `auth.json`；服务端实时 5 小时 / 7 天窗口 |
 | **Cursor** | 🟢 自动 | 月度账期额度与重置倒计时；只读 `state.vscdb` |
 | **Grok**（xAI）| 🟢 自动 | 周池剩余额度；只读 Grok CLI 凭证 |
 | **GitHub Copilot** | 🟢 自动 | 月度 Credits；只读本机 GitHub 登录 |
 | **Devin** | 🟢 自动 | 日 / 周配额 |
+| **Windsurf** | 🟢 自动 | 日 / 周配额；只读 Windsurf 自己的 `state.vscdb` 登录态 |
 | **Antigravity** | 🟢 自动 | 配额池；只读本机登录态 |
 | **OpenCode** | 💾 纯本地 | Go 套餐用量，本地数据库扫描估算，完全离线 |
 | **Z.ai**（GLM Coding Plan）| 🔑 API Key | 会话 / 周窗口；Key 仅存 macOS 钥匙串 |
 | **OpenRouter** | 🔑 API Key | 预充积分余额 |
 
-> 🟢 **自动** = 登录对应工具即接入 · 🔑 **API Key** = 需粘贴一次密钥（存钥匙串）· 💾 **纯本地** = 只扫描本地文件，不联网
+> 🟢 **自动** = 登录对应工具即接入（Claude/Codex 支持官方桌面 App，CLI 非必需）· 🔑 **API Key** = 需粘贴一次密钥（存钥匙串）· 💾 **纯本地** = 只扫描本地文件，不联网
 
 ### token-monitor 兼容层（8 家）
 
@@ -85,6 +95,17 @@
 | **MiniMax** | API Key | | **火山引擎**（Volcengine）| AK:SK 签名 |
 | **MiMo Code** | Cookie | | **Ollama** | session Cookie |
 
+### 本地 Token / 成本来源
+
+内置 ccusage 会动态发现 Claude Code、Codex、OpenCode、Amp、Droid、
+Codebuff、Hermes Agent、pi-agent、Goose、OpenClaw、Kilo Code、Kimi CLI、
+Qwen CLI、GitHub Copilot CLI 与 Gemini。新增来源不会要求扩展固定数据库列，
+可在「数据来源」页逐项纳入或排除汇总。
+
+Trae Agent 通过用户选择的 `trajectories` 目录接入；TokenRemain 只解码时间、
+provider、模型名和 Token 计数，忽略提示词、消息、代码、工具参数与模型回复。
+识别到的托管模型按官方模型 API 标价估算；Ollama 等明确的本地模型保持零 API 成本。
+
 ## 🔒 数据与隐私
 
 > 隐私不是一句承诺，而是架构本身 —— 下面每一条都能在源码里核对。
@@ -93,11 +114,11 @@
 你机器上已有的凭证 ──只读──▶ 各服务商官方 API ──▶ 本地渲染并缓存
 ```
 
-- **只读凭证，绝不刷新** — 读取各工具自己维护的 access token（Claude Code 走 `oauth/usage` 直查，`~/.claude/.credentials.json` 优先、钥匙串兜底；Codex 读 `~/.codex/auth.json`；Cursor 只读 `state.vscdb`；Grok 读 `~/.grok/auth.json`）。**从不刷新、从不写回**，因此不会与工具争用 refresh token，也不会触发续期限流。凭证缺失/过期时自动降级（如 Claude 的隔离 PTY `/usage` 解析、Codex 的会话 rate-limit 快照），恢复后下一轮直查即回正。
+- **只读凭证，绝不刷新** — 读取各工具自己维护的 access token（Claude 优先读配置文件、再读 Claude App 钥匙串；Codex 兼容 `auth.json` 与 Codex Keychain；Cursor 只读 `state.vscdb`；Grok 读 `~/.grok/auth.json`）。后台读取禁止系统授权弹窗；只有用户点击「授权只读访问」才允许 macOS 显示一次确认。TokenRemain **从不刷新、从不写回**，因此不会与工具争用 refresh token。Claude CLI 存在时可使用隔离 PTY `/usage` 兜底；没有 CLI 时直接给出打开官方 App 登录或续期的恢复指引。
 - **手动密钥进钥匙串** — Z.ai、OpenRouter 等手动接入的 API Key 只存 macOS 钥匙串，绝不写入源码、构建产物或日志。Z.ai 也支持 `ZAI_API_KEY` 环境变量或 `~/.config/zai/key.json`。
 - **不做凭证中转** — 额度查询直连各服务商官方 API；AI Feed、推送服务与匿名下载计数**从不接触** provider 凭证。
 - **不做行为追踪** — 无遥测、广告、cookie、分析 SDK；官网只保留一个匿名的 Mac 下载总数。
-- **价格更新不上传用量** — 每天最多一次以固定、无请求正文的 GET 下载完整 LiteLLM 公开价格表；请求不携带凭证、模型名、token 数、提示词、项目、对话或用量历史。价格缓存在本机，ccusage 仍离线处理日志。GitHub 可能按其政策处理 IP 与请求时间等普通连接元数据。
+- **价格更新不上传用量** — 每天最多一次以固定、无请求正文的 GET 下载完整 LiteLLM 公开价格表；请求不携带凭证、模型名、token 数、提示词、项目、对话、Trae 轨迹或用量历史。价格缓存在本机，ccusage 与 Trae 解析仍在本地完成。GitHub 可能按其政策处理 IP 与请求时间等普通连接元数据。
 - **无需账号** — 你从不注册 TokenRemain，本机工具已登录即可。
 - **缓存与统计留在本地** — Mac 缓存与成本统计只在本地（`~/Library/Caches/com.jamesli.usagedock/`）；只有开启同步后，一份加密的展示快照才进入你自己的 iCloud 私有库。
 
@@ -140,7 +161,7 @@ bash ./script/build_and_run.sh --verify
 
 ## 📦 当前发布
 
-- **版本**：`v1.1.11`（build 13）——Universal Mac 发布候选版。
+- **版本**：`v1.2.0`（build 14）——Universal Mac 正式版。
 - **平台**：macOS 14 Sonoma 及以上，同时支持 Apple Silicon（arm64）与 Intel（x86_64）。
 - **分发**：官网始终下载最新的 `TokenRemain.dmg`；GitHub Release 同时保留带版本与 build 号的 DMG 归档。
 - **成本口径**：成本为 API 标价估算，不等于订阅账单；凭证过期时数据会暂停并提示恢复方式。

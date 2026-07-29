@@ -1,4 +1,6 @@
+import CryptoKit
 import Foundation
+import Security
 
 /// Codex 限额 API 直查。参考 OpenUsage(MIT)的 Codex provider:
 /// 只读 Codex CLI 已有的 OAuth access token,调用 ChatGPT 后端的
@@ -10,6 +12,8 @@ import Foundation
 struct CodexAPIUsageService {
     enum APIError: LocalizedError, Sendable {
         case notLoggedIn
+        case credentialsAuthorizationRequired
+        case invalidStoredCredentials
         case tokenExpired
         case tokenRejected(Int)
         case requestFailed(Int)
@@ -19,6 +23,10 @@ struct CodexAPIUsageService {
             switch self {
             case .notLoggedIn:
                 return L10n.text("service.codex.not_logged_in")
+            case .credentialsAuthorizationRequired:
+                return L10n.text("service.codex.authorization_required")
+            case .invalidStoredCredentials:
+                return L10n.text("service.codex.invalid_stored_credentials")
             case .tokenExpired:
                 return L10n.text("service.codex.token_expired")
             case .tokenRejected(let status):
@@ -33,8 +41,21 @@ struct CodexAPIUsageService {
 
     private static let usageURL = URL(string: "https://chatgpt.com/backend-api/wham/usage")!
 
-    func fetch(now: Date = .now) async throws -> ProviderQuota {
-        guard let auth = CodexAuthReader().load() else {
+    func fetch(
+        now: Date = .now,
+        keychainInteraction: KeychainRead.Interaction = .disallowed
+    ) async throws -> ProviderQuota {
+        let result = CodexAuthReader().read(
+            now: now,
+            keychainInteraction: keychainInteraction
+        )
+        guard let auth = result.auth else {
+            if result.needsAuthorization {
+                throw APIError.credentialsAuthorizationRequired
+            }
+            if result.hasInvalidKeychainPayload {
+                throw APIError.invalidStoredCredentials
+            }
             throw APIError.notLoggedIn
         }
         if let expiry = auth.accessTokenExpiry, expiry <= now {
@@ -170,21 +191,90 @@ enum CodexAPIUsageParser {
     }
 }
 
-/// 只读发现 Codex CLI 的登录凭证:`$CODEX_HOME/auth.json`,默认 `~/.codex/auth.json`。
+/// 只读发现 Codex 本地登录凭证。先保留历史兼容路径
+/// `$CODEX_HOME/auth.json`(默认 `~/.codex/auth.json`),文件不可用时再读取
+/// Codex 当前 macOS keyring 条目。ChatGPT 桌面端、Codex CLI 和 IDE
+/// 扩展都可以由 Codex 自己维护这份凭证;TokenRemain 绝不刷新或写回。
 /// access token 是 JWT,读取 `exp` 声明做过期预检,避免注定 401 的请求。
 struct CodexAuthReader {
+    enum Source: Equatable, Sendable {
+        case file
+        case keychain
+    }
+
     struct Auth: Sendable {
         let accessToken: String
         let accountID: String?
         let accessTokenExpiry: Date?
     }
 
+    struct ReadResult: Sendable {
+        let auth: Auth?
+        let source: Source?
+        let keychainStatus: OSStatus?
+
+        var needsAuthorization: Bool {
+            guard let keychainStatus else { return false }
+            return keychainStatus == errSecAuthFailed
+                || keychainStatus == errSecInteractionNotAllowed
+                || keychainStatus == errSecUserCanceled
+        }
+
+        var hasInvalidKeychainPayload: Bool {
+            keychainStatus == errSecSuccess && auth == nil
+        }
+    }
+
     var environment: [String: String] = ProcessInfo.processInfo.environment
     var homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser
+    static let keychainService = "Codex Auth"
 
-    func load() -> Auth? {
-        guard let data = try? Data(contentsOf: authFileURL()) else { return nil }
-        return Self.parse(data)
+    var keychainPayload: @Sendable (String, KeychainRead.Interaction) -> KeychainRead.Outcome = {
+        account, interaction in
+        KeychainRead.genericPassword(
+            service: CodexAuthReader.keychainService,
+            account: account,
+            interaction: interaction
+        )
+    }
+
+    func load(
+        now: Date = .now,
+        keychainInteraction: KeychainRead.Interaction = .disallowed
+    ) -> Auth? {
+        read(now: now, keychainInteraction: keychainInteraction).auth
+    }
+
+    func read(
+        now: Date = .now,
+        keychainInteraction: KeychainRead.Interaction = .disallowed
+    ) -> ReadResult {
+        let fileAuth = (try? Data(contentsOf: authFileURL())).flatMap(Self.parse)
+        if let fileAuth, !Self.isExpired(fileAuth, now: now) {
+            return ReadResult(auth: fileAuth, source: .file, keychainStatus: nil)
+        }
+
+        let outcome = keychainPayload(keychainAccount(), keychainInteraction)
+        let keychainAuth = outcome.payload
+            .flatMap { $0.data(using: .utf8) }
+            .flatMap(Self.parse)
+        if let keychainAuth, !Self.isExpired(keychainAuth, now: now) {
+            return ReadResult(
+                auth: keychainAuth,
+                source: .keychain,
+                keychainStatus: outcome.status
+            )
+        }
+
+        // 两条路径都不可用时保留已过期的结构化凭证,让上层报出
+        // "token 已过期"而不是误报"未登录";Keychain 状态仍保留给显式授权 UI。
+        let fallback = fileAuth.map { ($0, Source.file) }
+            ?? keychainAuth.map { ($0, Source.keychain) }
+        return ReadResult(
+            auth: fallback?.0,
+            source: fallback?.1,
+            keychainStatus: outcome.status
+        )
     }
 
     static func parse(_ data: Data) -> Auth? {
@@ -206,14 +296,38 @@ struct CodexAuthReader {
         JWT.expiry(token)
     }
 
+    private static func isExpired(_ auth: Auth, now: Date) -> Bool {
+        auth.accessTokenExpiry.map { $0 <= now } ?? false
+    }
+
     private func authFileURL() -> URL {
-        if let home = environment["CODEX_HOME"]?
-            .trimmingCharacters(in: .whitespacesAndNewlines), !home.isEmpty {
-            let expanded = home.hasPrefix("~")
-                ? homeDirectory.path + home.dropFirst()
-                : home
-            return URL(fileURLWithPath: String(expanded)).appending(path: "auth.json")
+        codexHomeURL().appending(path: "auth.json")
+    }
+
+    private func codexHomeURL() -> URL {
+        guard let configured = environment["CODEX_HOME"]?
+            .trimmingCharacters(in: .whitespacesAndNewlines), !configured.isEmpty else {
+            return homeDirectory.appending(path: ".codex")
         }
-        return homeDirectory.appending(path: ".codex/auth.json")
+        let expanded = configured.hasPrefix("~")
+            ? homeDirectory.path + configured.dropFirst()
+            : configured
+        return URL(fileURLWithPath: String(expanded))
+    }
+
+    /// Codex 将 canonical CODEX_HOME 的 SHA-256 前 16 个十六进制字符用作
+    /// keyring account:`cli|<digest>`。路径不存在时与 Codex 一样使用标准化路径。
+    func keychainAccount() -> String {
+        let url = codexHomeURL()
+        let canonicalURL: URL
+        if FileManager.default.fileExists(atPath: url.path) {
+            canonicalURL = url.resolvingSymlinksInPath().standardizedFileURL
+        } else {
+            canonicalURL = url.standardizedFileURL
+        }
+        let digest = SHA256.hash(data: Data(canonicalURL.path.utf8))
+            .map { String(format: "%02x", $0) }
+            .joined()
+        return "cli|\(digest.prefix(16))"
     }
 }

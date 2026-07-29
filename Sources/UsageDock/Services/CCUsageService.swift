@@ -7,10 +7,7 @@ struct CCUsageService {
         self.pricingService = pricingService
     }
 
-    struct Snapshot {
-        let daily: DailyUsage
-        let history: DailyUsageHistory
-    }
+    typealias Snapshot = LocalUsageSnapshot
 
     enum ServiceError: LocalizedError {
         case bundledExecutableMissing

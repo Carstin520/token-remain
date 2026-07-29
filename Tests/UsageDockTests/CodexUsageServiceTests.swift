@@ -71,6 +71,164 @@ struct CodexUsageServiceTests {
         #expect(quota.secondary?.windowMinutes == 10_080)
     }
 
+    @Test("Newest canonical snapshot wins; older session files cannot outrank it")
+    func newestCanonicalWinsAcrossSessionFiles() async throws {
+        let root = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let oldFile = root.appendingPathComponent("old.jsonl")
+        try writeJSONL([
+            tokenCount(
+                timestamp: "2026-07-17T10:00:00.000Z",
+                limitID: "codex",
+                limitName: nil,
+                planType: "prolite",
+                usedPercent: 80,
+                windowMinutes: 300
+            )
+        ], to: oldFile)
+        // 旧会话的 mtime 介于两个事件时间之间,处在早停宽容窗内,
+        // 仍会被解析;无论走早停还是全量,结果都必须取最新快照。
+        try FileManager.default.setAttributes(
+            [.modificationDate: ISO8601DateFormatter().date(from: "2026-07-17T10:30:00Z")!],
+            ofItemAtPath: oldFile.path
+        )
+        try writeJSONL([
+            tokenCount(
+                timestamp: "2026-07-17T11:00:00.000Z",
+                limitID: "codex",
+                limitName: nil,
+                planType: "prolite",
+                usedPercent: 55,
+                windowMinutes: 300
+            )
+        ], to: root.appendingPathComponent("new.jsonl"))
+
+        let quota = try await CodexUsageService.fetch(from: [root])
+
+        #expect(quota.primary.usedPercent == 55)
+    }
+
+    @Test("Legacy snapshot still surfaces when no canonical limit exists anywhere")
+    func legacyFallbackSurvivesEarlyStop() async throws {
+        let root = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let legacyFile = root.appendingPathComponent("legacy.jsonl")
+        try writeJSONL([
+            tokenCount(
+                timestamp: "2026-07-17T09:00:00.000Z",
+                limitID: nil,
+                limitName: nil,
+                planType: nil,
+                usedPercent: 63,
+                windowMinutes: 300
+            )
+        ], to: legacyFile)
+        try FileManager.default.setAttributes(
+            [.modificationDate: ISO8601DateFormatter().date(from: "2026-07-17T09:05:00Z")!],
+            ofItemAtPath: legacyFile.path
+        )
+        // 更新的会话只有模型专属限额:既非账户级也非 legacy,不允许
+        // 提前终止扫描,否则老文件里的 legacy 快照会被漏掉。
+        try writeJSONL([
+            tokenCount(
+                timestamp: "2026-07-17T11:35:24.973Z",
+                limitID: "codex_bengalfox",
+                limitName: "GPT-5.3-Codex-Spark",
+                planType: nil,
+                usedPercent: 0,
+                windowMinutes: 10_080
+            )
+        ], to: root.appendingPathComponent("spark.jsonl"))
+
+        let quota = try await CodexUsageService.fetch(from: [root])
+
+        #expect(quota.primary.usedPercent == 63)
+    }
+
+    @Test("A rewritten session file (new mtime) invalidates the parse cache")
+    func mtimeChangeInvalidatesCache() async throws {
+        let root = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let file = root.appendingPathComponent("session.jsonl")
+        try writeJSONL([
+            tokenCount(
+                timestamp: "2026-07-17T10:00:00.000Z",
+                limitID: "codex",
+                limitName: nil,
+                planType: "prolite",
+                usedPercent: 50,
+                windowMinutes: 300
+            )
+        ], to: file)
+        let first = try await CodexUsageService.fetch(from: [root])
+        #expect(first.primary.usedPercent == 50)
+
+        // 追加新事件后 mtime 变化,缓存必须失效并读到新值。
+        try writeJSONL([
+            tokenCount(
+                timestamp: "2026-07-17T12:00:00.000Z",
+                limitID: "codex",
+                limitName: nil,
+                planType: "prolite",
+                usedPercent: 70,
+                windowMinutes: 300
+            )
+        ], to: file)
+        try FileManager.default.setAttributes(
+            [.modificationDate: Date()],
+            ofItemAtPath: file.path
+        )
+        let second = try await CodexUsageService.fetch(from: [root])
+        #expect(second.primary.usedPercent == 70)
+    }
+
+    @Test("An unchanged mtime serves the cached parse without re-reading the file")
+    func unchangedMtimeServesCachedParse() async throws {
+        let root = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let file = root.appendingPathComponent("session.jsonl")
+        let pinnedMtime = ISO8601DateFormatter().date(from: "2026-07-17T10:05:00Z")!
+        try writeJSONL([
+            tokenCount(
+                timestamp: "2026-07-17T10:00:00.000Z",
+                limitID: "codex",
+                limitName: nil,
+                planType: "prolite",
+                usedPercent: 50,
+                windowMinutes: 300
+            )
+        ], to: file)
+        try FileManager.default.setAttributes(
+            [.modificationDate: pinnedMtime],
+            ofItemAtPath: file.path
+        )
+        let first = try await CodexUsageService.fetch(from: [root])
+        #expect(first.primary.usedPercent == 50)
+
+        // 改写内容但把 mtime 恢复原值:约定按 mtime 信任缓存,此时应
+        // 返回旧解析结果——这正是"未变文件零 I/O"的可观测证据。
+        try writeJSONL([
+            tokenCount(
+                timestamp: "2026-07-17T10:01:00.000Z",
+                limitID: "codex",
+                limitName: nil,
+                planType: "prolite",
+                usedPercent: 90,
+                windowMinutes: 300
+            )
+        ], to: file)
+        try FileManager.default.setAttributes(
+            [.modificationDate: pinnedMtime],
+            ofItemAtPath: file.path
+        )
+        let second = try await CodexUsageService.fetch(from: [root])
+        #expect(second.primary.usedPercent == 50)
+    }
+
     private func temporaryDirectory() throws -> URL {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("UsageDockTests-\(UUID().uuidString)", isDirectory: true)

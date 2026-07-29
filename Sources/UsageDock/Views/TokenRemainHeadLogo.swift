@@ -44,11 +44,33 @@ enum TokenRemainHeadLogoArtwork {
         let color: NSColor
     }
 
-    private static let imageCache = NSCache<NSString, NSImage>()
+    private static let imageCache: NSCache<NSString, NSImage> = {
+        let cache = NSCache<NSString, NSImage>()
+        // 同一时刻活跃的表情/量表组合只有个位数;逐出后按需重绘即可,
+        // 不能让一整天的配额漂移在内存里积累几百张位图。
+        cache.countLimit = 12
+        return cache
+    }()
     private static let claudeColor = NSColor(srgbRed: 217.0 / 255.0, green: 119.0 / 255.0, blue: 87.0 / 255.0, alpha: 1)
     private static let codexColor = NSColor(srgbRed: 75.0 / 255.0, green: 156.0 / 255.0, blue: 251.0 / 255.0, alpha: 1)
     private static let trackColor = NSColor(srgbRed: 29.0 / 255.0, green: 38.0 / 255.0, blue: 61.0 / 255.0, alpha: 0.96)
     private static let borderColor = NSColor(srgbRed: 69.0 / 255.0, green: 82.0 / 255.0, blue: 116.0 / 255.0, alpha: 0.9)
+
+    /// Stable identity of the artwork for a pair of remaining percentages.
+    /// Two equal keys always render pixel-identical images, so callers can
+    /// skip redundant `applicationIconImage` assignments (each one forces a
+    /// full Dock tile redraw even when the image object is unchanged).
+    /// 每条量表的档位必须带上 provider 前缀:Claude 单条 45% 是橙色,
+    /// Codex 单条 45% 是蓝色,光凭档位序列无法区分这两张图。
+    static func renderKey(claudeRemaining: Double?, codexRemaining: Double?) -> String {
+        let moodRemaining = [claudeRemaining, codexRemaining].compactMap { $0 }.min()
+        let state = TokenRemainLogoState.resolve(remainingPercent: moodRemaining)
+        func level(_ prefix: String, _ remaining: Double?) -> String {
+            guard let remaining else { return "\(prefix)_" }
+            return "\(prefix)\(TokenRemainLogoMeter.filledSegments(remainingPercent: remaining) ?? -1)"
+        }
+        return "head-\(state.rawValue)-\(level("c", claudeRemaining))-\(level("x", codexRemaining))"
+    }
 
     static func image(
         claudeRemaining: Double?,
@@ -58,8 +80,8 @@ enum TokenRemainHeadLogoArtwork {
         let moodRemaining = [claudeRemaining, codexRemaining].compactMap { $0 }.min()
         let state = TokenRemainLogoState.resolve(remainingPercent: moodRemaining)
         let rows = meterRows(claudeRemaining: claudeRemaining, codexRemaining: codexRemaining)
-        let levels = rows.map { TokenRemainLogoMeter.filledSegments(remainingPercent: $0.remainingPercent) ?? -1 }
-        let cacheKey = "head-\(state.rawValue)-\(levels.map(String.init).joined(separator: "-"))-\(Int(size.rounded()))" as NSString
+        let key = renderKey(claudeRemaining: claudeRemaining, codexRemaining: codexRemaining)
+        let cacheKey = "\(key)-\(Int(size.rounded()))" as NSString
         if let cached = imageCache.object(forKey: cacheKey) {
             return cached
         }

@@ -32,6 +32,22 @@ actor CCUsagePricingService {
                 && fastMultiplier.map { $0.isFinite && (0...100).contains($0) } != false
         }
 
+        func estimatedCost(
+            inputTokens: Int64,
+            outputTokens: Int64,
+            cacheCreationTokens: Int64,
+            cacheReadTokens: Int64
+        ) -> Double {
+            let input = max(0, inputTokens)
+            let output = max(0, outputTokens)
+            let cacheCreation = max(0, cacheCreationTokens)
+            let cacheRead = max(0, cacheReadTokens)
+            return Double(input) * inputCostPerToken
+                + Double(output) * outputCostPerToken
+                + Double(cacheCreation) * (cacheCreationInputTokenCost ?? inputCostPerToken * 1.25)
+                + Double(cacheRead) * (cacheReadInputTokenCost ?? inputCostPerToken * 0.1)
+        }
+
         private static func validCost(_ value: Double) -> Bool {
             value.isFinite && (0...1).contains(value)
         }
@@ -84,6 +100,11 @@ actor CCUsagePricingService {
         case invalidSource
         case responseTooLarge
         case invalidPricing
+    }
+
+    struct PricingMatch: Equatable, Sendable {
+        let canonicalModel: String
+        let price: PricingOverride
     }
 
     static let shared = CCUsagePricingService()
@@ -170,6 +191,15 @@ actor CCUsagePricingService {
         } catch {
             return nil
         }
+    }
+
+    /// Supplies the same validated public price snapshot to app-owned local
+    /// parsers such as Trae Agent. Callers receive no URL or request handle and
+    /// never send a locally observed model name to the pricing host.
+    func pricingSnapshot(now: Date = .now) async -> [String: PricingOverride] {
+        loadCacheIfNeeded()
+        await refreshIfNeeded(now: now)
+        return storedPricing?.pricingOverrides ?? [:]
     }
 
     private func refreshIfNeeded(now: Date) async {
@@ -299,7 +329,7 @@ actor CCUsagePricingService {
         pricingOverrides: [String: PricingOverride],
         userConfiguration: Data?
     ) -> Data? {
-        let publicData = try? JSONEncoder().encode(pricingOverrides)
+        let publicData = try? JSONEncoder().encode(expandedPricingOverrides(pricingOverrides))
         guard let publicData,
               let publicObject = try? JSONSerialization.jsonObject(with: publicData),
               var mergedOverrides = publicObject as? [String: Any] else {
@@ -328,6 +358,13 @@ actor CCUsagePricingService {
                 }
             }
         }
+        // TokenRemain presents API-list-price estimates. `auto` trusts a
+        // source-provided cost even when a relay/OpenClaw explicitly records
+        // zero, so use token-based calculation unless the user deliberately
+        // selected another ccusage mode in their own configuration.
+        if defaults["mode"] == nil {
+            defaults["mode"] = "calculate"
+        }
         defaults["pricingOverrides"] = mergedOverrides
         root["defaults"] = defaults
         if root["$schema"] == nil {
@@ -336,6 +373,196 @@ actor CCUsagePricingService {
 
         guard JSONSerialization.isValidJSONObject(root) else { return nil }
         return try? JSONSerialization.data(withJSONObject: root, options: [.sortedKeys])
+    }
+
+    /// Adds a deliberately small set of common relay spellings. ccusage already
+    /// performs boundary-aware fuzzy matching; these aliases cover the layouts
+    /// that reorder Claude family/version tokens and therefore cannot be found
+    /// by substring matching alone.
+    static func expandedPricingOverrides(
+        _ pricingOverrides: [String: PricingOverride]
+    ) -> [String: PricingOverride] {
+        var expanded = pricingOverrides
+        for (model, price) in pricingOverrides {
+            guard !model.contains("/") else { continue }
+            for alias in modelAliases(forCanonicalModel: model) where expanded[alias] == nil {
+                expanded[alias] = price
+            }
+        }
+        return expanded
+    }
+
+    static func matchedPricing(
+        modelName: String,
+        provider: String? = nil,
+        pricingOverrides: [String: PricingOverride]
+    ) -> PricingMatch? {
+        guard !pricingOverrides.isEmpty else { return nil }
+        let candidates = normalizedModelCandidates(modelName, provider: provider)
+        guard !candidates.isEmpty else { return nil }
+
+        let entries = pricingOverrides.compactMap { model, price -> (String, String, PricingOverride)? in
+            let normalized = normalizedPricingName(model)
+            return normalized.isEmpty ? nil : (model, normalized, price)
+        }
+
+        // Prefer a direct vendor model key over a relay-qualified copy. This is
+        // what makes "OpenRouter/official-model" estimate the official API list
+        // price instead of an intermediary's markup when both rows exist.
+        for candidate in candidates {
+            let exact = entries
+                .filter { $0.1 == candidate }
+                .sorted { directPriceRank($0.0) > directPriceRank($1.0) }
+            if let match = exact.first {
+                return PricingMatch(canonicalModel: match.0, price: match.2)
+            }
+        }
+
+        let matches = entries.compactMap { entry -> (String, PricingOverride, Int, Int)? in
+            guard candidates.contains(where: { containsModelToken($0, token: entry.1) }) else {
+                return nil
+            }
+            return (entry.0, entry.2, entry.1.count, directPriceRank(entry.0))
+        }
+        .sorted {
+            if $0.3 != $1.3 { return $0.3 > $1.3 }
+            if $0.2 != $1.2 { return $0.2 > $1.2 }
+            return $0.0 < $1.0
+        }
+        guard let match = matches.first else { return nil }
+        return PricingMatch(canonicalModel: match.0, price: match.1)
+    }
+
+    private static func modelAliases(forCanonicalModel model: String) -> [String] {
+        let normalized = normalizedPricingName(model)
+        let parts = normalized.split(separator: "-").map(String.init)
+        guard parts.count >= 4,
+              parts[0] == "claude",
+              ["opus", "sonnet", "haiku"].contains(parts[1]),
+              Int(parts[2]) != nil,
+              Int(parts[3]) != nil else {
+            return []
+        }
+        let family = parts[1]
+        let version = "\(parts[2]).\(parts[3])"
+        let suffix = parts.dropFirst(4).joined(separator: "-")
+        let suffixText = suffix.isEmpty ? "" : "-\(suffix)"
+        return [
+            "claude-\(family)-\(version)\(suffixText)",
+            "claude-\(version)-\(family)\(suffixText)",
+            "claude-\(version)-\(family)-thinking\(suffixText)"
+        ]
+    }
+
+    private static func normalizedModelCandidates(_ model: String, provider: String?) -> [String] {
+        var rawCandidates = [model]
+        if let provider, !provider.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            rawCandidates.append("\(provider)/\(model)")
+        }
+
+        let lowered = model.lowercased()
+        let sourcePrefixes = ["[openclaw]", "[trae-agent]", "[trae agent]", "[pi]"]
+        for prefix in sourcePrefixes where lowered.hasPrefix(prefix) {
+            rawCandidates.append(String(model.dropFirst(prefix.count)))
+        }
+        let pathParts = model.split(separator: "/").map(String.init)
+        if pathParts.count > 1 {
+            for index in pathParts.indices {
+                rawCandidates.append(pathParts[index...].joined(separator: "/"))
+            }
+            rawCandidates.append(pathParts.last!)
+        }
+
+        var result: [String] = []
+        var seen = Set<String>()
+        for raw in rawCandidates {
+            let normalized = normalizedPricingName(raw)
+            guard !normalized.isEmpty else { continue }
+            let variants = modelNameVariants(normalized)
+            for variant in variants where seen.insert(variant).inserted {
+                result.append(variant)
+            }
+        }
+        return result
+    }
+
+    private static func modelNameVariants(_ normalized: String) -> [String] {
+        var variants = [normalized]
+        var base = normalized
+        for suffix in ["-thinking", "-reasoning", "-high", "-medium", "-low"] {
+            if base.hasSuffix(suffix) {
+                base.removeLast(suffix.count)
+                variants.append(base)
+                break
+            }
+        }
+
+        let parts = base.split(separator: "-").map(String.init)
+        if parts.count >= 4,
+           parts[0] == "claude",
+           Int(parts[1]) != nil,
+           Int(parts[2]) != nil,
+           ["opus", "sonnet", "haiku"].contains(parts[3]) {
+            variants.append(
+                (["claude", parts[3], parts[1], parts[2]] + Array(parts.dropFirst(4)))
+                    .joined(separator: "-")
+            )
+        }
+        return variants
+    }
+
+    private static func normalizedPricingName(_ value: String) -> String {
+        let lowered = value
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+        var result = ""
+        var lastWasSeparator = false
+        for scalar in lowered.unicodeScalars {
+            if CharacterSet.alphanumerics.contains(scalar) {
+                result.unicodeScalars.append(scalar)
+                lastWasSeparator = false
+            } else if !lastWasSeparator, !result.isEmpty {
+                result.append("-")
+                lastWasSeparator = true
+            }
+        }
+        while result.hasSuffix("-") { result.removeLast() }
+        return result
+    }
+
+    private static func containsModelToken(_ value: String, token: String) -> Bool {
+        guard !token.isEmpty else { return false }
+        var searchStart = value.startIndex
+        while searchStart < value.endIndex,
+              let range = value.range(of: token, range: searchStart..<value.endIndex) {
+            let beforeOK = range.lowerBound == value.startIndex
+                || value[value.index(before: range.lowerBound)] == "-"
+            let after = range.upperBound
+            let afterOK: Bool
+            if after == value.endIndex {
+                afterOK = true
+            } else if value[after] != "-" {
+                afterOK = false
+            } else {
+                let next = value.index(after: after)
+                let extendsNumericVersion = token.last?.isNumber == true
+                    && next < value.endIndex
+                    && value[next].isNumber
+                afterOK = !extendsNumericVersion
+            }
+            if beforeOK && afterOK { return true }
+            searchStart = value.index(after: range.lowerBound)
+        }
+        return false
+    }
+
+    private static func directPriceRank(_ model: String) -> Int {
+        if !model.contains("/") { return 3 }
+        let normalized = model.lowercased()
+        if normalized.hasPrefix("openrouter/") || normalized.hasPrefix("azure/") {
+            return 0
+        }
+        return 1
     }
 
     static func isFresh(_ fetchedAt: Date, now: Date) -> Bool {

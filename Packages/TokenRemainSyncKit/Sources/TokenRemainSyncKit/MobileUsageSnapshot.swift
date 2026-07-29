@@ -12,6 +12,7 @@ public enum SyncedProviderID {
     public static let zai = "zai"
     public static let copilot = "copilot"
     public static let devin = "devin"
+    public static let windsurf = "windsurf"
     public static let openrouter = "openrouter"
     public static let antigravity = "antigravity"
     public static let opencode = "opencode"
@@ -28,7 +29,7 @@ public enum SyncedProviderID {
     /// malformed payload. Senders must still use a stable, non-account-specific
     /// identifier that passes ``isWellFormed(_:)``.
     public static let canonicalMobileOrder: [String] = [
-        claude, codex, cursor, grok, zai, copilot, devin, openrouter,
+        claude, codex, cursor, grok, zai, copilot, devin, windsurf, openrouter,
         antigravity, opencode, deepseek, kimi, minimax, mimo, qoder,
         kiro, volcengine, ollama,
     ]

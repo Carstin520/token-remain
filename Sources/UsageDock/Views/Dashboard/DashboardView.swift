@@ -350,7 +350,8 @@ struct DashboardView: View {
                 onRetryCCUsage: {
                     Task { await store.refresh(forceCCUsage: true, forceClaude: false) }
                 },
-                tracked: tracked
+                tracked: tracked,
+                disabledLocalUsageSourceIDs: store.disabledLocalUsageSourceIDs
             )
         case .devices:
             DevicesSection(insights: insights)

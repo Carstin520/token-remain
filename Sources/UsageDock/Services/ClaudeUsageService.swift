@@ -7,6 +7,9 @@ struct ClaudeUsageService {
         case cliNotFound
         case cliTimedOut
         case credentialsUnavailable
+        case credentialsAuthorizationRequired
+        case invalidStoredCredentials
+        case sessionExpired
         case cliLaunchFailed(String)
         case invalidUsageOutput
         case rateLimited(retryAfterSeconds: Int?)
@@ -19,6 +22,12 @@ struct ClaudeUsageService {
                 return L10n.text("service.claude.cli_timeout")
             case .credentialsUnavailable:
                 return L10n.text("service.claude.credentials_unavailable")
+            case .credentialsAuthorizationRequired:
+                return L10n.text("service.claude.authorization_required")
+            case .invalidStoredCredentials:
+                return L10n.text("service.claude.invalid_stored_credentials")
+            case .sessionExpired:
+                return L10n.text("service.claude.session_expired")
             case .cliLaunchFailed(let detail):
                 return L10n.format("service.claude.probe_launch_failed", detail)
             case .invalidUsageOutput:
@@ -54,6 +63,9 @@ struct ClaudeUsageService {
             if case .rateLimited(let seconds) = error {
                 throw ServiceError.rateLimited(retryAfterSeconds: seconds)
             }
+            guard ClaudeCLIUsageProbe.isAvailable else {
+                throw Self.noCLIFallbackError(for: error)
+            }
             // Missing/expired credentials normally fall through to the PTY so
             // Claude Code can refresh them. When Claude itself explicitly says
             // it is logged out, however, the PTY can only sit on the login
@@ -66,10 +78,34 @@ struct ClaudeUsageService {
             logger.info("Claude API path unavailable (\(error.localizedDescription, privacy: .public)); falling back to PTY probe")
         } catch {
             // 网络层错误(离线、超时)同样交给 PTY 兜底。
+            guard ClaudeCLIUsageProbe.isAvailable else { throw error }
             logger.info("Claude API path failed (\(error.localizedDescription, privacy: .public)); falling back to PTY probe")
         }
         let output = try await ClaudeCLIUsageProbe.run()
         return try ClaudeCLIUsageParser.parse(output)
+    }
+
+    static func noCLIFallbackError(
+        for error: ClaudeOAuthUsageService.APIError
+    ) -> Error {
+        switch error {
+        case .credentialsUnavailable:
+            ServiceError.credentialsUnavailable
+        case .credentialsAuthorizationRequired:
+            ServiceError.credentialsAuthorizationRequired
+        case .credentialsExpired:
+            ServiceError.sessionExpired
+        case .invalidStoredCredentials:
+            ServiceError.invalidStoredCredentials
+        case .tokenRejected:
+            ServiceError.sessionExpired
+        case .invalidResponse:
+            ServiceError.invalidUsageOutput
+        case .rateLimited(let seconds):
+            ServiceError.rateLimited(retryAfterSeconds: seconds)
+        case .requestFailed:
+            error
+        }
     }
 }
 
@@ -264,6 +300,10 @@ enum ClaudeCLIUsageParser {
 }
 
 private enum ClaudeCLIUsageProbe {
+    static var isAvailable: Bool {
+        claudeExecutable() != nil
+    }
+
     static func isExplicitlyLoggedOut(timeout: TimeInterval = 2) async -> Bool {
         await Task.detached(priority: .utility) {
             guard let executable = claudeExecutable() else { return false }

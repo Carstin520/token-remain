@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>TokenRemain — Your AI quota, always in the menu bar</title>
-<meta name="description" content="TokenRemain: a private macOS and iPhone AI quota companion. Provider credentials stay on your Mac; an allowlisted, encrypted snapshot can sync through your own iCloud account.">
+<meta name="description" content="TokenRemain 1.2: a private macOS and iPhone AI quota companion with encrypted multi-Mac aggregation, dynamic local usage sources, and updates that always install the latest release.">
 <meta name="keywords" content="TokenRemain, AI quota, Claude Code usage, Codex usage, Cursor quota, Grok quota, GLM quota, menu bar app, macOS, token usage, rate limit, ccusage">
 <meta name="author" content="Dongheng Li">
 <meta name="robots" content="index, follow, max-image-preview:large">
@@ -19,7 +19,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="TokenRemain">
 <meta property="og:title" content="TokenRemain — Your AI quota, always in the menu bar">
-<meta property="og:description" content="Remaining quota and reset countdowns for Claude Code, Codex, Cursor, Grok, GLM and 18+ services — right in your Mac menu bar. Credentials stay on your Mac.">
+<meta property="og:description" content="Remaining quota and reset countdowns for Claude Code, Codex, Cursor, Windsurf, Grok, GLM and 19+ services — right in your Mac menu bar. Credentials stay on your Mac.">
 <meta property="og:url" content="https://tokenremain.com/">
 <meta property="og:image" content="https://tokenremain.com/assets/dashboard.jpg">
 <meta property="og:image:alt" content="TokenRemain dashboard showing remaining AI quota by provider">
@@ -29,7 +29,7 @@
 <!-- Twitter / X card -->
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="TokenRemain — Your AI quota, always in the menu bar">
-<meta name="twitter:description" content="Remaining quota and reset countdowns for Claude Code, Codex, Cursor, Grok, GLM and 18+ services — right in your Mac menu bar.">
+<meta name="twitter:description" content="Remaining quota and reset countdowns for Claude Code, Codex, Cursor, Windsurf, Grok, GLM and 19+ services — right in your Mac menu bar.">
 <meta name="twitter:image" content="https://tokenremain.com/assets/dashboard.jpg">
 
 <!-- Structured data: software product -->
@@ -44,7 +44,7 @@
   "url": "https://tokenremain.com/",
   "downloadUrl": "https://tokenremain.com/#download",
   "screenshot": "https://tokenremain.com/assets/dashboard.jpg",
-  "description": "A private macOS and iPhone companion that shows remaining quota and reset countdowns for Claude Code, Codex, Cursor, Grok, GLM and 18+ AI coding tools. Credentials stay on your Mac.",
+  "description": "A private macOS and iPhone companion for 19+ AI coding tools, with encrypted multi-Mac quota aggregation, dynamic local usage sources, and latest-release updates. Credentials stay on your Mac.",
   "author": { "@type": "Person", "name": "Dongheng Li" },
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
   "sameAs": ["https://github.com/Carstin520/token-remain"]
@@ -715,6 +715,7 @@ footer.site .disclaimer{
       <button class="navBtn" id="navBtn" type="button" aria-expanded="false" aria-controls="navLinks" aria-label="Menu / 菜单">MENU</button>
       <span class="links" id="navLinks">
         <a href="#download" data-i18n="nav-dl">Download</a>
+        <a href="#release-12" data-i18n="nav-new">What's new</a>
         <a href="#screens" data-i18n="nav-screens">Screens</a>
         <a href="#providers" data-i18n="nav-providers">Providers</a>
         <a href="#feed" data-i18n="nav-feed">AI Feed</a>
@@ -734,11 +735,11 @@ footer.site .disclaimer{
   <!-- ================= hero ================= -->
   <header class="hero" id="download">
     <div>
-      <span class="badge"><span class="dot"></span>Public Mac release · macOS · Menu&nbsp;Bar · Quota&nbsp;HUD</span>
+      <span class="badge" data-i18n="h-badge"><span class="dot"></span>Version 1.2 · Public Mac release</span>
       <h1 data-i18n="h-h1">Your AI quotas,<br><span class="accent">right in the menu bar</span>.</h1>
       <p class="sub" data-i18n="h-sub">
-        Remaining quota and reset countdowns for <strong>Claude Code, Codex, Cursor, Grok, GLM</strong>
-        and <strong>18+ services</strong>, all in one place.
+        Remaining quota and reset countdowns for <strong>Claude Code, Codex, Cursor, Windsurf, Grok, GLM</strong>
+        and <strong>19+ services</strong>, all in one place.
         Provider credentials stay on your Mac. If you enable Apple-device sync, only an allowlisted AES-256-GCM encrypted quota snapshot moves through your own iCloud account.
       </p>
       <div class="cta-row">
@@ -753,7 +754,7 @@ footer.site .disclaimer{
       <p class="req-line">
         <span>macOS 14+</span><span class="sep">·</span>
         <span>Universal (Apple Silicon + Intel)</span><span class="sep">·</span>
-        <span id="releaseVersion" data-release-version="1.1.11" aria-live="polite">Version 1.1.11 · Universal Mac</span>
+        <span id="releaseVersion" data-release-version="1.2.0" aria-live="polite">Version 1.2.0 · Universal Mac</span>
       </p>
       <p class="releases-hint"><span data-i18n="h-hint">Signed with Developer ID and notarized by Apple.</span></p>
     </div>
@@ -778,6 +779,35 @@ footer.site .disclaimer{
       </div>
     </div>
   </header>
+
+  <!-- ================= 1.2 release ================= -->
+  <section id="release-12">
+    <p class="eyebrow" data-num="1.2">Latest Release</p>
+    <h2 data-i18n="n-h2">One private view across every Mac</h2>
+    <p class="lede" data-i18n="n-lede">Version 1.2 expands TokenRemain from a single-Mac quota viewer into a resilient multi-source companion, while keeping credentials and raw usage on the Mac where they belong.</p>
+    <div class="feat-sub">
+      <div class="feat ticked lift">
+        <div class="glyph">MAC × 16</div>
+        <h3 data-i18n="n1t">Encrypted multi-Mac aggregation</h3>
+        <p data-i18n="n1d">Authenticate and combine up to 16 independent Mac snapshots. A stale or damaged source cannot roll back healthy data, and each Mac can be inspected or removed separately.</p>
+      </div>
+      <div class="feat ticked lift">
+        <div class="glyph">LOCAL+</div>
+        <h3 data-i18n="n2t">More local usage sources</h3>
+        <p data-i18n="n2d">Dynamic ccusage discovery, privacy-minimized Trae trajectories, and an independent Windsurf quota source — all with per-source controls.</p>
+      </div>
+      <div class="feat ticked lift">
+        <div class="glyph">CONSENT</div>
+        <h3 data-i18n="n3t">Keychain access on your terms</h3>
+        <p data-i18n="n3d">Claude and Codex read-only authorization starts only when you ask. Background refreshes stay silent and never trigger a surprise system prompt.</p>
+      </div>
+      <div class="feat ticked lift">
+        <div class="glyph">LATEST</div>
+        <h3 data-i18n="n4t">Updates jump to the latest release</h3>
+        <p data-i18n="n4d">Adaptive signed-feed probes stay lightweight. When you choose to update, TokenRemain checks again and installs the newest version available — even if several releases were skipped.</p>
+      </div>
+    </div>
+  </section>
 
   <!-- ================= screens ================= -->
   <section id="screens">
@@ -840,6 +870,7 @@ footer.site .disclaimer{
       <div class="prov lift"><div class="pn"><img class="brand-logo mono" src="assets/providers/zai.svg" alt="">Z.ai GLM<span class="mode key">API KEY</span></div><p data-i18n="pv-zai-d">Coding Plan session / weekly windows. The key lives only in your Keychain.</p></div>
       <div class="prov lift"><div class="pn"><img class="brand-logo" src="assets/providers/copilot.svg" alt="">Copilot<span class="mode">AUTO</span></div><p data-i18n="pv-copilot-d">Monthly credits. Reads your local GitHub sign-in.</p></div>
       <div class="prov lift"><div class="pn"><img class="brand-logo" src="assets/providers/devin.svg" alt="">Devin<span class="mode">AUTO</span></div><p data-i18n="pv-devin-d">Daily / weekly quotas.</p></div>
+      <div class="prov lift"><div class="pn"><img class="brand-logo" src="assets/providers/windsurf.png" alt="">Windsurf<span class="mode">AUTO</span></div><p data-i18n="pv-windsurf-d">Daily / weekly quotas from Windsurf's read-only local login state.</p></div>
       <div class="prov lift"><div class="pn"><img class="brand-logo" src="assets/providers/openrouter.svg" alt="">OpenRouter<span class="mode key">API KEY</span></div><p data-i18n="pv-or-d">Prepaid credit balance.</p></div>
       <div class="prov lift"><div class="pn"><img class="brand-logo" src="assets/providers/antigravity.svg" alt="">Antigravity<span class="mode">AUTO</span></div><p data-i18n="pv-ag-d">Quota pools. Reads the local sign-in state.</p></div>
       <div class="prov lift"><div class="pn"><img class="brand-logo mono" src="assets/providers/opencode.svg" alt="">OpenCode<span class="mode">LOCAL</span></div><p data-i18n="pv-oc-d">Go plan usage, estimated from a local database scan — fully offline.</p></div>
@@ -1173,12 +1204,19 @@ footer.site .disclaimer{
 <script>
 /* ---------- i18n: English inline (default), Chinese dictionary ---------- */
 var ZH={
-  "nav-dl":"下载","nav-screens":"界面","nav-providers":"支持的服务","nav-feed":"AI 动态","nav-privacy":"隐私","nav-brand":"品牌","nav-policy":"隐私政策","nav-support":"支持","nav-limits":"限制",
+  "nav-dl":"下载","nav-new":"1.2 新功能","nav-screens":"界面","nav-providers":"支持的服务","nav-feed":"AI 动态","nav-privacy":"隐私","nav-brand":"品牌","nav-policy":"隐私政策","nav-support":"支持","nav-limits":"限制",
+  "h-badge":"<span class=\"dot\"></span>1.2 正式版 · Mac 公开发布",
   "h-h1":"你的 AI 额度，<br><span class=\"accent\">常驻菜单栏</span>。",
-  "h-sub":"一处看全 <strong>Claude Code、Codex、Cursor、Grok、GLM</strong> 等 <strong>18+ 服务</strong>的剩余额度与重置倒计时。Provider 凭证始终留在 Mac；启用 Apple 设备同步后，只有经过白名单过滤并使用 AES-256-GCM 加密的额度快照会通过你自己的 iCloud 账户传输。",
+  "h-sub":"一处看全 <strong>Claude Code、Codex、Cursor、Windsurf、Grok、GLM</strong> 等 <strong>19+ 服务</strong>的剩余额度与重置倒计时。Provider 凭证始终留在 Mac；启用 Apple 设备同步后，只有经过白名单过滤并使用 AES-256-GCM 加密的额度快照会通过你自己的 iCloud 账户传输。",
   "h-dl":"下载 Mac 版","h-gh":"GitHub 仓库",
   "h-hint":"使用 Developer ID 签名并通过 Apple 公证。",
   "chip-grok":"Grok 周池",
+  "n-h2":"所有 Mac，一处私密查看",
+  "n-lede":"1.2 将 TokenRemain 从单台 Mac 的额度查看器扩展为可靠的多来源伴侣，同时让凭证与原始用量继续留在它们所属的 Mac 上。",
+  "n1t":"多 Mac 加密聚合","n1d":"认证并聚合最多 16 台 Mac 的独立快照。单个来源过期或损坏不会回滚健康数据，每台 Mac 都可单独查看或移除。",
+  "n2t":"更多本地用量来源","n2d":"动态发现 ccusage 来源、最小化读取 Trae 轨迹，并加入独立 Windsurf 额度；每个来源都能单独控制。",
+  "n3t":"钥匙串访问由你决定","n3d":"Claude 与 Codex 的只读授权只在你主动操作时开始；后台刷新保持静默，不会突然触发系统弹窗。",
+  "n4t":"跨版本直达最新版","n4d":"自适应签名更新源检查保持轻量；你点击更新时会重新查询并安装当时的最新版本，即使中间跳过了多个发布。",
   "s-h2":"三块屏幕，同一套像素语言",
   "s-lede":"菜单栏弹窗在上方已经见过——下面全部是<strong style=\"color:var(--text)\">正在运行的最新版实机截图</strong>：桌面 Dashboard、iPhone 版与桌面小组件。iPhone 部分跑的是 App 内置的演示场景，所以画面里带着它的 DEMO 标记。",
   "cap-dash-t":"Dashboard · 实机","cap-dash-c":"真实本地用量：今日 202.16M tokens、$189.11 估算成本按服务商拆分；右侧官方额度实时进度与风险提示。",
@@ -1194,6 +1232,7 @@ var ZH={
   "pv-zai-d":"Coding Plan 会话 / 周窗口。Key 只存钥匙串。",
   "pv-copilot-d":"月度 Credits。只读本机 GitHub 登录。",
   "pv-devin-d":"日 / 周配额。",
+  "pv-windsurf-d":"日 / 周配额；只读 Windsurf 本机登录态。",
   "pv-or-d":"预充积分余额。",
   "pv-ag-d":"配额池。只读本机登录态。",
   "pv-oc-d":"Go 套餐用量。本地数据库扫描估算，纯本地。",

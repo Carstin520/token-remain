@@ -49,7 +49,9 @@ final class CrossDeviceSyncController: ObservableObject {
     static let shared = CrossDeviceSyncController()
     nonisolated static let cloudContainerIdentifier = "iCloud.com.jamesli.tokenremain"
     nonisolated static let keychainAccessGroup = "84397AQ22Y.com.jamesli.tokenremain.sync"
-    nonisolated static let heartbeatInterval: TimeInterval = 5 * 60
+    /// 心跳只是 iPhone 端"数据源仍在线"的保活信号。快照有效期长达
+    /// 24 小时,15 分钟一跳绰绰有余;更密只会平添 CloudKit 往返。
+    nonisolated static let heartbeatInterval: TimeInterval = 15 * 60
 
     @Published private(set) var isEnabled: Bool
     @Published private(set) var state: State
@@ -96,14 +98,17 @@ final class CrossDeviceSyncController: ObservableObject {
     ) {
         self.defaults = defaults
         self.sourceIdentityStore = sourceIdentityStore ?? SourceIdentityStore(defaults: defaults)
-        // Fresh installs participate automatically. Once the user turns sync
-        // off, the explicit stored false remains authoritative.
-        let enabled = (defaults.object(forKey: DefaultsKey.enabled) as? Bool) ?? true
+        // 同步是给配好 iPhone 端的用户的功能:新安装默认关闭,由用户在
+        // 设置里主动开启,不让没有配对设备的用户白白承担 60 秒低延迟
+        // 刷新与 CloudKit 心跳。曾成功上传过的老安装视为在用,保持开启,
+        // 升级不能悄悄断掉正在工作的 iPhone 端;用户显式的开/关始终优先。
+        let hasUploadHistory = defaults.object(forKey: DefaultsKey.lastUploadedAt) != nil
+        let enabled = (defaults.object(forKey: DefaultsKey.enabled) as? Bool) ?? hasUploadHistory
         isEnabled = enabled
         syncUsageHistoryEnabled = defaults.bool(forKey: DefaultsKey.syncUsageHistory)
         lastUploadedAt = defaults.object(forKey: DefaultsKey.lastUploadedAt) as? Date
         state = enabled ? .waitingForMacData : .off
-        sourceAnonymousID = try? sourceIdentityStore.loadExisting().map {
+        sourceAnonymousID = try? self.sourceIdentityStore.loadExisting().map {
             SyncSourcePresentation.anonymousID(for: $0)
         }
     }
@@ -174,9 +179,12 @@ final class CrossDeviceSyncController: ObservableObject {
         scheduleUpload(after: 0, forceHeartbeat: true)
     }
 
+    /// 状态复核走非强制路径:iCloud/钥匙串可用性照常检查,但内容指纹
+    /// 未变且 15 分钟内刚上传过时不再重复写入。应用每次变为前台都会
+    /// 调用这里,强制上传会把普通的窗口切换变成 CloudKit 写风暴。
     func checkNow() {
         guard isEnabled else { return }
-        scheduleUpload(after: 0, forceHeartbeat: true)
+        scheduleUpload(after: 0)
     }
 
     func dismissGuidance() {
@@ -531,7 +539,9 @@ final class CrossDeviceSyncController: ObservableObject {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(Self.heartbeatInterval))
                 guard let self, !Task.isCancelled, self.isEnabled else { return }
-                self.requestPublish(forceHeartbeat: true)
+                // 非强制:内容未变时由 publishLatestOnce 的"15 分钟内刚
+                // 上传过"闸门去重;超过闸门自然补一次保活上传。
+                self.requestPublish(forceHeartbeat: false)
             }
         }
     }
