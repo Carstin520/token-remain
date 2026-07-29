@@ -363,12 +363,16 @@
 "statusbar.tooltip_remaining" = "%1$@ 剩余 %2$@";
 "statusbar.tooltip_separator" = "；";
 "sync.action.delete_disconnect" = "从 iCloud 删除并断开";
+"sync.action.remove_this_mac" = "移除这台 Mac 来源";
 "sync.action.recheck" = "重新检测";
 "sync.action.sync_now" = "立即安全同步";
 "sync.action.use_this_mac" = "改用这台 Mac";
 "sync.alert.delete_confirm" = "删除并断开";
 "sync.alert.delete_message" = "将删除 TokenRemain 的 CloudKit 私有同步区和专用同步密钥。Mac 上的 provider 凭证及本地额度不会被删除。";
 "sync.alert.delete_title" = "删除跨设备同步数据？";
+"sync.alert.remove_source_confirm" = "移除并断开";
+"sync.alert.remove_source_message" = "只会移除这台 Mac 的加密 source-v2 记录；其他 Mac、共享同步密钥和本地 provider 数据都保留。重新开启同步后，这个来源会再次发布。";
+"sync.alert.remove_source_title" = "移除这台 Mac 来源？";
 "sync.background_note" = "后台刷新时机由 iOS 调度，不能承诺固定分钟级周期；设备清单需未来增加匿名接收回执后才能准确展示。";
 "sync.card.subtitle" = "Mac → iCloud 私有数据库 → iPhone";
 "sync.card.title" = "跨设备同步";

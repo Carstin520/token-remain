@@ -90,6 +90,24 @@ struct SourceIdentityStoreTests {
         #expect(keychain.savedValues == [generated.uuidString.lowercased()])
     }
 
+    @Test("Management reads never create a source identity")
+    func readsExistingIdentityWithoutCreating() throws {
+        let (defaults, suite) = defaults()
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let generated = UUID(uuidString: "00000000-0000-4000-8000-000000000014")!
+        let keychain = InMemorySourceIdentityKeychain()
+        let store = SourceIdentityStore(
+            defaults: defaults,
+            keychain: keychain,
+            makeIdentifier: { generated }
+        )
+
+        #expect(try store.loadExisting() == nil)
+        #expect(keychain.savedValues.isEmpty)
+        #expect(try store.loadOrCreate() == generated)
+        #expect(try store.loadExisting() == generated)
+    }
+
     @Test("Malformed Keychain identity fails closed")
     func rejectsMalformedStoredIdentifier() {
         let (defaults, suite) = defaults()

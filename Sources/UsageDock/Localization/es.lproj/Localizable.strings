@@ -362,12 +362,16 @@
 "statusbar.tooltip_remaining" = "%1$@: %2$@ restante";
 "statusbar.tooltip_separator" = "; ";
 "sync.action.delete_disconnect" = "Eliminar de iCloud y desconectar";
+"sync.action.remove_this_mac" = "Eliminar la fuente de este Mac";
 "sync.action.recheck" = "Comprobar de nuevo";
 "sync.action.sync_now" = "Sincronizar de forma segura ahora";
 "sync.action.use_this_mac" = "Usar este Mac en su lugar";
 "sync.alert.delete_confirm" = "Eliminar y desconectar";
 "sync.alert.delete_message" = "Se eliminarán la zona de sincronización privada de CloudKit de TokenRemain y su clave de sincronización dedicada. Las credenciales de los proveedores y los datos de cuota locales de este Mac no se eliminarán.";
 "sync.alert.delete_title" = "¿Eliminar los datos de sincronización entre dispositivos?";
+"sync.alert.remove_source_confirm" = "Eliminar y desconectar";
+"sync.alert.remove_source_message" = "Solo se eliminará el registro source-v2 cifrado de este Mac. Los demás Mac, la clave de sincronización compartida y los datos locales de proveedores se conservarán. Al reactivar la sincronización, esta fuente volverá a publicarse.";
+"sync.alert.remove_source_title" = "¿Eliminar la fuente de este Mac?";
 "sync.background_note" = "iOS decide cuándo ocurre la actualización en segundo plano, así que no se puede garantizar una cadencia fija por minutos; una lista de dispositivos precisa requerirá futuros acuses de recibo anónimos.";
 "sync.card.subtitle" = "Mac → base de datos privada de iCloud → iPhone";
 "sync.card.title" = "Sincronización entre dispositivos";

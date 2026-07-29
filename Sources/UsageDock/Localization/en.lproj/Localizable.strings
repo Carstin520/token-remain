@@ -363,12 +363,16 @@
 "statusbar.tooltip_remaining" = "%1$@: %2$@ remaining";
 "statusbar.tooltip_separator" = "; ";
 "sync.action.delete_disconnect" = "Delete from iCloud & Disconnect";
+"sync.action.remove_this_mac" = "Remove This Mac Source";
 "sync.action.recheck" = "Check again";
 "sync.action.sync_now" = "Sync Securely Now";
 "sync.action.use_this_mac" = "Use This Mac Instead";
 "sync.alert.delete_confirm" = "Delete & Disconnect";
 "sync.alert.delete_message" = "This deletes TokenRemain's CloudKit private sync zone and its dedicated sync key. Provider credentials and local quota data on this Mac are not deleted.";
 "sync.alert.delete_title" = "Delete cross-device sync data?";
+"sync.alert.remove_source_confirm" = "Remove & Disconnect";
+"sync.alert.remove_source_message" = "Only this Mac's encrypted source-v2 record will be removed. Other Macs, the shared sync key, and local provider data stay intact. Re-enabling sync will publish this source again.";
+"sync.alert.remove_source_title" = "Remove this Mac source?";
 "sync.background_note" = "Background refresh timing is scheduled by iOS, so a fixed per-minute cadence cannot be promised; an accurate device list requires future anonymous delivery receipts.";
 "sync.card.subtitle" = "Mac → iCloud private database → iPhone";
 "sync.card.title" = "Cross-Device Sync";

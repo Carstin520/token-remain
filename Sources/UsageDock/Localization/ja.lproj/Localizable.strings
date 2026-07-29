@@ -362,12 +362,16 @@
 "statusbar.tooltip_remaining" = "%1$@ 残り %2$@";
 "statusbar.tooltip_separator" = "、";
 "sync.action.delete_disconnect" = "iCloud から削除して接続解除";
+"sync.action.remove_this_mac" = "この Mac ソースを削除";
 "sync.action.recheck" = "再確認";
 "sync.action.sync_now" = "今すぐ安全に同期";
 "sync.action.use_this_mac" = "この Mac に切り替える";
 "sync.alert.delete_confirm" = "削除して接続解除";
 "sync.alert.delete_message" = "TokenRemain の CloudKit プライベート同期ゾーンと専用同期キーを削除します。この Mac 上のプロバイダー認証情報とローカルの上限データは削除されません。";
 "sync.alert.delete_title" = "デバイス間の同期データを削除しますか?";
+"sync.alert.remove_source_confirm" = "削除して接続解除";
+"sync.alert.remove_source_message" = "この Mac の暗号化された source-v2 レコードだけを削除します。他の Mac、共有同期キー、ローカルのプロバイダーデータは保持されます。同期を再度有効にすると、このソースは再公開されます。";
+"sync.alert.remove_source_title" = "この Mac ソースを削除しますか？";
 "sync.background_note" = "バックグラウンド更新のタイミングは iOS が調整するため、分単位の固定周期は保証できません。正確なデバイス一覧の表示には、今後の匿名受信レシート対応が必要です。";
 "sync.card.subtitle" = "Mac → iCloud プライベートデータベース → iPhone";
 "sync.card.title" = "デバイス間同期";

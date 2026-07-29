@@ -54,6 +54,19 @@ struct SourceIdentityStore {
     /// one-way: retaining a copyable defaults fallback would let a later Mac
     /// clone reuse this device identity.
     func loadOrCreate() throws -> UUID {
+        if let existing = try loadExisting() {
+            return existing
+        }
+
+        let identifier = makeIdentifier()
+        try keychain.save(identifier.uuidString.lowercased())
+        return identifier
+    }
+
+    /// Reads an existing identity without creating a phantom source merely to
+    /// render management UI or attempt a disconnect. A pre-v1.2 defaults value
+    /// is migrated through the same device-local Keychain boundary.
+    func loadExisting() throws -> UUID? {
         if let storedValue = try keychain.read() {
             guard let identifier = UUID(uuidString: storedValue) else {
                 throw SourceIdentityStoreError.invalidStoredIdentifier
@@ -62,8 +75,12 @@ struct SourceIdentityStore {
             return identifier
         }
 
-        let identifier = defaults.string(forKey: Self.legacyDefaultsKey)
-            .flatMap(UUID.init(uuidString:)) ?? makeIdentifier()
+        guard let legacyValue = defaults.string(forKey: Self.legacyDefaultsKey) else {
+            return nil
+        }
+        guard let identifier = UUID(uuidString: legacyValue) else {
+            throw SourceIdentityStoreError.invalidStoredIdentifier
+        }
         try keychain.save(identifier.uuidString.lowercased())
         removeLegacyIdentifier()
         return identifier

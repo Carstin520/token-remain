@@ -5,6 +5,7 @@ struct CrossDeviceSyncSettingsCard: View {
     @ObservedObject private var sync = CrossDeviceSyncController.shared
     @State private var showsPreview = false
     @State private var confirmsDeletion = false
+    @State private var confirmsSourceRemoval = false
 
     var body: some View {
         DashboardCard {
@@ -62,6 +63,13 @@ struct CrossDeviceSyncSettingsCard: View {
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(statusColor)
 
+                if let sourceAnonymousID = sync.sourceAnonymousID {
+                    LabeledContent(L10n.text("devices.this_mac")) {
+                        Text("Mac · \(sourceAnonymousID)")
+                            .foregroundStyle(DashboardTheme.secondaryText)
+                    }
+                }
+
                 DisclosureGroup(isExpanded: $showsPreview) {
                     VStack(alignment: .leading, spacing: 7) {
                         if sync.previewProviders.isEmpty {
@@ -101,15 +109,15 @@ struct CrossDeviceSyncSettingsCard: View {
 
                 Divider().overlay(DashboardTheme.border)
 
-                HStack(spacing: 10) {
-                    if case .failed = sync.state {
-                        Button(L10n.text("sync.action.recheck")) { sync.checkNow() }
-                            .disabled(!sync.isEnabled)
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 10) {
+                        Spacer()
+                        managementButtons
                     }
-                    Spacer()
-                    Button(L10n.text("sync.action.delete_disconnect"), role: .destructive) {
-                        confirmsDeletion = true
+                    VStack(alignment: .trailing, spacing: 8) {
+                        managementButtons
                     }
+                    .frame(maxWidth: .infinity, alignment: .trailing)
                 }
                 .usageDockActionButtonStyle()
 
@@ -127,10 +135,34 @@ struct CrossDeviceSyncSettingsCard: View {
         } message: {
             Text(L10n.text("sync.alert.delete_message"))
         }
+        .alert(L10n.text("sync.alert.remove_source_title"), isPresented: $confirmsSourceRemoval) {
+            Button(L10n.text("action.cancel"), role: .cancel) {}
+            Button(L10n.text("sync.alert.remove_source_confirm"), role: .destructive) {
+                Task { await sync.removeThisMacSourceAndDisconnect() }
+            }
+        } message: {
+            Text(L10n.text("sync.alert.remove_source_message"))
+        }
     }
 
     private var enabledBinding: Binding<Bool> {
         Binding(get: { sync.isEnabled }, set: sync.setEnabled)
+    }
+
+    @ViewBuilder
+    private var managementButtons: some View {
+        if case .failed = sync.state {
+            Button(L10n.text("sync.action.recheck")) { sync.checkNow() }
+                .disabled(!sync.isEnabled)
+        }
+        if sync.sourceAnonymousID != nil {
+            Button(L10n.text("sync.action.remove_this_mac"), role: .destructive) {
+                confirmsSourceRemoval = true
+            }
+        }
+        Button(L10n.text("sync.action.delete_disconnect"), role: .destructive) {
+            confirmsDeletion = true
+        }
     }
 
     private var usageHistoryBinding: Binding<Bool> {

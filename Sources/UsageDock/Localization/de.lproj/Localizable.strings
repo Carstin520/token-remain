@@ -362,12 +362,16 @@
 "statusbar.tooltip_remaining" = "%1$@: %2$@ verbleibend";
 "statusbar.tooltip_separator" = "; ";
 "sync.action.delete_disconnect" = "Aus iCloud löschen und trennen";
+"sync.action.remove_this_mac" = "Quelle dieses Macs entfernen";
 "sync.action.recheck" = "Erneut prüfen";
 "sync.action.sync_now" = "Jetzt sicher synchronisieren";
 "sync.action.use_this_mac" = "Stattdessen diesen Mac verwenden";
 "sync.alert.delete_confirm" = "Löschen und trennen";
 "sync.alert.delete_message" = "Dies löscht die private CloudKit-Synchronisierungszone von TokenRemain und den zugehörigen Synchronisierungsschlüssel. Provider-Zugangsdaten und lokale Kontingentdaten auf diesem Mac bleiben erhalten.";
 "sync.alert.delete_title" = "Geräteübergreifende Synchronisierungsdaten löschen?";
+"sync.alert.remove_source_confirm" = "Entfernen und trennen";
+"sync.alert.remove_source_message" = "Nur der verschlüsselte source-v2-Datensatz dieses Macs wird entfernt. Andere Macs, der gemeinsame Sync-Schlüssel und lokale Anbieterdaten bleiben erhalten. Beim erneuten Aktivieren der Synchronisierung wird diese Quelle wieder veröffentlicht.";
+"sync.alert.remove_source_title" = "Quelle dieses Macs entfernen?";
 "sync.background_note" = "Die Hintergrundaktualisierung wird von iOS geplant; ein fester Minutentakt lässt sich nicht garantieren. Eine genaue Geräteliste erfordert künftige anonyme Empfangsbestätigungen.";
 "sync.card.subtitle" = "Mac → private iCloud-Datenbank → iPhone";
 "sync.card.title" = "Geräteübergreifende Synchronisierung";

@@ -61,6 +61,7 @@ final class CrossDeviceSyncController: ObservableObject {
     @Published private(set) var iCloudAvailable: Bool?
     @Published private(set) var syncKeyAvailable: Bool?
     @Published private(set) var guidance: Guidance?
+    @Published private(set) var sourceAnonymousID: String?
 
     private enum DefaultsKey {
         static let enabled = "crossDeviceSync.enabled"
@@ -102,6 +103,9 @@ final class CrossDeviceSyncController: ObservableObject {
         syncUsageHistoryEnabled = defaults.bool(forKey: DefaultsKey.syncUsageHistory)
         lastUploadedAt = defaults.object(forKey: DefaultsKey.lastUploadedAt) as? Date
         state = enabled ? .waitingForMacData : .off
+        sourceAnonymousID = try? sourceIdentityStore.loadExisting().map {
+            SyncSourcePresentation.anonymousID(for: $0)
+        }
     }
 
     func attach(to store: UsageStore) {
@@ -190,6 +194,47 @@ final class CrossDeviceSyncController: ObservableObject {
         }
     }
 
+    /// Removes only this Mac's source-v2 record and stops future publishing.
+    /// The shared zone, AES key, sibling Mac records, and provider data remain.
+    func removeThisMacSourceAndDisconnect() async {
+        setEnabled(false)
+        guard SyncCapabilityProbe.hasRequiredEntitlements else {
+            state = .needsSignedCapabilities
+            return
+        }
+        do {
+            guard let localSourceID = try sourceIdentityStore.loadExisting() else {
+                state = .off
+                return
+            }
+            let cloud = CloudKitPrivateSnapshotStore(containerIdentifier: Self.cloudContainerIdentifier)
+            guard try await cloud.accountStatus() == .available else {
+                throw SyncCloudStoreError.accountUnavailable
+            }
+            try await cloud.deleteSource(sourceInstanceID: localSourceID)
+            await deleteOwnedLegacyCompatibilityRecord(
+                cloud: cloud,
+                localSourceID: localSourceID
+            )
+            defaults.removeObject(forKey: DefaultsKey.lastFingerprint)
+            defaults.removeObject(forKey: DefaultsKey.lastUploadedAt)
+            lastUploadedAt = nil
+            if isEnabled {
+                scheduleUpload(after: 0, forceHeartbeat: true)
+            } else {
+                state = .off
+            }
+            logger.info("Private sync source removed for this Mac")
+        } catch {
+            if isEnabled {
+                scheduleUpload(after: 0, forceHeartbeat: true)
+            } else {
+                state = .failed(Self.failure(for: error))
+            }
+            logger.error("Private sync source removal failed: \(Self.errorCode(error), privacy: .public)")
+        }
+    }
+
     /// Deletes only the app's fixed private CloudKit zone and dedicated sync
     /// key service. Provider credentials and ordinary local quota caches are
     /// outside both stores and cannot be removed by this operation.
@@ -220,6 +265,7 @@ final class CrossDeviceSyncController: ObservableObject {
             defaults.removeObject(forKey: DefaultsKey.lastUploadedAt)
             defaults.removeObject(forKey: DefaultsKey.syncUsageHistory)
             lastUploadedAt = nil
+            sourceAnonymousID = nil
             syncUsageHistoryEnabled = false
             previewHistoryDays = 0
             iCloudAvailable = nil
@@ -294,6 +340,7 @@ final class CrossDeviceSyncController: ObservableObject {
             }
             iCloudAvailable = true
             let localSourceID = try sourceIdentityStore.loadOrCreate()
+            sourceAnonymousID = SyncSourcePresentation.anonymousID(for: localSourceID)
             let keys = SynchronizableSyncKeyStore(accessGroup: Self.keychainAccessGroup)
             let keyRecord = try await keys.loadOrCreate()
             syncKeyAvailable = true
@@ -449,6 +496,32 @@ final class CrossDeviceSyncController: ObservableObject {
             // failure separate so a malformed/stale legacy record cannot make
             // the multi-source publisher report a false total failure.
             logger.error("Legacy sync compatibility write skipped: \(Self.errorCode(error), privacy: .public)")
+        }
+    }
+
+    private func deleteOwnedLegacyCompatibilityRecord(
+        cloud: CloudKitPrivateSnapshotStore,
+        localSourceID: UUID
+    ) async {
+        do {
+            guard let existing = try await cloud.fetch() else { return }
+            let keys = SynchronizableSyncKeyStore(accessGroup: Self.keychainAccessGroup)
+            let authenticatedOwner = try await MacSyncRemoteSourceAuthenticator.sourceInstanceID(
+                from: existing,
+                keyStore: keys,
+                containerIdentifier: Self.cloudContainerIdentifier,
+                // Authenticate ownership without extending or depending on the
+                // compatibility record's display lifetime.
+                now: existing.envelope.generatedAt
+            )
+            if authenticatedOwner == localSourceID {
+                try await cloud.deleteCurrent()
+            }
+        } catch {
+            // source-v2 is the v1.2 authority. Failure to clean the best-effort
+            // v1.1 bridge must not turn a successful per-Mac removal into a
+            // misleading all-data failure.
+            logger.error("Legacy sync compatibility removal skipped: \(Self.errorCode(error), privacy: .public)")
         }
     }
 

@@ -52,6 +52,17 @@ public enum SyncedProviderID {
     }
 }
 
+/// Privacy-minimized source presentation shared by macOS and iPhone. The
+/// protocol identity remains a random UUID, while UI and user-initiated
+/// diagnostics expose only a short, non-hardware-derived correlation token.
+public enum SyncSourcePresentation {
+    public static let anonymousIDLength = 6
+
+    public static func anonymousID(for sourceInstanceID: UUID) -> String {
+        String(sourceInstanceID.uuidString.prefix(anonymousIDLength)).uppercased()
+    }
+}
+
 /// A closed set of non-sensitive source states. It intentionally has no field
 /// for a provider's raw error message, HTTP status, or diagnostic text.
 public enum SyncedSourceStatus: String, Codable, Sendable, CaseIterable {
