@@ -13,7 +13,7 @@ Remaining quota, reset countdowns and today's cost for Claude Code, Codex, Curso
 ![Notarized](https://img.shields.io/badge/Apple-Notarized-34C759?logo=apple&logoColor=white)
 ![Latest](https://img.shields.io/badge/latest-v1.2.0-22D3EE)
 
-**1.2 release candidate `v1.2.0`** (build 14, Universal Mac build)
+**1.2 release `v1.2.0`** (build 14, Universal Mac build)
 
 [Website / Download](https://tokenremain.com) · [Privacy Policy](https://tokenremain.com/privacy) · [Support](https://tokenremain.com/support) · [Report an issue](https://github.com/Carstin520/token-remain/issues)
 
@@ -35,6 +35,15 @@ Remaining quota, reset countdowns and today's cost for Claude Code, Codex, Curso
 - 📡 **AI Feed** — A curated server-side feed of public posts from Anthropic, OpenAI and other official accounts; major updates trigger a local notification.
 - 🪟 **Always in reach** — Pick which apps appear in the menu bar, keep a floating window on top across Spaces, refresh every 1/5/15/30 minutes or manually.
 - 🎨 **Native feel** — macOS 26 uses system Liquid Glass and the native sidebar; macOS 14/15 falls back to the dark card style.
+
+## 🆕 What's new in 1.2
+
+- 🖥️ **Encrypted multi-Mac aggregation** — Every Mac owns an independent, stable private source record; the iPhone can authenticate and combine quota snapshots from up to 16 Macs. One stale, malformed, replayed, or deleted source cannot roll back healthy sources.
+- 🧰 **Source management and safe diagnostics** — See each Mac's status on Data Sources, export anonymous field-bounded health/data diagnostics, remove one source, and clearly distinguish disconnecting this Mac from deleting all iCloud sync data.
+- 📊 **More local usage sources** — ccusage dynamically discovers 15+ local agents; Trae reads only timestamps, model names, and token counters from a folder you select; Windsurf adds independent daily/weekly quota with cross-device display support.
+- 🔑 **Explicit Keychain consent** — Cross-app read-only access for Claude and Codex begins only from a user action. Background refreshes stay silent and never surprise you with a system authorization prompt.
+- ⬆️ **Always update to the latest release** — Adaptive signed-feed checks run about four times a day when current, twice while an update is pending, and use bounded retry backoff after failures. Clicking Update performs a fresh lookup and installs the newest release available then, not merely the version after yours.
+- ⚙️ **Lighter, more reliable refreshes** — Codex session caching tolerates bounded clock skew and prunes deleted records; AI Feed polling pauses while hidden; tool discovery runs every five minutes; expired countdown and Dock artwork-cache issues are fixed.
 
 ## 📸 Real screenshots
 
@@ -158,7 +167,7 @@ to their respective terms.
 
 ## 📦 Current release
 
-- **Version** — `v1.2.0` (build 14), the Universal Mac release candidate.
+- **Version** — `v1.2.0` (build 14), the Universal Mac release.
 - **Platform** — macOS 14 Sonoma or later on Apple Silicon (arm64) and Intel (x86_64).
 - **Distribution** — The website always downloads the latest `TokenRemain.dmg`; each GitHub Release also retains a DMG named with its version and build.
 - **Cost figures** — Costs are API list-price estimates, not your subscription bill. When a credential expires, data pauses and the app explains how to restore it.

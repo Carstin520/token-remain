@@ -13,7 +13,7 @@
 ![Notarized](https://img.shields.io/badge/Apple-Notarized-34C759?logo=apple&logoColor=white)
 ![Latest](https://img.shields.io/badge/latest-v1.2.0-22D3EE)
 
-**1.2 发布候选版 `v1.2.0`**（build 14，Universal Mac 构建）
+**1.2 正式版 `v1.2.0`**（build 14，Universal Mac 构建）
 
 [官网 / 下载](https://tokenremain.com) · [隐私政策](https://tokenremain.com/privacy) · [支持](https://tokenremain.com/support) · [问题反馈](https://github.com/Carstin520/token-remain/issues)
 
@@ -35,6 +35,15 @@
 - 📡 **AI Feed** — 服务端精选 Anthropic、OpenAI 等官方账号的公开动态，重大更新触发本机通知。
 - 🪟 **随手可见** — 菜单栏文字自选显示哪些应用、桌面浮窗跨空间置顶、刷新频率 1/5/15/30 分钟或仅手动。
 - 🎨 **原生质感** — macOS 26 使用系统 Liquid Glass 与原生侧栏；macOS 14/15 自动回退深色卡片样式。
+
+## 🆕 1.2 版本亮点
+
+- 🖥️ **多 Mac 加密聚合** — 每台 Mac 都拥有独立、稳定的私有来源记录；iPhone 可认证并聚合最多 16 台 Mac 的额度快照。单个来源过期、损坏、重放或删除时，不会拖累其他健康来源。
+- 🧰 **来源管理与安全诊断** — 在「数据来源」中查看每台 Mac 的状态，导出经过匿名化和字段限制的健康/数据诊断，单独移除某一来源，并明确区分“断开这台 Mac”与“删除全部 iCloud 同步数据”。
+- 📊 **更多本地用量来源** — ccusage 动态发现 15+ 种本地 Agent；Trae 只读取用户所选轨迹目录中的时间、模型与 Token 计数；Windsurf 提供独立日/周额度，并支持跨设备展示。
+- 🔑 **明确的钥匙串授权** — Claude 与 Codex 的跨 App 只读访问由用户主动触发；后台刷新始终静默，不会突然弹出系统授权窗口。
+- ⬆️ **始终更新到最新版** — 自适应检查签名更新源：无更新时每天约四次、有待安装更新时每天约两次，失败后有界退避；用户点击更新时会重新查询最新发布，直接安装当时的最新版本，而不是当前版本的“下一个版本”。
+- ⚙️ **更轻、更稳的后台刷新** — Codex 会话缓存可容忍有限时钟偏差并清理已删除记录；AI Feed 只在界面可见时轮询；工具发现降至每五分钟一次，同时修复过期倒计时与 Dock 图形缓存问题。
 
 ## 📸 实机截图
 
@@ -152,7 +161,7 @@ bash ./script/build_and_run.sh --verify
 
 ## 📦 当前发布
 
-- **版本**：`v1.2.0`（build 14）——Universal Mac 发布候选版。
+- **版本**：`v1.2.0`（build 14）——Universal Mac 正式版。
 - **平台**：macOS 14 Sonoma 及以上，同时支持 Apple Silicon（arm64）与 Intel（x86_64）。
 - **分发**：官网始终下载最新的 `TokenRemain.dmg`；GitHub Release 同时保留带版本与 build 号的 DMG 归档。
 - **成本口径**：成本为 API 标价估算，不等于订阅账单；凭证过期时数据会暂停并提示恢复方式。
