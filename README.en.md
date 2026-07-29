@@ -11,9 +11,9 @@ Remaining quota, reset countdowns and today's cost for Claude Code, Codex, Curso
 ![macOS](https://img.shields.io/badge/macOS-14%2B_Sonoma-000?logo=apple&logoColor=white)
 ![Universal](https://img.shields.io/badge/Universal-Apple_Silicon_%2B_Intel-7C5CFF)
 ![Notarized](https://img.shields.io/badge/Apple-Notarized-34C759?logo=apple&logoColor=white)
-![Latest](https://img.shields.io/badge/latest-v1.2.0-22D3EE)
+![Latest](https://img.shields.io/badge/latest-v1.2.1-22D3EE)
 
-**1.2 release `v1.2.0`** (build 14, Universal Mac build)
+**1.2 release `v1.2.1`** (build 15, Universal Mac Release build)
 
 [Website / Download](https://tokenremain.com) · [Privacy Policy](https://tokenremain.com/privacy) · [Support](https://tokenremain.com/support) · [Report an issue](https://github.com/Carstin520/token-remain/issues)
 
@@ -167,7 +167,7 @@ to their respective terms.
 
 ## 📦 Current release
 
-- **Version** — `v1.2.0` (build 14), the Universal Mac release.
+- **Version** — `v1.2.1` (build 15), the Universal Mac Release build.
 - **Platform** — macOS 14 Sonoma or later on Apple Silicon (arm64) and Intel (x86_64).
 - **Distribution** — The website always downloads the latest `TokenRemain.dmg`; each GitHub Release also retains a DMG named with its version and build.
 - **Cost figures** — Costs are API list-price estimates, not your subscription bill. When a credential expires, data pauses and the app explains how to restore it.

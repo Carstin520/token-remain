@@ -3,6 +3,20 @@
 All notable product changes are recorded here. TokenRemain uses Semantic
 Versioning for public releases.
 
+## 1.2.1 — 2026-07-29
+
+### Changed
+
+- Build signed Universal Mac distributions with Swift's optimized Release
+  configuration, reducing download size while preserving both Apple Silicon
+  and Intel support.
+
+### Fixed
+
+- Keep the important-reminder group focused on the seven highest-ranked items,
+  allow direct quota/reset events to expand the group when needed, and enforce
+  an absolute maximum of ten reminders.
+
 ## 1.2.0 — 2026-07-29
 
 ### Added
@@ -282,3 +296,4 @@ Versioning for public releases.
 [1.1.10]: https://github.com/Carstin520/token-remain/releases/tag/v1.1.10
 [1.1.11]: https://github.com/Carstin520/token-remain/releases/tag/v1.1.11
 [1.2.0]: https://github.com/Carstin520/token-remain/releases/tag/v1.2.0
+[1.2.1]: https://github.com/Carstin520/token-remain/releases/tag/v1.2.1
