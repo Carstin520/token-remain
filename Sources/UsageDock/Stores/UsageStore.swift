@@ -36,6 +36,7 @@ final class UsageStore: ObservableObject {
     var zai: ProviderQuota? { quotas[.zai] }
     var copilot: ProviderQuota? { quotas[.copilot] }
     var devin: ProviderQuota? { quotas[.devin] }
+    var windsurf: ProviderQuota? { quotas[.windsurf] }
     var openrouter: ProviderQuota? { quotas[.openrouter] }
     var antigravity: ProviderQuota? { quotas[.antigravity] }
     var opencode: ProviderQuota? { quotas[.opencode] }
@@ -50,11 +51,20 @@ final class UsageStore: ObservableObject {
     /// coding-product component (currently Claude Code and Codex).
     @Published private(set) var serviceStatuses: [ProviderQuota.Provider: ProviderServiceStatus] = [:]
     @Published private(set) var localUsageStatus: LocalUsageStatus = .loading
+    @Published private(set) var discoveredLocalUsageSourceIDs: Set<String> = []
+    @Published private(set) var disabledLocalUsageSourceIDs: Set<String> = []
+    @Published private(set) var traeAgentDirectories: [URL] = []
+
+    var configuredTraeAgentDirectories: [URL] {
+        traeAgentTrajectoryStore.configuredDirectories
+    }
     @Published private(set) var isCCUsageRefreshing = false
     @Published private(set) var isRefreshing = false
     @Published private(set) var errorMessage: String?
 
     private let tracked: TrackedProvidersStore
+    private let defaults: UserDefaults
+    private let traeAgentTrajectoryStore: TraeAgentTrajectoryStore
     private var cancellables = Set<AnyCancellable>()
     private var refreshTask: Task<Void, Never>?
     private var historyRefreshTask: Task<Void, Never>?
@@ -67,6 +77,9 @@ final class UsageStore: ObservableObject {
     private var auxProviderRetryAfter: [ProviderQuota.Provider: Date] = [:]
     private var claudeRetryAfter: Date?
     private var lowLatencySyncEnabled = false
+    /// 由状态栏控制器注入:本地用量正出现在任一可见界面(弹窗/仪表板/
+    /// 浮窗)时返回 true。后台 ccusage 扫描据此决定是否维持分钟级节奏。
+    var localUsageUIVisibilityProvider: (() -> Bool)?
     private let quotaCache = QuotaCache()
     private let historyCache = DailyHistoryCache()
     private let quotaUsageHistoryCache = QuotaUsageHistoryCache()
@@ -75,6 +88,8 @@ final class UsageStore: ObservableObject {
     private let serviceStatusRefreshInterval: TimeInterval = 300
     private var quotaErrorMessage: String?
     private var historyErrorMessage: String?
+    private var latestLocalUsageSnapshot: LocalUsageSnapshot?
+    private let disabledLocalUsageSourcesKey = "tokenRemain.disabledLocalUsageSources.v1"
 
     private enum QuotaRefreshOutput {
         case claude(Result<ProviderQuota, Error>)
@@ -100,7 +115,8 @@ final class UsageStore: ObservableObject {
     /// Claude / Codex 之外、只有 API(或本地扫描)一条直查路径的 provider,
     /// 统一走 5 分钟节奏的批量抓取。
     static let auxProviders: [ProviderQuota.Provider] = [
-        .cursor, .grok, .zai, .copilot, .devin, .openrouter, .antigravity, .opencode,
+        .cursor, .grok, .zai, .copilot, .devin, .windsurf,
+        .openrouter, .antigravity, .opencode,
         .deepseek, .kimi, .minimax, .mimo, .qoder, .kiro, .volcengine, .ollama
     ]
 
@@ -129,6 +145,44 @@ final class UsageStore: ObservableObject {
         tracked.dataSourceOrdered
     }
 
+    var localUsageSourceIDs: [String] {
+        discoveredLocalUsageSourceIDs.sorted {
+            LocalUsageSourceCatalog.sortKey($0) < LocalUsageSourceCatalog.sortKey($1)
+        }
+    }
+
+    func isLocalUsageSourceEnabled(_ id: String) -> Bool {
+        !disabledLocalUsageSourceIDs.contains(LocalUsageSourceCatalog.canonicalID(id))
+    }
+
+    func setLocalUsageSourceEnabled(_ enabled: Bool, id: String) {
+        let canonical = LocalUsageSourceCatalog.canonicalID(id)
+        guard LocalUsageSourceCatalog.isWellFormed(canonical) else { return }
+        if enabled {
+            disabledLocalUsageSourceIDs.remove(canonical)
+        } else {
+            disabledLocalUsageSourceIDs.insert(canonical)
+        }
+        defaults.set(Array(disabledLocalUsageSourceIDs).sorted(), forKey: disabledLocalUsageSourcesKey)
+        if let latestLocalUsageSnapshot {
+            applyLocalUsageSnapshot(latestLocalUsageSnapshot)
+        } else {
+            refreshLocalUsage()
+        }
+    }
+
+    func addTraeAgentDirectory(_ url: URL) {
+        traeAgentTrajectoryStore.add(url)
+        reloadTraeAgentDirectories()
+        refreshLocalUsage()
+    }
+
+    func removeTraeAgentDirectory(_ url: URL) {
+        traeAgentTrajectoryStore.remove(url)
+        reloadTraeAgentDirectories()
+        refreshLocalUsage()
+    }
+
     private func assign(_ value: ProviderQuota?, to provider: ProviderQuota.Provider) {
         if value != nil {
             tracked.markConnected(provider)
@@ -152,6 +206,7 @@ final class UsageStore: ObservableObject {
         case .zai: return { try await ZAIUsageService().fetch() }
         case .copilot: return { try await CopilotUsageService().fetch() }
         case .devin: return { try await DevinUsageService().fetch() }
+        case .windsurf: return { try await WindsurfUsageService().fetch() }
         case .openrouter: return { try await OpenRouterUsageService().fetch() }
         case .antigravity: return { try await AntigravityUsageService().fetch() }
         case .opencode: return { try await OpenCodeUsageService().fetch() }
@@ -221,8 +276,20 @@ final class UsageStore: ObservableObject {
         self.init(tracked: TrackedProvidersStore.shared)
     }
 
-    init(tracked: TrackedProvidersStore) {
+    init(
+        tracked: TrackedProvidersStore,
+        defaults: UserDefaults = .standard,
+        home: URL = FileManager.default.homeDirectoryForCurrentUser
+    ) {
         self.tracked = tracked
+        self.defaults = defaults
+        traeAgentTrajectoryStore = TraeAgentTrajectoryStore(defaults: defaults, home: home)
+        disabledLocalUsageSourceIDs = Set(
+            (defaults.stringArray(forKey: disabledLocalUsageSourcesKey) ?? [])
+                .map(LocalUsageSourceCatalog.canonicalID)
+                .filter(LocalUsageSourceCatalog.isWellFormed)
+        )
+        traeAgentDirectories = traeAgentTrajectoryStore.availableDirectories
         if let cached = quotaCache.load() {
             quotas = cached.byProvider
             // 升级兼容：旧版没有独立连接历史，已有成功快照就是最可靠的
@@ -233,6 +300,12 @@ final class UsageStore: ObservableObject {
             lastClaudeAttempt = cached.byProvider[.claude]?.capturedAt
         }
         history = historyCache.load()
+        discoveredLocalUsageSourceIDs.formUnion(
+            history?.days.flatMap(\.agents).map { LocalUsageSourceCatalog.canonicalID($0.id) } ?? []
+        )
+        if !traeAgentDirectories.isEmpty {
+            discoveredLocalUsageSourceIDs.insert(TraeAgentUsageService.agentID)
+        }
         quotaUsageHistory = quotaUsageHistoryCache.load() ?? .empty
         claudeRetryAfter = UserDefaults.standard.object(forKey: claudeRetryAfterKey) as? Date
         pruneDisabledProviders()
@@ -473,7 +546,13 @@ final class UsageStore: ObservableObject {
 
     private func scheduleCCUsageRefresh(force: Bool, now: Date = .now) {
         guard historyRefreshTask == nil else { return }
+        let interval = AdaptiveRefreshPolicy.localUsageInterval(
+            preferred: PreferencesStore.shared.refreshInterval,
+            lowLatencySyncEnabled: lowLatencySyncEnabled,
+            localUsageUIVisible: localUsageUIVisibilityProvider?() ?? false
+        )
         guard AdaptiveRefreshPolicy.localUsageRefreshIsDue(
+            interval: interval,
             lastRefresh: lastCCUsageRefresh,
             now: now,
             force: force
@@ -488,19 +567,76 @@ final class UsageStore: ObservableObject {
                 historyRefreshTask = nil
                 publishErrors()
             }
+            var merged: LocalUsageSnapshot?
+            var errors: [String] = []
             do {
-                let snapshot = try await CCUsageService().fetchSnapshot(days: 30)
-                daily = snapshot.daily
-                history = snapshot.history
-                historyCache.save(snapshot.history)
-                localUsageStatus = Self.localUsageStatus(for: snapshot.daily)
-                historyErrorMessage = nil
+                merged = try await CCUsageService().fetchSnapshot(days: 30, now: now)
             } catch {
-                historyErrorMessage = "ccusage: \(error.localizedDescription)"
-                if daily == nil {
-                    localUsageStatus = .failed(error.localizedDescription)
-                }
+                errors.append("ccusage: \(error.localizedDescription)")
             }
+
+            let traeDirectories = traeAgentDirectories
+            let ccusageAlreadyIncludesTrae = merged.map { snapshot in
+                snapshot.daily.agents.contains { $0.id == TraeAgentUsageService.agentID }
+                    || snapshot.history.days.contains { day in
+                        day.agents.contains { $0.id == TraeAgentUsageService.agentID }
+                    }
+            } == true
+            if !traeDirectories.isEmpty, !ccusageAlreadyIncludesTrae {
+                let trae = await TraeAgentUsageService(
+                    directories: traeDirectories
+                ).fetchSnapshot(days: 30, now: now)
+                merged = merged.map { $0.merging(trae) } ?? trae
+            }
+
+            if let merged {
+                latestLocalUsageSnapshot = merged
+                applyLocalUsageSnapshot(merged)
+            } else if daily == nil {
+                localUsageStatus = .failed(errors.joined(separator: "\n"))
+            }
+            historyErrorMessage = errors.isEmpty ? nil : errors.joined(separator: "\n")
+        }
+    }
+
+    private func applyLocalUsageSnapshot(_ snapshot: LocalUsageSnapshot) {
+        let discovered = snapshot.daily.agents.map(\.id)
+            + snapshot.history.days.flatMap(\.agents).map(\.id)
+        discoveredLocalUsageSourceIDs.formUnion(
+            discovered
+                .map(LocalUsageSourceCatalog.canonicalID)
+                .filter(LocalUsageSourceCatalog.isWellFormed)
+        )
+        if !traeAgentDirectories.isEmpty {
+            discoveredLocalUsageSourceIDs.insert(TraeAgentUsageService.agentID)
+        }
+
+        let visibleDaily = DailyUsage(
+            date: snapshot.daily.date,
+            agents: snapshot.daily.agents.filter {
+                isLocalUsageSourceEnabled($0.id)
+            },
+            capturedAt: snapshot.daily.capturedAt
+        )
+        let visibleHistory = DailyUsageHistory(
+            days: snapshot.history.days.map { day in
+                DailyUsageHistory.Day(
+                    date: day.date,
+                    agents: day.agents.filter { isLocalUsageSourceEnabled($0.id) }
+                )
+            },
+            capturedAt: snapshot.history.capturedAt
+        )
+        daily = visibleDaily
+        history = visibleHistory
+        historyCache.save(visibleHistory)
+        localUsageStatus = Self.localUsageStatus(for: visibleDaily)
+    }
+
+    private func reloadTraeAgentDirectories() {
+        traeAgentDirectories = traeAgentTrajectoryStore.availableDirectories
+        if !traeAgentDirectories.isEmpty {
+            discoveredLocalUsageSourceIDs.insert(TraeAgentUsageService.agentID)
         }
     }
 
@@ -540,6 +676,44 @@ final class UsageStore: ObservableObject {
             try? ProviderSecretStore(provider: provider).clear()
         }
         await refreshKeyProvider(provider)
+    }
+
+    /// 由数据源页的明确用户操作触发。与后台刷新不同，这条路径允许 macOS
+    /// 显示一次钥匙串访问确认；仍然只读凭证，不刷新、不写回 token。
+    @discardableResult
+    func authorizeProviderCredentials(_ provider: ProviderQuota.Provider) async -> Bool {
+        let now = Date()
+        do {
+            let quota: ProviderQuota
+            switch provider {
+            case .claude:
+                lastClaudeAttempt = now
+                quota = try await ClaudeOAuthUsageService().fetch(
+                    now: now,
+                    keychainInteraction: .allowed
+                )
+                claudeRetryAfter = nil
+                UserDefaults.standard.removeObject(forKey: claudeRetryAfterKey)
+            case .codex:
+                lastCodexAPIAttempt = now
+                quota = try await CodexAPIUsageService().fetch(
+                    now: now,
+                    keychainInteraction: .allowed
+                )
+            default:
+                return false
+            }
+
+            assign(quota, to: provider)
+            providerNotices[provider] = nil
+            quotaCache.save(currentSnapshot())
+            logger.info("Explicit read-only credential authorization succeeded for \(provider.rawValue, privacy: .public)")
+            return true
+        } catch {
+            providerNotices[provider] = error.localizedDescription
+            logger.error("Explicit read-only credential authorization failed for \(provider.rawValue, privacy: .public): \(error.localizedDescription, privacy: .public)")
+            return false
+        }
     }
 
     private func refreshKeyProvider(_ provider: ProviderQuota.Provider) async {

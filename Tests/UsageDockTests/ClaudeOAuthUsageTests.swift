@@ -1,4 +1,5 @@
 import Foundation
+import Security
 import Testing
 @testable import UsageDock
 
@@ -129,7 +130,7 @@ struct ClaudeCredentialsReaderTests {
         reader.environment = ["CLAUDE_CONFIG_DIR": directory.path]
         reader.keychainPayload = { _ in
             Issue.record("keychain must not be consulted when the file already answers")
-            return nil
+            return KeychainRead.Outcome(payload: nil, status: errSecItemNotFound)
         }
         #expect(reader.load()?.accessToken == "sk-ant-oat01-file")
     }
@@ -141,7 +142,10 @@ struct ClaudeCredentialsReaderTests {
         reader.homeDirectory = FileManager.default.temporaryDirectory
             .appendingPathComponent("usagedock-missing-\(UUID().uuidString)", isDirectory: true)
         reader.keychainPayload = { _ in
-            #"{"claudeAiOauth": {"accessToken": "sk-ant-oat01-keychain"}}"#
+            KeychainRead.Outcome(
+                payload: #"{"claudeAiOauth": {"accessToken": "sk-ant-oat01-keychain"}}"#,
+                status: errSecSuccess
+            )
         }
         #expect(reader.load()?.accessToken == "sk-ant-oat01-keychain")
     }
@@ -151,37 +155,43 @@ struct ClaudeCredentialsReaderTests {
     /// 根本没被测到。
     @Test("Background fallback asks for a non-interactive keychain read")
     func backgroundFallbackIsNoninteractive() {
-        var observed: KeychainRead.Interaction?
+        let observed = ClaudeLockedValue<KeychainRead.Interaction?>(nil)
         var reader = ClaudeCredentialsReader()
         reader.environment = [:]
         reader.homeDirectory = FileManager.default.temporaryDirectory
             .appendingPathComponent("usagedock-missing-\(UUID().uuidString)", isDirectory: true)
         reader.keychainPayload = { interaction in
-            observed = interaction
-            return #"{"claudeAiOauth": {"accessToken": "sk-ant-oat01-keychain"}}"#
+            observed.set(interaction)
+            return KeychainRead.Outcome(
+                payload: #"{"claudeAiOauth": {"accessToken": "sk-ant-oat01-keychain"}}"#,
+                status: errSecSuccess
+            )
         }
 
         #expect(reader.load()?.accessToken == "sk-ant-oat01-keychain")
-        #expect(observed == .disallowed)
+        #expect(observed.get() == .disallowed)
     }
 
     @Test("An explicit user action may opt into Keychain interaction")
     func explicitActionCanAllowInteraction() {
-        var observed: KeychainRead.Interaction?
+        let observed = ClaudeLockedValue<KeychainRead.Interaction?>(nil)
         var reader = ClaudeCredentialsReader()
         reader.environment = [:]
         reader.homeDirectory = FileManager.default.temporaryDirectory
             .appendingPathComponent("usagedock-missing-\(UUID().uuidString)", isDirectory: true)
         reader.keychainPayload = { interaction in
-            observed = interaction
-            return #"{"claudeAiOauth": {"accessToken": "sk-ant-oat01-keychain"}}"#
+            observed.set(interaction)
+            return KeychainRead.Outcome(
+                payload: #"{"claudeAiOauth": {"accessToken": "sk-ant-oat01-keychain"}}"#,
+                status: errSecSuccess
+            )
         }
 
         #expect(
             reader.load(keychainInteraction: .allowed)?.accessToken
                 == "sk-ant-oat01-keychain"
         )
-        #expect(observed == .allowed)
+        #expect(observed.get() == .allowed)
     }
 
     /// 凭据不可用时 `fetch()` 必须抛错让 `ClaudeUsageService` 走 PTY 兜底,
@@ -192,7 +202,76 @@ struct ClaudeCredentialsReaderTests {
         reader.environment = [:]
         reader.homeDirectory = FileManager.default.temporaryDirectory
             .appendingPathComponent("usagedock-missing-\(UUID().uuidString)", isDirectory: true)
-        reader.keychainPayload = { _ in nil }
+        reader.keychainPayload = { _ in
+            KeychainRead.Outcome(payload: nil, status: errSecItemNotFound)
+        }
         #expect(reader.load() == nil)
+    }
+
+    @Test("A blocked Claude keychain item requests explicit authorization")
+    func keychainAuthorizationStatus() {
+        var reader = ClaudeCredentialsReader()
+        reader.environment = [:]
+        reader.homeDirectory = URL(fileURLWithPath: "/tmp/tokenremain-claude-auth-required")
+        reader.keychainPayload = { _ in
+            KeychainRead.Outcome(payload: nil, status: errSecInteractionNotAllowed)
+        }
+        let result = reader.read()
+        #expect(result.credentials == nil)
+        #expect(result.needsAuthorization)
+    }
+
+    @Test("A readable unknown Claude keychain schema is classified as invalid")
+    func invalidKeychainSchema() {
+        var reader = ClaudeCredentialsReader()
+        reader.environment = [:]
+        reader.homeDirectory = URL(fileURLWithPath: "/tmp/tokenremain-claude-invalid")
+        reader.keychainPayload = { _ in
+            KeychainRead.Outcome(payload: #"{"future":true}"#, status: errSecSuccess)
+        }
+        let result = reader.read()
+        #expect(result.credentials == nil)
+        #expect(result.hasInvalidKeychainPayload)
+        #expect(!result.needsAuthorization)
+    }
+
+    @Test("An expired readable Claude credential is not called malformed")
+    func expiredKeychainCredential() {
+        let now = Date(timeIntervalSince1970: 1_784_000_000)
+        let expiredMs = (now.timeIntervalSince1970 - 60) * 1000
+        var reader = ClaudeCredentialsReader()
+        reader.environment = [:]
+        reader.homeDirectory = URL(fileURLWithPath: "/tmp/tokenremain-claude-expired")
+        reader.keychainPayload = { _ in
+            KeychainRead.Outcome(
+                payload: #"{"claudeAiOauth":{"accessToken":"expired","expiresAt":\#(expiredMs)}}"#,
+                status: errSecSuccess
+            )
+        }
+        let result = reader.read(now: now)
+        #expect(result.credentials == nil)
+        #expect(result.hasExpiredCredentials)
+        #expect(!result.hasInvalidKeychainPayload)
+    }
+}
+
+private final class ClaudeLockedValue<Value>: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value: Value
+
+    init(_ value: Value) {
+        self.value = value
+    }
+
+    func set(_ value: Value) {
+        lock.lock()
+        self.value = value
+        lock.unlock()
+    }
+
+    func get() -> Value {
+        lock.lock()
+        defer { lock.unlock() }
+        return value
     }
 }

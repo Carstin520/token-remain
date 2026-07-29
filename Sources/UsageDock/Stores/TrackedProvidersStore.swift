@@ -65,12 +65,22 @@ final class TrackedProvidersStore: ObservableObject {
     /// 「数据源」页既要保留曾成功连接过的来源用于故障诊断，也必须让当前
     /// 已追踪、但尚未首次连接的手动凭据型来源显示输入框。否则 Z.ai 这类
     /// provider 会陷入“没有 Key 无法连接、没有连接又看不到 Key 输入框”的
-    /// 首次使用死循环。
+    /// 首次使用死循环。Claude/Codex 同理需要先显示显式 Keychain 授权入口。
     var dataSourceOrdered: [ProviderQuota.Provider] {
         Self.allProviders.filter { provider in
             connected.contains(provider)
-                || (enabled.contains(provider) && Self.requiresManualCredential(provider))
+                || (
+                    enabled.contains(provider)
+                        && (
+                            Self.requiresManualCredential(provider)
+                                || Self.supportsCredentialAuthorization(provider)
+                        )
+                )
         }
+    }
+
+    static func supportsCredentialAuthorization(_ provider: ProviderQuota.Provider) -> Bool {
+        provider == .claude || provider == .codex
     }
 
     static func requiresManualCredential(_ provider: ProviderQuota.Provider) -> Bool {
@@ -240,11 +250,23 @@ final class TrackedProvidersStore: ObservableObject {
     nonisolated static func detections(
         home: URL = FileManager.default.homeDirectoryForCurrentUser,
         environment: [String: String] = ProcessInfo.processInfo.environment,
+        applicationDirectories: [URL]? = nil,
         includeManualCredentials: Bool = true
     ) -> [Detection] {
         let fileManager = FileManager.default
+        let appDirectories = applicationDirectories ?? [
+            home.appending(path: "Applications"),
+            URL(fileURLWithPath: "/Applications", isDirectory: true)
+        ]
         func exists(_ path: String) -> Bool {
             fileManager.fileExists(atPath: home.appending(path: path).path)
+        }
+        func appExists(_ names: String...) -> Bool {
+            appDirectories.contains { directory in
+                names.contains { name in
+                    fileManager.fileExists(atPath: directory.appending(path: name).path)
+                }
+            }
         }
         func executableExists(_ name: String, homeCandidates: [String] = []) -> Bool {
             var candidates = homeCandidates.map { home.appending(path: $0).path }
@@ -286,6 +308,9 @@ final class TrackedProvidersStore: ObservableObject {
             || exists("Library/Application Support/Devin")
             || exists("Applications/Devin.app")
             || fileManager.fileExists(atPath: "/Applications/Devin.app")
+        let windsurfInstalled = exists("Library/Application Support/Windsurf")
+            || appExists("Windsurf.app")
+            || environment["WINDSURF_API_KEY"]?.isEmpty == false
         let antigravityInstalled = fileManager.fileExists(atPath: "/Applications/Antigravity.app")
             || exists("Applications/Antigravity.app")
             || exists("Library/Application Support/Antigravity")
@@ -296,13 +321,13 @@ final class TrackedProvidersStore: ObservableObject {
                 homeCandidates: [".local/bin/opencode", ".opencode/bin/opencode"]
             )
         let claudeInstalled = exists(".claude")
+            || appExists("Claude.app")
             || executableExists(
                 "claude",
                 homeCandidates: [".local/bin/claude", ".npm-global/bin/claude"]
             )
         let codexInstalled = exists(".codex")
-            || exists("Applications/Codex.app")
-            || fileManager.fileExists(atPath: "/Applications/Codex.app")
+            || appExists("ChatGPT.app", "Codex.app")
             || executableExists(
                 "codex",
                 homeCandidates: [".local/bin/codex", ".npm-global/bin/codex"]
@@ -316,10 +341,10 @@ final class TrackedProvidersStore: ObservableObject {
         var detections = [
             detection(.claude, installed: claudeInstalled,
                       found: L10n.text("provider.detect.claude.found"),
-                      hint: L10n.format("provider.detect.install_login_hint", "Claude Code")),
+                      hint: L10n.format("provider.detect.install_login_hint", "Claude Desktop / Claude Code")),
             detection(.codex, installed: codexInstalled,
                       found: L10n.text("provider.detect.codex.found"),
-                      hint: L10n.format("provider.detect.install_login_hint", "Codex CLI")),
+                      hint: L10n.format("provider.detect.install_login_hint", "ChatGPT / Codex")),
             detection(.cursor, installed: cursorInstalled,
                       found: L10n.text("provider.detect.cursor.found"),
                       hint: L10n.format("provider.detect.install_login_hint", "Cursor")),
@@ -329,6 +354,9 @@ final class TrackedProvidersStore: ObservableObject {
             detection(.devin, installed: devinInstalled,
                       found: L10n.text("provider.detect.devin.found"),
                       hint: L10n.format("provider.detect.install_login_hint", "Devin")),
+            detection(.windsurf, installed: windsurfInstalled,
+                      found: L10n.text("provider.detect.windsurf.found"),
+                      hint: L10n.format("provider.detect.install_login_hint", "Windsurf")),
             detection(.grok, installed: grokInstalled,
                       found: L10n.text("provider.detect.grok.found"),
                       hint: L10n.text("provider.detect.grok.hint")),

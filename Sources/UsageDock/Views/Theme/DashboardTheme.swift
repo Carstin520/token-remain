@@ -116,6 +116,7 @@ enum DashboardTheme {
         case .zai: return zaiAccent
         case .copilot: return copilotAccent
         case .devin: return devinAccent
+        case .windsurf: return Color(hex: 0x70AFA6)
         case .openrouter: return openrouterAccent
         case .antigravity: return antigravityAccent
         case .opencode: return opencodeAccent

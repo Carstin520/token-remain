@@ -154,12 +154,136 @@ struct CCUsagePricingServiceTests {
         )
         let defaults = try #require(root["defaults"] as? [String: Any])
         #expect(defaults["timezone"] as? String == "Asia/Shanghai")
+        #expect(defaults["mode"] as? String == "calculate")
         let prices = try #require(defaults["pricingOverrides"] as? [String: Any])
         let opus = try #require(prices["claude-opus-5"] as? [String: Any])
         #expect((opus["inputCostPerToken"] as? NSNumber)?.doubleValue == 0.000005)
         #expect((opus["outputCostPerToken"] as? NSNumber)?.doubleValue == 0.123)
         let pi = try #require(root["pi"] as? [String: Any])
         #expect((pi["stores"] as? [[String: Any]])?.first?["name"] as? String == "omp")
+    }
+
+    @Test("An explicit user cost mode is preserved")
+    func preservesExplicitUserCostMode() throws {
+        let price = CCUsagePricingService.PricingOverride(
+            inputCostPerToken: 0.000005,
+            outputCostPerToken: 0.000025,
+            cacheCreationInputTokenCost: nil,
+            cacheReadInputTokenCost: nil,
+            inputCostPerTokenAbove200kTokens: nil,
+            outputCostPerTokenAbove200kTokens: nil,
+            cacheCreationInputTokenCostAbove200kTokens: nil,
+            cacheReadInputTokenCostAbove200kTokens: nil,
+            maxInputTokens: nil,
+            fastMultiplier: nil
+        )
+        let user = Data(#"{"defaults":{"mode":"display"}}"#.utf8)
+        let merged = try #require(CCUsagePricingService.mergedRuntimeConfiguration(
+            pricingOverrides: ["claude-opus-5": price],
+            userConfiguration: user
+        ))
+        let root = try #require(
+            try JSONSerialization.jsonObject(with: merged) as? [String: Any]
+        )
+        let defaults = try #require(root["defaults"] as? [String: Any])
+        #expect(defaults["mode"] as? String == "display")
+    }
+
+    @Test("Relay and OpenClaw model spellings resolve to the official model price")
+    func resolvesRelayModelAliases() throws {
+        let official = CCUsagePricingService.PricingOverride(
+            inputCostPerToken: 0.000003,
+            outputCostPerToken: 0.000015,
+            cacheCreationInputTokenCost: 0.00000375,
+            cacheReadInputTokenCost: 0.0000003,
+            inputCostPerTokenAbove200kTokens: nil,
+            outputCostPerTokenAbove200kTokens: nil,
+            cacheCreationInputTokenCostAbove200kTokens: nil,
+            cacheReadInputTokenCostAbove200kTokens: nil,
+            maxInputTokens: 200_000,
+            fastMultiplier: nil
+        )
+        let relay = CCUsagePricingService.PricingOverride(
+            inputCostPerToken: 0.5,
+            outputCostPerToken: 0.5,
+            cacheCreationInputTokenCost: nil,
+            cacheReadInputTokenCost: nil,
+            inputCostPerTokenAbove200kTokens: nil,
+            outputCostPerTokenAbove200kTokens: nil,
+            cacheCreationInputTokenCostAbove200kTokens: nil,
+            cacheReadInputTokenCostAbove200kTokens: nil,
+            maxInputTokens: nil,
+            fastMultiplier: nil
+        )
+        let prices = [
+            "claude-sonnet-4-5": official,
+            "openrouter/anthropic/claude-sonnet-4-5": relay
+        ]
+
+        let match = try #require(CCUsagePricingService.matchedPricing(
+            modelName: "[openclaw] openrouter/anthropic/claude-4.5-sonnet-thinking",
+            provider: "openrouter",
+            pricingOverrides: prices
+        ))
+        #expect(match.canonicalModel == "claude-sonnet-4-5")
+        #expect(match.price == official)
+        #expect(abs(match.price.estimatedCost(
+            inputTokens: 1_000,
+            outputTokens: 500,
+            cacheCreationTokens: 0,
+            cacheReadTokens: 0
+        ) - 0.0105) < 0.0000001)
+
+        let expanded = CCUsagePricingService.expandedPricingOverrides(prices)
+        #expect(expanded["claude-4.5-sonnet-thinking"] == official)
+    }
+
+    @Test("Vendored ccusage recalculates an OpenClaw zero cost from recognized model tokens")
+    func openClawZeroCostIntegration() async throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let executable = root.appending(path: "Vendor/ccusage/20.0.19/darwin-universal/ccusage")
+        guard FileManager.default.isExecutableFile(atPath: executable.path) else {
+            return
+        }
+        let fixture = FileManager.default.temporaryDirectory
+            .appending(path: "usagedock-openclaw-price-\(UUID().uuidString)", directoryHint: .isDirectory)
+        let sessions = fixture.appending(
+            path: "agents/main/sessions",
+            directoryHint: .isDirectory
+        )
+        try FileManager.default.createDirectory(at: sessions, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: fixture) }
+        try Data(#"""
+        {"type":"message","message":{"role":"assistant","model":"gpt-5.2","usage":{"input":1000,"output":500,"cost":{"total":0}}},"timestamp":1769753935279}
+        """#.utf8).write(to: sessions.appending(path: "fixture.jsonl"))
+
+        let config = fixture.appending(path: "ccusage.json")
+        try Data(#"""
+        {"defaults":{"mode":"calculate","pricingOverrides":{"gpt-5.2":{"inputCostPerToken":0.000001,"outputCostPerToken":0.000002}}}}
+        """#.utf8).write(to: config)
+        var environment = ProcessInfo.processInfo.environment
+        environment["OPENCLAW_DIR"] = fixture.path
+        let data = try await ProcessRunner.run(
+            executable.path,
+            arguments: [
+                "daily", "--json", "--by-agent", "--offline", "--no-color",
+                "--timezone", "UTC", "--since", "2026-01-30", "--until", "2026-01-30",
+                "--config", config.path
+            ],
+            environment: environment,
+            timeout: 10
+        )
+        let rootObject = try #require(
+            try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        )
+        let daily = try #require(rootObject["daily"] as? [[String: Any]])
+        let agents = try #require(daily.first?["agents"] as? [[String: Any]])
+        let openClaw = try #require(agents.first { $0["agent"] as? String == "openclaw" })
+        let totalCost = try #require((openClaw["totalCost"] as? NSNumber)?.doubleValue)
+        #expect(abs(totalCost - 0.002) < 0.000_000_1)
     }
 
     @Test("Malformed or unsafe price entries are discarded")

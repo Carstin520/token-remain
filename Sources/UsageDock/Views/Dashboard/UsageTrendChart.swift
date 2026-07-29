@@ -47,6 +47,7 @@ struct UsageTrendCard: View {
     let days: [DailyUsageHistory.Day]
     var capturedAt: Date?
     let preferredAgentIDs: Set<String>?
+    var excludedAgentIDs: Set<String> = []
 
     @State private var range: TrendRange = .twoWeeks
     @State private var metric: TrendMetric = .tokens
@@ -57,6 +58,7 @@ struct UsageTrendCard: View {
 
     private var visibleAgentIDs: Set<String> {
         Set(availableAgentIDs.filter { agentID in
+            guard !excludedAgentIDs.contains(agentID) else { return false }
             guard let preferredAgentIDs else { return true }
             return preferredAgentIDs.contains(agentID)
                 || UsageInsights.provider(for: agentID) == nil

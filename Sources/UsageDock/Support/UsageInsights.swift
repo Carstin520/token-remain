@@ -366,7 +366,8 @@ struct UsageInsights {
     // MARK: - Helpers
 
     static func displayName(for agentID: String) -> String {
-        provider(for: agentID)?.displayName ?? agentID.capitalized
+        provider(for: agentID)?.displayName
+            ?? LocalUsageSourceCatalog.displayName(for: agentID)
     }
 
     static func provider(for agentID: String) -> ProviderQuota.Provider? {

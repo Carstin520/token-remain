@@ -93,6 +93,7 @@ enum AppStoreSandboxProviderAudit {
         case .zai: return try await ZAIUsageService().fetch()
         case .copilot: return try await CopilotUsageService().fetch()
         case .devin: return try await DevinUsageService().fetch()
+        case .windsurf: return try await WindsurfUsageService().fetch()
         case .openrouter: return try await OpenRouterUsageService().fetch()
         case .antigravity: return try await AntigravityUsageService().fetch()
         case .opencode: return try await OpenCodeUsageService().fetch()

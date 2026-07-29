@@ -39,7 +39,7 @@ struct CodexUsageService {
 
     static func fetch(from roots: [URL]) async throws -> ProviderQuota {
         try await Task.detached(priority: .utility) {
-            var candidates: [URL] = []
+            var candidates: [(url: URL, modifiedAt: Date)] = []
 
             for root in roots {
                 guard let enumerator = FileManager.default.enumerator(
@@ -51,30 +51,48 @@ struct CodexUsageService {
                 while let url = enumerator.nextObject() as? URL {
                     guard url.pathExtension == "jsonl" else { continue }
                     let values = try? url.resourceValues(forKeys: [.contentModificationDateKey, .isRegularFileKey])
-                    if values?.isRegularFile == true {
-                        candidates.append(url)
-                    }
+                    guard values?.isRegularFile == true else { continue }
+                    candidates.append((url, values?.contentModificationDate ?? .distantPast))
                 }
             }
+
+            // 这套扫描每分钟都在跑,绝不能每轮把全部历史会话的尾部重新
+            // 解析一遍。按修改时间从新到旧遍历:文件内事件的时间不会晚
+            // 于其修改时间,所以一旦拿到的账户级快照比剩余文件都新,后
+            // 面的文件就不可能再翻盘,直接停。稳定状态下每轮只解析最近
+            // 活跃的一两个会话文件,其余靠 mtime 未变的缓存直接复用。
+            candidates.sort { $0.modifiedAt > $1.modifiedAt }
 
             // Codex emits both the general account quota (`limit_id = codex`) and
             // model-specific limits such as `codex_bengalfox`. A newer model-specific
             // event must never replace the general quota card.
-            let snapshots = candidates.flatMap { (try? Self.parseNewestSnapshots(in: $0)) ?? [] }
-            let canonical = snapshots.filter { $0.limitID?.lowercased() == "codex" }
-            if let newest = canonical.max(by: { $0.capturedAt < $1.capturedAt }) {
-                return newest.quota
+            var newestCanonical: Snapshot?
+            var newestLegacy: Snapshot?
+            for candidate in candidates {
+                if let canonical = newestCanonical, canonical.capturedAt >= candidate.modifiedAt {
+                    break
+                }
+                for snapshot in CodexSnapshotFileCache.shared.snapshots(
+                    in: candidate.url,
+                    modifiedAt: candidate.modifiedAt
+                ) {
+                    if snapshot.limitID?.lowercased() == "codex" {
+                        if newestCanonical.map({ snapshot.capturedAt > $0.capturedAt }) ?? true {
+                            newestCanonical = snapshot
+                        }
+                    } else if (snapshot.limitID?.isEmpty ?? true), (snapshot.limitName?.isEmpty ?? true) {
+                        // Older Codex versions did not include limit_id. Retain a
+                        // narrow legacy fallback, but reject named model limits so
+                        // they cannot masquerade as the account-wide quota.
+                        if newestLegacy.map({ snapshot.capturedAt > $0.capturedAt }) ?? true {
+                            newestLegacy = snapshot
+                        }
+                    }
+                }
             }
 
-            // Older Codex versions did not include limit_id. Retain a narrow legacy
-            // fallback, but reject named model limits so they cannot masquerade as the
-            // account-wide quota.
-            let legacy = snapshots.filter {
-                ($0.limitID?.isEmpty ?? true) && ($0.limitName?.isEmpty ?? true)
-            }
-            if let newest = legacy.max(by: { $0.capturedAt < $1.capturedAt }) {
-                return newest.quota
-            }
+            if let newestCanonical { return newestCanonical.quota }
+            if let newestLegacy { return newestLegacy.quota }
             throw ProcessRunner.Failure(message: L10n.text("service.codex.snapshot_missing"))
         }.value
     }
@@ -84,6 +102,36 @@ struct CodexUsageService {
         let capturedAt: Date
         let limitID: String?
         let limitName: String?
+    }
+
+    /// 按 (文件, 修改时间) 复用尾部解析结果:mtime 未变的会话文件不再
+    /// 重复读取。fetch 的早停让每轮真正触达的文件极少,缓存因此始终
+    /// 很小;条目上限只是防御性兜底。
+    private final class CodexSnapshotFileCache: @unchecked Sendable {
+        static let shared = CodexSnapshotFileCache()
+
+        private struct Entry {
+            let modifiedAt: Date
+            let snapshots: [Snapshot]
+        }
+
+        private let lock = NSLock()
+        private var entries: [URL: Entry] = [:]
+
+        func snapshots(in url: URL, modifiedAt: Date) -> [Snapshot] {
+            lock.lock()
+            let cached = entries[url]
+            lock.unlock()
+            if let cached, cached.modifiedAt == modifiedAt {
+                return cached.snapshots
+            }
+            let parsed = (try? CodexUsageService.parseNewestSnapshots(in: url)) ?? []
+            lock.lock()
+            if entries.count >= 64 { entries.removeAll() }
+            entries[url] = Entry(modifiedAt: modifiedAt, snapshots: parsed)
+            lock.unlock()
+            return parsed
+        }
     }
 
     private static let timestampFormatter: ISO8601DateFormatter = {

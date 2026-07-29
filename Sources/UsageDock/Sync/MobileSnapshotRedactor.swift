@@ -121,6 +121,7 @@ enum MobileSnapshotRedactor {
         case .zai: "zai"
         case .copilot: "copilot"
         case .devin: "devin"
+        case .windsurf: "windsurf"
         case .openrouter: "openrouter"
         case .antigravity: "antigravity"
         case .opencode: "opencode"

@@ -165,7 +165,10 @@ struct QuotaWindowRow: View {
     }
 
     var body: some View {
-        TimelineView(.periodic(from: .now, by: 1)) { context in
+        // 行级 60 秒一跳足够驱动配速警示与分钟级倒计时;常驻桌面的浮窗
+        // 不该为秒针每秒重排整行。最后一小时的秒级滚动由重置标签内部
+        // 的局部 TimelineView 单独承担。
+        TimelineView(.periodic(from: .now, by: 60)) { context in
             VStack(alignment: .leading, spacing: showsDetails ? 7 : 6) {
                 HStack(alignment: .firstTextBaseline) {
                     Text(L10n.format("quota.window", UsageFormatting.windowName(minutes: window.windowMinutes)))
@@ -198,8 +201,7 @@ struct QuotaWindowRow: View {
                         Image(systemName: "arrow.clockwise")
                             .font(.system(size: 9))
                         if let resetsAt = window.resetsAt {
-                            Text(UsageFormatting.resetDescription(to: resetsAt, now: context.date))
-                                .numericFont(10)
+                            QuotaResetLabel(resetsAt: resetsAt, referenceDate: context.date)
                         } else {
                             Text(L10n.text("quota.reset_pending"))
                         }
@@ -225,6 +227,27 @@ struct QuotaWindowRow: View {
             )
         )
         .accessibilityValue(L10n.format("quota.remaining", UsageFormatting.percent(remainingPercent)))
+    }
+}
+
+/// 重置时间标签。距重置不足一小时才以秒级滚动倒计时;此时它是整个
+/// 卡片里唯一按 1 秒刷新的叶子视图,重排被限制在这一小段文本内。
+/// 一小时以上按分钟粒度显示,由外层 60 秒时间线驱动即可。
+private struct QuotaResetLabel: View {
+    let resetsAt: Date
+    /// 外层 60 秒时间线的当前时刻,同时决定秒级/分钟级两种模式的切换。
+    let referenceDate: Date
+
+    var body: some View {
+        if resetsAt.timeIntervalSince(referenceDate) < 3_600 {
+            TimelineView(.periodic(from: .now, by: 1)) { context in
+                Text(UsageFormatting.resetDescription(to: resetsAt, now: context.date))
+                    .numericFont(10)
+            }
+        } else {
+            Text(UsageFormatting.resetDescription(to: resetsAt, now: referenceDate))
+                .numericFont(10)
+        }
     }
 }
 

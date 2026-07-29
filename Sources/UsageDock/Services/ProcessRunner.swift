@@ -12,9 +12,14 @@ enum ProcessRunner {
     static func run(
         _ executable: String,
         arguments: [String],
+        environment: [String: String]? = nil,
         timeout: TimeInterval = 30
     ) async throws -> Data {
-        let execution = ProcessExecution(executable: executable, arguments: arguments)
+        let execution = ProcessExecution(
+            executable: executable,
+            arguments: arguments,
+            environment: environment
+        )
         return try await withTaskCancellationHandler {
             try await execution.run(timeout: max(timeout, 0.01))
         } onCancel: {
@@ -37,9 +42,12 @@ private final class ProcessExecution: @unchecked Sendable {
     private var terminationStatus: Int32?
     private var finished = false
 
-    init(executable: String, arguments: [String]) {
+    init(executable: String, arguments: [String], environment: [String: String]?) {
         process.executableURL = URL(fileURLWithPath: executable)
         process.arguments = arguments
+        if let environment {
+            process.environment = environment
+        }
         process.standardOutput = stdout
         process.standardError = stderr
     }

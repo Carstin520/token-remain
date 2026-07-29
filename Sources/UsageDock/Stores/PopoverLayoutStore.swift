@@ -9,6 +9,7 @@ enum PopoverWidget: String, CaseIterable, Codable, Identifiable {
     case zai
     case copilot
     case devin
+    case windsurf
     case openrouter
     case antigravity
     case opencode
@@ -42,6 +43,7 @@ enum PopoverWidget: String, CaseIterable, Codable, Identifiable {
         case .zai: return "z.square"
         case .copilot: return "airpodsmax"
         case .devin: return "hexagon"
+        case .windsurf: return "wind"
         case .openrouter: return "arrow.triangle.branch"
         case .antigravity: return "arrow.up.forward"
         case .opencode: return "terminal"
@@ -65,6 +67,7 @@ enum PopoverWidget: String, CaseIterable, Codable, Identifiable {
         case .zai: return .zai
         case .copilot: return .copilot
         case .devin: return .devin
+        case .windsurf: return .windsurf
         case .openrouter: return .openrouter
         case .antigravity: return .antigravity
         case .opencode: return .opencode
@@ -90,7 +93,7 @@ enum PopoverWidget: String, CaseIterable, Codable, Identifiable {
 final class PopoverLayoutStore: ObservableObject {
     static let defaultsKey = "tokenRemain.popoverLayout.v1"
     static let defaultOrder: [PopoverWidget] = [
-        .claude, .codex, .cursor, .copilot, .devin,
+        .claude, .codex, .cursor, .copilot, .devin, .windsurf,
         .grok, .openrouter, .antigravity, .opencode, .zai,
         .deepseek, .kimi, .minimax, .mimo, .qoder, .kiro, .volcengine, .ollama,
         .localUsage, .aiFeed
@@ -98,7 +101,7 @@ final class PopoverLayoutStore: ObservableObject {
     /// 首次出现时默认隐藏的挂件:主流三家之外的 provider 面向少数用户,
     /// 通过 "+" 菜单一键添加,不给其他用户增加弹窗长度。
     static let defaultHidden: Set<PopoverWidget> = [
-        .grok, .zai, .copilot, .devin, .openrouter, .antigravity, .opencode,
+        .grok, .zai, .copilot, .devin, .windsurf, .openrouter, .antigravity, .opencode,
         .deepseek, .kimi, .minimax, .mimo, .qoder, .kiro, .volcengine, .ollama
     ]
 

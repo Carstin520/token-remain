@@ -15,3 +15,9 @@ because macOS CoreSVG does not reliably rasterize every source SVG construct.
 Brand names, logos, and trademarks remain the property of their respective
 owners; inclusion here does not imply endorsement or transfer any trademark
 rights.
+
+`windsurf.png` is the official white Windsurf symbol published by Windsurf's
+brand guide, retrieved 2026-07-29 from:
+
+- https://windsurf.com/brand
+- https://exafunction.github.io/public/brand/windsurf-white-symbol.png

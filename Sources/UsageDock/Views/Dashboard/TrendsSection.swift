@@ -9,6 +9,7 @@ struct TrendsSection: View {
     let isCCUsageRefreshing: Bool
     let onRetryCCUsage: () -> Void
     @ObservedObject var tracked: TrackedProvidersStore
+    let disabledLocalUsageSourceIDs: Set<String>
 
     /// Real per-day history, oldest-first; nil / <2 days ⇒ honest empty state.
     private var trendDays: [DailyUsageHistory.Day]? {
@@ -31,7 +32,8 @@ struct TrendsSection: View {
                 UsageTrendCard(
                     days: trendDays,
                     capturedAt: insights.history?.capturedAt,
-                    preferredAgentIDs: preferredAgentIDs
+                    preferredAgentIDs: preferredAgentIDs,
+                    excludedAgentIDs: disabledLocalUsageSourceIDs
                 )
                 if !insights.historyUnpricedModels.isEmpty {
                     Label(

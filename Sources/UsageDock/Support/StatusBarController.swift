@@ -60,6 +60,10 @@ final class StatusBarController: NSObject {
     }()
 
     private var floatingControllerCreated = false
+    private var dashboardCreated = false
+    /// 上一次真正应用到菜单栏/Dock 的显示内容指纹与 Dock 图标内容键。
+    private var lastStatusFingerprint: String?
+    private var lastDockIconKey: String?
 
     private func setFloatingWidget(visible: Bool) {
         if visible {
@@ -159,7 +163,9 @@ final class StatusBarController: NSObject {
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in
                 self?.updateStatusImage()
-                self?.store.refreshLocalUsage()
+                // 切回前台不强制扫描:相关界面可见时分钟级节奏本就在跑,
+                // 都不可见时按用户刷新偏好补扫即可。
+                self?.store.refreshLocalUsage(force: false)
                 TrackedProvidersStore.shared.scanForNewInstallations()
             }
             .store(in: &cancellables)
@@ -167,6 +173,9 @@ final class StatusBarController: NSObject {
         updateStatusImage()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self] in
             self?.updateStatusImage()
+        }
+        store.localUsageUIVisibilityProvider = { [weak self] in
+            self?.isLocalUsageSurfaceVisible ?? false
         }
         store.start()
         feedStore.start()
@@ -186,8 +195,19 @@ final class StatusBarController: NSObject {
 
     private func openDashboard(_ section: DashboardSection) {
         popover.performClose(nil)
+        dashboardCreated = true
         dashboardController.show(section: section)
         store.refreshLocalUsage()
+    }
+
+    /// 本地用量数据是否正被某个界面展示。仅在这些界面可见(或开启了
+    /// Apple 设备同步)时,才值得维持分钟级的 ccusage 扫描;检查必须
+    /// 避开未创建的 lazy 控制器,不能为了读可见性把窗口先建出来。
+    private var isLocalUsageSurfaceVisible: Bool {
+        if popover.isShown { return true }
+        if dashboardCreated, dashboardController.window?.isVisible == true { return true }
+        if floatingControllerCreated, floatingWidgetController.window?.isVisible == true { return true }
+        return false
     }
 
     /// Opens the primary desktop window from app launch, Dock reopen, or menu UI.
@@ -215,12 +235,6 @@ final class StatusBarController: NSObject {
     }
 
     private func updateStatusImage() {
-        let iconSize: CGFloat = 13
-        let font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
-        let attributes: [NSAttributedString.Key: Any] = [
-            .font: font,
-            .foregroundColor: NSColor.labelColor
-        ]
         // provider 选择与显示密度是两个独立设置。完整/紧凑模式保留全部
         // 勾选项；只有用户明确选择极简模式时才显示最低余额的一项。
         let tracked = TrackedProvidersStore.shared
@@ -246,30 +260,12 @@ final class StatusBarController: NSObject {
             return (provider, remaining)
         }
 
-        let title = NSMutableAttributedString()
-        if segments.isEmpty {
-            title.append(NSAttributedString(string: "TR", attributes: attributes))
-        }
-        for (index, segment) in segments.enumerated() {
-            if index > 0 {
-                let separator = displayMode == .compact ? " " : " · "
-                title.append(NSAttributedString(string: separator, attributes: attributes))
-            }
-            title.append(statusIcon(segment.0, size: iconSize))
-            if displayMode != .compact {
-                title.append(NSAttributedString(string: " \(segment.1)", attributes: attributes))
-            }
-        }
-
         let claudeRemaining = UsageStore.logoQuotaSelection(from: [store.quotaValue(for: .claude)])?.remainingPercent
         let codexRemaining = UsageStore.logoQuotaSelection(from: [store.quotaValue(for: .codex)])?.remainingPercent
         let state = TokenRemainLogoState.resolve(
             remainingPercent: [claudeRemaining, codexRemaining].compactMap { $0 }.min()
         )
-        statusItem.button?.image = nil
-        statusItem.button?.attributedTitle = title
-        statusItem.isVisible = true
-        NSApp.applicationIconImage = TokenRemainHeadLogoArtwork.image(
+        let dockIconKey = TokenRemainHeadLogoArtwork.renderKey(
             claudeRemaining: claudeRemaining,
             codexRemaining: codexRemaining
         )
@@ -291,8 +287,59 @@ final class StatusBarController: NSObject {
             let remaining = UsageFormatting.percent(max(0, 100 - quota.primary.usedPercent))
             tooltipLines.append(L10n.format("statusbar.tooltip_remaining", provider.displayName, remaining))
         }
-        statusItem.button?.toolTip = tooltipLines.joined(separator: L10n.text("statusbar.tooltip_separator"))
+        let tooltip = tooltipLines.joined(separator: L10n.text("statusbar.tooltip_separator"))
+
+        // objectWillChange 覆盖 UsageStore 的每一次 @Published 赋值,一轮
+        // 刷新会触发本方法十余次,其中绝大多数并不改变任何可见内容。
+        // 先算显示指纹,不变就整体跳过,避免反复重建富文本与 Dock 重绘。
+        let fingerprint = [
+            displayMode.rawValue,
+            segments.map { "\($0.0.rawValue):\($0.1)" }.joined(separator: ","),
+            dockIconKey,
+            tooltip
+        ].joined(separator: "|")
+        guard fingerprint != lastStatusFingerprint else { return }
+        lastStatusFingerprint = fingerprint
+
+        let iconSize: CGFloat = 13
+        let font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: font,
+            .foregroundColor: NSColor.labelColor
+        ]
+        let title = NSMutableAttributedString()
+        if segments.isEmpty {
+            title.append(NSAttributedString(string: "TR", attributes: attributes))
+        }
+        for (index, segment) in segments.enumerated() {
+            if index > 0 {
+                let separator = displayMode == .compact ? " " : " · "
+                title.append(NSAttributedString(string: separator, attributes: attributes))
+            }
+            title.append(statusIcon(segment.0, size: iconSize))
+            if displayMode != .compact {
+                title.append(NSAttributedString(string: " \(segment.1)", attributes: attributes))
+            }
+        }
+
+        statusItem.button?.image = nil
+        statusItem.button?.attributedTitle = title
+        statusItem.isVisible = true
+        statusItem.button?.toolTip = tooltip
         statusItem.length = ceil(title.size().width) + 4
+
+        // 给 applicationIconImage 赋值本身就会强制一次完整的 Dock 瓦片
+        // 渲染(含色彩转换),与图片对象是否复用无关,必须按内容去重。
+        // Dock 与应用切换器的实际显示不超过 128pt@2x,256px 渲染足够,
+        // 单张位图成本也从 ~4MB 降到 ~256KB。
+        if dockIconKey != lastDockIconKey {
+            lastDockIconKey = dockIconKey
+            NSApp.applicationIconImage = TokenRemainHeadLogoArtwork.image(
+                claudeRemaining: claudeRemaining,
+                codexRemaining: codexRemaining,
+                size: 256
+            )
+        }
     }
 
     private func statusIcon(

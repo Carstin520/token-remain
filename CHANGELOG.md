@@ -3,6 +3,33 @@
 All notable product changes are recorded here. TokenRemain uses Semantic
 Versioning for public releases.
 
+## 1.2.0 — Unreleased
+
+### Added
+
+- Added dynamic local-usage sources for every agent discovered by the bundled
+  ccusage collector, with per-source inclusion controls and stable names for
+  Claude, Codex, OpenCode, Amp, Droid, Codebuff, Hermes, pi, Goose, OpenClaw,
+  Kilo, Kimi, Qwen, Copilot, and Gemini.
+- Added a privacy-minimized Trae Agent trajectory reader that decodes only
+  timestamps, provider/model names, and aggregate token counters from
+  user-selected local trajectory folders.
+- Added an independent Windsurf quota provider, local app detection, official
+  brand artwork, and cross-device provider support.
+
+### Fixed
+
+- Recalculate recognized OpenClaw and relay model usage from token counts when
+  a source records a zero cost, and normalize relay model names back to direct
+  official-model API list-price entries. Explicit user ccusage cost modes and
+  custom price overrides remain authoritative.
+
+### Privacy
+
+- Public price refreshes remain fixed, bodyless complete-table downloads. No
+  locally observed model name, token count, prompt, response, project, or
+  trajectory content is sent to the pricing source.
+
 ## 1.1.11 — 2026-07-28
 
 ### Changed

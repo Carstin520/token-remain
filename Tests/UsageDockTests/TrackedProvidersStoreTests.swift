@@ -70,6 +70,14 @@ struct TrackedProvidersStoreTests {
         #expect(store.dataSourceOrdered == [.cursor, .openrouter, .zai, .deepseek])
     }
 
+    @Test("Tracked Claude and Codex expose their first-use authorization rows")
+    func desktopCredentialSourcesAreVisibleForSetup() {
+        let store = TrackedProvidersStore(defaults: testDefaults())
+        store.completeOnboarding(enabled: [.claude, .codex])
+        #expect(store.connectedOrdered.isEmpty)
+        #expect(store.dataSourceOrdered == [.claude, .codex])
+    }
+
     @Test("Every manual credential provider has a first-use data source entry")
     func everyManualCredentialProviderIsVisibleForSetup() {
         let expected = Set(
@@ -143,7 +151,11 @@ struct TrackedProvidersStoreTests {
             ofItemAtPath: claudeExecutable.path
         )
 
-        let detections = TrackedProvidersStore.detections(home: home, environment: [:])
+        let detections = TrackedProvidersStore.detections(
+            home: home,
+            environment: [:],
+            applicationDirectories: []
+        )
         let byProvider = Dictionary(uniqueKeysWithValues: detections.map { ($0.provider, $0.installed) })
 
         #expect(detections.map(\.provider) == TrackedProvidersStore.allProviders)
@@ -151,6 +163,57 @@ struct TrackedProvidersStoreTests {
         #expect(byProvider[.codex] == true)
         #expect(byProvider[.grok] == true)
         #expect(byProvider[.zai] == false)
+    }
+
+    @Test("Claude and current or legacy Codex desktop apps are detected without CLI markers")
+    func desktopAppsAreDetected() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("usagedock-desktop-detection-\(UUID().uuidString)", isDirectory: true)
+        let home = root.appending(path: "home")
+        let applications = root.appending(path: "Applications")
+        try FileManager.default.createDirectory(
+            at: applications.appending(path: "Claude.app"),
+            withIntermediateDirectories: true
+        )
+        try FileManager.default.createDirectory(
+            at: applications.appending(path: "ChatGPT.app"),
+            withIntermediateDirectories: true
+        )
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let detections = TrackedProvidersStore.detections(
+            home: home,
+            environment: [:],
+            applicationDirectories: [applications]
+        )
+        let byProvider = Dictionary(uniqueKeysWithValues: detections.map { ($0.provider, $0.installed) })
+        #expect(byProvider[.claude] == true)
+        #expect(byProvider[.codex] == true)
+
+        try FileManager.default.removeItem(at: applications.appending(path: "ChatGPT.app"))
+        try FileManager.default.createDirectory(
+            at: applications.appending(path: "Codex.app"),
+            withIntermediateDirectories: true
+        )
+        let legacyDetections = TrackedProvidersStore.detections(
+            home: home,
+            environment: [:],
+            applicationDirectories: [applications]
+        )
+        #expect(legacyDetections.first { $0.provider == .codex }?.installed == true)
+    }
+
+    @Test("An empty isolated machine does not invent Claude or Codex installations")
+    func emptyMachineDetectionIsHermetic() {
+        let home = FileManager.default.temporaryDirectory
+            .appendingPathComponent("usagedock-empty-machine-\(UUID().uuidString)", isDirectory: true)
+        let detections = TrackedProvidersStore.detections(
+            home: home,
+            environment: [:],
+            applicationDirectories: []
+        )
+        #expect(detections.first { $0.provider == .claude }?.installed == false)
+        #expect(detections.first { $0.provider == .codex }?.installed == false)
     }
 
     @Test("Automatic scans exclude every manual credential provider")
@@ -218,7 +281,8 @@ struct TrackedProvidersStoreTests {
             .appendingPathComponent("usagedock-empty-\(UUID().uuidString)", isDirectory: true)
         let detections = TrackedProvidersStore.detections(
             home: home,
-            environment: ["ZAI_API_KEY": "test-key"]
+            environment: ["ZAI_API_KEY": "test-key"],
+            applicationDirectories: []
         )
         #expect(detections.first { $0.provider == .zai }?.installed == true)
     }

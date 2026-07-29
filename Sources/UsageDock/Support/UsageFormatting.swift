@@ -31,7 +31,9 @@ enum UsageFormatting {
         let seconds = remaining % 60
 
         if days > 0 { return L10n.format("duration.days_hours_minutes", days, hours, minutes) }
-        if hours > 0 { return String(format: "%02d:%02d:%02d", hours, minutes, seconds) }
+        // 一小时以上的倒计时按分钟粒度呈现:秒数在这个量级没有决策
+        // 价值,展示层也因此不必为它维持秒级刷新。
+        if hours > 0 { return L10n.format("duration.hours_minutes", hours, minutes) }
         return String(format: "%02d:%02d", minutes, seconds)
     }
 

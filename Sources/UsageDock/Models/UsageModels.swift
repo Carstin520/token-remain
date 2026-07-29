@@ -31,6 +31,7 @@ struct ProviderQuota: Sendable, Codable {
         case zai = "Z.ai"
         case copilot = "Copilot"
         case devin = "Devin"
+        case windsurf = "Windsurf"
         case openrouter = "OpenRouter"
         case antigravity = "Antigravity"
         case opencode = "OpenCode"
@@ -45,7 +46,7 @@ struct ProviderQuota: Sendable, Codable {
 
         /// UI 展示与遍历用的稳定顺序(nonisolated,供任何上下文使用)。
         static let displayOrder: [Provider] = [
-            .claude, .codex, .cursor, .copilot, .devin,
+            .claude, .codex, .cursor, .copilot, .devin, .windsurf,
             .grok, .openrouter, .antigravity, .opencode, .zai,
             .deepseek, .kimi, .minimax, .mimo, .qoder,
             .kiro, .volcengine, .ollama
@@ -61,6 +62,7 @@ struct ProviderQuota: Sendable, Codable {
             case .zai: return "Z.ai"
             case .copilot: return "Copilot"
             case .devin: return "Devin"
+            case .windsurf: return "Windsurf"
             case .openrouter: return "OpenRouter"
             case .antigravity: return "Antigravity"
             case .opencode: return "OpenCode"
@@ -257,6 +259,146 @@ struct DailyUsageHistory: Sendable, Codable {
     let capturedAt: Date
 }
 
+/// Common output shared by the bundled ccusage collector and app-owned local
+/// parsers. New coding tools merge into this string-keyed model instead of
+/// expanding the fixed quota-provider enum.
+struct LocalUsageSnapshot: Sendable {
+    let daily: DailyUsage
+    let history: DailyUsageHistory
+
+    func merging(_ other: LocalUsageSnapshot) -> LocalUsageSnapshot {
+        LocalUsageSnapshot(
+            daily: DailyUsage(
+                date: max(daily.date, other.daily.date),
+                agents: Self.mergeDailyAgents(daily.agents + other.daily.agents),
+                capturedAt: max(daily.capturedAt, other.daily.capturedAt)
+            ),
+            history: DailyUsageHistory(
+                days: Self.mergeHistoryDays(history.days + other.history.days),
+                capturedAt: max(history.capturedAt, other.history.capturedAt)
+            )
+        )
+    }
+
+    private static func mergeDailyAgents(_ agents: [DailyUsage.Agent]) -> [DailyUsage.Agent] {
+        var merged: [String: DailyUsage.Agent] = [:]
+        for agent in agents {
+            let id = LocalUsageSourceCatalog.canonicalID(agent.id)
+            guard LocalUsageSourceCatalog.isWellFormed(id) else { continue }
+            let previous = merged[id]
+            merged[id] = DailyUsage.Agent(
+                id: id,
+                tokens: (previous?.tokens ?? 0) + max(0, agent.tokens),
+                estimatedCost: (previous?.estimatedCost ?? 0) + max(0, agent.estimatedCost),
+                unpricedModels: Array(Set(
+                    (previous?.unpricedModels ?? []) + agent.unpricedModels
+                )).sorted()
+            )
+        }
+        return merged.values.sorted { lhs, rhs in
+            LocalUsageSourceCatalog.sortKey(lhs.id) < LocalUsageSourceCatalog.sortKey(rhs.id)
+        }
+    }
+
+    private static func mergeHistoryDays(
+        _ days: [DailyUsageHistory.Day]
+    ) -> [DailyUsageHistory.Day] {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = .current
+        var byDay: [Date: [DailyUsageHistory.Agent]] = [:]
+        for day in days {
+            byDay[calendar.startOfDay(for: day.date), default: []].append(contentsOf: day.agents)
+        }
+        return byDay.map { date, agents in
+            var merged: [String: DailyUsageHistory.Agent] = [:]
+            for agent in agents {
+                let id = LocalUsageSourceCatalog.canonicalID(agent.id)
+                guard LocalUsageSourceCatalog.isWellFormed(id) else { continue }
+                let previous = merged[id]
+                merged[id] = DailyUsageHistory.Agent(
+                    id: id,
+                    tokens: (previous?.tokens ?? 0) + max(0, agent.tokens),
+                    cost: (previous?.cost ?? 0) + max(0, agent.cost),
+                    unpricedModels: Array(Set(
+                        (previous?.unpricedModels ?? []) + agent.unpricedModels
+                    )).sorted()
+                )
+            }
+            return DailyUsageHistory.Day(
+                date: date,
+                agents: merged.values.sorted { lhs, rhs in
+                    LocalUsageSourceCatalog.sortKey(lhs.id)
+                        < LocalUsageSourceCatalog.sortKey(rhs.id)
+                }
+            )
+        }
+        .sorted { $0.date < $1.date }
+    }
+}
+
+enum LocalUsageSourceCatalog {
+    struct Definition: Sendable, Equatable {
+        let id: String
+        let displayName: String
+    }
+
+    /// Matches the source IDs published by the bundled ccusage helper, plus the
+    /// app-owned Trae Agent trajectory parser.
+    static let supported: [Definition] = [
+        .init(id: "claude", displayName: "Claude Code"),
+        .init(id: "codex", displayName: "Codex"),
+        .init(id: "opencode", displayName: "OpenCode"),
+        .init(id: "amp", displayName: "Amp"),
+        .init(id: "droid", displayName: "Droid"),
+        .init(id: "codebuff", displayName: "Codebuff"),
+        .init(id: "hermes", displayName: "Hermes Agent"),
+        .init(id: "pi", displayName: "pi-agent"),
+        .init(id: "goose", displayName: "Goose"),
+        .init(id: "openclaw", displayName: "OpenClaw"),
+        .init(id: "kilo", displayName: "Kilo Code"),
+        .init(id: "kimi", displayName: "Kimi CLI"),
+        .init(id: "qwen", displayName: "Qwen CLI"),
+        .init(id: "copilot", displayName: "GitHub Copilot CLI"),
+        .init(id: "gemini", displayName: "Gemini"),
+        .init(id: "trae-agent", displayName: "Trae Agent")
+    ]
+
+    private static let byID = Dictionary(uniqueKeysWithValues: supported.map { ($0.id, $0) })
+
+    static func canonicalID(_ value: String) -> String {
+        value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    static func isWellFormed(_ value: String) -> Bool {
+        let id = canonicalID(value)
+        guard (1...64).contains(id.utf8.count), let first = id.utf8.first else { return false }
+        guard first.isASCIIAlphaNumeric else { return false }
+        return id.utf8.allSatisfy { byte in
+            byte.isASCIIAlphaNumeric || byte == 45 || byte == 46 || byte == 95
+        }
+    }
+
+    static func displayName(for id: String) -> String {
+        let canonical = canonicalID(id)
+        return byID[canonical]?.displayName
+            ?? canonical.split(whereSeparator: { $0 == "-" || $0 == "_" })
+                .map { $0.capitalized }
+                .joined(separator: " ")
+    }
+
+    static func sortKey(_ id: String) -> String {
+        let canonical = canonicalID(id)
+        let index = supported.firstIndex { $0.id == canonical } ?? supported.count
+        return String(format: "%03d-%@", index, canonical)
+    }
+}
+
+private extension UInt8 {
+    var isASCIIAlphaNumeric: Bool {
+        (48...57).contains(self) || (97...122).contains(self)
+    }
+}
+
 extension ProviderQuota.Provider {
     /// ccusage's stable lower-case agent identifier. Keeping this mapping next
     /// to the provider type lets trend selection reuse the user's tracked-app
@@ -270,6 +412,7 @@ extension ProviderQuota.Provider {
         case .zai: "zai"
         case .copilot: "copilot"
         case .devin: "devin"
+        case .windsurf: "windsurf"
         case .openrouter: "openrouter"
         case .antigravity: "antigravity"
         case .opencode: "opencode"

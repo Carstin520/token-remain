@@ -71,6 +71,82 @@ struct CodexUsageServiceTests {
         #expect(quota.secondary?.windowMinutes == 10_080)
     }
 
+    @Test("Newest canonical snapshot wins; older session files cannot outrank it")
+    func newestCanonicalWinsAcrossSessionFiles() async throws {
+        let root = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let oldFile = root.appendingPathComponent("old.jsonl")
+        try writeJSONL([
+            tokenCount(
+                timestamp: "2026-07-17T10:00:00.000Z",
+                limitID: "codex",
+                limitName: nil,
+                planType: "prolite",
+                usedPercent: 80,
+                windowMinutes: 300
+            )
+        ], to: oldFile)
+        // 旧会话的 mtime 介于两个事件时间之间:新文件解析出的快照一旦
+        // 晚于它,扫描应当在这里早停,而结果与全量扫描一致。
+        try FileManager.default.setAttributes(
+            [.modificationDate: ISO8601DateFormatter().date(from: "2026-07-17T10:30:00Z")!],
+            ofItemAtPath: oldFile.path
+        )
+        try writeJSONL([
+            tokenCount(
+                timestamp: "2026-07-17T11:00:00.000Z",
+                limitID: "codex",
+                limitName: nil,
+                planType: "prolite",
+                usedPercent: 55,
+                windowMinutes: 300
+            )
+        ], to: root.appendingPathComponent("new.jsonl"))
+
+        let quota = try await CodexUsageService.fetch(from: [root])
+
+        #expect(quota.primary.usedPercent == 55)
+    }
+
+    @Test("Legacy snapshot still surfaces when no canonical limit exists anywhere")
+    func legacyFallbackSurvivesEarlyStop() async throws {
+        let root = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let legacyFile = root.appendingPathComponent("legacy.jsonl")
+        try writeJSONL([
+            tokenCount(
+                timestamp: "2026-07-17T09:00:00.000Z",
+                limitID: nil,
+                limitName: nil,
+                planType: nil,
+                usedPercent: 63,
+                windowMinutes: 300
+            )
+        ], to: legacyFile)
+        try FileManager.default.setAttributes(
+            [.modificationDate: ISO8601DateFormatter().date(from: "2026-07-17T09:05:00Z")!],
+            ofItemAtPath: legacyFile.path
+        )
+        // 更新的会话只有模型专属限额:既非账户级也非 legacy,不允许
+        // 提前终止扫描,否则老文件里的 legacy 快照会被漏掉。
+        try writeJSONL([
+            tokenCount(
+                timestamp: "2026-07-17T11:35:24.973Z",
+                limitID: "codex_bengalfox",
+                limitName: "GPT-5.3-Codex-Spark",
+                planType: nil,
+                usedPercent: 0,
+                windowMinutes: 10_080
+            )
+        ], to: root.appendingPathComponent("spark.jsonl"))
+
+        let quota = try await CodexUsageService.fetch(from: [root])
+
+        #expect(quota.primary.usedPercent == 63)
+    }
+
     private func temporaryDirectory() throws -> URL {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("UsageDockTests-\(UUID().uuidString)", isDirectory: true)
