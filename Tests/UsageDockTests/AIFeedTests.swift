@@ -175,6 +175,34 @@ struct AIFeedTests {
         #expect(curated.contains { $0.id == "other" })
     }
 
+    @Test("Important reminders normally stop at seven and never exceed ten")
+    func importantReminderLimits() {
+        let now = Date(timeIntervalSince1970: 2_000_000_000)
+        let majorUpdates = (0..<12).map { index in
+            makePost(
+                id: "major-\(index)",
+                username: "author\(index)",
+                createdAt: now.addingTimeInterval(Double(-index)),
+                tier: .primary,
+                priority: .majorUpdate
+            )
+        }
+        let criticalResets = (0..<12).map { index in
+            makePost(
+                id: "reset-\(index)",
+                username: "critical\(index)",
+                createdAt: now.addingTimeInterval(Double(-index)),
+                tier: .primary,
+                priority: .tokenReset
+            )
+        }
+
+        #expect(AIFeedCollectionPolicy.selectImportantForDisplay(Array(majorUpdates.prefix(6)), now: now).count == 6)
+        #expect(AIFeedCollectionPolicy.selectImportantForDisplay(majorUpdates, now: now).count == 7)
+        #expect(AIFeedCollectionPolicy.selectImportantForDisplay(Array(criticalResets.prefix(9)), now: now).count == 9)
+        #expect(AIFeedCollectionPolicy.selectImportantForDisplay(criticalResets, now: now).count == 10)
+    }
+
     @Test("Trending combines momentum with critical-event importance")
     func trendingBalancesMomentumAndImportance() {
         let now = Date(timeIntervalSince1970: 2_000_000_000)

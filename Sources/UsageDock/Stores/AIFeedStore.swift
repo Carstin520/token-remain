@@ -57,7 +57,7 @@ final class AIFeedStore: ObservableObject {
     }
 
     var importantPosts: [AIFeedPost] {
-        recommendedPosts.filter { $0.priority != .normal }
+        AIFeedCollectionPolicy.selectImportantForDisplay(recommendedPosts)
     }
 
     var morePosts: [AIFeedPost] {
