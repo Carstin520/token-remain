@@ -508,9 +508,9 @@
 "usage.today_estimate" = "今日預估";
 "usage.today_tokens" = "今日 Tokens";
 "usage.usd_amount" = "%.2f 美元";
-"update.available_format" = "更新至 %1$@";
+"update.available_format" = "更新至最新版 · %1$@";
 "update.available_accessibility" = "TokenRemain %1$@ 已可更新";
-"update.install_help" = "下載並驗證更新，安裝後重新啟動 TokenRemain";
+"update.install_help" = "重新檢查最新版本，再下載、驗證、安裝並重新啟動 TokenRemain";
 "service_status.operational" = "正常";
 "service_status.degraded" = "效能下降";
 "service_status.partial_outage" = "部分中斷";

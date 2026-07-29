@@ -34,6 +34,10 @@ Versioning for public releases.
   content when a surface becomes visible again.
 - Reduce background installed-tool detection from every ten seconds to every
   five minutes while retaining immediate foreground scans.
+- Replace Sparkle's cached automatic-download cycle with adaptive signed-feed
+  probes: four checks per day when current, two while an update reminder is
+  pending, bounded retry backoff after failures, and a fresh latest-version
+  check immediately before the user starts an update.
 
 ### Fixed
 

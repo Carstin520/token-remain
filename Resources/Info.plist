@@ -54,15 +54,11 @@
   <key>SUPublicEDKey</key>
   <string>GU6+EVHK79NX+/5g1GKCID3GQUc099GfNo4w/a6spDI=</string>
   <key>SUEnableAutomaticChecks</key>
-  <true/>
+  <false/>
   <key>SUAutomaticallyUpdate</key>
-  <true/>
+  <false/>
   <key>SUAllowsAutomaticUpdates</key>
-  <true/>
-  <key>SUScheduledCheckInterval</key>
-  <integer>3600</integer>
-  <key>SUScheduledImpatientCheckInterval</key>
-  <integer>86400</integer>
+  <false/>
   <key>SUShowReleaseNotes</key>
   <false/>
   <key>SUVerifyUpdateBeforeExtraction</key>

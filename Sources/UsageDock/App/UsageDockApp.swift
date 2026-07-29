@@ -89,6 +89,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidBecomeActive(_ notification: Notification) {
 #if TOKENREMAIN_CLOUD_SYNC
+        AppUpdateController.shared.checkIfDue()
         CrossDeviceSyncController.shared.checkNow()
 #endif
     }

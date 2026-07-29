@@ -508,9 +508,9 @@
 "usage.today_estimate" = "Est. today";
 "usage.today_tokens" = "Today's Tokens";
 "usage.usd_amount" = "%.2f US dollars";
-"update.available_format" = "Update to %1$@";
+"update.available_format" = "Update to latest · %1$@";
 "update.available_accessibility" = "TokenRemain %1$@ is available";
-"update.install_help" = "Download, verify, install, and relaunch TokenRemain";
+"update.install_help" = "Check again for the latest release, then download, verify, install, and relaunch TokenRemain";
 "service_status.operational" = "Operational";
 "service_status.degraded" = "Degraded";
 "service_status.partial_outage" = "Partial outage";

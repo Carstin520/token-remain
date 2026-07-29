@@ -507,9 +507,9 @@
 "usage.today_estimate" = "오늘 예상";
 "usage.today_tokens" = "오늘 Tokens";
 "usage.usd_amount" = "%.2f달러";
-"update.available_format" = "%1$@(으)로 업데이트";
+"update.available_format" = "최신 버전으로 업데이트 · %1$@";
 "update.available_accessibility" = "TokenRemain %1$@ 업데이트 사용 가능";
-"update.install_help" = "TokenRemain을 다운로드하고 확인한 뒤 설치 및 재시작";
+"update.install_help" = "최신 버전을 다시 확인한 뒤 TokenRemain을 다운로드, 검증, 설치하고 재시작";
 "service_status.operational" = "정상";
 "service_status.degraded" = "성능 저하";
 "service_status.partial_outage" = "일부 중단";

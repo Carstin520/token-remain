@@ -507,9 +507,9 @@
 "usage.today_estimate" = "今日の推定";
 "usage.today_tokens" = "今日の Tokens";
 "usage.usd_amount" = "%.2f米ドル";
-"update.available_format" = "%1$@ にアップデート";
+"update.available_format" = "最新版へアップデート · %1$@";
 "update.available_accessibility" = "TokenRemain %1$@ を利用できます";
-"update.install_help" = "TokenRemain をダウンロード、検証、インストールして再起動します";
+"update.install_help" = "最新版を再確認してから、TokenRemain をダウンロード、検証、インストールして再起動します";
 "service_status.operational" = "正常";
 "service_status.degraded" = "性能低下";
 "service_status.partial_outage" = "一部停止";
