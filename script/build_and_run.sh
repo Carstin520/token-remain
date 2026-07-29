@@ -320,7 +320,7 @@ verify_sync_signature() {
     exit 1
   fi
   if ! /usr/bin/grep -aFq 'iCloud.com.jamesli.tokenremain' "$signed_app/Contents/MacOS/$EXECUTABLE_NAME" \
-    || ! /usr/bin/grep -aFq 'Private sync upload succeeded' "$signed_app/Contents/MacOS/$EXECUTABLE_NAME"; then
+    || ! /usr/bin/grep -aFq 'Private sync source upload succeeded' "$signed_app/Contents/MacOS/$EXECUTABLE_NAME"; then
     echo "Final sync binary was built without the private CloudKit transport." >&2
     exit 1
   fi
