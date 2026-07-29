@@ -62,23 +62,37 @@ for service in \
     || fail "$service no longer reads through KeychainRead"
 done
 
-# 5. 生产代码里不允许出现 `.allowed` 这个字面量。
-#    `Interaction` 不是 RawRepresentable,`.allowed` 只能由字面量构造,所以查字面量
-#    就等于查"有没有人打开弹窗开关"—— 比只匹配 `interaction: .allowed` 强:后者
-#    绕不过变量转发(例如 ClaudeCredentialsReader 就在转发自己的参数)。
-#    注释里提到 `.allowed` 是合法的(那里正需要解释这个契约),所以先用 awk 砍掉
-#    `//` 之后的部分再判断。副作用:同一行里 URL 之后的代码会被一起砍掉,概率极低。
+# 5. `.allowed` 只允许在数据源页的明确用户授权入口中构造。
+#    该方法只由 Button 动作调用;后台刷新、凭据发现和变量转发仍不能
+#    生成交互读取。注释里的 `.allowed` 先用 awk 剔除,避免误报。
 ALLOWED_LITERALS="$(/usr/bin/grep -rn --include='*.swift' '\.allowed\b' Sources Packages \
   | /usr/bin/grep -v 'Support/KeychainRead.swift' \
   | /usr/bin/awk -F'//' '$1 ~ /\.allowed/ { print }' || true)"
-if [[ -n "$ALLOWED_LITERALS" ]]; then
+INTERACTIVE_ENTRY="Sources/UsageDock/Stores/UsageStore.swift"
+INTERACTIVE_METHOD="$(/usr/bin/awk '
+  /func authorizeProviderCredentials\(/ { in_method = 1 }
+  in_method && /private func refreshKeyProvider\(/ { exit }
+  in_method { print }
+' "$INTERACTIVE_ENTRY")"
+ALLOWED_LITERAL_COUNT="$(printf '%s\n' "$ALLOWED_LITERALS" \
+  | /usr/bin/sed '/^[[:space:]]*$/d' \
+  | /usr/bin/wc -l \
+  | /usr/bin/tr -d '[:space:]')"
+METHOD_ALLOWED_COUNT="$(printf '%s\n' "$INTERACTIVE_METHOD" \
+  | /usr/bin/awk -F'//' '$1 ~ /\.allowed/ { count++ } END { print count + 0 }')"
+if [[ "$ALLOWED_LITERAL_COUNT" != "2" \
+  || "$METHOD_ALLOWED_COUNT" != "2" \
+  || "$(printf '%s\n' "$ALLOWED_LITERALS" | /usr/bin/cut -d: -f1 | /usr/bin/sort -u)" != "$INTERACTIVE_ENTRY" ]]; then
   echo "$ALLOWED_LITERALS" >&2
-  fail "a source file constructs Interaction.allowed; only an explicit user action may request an interactive read"
+  fail "Interaction.allowed must appear exactly twice inside UsageStore.authorizeProviderCredentials"
 fi
+/usr/bin/grep -Fq 'await store.authorizeProviderCredentials(provider)' \
+  Sources/UsageDock/Views/Dashboard/DataSourcesSection.swift \
+  || fail "the interactive Keychain read is no longer initiated by the explicit Data Sources action"
 
 # 6. 变量转发的那一处必须默认 .disallowed,否则第 5 条就被架空了。
 /usr/bin/grep -Eq 'keychainInteraction: *KeychainRead\.Interaction *= *\.disallowed' \
   Sources/UsageDock/Services/ClaudeOAuthUsageService.swift \
   || fail "ClaudeCredentialsReader.load no longer defaults to a non-interactive keychain read"
 
-echo "keychain read contract verified: single read entry point, legacy UI suppressed, no interactive reads on the refresh path"
+echo "keychain read contract verified: background reads stay silent; explicit Data Sources authorization is isolated"

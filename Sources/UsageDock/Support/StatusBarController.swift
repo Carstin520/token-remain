@@ -71,6 +71,7 @@ final class StatusBarController: NSObject {
             popoverLayout.prepareForPresentation()
             floatingWidgetController.show()
             store.refreshLocalUsage()
+            refreshFeedIfStale()
         } else if floatingControllerCreated {
             floatingWidgetController.hide()
         }
@@ -175,7 +176,10 @@ final class StatusBarController: NSObject {
             self?.updateStatusImage()
         }
         store.localUsageUIVisibilityProvider = { [weak self] in
-            self?.isLocalUsageSurfaceVisible ?? false
+            self?.isPrimarySurfaceVisible ?? false
+        }
+        feedStore.uiVisibilityProvider = { [weak self] in
+            self?.isPrimarySurfaceVisible ?? false
         }
         store.start()
         feedStore.start()
@@ -190,6 +194,15 @@ final class StatusBarController: NSObject {
             popoverLayout.prepareForPresentation()
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
             store.refreshLocalUsage()
+            refreshFeedIfStale()
+        }
+    }
+
+    /// 界面从不可见转为可见时,Feed 若比轮询间隔旧就补拉一次;
+    /// 后台被门控跳过的轮次由这里衔接。
+    private func refreshFeedIfStale() {
+        Task { [weak self] in
+            await self?.feedStore.refreshIfStale()
         }
     }
 
@@ -198,12 +211,14 @@ final class StatusBarController: NSObject {
         dashboardCreated = true
         dashboardController.show(section: section)
         store.refreshLocalUsage()
+        refreshFeedIfStale()
     }
 
-    /// 本地用量数据是否正被某个界面展示。仅在这些界面可见(或开启了
-    /// Apple 设备同步)时,才值得维持分钟级的 ccusage 扫描;检查必须
-    /// 避开未创建的 lazy 控制器,不能为了读可见性把窗口先建出来。
-    private var isLocalUsageSurfaceVisible: Bool {
+    /// 本地用量与 AI Feed 是否正被某个界面展示。仅在这些界面可见时,
+    /// 才值得维持分钟级 ccusage 扫描与 Feed 轮询(Apple 设备同步开启时
+    /// ccusage 另行保持分钟级);检查必须避开未创建的 lazy 控制器,
+    /// 不能为了读可见性把窗口先建出来。
+    private var isPrimarySurfaceVisible: Bool {
         if popover.isShown { return true }
         if dashboardCreated, dashboardController.window?.isVisible == true { return true }
         if floatingControllerCreated, floatingWidgetController.window?.isVisible == true { return true }

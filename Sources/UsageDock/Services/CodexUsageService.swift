@@ -58,10 +58,15 @@ struct CodexUsageService {
 
             // 这套扫描每分钟都在跑,绝不能每轮把全部历史会话的尾部重新
             // 解析一遍。按修改时间从新到旧遍历:文件内事件的时间不会晚
-            // 于其修改时间,所以一旦拿到的账户级快照比剩余文件都新,后
-            // 面的文件就不可能再翻盘,直接停。稳定状态下每轮只解析最近
-            // 活跃的一两个会话文件,其余靠 mtime 未变的缓存直接复用。
+            // 于其修改时间,所以已拿到的账户级快照一旦比剩余文件新出
+            // 一个宽容窗,后面的文件就不可能再翻盘,直接停。宽容窗吸收
+            // 系统时钟回拨造成的 mtime 早于事件时间:一天以内的回拨不
+            // 影响正确性,只是多解析几个近期文件(且多为缓存命中)。
             candidates.sort { $0.modifiedAt > $1.modifiedAt }
+            CodexSnapshotFileCache.shared.prune(
+                under: roots,
+                keeping: Set(candidates.map(\.url))
+            )
 
             // Codex emits both the general account quota (`limit_id = codex`) and
             // model-specific limits such as `codex_bengalfox`. A newer model-specific
@@ -69,7 +74,8 @@ struct CodexUsageService {
             var newestCanonical: Snapshot?
             var newestLegacy: Snapshot?
             for candidate in candidates {
-                if let canonical = newestCanonical, canonical.capturedAt >= candidate.modifiedAt {
+                if let canonical = newestCanonical,
+                   canonical.capturedAt.timeIntervalSince(candidate.modifiedAt) > Self.earlyStopSkewAllowance {
                     break
                 }
                 for snapshot in CodexSnapshotFileCache.shared.snapshots(
@@ -104,9 +110,14 @@ struct CodexUsageService {
         let limitName: String?
     }
 
+    /// 早停允许剩余文件的 mtime 比已得快照最多早这么久仍被解析,用来
+    /// 吸收"时钟回拨期间写入的文件 mtime 早于其事件时间"的异常;超过
+    /// 一天的回拨不再兜底,代价只是延迟到该文件下次被写入时才被发现。
+    private static let earlyStopSkewAllowance: TimeInterval = 24 * 60 * 60
+
     /// 按 (文件, 修改时间) 复用尾部解析结果:mtime 未变的会话文件不再
-    /// 重复读取。fetch 的早停让每轮真正触达的文件极少,缓存因此始终
-    /// 很小;条目上限只是防御性兜底。
+    /// 重复读取。条目随每轮扫描按现存候选集修剪,已删除的会话不会在
+    /// 内存里残留。
     private final class CodexSnapshotFileCache: @unchecked Sendable {
         static let shared = CodexSnapshotFileCache()
 
@@ -127,10 +138,22 @@ struct CodexUsageService {
             }
             let parsed = (try? CodexUsageService.parseNewestSnapshots(in: url)) ?? []
             lock.lock()
-            if entries.count >= 64 { entries.removeAll() }
             entries[url] = Entry(modifiedAt: modifiedAt, snapshots: parsed)
             lock.unlock()
             return parsed
+        }
+
+        /// 只修剪本次扫描 root 之下、且已不在候选集里的条目(文件被
+        /// 删除/归档)。范围必须限定在 root 内:并发的另一组目录扫描
+        /// (以及并行测试)不允许把彼此的活条目清掉。
+        func prune(under roots: [URL], keeping urls: Set<URL>) {
+            let rootPaths = roots.map { $0.path.hasSuffix("/") ? $0.path : $0.path + "/" }
+            lock.lock()
+            entries = entries.filter { key, _ in
+                let underRoot = rootPaths.contains { key.path.hasPrefix($0) }
+                return !underRoot || urls.contains(key)
+            }
+            lock.unlock()
         }
     }
 

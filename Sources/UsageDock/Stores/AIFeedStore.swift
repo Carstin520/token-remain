@@ -76,16 +76,38 @@ final class AIFeedStore: ObservableObject {
         FeedConfiguration.feedEndpoint != nil
     }
 
+    /// 由状态栏控制器注入:Feed 卡片所在的任一界面(弹窗/仪表板/浮窗)
+    /// 可见时返回 true。未注入时视为可见,保持旧行为。
+    var uiVisibilityProvider: (() -> Bool)?
+
     func start() {
         guard refreshTask == nil else { return }
         refreshTask = Task { [weak self] in
-            await self?.refresh()
+            await self?.refreshIfVisible()
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(FeedConfiguration.pollingIntervalSeconds))
                 guard !Task.isCancelled else { return }
-                await self?.refresh()
+                await self?.refreshIfVisible()
             }
         }
+    }
+
+    /// Feed 是纯展示内容,没人看时不值得打网络;重要消息本就走推送
+    /// 通道送达。界面重新可见时由 refreshIfStale 补拉。
+    private func refreshIfVisible() async {
+        guard Self.shouldRefreshWhilePolling(
+            uiIsVisible: uiVisibilityProvider?()
+        ) else { return }
+        await refresh()
+    }
+
+    /// 界面打开时的补拉:数据比轮询间隔新就不重复请求,避免每次
+    /// 点开弹窗都多一次网络往返。
+    func refreshIfStale(now: Date = .now) async {
+        if let lastUpdated, now.timeIntervalSince(lastUpdated) < FeedConfiguration.pollingIntervalSeconds {
+            return
+        }
+        await refresh()
     }
 
     func setNotificationsEnabled(_ enabled: Bool) async {
@@ -194,5 +216,11 @@ final class AIFeedStore: ObservableObject {
         authorizationStatus: UNAuthorizationStatus
     ) -> Bool {
         notificationsEnabled && authorizationStatus == .notDetermined
+    }
+
+    /// 未注入可见性时保持旧行为;一旦由状态栏控制器提供了
+    /// 真实可见性,后台轮询就只在任一 Feed 界面可见时发起。
+    nonisolated static func shouldRefreshWhilePolling(uiIsVisible: Bool?) -> Bool {
+        uiIsVisible ?? true
     }
 }

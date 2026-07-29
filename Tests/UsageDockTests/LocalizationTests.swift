@@ -23,6 +23,7 @@ struct LocalizationTests {
         "risk.headline.projected_runout",
         "risk.summary.projected_runout",
         "duration.days_hours_minutes",
+        "duration.hours_minutes",
         "reset.countdown",
         "freshness.minutes",
         "quota.remaining",

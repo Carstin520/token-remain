@@ -239,7 +239,7 @@ private struct QuotaResetLabel: View {
     let referenceDate: Date
 
     var body: some View {
-        if resetsAt.timeIntervalSince(referenceDate) < 3_600 {
+        if UsageFormatting.showsLiveSecondCountdown(to: resetsAt, now: referenceDate) {
             TimelineView(.periodic(from: .now, by: 1)) { context in
                 Text(UsageFormatting.resetDescription(to: resetsAt, now: context.date))
                     .numericFont(10)

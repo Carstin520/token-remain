@@ -37,6 +37,14 @@ enum UsageFormatting {
         return String(format: "%02d:%02d", minutes, seconds)
     }
 
+    /// 秒级滚动只服务于"最后一小时"的活倒计时。已过期(≤0)的重置
+    /// 时间显示静态的"正在重置",绝不允许它把 1 秒刷新永久钉在常驻
+    /// 浮窗上——provider 刷新失败、旧快照长期保留时就会出现这种输入。
+    static func showsLiveSecondCountdown(to date: Date, now: Date) -> Bool {
+        let interval = date.timeIntervalSince(now)
+        return interval > 0 && interval < 3_600
+    }
+
     /// Human reset label derived from a real reset date: a live countdown when
     /// the window resets within a day, otherwise an absolute weekday/date + time.
     static func resetDescription(to date: Date, now: Date = .now) -> String {

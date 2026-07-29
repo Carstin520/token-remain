@@ -13,6 +13,7 @@ final class TrackedProvidersStore: ObservableObject {
     static let orderKey = "tokenRemain.trackedProvidersOrder.v1"
     static let connectedKey = "tokenRemain.connectedProviders.v1"
     static let detectedInstallationsKey = "tokenRemain.detectedInstallations.v1"
+    static let detectionMonitoringIntervalSeconds: TimeInterval = 5 * 60
 
     /// UI 展示与遍历用的稳定顺序。
     static let allProviders = ProviderQuota.Provider.displayOrder
@@ -156,14 +157,16 @@ final class TrackedProvidersStore: ObservableObject {
         defaults.set(true, forKey: Self.onboardingKey)
     }
 
-    /// 每 10 秒做一次极轻量本机检查；应用重新变为前台时还会立即补扫。
+    /// 后台每 5 分钟做一次本机检查;"装了新工具"是以天为单位的事件,
+    /// 而每次扫描要做几十个文件存在性检查并列举扩展目录,10 秒级轮询
+    /// 只会白耗 CPU/IO。应用重新变为前台时仍会立即补扫,体验无差别。
     /// 首次启用该功能只建立基线，不把升级用户已经明确停用的应用重新弹出。
     func startDetectionMonitoring() {
         guard detectionTask == nil else { return }
         scanForNewInstallations()
         detectionTask = Task { @MainActor [weak self] in
             while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(10))
+                try? await Task.sleep(for: .seconds(Self.detectionMonitoringIntervalSeconds))
                 guard !Task.isCancelled else { break }
                 self?.scanForNewInstallations()
             }

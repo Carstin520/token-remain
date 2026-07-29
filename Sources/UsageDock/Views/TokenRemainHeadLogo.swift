@@ -60,12 +60,16 @@ enum TokenRemainHeadLogoArtwork {
     /// Two equal keys always render pixel-identical images, so callers can
     /// skip redundant `applicationIconImage` assignments (each one forces a
     /// full Dock tile redraw even when the image object is unchanged).
+    /// 每条量表的档位必须带上 provider 前缀:Claude 单条 45% 是橙色,
+    /// Codex 单条 45% 是蓝色,光凭档位序列无法区分这两张图。
     static func renderKey(claudeRemaining: Double?, codexRemaining: Double?) -> String {
         let moodRemaining = [claudeRemaining, codexRemaining].compactMap { $0 }.min()
         let state = TokenRemainLogoState.resolve(remainingPercent: moodRemaining)
-        let rows = meterRows(claudeRemaining: claudeRemaining, codexRemaining: codexRemaining)
-        let levels = rows.map { TokenRemainLogoMeter.filledSegments(remainingPercent: $0.remainingPercent) ?? -1 }
-        return "head-\(state.rawValue)-\(levels.map(String.init).joined(separator: "-"))"
+        func level(_ prefix: String, _ remaining: Double?) -> String {
+            guard let remaining else { return "\(prefix)_" }
+            return "\(prefix)\(TokenRemainLogoMeter.filledSegments(remainingPercent: remaining) ?? -1)"
+        }
+        return "head-\(state.rawValue)-\(level("c", claudeRemaining))-\(level("x", codexRemaining))"
     }
 
     static func image(

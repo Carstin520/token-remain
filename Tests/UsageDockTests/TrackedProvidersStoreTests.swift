@@ -5,6 +5,11 @@ import Testing
 @Suite("Tracked providers store")
 @MainActor
 struct TrackedProvidersStoreTests {
+    @Test("Background installation detection uses a five-minute cadence")
+    func installationDetectionCadence() {
+        #expect(TrackedProvidersStore.detectionMonitoringIntervalSeconds == 300)
+    }
+
     @Test("Without a saved choice every provider is tracked (legacy behavior)")
     func defaultsToAllProviders() {
         let store = TrackedProvidersStore(defaults: testDefaults())
