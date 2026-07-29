@@ -43,7 +43,7 @@ fi
   || fail "staged bundles are not verified before installation"
 /usr/bin/grep -Fq 'verify_bundle_for_mode "$INCOMING_APP"' "$BUILD_SCRIPT" \
   || fail "incoming bundles are not verified before replacement"
-/usr/bin/grep -Fq 'Private sync upload succeeded' "$BUILD_SCRIPT" \
+/usr/bin/grep -Fq 'Private sync source upload succeeded' "$BUILD_SCRIPT" \
   || fail "sync binary marker verification is missing"
 
 echo "installation isolation verified: development and sync builds use protected paths"
