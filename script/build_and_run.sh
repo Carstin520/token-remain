@@ -475,6 +475,7 @@ fi
 cd "$ROOT_DIR"
 SWIFT_BUILD_ARGS=(--product "$PRODUCT_NAME" --arch arm64 --arch x86_64)
 if [[ "$SYNC_RELEASE_MODE" == "1" ]]; then
+  SWIFT_BUILD_ARGS+=(--configuration release)
   SWIFT_BUILD_ARGS+=(-Xswiftc -DTOKENREMAIN_CLOUD_SYNC)
 fi
 swift build "${SWIFT_BUILD_ARGS[@]}"

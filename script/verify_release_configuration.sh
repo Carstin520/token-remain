@@ -18,6 +18,7 @@ cd "$ROOT_DIR"
 
 /bin/bash -n script/build_and_run.sh
 /bin/bash -n script/package_developer_id_release.sh
+/usr/bin/grep -Fq 'SWIFT_BUILD_ARGS+=(--configuration release)' script/build_and_run.sh
 /usr/bin/grep -Fq 'TokenRemain-$VERSION-$BUILD.dmg' script/package_developer_id_release.sh
 /usr/bin/grep -Fq '/usr/bin/cmp -s "$DMG" "$VERSIONED_DMG"' script/package_developer_id_release.sh
 SYNC_SUCCESS_MARKER='Private sync source upload succeeded'

@@ -7,6 +7,8 @@ enum AIFeedCollectionPolicy {
     static let rotatingAccountLimit = 5
     static let minimumRotatingRelevanceScore = 40
     static let maxNormalPostsPerAuthor = 3
+    static let preferredImportantPostLimit = 7
+    static let maximumImportantPostLimit = 10
 
     static var shanghaiCalendar: Calendar {
         var calendar = Calendar(identifier: .gregorian)
@@ -131,6 +133,24 @@ enum AIFeedCollectionPolicy {
             normalCounts[username] = currentCount + 1
             return true
         }
+    }
+
+    /// Keeps the important-reminder group compact while allowing a small
+    /// overflow for quota/reset events that are directly actionable.
+    static func selectImportantForDisplay(
+        _ posts: [AIFeedPost],
+        now: Date = Date()
+    ) -> [AIFeedPost] {
+        let ranked = sortForRecommendation(
+            posts.filter { $0.priority != .normal },
+            now: now
+        )
+        let criticalCount = ranked.filter { $0.priority == .tokenReset }.count
+        let displayLimit = min(
+            max(preferredImportantPostLimit, criticalCount),
+            maximumImportantPostLimit
+        )
+        return Array(ranked.prefix(displayLimit))
     }
 
     /// Ranks already-curated posts for the compact "Trending" surfaces.
