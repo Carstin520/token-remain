@@ -324,8 +324,8 @@ figure.shot figcaption .cap{color:var(--text-dim);font-size:13.5px}
   pointer-events:none;user-select:none;
 }
 .dev3d{position:relative;flex:0 0 auto}
-.dev3d.iphone{width:clamp(240px,34vw,380px)}
-.dev3d.watch{width:clamp(172px,24vw,252px)}
+.dev3d.iphone{width:min(34vw,352px,calc((100vh - 265px)*.489))}
+.dev3d.watch{width:min(24vw,236px,calc((100vh - 265px)*.32))}
 .dev3d .dev-frame{position:relative;z-index:2;display:block;width:100%;height:auto}
 .dev3d .dev-screen{position:absolute;z-index:1;background:#000;overflow:hidden}
 /* screen windows measured from the bezel art's alpha channel — exact */
@@ -366,12 +366,35 @@ figure.shot figcaption .cap{color:var(--text-dim);font-size:13.5px}
 }
 .stage-slides .cap,.stage-watchcap .cap{color:var(--text-dim);font-size:13.5px}
 .stage-watchcap{margin:10px 0 0;padding-top:16px;border-top:1px solid color-mix(in srgb,var(--border) 55%,transparent)}
+/* scrollytelling (Apple-store style): each showcase lives in a tall .pin-track
+   whose inner .pin-stage is sticky at 100vh. While the track scrolls through,
+   the page appears pinned; scroll progress drives focus (zoom + background dim)
+   and, on the device stage, which screen the hardware is showing. When the
+   track runs out, the page simply continues — no wheel hijacking, so trackpad,
+   touch and keyboard all keep native feel. */
+.pin-track{position:relative}
+.pin-track .pin-stage{
+  position:sticky;top:0;height:100vh;height:100svh;
+  display:flex;flex-direction:column;justify-content:center;align-items:center;
+}
+.pin-stage .stage-dim{
+  position:absolute;top:0;bottom:0;left:calc(50% - 50vw);width:100vw;
+  background:radial-gradient(58% 46% at 50% 44%,rgba(4,6,10,0) 0%,rgb(2,3,6) 100%),rgb(2,3,6);
+  opacity:var(--dim,0);pointer-events:none;
+}
+.pin-stage>*{position:relative}
+.pin-zoom{transform:scale(var(--zoom,1));transform-origin:50% 46%;will-change:transform}
+#dashTrack{height:200vh}
+#deviceTrack{height:440vh}
+.dash-zoom{width:min(92vw,1024px,calc((100vh - 170px)*1.42))}
+.dash-zoom figure.shot{margin:0}
 figure.shot.widgets.row{grid-template-columns:2.036fr 1fr;align-items:stretch}
 figure.shot.widgets.row figcaption{grid-column:1/-1}
 @media (max-width:640px){
   .device-stage{flex-direction:column;align-items:center;gap:40px}
-  .dev3d.iphone{width:min(72vw,320px)}
-  .dev3d.watch{width:min(52vw,220px)}
+  .dev3d.iphone{width:min(66vw,300px,calc((100vh - 330px)*.489))}
+  .dev3d.watch{width:min(46vw,200px,calc((100vh - 330px)*.30))}
+  #deviceTrack{height:400vh}
   figure.shot.widgets.row{grid-template-columns:1fr}
 }
 
@@ -883,11 +906,22 @@ footer.site .disclaimer{
     <h2 data-i18n="s-h2">Mac, iPhone, wrist — one design language</h2>
     <p class="lede" data-i18n="s-lede">You've met the menu bar popover above — everything below is a <strong style="color:var(--text)">live screenshot of the latest build</strong>: the desktop Dashboard, the redesigned iPhone app and the Apple Watch glances. Numbers are SF Mono on every surface; decoration is gone, hierarchy comes from type. The iPhone and watch shots run the built-in demo scenario, so they carry its DEMO mark.</p>
     <div class="shot-grid">
-      <figure class="shot ticked lift">
-        <img src="assets/dashboard.jpg" width="1600" height="1065" alt="TokenRemain Dashboard overview: today's usage and cost donut, official quota bars (Claude coral / Codex blue), trending and risk hints" loading="lazy"
-             data-shot-en="assets/dashboard.jpg" data-shot-zh="assets/dashboard-zh.jpg">
-        <figcaption><span class="tag" data-i18n="cap-dash-t">Dashboard · Live</span><span class="cap" data-i18n="cap-dash-c">Real local usage: 150.04M tokens and $52.15 estimated cost today, split by provider; official quota progress and risk hints on the right.</span></figcaption>
-      </figure>
+      <div class="pin-track" id="dashTrack">
+        <div class="pin-stage">
+          <div class="stage-dim" aria-hidden="true"></div>
+          <div class="pin-zoom dash-zoom">
+            <figure class="shot ticked">
+              <img src="assets/dashboard.jpg" width="1600" height="1065" alt="TokenRemain Dashboard overview: today's usage and cost donut, official quota bars (Claude coral / Codex blue), trending and risk hints" loading="lazy"
+                   data-shot-en="assets/dashboard.jpg" data-shot-zh="assets/dashboard-zh.jpg">
+              <figcaption><span class="tag" data-i18n="cap-dash-t">Dashboard · Live</span><span class="cap" data-i18n="cap-dash-c">Real local usage: 150.04M tokens and $52.15 estimated cost today, split by provider; official quota progress and risk hints on the right.</span></figcaption>
+            </figure>
+          </div>
+        </div>
+      </div>
+      <div class="pin-track" id="deviceTrack">
+        <div class="pin-stage">
+          <div class="stage-dim" aria-hidden="true"></div>
+          <div class="pin-zoom device-zoom">
       <div class="device-stage" id="deviceStage" role="img" aria-label="iPhone 17 Pro and Apple Watch Series 11 running TokenRemain / 运行 TokenRemain 的 iPhone 17 Pro 与 Apple Watch Series 11">
         <div class="dev3d iphone">
           <span class="dev-screen">
@@ -918,6 +952,9 @@ footer.site .disclaimer{
           <p class="slide"><span class="tag" data-i18n="cap-ptr-t">iPhone · Trends</span><span class="cap" data-i18n="cap-ptr-c">A remaining-quota curve over the synced history, plus daily stacks: 7 / 14 / 30-day ranges, tokens or cost.</span></p>
         </div>
         <p class="stage-watchcap"><span class="tag" data-i18n="cap-watch-t">Apple Watch</span><span class="cap" data-i18n="cap-watch-c">Frosted open-arc gauges on the wrist: lowest remaining in the centre, one provider arc each, today's tokens and cost beside — plus an AI Feed page and watch-face complications.</span></p>
+      </div>
+          </div>
+        </div>
       </div>
       <div class="shot-row2" style="grid-template-columns:1fr">
         <figure class="shot widgets row ticked lift">
@@ -1397,37 +1434,57 @@ var ZH={
   "fd":"TokenRemain 为独立应用，与 Anthropic、OpenAI、Anysphere、xAI、GitHub、智谱 AI 等服务提供方均无隶属、背书或赞助关系；页面中出现的服务名称与标识仅用于说明你可选择接入的服务。成本数字为 API 标价估算，额度与价格政策以各服务官方页面为准。",
   "fp":"隐私政策","fs":"支持","fi":"反馈问题"
 };
-/* device showcase: rise in on scroll, light the displays, then auto-cycle the
-   app screens — Apple-store style. Display-only hardware: the stage swallows no
-   pointer events, and reduced-motion gets a static first frame. */
+/* scrollytelling driver: while a .pin-track scrolls through, its progress
+   drives focus (background dim + zoom) and, on the device track, which screen
+   the hardware shows — scrolling becomes the switcher until the demo is done.
+   The devices stay display-only; reduced motion keeps the scroll-driven
+   switching but drops the zoom. */
 (function(){
+  var deviceTrack=document.getElementById('deviceTrack');
+  if(!deviceTrack)return;
   var stage=document.getElementById('deviceStage');
-  if(!stage)return;
+  var deviceStagePin=deviceTrack.querySelector('.pin-stage');
+  var deviceZoom=deviceTrack.querySelector('.pin-zoom');
+  var dashTrack=document.getElementById('dashTrack');
+  var dashPin=dashTrack&&dashTrack.querySelector('.pin-stage');
+  var dashZoom=dashTrack&&dashTrack.querySelector('.pin-zoom');
   var reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
   var phone=[].slice.call(stage.querySelectorAll('.iphone .scr'));
   var watch=[].slice.call(stage.querySelectorAll('.watch .scr'));
   var slides=[].slice.call(document.querySelectorAll('.stage-slides .slide'));
   var dots=[].slice.call(document.querySelectorAll('.stage-dots i'));
-  var idx=0,timer=null;
-  function paint(){
-    phone.forEach(function(el,i){el.classList.toggle('on',i===idx%phone.length)});
-    watch.forEach(function(el,i){el.classList.toggle('on',i===idx%watch.length)});
-    slides.forEach(function(el,i){el.classList.toggle('on',i===idx%slides.length)});
-    dots.forEach(function(el,i){el.classList.toggle('on',i===idx%dots.length)});
+  var lastSeg=-1,ticking=false;
+  function clamp01(v){return v<0?0:v>1?1:v}
+  function progress(track){
+    var rect=track.getBoundingClientRect();
+    var span=track.offsetHeight-innerHeight;
+    return span>0?clamp01(-rect.top/span):0;
   }
-  function start(){if(timer||reduced)return;timer=setInterval(function(){idx++;paint()},4200)}
-  function stop(){if(timer){clearInterval(timer);timer=null}}
-  new IntersectionObserver(function(entries){
-    entries.forEach(function(entry){
-      if(entry.isIntersecting){stage.classList.add('on');start()}
-      else{stop()}
-    });
-  },{threshold:.3}).observe(stage);
-  document.addEventListener('visibilitychange',function(){
-    if(document.hidden){stop()}
-    else if(stage.classList.contains('on')){start()}
-  });
-  paint();
+  function paint(seg){
+    phone.forEach(function(el,i){el.classList.toggle('on',i===seg%phone.length)});
+    watch.forEach(function(el,i){el.classList.toggle('on',i===seg%watch.length)});
+    slides.forEach(function(el,i){el.classList.toggle('on',i===seg%slides.length)});
+    dots.forEach(function(el,i){el.classList.toggle('on',i===seg%dots.length)});
+  }
+  function frame(){
+    ticking=false;
+    var p=progress(deviceTrack);
+    stage.classList.toggle('on',p>0.01);
+    var focus=clamp01(p*5);
+    deviceStagePin.style.setProperty('--dim',(focus*.82).toFixed(3));
+    if(!reduced)deviceZoom.style.setProperty('--zoom',(1+.07*focus).toFixed(4));
+    var seg=Math.min(2,Math.floor(clamp01((p-.16)/.84)*3));
+    if(seg!==lastSeg){lastSeg=seg;paint(seg)}
+    if(dashTrack){
+      var q=progress(dashTrack),f=clamp01(q*4);
+      dashPin.style.setProperty('--dim',(f*.78).toFixed(3));
+      if(!reduced)dashZoom.style.setProperty('--zoom',(.94+.08*f).toFixed(4));
+    }
+  }
+  function onScroll(){if(!ticking){ticking=true;requestAnimationFrame(frame)}}
+  addEventListener('scroll',onScroll,{passive:true});
+  addEventListener('resize',onScroll,{passive:true});
+  frame();
 })();
 var TITLES={en:"TokenRemain — Your AI quota, always in the menu bar",zh:"TokenRemain — AI 额度，常驻菜单栏"};
 (function(){
