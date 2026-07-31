@@ -312,6 +312,69 @@ figure.shot figcaption .tag{
 }
 figure.shot figcaption .cap{color:var(--text-dim);font-size:13.5px}
 
+/* device showcase — official Apple product bezels (Design Resources), layered
+   over the live screenshots. Apple-store presentation: the devices rise in when
+   the section scrolls into view, the screens light up and then auto-cycle
+   through the app; the hardware itself is display-only (pointer-events:none).
+   The screenshot <img> nodes keep data-shot-en/zh, so the language switcher
+   swaps what is "running" on the devices. */
+.device-stage{
+  position:relative;display:flex;justify-content:center;align-items:center;
+  gap:clamp(28px,6vw,84px);padding:34px 0 8px;
+  pointer-events:none;user-select:none;
+}
+.dev3d{position:relative;flex:0 0 auto}
+.dev3d.iphone{width:clamp(240px,34vw,380px)}
+.dev3d.watch{width:clamp(172px,24vw,252px)}
+.dev3d .dev-frame{position:relative;z-index:2;display:block;width:100%;height:auto}
+.dev3d .dev-screen{position:absolute;z-index:1;background:#000;overflow:hidden}
+/* screen windows measured from the bezel art's alpha channel — exact */
+.dev3d.iphone .dev-screen{left:5.333%;top:2.5%;width:89.334%;height:95%}
+.dev3d.watch .dev-screen{left:12.857%;top:21.818%;width:74.286%;height:56.364%}
+.dev3d .scr{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0}
+.dev3d .scr.on{opacity:1}
+/* entrance: devices rise in, then the displays light up */
+.device-stage .dev3d{opacity:0;transform:translateY(46px) scale(.96)}
+.device-stage .dev3d.watch{transform:translateY(66px) scale(.96)}
+.device-stage.on .dev3d{opacity:1;transform:none}
+.device-stage .dev-screen::after{
+  content:"";position:absolute;inset:0;z-index:3;background:#000;opacity:1;
+  transition:opacity .9s ease .5s;
+}
+.device-stage.on .dev-screen::after{opacity:0}
+@media (prefers-reduced-motion:no-preference){
+  .device-stage .dev3d{transition:opacity .95s cubic-bezier(.2,.7,.3,1),transform .95s cubic-bezier(.2,.7,.3,1)}
+  .device-stage .dev3d.watch{transition-delay:.15s}
+  .dev3d .scr{transition:opacity .7s ease}
+}
+@media (prefers-reduced-motion:reduce){
+  .device-stage .dev3d{opacity:1;transform:none}
+  .device-stage .dev-screen::after{display:none}
+}
+/* the demo's caption strip: dots + the current screen's story */
+.stage-cap{max-width:640px;margin:20px auto 0;text-align:center}
+.stage-dots{display:flex;justify-content:center;gap:8px;margin-bottom:14px}
+.stage-dots i{width:6px;height:6px;border-radius:50%;background:var(--surface3);transition:background .35s}
+.stage-dots i.on{background:var(--violet)}
+.stage-slides{display:grid}
+.stage-slides .slide{grid-area:1/1;opacity:0;margin:0}
+.stage-slides .slide.on{opacity:1}
+@media (prefers-reduced-motion:no-preference){.stage-slides .slide{transition:opacity .5s ease}}
+.stage-slides .tag,.stage-watchcap .tag{
+  font-family:var(--mono);font-size:11px;font-weight:800;letter-spacing:.15em;
+  color:var(--violet);text-transform:uppercase;display:block;margin-bottom:7px;
+}
+.stage-slides .cap,.stage-watchcap .cap{color:var(--text-dim);font-size:13.5px}
+.stage-watchcap{margin:10px 0 0;padding-top:16px;border-top:1px solid color-mix(in srgb,var(--border) 55%,transparent)}
+figure.shot.widgets.row{grid-template-columns:2.036fr 1fr;align-items:stretch}
+figure.shot.widgets.row figcaption{grid-column:1/-1}
+@media (max-width:640px){
+  .device-stage{flex-direction:column;align-items:center;gap:40px}
+  .dev3d.iphone{width:min(72vw,320px)}
+  .dev3d.watch{width:min(52vw,220px)}
+  figure.shot.widgets.row{grid-template-columns:1fr}
+}
+
 /* providers — bento: two featured, small tiles, compat strip */
 .prov-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
 .prov{
@@ -825,32 +888,39 @@ footer.site .disclaimer{
              data-shot-en="assets/dashboard.jpg" data-shot-zh="assets/dashboard-zh.jpg">
         <figcaption><span class="tag" data-i18n="cap-dash-t">Dashboard · Live</span><span class="cap" data-i18n="cap-dash-c">Real local usage: 150.04M tokens and $52.15 estimated cost today, split by provider; official quota progress and risk hints on the right.</span></figcaption>
       </figure>
-      <div class="shot-row3 even">
-        <figure class="shot phone ticked lift">
-          <img src="assets/phone-overview.jpg" width="720" height="1565" alt="TokenRemain iPhone overview: today's tokens 15,740,400 with estimated cost and global percentile, lowest remaining 46% with risk badge, Codex and Claude quota cards" loading="lazy"
-               data-shot-en="assets/phone-overview.jpg" data-shot-zh="assets/phone-overview-zh.jpg">
-          <figcaption><span class="tag" data-i18n="cap-pov-t">iPhone · Overview</span><span class="cap" data-i18n="cap-pov-c">Today's tokens lead, every digit, with estimated cost and a global-percentile standing; the quota verdict sits one line below. Long-press and drag any card to rearrange the page.</span></figcaption>
-        </figure>
-        <figure class="shot phone ticked lift">
-          <img src="assets/phone-aifeed.jpg" width="720" height="1565" alt="TokenRemain iPhone AI Feed tab: curated timeline of AI news with priority chips for quota and major updates, engagement counts and source handles" loading="lazy"
-               data-shot-en="assets/phone-aifeed.jpg" data-shot-zh="assets/phone-aifeed-zh.jpg">
-          <figcaption><span class="tag" data-i18n="cap-paf-t">iPhone · AI Feed</span><span class="cap" data-i18n="cap-paf-c">The curated feed as its own tab: a reading timeline with quota/token and major-update chips pinned first, and an on-device archive of every story you've seen.</span></figcaption>
-        </figure>
-        <figure class="shot phone ticked lift">
-          <img src="assets/phone-trends.jpg" width="720" height="1565" alt="TokenRemain iPhone trends: remaining-quota curve over time plus daily stacked bars for Claude and Codex, 7/14/30-day ranges, tokens or cost" loading="lazy"
-               data-shot-en="assets/phone-trends.jpg" data-shot-zh="assets/phone-trends-zh.jpg">
-          <figcaption><span class="tag" data-i18n="cap-ptr-t">iPhone · Trends</span><span class="cap" data-i18n="cap-ptr-c">A remaining-quota curve over the synced history, plus daily stacks: 7 / 14 / 30-day ranges, tokens or cost.</span></figcaption>
-        </figure>
+      <div class="device-stage" id="deviceStage" role="img" aria-label="iPhone 17 Pro and Apple Watch Series 11 running TokenRemain / 运行 TokenRemain 的 iPhone 17 Pro 与 Apple Watch Series 11">
+        <div class="dev3d iphone">
+          <span class="dev-screen">
+            <img class="scr on" src="assets/phone-overview.jpg" width="720" height="1565" alt="TokenRemain iPhone overview: today's tokens 15,740,400 with estimated cost and global percentile, lowest remaining 46% with risk badge" loading="lazy"
+                 data-shot-en="assets/phone-overview.jpg" data-shot-zh="assets/phone-overview-zh.jpg">
+            <img class="scr" src="assets/phone-aifeed.jpg" width="720" height="1565" alt="TokenRemain iPhone AI Feed tab: curated timeline of AI news with priority chips and engagement counts" loading="lazy"
+                 data-shot-en="assets/phone-aifeed.jpg" data-shot-zh="assets/phone-aifeed-zh.jpg">
+            <img class="scr" src="assets/phone-trends.jpg" width="720" height="1565" alt="TokenRemain iPhone trends: remaining-quota curve plus daily stacked bars for Claude and Codex" loading="lazy"
+                 data-shot-en="assets/phone-trends.jpg" data-shot-zh="assets/phone-trends-zh.jpg">
+          </span>
+          <img class="dev-frame" src="assets/bezel-iphone-17-pro.png" width="900" height="1840" alt="" loading="lazy">
+        </div>
+        <div class="dev3d watch">
+          <span class="dev-screen">
+            <img class="scr on" src="assets/watch-overview.png" width="416" height="496" alt="TokenRemain Apple Watch overview: frosted open-arc gauge with 46% lowest remaining, today's tokens and estimated cost" loading="lazy"
+                 data-shot-en="assets/watch-overview.png" data-shot-zh="assets/watch-overview-zh.png">
+            <img class="scr" src="assets/watch-feed.png" width="416" height="496" alt="TokenRemain Apple Watch AI Feed page: a curated post card on the wrist" loading="lazy"
+                 data-shot-en="assets/watch-feed.png" data-shot-zh="assets/watch-feed-zh.png">
+          </span>
+          <img class="dev-frame" src="assets/bezel-watch-s11.png" width="560" height="880" alt="" loading="lazy">
+        </div>
       </div>
-      <div class="shot-row2">
-        <figure class="shot watch ticked lift">
-          <img src="assets/watch-overview.png" width="416" height="496" alt="TokenRemain Apple Watch overview: open frosted arc gauge with 46% lowest remaining in the centre, Codex and Claude arcs, today's tokens and estimated cost" loading="lazy"
-               data-shot-en="assets/watch-overview.png" data-shot-zh="assets/watch-overview-zh.png">
-          <img src="assets/watch-feed.png" width="416" height="496" alt="TokenRemain Apple Watch AI Feed page: a curated post card with engagement counts on the wrist" loading="lazy"
-               data-shot-en="assets/watch-feed.png" data-shot-zh="assets/watch-feed-zh.png">
-          <figcaption><span class="tag" data-i18n="cap-watch-t">Apple Watch</span><span class="cap" data-i18n="cap-watch-c">Frosted open-arc gauges on the wrist: lowest remaining in the centre, one provider arc each, today's tokens and cost beside — plus an AI Feed page and watch-face complications.</span></figcaption>
-        </figure>
-        <figure class="shot widgets ticked lift">
+      <div class="stage-cap">
+        <div class="stage-dots" aria-hidden="true"><i class="on"></i><i></i><i></i></div>
+        <div class="stage-slides">
+          <p class="slide on"><span class="tag" data-i18n="cap-pov-t">iPhone · Overview</span><span class="cap" data-i18n="cap-pov-c">Today's tokens lead, every digit, with estimated cost and a global-percentile standing; the quota verdict sits one line below. Long-press and drag any card to rearrange the page.</span></p>
+          <p class="slide"><span class="tag" data-i18n="cap-paf-t">iPhone · AI Feed</span><span class="cap" data-i18n="cap-paf-c">The curated feed as its own tab: a reading timeline with quota/token and major-update chips pinned first, and an on-device archive of every story you've seen.</span></p>
+          <p class="slide"><span class="tag" data-i18n="cap-ptr-t">iPhone · Trends</span><span class="cap" data-i18n="cap-ptr-c">A remaining-quota curve over the synced history, plus daily stacks: 7 / 14 / 30-day ranges, tokens or cost.</span></p>
+        </div>
+        <p class="stage-watchcap"><span class="tag" data-i18n="cap-watch-t">Apple Watch</span><span class="cap" data-i18n="cap-watch-c">Frosted open-arc gauges on the wrist: lowest remaining in the centre, one provider arc each, today's tokens and cost beside — plus an AI Feed page and watch-face complications.</span></p>
+      </div>
+      <div class="shot-row2" style="grid-template-columns:1fr">
+        <figure class="shot widgets row ticked lift">
           <img src="assets/widget-m.png" width="1144" height="562" alt="TokenRemain medium Home Screen widget: lowest remaining 46%, LOW risk badge, robot mascot, Codex and Claude bars, reset countdown" loading="lazy"
                data-shot-en="assets/widget-m.png" data-shot-zh="assets/widget-m-zh.png">
           <img src="assets/widget-s.png" width="562" height="562" alt="TokenRemain small Home Screen widget: lowest remaining 46%, per-provider bars and reset countdown" loading="lazy"
@@ -1327,6 +1397,38 @@ var ZH={
   "fd":"TokenRemain 为独立应用，与 Anthropic、OpenAI、Anysphere、xAI、GitHub、智谱 AI 等服务提供方均无隶属、背书或赞助关系；页面中出现的服务名称与标识仅用于说明你可选择接入的服务。成本数字为 API 标价估算，额度与价格政策以各服务官方页面为准。",
   "fp":"隐私政策","fs":"支持","fi":"反馈问题"
 };
+/* device showcase: rise in on scroll, light the displays, then auto-cycle the
+   app screens — Apple-store style. Display-only hardware: the stage swallows no
+   pointer events, and reduced-motion gets a static first frame. */
+(function(){
+  var stage=document.getElementById('deviceStage');
+  if(!stage)return;
+  var reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var phone=[].slice.call(stage.querySelectorAll('.iphone .scr'));
+  var watch=[].slice.call(stage.querySelectorAll('.watch .scr'));
+  var slides=[].slice.call(document.querySelectorAll('.stage-slides .slide'));
+  var dots=[].slice.call(document.querySelectorAll('.stage-dots i'));
+  var idx=0,timer=null;
+  function paint(){
+    phone.forEach(function(el,i){el.classList.toggle('on',i===idx%phone.length)});
+    watch.forEach(function(el,i){el.classList.toggle('on',i===idx%watch.length)});
+    slides.forEach(function(el,i){el.classList.toggle('on',i===idx%slides.length)});
+    dots.forEach(function(el,i){el.classList.toggle('on',i===idx%dots.length)});
+  }
+  function start(){if(timer||reduced)return;timer=setInterval(function(){idx++;paint()},4200)}
+  function stop(){if(timer){clearInterval(timer);timer=null}}
+  new IntersectionObserver(function(entries){
+    entries.forEach(function(entry){
+      if(entry.isIntersecting){stage.classList.add('on');start()}
+      else{stop()}
+    });
+  },{threshold:.3}).observe(stage);
+  document.addEventListener('visibilitychange',function(){
+    if(document.hidden){stop()}
+    else if(stage.classList.contains('on')){start()}
+  });
+  paint();
+})();
 var TITLES={en:"TokenRemain — Your AI quota, always in the menu bar",zh:"TokenRemain — AI 额度，常驻菜单栏"};
 (function(){
   var EN={},nodes=document.querySelectorAll('[data-i18n]');
