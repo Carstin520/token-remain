@@ -75,7 +75,12 @@ struct CodexUsageService {
             // 系统时钟回拨造成的 mtime 早于事件时间:一天以内的回拨不
             // 影响正确性,只是多解析几个近期文件(且多为缓存命中)。
             candidates.sort { $0.modifiedAt > $1.modifiedAt }
-            CodexSnapshotFileCache.shared.prune(
+            let cache = CodexSnapshotFileCache.shared
+            let changedCandidates = cache.changedCandidatesSinceLastScan(
+                candidates,
+                under: roots
+            )
+            cache.prune(
                 under: roots,
                 keeping: Set(candidates.map(\.url))
             )
@@ -87,30 +92,55 @@ struct CodexUsageService {
             var newestCanonical: Snapshot?
             var newestLegacy: Snapshot?
             var newestScopedByID: [String: Snapshot] = [:]
-            for candidate in candidates {
-                if let canonical = newestCanonical,
-                   canonical.capturedAt.timeIntervalSince(candidate.modifiedAt) > Self.earlyStopSkewAllowance {
-                    break
+
+            func consider(_ snapshot: Snapshot) {
+                if snapshot.limitID?.lowercased() == "codex" {
+                    if newestCanonical.map({ snapshot.capturedAt > $0.capturedAt }) ?? true {
+                        newestCanonical = snapshot
+                    }
+                } else if (snapshot.limitID?.isEmpty ?? true),
+                          (snapshot.limitName?.isEmpty ?? true) {
+                    // Older Codex versions did not include limit_id. Retain a
+                    // narrow legacy fallback, but reject named model limits so
+                    // they cannot masquerade as the account-wide quota.
+                    if newestLegacy.map({ snapshot.capturedAt > $0.capturedAt }) ?? true {
+                        newestLegacy = snapshot
+                    }
+                } else if let scopeID = scopedID(for: snapshot) {
+                    if newestScopedByID[scopeID].map({ snapshot.capturedAt > $0.capturedAt }) ?? true {
+                        newestScopedByID[scopeID] = snapshot
+                    }
                 }
-                for snapshot in CodexSnapshotFileCache.shared.snapshots(
+            }
+
+            // Once this root has a cache baseline, every new or rewritten file
+            // must be inspected once even when its mtime moved backwards by more
+            // than the ordinary early-stop skew allowance. This keeps the fast
+            // cached traversal while making a newly created session impossible
+            // to hide behind a stale filesystem clock.
+            for candidate in changedCandidates {
+                for snapshot in cache.snapshots(
                     in: candidate.url,
                     modifiedAt: candidate.modifiedAt
                 ) {
-                    if snapshot.limitID?.lowercased() == "codex" {
-                        if newestCanonical.map({ snapshot.capturedAt > $0.capturedAt }) ?? true {
-                            newestCanonical = snapshot
-                        }
-                    } else if (snapshot.limitID?.isEmpty ?? true), (snapshot.limitName?.isEmpty ?? true) {
-                        // Older Codex versions did not include limit_id. Retain a
-                        // narrow legacy fallback, but reject named model limits so
-                        // they cannot masquerade as the account-wide quota.
-                        if newestLegacy.map({ snapshot.capturedAt > $0.capturedAt }) ?? true {
-                            newestLegacy = snapshot
-                        }
-                    } else if let scopeID = scopedID(for: snapshot) {
-                        if newestScopedByID[scopeID].map({ snapshot.capturedAt > $0.capturedAt }) ?? true {
-                            newestScopedByID[scopeID] = snapshot
-                        }
+                    consider(snapshot)
+                }
+            }
+
+            var traversalCanonical: Snapshot?
+            for candidate in candidates {
+                if let canonical = traversalCanonical,
+                   canonical.capturedAt.timeIntervalSince(candidate.modifiedAt) > Self.earlyStopSkewAllowance {
+                    break
+                }
+                for snapshot in cache.snapshots(
+                    in: candidate.url,
+                    modifiedAt: candidate.modifiedAt
+                ) {
+                    consider(snapshot)
+                    if snapshot.limitID?.lowercased() == "codex",
+                       traversalCanonical.map({ snapshot.capturedAt > $0.capturedAt }) ?? true {
+                        traversalCanonical = snapshot
                     }
                 }
             }
@@ -134,7 +164,8 @@ struct CodexUsageService {
 
     /// 早停允许剩余文件的 mtime 比已得快照最多早这么久仍被解析,用来
     /// 吸收"时钟回拨期间写入的文件 mtime 早于其事件时间"的异常;超过
-    /// 一天的回拨不再兜底,代价只是延迟到该文件下次被写入时才被发现。
+    /// 一天的回拨。超过一天的新建/改写文件由候选元数据基线单独保证会
+    /// 解析一次，不需要牺牲正常路径的早停。
     private static let earlyStopSkewAllowance: TimeInterval = 24 * 60 * 60
 
     /// 按 (文件, 修改时间) 复用尾部解析结果:mtime 未变的会话文件不再
@@ -150,6 +181,36 @@ struct CodexUsageService {
 
         private let lock = NSLock()
         private var entries: [URL: Entry] = [:]
+        /// Full candidate metadata is cheap to retain and distinguishes a truly
+        /// new/rewritten rollback file from untouched historical files that the
+        /// parse early-stop intentionally never opened.
+        private var knownModificationDates: [URL: Date] = [:]
+
+        func changedCandidatesSinceLastScan(
+            _ candidates: [(url: URL, modifiedAt: Date)],
+            under roots: [URL]
+        ) -> [(url: URL, modifiedAt: Date)] {
+            let rootPaths = roots.map(Self.directoryPrefix)
+            let currentURLs = Set(candidates.map(\.url))
+            lock.lock()
+            let hadBaseline = knownModificationDates.keys.contains { key in
+                let keyPath = key.resolvingSymlinksInPath().path
+                return rootPaths.contains { keyPath.hasPrefix($0) }
+            }
+            let changed = hadBaseline ? candidates.filter { candidate in
+                knownModificationDates[candidate.url] != candidate.modifiedAt
+            } : []
+            knownModificationDates = knownModificationDates.filter { key, _ in
+                let keyPath = key.resolvingSymlinksInPath().path
+                let underRoot = rootPaths.contains { keyPath.hasPrefix($0) }
+                return !underRoot || currentURLs.contains(key)
+            }
+            for candidate in candidates {
+                knownModificationDates[candidate.url] = candidate.modifiedAt
+            }
+            lock.unlock()
+            return changed
+        }
 
         func snapshots(in url: URL, modifiedAt: Date) -> [Snapshot] {
             lock.lock()
@@ -169,13 +230,19 @@ struct CodexUsageService {
         /// 删除/归档)。范围必须限定在 root 内:并发的另一组目录扫描
         /// (以及并行测试)不允许把彼此的活条目清掉。
         func prune(under roots: [URL], keeping urls: Set<URL>) {
-            let rootPaths = roots.map { $0.path.hasSuffix("/") ? $0.path : $0.path + "/" }
+            let rootPaths = roots.map(Self.directoryPrefix)
             lock.lock()
             entries = entries.filter { key, _ in
-                let underRoot = rootPaths.contains { key.path.hasPrefix($0) }
+                let keyPath = key.resolvingSymlinksInPath().path
+                let underRoot = rootPaths.contains { keyPath.hasPrefix($0) }
                 return !underRoot || urls.contains(key)
             }
             lock.unlock()
+        }
+
+        private static func directoryPrefix(for url: URL) -> String {
+            let path = url.resolvingSymlinksInPath().path
+            return path.hasSuffix("/") ? path : path + "/"
         }
     }
 

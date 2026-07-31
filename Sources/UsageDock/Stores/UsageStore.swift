@@ -71,6 +71,7 @@ final class UsageStore: ObservableObject {
     private var lastCCUsageRefresh: Date?
     private var lastClaudeAttempt: Date?
     private var lastCodexAPIAttempt: Date?
+    private var lastCodexLocalAttempt: Date?
     private var lastServiceStatusAttempt: Date?
     private var lastAuxProviderAttempts: [ProviderQuota.Provider: Date] = [:]
     private var auxProviderFailureCounts: [ProviderQuota.Provider: Int] = [:]
@@ -90,6 +91,7 @@ final class UsageStore: ObservableObject {
     private var historyErrorMessage: String?
     private var latestLocalUsageSnapshot: LocalUsageSnapshot?
     private let disabledLocalUsageSourcesKey = "tokenRemain.disabledLocalUsageSources.v1"
+    private let sessionActivityMonitor: LocalAISessionActivityMonitor
 
     private enum QuotaRefreshOutput {
         case claude(Result<ProviderQuota, Error>)
@@ -279,10 +281,12 @@ final class UsageStore: ObservableObject {
     init(
         tracked: TrackedProvidersStore,
         defaults: UserDefaults = .standard,
-        home: URL = FileManager.default.homeDirectoryForCurrentUser
+        home: URL = FileManager.default.homeDirectoryForCurrentUser,
+        sessionActivityMonitor: LocalAISessionActivityMonitor = .shared
     ) {
         self.tracked = tracked
         self.defaults = defaults
+        self.sessionActivityMonitor = sessionActivityMonitor
         traeAgentTrajectoryStore = TraeAgentTrajectoryStore(defaults: defaults, home: home)
         disabledLocalUsageSourceIDs = Set(
             (defaults.stringArray(forKey: disabledLocalUsageSourcesKey) ?? [])
@@ -343,22 +347,41 @@ final class UsageStore: ObservableObject {
         guard refreshTask == nil else { return }
         refreshTask = Task { [weak self] in
             let clock = ContinuousClock()
-            var nextRefresh = clock.now
+            var nextProbe = clock.now
             var isInitialRefresh = true
+            var lastScheduledRefresh: Date?
             // A cached request timestamp must not make a freshly launched menu-bar app
             // display a completed countdown for another five minutes. The refresh method
             // still honors an active server-rate-limit backoff.
             while !Task.isCancelled {
-                await self?.refresh(
-                    forceCCUsage: isInitialRefresh,
-                    forceClaude: isInitialRefresh
+                guard let self else { return }
+                let now = Date()
+                let localSessionActive = sessionActivityMonitor.hasRecentSessionActivity(at: now)
+                let primarySurfaceVisible = localUsageUIVisibilityProvider?() ?? false
+                let scheduledInterval = AdaptiveRefreshPolicy.schedulerInterval(
+                    localSessionActive: localSessionActive,
+                    primarySurfaceVisible: primarySurfaceVisible
                 )
-                isInitialRefresh = false
-                nextRefresh += .seconds(AdaptiveRefreshPolicy.activeInterval)
-                if nextRefresh < clock.now {
-                    nextRefresh = clock.now
+                let scheduledRefreshIsDue = lastScheduledRefresh.map {
+                    now.timeIntervalSince($0) >= scheduledInterval
+                } ?? true
+                if isInitialRefresh || scheduledRefreshIsDue {
+                    await refresh(
+                        forceCCUsage: isInitialRefresh,
+                        forceClaude: isInitialRefresh
+                    )
+                    lastScheduledRefresh = now
+                    isInitialRefresh = false
                 }
-                try? await Task.sleep(until: nextRefresh, clock: clock)
+                // The session-activity timestamp read is deliberately cheap and
+                // remains minute-level so a new Codex/Claude turn returns the app
+                // to live cadence within one probe. Expensive refresh work above
+                // falls to five minutes while idle.
+                nextProbe += .seconds(AdaptiveRefreshPolicy.activeInterval)
+                if nextProbe < clock.now {
+                    nextProbe = clock.now
+                }
+                try? await Task.sleep(until: nextProbe, clock: clock)
             }
         }
     }
@@ -382,23 +405,42 @@ final class UsageStore: ObservableObject {
         defer { isRefreshing = false }
 
         let now = Date()
-        // 普通直查节奏由用户偏好决定；启用 Apple 设备同步后由低延迟
-        // 策略临时覆盖，关闭同步即恢复原偏好。
-        let interval = AdaptiveRefreshPolicy.interval(
+        let localSessionActive = sessionActivityMonitor.hasRecentSessionActivity(at: now)
+        let primarySurfaceVisible = localUsageUIVisibilityProvider?() ?? false
+        // Codex/Claude 在本地 session 或界面活跃时保持分钟级；两者都空闲
+        // 时至少退到 5 分钟。Apple 设备仍能收到 Mac 的周期快照，但不再
+        // 让静止的 Mac 永久承担一分钟一次的账户请求和会话目录扫描。
+        let localAIInterval = AdaptiveRefreshPolicy.localAIQuotaInterval(
+            preferred: PreferencesStore.shared.refreshInterval,
+            lowLatencySyncEnabled: lowLatencySyncEnabled,
+            localSessionActive: localSessionActive,
+            primarySurfaceVisible: primarySurfaceVisible
+        )
+        let auxiliaryInterval = AdaptiveRefreshPolicy.auxiliaryQuotaInterval(
             preferred: PreferencesStore.shared.refreshInterval,
             lowLatencySyncEnabled: lowLatencySyncEnabled
         )
-        func autoDue(since date: Date?) -> Bool {
+        func autoDue(since date: Date?, interval: TimeInterval?) -> Bool {
             guard let interval else { return false }
             return date.map { now.timeIntervalSince($0) >= interval } ?? true
         }
         let backoffJustCompleted = claudeRetryAfter.map { now >= $0 } ?? false
         let shouldRefreshClaude = tracked.isEnabled(.claude)
-            && (forceClaude || autoDue(since: lastClaudeAttempt) || backoffJustCompleted)
+            && (
+                forceClaude
+                    || autoDue(since: lastClaudeAttempt, interval: localAIInterval)
+                    || backoffJustCompleted
+            )
 
-        // Codex 本地会话快照保持分钟级扫描；API 直查遵循当前有效节奏，
-        // 同步关闭时仍回到用户设置的刷新偏好。
-        let codexAPIDue = forceClaude || autoDue(since: lastCodexAPIAttempt)
+        let codexAPIDue = forceClaude
+            || autoDue(since: lastCodexAPIAttempt, interval: localAIInterval)
+        let codexLocalDue = forceClaude || autoDue(
+            since: lastCodexLocalAttempt,
+            interval: AdaptiveRefreshPolicy.codexLocalSnapshotInterval(
+                localSessionActive: localSessionActive,
+                primarySurfaceVisible: primarySurfaceVisible
+            )
+        )
 
         // Status pages are independent of account refresh preferences. Poll at
         // a restrained five-minute cadence and allow the user's refresh action
@@ -419,7 +461,10 @@ final class UsageStore: ObservableObject {
             if let retryAfter = auxProviderRetryAfter[provider], now < retryAfter {
                 return false
             }
-            return autoDue(since: lastAuxProviderAttempts[provider])
+            return autoDue(
+                since: lastAuxProviderAttempts[provider],
+                interval: auxiliaryInterval
+            )
         }
 
         var errors: [String] = []
@@ -429,7 +474,7 @@ final class UsageStore: ObservableObject {
                     .claude(await result { try await ClaudeUsageService().fetch() })
                 }
             }
-            if codexEnabled {
+            if codexEnabled && (codexAPIDue || codexLocalDue) {
                 group.addTask {
                     .codex(
                         await result {
@@ -501,6 +546,7 @@ final class UsageStore: ObservableObject {
 
         case .codex(let codexResult):
             if codexAPIDue { lastCodexAPIAttempt = now }
+            lastCodexLocalAttempt = now
             switch codexResult {
             case .success(let value):
                 providerNotices[.codex] = nil
@@ -549,7 +595,8 @@ final class UsageStore: ObservableObject {
         let interval = AdaptiveRefreshPolicy.localUsageInterval(
             preferred: PreferencesStore.shared.refreshInterval,
             lowLatencySyncEnabled: lowLatencySyncEnabled,
-            localUsageUIVisible: localUsageUIVisibilityProvider?() ?? false
+            localUsageUIVisible: localUsageUIVisibilityProvider?() ?? false,
+            localSessionActive: sessionActivityMonitor.hasRecentSessionActivity(at: now)
         )
         guard AdaptiveRefreshPolicy.localUsageRefreshIsDue(
             interval: interval,

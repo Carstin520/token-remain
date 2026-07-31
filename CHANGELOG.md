@@ -3,6 +3,32 @@
 All notable product changes are recorded here. TokenRemain uses Semantic
 Versioning for public releases.
 
+## 1.2.3 — 2026-08-01
+
+### Changed
+
+- Keep Codex and Claude quota refreshes at minute-level while a local session
+  is active or a primary surface is genuinely visible, then fall back to at
+  least five minutes when both are idle. Apple devices still receive periodic
+  Mac snapshots without forcing a permanently hot one-minute loop.
+- Track local session activity with filesystem events, so steady-state checks
+  are timestamp reads rather than repeated recursive directory scans.
+- Parse only new or rewritten Codex session logs after the initial metadata
+  baseline, while preserving large filesystem-clock rollback correctness.
+
+### Fixed
+
+- Pause the Dashboard robot animation whenever its window is closed,
+  minimized, or fully occluded, while preserving the same animation whenever
+  the user can see it.
+
+### Performance
+
+- In a hidden-Dashboard, active-Codex-session measurement on an Apple M5 Pro,
+  process CPU fell from about 9.65% to 0.45%, attributed average power from
+  31.6 mW to 7.34 mW, and interrupt wakeups from 64.0/s to 2.8/s. See
+  `docs/performance-v1.2.3.md` for the method and comparison boundaries.
+
 ## 1.2.2 — 2026-07-31
 
 ### Added
@@ -319,3 +345,4 @@ Versioning for public releases.
 [1.2.0]: https://github.com/Carstin520/token-remain/releases/tag/v1.2.0
 [1.2.1]: https://github.com/Carstin520/token-remain/releases/tag/v1.2.1
 [1.2.2]: https://github.com/Carstin520/token-remain/releases/tag/v1.2.2
+[1.2.3]: https://github.com/Carstin520/token-remain/releases/tag/v1.2.3

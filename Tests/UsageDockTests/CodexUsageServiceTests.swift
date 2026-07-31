@@ -280,6 +280,52 @@ struct CodexUsageServiceTests {
         #expect(second.primary.usedPercent == 50)
     }
 
+    @Test("A new session survives an mtime rollback beyond the early-stop window")
+    func newSessionSurvivesLargeClockRollback() async throws {
+        let root = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let established = root.appendingPathComponent("established.jsonl")
+        try writeJSONL([
+            tokenCount(
+                timestamp: "2026-07-17T11:00:00.000Z",
+                limitID: "codex",
+                limitName: nil,
+                planType: "prolite",
+                usedPercent: 40,
+                windowMinutes: 300
+            )
+        ], to: established)
+        try FileManager.default.setAttributes(
+            [.modificationDate: ISO8601DateFormatter().date(from: "2026-07-17T11:05:00Z")!],
+            ofItemAtPath: established.path
+        )
+        let first = try await CodexUsageService.fetch(from: [root])
+        #expect(first.primary.usedPercent == 40)
+
+        // The file is newly created, but its filesystem clock is more than a
+        // day behind the established canonical event. A pure mtime early stop
+        // would never parse it even though its authenticated event is newer.
+        let rolledBack = root.appendingPathComponent("rolled-back.jsonl")
+        try writeJSONL([
+            tokenCount(
+                timestamp: "2026-07-17T12:00:00.000Z",
+                limitID: "codex",
+                limitName: nil,
+                planType: "prolite",
+                usedPercent: 65,
+                windowMinutes: 300
+            )
+        ], to: rolledBack)
+        try FileManager.default.setAttributes(
+            [.modificationDate: ISO8601DateFormatter().date(from: "2026-07-15T11:00:00Z")!],
+            ofItemAtPath: rolledBack.path
+        )
+
+        let second = try await CodexUsageService.fetch(from: [root])
+        #expect(second.primary.usedPercent == 65)
+    }
+
     private func temporaryDirectory() throws -> URL {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("UsageDockTests-\(UUID().uuidString)", isDirectory: true)

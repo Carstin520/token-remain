@@ -6,6 +6,7 @@ import SwiftUI
 /// 「额度」页随时调整,这里不做任何不可逆决定。
 struct OnboardingView: View {
     @ObservedObject var tracked: TrackedProvidersStore
+    var robotAnimated = true
 
     @State private var detections: [TrackedProvidersStore.Detection] = []
     @State private var selection: Set<ProviderQuota.Provider> = []
@@ -27,7 +28,11 @@ struct OnboardingView: View {
             Spacer(minLength: 24)
 
             VStack(spacing: 10) {
-                TokenRemainFullBodyRobot(remainingPercent: nil, size: 72)
+                TokenRemainFullBodyRobot(
+                    remainingPercent: nil,
+                    size: 72,
+                    animated: robotAnimated
+                )
                 Text(L10n.text("onboarding.welcome"))
                     .wordmarkFont(26)
                     .foregroundStyle(DashboardTheme.text)

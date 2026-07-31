@@ -229,9 +229,20 @@ final class StatusBarController: NSObject {
     /// 不能为了读可见性把窗口先建出来。
     private var isPrimarySurfaceVisible: Bool {
         if popover.isShown { return true }
-        if dashboardCreated, dashboardController.window?.isVisible == true { return true }
-        if floatingControllerCreated, floatingWidgetController.window?.isVisible == true { return true }
+        if dashboardCreated, Self.windowIsActuallyVisible(dashboardController.window) { return true }
+        if floatingControllerCreated,
+           Self.windowIsActuallyVisible(floatingWidgetController.window) { return true }
         return false
+    }
+
+    /// `NSWindow.isVisible` stays true while another app fully covers the
+    /// window. Occlusion is the useful energy signal: a covered/minimized
+    /// surface cannot benefit from minute-level background work.
+    private static func windowIsActuallyVisible(_ window: NSWindow?) -> Bool {
+        guard let window else { return false }
+        return window.isVisible
+            && !window.isMiniaturized
+            && window.occlusionState.contains(.visible)
     }
 
     /// Opens the primary desktop window from app launch, Dock reopen, or menu UI.
@@ -243,6 +254,13 @@ final class StatusBarController: NSObject {
     /// `--open-dashboard` argument.
     func openDashboardForPreview(section: DashboardSection = .overview) {
         showDashboard(section: section)
+    }
+
+    /// Closes an already-created Dashboard for the hidden-idle performance
+    /// launch hook. Regular user flows continue to close the native window.
+    func closeDashboardForPerformanceMeasurement() {
+        guard dashboardCreated else { return }
+        dashboardController.close()
     }
 
     /// Opens the menu popover for visual QA when launched with

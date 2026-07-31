@@ -4,12 +4,80 @@ import Testing
 
 @Suite("Adaptive provider refresh policy")
 struct AdaptiveRefreshPolicyTests {
-    @Test("Apple sync forces one-minute capture without changing idle preference")
-    func activeOverride() {
-        #expect(AdaptiveRefreshPolicy.interval(preferred: 300, lowLatencySyncEnabled: false) == 300)
-        #expect(AdaptiveRefreshPolicy.interval(preferred: nil, lowLatencySyncEnabled: false) == nil)
-        #expect(AdaptiveRefreshPolicy.interval(preferred: 1_800, lowLatencySyncEnabled: true) == 60)
-        #expect(AdaptiveRefreshPolicy.interval(preferred: nil, lowLatencySyncEnabled: true) == 60)
+    @Test("Local sessions stay live while idle account polling has a five-minute floor")
+    func localAIIntervals() {
+        #expect(AdaptiveRefreshPolicy.localAIQuotaInterval(
+            preferred: 300,
+            lowLatencySyncEnabled: false,
+            localSessionActive: true,
+            primarySurfaceVisible: false
+        ) == 60)
+        #expect(AdaptiveRefreshPolicy.localAIQuotaInterval(
+            preferred: 60,
+            lowLatencySyncEnabled: false,
+            localSessionActive: false,
+            primarySurfaceVisible: false
+        ) == 300)
+        #expect(AdaptiveRefreshPolicy.localAIQuotaInterval(
+            preferred: 1_800,
+            lowLatencySyncEnabled: false,
+            localSessionActive: false,
+            primarySurfaceVisible: false
+        ) == 1_800)
+        #expect(AdaptiveRefreshPolicy.localAIQuotaInterval(
+            preferred: nil,
+            lowLatencySyncEnabled: true,
+            localSessionActive: false,
+            primarySurfaceVisible: false
+        ) == 300)
+        #expect(AdaptiveRefreshPolicy.localAIQuotaInterval(
+            preferred: nil,
+            lowLatencySyncEnabled: true,
+            localSessionActive: true,
+            primarySurfaceVisible: false
+        ) == 60)
+        #expect(AdaptiveRefreshPolicy.localAIQuotaInterval(
+            preferred: nil,
+            lowLatencySyncEnabled: false,
+            localSessionActive: true,
+            primarySurfaceVisible: false
+        ) == nil)
+    }
+
+    @Test("Scheduler and Codex scans slow down only when both sessions and UI are idle")
+    func schedulerIntervals() {
+        #expect(AdaptiveRefreshPolicy.schedulerInterval(
+            localSessionActive: true,
+            primarySurfaceVisible: false
+        ) == 60)
+        #expect(AdaptiveRefreshPolicy.schedulerInterval(
+            localSessionActive: false,
+            primarySurfaceVisible: true
+        ) == 60)
+        #expect(AdaptiveRefreshPolicy.schedulerInterval(
+            localSessionActive: false,
+            primarySurfaceVisible: false
+        ) == 300)
+        #expect(AdaptiveRefreshPolicy.codexLocalSnapshotInterval(
+            localSessionActive: false,
+            primarySurfaceVisible: false
+        ) == 300)
+    }
+
+    @Test("Unrelated providers retain the user's cadence")
+    func auxiliaryIntervals() {
+        #expect(AdaptiveRefreshPolicy.auxiliaryQuotaInterval(
+            preferred: 60,
+            lowLatencySyncEnabled: false
+        ) == 60)
+        #expect(AdaptiveRefreshPolicy.auxiliaryQuotaInterval(
+            preferred: nil,
+            lowLatencySyncEnabled: false
+        ) == nil)
+        #expect(AdaptiveRefreshPolicy.auxiliaryQuotaInterval(
+            preferred: nil,
+            lowLatencySyncEnabled: true
+        ) == 300)
     }
 
     @Test("Provider errors back off independently and cap at five minutes")
@@ -26,18 +94,36 @@ struct AdaptiveRefreshPolicyTests {
     func localUsageInterval() {
         // 同步或任一本地用量界面可见 → 分钟级。
         #expect(AdaptiveRefreshPolicy.localUsageInterval(
-            preferred: 300, lowLatencySyncEnabled: true, localUsageUIVisible: false
+            preferred: 300,
+            lowLatencySyncEnabled: true,
+            localUsageUIVisible: false,
+            localSessionActive: true
         ) == 60)
         #expect(AdaptiveRefreshPolicy.localUsageInterval(
-            preferred: nil, lowLatencySyncEnabled: false, localUsageUIVisible: true
+            preferred: nil,
+            lowLatencySyncEnabled: false,
+            localUsageUIVisible: true,
+            localSessionActive: false
         ) == 60)
         // 后台空闲 → 跟随用户偏好;"仅手动"档不做后台扫描。
         #expect(AdaptiveRefreshPolicy.localUsageInterval(
-            preferred: 300, lowLatencySyncEnabled: false, localUsageUIVisible: false
+            preferred: 300,
+            lowLatencySyncEnabled: false,
+            localUsageUIVisible: false,
+            localSessionActive: false
         ) == 300)
         #expect(AdaptiveRefreshPolicy.localUsageInterval(
-            preferred: nil, lowLatencySyncEnabled: false, localUsageUIVisible: false
+            preferred: nil,
+            lowLatencySyncEnabled: false,
+            localUsageUIVisible: false,
+            localSessionActive: false
         ) == nil)
+        #expect(AdaptiveRefreshPolicy.localUsageInterval(
+            preferred: nil,
+            lowLatencySyncEnabled: true,
+            localUsageUIVisible: false,
+            localSessionActive: false
+        ) == 300)
     }
 
     @Test("Local usage due check honors the interval and presentation can force it")

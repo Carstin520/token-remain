@@ -1,18 +1,58 @@
 import Foundation
 
-/// Keeps the companion freshness target independent from the user's ordinary
-/// menu-bar refresh preference. Enabling Apple-device sync opts into a one-
-/// minute capture loop; failures back off per provider so one rate-limited API
-/// never slows local sources or unrelated providers.
+/// Keeps refresh work proportional to the chance that quota data changed.
+/// Active local Codex/Claude sessions and visible UI retain minute-level
+/// freshness. Once both are idle, expensive scans and account requests fall
+/// back to at least five minutes; Apple devices still receive periodic Mac
+/// snapshots without keeping an otherwise idle Mac on a one-minute work loop.
 enum AdaptiveRefreshPolicy {
     static let activeInterval: TimeInterval = 60
+    static let idleInterval: TimeInterval = 5 * 60
     static let maximumBackoff: TimeInterval = 5 * 60
 
-    static func interval(
+    static func localAIQuotaInterval(
+        preferred: TimeInterval?,
+        lowLatencySyncEnabled: Bool,
+        localSessionActive: Bool,
+        primarySurfaceVisible: Bool
+    ) -> TimeInterval? {
+        if localSessionActive || primarySurfaceVisible {
+            if let preferred {
+                return min(preferred, activeInterval)
+            }
+            return lowLatencySyncEnabled ? activeInterval : nil
+        }
+        if let preferred {
+            return max(preferred, idleInterval)
+        }
+        return lowLatencySyncEnabled ? idleInterval : nil
+    }
+
+    /// Providers unrelated to local Codex/Claude work keep the cadence the user
+    /// selected. Apple-device sync uses a restrained five-minute fallback when
+    /// the user selected manual-only refresh so it can still publish changes.
+    static func auxiliaryQuotaInterval(
         preferred: TimeInterval?,
         lowLatencySyncEnabled: Bool
     ) -> TimeInterval? {
-        lowLatencySyncEnabled ? activeInterval : preferred
+        preferred ?? (lowLatencySyncEnabled ? idleInterval : nil)
+    }
+
+    /// The inexpensive activity probe remains minute-level so a newly started
+    /// session is noticed promptly. Full provider/status work runs only every
+    /// five minutes when there is no visible surface or recent local session.
+    static func schedulerInterval(
+        localSessionActive: Bool,
+        primarySurfaceVisible: Bool
+    ) -> TimeInterval {
+        (localSessionActive || primarySurfaceVisible) ? activeInterval : idleInterval
+    }
+
+    static func codexLocalSnapshotInterval(
+        localSessionActive: Bool,
+        primarySurfaceVisible: Bool
+    ) -> TimeInterval {
+        (localSessionActive || primarySurfaceVisible) ? activeInterval : idleInterval
     }
 
     static func retryDelay(after failureCount: Int) -> TimeInterval {
@@ -29,9 +69,20 @@ enum AdaptiveRefreshPolicy {
     static func localUsageInterval(
         preferred: TimeInterval?,
         lowLatencySyncEnabled: Bool,
-        localUsageUIVisible: Bool
+        localUsageUIVisible: Bool,
+        localSessionActive: Bool
     ) -> TimeInterval? {
-        (lowLatencySyncEnabled || localUsageUIVisible) ? activeInterval : preferred
+        if localUsageUIVisible {
+            return activeInterval
+        }
+        if localSessionActive {
+            guard preferred != nil || lowLatencySyncEnabled else { return nil }
+            return activeInterval
+        }
+        if let preferred {
+            return max(preferred, idleInterval)
+        }
+        return lowLatencySyncEnabled ? idleInterval : nil
     }
 
     static func localUsageRefreshIsDue(
