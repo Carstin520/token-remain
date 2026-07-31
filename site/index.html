@@ -338,9 +338,11 @@ figure.shot figcaption .cap{color:var(--text-dim);font-size:13.5px}
 .device-stage .dev3d.watch{transform:translateY(66px) scale(.96)}
 .device-stage.on .dev3d{opacity:1;transform:none}
 .device-stage .dev-screen::after{
-  content:"";position:absolute;inset:0;z-index:3;background:#000;opacity:1;
-  transition:opacity .9s ease .5s;
+  content:"";position:absolute;inset:0;z-index:3;opacity:1;
+  background:#000 url(assets/brand/appicon-mac.png) center/34% auto no-repeat;
+  transition:opacity .8s ease .35s;
 }
+.device-stage .watch .dev-screen::after{background-size:44% auto}
 .device-stage.on .dev-screen::after{opacity:0}
 @media (prefers-reduced-motion:no-preference){
   .device-stage .dev3d{transition:opacity .95s cubic-bezier(.2,.7,.3,1),transform .95s cubic-bezier(.2,.7,.3,1)}
@@ -386,12 +388,12 @@ figure.shot figcaption .cap{color:var(--text-dim);font-size:13.5px}
 }
 .pin-stage>*{position:relative}
 .pin-zoom{transform:scale(var(--zoom,1));transform-origin:50% 46%;will-change:transform}
-#dashTrack{height:280vh}
-.dash-viewport{display:block;overflow:hidden;border-radius:8px}
-.dash-viewport img{display:block;width:100%;height:auto;
-  transform:scale(var(--ds,1));transform-origin:var(--dox,50%) var(--doy,50%)}
+#dashTrack{height:260vh}
+.dash-viewport{display:grid;overflow:hidden;border-radius:8px}
+.dash-viewport img{grid-area:1/1;display:block;width:100%;height:auto;opacity:0}
+.dash-viewport img.on{opacity:1}
 @media (prefers-reduced-motion:no-preference){
-  .dash-viewport img{transition:transform .85s cubic-bezier(.25,.6,.25,1)}
+  .dash-viewport img{transition:opacity .65s ease}
 }
 .dash-cap{margin-top:14px}
 #deviceTrack{height:440vh}
@@ -921,15 +923,16 @@ footer.site .disclaimer{
           <div class="pin-zoom dash-zoom">
             <figure class="shot ticked">
               <span class="dash-viewport">
-                <img src="assets/dashboard.jpg" width="1600" height="1065" alt="TokenRemain Dashboard overview: today's usage and cost donut, official quota bars (Claude coral / Codex blue), trending and risk hints" loading="lazy"
-                     data-shot-en="assets/dashboard.jpg" data-shot-zh="assets/dashboard-zh.jpg">
+                <img class="on" src="assets/dash-overview-zh.jpg" width="1600" height="1221" alt="TokenRemain Dashboard overview page: KPI row with lowest remaining, today's tokens and estimated cost, usage donut, official quotas and risk panel" loading="lazy"
+                     data-shot-en="assets/dash-overview-zh.jpg" data-shot-zh="assets/dash-overview-zh.jpg">
+                <img src="assets/dash-limits-zh.jpg" width="1600" height="1221" alt="TokenRemain Dashboard limits page: per-provider official quota windows with segment bars, reset countdowns and pace warnings" loading="lazy"
+                     data-shot-en="assets/dash-limits-zh.jpg" data-shot-zh="assets/dash-limits-zh.jpg">
               </span>
               <figcaption class="stage-cap dash-cap">
-                <div class="stage-dots" aria-hidden="true"><i class="on"></i><i></i><i></i></div>
+                <div class="stage-dots" aria-hidden="true"><i class="on"></i><i></i></div>
                 <div class="stage-slides">
-                  <p class="slide on"><span class="tag" data-i18n="cap-dash-t">Dashboard · Live</span><span class="cap" data-i18n="cap-dash-c">Real local usage: 150.04M tokens and $52.15 estimated cost today, split by provider; official quota progress and risk hints on the right.</span></p>
-                  <p class="slide"><span class="tag" data-i18n="cap-dash2-t">Dashboard · Today</span><span class="cap" data-i18n="cap-dash2-c">The KPI row up close: today's tokens, estimated cost and sustainability — and the per-provider donut they come from.</span></p>
-                  <p class="slide"><span class="tag" data-i18n="cap-dash3-t">Dashboard · Quotas &amp; risk</span><span class="cap" data-i18n="cap-dash3-c">Official quota windows with live progress, and the risk panel that says how long your current pace will last.</span></p>
+                  <p class="slide on"><span class="tag" data-i18n="cap-dash-t">Dashboard · Overview</span><span class="cap" data-i18n="cap-dash-c">Real local usage: today's tokens and estimated cost split by provider, with official quota progress and risk hints beside them.</span></p>
+                  <p class="slide"><span class="tag" data-i18n="cap-dash2-t">Dashboard · Limits</span><span class="cap" data-i18n="cap-dash2-c">The Limits page: every provider's official windows — 5-hour and 7-day progress, reset countdowns, and pace warnings that flag running ahead of budget.</span></p>
                 </div>
               </figcaption>
             </figure>
@@ -1363,9 +1366,8 @@ var ZH={
   "n4t":"跨版本直达最新版","n4d":"日常的更新检查轻量而安静；点击更新时会重新查询并直接安装当下的最新版本——即使中间隔了好几个发布，也一步到位。",
   "s-h2":"Mac、iPhone、手腕，同一套设计语言",
   "s-lede":"菜单栏弹窗在上方已经见过——下面全部是<strong style=\"color:var(--text)\">正在运行的最新版实机截图</strong>：桌面 Dashboard、重新设计的 iPhone 版与 Apple Watch 速览。所有屏幕的数字统一使用 SF Mono；装饰全部退场，层级只来自字号与留白。iPhone 与手表截图跑的是内置演示场景，所以带着 DEMO 标记。",
-  "cap-dash-t":"Dashboard · 实机","cap-dash-c":"真实本地用量：今日 202.16M tokens、$189.11 估算成本按服务商拆分；右侧官方额度实时进度与风险提示。",
-  "cap-dash2-t":"Dashboard · 今日","cap-dash2-c":"拉近看 KPI 行：今日 Token、估算成本与可持续性，以及它们背后的分服务商占比环。",
-  "cap-dash3-t":"Dashboard · 额度与风险","cap-dash3-c":"官方额度窗口的实时进度，和告诉你当前节奏还能撑多久的风险面板。",
+  "cap-dash-t":"Dashboard · 概览","cap-dash-c":"真实本地用量：今日 Token 与估算成本按服务商拆分，旁边是官方额度实时进度与风险提示。",
+  "cap-dash2-t":"Dashboard · 额度","cap-dash2-c":"额度页：每个服务商的官方窗口——5 小时 / 7 天进度、重置倒计时，以及用量超前时的节奏预警。",
   "cap-pov-t":"iPhone · 概览","cap-pov-c":"今日 Token 完整数字领衔，配估算成本与「超过全球 N% 用户」评价；额度结论与风险徽章紧随其后。长按拖拽任意卡片即可重排页面。",
   "cap-paf-t":"iPhone · AI 资讯","cap-paf-c":"精选动态升级为独立标签页：时间线阅读流，额度/Token 与重大更新芯片置顶，本机归档你见过的每条动态。",
   "cap-ptr-t":"iPhone · 趋势","cap-ptr-c":"同步历史上的剩余额度曲线，加每日堆叠：7 / 14 / 30 天与 Tokens / 费用双口径。",
@@ -1454,11 +1456,11 @@ var ZH={
   "fd":"TokenRemain 为独立应用，与 Anthropic、OpenAI、Anysphere、xAI、GitHub、智谱 AI 等服务提供方均无隶属、背书或赞助关系；页面中出现的服务名称与标识仅用于说明你可选择接入的服务。成本数字为 API 标价估算，额度与价格政策以各服务官方页面为准。",
   "fp":"隐私政策","fs":"支持","fi":"反馈问题"
 };
-/* scrollytelling driver: while a .pin-track scrolls through, its progress
-   drives focus (feathered background dim + zoom) and what the showcase shows.
-   The device stage steps through its screens; the Dashboard runs a three-shot
-   camera over the live screenshot (wide, today close-up, quotas close-up).
-   No wheel hijacking; reduced motion keeps the switching, drops the zoom. */
+/* scrollytelling driver: the showcases rise in while approaching (fully
+   visible by the time the stage pins), the screens boot from the TokenRemain
+   mark, and pinned scroll steps the demo — the phone through its three tabs,
+   the Dashboard through its real pages. No wheel hijacking; reduced motion
+   keeps the switching and drops the zoom. */
 (function(){
   var deviceTrack=document.getElementById('deviceTrack');
   if(!deviceTrack)return;
@@ -1472,11 +1474,9 @@ var ZH={
   var dashTrack=document.getElementById('dashTrack');
   var dashPin=dashTrack&&dashTrack.querySelector('.pin-stage');
   var dashZoom=dashTrack&&dashTrack.querySelector('.pin-zoom');
-  var dashImg=dashTrack&&dashTrack.querySelector('.dash-viewport img');
+  var dashImgs=dashTrack?[].slice.call(dashTrack.querySelectorAll('.dash-viewport img')):[];
   var dashSlides=dashTrack?[].slice.call(dashTrack.querySelectorAll('.stage-slides .slide')):[];
   var dashDots=dashTrack?[].slice.call(dashTrack.querySelectorAll('.stage-dots i')):[];
-  /* the camera's three shots over the dashboard screenshot */
-  var dashScenes=[{s:1,x:50,y:50},{s:1.8,x:34,y:26},{s:1.8,x:84,y:50}];
   var reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
   var lastSeg=-1,lastShot=-1,ticking=false;
   function clamp01(v){return v<0?0:v>1?1:v}
@@ -1485,32 +1485,35 @@ var ZH={
     var span=track.offsetHeight-innerHeight;
     return span>0?clamp01(-rect.top/span):0;
   }
+  /* 1 by the time the track's top reaches ~40% of the viewport — the devices
+     must already stand complete when the stage pins */
+  function approach(track){
+    var rect=track.getBoundingClientRect();
+    return clamp01((innerHeight-rect.top)/(innerHeight*.62));
+  }
   function toggle(list,i){list.forEach(function(el,k){el.classList.toggle('on',k===i)})}
   function frame(){
     ticking=false;
-    var p=progress(deviceTrack);
-    stage.classList.toggle('on',p>0.01);
-    var focus=clamp01(p*5);
+    var a=approach(deviceTrack),p=progress(deviceTrack);
+    stage.classList.toggle('on',a>0.05);
+    var focus=clamp01(p*6);
     devicePin.style.setProperty('--dim',(focus*.82).toFixed(3));
     if(!reduced)deviceZoom.style.setProperty('--zoom',(1+.07*focus).toFixed(4));
-    var seg=Math.min(2,Math.floor(clamp01((p-.16)/.84)*3));
+    var seg=Math.min(2,Math.floor(clamp01((p-.06)/.94)*3));
     if(seg!==lastSeg){
       lastSeg=seg;
       toggle(phone,seg%phone.length);toggle(watch,seg%watch.length);
       toggle(deviceSlides,seg%deviceSlides.length);toggle(deviceDots,seg%deviceDots.length);
     }
-    if(dashTrack){
-      var q=progress(dashTrack),f=clamp01(q*4);
+    if(dashTrack&&dashImgs.length){
+      var q=progress(dashTrack),f=clamp01(q*6);
       dashPin.style.setProperty('--dim',(f*.78).toFixed(3));
-      if(!reduced)dashZoom.style.setProperty('--zoom',(.94+.08*f).toFixed(4));
-      var shot=Math.min(2,Math.floor(clamp01((q-.2)/.8)*3));
+      if(!reduced)dashZoom.style.setProperty('--zoom',(.96+.06*f).toFixed(4));
+      var shots=dashImgs.length;
+      var shot=Math.min(shots-1,Math.floor(clamp01((q-.12)/.88)*shots));
       if(shot!==lastShot){
         lastShot=shot;
-        var sc=dashScenes[shot];
-        dashImg.style.setProperty('--ds',sc.s);
-        dashImg.style.setProperty('--dox',sc.x+'%');
-        dashImg.style.setProperty('--doy',sc.y+'%');
-        toggle(dashSlides,shot);toggle(dashDots,shot);
+        toggle(dashImgs,shot);toggle(dashSlides,shot);toggle(dashDots,shot);
       }
     }
   }
