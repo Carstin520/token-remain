@@ -20,6 +20,26 @@ struct LocalAISessionActivityMonitorTests {
         #expect(monitor.hasRecentSessionActivity())
     }
 
+    @Test("A session root created after launch is seeded without restarting")
+    func lateCreatedRootIsSeeded() throws {
+        let parent = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: parent) }
+        let root = parent.appending(path: "sessions", directoryHint: .isDirectory)
+        let now = Date()
+        let monitor = LocalAISessionActivityMonitor(sessionRoots: [root], now: now)
+        #expect(!monitor.hasRecentSessionActivity(at: now))
+
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        let session = root.appending(path: "late-session.jsonl")
+        try Data("{}\n".utf8).write(to: session)
+        try FileManager.default.setAttributes(
+            [.modificationDate: now],
+            ofItemAtPath: session.path
+        )
+
+        #expect(monitor.hasRecentSessionActivity(at: now))
+    }
+
     @Test("Recent JSONL writes mark a session active and age out")
     func recentActivityGracePeriod() throws {
         let root = try temporaryDirectory()

@@ -21,6 +21,12 @@ Versioning for public releases.
 - Pause the Dashboard robot animation whenever its window is closed,
   minimized, or fully occluded, while preserving the same animation whenever
   the user can see it.
+- Preserve the user's selected refresh cadence for enabled non-Codex/Claude
+  providers even while local AI sessions and primary surfaces are idle.
+- Catch up due quota data as soon as the popover, Dashboard, or floating widget
+  becomes visible, without forcing requests when the current snapshot is fresh.
+- Begin monitoring Codex or Claude session directories created after TokenRemain
+  launched, without requiring an app restart or a broad home-directory watcher.
 
 ### Performance
 

@@ -11,9 +11,13 @@ final class LocalAISessionActivityMonitor: @unchecked Sendable {
     static let shared = LocalAISessionActivityMonitor()
 
     private let sessionRoots: [URL]
+    private let fileManager: FileManager
+    private let monitoringEnabled: Bool
     private let lock = NSLock()
-    private var latestActivityAt: Date?
+    private let streamLock = NSLock()
+    private var latestActivityAt: Date? = nil
     private var stream: FSEventStreamRef?
+    private var monitoredPaths: Set<String> = []
     private let eventQueue = DispatchQueue(
         label: "com.jamesli.usagedock.session-activity",
         qos: .utility
@@ -30,29 +34,43 @@ final class LocalAISessionActivityMonitor: @unchecked Sendable {
         self.sessionRoots = roots.map {
             $0.standardizedFileURL.resolvingSymlinksInPath()
         }
-        latestActivityAt = Self.latestSessionModificationDate(
-            under: self.sessionRoots,
-            fileManager: fileManager,
-            noLaterThan: now
-        )
+        self.fileManager = fileManager
+        monitoringEnabled = startMonitoring
         if startMonitoring {
-            startEventStream(fileManager: fileManager)
+            refreshEventStreamIfNeeded(at: now)
+        } else {
+            latestActivityAt = Self.latestSessionModificationDate(
+                under: self.sessionRoots,
+                fileManager: fileManager,
+                noLaterThan: now
+            )
         }
     }
 
     deinit {
-        if let stream {
-            FSEventStreamStop(stream)
-            FSEventStreamInvalidate(stream)
-            FSEventStreamRelease(stream)
-        }
+        streamLock.lock()
+        stopEventStreamLocked()
+        streamLock.unlock()
     }
 
     func hasRecentSessionActivity(
         at now: Date = .now,
         gracePeriod: TimeInterval = activeGracePeriod
     ) -> Bool {
+        if monitoringEnabled {
+            // This rides the existing minute-level activity probe, so a session
+            // root created after app launch gains monitoring without another
+            // timer or permanent watch on the user's whole home directory.
+            refreshEventStreamIfNeeded(at: now)
+        }
         lock.lock()
+        // The event callback can race this probe after `now` was captured. It
+        // may therefore publish a timestamp a few milliseconds in the future;
+        // a system clock rollback can create the same shape. Clamp and persist
+        // the observation so activity remains true now but still ages out.
+        if let latestActivityAt, latestActivityAt > now {
+            self.latestActivityAt = now
+        }
         let latest = latestActivityAt
         lock.unlock()
         guard let latest else { return false }
@@ -99,11 +117,42 @@ final class LocalAISessionActivityMonitor: @unchecked Sendable {
         return latest
     }
 
-    private func startEventStream(fileManager: FileManager) {
-        let paths = sessionRoots
+    private func refreshEventStreamIfNeeded(at now: Date) {
+        let currentPaths = Set(sessionRoots
             .filter { fileManager.fileExists(atPath: $0.path) }
-            .map(\.path)
-        guard !paths.isEmpty else { return }
+            .map(\.path))
+
+        streamLock.lock()
+        guard currentPaths != monitoredPaths else {
+            streamLock.unlock()
+            return
+        }
+        stopEventStreamLocked()
+        let started = startEventStreamLocked(paths: currentPaths.sorted())
+        monitoredPaths = started ? currentPaths : []
+        streamLock.unlock()
+
+        // Start the stream before seeding when possible. A file written during
+        // the seed walk is then covered by either path. If FSEvents is
+        // temporarily unavailable, seed correctness still wins and the next
+        // minute probe retries stream creation.
+        // Re-seed every currently available root whenever the watched topology
+        // changes. Rebuilding the stream has a tiny stop/start gap, and a write
+        // to an already-watched root during that gap must not be lost either.
+        guard !currentPaths.isEmpty else { return }
+        let currentRoots = sessionRoots.filter { currentPaths.contains($0.path) }
+        if let seededAt = Self.latestSessionModificationDate(
+            under: currentRoots,
+            fileManager: fileManager,
+            noLaterThan: now
+        ) {
+            recordActivity(at: seededAt)
+        }
+    }
+
+    /// Must be called while `streamLock` is held.
+    private func startEventStreamLocked(paths: [String]) -> Bool {
+        guard !paths.isEmpty else { return false }
 
         var context = FSEventStreamContext(
             version: 0,
@@ -132,7 +181,7 @@ final class LocalAISessionActivityMonitor: @unchecked Sendable {
             FSEventStreamEventId(kFSEventStreamEventIdSinceNow),
             1,
             flags
-        ) else { return }
+        ) else { return false }
 
         stream = created
         FSEventStreamSetDispatchQueue(created, eventQueue)
@@ -140,7 +189,18 @@ final class LocalAISessionActivityMonitor: @unchecked Sendable {
             FSEventStreamInvalidate(created)
             FSEventStreamRelease(created)
             stream = nil
+            return false
         }
+        return true
+    }
+
+    /// Must be called while `streamLock` is held.
+    private func stopEventStreamLocked() {
+        guard let stream else { return }
+        FSEventStreamStop(stream)
+        FSEventStreamInvalidate(stream)
+        FSEventStreamRelease(stream)
+        self.stream = nil
     }
 
     private func recordEvents(paths: [String], at date: Date) {
@@ -154,6 +214,10 @@ final class LocalAISessionActivityMonitor: @unchecked Sendable {
                     canonicalPath == root.path || canonicalPath.hasPrefix(root.path + "/")
                 }
         }) else { return }
+        recordActivity(at: date)
+    }
+
+    private func recordActivity(at date: Date) {
         lock.lock()
         if latestActivityAt.map({ date > $0 }) ?? true {
             latestActivityAt = date

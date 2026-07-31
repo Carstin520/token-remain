@@ -49,11 +49,16 @@ Codex metadata/parse cache then bounded the periodic refresh work.
 - The robot keeps the same 0.22-second stepped animation while onscreen.
 - A newly active Codex or Claude session is detected through filesystem events;
   the cheap activity probe returns the refresh loop to minute cadence within
-  one minute.
+  one minute. Session roots created after TokenRemain launches are picked up by
+  that same probe and seeded before monitoring continues.
 - With no recent local session and no visible primary surface, quota and local
   usage work falls back to at least five minutes. Manual refresh remains
   immediate, and Apple devices continue receiving snapshots through the
   existing Mac publish path.
+- Enabled providers outside Codex and Claude retain the refresh interval the
+  user selected. Presenting or uncovering a primary surface immediately runs a
+  due check, so stale quota data catches up without forcing already-fresh
+  provider requests.
 - CPU and energy counters are machine- and workload-specific. They support the
   before/after diagnosis on this Mac and should not be extrapolated directly to
   battery hours on other hardware.

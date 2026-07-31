@@ -358,9 +358,16 @@ final class UsageStore: ObservableObject {
                 let now = Date()
                 let localSessionActive = sessionActivityMonitor.hasRecentSessionActivity(at: now)
                 let primarySurfaceVisible = localUsageUIVisibilityProvider?() ?? false
+                let auxiliaryInterval = Self.auxProviders.contains(where: tracked.isEnabled)
+                    ? AdaptiveRefreshPolicy.auxiliaryQuotaInterval(
+                        preferred: PreferencesStore.shared.refreshInterval,
+                        lowLatencySyncEnabled: lowLatencySyncEnabled
+                    )
+                    : nil
                 let scheduledInterval = AdaptiveRefreshPolicy.schedulerInterval(
                     localSessionActive: localSessionActive,
-                    primarySurfaceVisible: primarySurfaceVisible
+                    primarySurfaceVisible: primarySurfaceVisible,
+                    auxiliaryQuotaInterval: auxiliaryInterval
                 )
                 let scheduledRefreshIsDue = lastScheduledRefresh.map {
                     now.timeIntervalSince($0) >= scheduledInterval
@@ -515,6 +522,14 @@ final class UsageStore: ObservableObject {
 
         quotaErrorMessage = errors.isEmpty ? nil : errors.joined(separator: "\n")
         publishErrors()
+    }
+
+    /// A surface presentation should immediately catch up data that became due
+    /// during the idle cadence without turning every open/uncover event into a
+    /// forced network request. Local usage follows the same due check; explicit
+    /// surface opens can still force its pre-existing presentation refresh.
+    func refreshForVisibleSurface() async {
+        await refresh(forceCCUsage: false, forceClaude: false)
     }
 
     private func applyQuotaRefreshOutput(

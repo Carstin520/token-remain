@@ -39,13 +39,20 @@ enum AdaptiveRefreshPolicy {
     }
 
     /// The inexpensive activity probe remains minute-level so a newly started
-    /// session is noticed promptly. Full provider/status work runs only every
-    /// five minutes when there is no visible surface or recent local session.
+    /// session is noticed promptly. Full local-AI work runs only every five
+    /// minutes when there is no visible surface or recent local session, while
+    /// enabled auxiliary providers still retain the cadence selected by the
+    /// user.
     static func schedulerInterval(
         localSessionActive: Bool,
-        primarySurfaceVisible: Bool
+        primarySurfaceVisible: Bool,
+        auxiliaryQuotaInterval: TimeInterval?
     ) -> TimeInterval {
-        (localSessionActive || primarySurfaceVisible) ? activeInterval : idleInterval
+        let localAIInterval = (localSessionActive || primarySurfaceVisible)
+            ? activeInterval
+            : idleInterval
+        guard let auxiliaryQuotaInterval else { return localAIInterval }
+        return min(localAIInterval, auxiliaryQuotaInterval)
     }
 
     static func codexLocalSnapshotInterval(

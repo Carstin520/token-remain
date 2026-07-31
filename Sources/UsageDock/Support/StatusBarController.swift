@@ -50,7 +50,10 @@ final class StatusBarController: NSObject {
     private lazy var dashboardController = DashboardWindowController(
         store: store,
         feedStore: feedStore,
-        launchAtLogin: launchAtLogin
+        launchAtLogin: launchAtLogin,
+        onBecameVisible: { [weak self] in
+            self?.refreshVisibleSurface()
+        }
     )
     private lazy var floatingWidgetController: FloatingWidgetWindowController = {
         let controller = FloatingWidgetWindowController(
@@ -60,6 +63,9 @@ final class StatusBarController: NSObject {
             layout: popoverLayout,
             onOpenDashboard: { [weak self] section in
                 self?.openDashboard(section)
+            },
+            onBecameVisible: { [weak self] in
+                self?.refreshVisibleSurface()
             }
         )
         controller.onUserClose = {
@@ -78,9 +84,8 @@ final class StatusBarController: NSObject {
         if visible {
             floatingControllerCreated = true
             popoverLayout.prepareForPresentation()
-            floatingWidgetController.show()
             store.refreshLocalUsage()
-            refreshFeedIfStale()
+            floatingWidgetController.show()
         } else if floatingControllerCreated {
             floatingWidgetController.hide()
         }
@@ -203,8 +208,18 @@ final class StatusBarController: NSObject {
             popoverLayout.prepareForPresentation()
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
             store.refreshLocalUsage()
-            refreshFeedIfStale()
+            refreshVisibleSurface()
         }
+    }
+
+    /// Presentation catches up only sources whose active-surface interval is
+    /// due. Repeated opens or occlusion notifications therefore preserve both
+    /// freshness and the energy win instead of forcing every provider request.
+    private func refreshVisibleSurface() {
+        Task { [weak self] in
+            await self?.store.refreshForVisibleSurface()
+        }
+        refreshFeedIfStale()
     }
 
     /// 界面从不可见转为可见时,Feed 若比轮询间隔旧就补拉一次;
@@ -218,9 +233,8 @@ final class StatusBarController: NSObject {
     private func openDashboard(_ section: DashboardSection) {
         popover.performClose(nil)
         dashboardCreated = true
-        dashboardController.show(section: section)
         store.refreshLocalUsage()
-        refreshFeedIfStale()
+        dashboardController.show(section: section)
     }
 
     /// 本地用量与 AI Feed 是否正被某个界面展示。仅在这些界面可见时,

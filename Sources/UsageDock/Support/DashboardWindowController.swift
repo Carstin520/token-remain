@@ -6,11 +6,16 @@ import SwiftUI
 final class DashboardVisibility: ObservableObject {
     @Published private(set) var isVisible = false
 
-    func setVisible(_ visible: Bool) {
+    @discardableResult
+    func setVisible(_ visible: Bool) -> Bool {
+        let becameVisible = visible && !isVisible
+        guard visible != isVisible else { return false }
         isVisible = visible
+        return becameVisible
     }
 
-    func update(from window: NSWindow) {
+    @discardableResult
+    func update(from window: NSWindow) -> Bool {
         setVisible(
             window.isVisible
             && !window.isMiniaturized
@@ -29,9 +34,16 @@ final class DashboardVisibility: ObservableObject {
 final class DashboardWindowController: NSWindowController {
     private let navigator = DashboardNavigator()
     private let visibility = DashboardVisibility()
+    private let onBecameVisible: () -> Void
     private var visibilityObservers: [NSObjectProtocol] = []
 
-    init(store: UsageStore, feedStore: AIFeedStore, launchAtLogin: LaunchAtLoginManager) {
+    init(
+        store: UsageStore,
+        feedStore: AIFeedStore,
+        launchAtLogin: LaunchAtLoginManager,
+        onBecameVisible: @escaping () -> Void
+    ) {
+        self.onBecameVisible = onBecameVisible
         let hosting = NSHostingController(
             rootView: DashboardView(
                 store: store,
@@ -86,8 +98,8 @@ final class DashboardWindowController: NSWindowController {
                     guard let self, let window = self.window else { return }
                     if name == NSWindow.willCloseNotification {
                         self.visibility.setVisible(false)
-                    } else {
-                        self.visibility.update(from: window)
+                    } else if self.visibility.update(from: window) {
+                        self.onBecameVisible()
                     }
                 }
             }
@@ -118,8 +130,8 @@ final class DashboardWindowController: NSWindowController {
         // flip the document title back to visible. The title *property* stays
         // "TokenRemain" for Mission Control / the window switcher.
         window?.titleVisibility = .hidden
-        if let window {
-            visibility.update(from: window)
+        if let window, visibility.update(from: window) {
+            onBecameVisible()
         }
     }
 }

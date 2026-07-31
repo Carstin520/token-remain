@@ -48,16 +48,24 @@ struct AdaptiveRefreshPolicyTests {
     func schedulerIntervals() {
         #expect(AdaptiveRefreshPolicy.schedulerInterval(
             localSessionActive: true,
-            primarySurfaceVisible: false
+            primarySurfaceVisible: false,
+            auxiliaryQuotaInterval: 1_800
         ) == 60)
         #expect(AdaptiveRefreshPolicy.schedulerInterval(
             localSessionActive: false,
-            primarySurfaceVisible: true
+            primarySurfaceVisible: true,
+            auxiliaryQuotaInterval: nil
         ) == 60)
         #expect(AdaptiveRefreshPolicy.schedulerInterval(
             localSessionActive: false,
-            primarySurfaceVisible: false
+            primarySurfaceVisible: false,
+            auxiliaryQuotaInterval: nil
         ) == 300)
+        #expect(AdaptiveRefreshPolicy.schedulerInterval(
+            localSessionActive: false,
+            primarySurfaceVisible: false,
+            auxiliaryQuotaInterval: 60
+        ) == 60)
         #expect(AdaptiveRefreshPolicy.codexLocalSnapshotInterval(
             localSessionActive: false,
             primarySurfaceVisible: false
