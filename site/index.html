@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>TokenRemain — Your AI quota, always in the menu bar</title>
-<meta name="description" content="TokenRemain 1.2: a private macOS and iPhone AI quota companion with encrypted multi-Mac aggregation, dynamic local usage sources, and updates that always install the latest release.">
+<meta name="description" content="TokenRemain: a private macOS, iPhone and Apple Watch AI quota companion — encrypted multi-Mac aggregation, a token-first mobile dashboard, a curated AI Feed, and frosted-arc watch glances.">
 <meta name="keywords" content="TokenRemain, AI quota, Claude Code usage, Codex usage, Cursor quota, Grok quota, GLM quota, menu bar app, macOS, token usage, rate limit, ccusage">
 <meta name="author" content="Dongheng Li">
 <meta name="robots" content="index, follow, max-image-preview:large">
@@ -40,11 +40,11 @@
   "name": "TokenRemain",
   "alternateName": "Token Remain",
   "applicationCategory": "DeveloperApplication",
-  "operatingSystem": "macOS 14+, iOS",
+  "operatingSystem": "macOS 14+, iOS, watchOS",
   "url": "https://tokenremain.com/",
   "downloadUrl": "https://tokenremain.com/#download",
   "screenshot": "https://tokenremain.com/assets/dashboard.jpg",
-  "description": "A private macOS and iPhone companion for 19+ AI coding tools, with encrypted multi-Mac quota aggregation, dynamic local usage sources, and latest-release updates. Credentials stay on your Mac.",
+  "description": "A private macOS, iPhone and Apple Watch companion for 19+ AI coding tools, with encrypted multi-Mac quota aggregation, a token-first mobile dashboard, a curated AI Feed, and latest-release updates. Credentials stay on your Mac.",
   "author": { "@type": "Person", "name": "Dongheng Li" },
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
   "sameAs": ["https://github.com/Carstin520/token-remain"]
@@ -285,9 +285,14 @@ h2{font-size:clamp(24px,3vw,32px);font-weight:700;letter-spacing:-.01em;text-wra
 /* screens showcase */
 .shot-grid{display:grid;gap:20px}
 .shot-row3{display:grid;grid-template-columns:1fr 1fr 1.35fr;gap:20px;align-items:start}
+.shot-row3.even{grid-template-columns:1fr 1fr 1fr}
+.shot-row2{display:grid;grid-template-columns:1.15fr 1fr;gap:20px;align-items:start}
 figure.shot.phone img{width:auto;max-width:100%;max-height:600px;margin:0 auto}
 figure.shot.widgets{display:grid;gap:12px}
 figure.shot.widgets img{border-radius:16px}
+figure.shot.watch{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}
+figure.shot.watch img{border-radius:26px}
+figure.shot.watch figcaption{grid-column:1/-1}
 figure.shot{
   background:var(--surface);border:1px solid var(--border);border-radius:12px;
   padding:12px;margin:0;overflow:hidden;
@@ -679,7 +684,7 @@ footer.site .disclaimer{
   .led{border-right:none;border-bottom:1px solid color-mix(in srgb,var(--border) 60%,transparent)}
   .led:last-child{border-bottom:none}
   .split{grid-template-columns:1fr;gap:28px}
-  .shot-row3{grid-template-columns:1fr}
+  .shot-row3,.shot-row2{grid-template-columns:1fr}
   .repo-band{padding:28px}
   .feed-split{grid-template-columns:1fr;gap:30px}
   .lab-stage{gap:30px;padding:30px 22px 26px}
@@ -812,24 +817,38 @@ footer.site .disclaimer{
   <!-- ================= screens ================= -->
   <section id="screens">
     <p class="eyebrow" data-num="01">Real UI</p>
-    <h2 data-i18n="s-h2">Three screens, one pixel language</h2>
-    <p class="lede" data-i18n="s-lede">You've met the menu bar popover above — everything below is a <strong style="color:var(--text)">live screenshot of the latest build</strong>: the desktop Dashboard, the iPhone app and Home Screen widgets. The iPhone shots run the app's built-in demo scenario, so they carry its DEMO mark.</p>
+    <h2 data-i18n="s-h2">Mac, iPhone, wrist — one design language</h2>
+    <p class="lede" data-i18n="s-lede">You've met the menu bar popover above — everything below is a <strong style="color:var(--text)">live screenshot of the latest build</strong>: the desktop Dashboard, the redesigned iPhone app and the Apple Watch glances. Numbers are SF Mono on every surface; decoration is gone, hierarchy comes from type. The iPhone and watch shots run the built-in demo scenario, so they carry its DEMO mark.</p>
     <div class="shot-grid">
       <figure class="shot ticked lift">
         <img src="assets/dashboard.jpg" width="1600" height="1065" alt="TokenRemain Dashboard overview: today's usage and cost donut, official quota bars (Claude coral / Codex blue), trending and risk hints" loading="lazy"
              data-shot-en="assets/dashboard.jpg" data-shot-zh="assets/dashboard-zh.jpg">
         <figcaption><span class="tag" data-i18n="cap-dash-t">Dashboard · Live</span><span class="cap" data-i18n="cap-dash-c">Real local usage: 150.04M tokens and $52.15 estimated cost today, split by provider; official quota progress and risk hints on the right.</span></figcaption>
       </figure>
-      <div class="shot-row3">
+      <div class="shot-row3 even">
         <figure class="shot phone ticked lift">
-          <img src="assets/phone-overview.jpg" width="720" height="1565" alt="TokenRemain iPhone overview: quota risk card at 46% lowest remaining, Codex and Claude bars, today's usage split and multi-day stats" loading="lazy"
+          <img src="assets/phone-overview.jpg" width="720" height="1565" alt="TokenRemain iPhone overview: today's tokens 15,740,400 with estimated cost and global percentile, lowest remaining 46% with risk badge, Codex and Claude quota cards" loading="lazy"
                data-shot-en="assets/phone-overview.jpg" data-shot-zh="assets/phone-overview-zh.jpg">
-          <figcaption><span class="tag" data-i18n="cap-pov-t">iPhone · Overview</span><span class="cap" data-i18n="cap-pov-c">Cross-device sync with your Mac — an allowlisted quota snapshot is encrypted before it enters your private iCloud database.</span></figcaption>
+          <figcaption><span class="tag" data-i18n="cap-pov-t">iPhone · Overview</span><span class="cap" data-i18n="cap-pov-c">Today's tokens lead, every digit, with estimated cost and a global-percentile standing; the quota verdict sits one line below. Long-press and drag any card to rearrange the page.</span></figcaption>
+        </figure>
+        <figure class="shot phone ticked lift">
+          <img src="assets/phone-aifeed.jpg" width="720" height="1565" alt="TokenRemain iPhone AI Feed tab: curated timeline of AI news with priority chips for quota and major updates, engagement counts and source handles" loading="lazy"
+               data-shot-en="assets/phone-aifeed.jpg" data-shot-zh="assets/phone-aifeed-zh.jpg">
+          <figcaption><span class="tag" data-i18n="cap-paf-t">iPhone · AI Feed</span><span class="cap" data-i18n="cap-paf-c">The curated feed as its own tab: a reading timeline with quota/token and major-update chips pinned first, and an on-device archive of every story you've seen.</span></figcaption>
         </figure>
         <figure class="shot phone ticked lift">
           <img src="assets/phone-trends.jpg" width="720" height="1565" alt="TokenRemain iPhone trends: remaining-quota curve over time plus daily stacked bars for Claude and Codex, 7/14/30-day ranges, tokens or cost" loading="lazy"
                data-shot-en="assets/phone-trends.jpg" data-shot-zh="assets/phone-trends-zh.jpg">
           <figcaption><span class="tag" data-i18n="cap-ptr-t">iPhone · Trends</span><span class="cap" data-i18n="cap-ptr-c">A remaining-quota curve over the synced history, plus daily stacks: 7 / 14 / 30-day ranges, tokens or cost.</span></figcaption>
+        </figure>
+      </div>
+      <div class="shot-row2">
+        <figure class="shot watch ticked lift">
+          <img src="assets/watch-overview.png" width="416" height="496" alt="TokenRemain Apple Watch overview: open frosted arc gauge with 46% lowest remaining in the centre, Codex and Claude arcs, today's tokens and estimated cost" loading="lazy"
+               data-shot-en="assets/watch-overview.png" data-shot-zh="assets/watch-overview-zh.png">
+          <img src="assets/watch-feed.png" width="416" height="496" alt="TokenRemain Apple Watch AI Feed page: a curated post card with engagement counts on the wrist" loading="lazy"
+               data-shot-en="assets/watch-feed.png" data-shot-zh="assets/watch-feed-zh.png">
+          <figcaption><span class="tag" data-i18n="cap-watch-t">Apple Watch</span><span class="cap" data-i18n="cap-watch-c">Frosted open-arc gauges on the wrist: lowest remaining in the centre, one provider arc each, today's tokens and cost beside — plus an AI Feed page and watch-face complications.</span></figcaption>
         </figure>
         <figure class="shot widgets ticked lift">
           <img src="assets/widget-m.png" width="1144" height="562" alt="TokenRemain medium Home Screen widget: lowest remaining 46%, LOW risk badge, robot mascot, Codex and Claude bars, reset countdown" loading="lazy"
@@ -895,7 +914,7 @@ footer.site .disclaimer{
   <section id="feed">
     <p class="eyebrow" data-num="03">AI Feed</p>
     <h2 data-i18n="fe-h2">The AI news that moves your quota, pre-sorted</h2>
-    <p class="lede" data-i18n="fe-lede">A curated feed of AI-industry posts, read straight inside the app. Quota, rate-limit and reset changes get <strong style="color:var(--text)">pinned to the top and pushed as notifications</strong>; ordinary industry chatter stays quiet below. No X account, no login, no keyword soup.</p>
+    <p class="lede" data-i18n="fe-lede">A curated feed of AI-industry posts, read straight inside the app — a full reading tab on iPhone with an on-device archive, a glance page on Apple Watch, a panel on the Mac Dashboard. Quota, rate-limit and reset changes get <strong style="color:var(--text)">pinned to the top and pushed as notifications</strong>; ordinary industry chatter stays quiet below. No X account, no login, no keyword soup.</p>
     <div class="feed-split">
       <div class="feed-facts">
         <div class="fact ticked lift">
@@ -1217,11 +1236,13 @@ var ZH={
   "n2t":"更多本地用量来源","n2d":"动态发现 ccusage 来源、最小化读取 Trae 轨迹，并加入独立 Windsurf 额度；每个来源都能单独控制。",
   "n3t":"钥匙串访问由你决定","n3d":"Claude 与 Codex 的只读授权只在你主动操作时开始；后台刷新保持静默，不会突然触发系统弹窗。",
   "n4t":"跨版本直达最新版","n4d":"自适应签名更新源检查保持轻量；你点击更新时会重新查询并安装当时的最新版本，即使中间跳过了多个发布。",
-  "s-h2":"三块屏幕，同一套像素语言",
-  "s-lede":"菜单栏弹窗在上方已经见过——下面全部是<strong style=\"color:var(--text)\">正在运行的最新版实机截图</strong>：桌面 Dashboard、iPhone 版与桌面小组件。iPhone 部分跑的是 App 内置的演示场景，所以画面里带着它的 DEMO 标记。",
+  "s-h2":"Mac、iPhone、手腕，同一套设计语言",
+  "s-lede":"菜单栏弹窗在上方已经见过——下面全部是<strong style=\"color:var(--text)\">正在运行的最新版实机截图</strong>：桌面 Dashboard、重新设计的 iPhone 版与 Apple Watch 速览。所有屏幕的数字统一使用 SF Mono；装饰全部退场，层级只来自字号与留白。iPhone 与手表截图跑的是内置演示场景，所以带着 DEMO 标记。",
   "cap-dash-t":"Dashboard · 实机","cap-dash-c":"真实本地用量：今日 202.16M tokens、$189.11 估算成本按服务商拆分；右侧官方额度实时进度与风险提示。",
-  "cap-pov-t":"iPhone · 概览","cap-pov-c":"与 Mac 跨设备同步：白名单额度快照在进入你的 iCloud 私有数据库前即完成加密。",
+  "cap-pov-t":"iPhone · 概览","cap-pov-c":"今日 Token 完整数字领衔，配估算成本与「超过全球 N% 用户」评价；额度结论与风险徽章紧随其后。长按拖拽任意卡片即可重排页面。",
+  "cap-paf-t":"iPhone · AI 资讯","cap-paf-c":"精选动态升级为独立标签页：时间线阅读流，额度/Token 与重大更新芯片置顶，本机归档你见过的每条动态。",
   "cap-ptr-t":"iPhone · 趋势","cap-ptr-c":"同步历史上的剩余额度曲线，加每日堆叠：7 / 14 / 30 天与 Tokens / 费用双口径。",
+  "cap-watch-t":"Apple Watch · 手表","cap-watch-c":"腕上的磨砂开弧仪表：最低剩余居中，双 provider 各占一弧，今日 Token 与成本随侧；另有 AI 资讯页与表盘复杂功能。",
   "cap-wg-t":"Widgets · 小组件","cap-wg-c":"中 / 小两档桌面小组件：最低剩余、双 provider 段条与重置倒计时，一眼扫完。",
   "pv-h2":"支持的服务",
   "pv-lede":"绝大多数服务<strong style=\"color:var(--text)\">登录即自动接入</strong>：只读各工具已经存在本机的凭证，不额外登录、不代刷。每张卡片注明数据从哪来。",
@@ -1239,7 +1260,7 @@ var ZH={
   "pv-compat-n":"token-monitor 兼容层","pv-volc":"火山引擎",
   "pv-note":"各服务的凭证位置与接口方式在仓库 <code>README</code> 有完整说明；节奏预测基于真实窗口进度与官方重置时间，判断当前用量能否撑到重置。",
   "fe-h2":"影响额度的 AI 动态，替你排好序",
-  "fe-lede":"应用内置一条精选的 AI 行业动态流。额度、速率限制与重置变化会<strong style=\"color:var(--text)\">自动置顶并推送通知</strong>；普通行业消息安静地排在下面。不需要 X 账号、不用登录、没有关键词轰炸。",
+  "fe-lede":"应用内置一条精选的 AI 行业动态流——iPhone 上是带本机归档的独立阅读标签页，Apple Watch 上是速览页，Mac 上是 Dashboard 面板。额度、速率限制与重置变化会<strong style=\"color:var(--text)\">自动置顶并推送通知</strong>；普通行业消息安静地排在下面。不需要 X 账号、不用登录、没有关键词轰炸。",
   "fe1t":"固定精选名单，不是推荐算法",
   "fe1d":"第一梯队盯官方与一手信源（<code>@claudeai</code>、<code>@AnthropicAI</code>、<code>@OpenAI</code>、<code>@sama</code>…），每 10 分钟检查一次；第二梯队从固定 12 个账号的白名单里按真实互动热度轮换。只收独立原帖——回复、转帖、引用一律拒绝。",
   "fe2t":"只有两种真正重要的优先级",
