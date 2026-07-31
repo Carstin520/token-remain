@@ -324,8 +324,8 @@ figure.shot figcaption .cap{color:var(--text-dim);font-size:13.5px}
   pointer-events:none;user-select:none;
 }
 .dev3d{position:relative;flex:0 0 auto}
-.dev3d.iphone{width:min(34vw,352px,calc((100vh - 265px)*.489))}
-.dev3d.watch{width:min(24vw,236px,calc((100vh - 265px)*.32))}
+.dev3d.iphone{width:min(34vw,352px,calc((100vh - 320px)*.489))}
+.dev3d.watch{width:min(24vw,236px,calc((100vh - 320px)*.32))}
 .dev3d .dev-frame{position:relative;z-index:2;display:block;width:100%;height:auto}
 .dev3d .dev-screen{position:absolute;z-index:1;background:#000;overflow:hidden}
 /* screen windows measured from the bezel art's alpha channel — exact */
@@ -368,6 +368,15 @@ figure.shot figcaption .cap{color:var(--text-dim);font-size:13.5px}
 }
 .stage-slides .cap,.stage-watchcap .cap{color:var(--text-dim);font-size:13.5px}
 .stage-watchcap{margin:10px 0 0;padding-top:16px;border-top:1px solid color-mix(in srgb,var(--border) 55%,transparent)}
+/* device stage: phone and watch stories side by side — halves the caption's
+   height so the pinned devices keep their headroom */
+.stage-cap.split{max-width:940px;display:grid;grid-template-columns:1fr 1fr;column-gap:36px;text-align:left}
+.stage-cap.split .stage-dots{grid-column:1/-1;margin-bottom:12px}
+.stage-cap.split .stage-watchcap{margin:0;padding:0 0 0 36px;border-top:0;border-left:1px solid color-mix(in srgb,var(--border) 55%,transparent)}
+@media (max-width:640px){
+  .stage-cap.split{column-gap:18px}
+  .stage-cap.split .stage-watchcap{padding-left:18px}
+}
 /* scrollytelling (Apple-store style): each showcase lives in a tall .pin-track
    whose inner .pin-stage is sticky at 100vh. While the track scrolls through,
    the page appears pinned; scroll progress drives focus (zoom + background dim)
@@ -377,6 +386,7 @@ figure.shot figcaption .cap{color:var(--text-dim);font-size:13.5px}
 .pin-track{position:relative}
 .pin-track .pin-stage{
   position:sticky;top:0;height:100vh;height:100svh;
+  box-sizing:border-box;padding-top:64px; /* keep the pinned content clear of the sticky topbar */
   display:flex;flex-direction:column;justify-content:center;align-items:center;
 }
 .pin-stage .stage-dim{
@@ -388,7 +398,7 @@ figure.shot figcaption .cap{color:var(--text-dim);font-size:13.5px}
 }
 .pin-stage>*{position:relative}
 .pin-zoom{transform:scale(var(--zoom,1));transform-origin:50% 46%;will-change:transform}
-#dashTrack{height:260vh}
+#dashTrack{height:330vh}
 /* stacked exactly like the device screens (.dev-screen .scr): the first slide
    defines the box in normal flow, the rest overlay it absolutely — no grid
    involved, so no browser/cache state can ever unstack the slides */
@@ -402,17 +412,18 @@ figure.shot figcaption .cap{color:var(--text-dim);font-size:13.5px}
 }
 .dash-cap{margin-top:14px}
 #deviceTrack{height:440vh}
-/* width no longer collapses with viewport height — short windows cap the
-   image height instead (letterboxed on the card surface), so the showcase can
-   never degenerate into a tiny corner thumbnail */
-.dash-zoom{width:min(92vw,1024px)}
+/* the whole card must fit the pinned 100vh stage: cap the width so that
+   image height (aspect 2360/1520) + card chrome + caption always clear the
+   viewport, instead of the figure overflowing off the sticky stage */
+.dash-zoom{width:min(92vw,1024px,calc((100vh - 320px)*1.5526))}
+.dash-zoom{width:min(92vw,1024px,calc((100svh - 320px)*1.5526))}
 .dash-zoom figure.shot{margin:0}
 figure.shot.widgets.row{grid-template-columns:2.036fr 1fr;align-items:stretch}
 figure.shot.widgets.row figcaption{grid-column:1/-1}
 @media (max-width:640px){
   .device-stage{flex-direction:column;align-items:center;gap:40px}
-  .dev3d.iphone{width:min(66vw,300px,calc((100vh - 330px)*.489))}
-  .dev3d.watch{width:min(46vw,200px,calc((100vh - 330px)*.30))}
+  .dev3d.iphone{width:min(66vw,300px,calc((100vh - 520px)*.489))}
+  .dev3d.watch{width:min(46vw,200px,calc((100vh - 520px)*.30))}
   #deviceTrack{height:400vh}
   figure.shot.widgets.row{grid-template-columns:1fr}
 }
@@ -931,16 +942,19 @@ footer.site .disclaimer{
           <div class="pin-zoom dash-zoom">
             <figure class="shot ticked">
               <span class="dash-viewport">
-                <img class="on" src="assets/dash-overview-zh.jpg" width="1600" height="1221" alt="TokenRemain Dashboard overview page: KPI row with lowest remaining, today's tokens and estimated cost, usage donut, official quotas and risk panel" loading="lazy"
-                     data-shot-en="assets/dash-overview-zh.jpg" data-shot-zh="assets/dash-overview-zh.jpg">
-                <img src="assets/dash-limits-zh.jpg" width="1600" height="1221" alt="TokenRemain Dashboard limits page: per-provider official quota windows with segment bars, reset countdowns and pace warnings" loading="lazy"
-                     data-shot-en="assets/dash-limits-zh.jpg" data-shot-zh="assets/dash-limits-zh.jpg">
+                <img class="on" src="assets/dash-overview.jpg" width="2360" height="1520" alt="TokenRemain Dashboard overview page: KPI row with lowest remaining, today's tokens and estimated cost, usage donut, official quotas and risk panel" loading="lazy"
+                     data-shot-en="assets/dash-overview.jpg" data-shot-zh="assets/dash-overview-zh.jpg">
+                <img src="assets/dash-limits.jpg" width="2360" height="1520" alt="TokenRemain Dashboard limits page: per-provider official quota windows with segment bars, reset countdowns and pace warnings" loading="lazy"
+                     data-shot-en="assets/dash-limits.jpg" data-shot-zh="assets/dash-limits-zh.jpg">
+                <img src="assets/dash-trends.jpg" width="2360" height="1520" alt="TokenRemain Dashboard trends page: stacked daily token bars per provider and quota-consumption sparklines across recent days" loading="lazy"
+                     data-shot-en="assets/dash-trends.jpg" data-shot-zh="assets/dash-trends-zh.jpg">
               </span>
               <figcaption class="stage-cap dash-cap">
-                <div class="stage-dots" aria-hidden="true"><i class="on"></i><i></i></div>
+                <div class="stage-dots" aria-hidden="true"><i class="on"></i><i></i><i></i></div>
                 <div class="stage-slides">
                   <p class="slide on"><span class="tag" data-i18n="cap-dash-t">Dashboard · Overview</span><span class="cap" data-i18n="cap-dash-c">Real local usage: today's tokens and estimated cost split by provider, with official quota progress and risk hints beside them.</span></p>
                   <p class="slide"><span class="tag" data-i18n="cap-dash2-t">Dashboard · Limits</span><span class="cap" data-i18n="cap-dash2-c">The Limits page: every provider's official windows — 5-hour and 7-day progress, reset countdowns, and pace warnings that flag running ahead of budget.</span></p>
+                  <p class="slide"><span class="tag" data-i18n="cap-dash3-t">Dashboard · Trends</span><span class="cap" data-i18n="cap-dash3-c">The Trends page: stacked daily token bars per provider plus quota-consumption curves, so weekly rhythm and spikes stand out at a glance.</span></p>
                 </div>
               </figcaption>
             </figure>
@@ -973,7 +987,7 @@ footer.site .disclaimer{
           <img class="dev-frame" src="assets/bezel-watch-s11.png" width="560" height="880" alt="" loading="lazy">
         </div>
       </div>
-      <div class="stage-cap">
+      <div class="stage-cap split">
         <div class="stage-dots" aria-hidden="true"><i class="on"></i><i></i><i></i></div>
         <div class="stage-slides">
           <p class="slide on"><span class="tag" data-i18n="cap-pov-t">iPhone · Overview</span><span class="cap" data-i18n="cap-pov-c">Today's tokens lead, every digit, with estimated cost and a global-percentile standing; the quota verdict sits one line below. Long-press and drag any card to rearrange the page.</span></p>
@@ -1376,6 +1390,7 @@ var ZH={
   "s-lede":"菜单栏弹窗在上方已经见过——下面全部是<strong style=\"color:var(--text)\">正在运行的最新版实机截图</strong>：桌面 Dashboard、重新设计的 iPhone 版与 Apple Watch 速览。所有屏幕的数字统一使用 SF Mono；装饰全部退场，层级只来自字号与留白。iPhone 与手表截图跑的是内置演示场景，所以带着 DEMO 标记。",
   "cap-dash-t":"Dashboard · 概览","cap-dash-c":"真实本地用量：今日 Token 与估算成本按服务商拆分，旁边是官方额度实时进度与风险提示。",
   "cap-dash2-t":"Dashboard · 额度","cap-dash2-c":"额度页：每个服务商的官方窗口——5 小时 / 7 天进度、重置倒计时，以及用量超前时的节奏预警。",
+  "cap-dash3-t":"Dashboard · 趋势","cap-dash3-c":"趋势页：按服务商堆叠的每日 Token 柱状图与额度消耗曲线，一眼看出每周节奏与用量高峰。",
   "cap-pov-t":"iPhone · 概览","cap-pov-c":"今日 Token 完整数字领衔，配估算成本与「超过全球 N% 用户」评价；额度结论与风险徽章紧随其后。长按拖拽任意卡片即可重排页面。",
   "cap-paf-t":"iPhone · AI 资讯","cap-paf-c":"精选动态升级为独立标签页：时间线阅读流，额度/Token 与重大更新芯片置顶，本机归档你见过的每条动态。",
   "cap-ptr-t":"iPhone · 趋势","cap-ptr-c":"同步历史上的剩余额度曲线，加每日堆叠：7 / 14 / 30 天与 Tokens / 费用双口径。",
