@@ -3,6 +3,27 @@
 All notable product changes are recorded here. TokenRemain uses Semantic
 Versioning for public releases.
 
+## 1.2.2 — 2026-07-31
+
+### Added
+
+- Added Claude Fable quota usage and GPT-5.3-Codex-Spark quota windows to the
+  detailed quota experience and encrypted Apple-device snapshot.
+- Added direct long-press card reordering with live displacement and dedicated
+  drag regions that leave lock, pin, and expand controls clickable.
+- Added Dashboard visibility controls for Fable and GPT-5.3-Codex-Spark; both
+  model-specific rows start hidden until the user enables them.
+
+### Changed
+
+- Keep Fable out of the compact menu-bar summary while retaining it inside the
+  Claude quota card when enabled.
+
+### Fixed
+
+- Prevent drag activation from covering card controls or entering a flashing,
+  non-selectable state when the pointer presses the top of a component.
+
 ## 1.2.1 — 2026-07-29
 
 ### Changed
@@ -297,3 +318,4 @@ Versioning for public releases.
 [1.1.11]: https://github.com/Carstin520/token-remain/releases/tag/v1.1.11
 [1.2.0]: https://github.com/Carstin520/token-remain/releases/tag/v1.2.0
 [1.2.1]: https://github.com/Carstin520/token-remain/releases/tag/v1.2.1
+[1.2.2]: https://github.com/Carstin520/token-remain/releases/tag/v1.2.2
