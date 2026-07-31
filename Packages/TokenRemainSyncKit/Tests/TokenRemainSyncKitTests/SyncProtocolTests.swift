@@ -39,6 +39,29 @@ private func snapshot(
 
 @Suite("Cross-device sync protocol")
 struct SyncProtocolTests {
+    @Test("Named scoped quota windows round-trip without changing legacy windows")
+    func scopedQuotaRoundTrip() throws {
+        let provider = SyncedProviderQuota(
+            providerID: SyncedProviderID.claude,
+            windows: [SyncedQuotaWindow(usedPercent: 12, windowMinutes: 300, resetsAt: fixedNow + 300)],
+            capturedAt: fixedNow,
+            statusCode: .available,
+            scopedWindows: [
+                SyncedScopedQuotaWindow(
+                    scopeID: "fable",
+                    displayName: "Fable",
+                    window: SyncedQuotaWindow(usedPercent: 67, windowMinutes: 10_080, resetsAt: fixedNow + 600)
+                )
+            ]
+        )
+        let original = snapshot(providers: [provider])
+        let decoded = try MobileUsageSnapshot.decodedPayload(from: original.encodedPayload())
+
+        #expect(decoded.providers.first?.windows.count == 1)
+        #expect(decoded.providers.first?.scopedWindows?.first?.scopeID == "fable")
+        #expect(decoded.providers.first?.scopedWindows?.first?.window.usedPercent == 67)
+    }
+
     @Test("AES-GCM envelope round-trips a normalized allowlisted snapshot")
     func roundTrip() throws {
         let key = try SyncEncryptionKey(rawValue: Data(repeating: 7, count: 32))

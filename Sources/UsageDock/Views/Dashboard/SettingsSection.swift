@@ -253,6 +253,40 @@ struct SettingsSection: View {
 
                     Divider().overlay(DashboardTheme.border)
 
+                    Toggle(isOn: dashboardFableBinding) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(L10n.text("settings.dashboard_fable"))
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundStyle(DashboardTheme.text)
+                            Text(L10n.text("settings.dashboard_fable_hint"))
+                                .font(.system(size: 11))
+                                .foregroundStyle(DashboardTheme.secondaryText)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    .toggleStyle(.switch)
+                    .tint(DashboardTheme.violet)
+                    .disabled(!tracked.isEnabled(.claude))
+
+                    Divider().overlay(DashboardTheme.border)
+
+                    Toggle(isOn: dashboardCodexSparkBinding) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(L10n.text("settings.dashboard_codex_spark"))
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundStyle(DashboardTheme.text)
+                            Text(L10n.text("settings.dashboard_codex_spark_hint"))
+                                .font(.system(size: 11))
+                                .foregroundStyle(DashboardTheme.secondaryText)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    .toggleStyle(.switch)
+                    .tint(DashboardTheme.violet)
+                    .disabled(!tracked.isEnabled(.codex))
+
+                    Divider().overlay(DashboardTheme.border)
+
                     // 直查刷新频率。
                     HStack(alignment: .firstTextBaseline) {
                         VStack(alignment: .leading, spacing: 2) {
@@ -356,6 +390,20 @@ struct SettingsSection: View {
         Binding(
             get: { preferences.floatingWidgetEnabled },
             set: { preferences.setFloatingWidgetEnabled($0) }
+        )
+    }
+
+    private var dashboardFableBinding: Binding<Bool> {
+        Binding(
+            get: { preferences.showFableQuotaInDashboard },
+            set: { preferences.setShowFableQuotaInDashboard($0) }
+        )
+    }
+
+    private var dashboardCodexSparkBinding: Binding<Bool> {
+        Binding(
+            get: { preferences.showCodexSparkQuotaInDashboard },
+            set: { preferences.setShowCodexSparkQuotaInDashboard($0) }
         )
     }
 

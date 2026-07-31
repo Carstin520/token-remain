@@ -31,6 +31,45 @@ struct ClaudeOAuthUsageParserTests {
         #expect(quota.capturedAt == now)
     }
 
+    @Test("Parses model-scoped weekly windows such as Fable")
+    func parsesFableWindow() throws {
+        let payload = """
+        {
+          "five_hour": {"utilization": 12.5},
+          "seven_day": {"utilization": 40},
+          "seven_day_fable": {"utilization": 67, "resets_at": "2026-07-24T13:00:00Z"}
+        }
+        """
+
+        let quota = try ClaudeOAuthUsageParser.parse(Data(payload.utf8))
+        let fable = try #require(quota.scopedWindows?.first)
+        #expect(fable.scopeID == "fable")
+        #expect(fable.displayName == "Fable")
+        #expect(fable.window.usedPercent == 67)
+        #expect(fable.window.windowMinutes == 10_080)
+    }
+
+    @Test("CLI scoped quota supplements API values without replacing them")
+    func mergesCLIScopedQuotaIntoAPIQuota() throws {
+        let api = try ClaudeOAuthUsageParser.parse(
+            Data(#"{"five_hour":{"utilization":12},"seven_day":{"utilization":34}}"#.utf8),
+            subscriptionType: "max",
+            rateLimitTier: "default_claude_max_20x"
+        )
+        let fable = ScopedQuotaWindow(
+            scopeID: "fable",
+            displayName: "Fable",
+            window: QuotaWindow(usedPercent: 67, windowMinutes: 10_080, resetsAt: nil)
+        )
+
+        let merged = api.mergingScopedWindows([fable])
+
+        #expect(merged.primary.usedPercent == 12)
+        #expect(merged.secondary?.usedPercent == 34)
+        #expect(merged.planName == "Max 20x")
+        #expect(merged.fableWindow?.window.usedPercent == 67)
+    }
+
     @Test("Freshly reset window keeps nil reset date instead of inventing one")
     func missingResetStaysNil() throws {
         let payload = """

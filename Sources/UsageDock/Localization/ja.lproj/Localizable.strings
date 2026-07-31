@@ -68,8 +68,8 @@
 "widget.move_up" = "上へ移動";
 "widget.move_down" = "下へ移動";
 "widget.remove_named" = "%1$@ウィジェットを削除";
-"widget.drag_help" = "ヘッダーをドラッグして並べ替え、右クリックでその他の操作";
-"widget.drag_accessibility" = "ドラッグして並べ替えるか、コンテキストメニューから削除できます";
+"widget.drag_help" = "ウィジェット全体を長押ししてドラッグすると並べ替え、右クリックでその他の操作";
+"widget.drag_accessibility" = "ウィジェット全体を長押ししてドラッグすると並べ替え、コンテキストメニューから削除できます";
 "action.add_widget" = "ウィジェットを追加";
 "action.refresh_quota" = "ccusage、Codex、Claude のクォータを更新";
 "action.refresh_usage" = "使用量を更新";
@@ -286,8 +286,8 @@
 "provider.detect.not_now" = "今はしない";
 "provider.detect.prompt_message" = "この Mac で %1$@ を検出しました。今すぐ追跡を開始しますか？未ログインの場合は、ログイン後に自動接続されます。";
 "provider.detect.prompt_title" = "%1$@ に接続しますか？";
-"quota.drag_accessibility" = "長押ししてドラッグするとカードの位置を変更できます";
-"quota.drag_help" = "カード上部を長押ししてドラッグすると位置を変更できます";
+"quota.drag_accessibility" = "カード全体を長押ししてドラッグすると位置を変更できます";
+"quota.drag_help" = "カード全体を長押ししてドラッグすると並べ替えられます";
 "quota.loading_official_message" = "Claude と Codex のサーバー側クォータスナップショットは、まもなく自動的に表示されます。";
 "quota.loading_official_title" = "公式クォータを読み込み中";
 "quota.official_subtitle" = "よく使うプロバイダーの最も逼迫したウィンドウ";
@@ -356,6 +356,10 @@
 "settings.login_item_note" = "macOS 標準のログイン項目管理を使用";
 "settings.manual_only" = "手動のみ";
 "settings.menubar_hidden" = "メニューバー非表示";
+"settings.dashboard_fable" = "Claude の割り当てカードに Fable を表示";
+"settings.dashboard_fable_hint" = "Dashboard に Fable の週間制限を表示します。メニューバーウィジェットには表示されません。";
+"settings.dashboard_codex_spark" = "Codex の割り当てカードに GPT-5.3-Codex-Spark を表示";
+"settings.dashboard_codex_spark_hint" = "Dashboard にモデル固有の週間制限を表示します。";
 "settings.menubar_hint" = "メニューバーにテキストを常駐させるアプリにチェックを入れます。幅が広がりすぎないよう 3 個以内をおすすめします。すべてオフの場合は「TR」と表示されます。";
 "settings.menubar_mode_compact" = "コンパクト";
 "settings.menubar_mode_compact_description" = "選択したすべてのアプリをアイコンのみで表示し、割合はツールヒントで確認できます。";

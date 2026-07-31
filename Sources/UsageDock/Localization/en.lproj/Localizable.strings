@@ -69,8 +69,8 @@
 "widget.move_up" = "Move up";
 "widget.move_down" = "Move down";
 "widget.remove_named" = "Remove %1$@ widget";
-"widget.drag_help" = "Drag the widget header to reorder; right-click for more actions";
-"widget.drag_accessibility" = "Drag to reorder, or open the context menu to remove this widget";
+"widget.drag_help" = "Long-press and drag the full widget to reorder; right-click for more actions";
+"widget.drag_accessibility" = "Long-press and drag the full widget to reorder, or open the context menu to remove it";
 "action.add_widget" = "Add widget";
 "action.refresh_quota" = "Refresh ccusage, Codex, and Claude quotas";
 "action.refresh_usage" = "Refresh usage";
@@ -282,8 +282,8 @@
 "provider.detect.not_now" = "Not Now";
 "provider.detect.prompt_message" = "TokenRemain just detected %1$@ on this Mac. Start tracking it now? If you have not signed in yet, it will connect automatically after you do.";
 "provider.detect.prompt_title" = "Connect %1$@?";
-"quota.drag_accessibility" = "Press and drag to reorder this card";
-"quota.drag_help" = "Press and drag the card header to reorder";
+"quota.drag_accessibility" = "Long-press and drag the full card to reorder it";
+"quota.drag_help" = "Long-press and drag the full card to reorder";
 "quota.loading_official_message" = "Server-side quota snapshots for Claude and Codex will appear here automatically.";
 "quota.loading_official_title" = "Reading official quota";
 "quota.official_subtitle" = "Tightest windows of your most-used providers";
@@ -357,6 +357,10 @@
 "settings.login_item_note" = "Uses the native macOS login-item manager";
 "settings.manual_only" = "Manual only";
 "settings.menubar_hidden" = "Not shown in the menu bar";
+"settings.dashboard_fable" = "Show Fable in Claude quota card";
+"settings.dashboard_fable_hint" = "Displays Fable's weekly limit on the Dashboard. It never appears in the menu bar widget.";
+"settings.dashboard_codex_spark" = "Show GPT-5.3-Codex-Spark in Codex quota card";
+"settings.dashboard_codex_spark_hint" = "Displays the model-specific weekly limit on the Dashboard.";
 "settings.menubar_hint" = "Check the apps whose text should live in the menu bar; keep it to 3 or fewer so it stays narrow. With all off, \"TR\" is shown.";
 "settings.menubar_mode_compact" = "Compact";
 "settings.menubar_mode_compact_description" = "Show every selected app as an icon; percentages remain in the tooltip.";

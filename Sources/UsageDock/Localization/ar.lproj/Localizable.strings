@@ -68,8 +68,8 @@
 "widget.move_up" = "نقل لأعلى";
 "widget.move_down" = "نقل لأسفل";
 "widget.remove_named" = "إزالة أداة %1$@";
-"widget.drag_help" = "اسحب الرأس لإعادة الترتيب؛ انقر بزر الماوس الأيمن لمزيد من الإجراءات";
-"widget.drag_accessibility" = "اسحب لإعادة الترتيب أو افتح قائمة السياق لإزالة الأداة";
+"widget.drag_help" = "اضغط مطولاً واسحب الأداة بأكملها لإعادة الترتيب؛ انقر بزر الماوس الأيمن لمزيد من الإجراءات";
+"widget.drag_accessibility" = "اضغط مطولاً واسحب الأداة بأكملها لإعادة الترتيب أو افتح قائمة السياق لإزالتها";
 "action.add_widget" = "إضافة أداة";
 "action.refresh_quota" = "تحديث حصص ccusage وCodex وClaude";
 "action.refresh_usage" = "تحديث الاستخدام";

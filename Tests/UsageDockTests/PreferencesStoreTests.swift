@@ -10,9 +10,99 @@ struct PreferencesStoreTests {
         let store = PreferencesStore(defaults: testDefaults())
         #expect(store.menuBarProviders == [.claude, .codex])
         #expect(store.menuBarDisplayMode == .full)
+        #expect(!store.showFableQuotaInDashboard)
+        #expect(!store.showCodexSparkQuotaInDashboard)
         #expect(store.refreshMinutes == 5)
         #expect(store.refreshInterval == 300)
         #expect(!store.floatingWidgetEnabled)
+    }
+
+    @Test("Dashboard model quota preferences default off and persist")
+    func dashboardModelQuotaPreferences() {
+        let defaults = testDefaults()
+        let store = PreferencesStore(defaults: defaults)
+        #expect(!store.showFableQuotaInDashboard)
+        #expect(!store.showCodexSparkQuotaInDashboard)
+
+        store.setShowFableQuotaInDashboard(true)
+        store.setShowCodexSparkQuotaInDashboard(true)
+        let reloaded = PreferencesStore(defaults: defaults)
+        #expect(reloaded.showFableQuotaInDashboard)
+        #expect(reloaded.showCodexSparkQuotaInDashboard)
+    }
+
+    @Test("Dashboard model quota filters honor both independent preferences")
+    func dashboardModelQuotaFilters() {
+        let quota = ProviderQuota(
+            provider: .claude,
+            primary: QuotaWindow(usedPercent: 10, windowMinutes: 300, resetsAt: nil),
+            secondary: QuotaWindow(usedPercent: 20, windowMinutes: 10_080, resetsAt: nil),
+            planName: nil,
+            capturedAt: .now,
+            scopedWindows: [
+                ScopedQuotaWindow(
+                    scopeID: "fable",
+                    displayName: "Fable",
+                    window: QuotaWindow(usedPercent: 70, windowMinutes: 10_080, resetsAt: nil)
+                ),
+                ScopedQuotaWindow(
+                    scopeID: "codex_bengalfox",
+                    displayName: "GPT-5.3-Codex-Spark",
+                    window: QuotaWindow(usedPercent: 30, windowMinutes: 10_080, resetsAt: nil)
+                )
+            ]
+        )
+
+        #expect(
+            QuotaCard.scopedWindows(
+                in: quota,
+                showFable: false,
+                showCodexSpark: false
+            ).isEmpty
+        )
+        #expect(
+            QuotaCard.scopedWindows(
+                in: quota,
+                showFable: true,
+                showCodexSpark: false
+            ).map(\.scopeID) == ["fable"]
+        )
+        #expect(
+            QuotaCard.scopedWindows(
+                in: quota,
+                showFable: false,
+                showCodexSpark: true
+            ).map(\.scopeID) == ["codex_bengalfox"]
+        )
+    }
+
+    @Test("Menu bar widget never shows Fable")
+    func menuBarWidgetHidesFable() {
+        let quota = ProviderQuota(
+            provider: .claude,
+            primary: QuotaWindow(usedPercent: 10, windowMinutes: 300, resetsAt: nil),
+            secondary: nil,
+            planName: nil,
+            capturedAt: .now,
+            scopedWindows: [
+                ScopedQuotaWindow(
+                    scopeID: "fable",
+                    displayName: "Fable",
+                    window: QuotaWindow(usedPercent: 70, windowMinutes: 10_080, resetsAt: nil)
+                ),
+                ScopedQuotaWindow(
+                    scopeID: "future_model",
+                    displayName: "Future Model",
+                    window: QuotaWindow(usedPercent: 30, windowMinutes: 10_080, resetsAt: nil)
+                )
+            ]
+        )
+
+        #expect(PopoverQuotaWidget.scopedWindows(in: quota, isExpanded: false).isEmpty)
+        #expect(
+            PopoverQuotaWidget.scopedWindows(in: quota, isExpanded: true)
+                .map(\.scopeID) == ["future_model"]
+        )
     }
 
     @Test("Menu bar display mode persists and rejects unknown stored values")

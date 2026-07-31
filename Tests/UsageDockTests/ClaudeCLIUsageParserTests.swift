@@ -78,6 +78,11 @@ struct ClaudeCLIUsageParserTests {
         #expect(quota.secondary?.usedPercent == 0)
         #expect(quota.primary.windowMinutes == 300)
         #expect(quota.secondary?.windowMinutes == 10_080)
+        let fable = try #require(quota.scopedWindows?.first)
+        #expect(fable.scopeID == "fable")
+        #expect(fable.displayName == "Fable")
+        #expect(fable.window.usedPercent == 0)
+        #expect(fable.window.windowMinutes == 10_080)
         #expect(quota.primary.resetsAt != nil)
         #expect(
             quota.secondary?.resetsAt
@@ -136,5 +141,47 @@ struct ClaudeCLIUsageParserTests {
 
         #expect(quota.primary.resetsAt == nil)
         #expect(quota.secondary?.resetsAt != nil)
+    }
+
+    @Test("Keeps only the latest model window when the terminal repaints Fable")
+    func deduplicatesRepaintedFableWindow() throws {
+        let output = """
+        Current session
+        8% used
+        Current week (all models)
+        7% used
+        Resets Jul 31 at 1pm
+        Current week (Fable)
+        12% used
+        Resets Jul 31 at 1pm
+        Current week (Fable)
+        14% used
+        Resets Aug 1 at 1pm
+        """
+
+        let quota = try ClaudeCLIUsageParser.parse(Data(output.utf8))
+        let scoped = try #require(quota.scopedWindows)
+
+        #expect(scoped.count == 1)
+        #expect(scoped[0].scopeID == "fable")
+        #expect(scoped[0].window.usedPercent == 14)
+    }
+
+    @Test("A repainted all-models label is not treated as a model quota")
+    func ignoresDamagedAllModelsLabel() throws {
+        let output = """
+        Current session
+        8% used
+        Current week (all odels)
+        7% used
+        Resets Jul 31 at 1pm
+        Current week (Fable)
+        14% used
+        Resets Aug 1 at 1pm
+        """
+
+        let quota = try ClaudeCLIUsageParser.parse(Data(output.utf8))
+
+        #expect(quota.uniqueScopedWindows.map(\.scopeID) == ["fable"])
     }
 }

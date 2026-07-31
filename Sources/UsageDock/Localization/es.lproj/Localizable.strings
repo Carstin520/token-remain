@@ -68,8 +68,8 @@
 "widget.move_up" = "Subir";
 "widget.move_down" = "Bajar";
 "widget.remove_named" = "Eliminar widget %1$@";
-"widget.drag_help" = "Arrastra el encabezado para reordenar; clic derecho para más acciones";
-"widget.drag_accessibility" = "Arrastra para reordenar o abre el menú contextual para eliminar el widget";
+"widget.drag_help" = "Mantén pulsado y arrastra el widget completo para reordenar; clic derecho para más acciones";
+"widget.drag_accessibility" = "Mantén pulsado y arrastra el widget completo para reordenar o abre el menú contextual para eliminarlo";
 "action.add_widget" = "Añadir widget";
 "action.refresh_quota" = "Actualizar cuotas de ccusage, Codex y Claude";
 "action.refresh_usage" = "Actualizar uso";
@@ -286,8 +286,8 @@
 "provider.detect.not_now" = "Ahora no";
 "provider.detect.prompt_message" = "TokenRemain acaba de detectar %1$@ en este Mac. ¿Quieres empezar a seguirlo? Si aún no has iniciado sesión, se conectará automáticamente cuando lo hagas.";
 "provider.detect.prompt_title" = "¿Conectar %1$@?";
-"quota.drag_accessibility" = "Mantén pulsado y arrastra para reordenar esta tarjeta";
-"quota.drag_help" = "Mantén pulsado y arrastra el encabezado de la tarjeta para reordenarla";
+"quota.drag_accessibility" = "Mantén pulsado y arrastra la tarjeta completa para reordenarla";
+"quota.drag_help" = "Mantén pulsado y arrastra la tarjeta completa para reordenar";
 "quota.loading_official_message" = "Las instantáneas de cuota del servidor de Claude y Codex aparecerán aquí automáticamente.";
 "quota.loading_official_title" = "Leyendo la cuota oficial";
 "quota.official_subtitle" = "Las ventanas más ajustadas de tus proveedores más usados";
@@ -356,6 +356,10 @@
 "settings.login_item_note" = "Usa el gestor de ítems de inicio nativo de macOS";
 "settings.manual_only" = "Solo manual";
 "settings.menubar_hidden" = "No se muestra en la barra de menús";
+"settings.dashboard_fable" = "Mostrar Fable en la tarjeta de cuota de Claude";
+"settings.dashboard_fable_hint" = "Muestra el límite semanal de Fable en el Dashboard. Nunca aparece en el widget de la barra de menús.";
+"settings.dashboard_codex_spark" = "Mostrar GPT-5.3-Codex-Spark en la tarjeta de cuota de Codex";
+"settings.dashboard_codex_spark_hint" = "Muestra el límite semanal específico del modelo en el Dashboard.";
 "settings.menubar_hint" = "Marca las apps cuyo texto quieras fijar en la barra de menús; se recomiendan 3 o menos para que no se ensanche. Con todas desactivadas se muestra \"TR\".";
 "settings.menubar_mode_compact" = "Compacto";
 "settings.menubar_mode_compact_description" = "Muestra cada app seleccionada solo como icono; los porcentajes siguen en la ayuda.";

@@ -106,7 +106,18 @@ enum MobileSnapshotRedactor {
                 },
             capturedAt: quota.capturedAt,
             statusCode: .available,
-            planName: SyncedProviderQuota.sanitizedPlanName(quota.planName)
+            planName: SyncedProviderQuota.sanitizedPlanName(quota.planName),
+            scopedWindows: quota.scopedWindows?.map {
+                SyncedScopedQuotaWindow(
+                    scopeID: $0.scopeID,
+                    displayName: $0.displayName,
+                    window: SyncedQuotaWindow(
+                        usedPercent: min(max($0.window.usedPercent, 0), 100),
+                        windowMinutes: max(0, $0.window.windowMinutes),
+                        resetsAt: $0.window.resetsAt
+                    )
+                )
+            }
         )
     }
 

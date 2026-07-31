@@ -1,10 +1,11 @@
 import AppKit
 import SwiftUI
-import UniformTypeIdentifiers
 
 /// The menu-bar popover is a compact, user-arrangeable widget stack. The risk
 /// summary stays fixed while every content card can be reordered or hidden.
 struct UsageMenuView: View {
+    private static let reorderCoordinateSpace = "tokenremain.popover.direct-reorder"
+
     @ObservedObject var store: UsageStore
     @ObservedObject var feedStore: AIFeedStore
     @ObservedObject var launchAtLogin: LaunchAtLoginManager
@@ -14,7 +15,7 @@ struct UsageMenuView: View {
     let onOpenDashboard: (DashboardSection) -> Void
 
     @State private var measuredHeight: CGFloat = 700
-    @State private var draggingWidget: PopoverWidget?
+    @State private var reorderInteraction = DirectReorderInteraction<PopoverWidget>()
 
     private var insights: UsageInsights {
         UsageInsights(
@@ -39,6 +40,10 @@ struct UsageMenuView: View {
             .nonEmpty
     }
 
+    private var visibleWidgets: [PopoverWidget] {
+        layout.visibleWidgets.filter(isTracked)
+    }
+
     var body: some View {
         ScrollView {
             UsageDockGlassGroup(spacing: 12) {
@@ -47,20 +52,22 @@ struct UsageMenuView: View {
 
                     RiskStrip(insights: insights)
 
-                    ForEach(layout.visibleWidgets.filter(isTracked)) { widget in
+                    ForEach(visibleWidgets) { widget in
                         widgetView(widget)
-                            // Keep the widget's layout slot but render it empty;
-                            // the explicit drag preview carries the whole card.
-                            .opacity(draggingWidget == widget ? 0 : 1)
-                            .animation(.easeOut(duration: 0.12), value: draggingWidget)
-                            .onDrop(
-                                of: [.plainText],
-                                delegate: PopoverWidgetDropDelegate(
-                                    destination: widget,
-                                    layout: layout,
-                                    draggingWidget: $draggingWidget
-                                )
+                            .directReorder(
+                                item: widget,
+                                candidates: visibleWidgets,
+                                coordinateSpace: Self.reorderCoordinateSpace,
+                                interaction: reorderInteraction,
+                                layout: .vertical(spacing: 12),
+                                move: { source, target in
+                                    layout.move(source, to: target)
+                                }
                             )
+                            // `zIndex` must live on the VStack's direct child.
+                            // Keeping it only inside the shared modifier lets
+                            // Liquid Glass preserve the original sibling order.
+                            .zIndex(reorderInteraction.isDragging(widget) ? 10_000 : 0)
                     }
 
                     if let combinedError {
@@ -82,6 +89,7 @@ struct UsageMenuView: View {
                 )
             }
         }
+        .coordinateSpace(name: Self.reorderCoordinateSpace)
         .frame(width: 380)
         .frame(height: min(measuredHeight, maxHeight))
         .background { UsageDockCanvasBackground() }
@@ -104,15 +112,13 @@ struct UsageMenuView: View {
                 onRetry: {
                     Task { await store.refresh(forceCCUsage: true, forceClaude: false) }
                 },
-                layout: layout,
-                draggingWidget: $draggingWidget
+                layout: layout
             )
         case .aiFeed:
             AIFeedHotStoriesCard(
                 posts: feedStore.topStories,
                 isExpanded: layout.isExpanded(.aiFeed),
                 layout: layout,
-                draggingWidget: $draggingWidget,
                 onViewAll: { onOpenDashboard(.overview) }
             )
         default:
@@ -123,8 +129,7 @@ struct UsageMenuView: View {
                 quota: store.quotaValue(for: provider),
                 serviceStatus: store.serviceStatuses[provider],
                 notice: store.providerNotices[provider],
-                layout: layout,
-                draggingWidget: $draggingWidget
+                layout: layout
             )
         }
     }

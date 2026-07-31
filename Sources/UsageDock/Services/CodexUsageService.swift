@@ -15,7 +15,19 @@ struct CodexUsageService {
         let logger = Logger(subsystem: "com.jamesli.usagedock", category: "CodexUsage")
         do {
             let quota = try await CodexAPIUsageService().fetch()
-            logger.info("Codex quota served by wham/usage API")
+            // The account-wide API does not currently expose every model-scoped
+            // cap. Codex's local token_count events do, so merge only those
+            // supplemental windows while keeping the API's primary/secondary
+            // values authoritative.
+            if let local = try? await fetchFromLocalSnapshots() {
+                let activeScopedWindows = local.uniqueScopedWindows.filter { scoped in
+                    scoped.window.resetsAt.map { $0 > quota.capturedAt } ?? true
+                }
+                let supplemented = quota.mergingScopedWindows(activeScopedWindows)
+                logger.info("Codex quota served by wham/usage API; model-scoped limits: \(supplemented.uniqueScopedWindows.count, privacy: .public)")
+                return supplemented
+            }
+            logger.info("Codex quota served by wham/usage API; model-scoped limits unavailable")
             return quota
         } catch let apiError {
             logger.info("Codex API path failed (\(apiError.localizedDescription, privacy: .public)); falling back to local snapshots")
@@ -70,9 +82,11 @@ struct CodexUsageService {
 
             // Codex emits both the general account quota (`limit_id = codex`) and
             // model-specific limits such as `codex_bengalfox`. A newer model-specific
-            // event must never replace the general quota card.
+            // event must never replace the general quota card, but its weekly window
+            // should remain visible as a named child row.
             var newestCanonical: Snapshot?
             var newestLegacy: Snapshot?
+            var newestScopedByID: [String: Snapshot] = [:]
             for candidate in candidates {
                 if let canonical = newestCanonical,
                    canonical.capturedAt.timeIntervalSince(candidate.modifiedAt) > Self.earlyStopSkewAllowance {
@@ -93,13 +107,21 @@ struct CodexUsageService {
                         if newestLegacy.map({ snapshot.capturedAt > $0.capturedAt }) ?? true {
                             newestLegacy = snapshot
                         }
+                    } else if let scopeID = scopedID(for: snapshot) {
+                        if newestScopedByID[scopeID].map({ snapshot.capturedAt > $0.capturedAt }) ?? true {
+                            newestScopedByID[scopeID] = snapshot
+                        }
                     }
                 }
             }
 
-            if let newestCanonical { return newestCanonical.quota }
-            if let newestLegacy { return newestLegacy.quota }
-            throw ProcessRunner.Failure(message: L10n.text("service.codex.snapshot_missing"))
+            guard let base = newestCanonical ?? newestLegacy else {
+                throw ProcessRunner.Failure(message: L10n.text("service.codex.snapshot_missing"))
+            }
+            let scopedWindows = newestScopedByID.values
+                .compactMap { scopedWindow(from: $0, relativeTo: base.capturedAt) }
+                .sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
+            return base.quota.mergingScopedWindows(scopedWindows)
         }.value
     }
 
@@ -228,5 +250,35 @@ struct CodexUsageService {
         guard let value = value as? String else { return nil }
         let normalized = value.trimmingCharacters(in: .whitespacesAndNewlines)
         return normalized.isEmpty ? nil : normalized
+    }
+
+    private static func scopedID(for snapshot: Snapshot) -> String? {
+        guard let displayName = snapshot.limitName else { return nil }
+        if let limitID = snapshot.limitID?.lowercased(), limitID != "codex" {
+            return limitID
+        }
+        let normalized = displayName.lowercased()
+            .replacingOccurrences(of: #"[^a-z0-9]+"#, with: "_", options: .regularExpression)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "_"))
+        return normalized.isEmpty ? nil : normalized
+    }
+
+    private static func scopedWindow(
+        from snapshot: Snapshot,
+        relativeTo baseCapturedAt: Date
+    ) -> ScopedQuotaWindow? {
+        guard let scopeID = scopedID(for: snapshot),
+              let displayName = snapshot.limitName else { return nil }
+        let windows = [snapshot.quota.primary, snapshot.quota.secondary].compactMap { $0 }
+        guard let window = windows.first(where: { $0.windowMinutes == 10_080 })
+            ?? windows.max(by: { $0.windowMinutes < $1.windowMinutes }) else { return nil }
+        // A model limit can linger in an old session forever. Do not attach it
+        // to a fresh account snapshot after its last reported reset has passed.
+        guard window.resetsAt.map({ $0 > baseCapturedAt }) ?? true else { return nil }
+        return ScopedQuotaWindow(
+            scopeID: scopeID,
+            displayName: displayName,
+            window: window
+        )
     }
 }

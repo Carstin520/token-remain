@@ -27,6 +27,15 @@ enum StatusBarPresentation {
         }
         return [mostConstrained]
     }
+
+    static func primaryRemainingPercent(in quota: ProviderQuota?) -> Double? {
+        quota.map { min(100, max(0, 100 - $0.primary.usedPercent)) }
+    }
+
+    static func remainingText(for quota: ProviderQuota?) -> String {
+        guard let primary = primaryRemainingPercent(in: quota) else { return "—" }
+        return UsageFormatting.percent(primary)
+    }
 }
 
 @MainActor
@@ -259,9 +268,9 @@ final class StatusBarController: NSObject {
         )
         let remainingPercent = Dictionary(
             uniqueKeysWithValues: selectedProviders.compactMap { provider in
-                store.quotaValue(for: provider).map {
-                    (provider, max(0, 100 - $0.primary.usedPercent))
-                }
+                let quota = store.quotaValue(for: provider)
+                return StatusBarPresentation.primaryRemainingPercent(in: quota)
+                    .map { (provider, $0) }
             }
         )
         let displayMode = PreferencesStore.shared.menuBarDisplayMode
@@ -271,7 +280,7 @@ final class StatusBarController: NSObject {
             remainingPercent: remainingPercent
         )
         let segments: [(ProviderQuota.Provider, String)] = displayedProviders.map { provider in
-            let remaining = remainingPercent[provider].map(UsageFormatting.percent) ?? "—"
+            let remaining = StatusBarPresentation.remainingText(for: store.quotaValue(for: provider))
             return (provider, remaining)
         }
 

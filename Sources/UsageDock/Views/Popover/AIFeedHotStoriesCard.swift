@@ -5,8 +5,6 @@ struct AIFeedHotStoriesCard: View {
     let posts: [AIFeedPost]
     let isExpanded: Bool
     @ObservedObject var layout: PopoverLayoutStore
-    @Binding var draggingWidget: PopoverWidget?
-    var allowsDragging = true
     let onViewAll: () -> Void
 
     var body: some View {
@@ -16,8 +14,6 @@ struct AIFeedHotStoriesCard: View {
                     widget: .aiFeed,
                     isExpanded: isExpanded,
                     isPinned: layout.isPinned(.aiFeed),
-                    draggingWidget: $draggingWidget,
-                    dragPreview: dragPreview,
                     onToggleExpanded: { withAnimation(.snappy) { layout.toggleExpanded(.aiFeed) } },
                     onTogglePinned: { layout.togglePinned(.aiFeed) },
                     onHide: { withAnimation(.snappy) { layout.hide(.aiFeed) } },
@@ -53,24 +49,6 @@ struct AIFeedHotStoriesCard: View {
                     }
                 }
             }
-        }
-    }
-
-    private var dragPreview: (() -> AnyView)? {
-        guard allowsDragging else { return nil }
-        return {
-            AnyView(
-                AIFeedHotStoriesCard(
-                    posts: posts,
-                    isExpanded: isExpanded,
-                    layout: layout,
-                    draggingWidget: .constant(nil),
-                    allowsDragging: false,
-                    onViewAll: {}
-                )
-                .frame(width: 348)
-                .preferredColorScheme(.dark)
-            )
         }
     }
 

@@ -116,6 +116,7 @@ struct ClaudeOAuthUsageService {
 }
 
 /// oauth/usage 响应 → ProviderQuota。窗口字段:`five_hour` / `seven_day`,
+/// 以及可选的 `seven_day_<scope>`(例如 `seven_day_fable`),
 /// 每个含 `utilization`(0–100 已用百分比)与 `resets_at`(ISO8601 或 epoch)。
 enum ClaudeOAuthUsageParser {
     static func parse(
@@ -133,14 +134,34 @@ enum ClaudeOAuthUsageParser {
             throw ClaudeOAuthUsageService.APIError.invalidResponse
         }
         let secondary = window(object["seven_day"], windowMinutes: 10_080, now: now)
+        let scopedWindows = object.keys.sorted().compactMap { key -> ScopedQuotaWindow? in
+            let prefix = "seven_day_"
+            guard key.hasPrefix(prefix), key.count > prefix.count,
+                  let value = window(object[key], windowMinutes: 10_080, now: now) else {
+                return nil
+            }
+            let scopeID = String(key.dropFirst(prefix.count)).lowercased()
+            return ScopedQuotaWindow(
+                scopeID: scopeID,
+                displayName: displayName(forScopeID: scopeID),
+                window: value
+            )
+        }
         return ProviderQuota(
             provider: .claude,
             primary: primary,
             secondary: secondary,
             planName: planName(subscriptionType: subscriptionType, rateLimitTier: rateLimitTier),
             capturedAt: now,
-            extraUsage: extraUsage(object["extra_usage"])
+            extraUsage: extraUsage(object["extra_usage"]),
+            scopedWindows: scopedWindows.isEmpty ? nil : scopedWindows
         )
+    }
+
+    private static func displayName(forScopeID scopeID: String) -> String {
+        scopeID.split(separator: "_")
+            .map { $0.prefix(1).uppercased() + $0.dropFirst().lowercased() }
+            .joined(separator: " ")
     }
 
     /// `extra_usage {is_enabled, used_credits, monthly_limit}`(美分)→ 附加

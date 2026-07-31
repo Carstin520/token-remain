@@ -9,9 +9,19 @@ struct QuotaCard: View {
     var serviceStatus: ProviderServiceStatus?
     /// Provider 级状态说明(如 Cursor 登录过期的恢复提示)。
     var notice: String?
-    /// Dashboard 额度页传入此绑定后，卡片顶部成为拖拽把手。
-    var draggingProvider: Binding<ProviderQuota.Provider?>?
-    @State private var measuredWidth: CGFloat = 420
+    @ObservedObject var preferences: PreferencesStore = .shared
+
+    static func scopedWindows(
+        in quota: ProviderQuota,
+        showFable: Bool,
+        showCodexSpark: Bool
+    ) -> [ScopedQuotaWindow] {
+        quota.uniqueScopedWindows.filter { scoped in
+            if scoped.isFable { return showFable }
+            if scoped.isCodexSpark { return showCodexSpark }
+            return true
+        }
+    }
 
     var body: some View {
         DashboardCard(padding: 13) {
@@ -28,6 +38,21 @@ struct QuotaCard: View {
                         QuotaWindowRow(
                             window: secondary,
                             provider: provider
+                        )
+                    }
+                    ForEach(
+                        Self.scopedWindows(
+                            in: quota,
+                            showFable: preferences.showFableQuotaInDashboard,
+                            showCodexSpark: preferences.showCodexSparkQuotaInDashboard
+                        ),
+                        id: \.scopeID
+                    ) { scoped in
+                        Divider().overlay(DashboardTheme.border)
+                        QuotaWindowRow(
+                            window: scoped.window,
+                            provider: provider,
+                            scopeName: scoped.displayName
                         )
                     }
                     if let extraUsage = quota.extraUsage {
@@ -64,15 +89,6 @@ struct QuotaCard: View {
             }
         }
         .accessibilityElement(children: .contain)
-        .background {
-            GeometryReader { proxy in
-                Color.clear
-                    .onAppear { measuredWidth = proxy.size.width }
-                    .onChange(of: proxy.size.width) { _, newWidth in
-                        measuredWidth = newWidth
-                    }
-            }
-        }
     }
 
     private var header: some View {
@@ -93,39 +109,12 @@ struct QuotaCard: View {
             if let plan = quota?.planName, !plan.isEmpty {
                 TagPill(text: plan)
             }
-            if draggingProvider != nil {
-                Image(systemName: "line.3.horizontal")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(DashboardTheme.mutedText)
-                    .accessibilityHidden(true)
-            }
         }
         .frame(maxWidth: .infinity, minHeight: 22)
         .contentShape(Rectangle())
+        .directReorderHandle()
 
-        return Group {
-            if let draggingProvider {
-                content
-                    .onDrag {
-                        draggingProvider.wrappedValue = provider
-                        return NSItemProvider(object: provider.rawValue as NSString)
-                    } preview: {
-                        QuotaCard(
-                            provider: provider,
-                            quota: quota,
-                            serviceStatus: serviceStatus,
-                            notice: notice,
-                            draggingProvider: nil
-                        )
-                        .frame(width: measuredWidth)
-                        .preferredColorScheme(.dark)
-                    }
-                    .help(L10n.text("quota.drag_help"))
-                    .accessibilityHint(L10n.text("quota.drag_accessibility"))
-            } else {
-                content
-            }
-        }
+        return content
     }
 }
 
@@ -159,6 +148,7 @@ struct QuotaWindowRow: View {
     let window: QuotaWindow
     let provider: ProviderQuota.Provider
     var showsDetails = true
+    var scopeName: String?
 
     private var remainingPercent: Double {
         min(100, max(0, 100 - window.usedPercent))
@@ -171,7 +161,7 @@ struct QuotaWindowRow: View {
         TimelineView(.periodic(from: .now, by: 60)) { context in
             VStack(alignment: .leading, spacing: showsDetails ? 7 : 6) {
                 HStack(alignment: .firstTextBaseline) {
-                    Text(L10n.format("quota.window", UsageFormatting.windowName(minutes: window.windowMinutes)))
+                    Text(windowTitle)
                         .font(.system(size: 13))
                         .foregroundStyle(DashboardTheme.secondaryText)
                     Spacer()
@@ -223,10 +213,22 @@ struct QuotaWindowRow: View {
             L10n.format(
                 "quota.window_accessibility",
                 provider.displayName,
-                UsageFormatting.windowName(minutes: window.windowMinutes)
+                windowAccessibilityDescriptor
             )
         )
         .accessibilityValue(L10n.format("quota.remaining", UsageFormatting.percent(remainingPercent)))
+    }
+
+    private var windowTitle: String {
+        let duration = L10n.format("quota.window", UsageFormatting.windowName(minutes: window.windowMinutes))
+        guard let scopeName else { return duration }
+        return "\(scopeName) · \(duration)"
+    }
+
+    private var windowAccessibilityDescriptor: String {
+        let duration = UsageFormatting.windowName(minutes: window.windowMinutes)
+        guard let scopeName else { return duration }
+        return "\(scopeName) · \(duration)"
     }
 }
 

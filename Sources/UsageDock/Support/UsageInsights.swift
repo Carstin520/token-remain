@@ -59,6 +59,7 @@ struct UsageInsights {
         let usedPercent: Double
         let remainingPercent: Double
         let resetsAt: Date?
+        let scopeName: String?
     }
 
     struct PaceAssessment {
@@ -74,18 +75,32 @@ struct UsageInsights {
             if let secondary = quota.secondary {
                 result.append(window(secondary, provider: quota.provider, slot: "secondary"))
             }
+            for scoped in quota.uniqueScopedWindows {
+                result.append(window(
+                    scoped.window,
+                    provider: quota.provider,
+                    slot: "scope-\(scoped.scopeID)",
+                    scopeName: scoped.displayName
+                ))
+            }
         }
         return result
     }
 
-    private func window(_ source: QuotaWindow, provider: ProviderQuota.Provider, slot: String) -> Window {
+    private func window(
+        _ source: QuotaWindow,
+        provider: ProviderQuota.Provider,
+        slot: String,
+        scopeName: String? = nil
+    ) -> Window {
         Window(
             id: "\(provider.rawValue)-\(slot)-\(source.windowMinutes)",
             provider: provider,
             windowMinutes: source.windowMinutes,
             usedPercent: min(100, max(0, source.usedPercent)),
             remainingPercent: min(100, max(0, 100 - source.usedPercent)),
-            resetsAt: source.resetsAt
+            resetsAt: source.resetsAt,
+            scopeName: scopeName
         )
     }
 

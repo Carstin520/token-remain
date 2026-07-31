@@ -68,8 +68,8 @@
 "widget.move_up" = "ऊपर ले जाएँ";
 "widget.move_down" = "नीचे ले जाएँ";
 "widget.remove_named" = "%1$@ विजेट हटाएँ";
-"widget.drag_help" = "क्रम बदलने के लिए हेडर खींचें; अधिक क्रियाओं के लिए राइट-क्लिक करें";
-"widget.drag_accessibility" = "क्रम बदलने के लिए खींचें या विजेट हटाने के लिए संदर्भ मेनू खोलें";
+"widget.drag_help" = "क्रम बदलने के लिए पूरे विजेट को देर तक दबाकर खींचें; अधिक क्रियाओं के लिए राइट-क्लिक करें";
+"widget.drag_accessibility" = "क्रम बदलने के लिए पूरे विजेट को देर तक दबाकर खींचें या हटाने के लिए संदर्भ मेनू खोलें";
 "action.add_widget" = "विजेट जोड़ें";
 "action.refresh_quota" = "ccusage, Codex और Claude कोटा रीफ़्रेश करें";
 "action.refresh_usage" = "उपयोग रीफ़्रेश करें";

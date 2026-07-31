@@ -69,8 +69,8 @@
 "widget.move_up" = "上移";
 "widget.move_down" = "下移";
 "widget.remove_named" = "移除%1$@组件";
-"widget.drag_help" = "拖动组件顶部调整位置；右键查看更多操作";
-"widget.drag_accessibility" = "可拖动调整位置，或打开上下文菜单移除组件";
+"widget.drag_help" = "长按并拖动整个组件调整位置；右键查看更多操作";
+"widget.drag_accessibility" = "长按并拖动整个组件可调整位置，或打开上下文菜单移除组件";
 "action.add_widget" = "添加组件";
 "action.refresh_quota" = "立即刷新 ccusage、Codex 与 Claude 官方额度";
 "action.refresh_usage" = "刷新用量";
@@ -282,8 +282,8 @@
 "provider.detect.not_now" = "暂不接入";
 "provider.detect.prompt_message" = "TokenRemain 刚刚在这台 Mac 上检测到 %1$@。现在开始追踪吗？如果尚未登录，登录后会自动接入。";
 "provider.detect.prompt_title" = "接入 %1$@？";
-"quota.drag_accessibility" = "长按并拖动可调整卡片位置";
-"quota.drag_help" = "长按并拖动卡片顶部可调整位置";
+"quota.drag_accessibility" = "长按并拖动整个卡片可调整位置";
+"quota.drag_help" = "长按并拖动整个卡片调整位置";
 "quota.loading_official_message" = "Claude 与 Codex 的服务端额度快照稍后会自动出现。";
 "quota.loading_official_title" = "正在读取官方额度";
 "quota.official_subtitle" = "最常用服务商的最紧张窗口";
@@ -357,6 +357,10 @@
 "settings.login_item_note" = "使用 macOS 原生登录项管理";
 "settings.manual_only" = "仅手动";
 "settings.menubar_hidden" = "未显示在菜单栏";
+"settings.dashboard_fable" = "在 Claude 额度卡显示 Fable";
+"settings.dashboard_fable_hint" = "在 Dashboard 显示 Fable 周额度；菜单栏小组件始终不显示。";
+"settings.dashboard_codex_spark" = "在 Codex 额度卡显示 GPT-5.3-Codex-Spark";
+"settings.dashboard_codex_spark_hint" = "在 Dashboard 显示该模型的独立周额度。";
 "settings.menubar_hint" = "勾选要常驻菜单栏文字的应用；建议不超过 3 项以免过宽。全部关闭时显示 “TR”。";
 "settings.menubar_mode_compact" = "紧凑";
 "settings.menubar_mode_compact_description" = "只显示每个已勾选应用的图标；百分比仍可在提示中查看。";

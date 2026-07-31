@@ -1,15 +1,9 @@
 import SwiftUI
-import UniformTypeIdentifiers
 
 struct PopoverWidgetHeader<Summary: View>: View {
     let widget: PopoverWidget
     let isExpanded: Bool
     let isPinned: Bool
-    @Binding var draggingWidget: PopoverWidget?
-    /// A complete, non-interactive rendering of the widget. Keeping this
-    /// separate from the header makes the full card follow the pointer while
-    /// the header remains the only drag handle.
-    let dragPreview: (() -> AnyView)?
     let onToggleExpanded: () -> Void
     let onTogglePinned: () -> Void
     let onHide: () -> Void
@@ -18,19 +12,7 @@ struct PopoverWidgetHeader<Summary: View>: View {
     @ViewBuilder let summary: () -> Summary
 
     var body: some View {
-        Group {
-            if let dragPreview {
-                headerContent
-                    .onDrag {
-                        draggingWidget = widget
-                        return NSItemProvider(object: widget.rawValue as NSString)
-                    } preview: {
-                        dragPreview()
-                    }
-            } else {
-                headerContent
-            }
-        }
+        headerContent
         .help(L10n.text("widget.drag_help"))
         .contextMenu {
             if widget.supportsExpansion {
@@ -52,17 +34,22 @@ struct PopoverWidgetHeader<Summary: View>: View {
     private var headerContent: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 7) {
+                titleLabel
+                    .directReorderHandle()
+
                 if widget.supportsExpansion {
-                    Button(action: onToggleExpanded) {
-                        titleLabel
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                } else {
-                    titleLabel
+                    compactButton(
+                        systemImage: isExpanded ? "chevron.down" : "chevron.right",
+                        help: isExpanded ? L10n.text("widget.collapse") : L10n.text("widget.expand"),
+                        tint: DashboardTheme.mutedText,
+                        action: onToggleExpanded
+                    )
                 }
 
-                Spacer(minLength: 4)
+                Color.clear
+                    .frame(maxWidth: .infinity, minHeight: 20)
+                    .contentShape(Rectangle())
+                    .directReorderHandle()
                 summary()
 
                 if widget.supportsExpansion {
@@ -109,13 +96,8 @@ struct PopoverWidgetHeader<Summary: View>: View {
                 .lineLimit(2)
                 .minimumScaleFactor(0.82)
                 .fixedSize(horizontal: false, vertical: true)
-            if widget.supportsExpansion {
-                Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                    .font(.system(size: 8, weight: .bold))
-                    .foregroundStyle(DashboardTheme.mutedText)
-            }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(alignment: .leading)
         .layoutPriority(1)
     }
 
@@ -135,27 +117,5 @@ struct PopoverWidgetHeader<Summary: View>: View {
         .buttonStyle(.plain)
         .help(help)
         .accessibilityLabel(help)
-    }
-}
-
-struct PopoverWidgetDropDelegate: DropDelegate {
-    let destination: PopoverWidget
-    let layout: PopoverLayoutStore
-    @Binding var draggingWidget: PopoverWidget?
-
-    func dropEntered(info: DropInfo) {
-        guard let draggingWidget, draggingWidget != destination else { return }
-        withAnimation(.snappy(duration: 0.2)) {
-            layout.move(draggingWidget, to: destination)
-        }
-    }
-
-    func dropUpdated(info: DropInfo) -> DropProposal? {
-        DropProposal(operation: .move)
-    }
-
-    func performDrop(info: DropInfo) -> Bool {
-        draggingWidget = nil
-        return true
     }
 }

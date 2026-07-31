@@ -68,8 +68,8 @@
 "widget.move_up" = "Di chuyển lên";
 "widget.move_down" = "Di chuyển xuống";
 "widget.remove_named" = "Xóa tiện ích %1$@";
-"widget.drag_help" = "Kéo tiêu đề để sắp xếp; nhấp phải để xem thêm thao tác";
-"widget.drag_accessibility" = "Kéo để sắp xếp hoặc mở menu ngữ cảnh để xóa tiện ích";
+"widget.drag_help" = "Nhấn giữ rồi kéo toàn bộ tiện ích để sắp xếp; nhấp phải để xem thêm thao tác";
+"widget.drag_accessibility" = "Nhấn giữ rồi kéo toàn bộ tiện ích để sắp xếp hoặc mở menu ngữ cảnh để xóa";
 "action.add_widget" = "Thêm tiện ích";
 "action.refresh_quota" = "Làm mới hạn mức ccusage, Codex và Claude";
 "action.refresh_usage" = "Làm mới mức dùng";

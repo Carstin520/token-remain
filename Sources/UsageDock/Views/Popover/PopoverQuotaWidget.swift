@@ -8,8 +8,6 @@ struct PopoverQuotaWidget: View {
     /// 跟随在窗口行之后,无数据时替代加载态。
     var notice: String?
     @ObservedObject var layout: PopoverLayoutStore
-    @Binding var draggingWidget: PopoverWidget?
-    var allowsDragging = true
 
     private var widget: PopoverWidget {
         PopoverWidget.allCases.first { $0.provider == provider } ?? .claude
@@ -50,6 +48,14 @@ struct PopoverQuotaWidget: View {
             .min { $0.windowMinutes < $1.windowMinutes }
     }
 
+    static func scopedWindows(
+        in quota: ProviderQuota,
+        isExpanded: Bool
+    ) -> [ScopedQuotaWindow] {
+        guard isExpanded else { return [] }
+        return quota.uniqueScopedWindows.filter { !$0.isFable }
+    }
+
     var body: some View {
         DashboardCard(padding: 13, cornerRadius: 13) {
             VStack(alignment: .leading, spacing: isExpanded ? 11 : 8) {
@@ -57,8 +63,6 @@ struct PopoverQuotaWidget: View {
                     widget: widget,
                     isExpanded: isExpanded,
                     isPinned: layout.isPinned(widget),
-                    draggingWidget: $draggingWidget,
-                    dragPreview: dragPreview,
                     onToggleExpanded: { withAnimation(.snappy) { layout.toggleExpanded(widget) } },
                     onTogglePinned: { layout.togglePinned(widget) },
                     onHide: { withAnimation(.snappy) { layout.hide(widget) } },
@@ -88,6 +92,25 @@ struct PopoverQuotaWidget: View {
                                 provider: provider
                             )
                         }
+                    }
+
+                    ForEach(
+                        Self.scopedWindows(
+                            in: quota,
+                            isExpanded: isExpanded
+                        ),
+                        id: \.scopeID
+                    ) { scoped in
+                        Divider().overlay(DashboardTheme.border)
+                        QuotaWindowRow(
+                            window: scoped.window,
+                            provider: provider,
+                            showsDetails: isExpanded,
+                            scopeName: scoped.displayName
+                        )
+                    }
+
+                    if isExpanded {
                         if let extraUsage = quota.extraUsage {
                             Divider().overlay(DashboardTheme.border)
                             ExtraUsageRow(extraUsage: extraUsage)
@@ -110,25 +133,6 @@ struct PopoverQuotaWidget: View {
             }
         }
         .accessibilityElement(children: .contain)
-    }
-
-    private var dragPreview: (() -> AnyView)? {
-        guard allowsDragging else { return nil }
-        return {
-            AnyView(
-                PopoverQuotaWidget(
-                    provider: provider,
-                    quota: quota,
-                    serviceStatus: serviceStatus,
-                    notice: notice,
-                    layout: layout,
-                    draggingWidget: .constant(nil),
-                    allowsDragging: false
-                )
-                .frame(width: 348)
-                .preferredColorScheme(.dark)
-            )
-        }
     }
 
     private func noticeRow(_ notice: String) -> some View {

@@ -68,8 +68,8 @@
 "widget.move_up" = "Pindahkan ke atas";
 "widget.move_down" = "Pindahkan ke bawah";
 "widget.remove_named" = "Hapus widget %1$@";
-"widget.drag_help" = "Seret judul untuk mengurutkan; klik kanan untuk tindakan lain";
-"widget.drag_accessibility" = "Seret untuk mengurutkan atau buka menu konteks untuk menghapus widget";
+"widget.drag_help" = "Tekan lama lalu seret seluruh widget untuk mengurutkan; klik kanan untuk tindakan lain";
+"widget.drag_accessibility" = "Tekan lama lalu seret seluruh widget untuk mengurutkan atau buka menu konteks untuk menghapusnya";
 "action.add_widget" = "Tambahkan widget";
 "action.refresh_quota" = "Segarkan kuota ccusage, Codex, dan Claude";
 "action.refresh_usage" = "Segarkan penggunaan";

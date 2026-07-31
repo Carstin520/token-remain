@@ -57,8 +57,9 @@ struct ClaudeUsageService {
         let logger = Logger(subsystem: "com.jamesli.usagedock", category: "ClaudeUsage")
         do {
             let quota = try await ClaudeOAuthUsageService().fetch()
-            logger.info("Claude quota served by oauth/usage API")
-            return quota
+            let supplemented = await ClaudeScopedUsageSupplement.shared.supplement(quota)
+            logger.info("Claude quota served by oauth/usage API; Fable available: \(supplemented.fableWindow != nil, privacy: .public)")
+            return supplemented
         } catch let error as ClaudeOAuthUsageService.APIError {
             if case .rateLimited(let seconds) = error {
                 throw ServiceError.rateLimited(retryAfterSeconds: seconds)
@@ -109,6 +110,61 @@ struct ClaudeUsageService {
     }
 }
 
+/// The oauth endpoint does not expose model-scoped windows for every account,
+/// while Claude Code's read-only `/usage` screen can still show Fable. Probe
+/// only when the authoritative API snapshot lacks Fable and cache the result so
+/// one-minute sync mode does not repeatedly launch the CLI.
+private actor ClaudeScopedUsageSupplement {
+    static let shared = ClaudeScopedUsageSupplement()
+
+    private let refreshInterval: TimeInterval = 300
+    private let staleRetention: TimeInterval = 900
+    private var cachedWindows: [ScopedQuotaWindow] = []
+    private var lastAttempt: Date?
+    private var lastSuccess: Date?
+
+    func supplement(_ quota: ProviderQuota, now: Date = .now) async -> ProviderQuota {
+        if quota.fableWindow != nil {
+            cachedWindows = quota.uniqueScopedWindows
+            lastSuccess = now
+            return quota
+        }
+
+        if let lastAttempt, now.timeIntervalSince(lastAttempt) < refreshInterval {
+            return mergingFreshCache(into: quota, now: now)
+        }
+        lastAttempt = now
+
+        guard ClaudeCLIUsageProbe.isAvailable,
+              !(await ClaudeCLIUsageProbe.isExplicitlyLoggedOut()) else {
+            return mergingFreshCache(into: quota, now: now)
+        }
+
+        do {
+            let output = try await ClaudeCLIUsageProbe.run()
+            let supplemental = try ClaudeCLIUsageParser.parse(output, now: now)
+            guard supplemental.fableWindow != nil else {
+                return mergingFreshCache(into: quota, now: now)
+            }
+            cachedWindows = supplemental.uniqueScopedWindows
+            lastSuccess = now
+            return quota.mergingScopedWindows(cachedWindows)
+        } catch {
+            Logger(subsystem: "com.jamesli.usagedock", category: "ClaudeUsage")
+                .info("Claude Fable supplement unavailable: \(error.localizedDescription, privacy: .public)")
+            return mergingFreshCache(into: quota, now: now)
+        }
+    }
+
+    private func mergingFreshCache(into quota: ProviderQuota, now: Date) -> ProviderQuota {
+        guard let lastSuccess,
+              now.timeIntervalSince(lastSuccess) < staleRetention else {
+            return quota
+        }
+        return quota.mergingScopedWindows(cachedWindows)
+    }
+}
+
 enum ClaudeCLIAuthStatusParser {
     static func isExplicitlyLoggedOut(_ data: Data) -> Bool {
         guard let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
@@ -144,6 +200,28 @@ enum ClaudeCLIUsageParser {
         let secondaryReset = resetDescriptions
             .first(where: containsMonth)
             .flatMap { parseResetDate($0, now: now, calendar: calendar) }
+        var scopedOrder: [String] = []
+        var scopedByID: [String: ScopedQuotaWindow] = [:]
+        for reading in namedWeeklyReadings(in: text) {
+            guard let scopeID = scopeID(for: reading.name) else { continue }
+            if scopedByID[scopeID] == nil {
+                scopedOrder.append(scopeID)
+            }
+            // PTY capture can contain several repainted copies of the same
+            // section. The final copy is the freshest complete reading.
+            scopedByID[scopeID] = ScopedQuotaWindow(
+                scopeID: scopeID,
+                displayName: reading.name,
+                window: QuotaWindow(
+                    usedPercent: reading.usedPercent,
+                    windowMinutes: 10_080,
+                    resetsAt: reading.resetDescription.flatMap {
+                        parseResetDate($0, now: now, calendar: calendar)
+                    } ?? secondaryReset
+                )
+            )
+        }
+        let scopedWindows = scopedOrder.compactMap { scopedByID[$0] }
         return ProviderQuota(
             provider: .claude,
             primary: QuotaWindow(
@@ -157,7 +235,8 @@ enum ClaudeCLIUsageParser {
                 resetsAt: secondaryReset
             ),
             planName: nil,
-            capturedAt: now
+            capturedAt: now,
+            scopedWindows: scopedWindows.isEmpty ? nil : scopedWindows
         )
     }
 
@@ -200,6 +279,47 @@ enum ClaudeCLIUsageParser {
             let direction = text[directionRange].lowercased()
             let used = direction == "used" ? number : 100 - number
             return PercentReading(usedPercent: min(100, max(0, used)))
+        }
+    }
+
+    private struct NamedWeeklyReading {
+        let name: String
+        let usedPercent: Double
+        let resetDescription: String?
+    }
+
+    private static func scopeID(for name: String) -> String? {
+        let value = name.lowercased()
+            .replacingOccurrences(of: #"[^a-z0-9]+"#, with: "_", options: .regularExpression)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "_"))
+        return value.isEmpty ? nil : String(value.prefix(32))
+    }
+
+    /// Claude renders model-specific weekly caps as additional sections such as
+    /// `Current week (Fable)`. Keep them separate from the all-model weekly cap.
+    private static func namedWeeklyReadings(in text: String) -> [NamedWeeklyReading] {
+        let pattern = #"(?is)Current\s+week\s*\(([^)]+)\)(.*?)(?=Current\s+(?:week|session)|\z)"#
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return [] }
+        let fullRange = NSRange(text.startIndex..., in: text)
+        return regex.matches(in: text, range: fullRange).compactMap { match in
+            guard let nameRange = Range(match.range(at: 1), in: text),
+                  let bodyRange = Range(match.range(at: 2), in: text) else { return nil }
+            let name = text[nameRange].trimmingCharacters(in: .whitespacesAndNewlines)
+            let normalizedName = name.lowercased()
+                .replacingOccurrences(of: #"[^a-z]"#, with: "", options: .regularExpression)
+            // Terminal repainting can drop one leading glyph and turn
+            // `all models` into `all odels`. It is still the general weekly
+            // row, not a model-scoped quota.
+            guard !(normalizedName.contains("all") && normalizedName.contains("odel")) else {
+                return nil
+            }
+            let body = String(text[bodyRange])
+            guard let reading = percentReadings(in: body).first else { return nil }
+            return NamedWeeklyReading(
+                name: name,
+                usedPercent: reading.usedPercent,
+                resetDescription: resetDescriptions(in: body).first
+            )
         }
     }
 
@@ -413,7 +533,10 @@ private enum ClaudeCLIUsageProbe {
 
                 if sentUsage && ClaudeCLIUsageParser.hasCompleteUsage(in: output) {
                     if completedAt == nil { completedAt = now }
-                    if now.timeIntervalSince(completedAt!) >= 1.2 { break }
+                    // The two general rows arrive first; give the terminal one
+                    // more paint cycle for a trailing `Current week (Fable)`
+                    // section before stopping the otherwise-complete probe.
+                    if now.timeIntervalSince(completedAt!) >= 2.0 { break }
                 }
                 usleep(80_000)
             }

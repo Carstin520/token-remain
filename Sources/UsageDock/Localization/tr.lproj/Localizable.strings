@@ -68,8 +68,8 @@
 "widget.move_up" = "Yukarı taşı";
 "widget.move_down" = "Aşağı taşı";
 "widget.remove_named" = "%1$@ araç takımını kaldır";
-"widget.drag_help" = "Sıralamak için başlığı sürükleyin; diğer işlemler için sağ tıklayın";
-"widget.drag_accessibility" = "Sıralamak için sürükleyin veya kaldırmak için bağlam menüsünü açın";
+"widget.drag_help" = "Sıralamak için tüm bileşene uzun basıp sürükleyin; diğer işlemler için sağ tıklayın";
+"widget.drag_accessibility" = "Sıralamak için tüm bileşene uzun basıp sürükleyin veya kaldırmak için bağlam menüsünü açın";
 "action.add_widget" = "Araç takımı ekle";
 "action.refresh_quota" = "ccusage, Codex ve Claude kotalarını yenile";
 "action.refresh_usage" = "Kullanımı yenile";

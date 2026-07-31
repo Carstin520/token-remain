@@ -20,6 +20,56 @@ struct UsageInsightsTests {
         #expect(insights.constrainingWindow?.windowMinutes == 10_080)
     }
 
+    @Test("Named Claude limits participate in insights without replacing the general week")
+    func includesScopedClaudeWindow() throws {
+        let claude = ProviderQuota(
+            provider: .claude,
+            primary: QuotaWindow(usedPercent: 10, windowMinutes: 300, resetsAt: nil),
+            secondary: QuotaWindow(usedPercent: 20, windowMinutes: 10_080, resetsAt: nil),
+            planName: nil,
+            capturedAt: .now,
+            scopedWindows: [
+                ScopedQuotaWindow(
+                    scopeID: "fable",
+                    displayName: "Fable",
+                    window: QuotaWindow(usedPercent: 30, windowMinutes: 10_080, resetsAt: nil)
+                )
+            ]
+        )
+        let windows = UsageInsights(claude: claude, codex: nil, daily: nil).windows
+
+        #expect(windows.count == 3)
+        #expect(windows.last?.scopeName == "Fable")
+        #expect(windows.last?.id.contains("scope-fable") == true)
+    }
+
+    @Test("Duplicate scoped windows from an old snapshot appear only once")
+    func deduplicatesScopedWindows() {
+        let first = ScopedQuotaWindow(
+            scopeID: "fable",
+            displayName: "Fable",
+            window: QuotaWindow(usedPercent: 10, windowMinutes: 10_080, resetsAt: nil)
+        )
+        let latest = ScopedQuotaWindow(
+            scopeID: "FABLE",
+            displayName: "Fable",
+            window: QuotaWindow(usedPercent: 20, windowMinutes: 10_080, resetsAt: nil)
+        )
+        let claude = ProviderQuota(
+            provider: .claude,
+            primary: QuotaWindow(usedPercent: 5, windowMinutes: 300, resetsAt: nil),
+            secondary: nil,
+            planName: nil,
+            capturedAt: .now,
+            scopedWindows: [first, latest]
+        )
+
+        let windows = UsageInsights(claude: claude, codex: nil, daily: nil).windows
+
+        #expect(windows.count == 2)
+        #expect(windows.last?.usedPercent == 20)
+    }
+
     @Test("Summary identifies the provider behind the lowest remaining quota")
     func constrainingProviderIsExplicit() {
         let claude = ProviderQuota(

@@ -68,8 +68,8 @@
 "widget.move_up" = "Nach oben";
 "widget.move_down" = "Nach unten";
 "widget.remove_named" = "%1$@-Widget entfernen";
-"widget.drag_help" = "Kopfzeile zum Sortieren ziehen; Rechtsklick für weitere Aktionen";
-"widget.drag_accessibility" = "Zum Sortieren ziehen oder über das Kontextmenü entfernen";
+"widget.drag_help" = "Das ganze Widget gedrückt halten und zum Sortieren ziehen; Rechtsklick für weitere Aktionen";
+"widget.drag_accessibility" = "Das ganze Widget gedrückt halten und zum Sortieren ziehen oder über das Kontextmenü entfernen";
 "action.add_widget" = "Widget hinzufügen";
 "action.refresh_quota" = "ccusage-, Codex- und Claude-Kontingente aktualisieren";
 "action.refresh_usage" = "Nutzung aktualisieren";
@@ -286,8 +286,8 @@
 "provider.detect.not_now" = "Jetzt nicht";
 "provider.detect.prompt_message" = "TokenRemain hat gerade %1$@ auf diesem Mac erkannt. Jetzt verfolgen? Falls du noch nicht angemeldet bist, wird es danach automatisch verbunden.";
 "provider.detect.prompt_title" = "%1$@ verbinden?";
-"quota.drag_accessibility" = "Zum Verschieben der Karte gedrückt halten und ziehen";
-"quota.drag_help" = "Kartenkopf gedrückt halten und ziehen, um die Position zu ändern";
+"quota.drag_accessibility" = "Die ganze Karte gedrückt halten und ziehen, um ihre Position zu ändern";
+"quota.drag_help" = "Die ganze Karte gedrückt halten und zum Sortieren ziehen";
 "quota.loading_official_message" = "Serverseitige Kontingent-Snapshots für Claude und Codex erscheinen hier automatisch.";
 "quota.loading_official_title" = "Offizielles Kontingent wird gelesen";
 "quota.official_subtitle" = "Knappste Fenster deiner meistgenutzten Anbieter";
@@ -356,6 +356,10 @@
 "settings.login_item_note" = "Verwendet die native macOS-Anmeldeobjektverwaltung";
 "settings.manual_only" = "Nur manuell";
 "settings.menubar_hidden" = "Nicht in der Menüleiste";
+"settings.dashboard_fable" = "Fable in der Claude-Kontingentkarte anzeigen";
+"settings.dashboard_fable_hint" = "Zeigt das wöchentliche Fable-Limit im Dashboard. Im Menüleisten-Widget wird es nie angezeigt.";
+"settings.dashboard_codex_spark" = "GPT-5.3-Codex-Spark in der Codex-Kontingentkarte anzeigen";
+"settings.dashboard_codex_spark_hint" = "Zeigt das modellspezifische Wochenlimit im Dashboard.";
 "settings.menubar_hint" = "Apps auswählen, deren Text dauerhaft in der Menüleiste steht; am besten höchstens 3, damit sie schmal bleibt. Sind alle deaktiviert, wird „TR“ angezeigt.";
 "settings.menubar_mode_compact" = "Kompakt";
 "settings.menubar_mode_compact_description" = "Alle ausgewählten Apps nur als Symbol anzeigen; Prozente bleiben im Tooltip.";

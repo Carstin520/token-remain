@@ -21,6 +21,12 @@ enum SyncContentFingerprint {
             let id: String
             let planName: String?
             let windows: [Window]
+            let scopedWindows: [ScopedWindow]
+        }
+        struct ScopedWindow: Codable {
+            let scopeID: String
+            let displayName: String
+            let window: Window
         }
         struct Payload: Codable {
             let providers: [Provider]
@@ -36,6 +42,17 @@ enum SyncContentFingerprint {
                         usedPercent: min(max($0.usedPercent, 0), 100),
                         windowMinutes: max(0, $0.windowMinutes),
                         resetsAt: $0.resetsAt
+                    )
+                },
+                scopedWindows: (quota.scopedWindows ?? []).map {
+                    ScopedWindow(
+                        scopeID: $0.scopeID,
+                        displayName: $0.displayName,
+                        window: Window(
+                            usedPercent: min(max($0.window.usedPercent, 0), 100),
+                            windowMinutes: max(0, $0.window.windowMinutes),
+                            resetsAt: $0.window.resetsAt
+                        )
                     )
                 }
             )

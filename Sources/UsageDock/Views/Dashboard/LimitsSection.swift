@@ -1,5 +1,4 @@
 import SwiftUI
-import UniformTypeIdentifiers
 
 /// Dashboard Limits: the authoritative view of every official quota window,
 /// reusing the popover's `QuotaCard`. Pure live data. Providers that are not
@@ -7,11 +6,13 @@ import UniformTypeIdentifiers
 /// endless spinner — connecting is automatic (log into the tool) for every
 /// provider except Z.ai, whose API key lives in the Data Sources section.
 struct LimitsSection: View {
+    private static let reorderCoordinateSpace = "tokenremain.dashboard.limits.direct-reorder"
+
     let insights: UsageInsights
     var notices: [ProviderQuota.Provider: String] = [:]
     var serviceStatuses: [ProviderQuota.Provider: ProviderServiceStatus] = [:]
     @ObservedObject var tracked: TrackedProvidersStore = .shared
-    @State private var draggingProvider: ProviderQuota.Provider?
+    @State private var reorderInteraction = DirectReorderInteraction<ProviderQuota.Provider>()
 
     private func quota(for provider: ProviderQuota.Provider) -> ProviderQuota? {
         insights.quota(for: provider)
@@ -35,22 +36,21 @@ struct LimitsSection: View {
                         provider: provider,
                         quota: quota(for: provider),
                         serviceStatus: serviceStatuses[provider],
-                        notice: notices[provider],
-                        draggingProvider: $draggingProvider
+                        notice: notices[provider]
                     )
                         .frame(maxWidth: .infinity, alignment: .top)
-                        // The invisible source card preserves a true grid gap
-                        // while the full-card preview follows the pointer.
-                        .opacity(draggingProvider == provider ? 0 : 1)
-                        .animation(.easeOut(duration: 0.12), value: draggingProvider)
-                        .onDrop(
-                            of: [.plainText],
-                            delegate: ProviderCardDropDelegate(
-                                destination: provider,
-                                tracked: tracked,
-                                draggingProvider: $draggingProvider
-                            )
+                        .directReorder(
+                            item: provider,
+                            candidates: tracked.enabledOrdered,
+                            coordinateSpace: Self.reorderCoordinateSpace,
+                            interaction: reorderInteraction,
+                            layout: .grid(spacing: 14),
+                            move: { source, target in
+                                tracked.move(source, to: target)
+                            }
                         )
+                        .help(L10n.text("quota.drag_help"))
+                        .accessibilityHint(L10n.text("quota.drag_accessibility"))
                         .contextMenu {
                             Button(role: .destructive) {
                                 withAnimation(.snappy) { tracked.setEnabled(provider, false) }
@@ -58,6 +58,10 @@ struct LimitsSection: View {
                                 Label(L10n.format("limits.stop_tracking_named", provider.displayName), systemImage: "minus.circle")
                             }
                         }
+                        // Apply the stacking trait after help/context-menu
+                        // wrappers so the lifted card is the grid's top sibling
+                        // and visibly covers every card it crosses.
+                        .zIndex(reorderInteraction.isDragging(provider) ? 10_000 : 0)
                 }
 
                 if !tracked.disabledOrdered.isEmpty {
@@ -84,28 +88,7 @@ struct LimitsSection: View {
                 }
             }
         }
-    }
-}
-
-private struct ProviderCardDropDelegate: DropDelegate {
-    let destination: ProviderQuota.Provider
-    let tracked: TrackedProvidersStore
-    @Binding var draggingProvider: ProviderQuota.Provider?
-
-    func dropEntered(info: DropInfo) {
-        guard let draggingProvider, draggingProvider != destination else { return }
-        withAnimation(.snappy(duration: 0.2)) {
-            tracked.move(draggingProvider, to: destination)
-        }
-    }
-
-    func dropUpdated(info: DropInfo) -> DropProposal? {
-        DropProposal(operation: .move)
-    }
-
-    func performDrop(info: DropInfo) -> Bool {
-        draggingProvider = nil
-        return true
+        .coordinateSpace(name: Self.reorderCoordinateSpace)
     }
 }
 

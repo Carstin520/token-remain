@@ -76,6 +76,32 @@ final class TokenRemainLogoTests: XCTestCase {
         )
     }
 
+    func testMenuBarSummaryIgnoresFableQuota() {
+        let claude = ProviderQuota(
+            provider: .claude,
+            primary: QuotaWindow(usedPercent: 20, windowMinutes: 300, resetsAt: nil),
+            secondary: QuotaWindow(usedPercent: 10, windowMinutes: 10_080, resetsAt: nil),
+            planName: nil,
+            capturedAt: .now,
+            scopedWindows: [
+                ScopedQuotaWindow(
+                    scopeID: "fable",
+                    displayName: "Fable",
+                    window: QuotaWindow(usedPercent: 88, windowMinutes: 10_080, resetsAt: nil)
+                )
+            ]
+        )
+
+        XCTAssertEqual(
+            StatusBarPresentation.primaryRemainingPercent(in: claude),
+            80
+        )
+        XCTAssertEqual(
+            StatusBarPresentation.remainingText(for: claude),
+            "80%"
+        )
+    }
+
     func testEmotionBandsCoverFullQuotaRange() {
         XCTAssertEqual(TokenRemainLogoState.resolve(remainingPercent: 100), .excitedStars)
         XCTAssertEqual(TokenRemainLogoState.resolve(remainingPercent: 90), .happyCarets)

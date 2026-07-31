@@ -68,8 +68,8 @@
 "widget.move_up" = "Mover para cima";
 "widget.move_down" = "Mover para baixo";
 "widget.remove_named" = "Remover widget %1$@";
-"widget.drag_help" = "Arraste o cabeçalho para reordenar; clique com o botão direito para mais ações";
-"widget.drag_accessibility" = "Arraste para reordenar ou abra o menu de contexto para remover o widget";
+"widget.drag_help" = "Mantenha pressionado e arraste o widget inteiro para reordenar; clique com o botão direito para mais ações";
+"widget.drag_accessibility" = "Mantenha pressionado e arraste o widget inteiro para reordenar ou abra o menu de contexto para removê-lo";
 "action.add_widget" = "Adicionar widget";
 "action.refresh_quota" = "Atualizar cotas do ccusage, Codex e Claude";
 "action.refresh_usage" = "Atualizar uso";

@@ -8,6 +8,24 @@ struct QuotaWindow: Sendable, Codable {
     let resetsAt: Date?
 }
 
+/// A provider-specific quota that shares a duration with a general window but
+/// applies to a named model or product scope (for example Claude's Fable cap).
+struct ScopedQuotaWindow: Sendable, Codable {
+    let scopeID: String
+    let displayName: String
+    let window: QuotaWindow
+
+    var isFable: Bool {
+        scopeID.lowercased().hasPrefix("fable")
+            || displayName.localizedCaseInsensitiveContains("Fable")
+    }
+
+    var isCodexSpark: Bool {
+        scopeID.caseInsensitiveCompare("codex_bengalfox") == .orderedSame
+            || displayName.localizedCaseInsensitiveContains("Codex-Spark")
+    }
+}
+
 /// 订阅限额之外的按量付费消费(Claude 的 extra usage credits)。
 struct ExtraUsage: Sendable, Codable, Equatable {
     let spentUSD: Double
@@ -22,6 +40,55 @@ struct ProviderQuota: Sendable, Codable {
     let planName: String?
     let capturedAt: Date
     var extraUsage: ExtraUsage? = nil
+    /// Optional so existing cached snapshots decode without a schema migration.
+    var scopedWindows: [ScopedQuotaWindow]? = nil
+
+    /// Terminal repainting and older cached snapshots can contain the same
+    /// model-scoped quota more than once. Keep the latest reading for each
+    /// stable scope while preserving the service's original display order.
+    var uniqueScopedWindows: [ScopedQuotaWindow] {
+        var order: [String] = []
+        var latestByScope: [String: ScopedQuotaWindow] = [:]
+        for scoped in scopedWindows ?? [] {
+            let key = scoped.scopeID.lowercased()
+            if latestByScope[key] == nil {
+                order.append(key)
+            }
+            latestByScope[key] = scoped
+        }
+        return order.compactMap { latestByScope[$0] }
+    }
+
+    /// Claude currently names this model-scoped weekly cap `fable`, but keep
+    /// the lookup tolerant of a future version suffix such as `fable_5`.
+    var fableWindow: ScopedQuotaWindow? {
+        uniqueScopedWindows.first(where: \.isFable)
+    }
+
+    /// Keeps the authoritative primary/all-model values while filling model-
+    /// scoped windows from a secondary source such as Claude Code's `/usage`
+    /// screen. Current-source entries win if both sources report the same ID.
+    func mergingScopedWindows(_ supplemental: [ScopedQuotaWindow]) -> ProviderQuota {
+        var order: [String] = []
+        var latestByScope: [String: ScopedQuotaWindow] = [:]
+        for scoped in supplemental + uniqueScopedWindows {
+            let key = scoped.scopeID.lowercased()
+            if latestByScope[key] == nil {
+                order.append(key)
+            }
+            latestByScope[key] = scoped
+        }
+        let merged = order.compactMap { latestByScope[$0] }
+        return ProviderQuota(
+            provider: provider,
+            primary: primary,
+            secondary: secondary,
+            planName: planName,
+            capturedAt: capturedAt,
+            extraUsage: extraUsage,
+            scopedWindows: merged.isEmpty ? nil : merged
+        )
+    }
 
     enum Provider: String, Sendable, Codable, Hashable {
         case claude = "Claude Code"

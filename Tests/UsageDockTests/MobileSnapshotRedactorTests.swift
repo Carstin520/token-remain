@@ -30,7 +30,14 @@ struct MobileSnapshotRedactorTests {
             secondary: QuotaWindow(usedPercent: 7, windowMinutes: 10_080, resetsAt: nil),
             planName: "Max 5x",
             capturedAt: now,
-            extraUsage: ExtraUsage(spentUSD: 12.34, monthlyLimitUSD: 50)
+            extraUsage: ExtraUsage(spentUSD: 12.34, monthlyLimitUSD: 50),
+            scopedWindows: [
+                ScopedQuotaWindow(
+                    scopeID: "fable",
+                    displayName: "Fable",
+                    window: QuotaWindow(usedPercent: 63, windowMinutes: 10_080, resetsAt: now + 120)
+                )
+            ]
         )
 
         let snapshot = MobileSnapshotRedactor.makeSnapshot(
@@ -44,12 +51,15 @@ struct MobileSnapshotRedactorTests {
 
         #expect(snapshot.providers.map(\.providerID) == ["claude"])
         #expect(snapshot.providers.first?.planName == "Max 5x")
+        #expect(snapshot.providers.first?.scopedWindows?.first?.scopeID == "fable")
+        #expect(snapshot.providers.first?.scopedWindows?.first?.window.usedPercent == 63)
         #expect(snapshot.aggregateUsage == nil)
         #expect(snapshot.dailyUsageHistory == nil)
         #expect(text.contains("Max 5x"))
         #expect(!text.contains("spentUSD"))
         #expect(!text.contains("monthlyLimitUSD"))
         #expect(text.contains("planName"))
+        #expect(text.contains("Fable"))
         #expect(!text.contains(ProviderQuota.Provider.claude.rawValue))
     }
 

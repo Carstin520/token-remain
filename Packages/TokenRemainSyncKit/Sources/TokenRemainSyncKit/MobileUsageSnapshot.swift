@@ -85,6 +85,20 @@ public struct SyncedQuotaWindow: Codable, Sendable, Equatable {
     }
 }
 
+/// A named provider/model-specific limit kept outside the legacy `windows`
+/// array so clients released before scoped limits existed can safely ignore it.
+public struct SyncedScopedQuotaWindow: Codable, Sendable, Equatable {
+    public let scopeID: String
+    public let displayName: String
+    public let window: SyncedQuotaWindow
+
+    public init(scopeID: String, displayName: String, window: SyncedQuotaWindow) {
+        self.scopeID = scopeID
+        self.displayName = displayName
+        self.window = window
+    }
+}
+
 public struct SyncedProviderQuota: Codable, Sendable, Equatable {
     /// Stable product identifier, never an account name or provider display name.
     public let providerID: String
@@ -94,19 +108,22 @@ public struct SyncedProviderQuota: Codable, Sendable, Equatable {
     /// Optional presentation-only subscription tier. Provider credentials,
     /// account identifiers, URLs and arbitrary diagnostic strings are excluded.
     public let planName: String?
+    public let scopedWindows: [SyncedScopedQuotaWindow]?
 
     public init(
         providerID: String,
         windows: [SyncedQuotaWindow],
         capturedAt: Date,
         statusCode: SyncedSourceStatus,
-        planName: String? = nil
+        planName: String? = nil,
+        scopedWindows: [SyncedScopedQuotaWindow]? = nil
     ) {
         self.providerID = providerID
         self.windows = windows
         self.capturedAt = capturedAt
         self.statusCode = statusCode
         self.planName = planName
+        self.scopedWindows = scopedWindows
     }
 
     /// Keeps a human-readable plan label while rejecting values that resemble
@@ -362,7 +379,18 @@ public struct MobileUsageSnapshot: Codable, Sendable, Equatable {
                     },
                     capturedAt: try SyncTimestamp.normalized(provider.capturedAt),
                     statusCode: provider.statusCode,
-                    planName: provider.planName
+                    planName: provider.planName,
+                    scopedWindows: try provider.scopedWindows?.map { scoped in
+                        SyncedScopedQuotaWindow(
+                            scopeID: scoped.scopeID,
+                            displayName: scoped.displayName,
+                            window: SyncedQuotaWindow(
+                                usedPercent: scoped.window.usedPercent,
+                                windowMinutes: scoped.window.windowMinutes,
+                                resetsAt: try scoped.window.resetsAt.map(SyncTimestamp.normalized)
+                            )
+                        )
+                    }
                 )
             },
             aggregateUsage: try aggregateUsage.map {
@@ -453,7 +481,8 @@ public struct MobileUsageSnapshot: Codable, Sendable, Equatable {
         guard provider.capturedAt <= configuration.now.addingTimeInterval(configuration.maximumFutureSkew) else {
             throw SyncValidationError.dateTooFarInFuture(.capturedAt)
         }
-        guard provider.windows.count <= configuration.maximumWindowsPerProvider else {
+        guard provider.windows.count + (provider.scopedWindows?.count ?? 0)
+                <= configuration.maximumWindowsPerProvider else {
             throw SyncValidationError.tooManyWindows(provider.providerID)
         }
 
@@ -471,6 +500,33 @@ public struct MobileUsageSnapshot: Codable, Sendable, Equatable {
             if let resetsAt = window.resetsAt {
                 try SyncTimestamp.validate(resetsAt, field: .resetsAt)
             }
+        }
+        var scopeIDs = Set<String>()
+        for scoped in provider.scopedWindows ?? [] {
+            guard Self.isWellFormedScopeID(scoped.scopeID),
+                  scopeIDs.insert(scoped.scopeID).inserted,
+                  SyncedProviderQuota.sanitizedPlanName(scoped.displayName) == scoped.displayName else {
+                throw SyncValidationError.invalidProviderID(provider.providerID)
+            }
+            let window = scoped.window
+            guard window.usedPercent.isFinite, (0...100).contains(window.usedPercent) else {
+                throw SyncValidationError.invalidPercent(provider.providerID)
+            }
+            guard (0...configuration.maximumWindowMinutes).contains(window.windowMinutes) else {
+                throw SyncValidationError.invalidWindowMinutes(provider.providerID)
+            }
+            if let resetsAt = window.resetsAt {
+                try SyncTimestamp.validate(resetsAt, field: .resetsAt)
+            }
+        }
+    }
+
+    private static func isWellFormedScopeID(_ value: String) -> Bool {
+        !value.isEmpty && value.utf8.count <= 32 && value.unicodeScalars.allSatisfy {
+            CharacterSet.lowercaseLetters.contains($0)
+                || CharacterSet.decimalDigits.contains($0)
+                || $0 == "_"
+                || $0 == "-"
         }
     }
 

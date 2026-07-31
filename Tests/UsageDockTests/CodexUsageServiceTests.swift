@@ -36,6 +36,11 @@ struct CodexUsageServiceTests {
         #expect(quota.primary.windowMinutes == 10_080)
         #expect(quota.secondary == nil)
         #expect(quota.planName == "prolite")
+        let spark = try #require(quota.uniqueScopedWindows.first)
+        #expect(spark.scopeID == "codex_bengalfox")
+        #expect(spark.displayName == "GPT-5.3-Codex-Spark")
+        #expect(spark.window.usedPercent == 0)
+        #expect(spark.window.windowMinutes == 10_080)
     }
 
     @Test("Finds canonical quota earlier in the same session file")
@@ -69,6 +74,7 @@ struct CodexUsageServiceTests {
         #expect(quota.primary.windowMinutes == 300)
         #expect(quota.secondary?.usedPercent == 17)
         #expect(quota.secondary?.windowMinutes == 10_080)
+        #expect(quota.uniqueScopedWindows.first?.displayName == "GPT-5.3-Codex-Spark")
     }
 
     @Test("Newest canonical snapshot wins; older session files cannot outrank it")
@@ -145,6 +151,51 @@ struct CodexUsageServiceTests {
         let quota = try await CodexUsageService.fetch(from: [root])
 
         #expect(quota.primary.usedPercent == 63)
+        #expect(quota.uniqueScopedWindows.first?.displayName == "GPT-5.3-Codex-Spark")
+    }
+
+    @Test("Newest model-specific weekly snapshot wins without replacing the account quota")
+    func newestModelSpecificSnapshotWins() async throws {
+        let root = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        try writeJSONL([
+            tokenCount(
+                timestamp: "2026-07-17T11:35:06.513Z",
+                limitID: "codex",
+                limitName: nil,
+                planType: "prolite",
+                usedPercent: 31,
+                windowMinutes: 300,
+                secondary: (22, 10_080)
+            ),
+            tokenCount(
+                timestamp: "2026-07-17T11:35:12.000Z",
+                limitID: "codex_bengalfox",
+                limitName: "GPT-5.3-Codex-Spark",
+                planType: nil,
+                usedPercent: 9,
+                windowMinutes: 300,
+                secondary: (40, 10_080)
+            ),
+            tokenCount(
+                timestamp: "2026-07-17T11:35:24.973Z",
+                limitID: "codex_bengalfox",
+                limitName: "GPT-5.3-Codex-Spark",
+                planType: nil,
+                usedPercent: 10,
+                windowMinutes: 300,
+                secondary: (44, 10_080)
+            )
+        ], to: root.appendingPathComponent("mixed.jsonl"))
+
+        let quota = try await CodexUsageService.fetch(from: [root])
+        let spark = try #require(quota.uniqueScopedWindows.first)
+
+        #expect(quota.primary.usedPercent == 31)
+        #expect(quota.secondary?.usedPercent == 22)
+        #expect(spark.window.usedPercent == 44)
+        #expect(spark.window.windowMinutes == 10_080)
     }
 
     @Test("A rewritten session file (new mtime) invalidates the parse cache")

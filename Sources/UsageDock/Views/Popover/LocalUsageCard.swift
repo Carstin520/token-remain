@@ -8,8 +8,6 @@ struct LocalUsageCard: View {
     let isRefreshing: Bool
     let onRetry: () -> Void
     @ObservedObject var layout: PopoverLayoutStore
-    @Binding var draggingWidget: PopoverWidget?
-    var allowsDragging = true
 
     @State private var hoveredProviderID: String?
 
@@ -28,8 +26,6 @@ struct LocalUsageCard: View {
                     widget: .localUsage,
                     isExpanded: true,
                     isPinned: false,
-                    draggingWidget: $draggingWidget,
-                    dragPreview: dragPreview,
                     onToggleExpanded: {},
                     onTogglePinned: {},
                     onHide: { withAnimation(.snappy) { layout.hide(.localUsage) } },
@@ -112,25 +108,6 @@ struct LocalUsageCard: View {
         }
         .fixedSize(horizontal: false, vertical: true)
         .accessibilityElement(children: .contain)
-    }
-
-    private var dragPreview: (() -> AnyView)? {
-        guard allowsDragging else { return nil }
-        return {
-            AnyView(
-                LocalUsageCard(
-                    insights: insights,
-                    localUsageStatus: localUsageStatus,
-                    isRefreshing: isRefreshing,
-                    onRetry: onRetry,
-                    layout: layout,
-                    draggingWidget: .constant(nil),
-                    allowsDragging: false
-                )
-                .frame(width: 348)
-                .preferredColorScheme(.dark)
-            )
-        }
     }
 
     @ViewBuilder
