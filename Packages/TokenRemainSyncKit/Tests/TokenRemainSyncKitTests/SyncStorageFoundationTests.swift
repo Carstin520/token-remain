@@ -171,6 +171,53 @@ struct SyncStorageFoundationTests {
         #expect(try CloudKitSyncRecordCodec.storedEnvelope(from: fetchedRecord).envelope == second)
     }
 
+    @Test("Refresh requests stay content-free and are acknowledged without losing a newer request")
+    func refreshRequestRoundTripAndAcknowledgement() throws {
+        let first = try SyncCloudRefreshRequest(
+            requestID: UUID(uuidString: "20000000-0000-4000-8000-000000000001")!,
+            requestedAt: storageNow
+        )
+        let record = CloudKitSyncRefreshRequestCodec.record(for: first)
+
+        #expect(record.recordType == CloudKitSyncRefreshRequestCodec.recordType)
+        #expect(record.recordType == CloudKitSyncRecordCodec.recordType)
+        #expect(record.recordID == CloudKitSyncRefreshRequestCodec.recordID())
+        #expect(try CloudKitSyncRecordCodec.recordKind(for: record.recordID) == nil)
+        #expect(Set(record.allKeys()) == Set([
+            CloudKitSyncRefreshRequestCodec.controlVersionField,
+            CloudKitSyncRefreshRequestCodec.requestIDField,
+            CloudKitSyncRefreshRequestCodec.controlKindField,
+            CloudKitSyncRefreshRequestCodec.statusField,
+            CloudKitSyncRefreshRequestCodec.requestedAtField,
+        ]))
+        #expect(record.encryptedValues.allKeys().isEmpty)
+        #expect(try CloudKitSyncRefreshRequestCodec.state(from: record).pendingRequest == first)
+
+        let differentID = UUID(uuidString: "20000000-0000-4000-8000-000000000002")!
+        #expect(try !CloudKitSyncRefreshRequestCodec.acknowledge(
+            record,
+            requestID: differentID
+        ))
+        #expect(try CloudKitSyncRefreshRequestCodec.state(from: record).pendingRequest == first)
+
+        #expect(try CloudKitSyncRefreshRequestCodec.acknowledge(
+            record,
+            requestID: first.requestID
+        ))
+        let acknowledged = try CloudKitSyncRefreshRequestCodec.state(from: record)
+        #expect(acknowledged.pendingRequest == nil)
+        #expect(acknowledged.isAcknowledged)
+
+        record["unexpected"] = "remove me" as NSString
+        let second = try SyncCloudRefreshRequest(
+            requestID: differentID,
+            requestedAt: storageNow + 3
+        )
+        try CloudKitSyncRefreshRequestCodec.overwrite(record, with: second)
+        #expect(record["unexpected"] == nil)
+        #expect(try CloudKitSyncRefreshRequestCodec.state(from: record).pendingRequest == second)
+    }
+
     @Test("Each Mac source uses one canonical record ID in the existing zone and type")
     func sourceRecordRoundTrip() throws {
         let envelope = try storageEnvelope(sequence: 7)
