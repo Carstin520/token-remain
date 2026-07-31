@@ -389,11 +389,16 @@ figure.shot figcaption .cap{color:var(--text-dim);font-size:13.5px}
 .pin-stage>*{position:relative}
 .pin-zoom{transform:scale(var(--zoom,1));transform-origin:50% 46%;will-change:transform}
 #dashTrack{height:260vh}
-.dash-viewport{display:grid;overflow:hidden;border-radius:8px}
-.dash-viewport img{grid-area:1/1;display:block;width:100%;height:auto;opacity:0}
+/* stacked exactly like the device screens (.dev-screen .scr): the first slide
+   defines the box in normal flow, the rest overlay it absolutely — no grid
+   involved, so no browser/cache state can ever unstack the slides */
+.dash-viewport{position:relative;overflow:hidden;border-radius:8px}
+.dash-viewport img{display:block;width:100%;height:auto;opacity:0}
+.dash-viewport img+img{position:absolute;inset:0;height:100%;object-fit:cover}
 .dash-viewport img.on{opacity:1}
 @media (prefers-reduced-motion:no-preference){
-  .dash-viewport img{transition:opacity .65s ease}
+  .dash-viewport img{transition:opacity .45s ease}
+  .stage-slides .slide{transition-duration:.45s}
 }
 .dash-cap{margin-top:14px}
 #deviceTrack{height:440vh}
@@ -1699,7 +1704,12 @@ document.querySelectorAll('.minibar').forEach(function(bar){
 /* ---------- scroll reveal with stagger ---------- */
 (function(){
   if(matchMedia('(prefers-reduced-motion: reduce)').matches||!('IntersectionObserver' in window))return;
-  var els=document.querySelectorAll('figure.shot,.prov,.priv,.pipe-card,.limit-card,.feat,.step,.repo-band,.fact,.feed-panel,.ledger,.lab,.sp-item');
+  var els=Array.prototype.filter.call(
+    document.querySelectorAll('figure.shot,.prov,.priv,.pipe-card,.limit-card,.feat,.step,.repo-band,.fact,.feed-panel,.ledger,.lab,.sp-item'),
+    /* pinned showcases run their own entrance — a reveal transform/opacity on
+       them fights the sticky stage and can be caught mid-flight on fast scroll */
+    function(el){return !el.closest('.pin-track')}
+  );
   els.forEach(function(el){
     el.classList.add('reveal');
     var sibs=el.parentElement?Array.prototype.filter.call(el.parentElement.children,function(c){return c.classList.contains('reveal')}):[];
