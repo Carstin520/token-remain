@@ -392,9 +392,9 @@ figure.shot figcaption .cap{color:var(--text-dim);font-size:13.5px}
 /* stacked exactly like the device screens (.dev-screen .scr): the first slide
    defines the box in normal flow, the rest overlay it absolutely — no grid
    involved, so no browser/cache state can ever unstack the slides */
-.dash-viewport{position:relative;overflow:hidden;border-radius:8px}
+.dash-viewport{position:relative;overflow:hidden;border-radius:8px;background:#0D1420}
 .dash-viewport img{display:block;width:100%;height:auto;opacity:0}
-.dash-viewport img+img{position:absolute;inset:0;height:100%;object-fit:cover}
+.dash-viewport img+img{position:absolute;inset:0;height:100%}
 .dash-viewport img.on{opacity:1}
 @media (prefers-reduced-motion:no-preference){
   .dash-viewport img{transition:opacity .45s ease}
@@ -402,7 +402,10 @@ figure.shot figcaption .cap{color:var(--text-dim);font-size:13.5px}
 }
 .dash-cap{margin-top:14px}
 #deviceTrack{height:440vh}
-.dash-zoom{width:min(92vw,1024px,calc((100vh - 170px)*1.42))}
+/* width no longer collapses with viewport height — short windows cap the
+   image height instead (letterboxed on the card surface), so the showcase can
+   never degenerate into a tiny corner thumbnail */
+.dash-zoom{width:min(92vw,1024px)}
 .dash-zoom figure.shot{margin:0}
 figure.shot.widgets.row{grid-template-columns:2.036fr 1fr;align-items:stretch}
 figure.shot.widgets.row figcaption{grid-column:1/-1}
