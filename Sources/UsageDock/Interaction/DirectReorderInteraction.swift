@@ -1,3 +1,4 @@
+import AppKit
 import Observation
 import SwiftUI
 
@@ -18,8 +19,6 @@ enum DirectReorderLayout {
 @MainActor
 @Observable
 final class DirectReorderInteraction<Item: Hashable> {
-    static var activationDistance: CGFloat { 6 }
-
     private(set) var activeItem: Item?
     private(set) var pressedItem: Item?
     private(set) var pointerLocation: CGPoint?
@@ -84,19 +83,17 @@ final class DirectReorderInteraction<Item: Hashable> {
         layout: DirectReorderLayout
     ) {
         if activeItem == nil {
-            let distance = hypot(translation.width, translation.height)
-            guard distance >= Self.activationDistance,
-                  let sourceFrame = frames[item]
-            else { return }
+            guard let sourceFrame = frames[item] else { return }
 
             let renderedOrder = candidates.filter { frames[$0] != nil }
             guard renderedOrder.contains(item) else { return }
 
             originalOrder = renderedOrder
             destinationIndex = renderedOrder.firstIndex(of: item)
-            // Preserve the exact point where the press began. Re-anchoring when
-            // the 6pt threshold is crossed would make the component jump behind
-            // the pointer at activation time.
+            // Preserve the exact point where the drag phase began. The long
+            // press is the only activation threshold, so even the first subtle
+            // pointer movement moves the rendered component without a second
+            // selection stage or a jump behind the pointer.
             grabOffset = CGSize(
                 width: location.x - translation.width - sourceFrame.minX,
                 height: location.y - translation.height - sourceFrame.minY
@@ -104,7 +101,7 @@ final class DirectReorderInteraction<Item: Hashable> {
             if case let .grid(spacing) = layout {
                 rebuildGridTargetOrigins(activeItem: item, spacing: spacing)
             }
-            // Publish the lift only after all captured state is ready, so the
+            // Publish the drag only after all captured state is ready, so the
             // first rendered drag frame never observes a half-initialized move.
             activeItem = item
         }
@@ -118,7 +115,7 @@ final class DirectReorderInteraction<Item: Hashable> {
         updateDestination(for: item, location: location, layout: layout)
     }
 
-    /// Visual displacement for the lifted component and every component that
+    /// Visual displacement for the dragged component and every component that
     /// temporarily fills its vacancy.
     func offset(for item: Item, layout: DirectReorderLayout) -> CGSize {
         guard let activeItem,
@@ -165,7 +162,7 @@ final class DirectReorderInteraction<Item: Hashable> {
         }
     }
 
-    /// Ends the visual lift and returns the single persisted move to commit.
+    /// Ends the direct manipulation and returns the single persisted move to commit.
     func finish(item endingItem: Item) -> (item: Item, target: Item)? {
         guard activeItem == endingItem else { return nil }
         let move = activeItem.flatMap { item -> (item: Item, target: Item)? in
@@ -180,7 +177,7 @@ final class DirectReorderInteraction<Item: Hashable> {
         return move
     }
 
-    /// Cancels only the gesture that owns the current lift. A delayed cleanup
+    /// Cancels only the gesture that owns the current drag. A delayed cleanup
     /// from an older view must never tear down a newer component's drag.
     func cancel(item: Item) {
         guard activeItem == item else { return }
@@ -319,15 +316,37 @@ final class DirectReorderInteraction<Item: Hashable> {
     }
 }
 
-/// Long-presses a component into a lifted state, then offsets the full rendered
-/// component under the pointer. A short click still reaches nested controls and
-/// a normal scroll remains available until the long press succeeds.
+/// Selects a component after one long-press threshold, then offsets the full
+/// rendered component under the pointer. A short click still reaches nested
+/// controls and a normal scroll remains available until the long press succeeds.
 private struct DirectReorderHandleConfiguration {
     let coordinateSpace: String
     let setPressing: (Bool) -> Void
     let update: (CGPoint, CGSize) -> Void
     let finish: (CGPoint?, CGSize?) -> Void
     let cancel: () -> Void
+}
+
+/// Maps pointer samples from a fixed AppKit coordinate space into SwiftUI's
+/// reorder space. The fixed-space origin never moves with the dragged view, so
+/// rendering an offset cannot feed back into the next pointer sample.
+struct DirectReorderPointerAnchor {
+    let stableLocation: CGPoint
+    let reorderLocation: CGPoint
+
+    func sample(at currentStableLocation: CGPoint) -> (location: CGPoint, translation: CGSize) {
+        let translation = CGSize(
+            width: currentStableLocation.x - stableLocation.x,
+            height: currentStableLocation.y - stableLocation.y
+        )
+        return (
+            CGPoint(
+                x: reorderLocation.x + translation.width,
+                y: reorderLocation.y + translation.height
+            ),
+            translation
+        )
+    }
 }
 
 private struct DirectReorderHandleConfigurationKey: EnvironmentKey {
@@ -341,66 +360,247 @@ private extension EnvironmentValues {
     }
 }
 
+/// Installs one reusable AppKit press recognizer without taking over SwiftUI's
+/// rendering or reorder state. `NSPressGestureRecognizer` resets itself to
+/// `.possible` after every completed/cancelled sequence, unlike the sequenced
+/// SwiftUI gesture that could stop rearming after its view moved in a ScrollView.
+private struct DirectReorderPressBridge: NSViewRepresentable {
+    let configuration: DirectReorderHandleConfiguration
+    let handleFrame: CGRect
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(configuration: configuration, handleFrame: handleFrame)
+    }
+
+    func makeNSView(context: Context) -> InstallerView {
+        let view = InstallerView()
+        view.coordinator = context.coordinator
+        context.coordinator.installerView = view
+        return view
+    }
+
+    func updateNSView(_ nsView: InstallerView, context: Context) {
+        context.coordinator.configuration = configuration
+        context.coordinator.handleFrame = handleFrame
+        context.coordinator.install(on: nsView.window?.contentView)
+    }
+
+    static func dismantleNSView(_ nsView: InstallerView, coordinator: Coordinator) {
+        coordinator.detach()
+    }
+
+    final class InstallerView: NSView {
+        weak var coordinator: Coordinator?
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            coordinator?.install(on: window?.contentView)
+        }
+
+        // The bridge only installs a recognizer on the window content view.
+        // Keeping the probe out of hit testing preserves text, buttons, and
+        // context menus while the delegate restricts recognition to our bounds.
+        override func hitTest(_ point: NSPoint) -> NSView? {
+            nil
+        }
+    }
+
+    @MainActor
+    final class Coordinator: NSObject, NSGestureRecognizerDelegate {
+        var configuration: DirectReorderHandleConfiguration
+        var handleFrame: CGRect
+        weak var installerView: InstallerView?
+        weak var installedView: NSView?
+        private var pendingAnchor: DirectReorderPointerAnchor?
+        private var activeAnchor: DirectReorderPointerAnchor?
+
+        private lazy var recognizer: NSPressGestureRecognizer = {
+            let recognizer = NSPressGestureRecognizer(
+                target: self,
+                action: #selector(handlePress(_:))
+            )
+            // A trackpad press naturally drifts before selection. Use a short
+            // acknowledgement window and a generous slop area instead of
+            // requiring the pointer to remain almost stationary.
+            recognizer.minimumPressDuration = 0.18
+            recognizer.allowableMovement = 36
+            recognizer.buttonMask = 0x1
+            recognizer.delegate = self
+            return recognizer
+        }()
+
+        init(
+            configuration: DirectReorderHandleConfiguration,
+            handleFrame: CGRect
+        ) {
+            self.configuration = configuration
+            self.handleFrame = handleFrame
+        }
+
+        func install(on view: NSView?) {
+            guard let view, installedView !== view else { return }
+            detach(cancelActivePress: false)
+            installedView = view
+            view.addGestureRecognizer(recognizer)
+        }
+
+        func detach() {
+            detach(cancelActivePress: true)
+        }
+
+        private func detach(cancelActivePress: Bool) {
+            if cancelActivePress, activeAnchor != nil {
+                configuration.setPressing(false)
+                configuration.cancel()
+            }
+            pendingAnchor = nil
+            activeAnchor = nil
+            installedView?.removeGestureRecognizer(recognizer)
+            installedView = nil
+        }
+
+        func gestureRecognizer(
+            _ gestureRecognizer: NSGestureRecognizer,
+            shouldAttemptToRecognizeWith event: NSEvent
+        ) -> Bool {
+            pendingAnchor = nil
+            guard let installerView, installedView != nil else { return false }
+            let location = installerView.convert(event.locationInWindow, from: nil)
+            guard installerView.bounds.contains(location) else { return false }
+            pendingAnchor = DirectReorderPointerAnchor(
+                stableLocation: stablePointerLocation(for: event),
+                reorderLocation: locationInReorderSpace(local: location)
+            )
+            return true
+        }
+
+        @objc private func handlePress(_ recognizer: NSPressGestureRecognizer) {
+            switch recognizer.state {
+            case .began:
+                let anchor = pendingAnchor ?? fallbackAnchor(for: recognizer)
+                activeAnchor = anchor
+                let sample = anchor.sample(at: stablePointerLocation(for: recognizer))
+                configuration.setPressing(true)
+                // Preserve any natural trackpad slide that happened during the
+                // selection window. The component catches up from the original
+                // grab point on this first selected frame, then follows without
+                // another threshold.
+                configuration.update(sample.location, sample.translation)
+
+            case .changed:
+                guard let activeAnchor else { return }
+                let sample = activeAnchor.sample(at: stablePointerLocation(for: recognizer))
+                configuration.update(sample.location, sample.translation)
+
+            case .ended:
+                guard let activeAnchor else {
+                    configuration.cancel()
+                    return
+                }
+                let sample = activeAnchor.sample(at: stablePointerLocation(for: recognizer))
+                configuration.finish(sample.location, sample.translation)
+                self.activeAnchor = nil
+                pendingAnchor = nil
+
+            case .cancelled:
+                configuration.setPressing(false)
+                configuration.cancel()
+                activeAnchor = nil
+                pendingAnchor = nil
+
+            case .failed:
+                activeAnchor = nil
+                pendingAnchor = nil
+
+            case .possible:
+                break
+
+            @unknown default:
+                configuration.setPressing(false)
+                configuration.cancel()
+                activeAnchor = nil
+                pendingAnchor = nil
+            }
+        }
+
+        private func fallbackAnchor(
+            for recognizer: NSPressGestureRecognizer
+        ) -> DirectReorderPointerAnchor {
+            DirectReorderPointerAnchor(
+                stableLocation: stablePointerLocation(for: recognizer),
+                // This fallback is sampled only before the component receives
+                // its first offset, so the installer view is still stationary.
+                reorderLocation: locationInReorderSpace(for: recognizer)
+            )
+        }
+
+        private func stablePointerLocation(for event: NSEvent) -> CGPoint {
+            guard let installedView else { return event.locationInWindow }
+            return topLeadingPoint(
+                installedView.convert(event.locationInWindow, from: nil),
+                in: installedView
+            )
+        }
+
+        private func stablePointerLocation(
+            for recognizer: NSPressGestureRecognizer
+        ) -> CGPoint {
+            guard let installedView else { return recognizer.location(in: nil) }
+            return topLeadingPoint(recognizer.location(in: installedView), in: installedView)
+        }
+
+        private func topLeadingPoint(_ point: CGPoint, in view: NSView) -> CGPoint {
+            CGPoint(
+                x: point.x,
+                y: view.isFlipped ? point.y : view.bounds.height - point.y
+            )
+        }
+
+        private func locationInReorderSpace(
+            for recognizer: NSPressGestureRecognizer
+        ) -> CGPoint {
+            guard let installerView else { return handleFrame.origin }
+            return locationInReorderSpace(local: recognizer.location(in: installerView))
+        }
+
+        private func locationInReorderSpace(local: CGPoint) -> CGPoint {
+            guard let installerView else { return handleFrame.origin }
+            let localY = installerView.isFlipped
+                ? local.y
+                : installerView.bounds.height - local.y
+            return CGPoint(
+                x: handleFrame.minX + local.x,
+                y: handleFrame.minY + localY
+            )
+        }
+    }
+}
+
 /// Installs the long-press gesture only on an explicitly marked drag surface.
 /// Interactive siblings such as disclosure and pin buttons therefore never
 /// compete with reordering for the same pointer sequence.
 private struct DirectReorderHandleModifier: ViewModifier {
     @Environment(\.directReorderHandleConfiguration) private var configuration
-    @GestureState private var isGestureActive = false
+    @State private var handleFrame = CGRect.zero
 
     func body(content: Content) -> some View {
         if let configuration {
             content
                 .contentShape(Rectangle())
-                .gesture(reorderGesture(configuration))
-                .onChange(of: isGestureActive) { wasActive, isActive in
-                    configuration.setPressing(isActive)
-                    guard wasActive, !isActive else { return }
-
-                    // SwiftUI may cancel a gesture without delivering
-                    // `onEnded` when focus changes. Clear only this handle's
-                    // pending/active interaction on the next actor turn.
-                    Task { @MainActor in
-                        await Task.yield()
-                        guard !isGestureActive else { return }
-                        configuration.cancel()
-                    }
+                .background {
+                    DirectReorderPressBridge(
+                        configuration: configuration,
+                        handleFrame: handleFrame
+                    )
+                }
+                .onGeometryChange(for: CGRect.self) { proxy in
+                    proxy.frame(in: .named(configuration.coordinateSpace))
+                } action: { frame in
+                    handleFrame = frame
                 }
         } else {
             content
         }
-    }
-
-    private func reorderGesture(
-        _ configuration: DirectReorderHandleConfiguration
-    ) -> some Gesture {
-        LongPressGesture(minimumDuration: 0.25, maximumDistance: 12)
-            .sequenced(before: DragGesture(
-                minimumDistance: 0,
-                coordinateSpace: .named(configuration.coordinateSpace)
-            ))
-            .updating($isGestureActive) { value, state, _ in
-                switch value {
-                case .first(true), .second(true, _):
-                    state = true
-                default:
-                    state = false
-                }
-            }
-            .onChanged { value in
-                guard case let .second(true, dragValue) = value,
-                      let dragValue
-                else { return }
-                configuration.update(dragValue.location, dragValue.translation)
-            }
-            .onEnded { value in
-                if case let .second(true, dragValue) = value,
-                   let dragValue {
-                    configuration.finish(dragValue.location, dragValue.translation)
-                } else {
-                    configuration.finish(nil, nil)
-                }
-            }
     }
 }
 
@@ -415,31 +615,26 @@ private struct DirectReorderModifier<Item: Hashable>: ViewModifier {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     func body(content: Content) -> some View {
         let isDragging = interaction.isDragging(item)
-        let isPressSelected = interaction.isPressing(item) && !isDragging
-        let liftPhase = isDragging ? 2 : (isPressSelected ? 1 : 0)
+        let isSelected = interaction.isPressing(item) || isDragging
 
         ZStack {
             content
-                // Keep the dragged component at its real size so the captured
-                // grab point stays exactly under the pointer.
-                .scaleEffect(isPressSelected ? 1.006 : 1)
-                .shadow(
-                    color: .black.opacity(isDragging ? 0.22 : (isPressSelected ? 0.1 : 0)),
-                    radius: isDragging ? 12 : (isPressSelected ? 4 : 0),
-                    y: isDragging ? 7 : (isPressSelected ? 2 : 0)
-                )
-                .animation(
-                    reduceMotion ? nil : .spring(response: 0.2, dampingFraction: 0.8),
-                    value: liftPhase
-                )
+                // A single static outline acknowledges the completed hold.
+                // It intentionally does not flash, scale, lift, or animate.
+                .overlay {
+                    RoundedRectangle(cornerRadius: 13, style: .continuous)
+                        .strokeBorder(
+                            DashboardTheme.violet.opacity(isSelected ? 0.72 : 0),
+                            lineWidth: 1
+                        )
+                        .allowsHitTesting(false)
+                        .transaction { transaction in
+                            transaction.animation = nil
+                        }
+                }
+                // Keep the dragged component at its real size and move the
+                // rendered view itself, preserving the original grab point.
                 .offset(interaction.offset(for: item, layout: layout))
-                // This is the pre-drag acknowledgement requested by the mobile
-                // interaction: a completed hold lifts the whole component 3pt.
-                .offset(y: isPressSelected ? (reduceMotion ? -1 : -2) : 0)
-                .animation(
-                    reduceMotion ? nil : .spring(response: 0.2, dampingFraction: 0.8),
-                    value: isPressSelected
-                )
                 // Pointer movement is unanimated. Only neighbors spring when
                 // the vacancy advances to a different component.
                 .animation(
@@ -457,7 +652,7 @@ private struct DirectReorderModifier<Item: Hashable>: ViewModifier {
         .onDisappear {
             interaction.removeFrame(for: item)
         }
-        .zIndex(liftPhase > 0 ? 1_000 : 0)
+        .zIndex(isSelected ? 1_000 : 0)
         .environment(\.directReorderHandleConfiguration, handleConfiguration)
     }
 
