@@ -92,29 +92,36 @@ struct QuotaCard: View {
     }
 
     private var header: some View {
-        let content = HStack(spacing: 8) {
-            BrandIcon(provider: provider)
-                .foregroundStyle(DashboardTheme.text)
-                .frame(width: 20, height: 20)
-            Text(provider.displayName)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(DashboardTheme.text)
-                .lineLimit(1)
-                .minimumScaleFactor(0.82)
-                .layoutPriority(1)
+        HStack(spacing: 8) {
+            HStack(spacing: 8) {
+                BrandIcon(provider: provider)
+                    .foregroundStyle(DashboardTheme.text)
+                    .frame(width: 20, height: 20)
+                Text(provider.displayName)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(DashboardTheme.text)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.82)
+                    .layoutPriority(1)
+            }
+            .directReorderHandle()
+
             if let serviceStatus, serviceStatus.isAbnormal {
                 ServiceStatusBadge(status: serviceStatus)
             }
-            Spacer()
+
+            Color.clear
+                .frame(maxWidth: .infinity, minHeight: 22)
+                .contentShape(Rectangle())
+                .directReorderHandle()
+
             if let plan = quota?.planName, !plan.isEmpty {
                 TagPill(text: plan)
+                    .directReorderHandle()
             }
         }
         .frame(maxWidth: .infinity, minHeight: 22)
         .contentShape(Rectangle())
-        .directReorderHandle()
-
-        return content
     }
 }
 
