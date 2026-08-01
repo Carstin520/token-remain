@@ -12,26 +12,23 @@ struct TrendingStoriesCard: View {
     let posts: [AIFeedPost]
 
     var body: some View {
-        DashboardCard {
-            VStack(alignment: .leading, spacing: 12) {
-                PanelHeader(title: "Trending", subtitle: L10n.text("feed.trending_subtitle")) {
-                    TagPill(text: "HOT", color: TrendingRank.first.accent, background: DashboardTheme.surface2)
-                }
-
-                if posts.isEmpty {
-                    Text(L10n.text("feed.trending_loading"))
-                        .font(.system(size: 11))
-                        .foregroundStyle(DashboardTheme.secondaryText)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.vertical, 12)
-                } else {
-                    ForEach(Array(posts.prefix(2).enumerated()), id: \.element.id) { index, post in
-                        TrendingStoryRow(post: post, rank: TrendingRank(index: index))
-                    }
+        OverviewPanelCard(contentSpacing: 8, scrollsContent: false) {
+            PanelHeader(title: "Trending", subtitle: L10n.text("feed.trending_subtitle")) {
+                TagPill(text: "HOT", color: TrendingRank.first.accent, background: DashboardTheme.surface2)
+            }
+        } content: {
+            if posts.isEmpty {
+                Text(L10n.text("feed.trending_loading"))
+                    .font(.system(size: 11))
+                    .foregroundStyle(DashboardTheme.secondaryText)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, 12)
+            } else {
+                ForEach(Array(posts.prefix(2).enumerated()), id: \.element.id) { index, post in
+                    TrendingStoryRow(post: post, rank: TrendingRank(index: index))
                 }
             }
         }
-        .frame(maxWidth: .infinity)
     }
 }
 
@@ -81,7 +78,7 @@ private struct TrendingStoryRow: View {
         Button {
             NSWorkspace.shared.open(post.postURL)
         } label: {
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
                     Image(systemName: rank.symbol)
                         .font(.system(size: 10, weight: .bold))
@@ -120,7 +117,8 @@ private struct TrendingStoryRow: View {
                     metric("heart", post.metrics.likes)
                 }
             }
-            .padding(10)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 11, style: .continuous)

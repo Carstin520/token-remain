@@ -70,6 +70,66 @@ struct ClaudeOAuthUsageParserTests {
         #expect(merged.fableWindow?.window.usedPercent == 67)
     }
 
+    @Test("A general refresh retains the active Fable quota")
+    func retainsActiveFableAcrossGeneralRefresh() throws {
+        let now = Date(timeIntervalSince1970: 1_784_000_000)
+        let api = try ClaudeOAuthUsageParser.parse(
+            Data(#"{"five_hour":{"utilization":12},"seven_day":{"utilization":34}}"#.utf8)
+        )
+        let previous = ProviderQuota(
+            provider: .claude,
+            primary: api.primary,
+            secondary: api.secondary,
+            planName: api.planName,
+            capturedAt: now.addingTimeInterval(-300),
+            scopedWindows: [
+                ScopedQuotaWindow(
+                    scopeID: "fable",
+                    displayName: "Fable",
+                    window: QuotaWindow(
+                        usedPercent: 67,
+                        windowMinutes: 10_080,
+                        resetsAt: now.addingTimeInterval(3_600)
+                    )
+                )
+            ]
+        )
+
+        let retained = api.retainingActiveScopedWindows(from: previous, now: now)
+
+        #expect(retained.fableWindow?.window.usedPercent == 67)
+    }
+
+    @Test("An expired Fable quota is not retained")
+    func dropsExpiredFableAcrossGeneralRefresh() throws {
+        let now = Date(timeIntervalSince1970: 1_784_000_000)
+        let api = try ClaudeOAuthUsageParser.parse(
+            Data(#"{"five_hour":{"utilization":12},"seven_day":{"utilization":34}}"#.utf8)
+        )
+        let previous = ProviderQuota(
+            provider: .claude,
+            primary: api.primary,
+            secondary: api.secondary,
+            planName: api.planName,
+            capturedAt: now.addingTimeInterval(-300),
+            scopedWindows: [
+                ScopedQuotaWindow(
+                    scopeID: "fable",
+                    displayName: "Fable",
+                    window: QuotaWindow(
+                        usedPercent: 67,
+                        windowMinutes: 10_080,
+                        resetsAt: now.addingTimeInterval(-1)
+                    )
+                )
+            ]
+        )
+
+        let retained = api.retainingActiveScopedWindows(from: previous, now: now)
+
+        #expect(retained.fableWindow == nil)
+    }
+
     @Test("Freshly reset window keeps nil reset date instead of inventing one")
     func missingResetStaysNil() throws {
         let payload = """

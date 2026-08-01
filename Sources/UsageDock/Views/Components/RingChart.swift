@@ -37,11 +37,13 @@ struct RingChart: View {
         GeometryReader { proxy in
             ZStack {
                 Circle()
+                    .inset(by: lineWidth / 2 + 1)
                     .stroke(DashboardTheme.track, lineWidth: lineWidth)
 
                 ForEach(arcs, id: \.segment.id) { arc in
                     let isDimmed = highlightedSegmentID != nil && highlightedSegmentID != arc.segment.id
                     Circle()
+                        .inset(by: lineWidth / 2 + 1)
                         .trim(from: arc.start, to: arc.end)
                         .stroke(
                             arc.segment.color.opacity(isDimmed ? 0.32 : 1),
@@ -90,7 +92,7 @@ struct RingChart: View {
 
         let center = CGPoint(x: size.width / 2, y: size.height / 2)
         let distance = hypot(location.x - center.x, location.y - center.y)
-        let outerRadius = min(size.width, size.height) / 2 + 2
+        let outerRadius = min(size.width, size.height) / 2 - 1
         let innerRadius = max(0, outerRadius - lineWidth - 4)
         guard distance >= innerRadius, distance <= outerRadius else { return nil }
 

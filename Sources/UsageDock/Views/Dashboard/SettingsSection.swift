@@ -253,12 +253,12 @@ struct SettingsSection: View {
 
                     Divider().overlay(DashboardTheme.border)
 
-                    Toggle(isOn: dashboardFableBinding) {
+                    Toggle(isOn: menuBarFableBinding) {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(L10n.text("settings.dashboard_fable"))
+                            Text(L10n.text("settings.menubar_fable"))
                                 .font(.system(size: 13, weight: .medium))
                                 .foregroundStyle(DashboardTheme.text)
-                            Text(L10n.text("settings.dashboard_fable_hint"))
+                            Text(L10n.text("settings.menubar_fable_hint"))
                                 .font(.system(size: 11))
                                 .foregroundStyle(DashboardTheme.secondaryText)
                                 .fixedSize(horizontal: false, vertical: true)
@@ -270,12 +270,12 @@ struct SettingsSection: View {
 
                     Divider().overlay(DashboardTheme.border)
 
-                    Toggle(isOn: dashboardCodexSparkBinding) {
+                    Toggle(isOn: menuBarCodexSparkBinding) {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(L10n.text("settings.dashboard_codex_spark"))
+                            Text(L10n.text("settings.menubar_codex_spark"))
                                 .font(.system(size: 13, weight: .medium))
                                 .foregroundStyle(DashboardTheme.text)
-                            Text(L10n.text("settings.dashboard_codex_spark_hint"))
+                            Text(L10n.text("settings.menubar_codex_spark_hint"))
                                 .font(.system(size: 11))
                                 .foregroundStyle(DashboardTheme.secondaryText)
                                 .fixedSize(horizontal: false, vertical: true)
@@ -393,17 +393,23 @@ struct SettingsSection: View {
         )
     }
 
-    private var dashboardFableBinding: Binding<Bool> {
+    private var menuBarFableBinding: Binding<Bool> {
         Binding(
-            get: { preferences.showFableQuotaInDashboard },
-            set: { preferences.setShowFableQuotaInDashboard($0) }
+            get: { preferences.showFableQuotaInMenuBarWidget },
+            set: { enabled in
+                preferences.setShowFableQuotaInMenuBarWidget(enabled)
+                guard enabled else { return }
+                Task {
+                    await store.refresh(forceCCUsage: false, forceClaude: true)
+                }
+            }
         )
     }
 
-    private var dashboardCodexSparkBinding: Binding<Bool> {
+    private var menuBarCodexSparkBinding: Binding<Bool> {
         Binding(
-            get: { preferences.showCodexSparkQuotaInDashboard },
-            set: { preferences.setShowCodexSparkQuotaInDashboard($0) }
+            get: { preferences.showCodexSparkQuotaInMenuBarWidget },
+            set: { preferences.setShowCodexSparkQuotaInMenuBarWidget($0) }
         )
     }
 

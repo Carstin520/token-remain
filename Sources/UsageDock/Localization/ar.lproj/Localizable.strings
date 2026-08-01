@@ -88,6 +88,7 @@
 "usage.provider_help" = "%1$@: تكلفة API ‏%2$@، %3$@ tokens، %4$@ من الإجمالي";
 "usage.provider_accessibility" = "%1$@، تكلفة API ‏%2$@، %3$@ tokens";
 "quota.loading_official" = "جارٍ قراءة الحصة الرسمية…";
+"quota.login_recovery_hint" = "لم يُكتشف تسجيل الدخول؛ سجّل الدخول لاستعادة البيانات تلقائيًا";
 "feed.updating" = "جارٍ التحديث";
 "feed.item_count" = "%d عناصر";
 "feed.filtering" = "جارٍ البحث عن تحديثات تستحق الاهتمام…";

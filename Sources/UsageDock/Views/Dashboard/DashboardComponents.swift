@@ -29,6 +29,67 @@ struct SectionTitleHeader: View {
     }
 }
 
+/// Shared geometry for the four primary Overview modules. Their headers stay
+/// pinned to the same top inset while variable content scrolls inside a fixed
+/// card, keeping the 2x2 grid aligned even when live data changes shape.
+enum DashboardOverviewLayout {
+    static let gridSpacing: CGFloat = 14
+    static let panelContentHeight: CGFloat = 196
+}
+
+struct OverviewPanelCard<Header: View, Content: View>: View {
+    private let contentSpacing: CGFloat
+    private let scrollsContent: Bool
+    private let header: Header
+    private let content: Content
+
+    init(
+        contentSpacing: CGFloat = 12,
+        scrollsContent: Bool = true,
+        @ViewBuilder header: () -> Header,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.contentSpacing = contentSpacing
+        self.scrollsContent = scrollsContent
+        self.header = header()
+        self.content = content()
+    }
+
+    var body: some View {
+        DashboardCard {
+            VStack(alignment: .leading, spacing: 12) {
+                header
+                contentArea
+            }
+            .frame(
+                height: DashboardOverviewLayout.panelContentHeight,
+                alignment: .top
+            )
+        }
+        .frame(maxWidth: .infinity, alignment: .top)
+    }
+
+    @ViewBuilder
+    private var contentArea: some View {
+        if scrollsContent {
+            ScrollView(.vertical) {
+                contentStack
+            }
+            .scrollIndicators(.automatic)
+        } else {
+            contentStack
+                .frame(maxHeight: .infinity, alignment: .top)
+        }
+    }
+
+    private var contentStack: some View {
+        VStack(alignment: .leading, spacing: contentSpacing) {
+            content
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
 /// Honest empty state used where UsageDock does not yet have the data a section
 /// would show (e.g. multi-day history). Never a substitute for real data.
 struct EmptyStateView: View {

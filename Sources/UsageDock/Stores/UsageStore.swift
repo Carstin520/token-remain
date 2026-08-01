@@ -186,12 +186,22 @@ final class UsageStore: ObservableObject {
     }
 
     private func assign(_ value: ProviderQuota?, to provider: ProviderQuota.Provider) {
-        if value != nil {
+        let resolvedValue: ProviderQuota?
+        if let value, let previous = quotas[provider] {
+            resolvedValue = value.retainingActiveScopedWindows(
+                from: previous,
+                now: value.capturedAt
+            )
+        } else {
+            resolvedValue = value
+        }
+
+        if resolvedValue != nil {
             tracked.markConnected(provider)
         }
-        quotas[provider] = value
-        if let value {
-            let updated = quotaUsageHistory.recording(value)
+        quotas[provider] = resolvedValue
+        if let resolvedValue {
+            let updated = quotaUsageHistory.recording(resolvedValue)
             if updated != quotaUsageHistory {
                 quotaUsageHistory = updated
                 quotaUsageHistoryCache.save(updated)
@@ -462,6 +472,8 @@ final class UsageStore: ObservableObject {
 
         // async-let 的子任务不在主 actor 上,启用判断先在这里(主 actor)取好。
         let codexEnabled = tracked.isEnabled(.codex)
+        let forceFableSupplement = forceClaude
+            && PreferencesStore.shared.showFableQuotaInMenuBarWidget
         let dueAuxProviders = Self.auxProviders.filter { provider in
             guard tracked.isEnabled(provider) else { return false }
             if forceClaude { return true }
@@ -478,7 +490,13 @@ final class UsageStore: ObservableObject {
         await withTaskGroup(of: QuotaRefreshOutput.self) { group in
             if shouldRefreshClaude {
                 group.addTask {
-                    .claude(await result { try await ClaudeUsageService().fetch() })
+                    .claude(
+                        await result {
+                            try await ClaudeUsageService().fetch(
+                                forceScopedUsageProbe: forceFableSupplement
+                            )
+                        }
+                    )
                 }
             }
             if codexEnabled && (codexAPIDue || codexLocalDue) {

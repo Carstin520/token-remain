@@ -88,6 +88,7 @@
 "usage.provider_help" = "%1$@: API 비용 %2$@, %3$@ tokens, 전체의 %4$@";
 "usage.provider_accessibility" = "%1$@, API 비용 %2$@, %3$@ tokens";
 "quota.loading_official" = "공식 할당량 읽는 중…";
+"quota.login_recovery_hint" = "로그인이 감지되지 않았습니다. 로그인하면 데이터가 자동으로 복구됩니다";
 "feed.updating" = "업데이트 중";
 "feed.item_count" = "%d개";
 "feed.filtering" = "주목할 업데이트를 찾는 중…";
@@ -356,10 +357,10 @@
 "settings.login_item_note" = "macOS 기본 로그인 항목 관리 기능을 사용합니다";
 "settings.manual_only" = "수동 전용";
 "settings.menubar_hidden" = "메뉴 막대에 표시 안 됨";
-"settings.dashboard_fable" = "Claude 할당량 카드에 Fable 표시";
-"settings.dashboard_fable_hint" = "Dashboard에 Fable 주간 한도를 표시합니다. 메뉴 막대 위젯에는 표시되지 않습니다.";
-"settings.dashboard_codex_spark" = "Codex 할당량 카드에 GPT-5.3-Codex-Spark 표시";
-"settings.dashboard_codex_spark_hint" = "Dashboard에 모델별 주간 한도를 표시합니다.";
+"settings.menubar_fable" = "메뉴 막대 Claude 위젯에 Fable 표시";
+"settings.menubar_fable_hint" = "메뉴 막대의 Claude 할당량 위젯에 Fable 주간 한도를 표시합니다.";
+"settings.menubar_codex_spark" = "메뉴 막대 Codex 위젯에 GPT-5.3-Codex-Spark 표시";
+"settings.menubar_codex_spark_hint" = "메뉴 막대의 Codex 할당량 위젯에 모델별 주간 한도를 표시합니다.";
 "settings.menubar_hint" = "메뉴 막대에 텍스트로 표시할 앱을 선택하세요. 너무 넓어지지 않도록 3개 이하를 권장합니다. 모두 끄면 “TR”이 표시됩니다.";
 "settings.menubar_mode_compact" = "간결";
 "settings.menubar_mode_compact_description" = "선택한 모든 앱을 아이콘으로만 표시하며 백분율은 도움말에서 확인할 수 있습니다.";

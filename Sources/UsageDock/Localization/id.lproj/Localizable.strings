@@ -88,6 +88,7 @@
 "usage.provider_help" = "%1$@: biaya API %2$@, %3$@ tokens, %4$@ dari total";
 "usage.provider_accessibility" = "%1$@, biaya API %2$@, %3$@ tokens";
 "quota.loading_official" = "Membaca kuota resmi…";
+"quota.login_recovery_hint" = "Login tidak terdeteksi; masuk untuk memulihkan data secara otomatis";
 "feed.updating" = "Memperbarui";
 "feed.item_count" = "%d item";
 "feed.filtering" = "Mencari pembaruan yang patut diperhatikan…";

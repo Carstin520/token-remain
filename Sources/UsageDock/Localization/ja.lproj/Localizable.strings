@@ -88,6 +88,7 @@
 "usage.provider_help" = "%1$@: API コスト %2$@、%3$@ tokens、全体の %4$@";
 "usage.provider_accessibility" = "%1$@、API コスト %2$@、%3$@ tokens";
 "quota.loading_official" = "公式クォータを読み込み中…";
+"quota.login_recovery_hint" = "ログインが検出されません。ログインするとデータが自動的に復旧します";
 "feed.updating" = "更新中";
 "feed.item_count" = "%d 件";
 "feed.filtering" = "注目すべき更新を選別中…";
@@ -356,10 +357,10 @@
 "settings.login_item_note" = "macOS 標準のログイン項目管理を使用";
 "settings.manual_only" = "手動のみ";
 "settings.menubar_hidden" = "メニューバー非表示";
-"settings.dashboard_fable" = "Claude の割り当てカードに Fable を表示";
-"settings.dashboard_fable_hint" = "Dashboard に Fable の週間制限を表示します。メニューバーウィジェットには表示されません。";
-"settings.dashboard_codex_spark" = "Codex の割り当てカードに GPT-5.3-Codex-Spark を表示";
-"settings.dashboard_codex_spark_hint" = "Dashboard にモデル固有の週間制限を表示します。";
+"settings.menubar_fable" = "メニューバーの Claude ウィジェットに Fable を表示";
+"settings.menubar_fable_hint" = "メニューバーの Claude 割り当てウィジェットに Fable の週間制限を表示します。";
+"settings.menubar_codex_spark" = "メニューバーの Codex ウィジェットに GPT-5.3-Codex-Spark を表示";
+"settings.menubar_codex_spark_hint" = "メニューバーの Codex 割り当てウィジェットにモデル別の週間制限を表示します。";
 "settings.menubar_hint" = "メニューバーにテキストを常駐させるアプリにチェックを入れます。幅が広がりすぎないよう 3 個以内をおすすめします。すべてオフの場合は「TR」と表示されます。";
 "settings.menubar_mode_compact" = "コンパクト";
 "settings.menubar_mode_compact_description" = "選択したすべてのアプリをアイコンのみで表示し、割合はツールヒントで確認できます。";

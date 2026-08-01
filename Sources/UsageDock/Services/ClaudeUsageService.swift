@@ -53,11 +53,14 @@ struct ClaudeUsageService {
     /// Claude Code 自行完成续期,下一轮 API 直查即可恢复。
     /// 服务端明确限流(429)时不降级:PTY 的 /usage 走同一个接口,
     /// 换个马甲重试只会延长限流。
-    func fetch() async throws -> ProviderQuota {
+    func fetch(forceScopedUsageProbe: Bool = false) async throws -> ProviderQuota {
         let logger = Logger(subsystem: "com.jamesli.usagedock", category: "ClaudeUsage")
         do {
             let quota = try await ClaudeOAuthUsageService().fetch()
-            let supplemented = await ClaudeScopedUsageSupplement.shared.supplement(quota)
+            let supplemented = await ClaudeScopedUsageSupplement.shared.supplement(
+                quota,
+                forceProbe: forceScopedUsageProbe
+            )
             logger.info("Claude quota served by oauth/usage API; Fable available: \(supplemented.fableWindow != nil, privacy: .public)")
             return supplemented
         } catch let error as ClaudeOAuthUsageService.APIError {
@@ -123,14 +126,20 @@ private actor ClaudeScopedUsageSupplement {
     private var lastAttempt: Date?
     private var lastSuccess: Date?
 
-    func supplement(_ quota: ProviderQuota, now: Date = .now) async -> ProviderQuota {
+    func supplement(
+        _ quota: ProviderQuota,
+        now: Date = .now,
+        forceProbe: Bool = false
+    ) async -> ProviderQuota {
         if quota.fableWindow != nil {
             cachedWindows = quota.uniqueScopedWindows
             lastSuccess = now
             return quota
         }
 
-        if let lastAttempt, now.timeIntervalSince(lastAttempt) < refreshInterval {
+        if !forceProbe,
+           let lastAttempt,
+           now.timeIntervalSince(lastAttempt) < refreshInterval {
             return mergingFreshCache(into: quota, now: now)
         }
         lastAttempt = now
@@ -536,7 +545,7 @@ private enum ClaudeCLIUsageProbe {
                     // The two general rows arrive first; give the terminal one
                     // more paint cycle for a trailing `Current week (Fable)`
                     // section before stopping the otherwise-complete probe.
-                    if now.timeIntervalSince(completedAt!) >= 2.0 { break }
+                    if now.timeIntervalSince(completedAt!) >= 5.0 { break }
                 }
                 usleep(80_000)
             }

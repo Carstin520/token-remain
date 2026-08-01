@@ -11,6 +11,8 @@ struct UsageCostCompositionCard: View {
     let localUsageStatus: UsageStore.LocalUsageStatus
     let isRefreshing: Bool
     let onRetry: () -> Void
+    @State private var hoveredRingSegmentID: String?
+    @State private var hoveredRowID: String?
 
     private var entries: [UsageInsights.ProviderUsage] {
         insights.providerUsage
@@ -24,48 +26,49 @@ struct UsageCostCompositionCard: View {
     }
 
     var body: some View {
-        DashboardCard {
-            VStack(alignment: .leading, spacing: 14) {
-                PanelHeader(title: L10n.text("usage.today_cost_title"), subtitle: L10n.text("usage.today_cost_subtitle"))
-
-                if entries.isEmpty {
-                    emptyState
-                } else {
-                    HStack(alignment: .center, spacing: 18) {
-                        ring
-                        VStack(alignment: .leading, spacing: 10) {
-                            ForEach(entries) { entry in
-                                ProviderUsageRow(
-                                    usage: entry,
-                                    share: insights.totalCost == nil
-                                        ? nil
-                                        : insights.costShare(for: entry)
-                                )
-                            }
+        OverviewPanelCard(contentSpacing: 14) {
+            PanelHeader(title: L10n.text("usage.today_cost_title"), subtitle: L10n.text("usage.today_cost_subtitle"))
+        } content: {
+            if entries.isEmpty {
+                emptyState
+            } else {
+                HStack(alignment: .center, spacing: 18) {
+                    ring
+                    VStack(alignment: .leading, spacing: 10) {
+                        ForEach(entries) { entry in
+                            ProviderUsageRow(
+                                usage: entry,
+                                share: insights.totalCost == nil
+                                    ? nil
+                                    : insights.costShare(for: entry),
+                                isHighlighted: hoveredProviderID == entry.id,
+                                onHover: { isInside in
+                                    hoveredRowID = isInside ? entry.id : nil
+                                }
+                            )
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
-
-                    if !insights.unpricedModels.isEmpty {
-                        Label(
-                            L10n.format(
-                                "usage.unpriced_models_format",
-                                insights.unpricedModels.joined(separator: L10n.text("common.list_separator"))
-                            ),
-                            systemImage: "exclamationmark.triangle.fill"
-                        )
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(DashboardTheme.warning)
-                        .fixedSize(horizontal: false, vertical: true)
-                    }
-
-                    Text(L10n.text("usage.snapshot_note"))
-                        .font(.system(size: 10))
-                        .foregroundStyle(DashboardTheme.mutedText)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
+
+                if !insights.unpricedModels.isEmpty {
+                    Label(
+                        L10n.format(
+                            "usage.unpriced_models_format",
+                            insights.unpricedModels.joined(separator: L10n.text("common.list_separator"))
+                        ),
+                        systemImage: "exclamationmark.triangle.fill"
+                    )
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(DashboardTheme.warning)
+                    .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Text(L10n.text("usage.snapshot_note"))
+                    .font(.system(size: 10))
+                    .foregroundStyle(DashboardTheme.mutedText)
             }
         }
-        .frame(maxWidth: .infinity)
     }
 
     @ViewBuilder
@@ -108,16 +111,44 @@ struct UsageCostCompositionCard: View {
             segments: costedEntries.map {
                 RingChart.Segment(id: $0.id, value: $0.cost, color: UsageInsights.color(for: $0.id))
             },
-            lineWidth: 16,
-            centerText: insights.totalCost.map { String(format: "$%.2f", $0) } ?? "—",
-            centerCaption: insights.unpricedModels.isEmpty
-                ? L10n.text("usage.today_estimate")
-                : L10n.text("usage.price_unavailable"),
-            centerTextSize: 17
+            lineWidth: 12,
+            centerText: ringCenterText,
+            centerCaption: ringCenterCaption,
+            centerTextSize: hoveredEntry == nil ? 15 : 13,
+            highlightedSegmentID: hoveredProviderID,
+            onHoverSegment: { hoveredRingSegmentID = $0 }
         )
-        .frame(width: 108, height: 108)
+        .frame(width: 88, height: 88)
+        .padding(10)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(L10n.format("usage.today_est_cost_accessibility", insights.totalCost.map { L10n.format("usage.usd_amount", $0) } ?? L10n.text("common.no_data")))
+    }
+
+    private var hoveredEntry: UsageInsights.ProviderUsage? {
+        guard let hoveredProviderID else { return nil }
+        return entries.first { $0.id == hoveredProviderID }
+    }
+
+    private var hoveredProviderID: String? {
+        hoveredRowID ?? hoveredRingSegmentID
+    }
+
+    private var ringCenterText: String {
+        if let entry = hoveredEntry {
+            return entry.hasCompletePricing
+                ? String(format: "$%.2f", entry.cost)
+                : L10n.text("usage.price_unavailable")
+        }
+        return insights.totalCost.map { String(format: "$%.2f", $0) } ?? "—"
+    }
+
+    private var ringCenterCaption: String {
+        if let entry = hoveredEntry {
+            return "\(UsageFormatting.compactNumber(entry.tokens)) tokens"
+        }
+        return insights.unpricedModels.isEmpty
+            ? L10n.text("usage.today_estimate")
+            : L10n.text("usage.price_unavailable")
     }
 }
 
@@ -128,6 +159,8 @@ struct UsageCostCompositionCard: View {
 private struct ProviderUsageRow: View {
     let usage: UsageInsights.ProviderUsage
     let share: Double?
+    let isHighlighted: Bool
+    let onHover: (Bool) -> Void
 
     var body: some View {
         let costText = usage.hasCompletePricing
@@ -155,6 +188,26 @@ private struct ProviderUsageRow: View {
                 .foregroundStyle(DashboardTheme.text)
                 .frame(width: 46, alignment: .trailing)
         }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 4)
+        .background {
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .fill(
+                    isHighlighted
+                        ? UsageInsights.color(for: usage.id).opacity(0.12)
+                        : Color.clear
+                )
+        }
+        .contentShape(Rectangle())
+        .onContinuousHover { phase in
+            switch phase {
+            case .active:
+                onHover(true)
+            case .ended:
+                onHover(false)
+            }
+        }
+        .animation(.easeOut(duration: 0.14), value: isHighlighted)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(usage.hasCompletePricing && share != nil
             ? L10n.format(

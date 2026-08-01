@@ -88,6 +88,7 @@
 "usage.provider_help" = "%1$@: API maliyeti %2$@, %3$@ tokens, toplamın %4$@";
 "usage.provider_accessibility" = "%1$@, API maliyeti %2$@, %3$@ tokens";
 "quota.loading_official" = "Resmî kota okunuyor…";
+"quota.login_recovery_hint" = "Oturum açma algılanmadı; verilerin otomatik olarak geri gelmesi için giriş yapın";
 "feed.updating" = "Güncelleniyor";
 "feed.item_count" = "%d öğe";
 "feed.filtering" = "Dikkate değer güncellemeler aranıyor…";

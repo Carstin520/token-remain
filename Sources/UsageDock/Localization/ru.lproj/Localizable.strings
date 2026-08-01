@@ -88,6 +88,7 @@
 "usage.provider_help" = "%1$@: стоимость API %2$@, %3$@ tokens, %4$@ от общего";
 "usage.provider_accessibility" = "%1$@, стоимость API %2$@, %3$@ tokens";
 "quota.loading_official" = "Чтение официальной квоты…";
+"quota.login_recovery_hint" = "Вход не обнаружен; войдите, чтобы данные восстановились автоматически";
 "feed.updating" = "Обновление";
 "feed.item_count" = "%d записей";
 "feed.filtering" = "Поиск важных обновлений…";
