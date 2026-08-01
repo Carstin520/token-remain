@@ -11,12 +11,12 @@ Remaining quota, reset countdowns and today's cost for Claude Code, Codex, Curso
 ![macOS](https://img.shields.io/badge/macOS-14%2B_Sonoma-000?logo=apple&logoColor=white)
 ![Universal](https://img.shields.io/badge/Universal-Apple_Silicon_%2B_Intel-7C5CFF)
 ![Notarized](https://img.shields.io/badge/Apple-Notarized-34C759?logo=apple&logoColor=white)
-![Latest](https://img.shields.io/badge/latest-v1.2.3-22D3EE)
+![Latest](https://img.shields.io/badge/latest-v1.2.5-22D3EE)
 ![License](https://img.shields.io/badge/license-Apache--2.0-8A94A6)
 
 ### [⬇️ Download TokenRemain.dmg](https://tokenremain.com)
 
-<sub>Current release `v1.2.3` · build 17 · Universal Mac Release build</sub>
+<sub>Current release `v1.2.5` · build 19 · Universal Mac Release build</sub>
 
 [Website](https://tokenremain.com) · [Privacy Policy](https://tokenremain.com/privacy) · [Support](https://tokenremain.com/support) · [Report an issue](https://github.com/Carstin520/token-remain/issues)
 
@@ -137,7 +137,7 @@ v1.2.3 is a system-level optimization pass over hidden surfaces and background r
 
 - 🖥️ **Encrypted multi-Mac aggregation** — Every Mac owns an independent, stable private source record; the iPhone can authenticate and combine quota snapshots from up to 16 Macs. One stale, malformed, replayed, or deleted source cannot roll back healthy sources.
 - 🧰 **Source management and safe diagnostics** — See each Mac's status on Data Sources, export anonymous field-bounded health/data diagnostics, remove one source, and clearly distinguish disconnecting this Mac from deleting all iCloud sync data.
-- 🤖 **Model-level quota windows** — Claude Fable usage and dedicated GPT-5.3-Codex-Spark windows join the detailed quota view and the encrypted snapshot; both model rows start hidden until you enable them, and Fable stays out of the compact menu-bar summary.
+- 🤖 **Model-level quota windows** — Claude Fable usage and dedicated GPT-5.3-Codex-Spark windows join the detailed quota view and encrypted snapshot; both start hidden and can be enabled independently inside their matching menu-bar quota cards.
 - 🖱️ **Direct long-press reordering** — Long-press a Dashboard card to drag it into place with live displacement; lock, pin and expand controls keep their own clickable regions and never get caught by the drag.
 - 📊 **More local usage sources** — ccusage dynamically discovers 15+ local agents; Trae reads only timestamps, model names, and token counters from a folder you select; Windsurf adds independent daily/weekly quota with cross-device display support.
 - 🔑 **Explicit Keychain consent** — Cross-app read-only access for Claude and Codex begins only from a user action. Background refreshes stay silent and never surprise you with a system authorization prompt.
@@ -237,7 +237,7 @@ This public repository contains only the TokenRemain macOS desktop client and it
 
 ## 📦 Current release
 
-- **Version** — `v1.2.3` (build 17), the Universal Mac Release build.
+- **Version** — `v1.2.5` (build 19), the Universal Mac Release build.
 - **Platform** — macOS 14 Sonoma or later on Apple Silicon (arm64) and Intel (x86_64).
 - **Distribution** — The website always downloads the latest `TokenRemain.dmg`; each GitHub Release also retains a DMG named with its version and build.
 - **Cost figures** — Costs are API list-price estimates, not your subscription bill. When a credential expires, data pauses and the app explains how to restore it.

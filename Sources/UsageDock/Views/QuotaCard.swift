@@ -88,18 +88,21 @@ struct QuotaCard: View {
     }
 
     private var header: some View {
-        let content = HStack(alignment: .top, spacing: 8) {
-            BrandIcon(provider: provider)
-                .foregroundStyle(DashboardTheme.text)
-                .frame(width: 20, height: 20)
-                .padding(.top, 3)
-            Text(provider.displayName)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(DashboardTheme.text)
-                .lineLimit(1)
-                .minimumScaleFactor(0.82)
-                .padding(.top, 3)
-                .layoutPriority(2)
+        HStack(alignment: .top, spacing: 8) {
+            HStack(spacing: 8) {
+                BrandIcon(provider: provider)
+                    .foregroundStyle(DashboardTheme.text)
+                    .frame(width: 20, height: 20)
+                Text(provider.displayName)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(DashboardTheme.text)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.82)
+                    .layoutPriority(2)
+            }
+            .padding(.top, 3)
+            .directReorderHandle()
+
             if let notice {
                 QuotaConnectionNotice(message: notice)
                     .layoutPriority(1)
@@ -108,17 +111,20 @@ struct QuotaCard: View {
                 ServiceStatusBadge(status: serviceStatus)
                     .padding(.top, 2)
             }
-            Spacer(minLength: 4)
+
+            Color.clear
+                .frame(maxWidth: .infinity, minHeight: 22)
+                .contentShape(Rectangle())
+                .directReorderHandle()
+
             if let plan = quota?.planName, !plan.isEmpty {
                 TagPill(text: plan)
                     .padding(.top, 2)
+                    .directReorderHandle()
             }
         }
         .frame(maxWidth: .infinity, minHeight: Self.headerHeight, alignment: .top)
         .contentShape(Rectangle())
-        .directReorderHandle()
-
-        return content
     }
 }
 

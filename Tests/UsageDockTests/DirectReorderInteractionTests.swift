@@ -17,12 +17,128 @@ struct DirectReorderInteractionTests {
         #expect(interaction.isPressing(.a))
         #expect(!interaction.isPressing(.b))
 
-        // An unrelated handle's cleanup cannot make A flash back to idle.
+        // An unrelated handle's cleanup cannot clear A's selected state.
         interaction.setPressing(false, item: .b)
         #expect(interaction.isPressing(.a))
 
         interaction.setPressing(false, item: .a)
         #expect(!interaction.isPressing(.a))
+    }
+
+    @Test("The first subtle movement starts one continuous drag in both layouts")
+    func subtleMovementStartsContinuousDragInBothLayouts() {
+        let interaction = DirectReorderInteraction<Item>()
+        interaction.updateFrame(CGRect(x: 20, y: 30, width: 100, height: 100), for: .a)
+
+        interaction.update(
+            item: .a,
+            location: CGPoint(x: 32.5, y: 45.5),
+            translation: CGSize(width: 2.5, height: 1.5),
+            candidates: [.a],
+            layout: .vertical(spacing: 12)
+        )
+
+        #expect(interaction.isDragging(.a))
+        #expect(
+            interaction.offset(for: .a, layout: .vertical(spacing: 12))
+                == CGSize(width: 2.5, height: 1.5)
+        )
+
+        let gridInteraction = DirectReorderInteraction<Item>()
+        gridInteraction.updateFrame(CGRect(x: 20, y: 30, width: 100, height: 100), for: .a)
+        gridInteraction.update(
+            item: .a,
+            location: CGPoint(x: 31, y: 45),
+            translation: CGSize(width: 1, height: 1),
+            candidates: [.a],
+            layout: .grid(spacing: 14)
+        )
+
+        #expect(gridInteraction.isDragging(.a))
+        #expect(
+            gridInteraction.offset(for: .a, layout: .grid(spacing: 14))
+                == CGSize(width: 1, height: 1)
+        )
+    }
+
+    @Test("Trackpad drift during selection keeps the original grab point")
+    func selectionDriftPreservesOriginalGrabPoint() {
+        let interaction = DirectReorderInteraction<Item>()
+        interaction.updateFrame(CGRect(x: 20, y: 30, width: 100, height: 100), for: .a)
+
+        // The pointer began at (30, 40), then naturally slid before the press
+        // recognizer selected the component. Pointer samples come from a fixed
+        // window space, so moving the rendered component cannot change them.
+        let anchor = DirectReorderPointerAnchor(
+            stableLocation: CGPoint(x: 300, y: 200),
+            reorderLocation: CGPoint(x: 30, y: 40)
+        )
+        let sample = anchor.sample(at: CGPoint(x: 328, y: 219))
+
+        #expect(sample.location == CGPoint(x: 58, y: 59))
+        #expect(sample.translation == CGSize(width: 28, height: 19))
+
+        interaction.update(
+            item: .a,
+            location: sample.location,
+            translation: sample.translation,
+            candidates: [.a],
+            layout: .vertical(spacing: 12)
+        )
+
+        #expect(interaction.isDragging(.a))
+        #expect(
+            interaction.offset(for: .a, layout: .vertical(spacing: 12))
+                == CGSize(width: 28, height: 19)
+        )
+
+        let nextSample = anchor.sample(at: CGPoint(x: 336, y: 226))
+        interaction.update(
+            item: .a,
+            location: nextSample.location,
+            translation: nextSample.translation,
+            candidates: [.a],
+            layout: .vertical(spacing: 12)
+        )
+        #expect(
+            interaction.offset(for: .a, layout: .vertical(spacing: 12))
+                == CGSize(width: 36, height: 26)
+        )
+    }
+
+    @Test("A completed drag rearms the same component for the next long press")
+    func completedDragCanImmediatelyRearmSameItem() throws {
+        let interaction = DirectReorderInteraction<Item>()
+        interaction.updateFrame(CGRect(x: 0, y: 0, width: 100, height: 100), for: .a)
+        interaction.updateFrame(CGRect(x: 0, y: 112, width: 100, height: 100), for: .b)
+
+        interaction.update(
+            item: .a,
+            location: CGPoint(x: 10, y: 150),
+            translation: CGSize(width: 0, height: 140),
+            candidates: [.a, .b],
+            layout: .vertical(spacing: 12)
+        )
+        _ = try #require(interaction.finish(item: .a))
+        #expect(!interaction.isActive)
+
+        // Reflect the persisted layout, then start a second gesture on A with
+        // a movement smaller than the removed legacy activation threshold.
+        interaction.updateFrame(CGRect(x: 0, y: 0, width: 100, height: 100), for: .b)
+        interaction.updateFrame(CGRect(x: 0, y: 112, width: 100, height: 100), for: .a)
+        interaction.update(
+            item: .a,
+            location: CGPoint(x: 11, y: 123),
+            translation: CGSize(width: 1, height: 1),
+            candidates: [.b, .a],
+            layout: .vertical(spacing: 12)
+        )
+
+        #expect(interaction.isDragging(.a))
+        #expect(
+            interaction.offset(for: .a, layout: .vertical(spacing: 12))
+                == CGSize(width: 1, height: 1)
+        )
     }
 
     @Test("Vertical stack keeps the full component under the pointer and shifts its vacancy")

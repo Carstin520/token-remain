@@ -11,12 +11,12 @@
 ![macOS](https://img.shields.io/badge/macOS-14%2B_Sonoma-000?logo=apple&logoColor=white)
 ![Universal](https://img.shields.io/badge/Universal-Apple_Silicon_%2B_Intel-7C5CFF)
 ![Notarized](https://img.shields.io/badge/Apple-Notarized-34C759?logo=apple&logoColor=white)
-![Latest](https://img.shields.io/badge/latest-v1.2.3-22D3EE)
+![Latest](https://img.shields.io/badge/latest-v1.2.5-22D3EE)
 ![License](https://img.shields.io/badge/license-Apache--2.0-8A94A6)
 
 ### [⬇️ 下载 TokenRemain.dmg](https://tokenremain.com)
 
-<sub>当前发布 `v1.2.3` · build 17 · Universal Mac Release 构建</sub>
+<sub>当前发布 `v1.2.5` · build 19 · Universal Mac Release 构建</sub>
 
 [官网](https://tokenremain.com) · [隐私政策](https://tokenremain.com/privacy) · [支持](https://tokenremain.com/support) · [问题反馈](https://github.com/Carstin520/token-remain/issues)
 
@@ -137,7 +137,7 @@ v1.2.3 针对隐藏界面与后台刷新做了系统级优化 —— 消除隐�
 
 - 🖥️ **多 Mac 加密聚合** — 每台 Mac 都拥有独立、稳定的私有来源记录;iPhone 可认证并聚合最多 16 台 Mac 的额度快照。单个来源过期、损坏、重放或删除时,不会拖累其他健康来源。
 - 🧰 **来源管理与安全诊断** — 在「数据来源」中查看每台 Mac 的状态,导出经过匿名化和字段限制的健康/数据诊断,单独移除某一来源,并明确区分“断开这台 Mac”与“删除全部 iCloud 同步数据”。
-- 🤖 **模型级额度窗口** — Claude Fable 用量与 GPT-5.3-Codex-Spark 独立窗口进入详细额度视图与加密快照;两类模型行默认隐藏,由用户逐项开启,Fable 不占用紧凑的菜单栏摘要。
+- 🤖 **模型级额度窗口** — Claude Fable 用量与 GPT-5.3-Codex-Spark 独立窗口进入详细额度视图与加密快照;两类模型行默认隐藏,可分别控制是否在对应菜单栏额度组件中显示。
 - 🖱️ **长按直接拖拽排序** — Dashboard 卡片长按即可拖动重排并实时位移;锁定、置顶与展开控件保留独立可点击区域,不会被拖拽误触。
 - 📊 **更多本地用量来源** — ccusage 动态发现 15+ 种本地 Agent;Trae 只读取用户所选轨迹目录中的时间、模型与 Token 计数;Windsurf 提供独立日/周额度,并支持跨设备展示。
 - 🔑 **明确的钥匙串授权** — Claude 与 Codex 的跨 App 只读访问由用户主动触发;后台刷新始终静默,不会突然弹出系统授权窗口。
@@ -234,7 +234,7 @@ bash ./script/build_and_run.sh --verify
 
 ## 📦 当前发布
 
-- **版本**:`v1.2.3`(build 17)——Universal Mac Release 构建。
+- **版本**:`v1.2.5`(build 19)——Universal Mac Release 构建。
 - **平台**:macOS 14 Sonoma 及以上,同时支持 Apple Silicon(arm64)与 Intel(x86_64)。
 - **分发**:官网始终下载最新的 `TokenRemain.dmg`;GitHub Release 同时保留带版本与 build 号的 DMG 归档。
 - **成本口径**:成本为 API 标价估算,不等于订阅账单;凭证过期时数据会暂停并提示恢复方式。

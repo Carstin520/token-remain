@@ -3,6 +3,50 @@
 All notable product changes are recorded here. TokenRemain uses Semantic
 Versioning for public releases.
 
+## 1.2.5 — 2026-08-01
+
+### Added
+
+- Let users independently show Claude Fable and GPT-5.3-Codex-Spark weekly
+  windows inside their corresponding menu-bar quota cards.
+- Add hover and selection details to the Overview usage-cost ring so each
+  provider reveals its token volume and API list-price estimate.
+
+### Changed
+
+- Give Dashboard quota cards a consistent size, fixed provider header, aligned
+  first quota row, and internal scrolling when a provider has extra windows.
+- Align and fill the Overview card grid, keep both default Trending stories
+  directly visible, and keep the usage-cost ring fully inside its card.
+- Place a concise one-line sign-in recovery notice beside the provider name.
+- Expand the Chinese and English README with current screenshots, measured
+  power-efficiency context, provider details, and privacy boundaries.
+
+### Fixed
+
+- Preserve a still-active Fable weekly window when an ordinary Claude refresh
+  returns only the general quota windows, and immediately retry the scoped
+  probe when Fable display is enabled.
+- Keep model-specific settings scoped to the menu-bar cards they describe
+  instead of changing the Dashboard quota rows.
+
+## 1.2.4 — 2026-08-01
+
+### Changed
+
+- Make menu-bar widgets and Dashboard Limits cards use one trackpad-friendly
+  selection stage: a short hold tolerates natural pointer drift, then the full
+  rendered component follows continuously from the original grab point.
+
+### Fixed
+
+- Allow the same component to be dragged repeatedly without requiring a second
+  press or leaving the reorder gesture unable to rearm.
+- Keep drag pointer samples in a fixed window coordinate space so rendering the
+  component's offset cannot feed back into the next sample and cause jitter.
+- Remove flashing, scaling, lift, and system-preview feedback while preserving
+  drop-time ordering and persistence.
+
 ## 1.2.3 — 2026-08-01
 
 ### Changed
@@ -352,3 +396,5 @@ Versioning for public releases.
 [1.2.1]: https://github.com/Carstin520/token-remain/releases/tag/v1.2.1
 [1.2.2]: https://github.com/Carstin520/token-remain/releases/tag/v1.2.2
 [1.2.3]: https://github.com/Carstin520/token-remain/releases/tag/v1.2.3
+[1.2.4]: https://github.com/Carstin520/token-remain/releases/tag/v1.2.4
+[1.2.5]: https://github.com/Carstin520/token-remain/releases/tag/v1.2.5
