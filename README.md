@@ -11,9 +11,9 @@
 ![macOS](https://img.shields.io/badge/macOS-14%2B_Sonoma-000?logo=apple&logoColor=white)
 ![Universal](https://img.shields.io/badge/Universal-Apple_Silicon_%2B_Intel-7C5CFF)
 ![Notarized](https://img.shields.io/badge/Apple-Notarized-34C759?logo=apple&logoColor=white)
-![Latest](https://img.shields.io/badge/latest-v1.2.1-22D3EE)
+![Latest](https://img.shields.io/badge/latest-v1.2.3-22D3EE)
 
-**1.2 正式版 `v1.2.1`**（build 15，Universal Mac Release 构建）
+**1.2 正式版 `v1.2.3`**（build 17，Universal Mac Release 构建）
 
 [官网 / 下载](https://tokenremain.com) · [隐私政策](https://tokenremain.com/privacy) · [支持](https://tokenremain.com/support) · [问题反馈](https://github.com/Carstin520/token-remain/issues)
 
@@ -43,7 +43,7 @@
 - 📊 **更多本地用量来源** — ccusage 动态发现 15+ 种本地 Agent；Trae 只读取用户所选轨迹目录中的时间、模型与 Token 计数；Windsurf 提供独立日/周额度，并支持跨设备展示。
 - 🔑 **明确的钥匙串授权** — Claude 与 Codex 的跨 App 只读访问由用户主动触发；后台刷新始终静默，不会突然弹出系统授权窗口。
 - ⬆️ **始终更新到最新版** — 自适应检查签名更新源：无更新时每天约四次、有待安装更新时每天约两次，失败后有界退避；用户点击更新时会重新查询最新发布，直接安装当时的最新版本，而不是当前版本的“下一个版本”。
-- ⚙️ **更轻、更稳的后台刷新** — Codex 会话缓存可容忍有限时钟偏差并清理已删除记录；AI Feed 只在界面可见时轮询；工具发现降至每五分钟一次，同时修复过期倒计时与 Dock 图形缓存问题。
+- ⚙️ **会话感知的低功耗刷新** — 本地 Codex/Claude 会话活跃或界面真实可见时保持分钟级新鲜度；静止、隐藏或被完全遮挡时退到至少五分钟。Dashboard 隐藏后暂停机器人动画，Codex 只增量解析新增或改写的会话文件。
 
 ## 📸 实机截图
 
@@ -161,7 +161,7 @@ bash ./script/build_and_run.sh --verify
 
 ## 📦 当前发布
 
-- **版本**：`v1.2.1`（build 15）——Universal Mac Release 构建。
+- **版本**：`v1.2.3`（build 17）——Universal Mac Release 构建。
 - **平台**：macOS 14 Sonoma 及以上，同时支持 Apple Silicon（arm64）与 Intel（x86_64）。
 - **分发**：官网始终下载最新的 `TokenRemain.dmg`；GitHub Release 同时保留带版本与 build 号的 DMG 归档。
 - **成本口径**：成本为 API 标价估算，不等于订阅账单；凭证过期时数据会暂停并提示恢复方式。

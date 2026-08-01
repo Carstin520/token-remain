@@ -1,5 +1,28 @@
 import AppKit
+import Combine
 import SwiftUI
+
+@MainActor
+final class DashboardVisibility: ObservableObject {
+    @Published private(set) var isVisible = false
+
+    @discardableResult
+    func setVisible(_ visible: Bool) -> Bool {
+        let becameVisible = visible && !isVisible
+        guard visible != isVisible else { return false }
+        isVisible = visible
+        return becameVisible
+    }
+
+    @discardableResult
+    func update(from window: NSWindow) -> Bool {
+        setVisible(
+            window.isVisible
+            && !window.isMiniaturized
+            && window.occlusionState.contains(.visible)
+        )
+    }
+}
 
 /// Hosts the SwiftUI Dashboard in a standalone window. This is the only AppKit
 /// window glue in the app; it is deliberately isolated so the rest of the
@@ -10,14 +33,24 @@ import SwiftUI
 @MainActor
 final class DashboardWindowController: NSWindowController {
     private let navigator = DashboardNavigator()
+    private let visibility = DashboardVisibility()
+    private let onBecameVisible: () -> Void
+    private var visibilityObservers: [NSObjectProtocol] = []
 
-    init(store: UsageStore, feedStore: AIFeedStore, launchAtLogin: LaunchAtLoginManager) {
+    init(
+        store: UsageStore,
+        feedStore: AIFeedStore,
+        launchAtLogin: LaunchAtLoginManager,
+        onBecameVisible: @escaping () -> Void
+    ) {
+        self.onBecameVisible = onBecameVisible
         let hosting = NSHostingController(
             rootView: DashboardView(
                 store: store,
                 feedStore: feedStore,
                 launchAtLogin: launchAtLogin,
-                navigator: navigator
+                navigator: navigator,
+                visibility: visibility
             )
         )
 
@@ -52,11 +85,36 @@ final class DashboardWindowController: NSWindowController {
         window.center()
 
         super.init(window: window)
+        let center = NotificationCenter.default
+        let names: [Notification.Name] = [
+            NSWindow.didMiniaturizeNotification,
+            NSWindow.didDeminiaturizeNotification,
+            NSWindow.didChangeOcclusionStateNotification,
+            NSWindow.willCloseNotification
+        ]
+        visibilityObservers = names.map { name in
+            center.addObserver(forName: name, object: window, queue: .main) { [weak self] _ in
+                Task { @MainActor [weak self] in
+                    guard let self, let window = self.window else { return }
+                    if name == NSWindow.willCloseNotification {
+                        self.visibility.setVisible(false)
+                    } else if self.visibility.update(from: window) {
+                        self.onBecameVisible()
+                    }
+                }
+            }
+        }
     }
 
     @available(*, unavailable)
     required init?(coder: NSCoder) {
         fatalError("init(coder:) is not supported")
+    }
+
+    deinit {
+        for observer in visibilityObservers {
+            NotificationCenter.default.removeObserver(observer)
+        }
     }
 
     /// Shows the Dashboard, optionally jumping to a specific section, and
@@ -72,5 +130,8 @@ final class DashboardWindowController: NSWindowController {
         // flip the document title back to visible. The title *property* stays
         // "TokenRemain" for Mission Control / the window switcher.
         window?.titleVisibility = .hidden
+        if let window, visibility.update(from: window) {
+            onBecameVisible()
+        }
     }
 }

@@ -19,6 +19,7 @@ struct DashboardView: View {
     @ObservedObject var feedStore: AIFeedStore
     @ObservedObject var launchAtLogin: LaunchAtLoginManager
     @ObservedObject var navigator: DashboardNavigator
+    @ObservedObject var visibility: DashboardVisibility
     @ObservedObject var tracked: TrackedProvidersStore = .shared
     @ObservedObject private var appUpdater = AppUpdateController.shared
 #if TOKENREMAIN_CLOUD_SYNC
@@ -99,7 +100,7 @@ struct DashboardView: View {
         if tracked.hasCompletedOnboarding {
             dashboardBody
         } else {
-            OnboardingView(tracked: tracked)
+            OnboardingView(tracked: tracked, robotAnimated: visibility.isVisible)
                 .frame(minWidth: 920, minHeight: 620)
         }
     }
@@ -218,7 +219,8 @@ struct DashboardView: View {
         HStack(spacing: 10) {
             TokenRemainFullBodyRobot(
                 remainingPercent: store.aggregateRemainingPercent,
-                size: 42
+                size: 42,
+                animated: visibility.isVisible
             )
 
             Text("TokenRemain")

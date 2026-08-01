@@ -43,6 +43,7 @@ struct CrossDeviceSyncDefaultsTests {
     @Test("Mac heartbeat stays far inside the 24-hour snapshot lifetime")
     func heartbeatCeiling() {
         #expect(CrossDeviceSyncController.heartbeatInterval == 15 * 60)
+        #expect(CrossDeviceSyncController.refreshRequestPollInterval == 60)
     }
 
     @Test("Publishing advances beyond the authenticated remote sequence")

@@ -177,6 +177,201 @@ public struct SyncCloudSourceChangeBatch: Sendable, Equatable {
     }
 }
 
+/// A content-free control-plane request written by iPhone and consumed by Mac.
+/// The fixed record is intentionally independent of the encrypted snapshot and
+/// synchronizable key, so a phone with no accepted quota data can still ask the
+/// Mac to republish its latest local state.
+public struct SyncCloudRefreshRequest: Sendable, Equatable {
+    public let requestID: UUID
+    public let requestedAt: Date
+
+    public init(requestID: UUID = UUID(), requestedAt: Date = Date()) throws {
+        guard requestID != syncCloudStoreZeroUUID else {
+            throw SyncCloudRecordValidationError.invalidField(
+                CloudKitSyncRefreshRequestCodec.requestIDField
+            )
+        }
+        guard requestedAt.timeIntervalSince1970.isFinite else {
+            throw SyncCloudRecordValidationError.invalidField(
+                CloudKitSyncRefreshRequestCodec.requestedAtField
+            )
+        }
+        self.requestID = requestID
+        self.requestedAt = requestedAt
+    }
+}
+
+public struct SyncCloudRefreshRequestState: Sendable, Equatable {
+    public let request: SyncCloudRefreshRequest
+    public let isAcknowledged: Bool
+
+    public var pendingRequest: SyncCloudRefreshRequest? {
+        isAcknowledged ? nil : request
+    }
+}
+
+/// Codec for the phone-to-Mac refresh control record. Its allowlist contains no
+/// provider identifiers, quota values, account information, paths, or secrets.
+/// It intentionally reuses the already-deployed snapshot record type and field
+/// types under an otherwise ignored record ID, so direct Production builds do
+/// not depend on a new CloudKit schema deployment.
+public enum CloudKitSyncRefreshRequestCodec {
+    public static let recordType = CloudKitSyncRecordCodec.recordType
+    public static let recordName = "refresh-request-v1"
+    public static let requestIDField = CloudKitSyncRecordCodec.keyIDField
+    public static let requestedAtField = CloudKitSyncRecordCodec.generatedAtField
+    public static let statusField = CloudKitSyncRecordCodec.sequenceField
+    public static let controlVersionField = CloudKitSyncRecordCodec.envelopeVersionField
+    public static let controlKindField = CloudKitSyncRecordCodec.sourceInstanceIDField
+
+    private static let controlVersion = 1
+    private static let controlKind = "refresh-request-v1"
+    private static let pendingStatus = "pending"
+    private static let acknowledgedStatus = "acknowledged"
+
+    public static func recordID() -> CKRecord.ID {
+        CKRecord.ID(
+            recordName: recordName,
+            zoneID: CloudKitSyncRecordCodec.zoneID()
+        )
+    }
+
+    public static func record(for request: SyncCloudRefreshRequest) -> CKRecord {
+        let record = CKRecord(recordType: recordType, recordID: recordID())
+        apply(request, status: pendingStatus, to: record)
+        return record
+    }
+
+    /// Reuses the fetched record and clears its previous acknowledgement. The
+    /// retained change tag gives last-writer-wins requests bounded conflict
+    /// retries without accumulating one CloudKit record per tap.
+    public static func overwrite(
+        _ record: CKRecord,
+        with request: SyncCloudRefreshRequest
+    ) throws {
+        try validateIdentity(of: record)
+        clearFields(in: record)
+        apply(request, status: pendingStatus, to: record)
+    }
+
+    public static func state(from record: CKRecord) throws -> SyncCloudRefreshRequestState {
+        try validateIdentity(of: record)
+        guard let version = record[controlVersionField] as? NSNumber,
+              version.intValue == controlVersion,
+              version.doubleValue == Double(controlVersion) else {
+            throw SyncCloudRecordValidationError.invalidField(controlVersionField)
+        }
+        guard let kind = record[controlKindField] as? String,
+              kind == controlKind else {
+            throw SyncCloudRecordValidationError.invalidField(controlKindField)
+        }
+        let requestID = try requiredUUID(record, field: requestIDField)
+        let requestedAt = try requiredDate(record, field: requestedAtField)
+        let request = try SyncCloudRefreshRequest(
+            requestID: requestID,
+            requestedAt: requestedAt
+        )
+
+        let status = try requiredString(record, field: statusField)
+        let isAcknowledged: Bool
+        switch status {
+        case pendingStatus:
+            isAcknowledged = false
+        case acknowledgedStatus:
+            isAcknowledged = true
+        default:
+            throw SyncCloudRecordValidationError.invalidField(statusField)
+        }
+        return SyncCloudRefreshRequestState(
+            request: request,
+            isAcknowledged: isAcknowledged
+        )
+    }
+
+    /// Mutates only when the fetched record still represents the request the Mac
+    /// uploaded for. CloudKit's change tag then prevents this acknowledgement
+    /// from overwriting a newer phone request that raced with the upload.
+    @discardableResult
+    public static func acknowledge(
+        _ record: CKRecord,
+        requestID: UUID
+    ) throws -> Bool {
+        guard requestID != syncCloudStoreZeroUUID else {
+            throw SyncCloudRecordValidationError.invalidField(requestIDField)
+        }
+        let current = try state(from: record)
+        guard current.request.requestID == requestID else { return false }
+        if current.isAcknowledged { return true }
+        clearFields(in: record)
+        apply(current.request, status: acknowledgedStatus, to: record)
+        return true
+    }
+
+    private static func apply(
+        _ request: SyncCloudRefreshRequest,
+        status: String,
+        to record: CKRecord
+    ) {
+        record[controlVersionField] = NSNumber(value: controlVersion)
+        record[requestIDField] = request.requestID.uuidString.lowercased() as NSString
+        record[controlKindField] = controlKind as NSString
+        record[statusField] = status as NSString
+        record[requestedAtField] = request.requestedAt as NSDate
+    }
+
+    private static func clearFields(in record: CKRecord) {
+        let encryptedKeys = Set(record.encryptedValues.allKeys())
+        for key in record.allKeys() where !encryptedKeys.contains(key) {
+            record[key] = nil
+        }
+        for key in encryptedKeys {
+            record.encryptedValues[key] = nil
+        }
+    }
+
+    private static func validateIdentity(of record: CKRecord) throws {
+        guard record.recordType == recordType else {
+            throw SyncCloudRecordValidationError.unexpectedRecordType
+        }
+        guard record.recordID == recordID() else {
+            throw SyncCloudRecordValidationError.unexpectedRecordID
+        }
+    }
+
+    private static func requiredUUID(_ record: CKRecord, field: String) throws -> UUID {
+        guard let value = record[field] else {
+            throw SyncCloudRecordValidationError.missingField(field)
+        }
+        guard let string = value as? String,
+              let uuid = UUID(uuidString: string),
+              uuid != syncCloudStoreZeroUUID else {
+            throw SyncCloudRecordValidationError.invalidField(field)
+        }
+        return uuid
+    }
+
+    private static func requiredDate(_ record: CKRecord, field: String) throws -> Date {
+        guard let value = record[field] else {
+            throw SyncCloudRecordValidationError.missingField(field)
+        }
+        guard let date = value as? Date,
+              date.timeIntervalSince1970.isFinite else {
+            throw SyncCloudRecordValidationError.invalidField(field)
+        }
+        return date
+    }
+
+    private static func requiredString(_ record: CKRecord, field: String) throws -> String {
+        guard let value = record[field] else {
+            throw SyncCloudRecordValidationError.missingField(field)
+        }
+        guard let string = value as? String, !string.isEmpty else {
+            throw SyncCloudRecordValidationError.invalidField(field)
+        }
+        return string
+    }
+}
+
 /// Fixed, opaque record codec for the private CloudKit database. Keeping this
 /// as pure record conversion lets the suite verify field allowlisting without
 /// making a network or iCloud Keychain request.
@@ -489,6 +684,11 @@ public protocol SyncCloudSourceStoring: SyncCloudSnapshotStoring {
     func fetchSourceChanges(
         since changeToken: SyncCloudChangeToken?
     ) async throws -> SyncCloudSourceChangeBatch
+    func requestRefresh(_ request: SyncCloudRefreshRequest) async throws
+    func fetchRefreshRequest() async throws -> SyncCloudRefreshRequest?
+    func acknowledgeRefreshRequest(
+        requestID: UUID
+    ) async throws -> Bool
 }
 
 public actor CloudKitPrivateSnapshotStore: SyncCloudSourceStoring {
@@ -548,6 +748,48 @@ public actor CloudKitPrivateSnapshotStore: SyncCloudSourceStoring {
             ),
             enforcesSourceSequence: true
         )
+    }
+
+    public func requestRefresh(_ request: SyncCloudRefreshRequest) async throws {
+        try await ensureZone()
+        for attempt in 0..<Self.maximumConflictSaveAttempts {
+            do {
+                try await saveRefreshRequestOnce(request)
+                return
+            } catch let error as SyncCloudStoreError {
+                guard Self.shouldRetrySave(error, afterAttempt: attempt) else {
+                    throw error
+                }
+            }
+        }
+    }
+
+    private func saveRefreshRequestOnce(_ request: SyncCloudRefreshRequest) async throws {
+        let recordID = CloudKitSyncRefreshRequestCodec.recordID()
+        let record: CKRecord
+        do {
+            let existing = try await database.record(for: recordID)
+            do {
+                try CloudKitSyncRefreshRequestCodec.overwrite(existing, with: request)
+                record = existing
+            } catch let validationError as SyncCloudRecordValidationError {
+                throw SyncCloudStoreError.malformedRecord(validationError)
+            }
+        } catch let error as SyncCloudStoreError {
+            throw error
+        } catch {
+            switch Self.map(error) {
+            case .recordNotFound:
+                record = CloudKitSyncRefreshRequestCodec.record(for: request)
+            case let mapped:
+                throw mapped
+            }
+        }
+        do {
+            _ = try await database.save(record)
+        } catch {
+            throw Self.map(error)
+        }
     }
 
     private func save(
@@ -636,6 +878,67 @@ public actor CloudKitPrivateSnapshotStore: SyncCloudSourceStoring {
         try await fetch(
             recordID: CloudKitSyncRecordCodec.sourceRecordID(for: sourceInstanceID)
         )
+    }
+
+    /// This polling read deliberately does not call `ensureZone()`: a missing
+    /// zone cannot contain a request, and recreating it every minute would turn
+    /// the Mac's lightweight check into a recurring CloudKit write.
+    public func fetchRefreshRequest() async throws -> SyncCloudRefreshRequest? {
+        do {
+            let record = try await database.record(
+                for: CloudKitSyncRefreshRequestCodec.recordID()
+            )
+            do {
+                return try CloudKitSyncRefreshRequestCodec.state(from: record).pendingRequest
+            } catch let validationError as SyncCloudRecordValidationError {
+                throw SyncCloudStoreError.malformedRecord(validationError)
+            }
+        } catch let error as SyncCloudStoreError {
+            throw error
+        } catch {
+            switch Self.map(error) {
+            case .recordNotFound, .zoneNotFound:
+                return nil
+            case let mapped:
+                throw mapped
+            }
+        }
+    }
+
+    public func acknowledgeRefreshRequest(
+        requestID: UUID
+    ) async throws -> Bool {
+        do {
+            let record = try await database.record(
+                for: CloudKitSyncRefreshRequestCodec.recordID()
+            )
+            do {
+                guard try CloudKitSyncRefreshRequestCodec.acknowledge(
+                    record,
+                    requestID: requestID
+                ) else {
+                    return false
+                }
+            } catch let validationError as SyncCloudRecordValidationError {
+                throw SyncCloudStoreError.malformedRecord(validationError)
+            }
+            do {
+                _ = try await database.save(record)
+                return true
+            } catch {
+                if Self.map(error) == .conflict { return false }
+                throw Self.map(error)
+            }
+        } catch let error as SyncCloudStoreError {
+            throw error
+        } catch {
+            switch Self.map(error) {
+            case .recordNotFound, .zoneNotFound:
+                return false
+            case let mapped:
+                throw mapped
+            }
+        }
     }
 
     private func fetch(recordID: CKRecord.ID) async throws -> SyncCloudStoredEnvelope? {

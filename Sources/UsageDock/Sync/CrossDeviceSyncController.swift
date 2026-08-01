@@ -52,6 +52,9 @@ final class CrossDeviceSyncController: ObservableObject {
     /// 心跳只是 iPhone 端"数据源仍在线"的保活信号。快照有效期长达
     /// 24 小时,15 分钟一跳绰绰有余;更密只会平添 CloudKit 往返。
     nonisolated static let heartbeatInterval: TimeInterval = 15 * 60
+    /// 手机手动请求是一个很小的控制记录。Mac 运行时每分钟检查一次，
+    /// 比心跳及时，同时避免为了极少发生的手动操作常驻高频轮询。
+    nonisolated static let refreshRequestPollInterval: TimeInterval = 60
 
     @Published private(set) var isEnabled: Bool
     @Published private(set) var state: State
@@ -86,6 +89,8 @@ final class CrossDeviceSyncController: ObservableObject {
     private var publishRequested = false
     private var forceHeartbeatRequested = false
     private var heartbeatTask: Task<Void, Never>?
+    private var refreshRequestPollingTask: Task<Void, Never>?
+    private var pendingRefreshRequest: SyncCloudRefreshRequest?
     private var retryAttempt = 0
     private weak var usageStore: UsageStore?
     private var currentGuidanceIssue: Guidance?
@@ -146,6 +151,7 @@ final class CrossDeviceSyncController: ObservableObject {
         if isEnabled {
             scheduleUpload(after: 0)
             startHeartbeat()
+            startRefreshRequestPolling()
         }
     }
 
@@ -159,6 +165,7 @@ final class CrossDeviceSyncController: ObservableObject {
             state = latestQuotas.isEmpty ? .waitingForMacData : .checkingICloud
             scheduleUpload(after: 0)
             startHeartbeat()
+            startRefreshRequestPolling()
         } else {
             uploadTask?.cancel()
             uploadTask = nil
@@ -167,6 +174,9 @@ final class CrossDeviceSyncController: ObservableObject {
             forceHeartbeatRequested = false
             heartbeatTask?.cancel()
             heartbeatTask = nil
+            refreshRequestPollingTask?.cancel()
+            refreshRequestPollingTask = nil
+            pendingRefreshRequest = nil
             state = .off
             iCloudAvailable = nil
             syncKeyAvailable = nil
@@ -260,6 +270,9 @@ final class CrossDeviceSyncController: ObservableObject {
         forceHeartbeatRequested = false
         heartbeatTask?.cancel()
         heartbeatTask = nil
+        refreshRequestPollingTask?.cancel()
+        refreshRequestPollingTask = nil
+        pendingRefreshRequest = nil
         usageStore?.setLowLatencySyncEnabled(false)
         defaults.set(false, forKey: DefaultsKey.enabled)
         do {
@@ -332,6 +345,8 @@ final class CrossDeviceSyncController: ObservableObject {
     private func publishLatestOnce(forceHeartbeat: Bool) async {
         guard isEnabled else { return }
         let checkedAt = Date()
+        let refreshRequest = pendingRefreshRequest
+        let effectiveForceHeartbeat = forceHeartbeat || refreshRequest != nil
         lastAutomaticCheckAt = checkedAt
         guard SyncCapabilityProbe.hasRequiredEntitlements else {
             state = .needsSignedCapabilities
@@ -391,7 +406,7 @@ final class CrossDeviceSyncController: ObservableObject {
             } else {
                 authenticatedRemoteSequence = nil
             }
-            if !forceHeartbeat,
+            if !effectiveForceHeartbeat,
                existingSource != nil,
                fingerprint == defaults.string(forKey: DefaultsKey.lastFingerprint),
                let lastUploadedAt,
@@ -437,6 +452,12 @@ final class CrossDeviceSyncController: ObservableObject {
             lastUploadedAt = uploadedAt
             state = .synced(uploadedAt)
             logger.info("Private sync source upload succeeded; sequence \(sequence, privacy: .public)")
+            if let refreshRequest {
+                await acknowledgeRefreshRequest(
+                    refreshRequest,
+                    cloud: cloud
+                )
+            }
         } catch {
             guard isEnabled, !Task.isCancelled else { return }
             let failure = Self.failure(for: error)
@@ -452,7 +473,33 @@ final class CrossDeviceSyncController: ObservableObject {
             logger.error("Private sync upload failed: \(Self.errorCode(error), privacy: .public)")
             retryAttempt = min(retryAttempt + 1, 8)
             let delay = min(pow(2, Double(retryAttempt)), 300)
-            scheduleUpload(after: delay, forceHeartbeat: forceHeartbeat)
+            scheduleUpload(after: delay, forceHeartbeat: effectiveForceHeartbeat)
+        }
+    }
+
+    private func acknowledgeRefreshRequest(
+        _ request: SyncCloudRefreshRequest,
+        cloud: CloudKitPrivateSnapshotStore
+    ) async {
+        do {
+            let acknowledged = try await cloud.acknowledgeRefreshRequest(
+                requestID: request.requestID
+            )
+            if pendingRefreshRequest?.requestID == request.requestID {
+                pendingRefreshRequest = nil
+            }
+            if acknowledged {
+                logger.info("Phone refresh request completed after a successful upload")
+            } else {
+                // The fixed record changed while this upload was in flight. Fetch
+                // the newer request instead of treating the old acknowledgement
+                // as success and accidentally dropping the user's second tap.
+                await pollForRefreshRequest()
+            }
+        } catch {
+            // The snapshot is already durable. Keep the request pending; the
+            // lightweight poller will retry without delaying ordinary uploads.
+            logger.error("Phone refresh request acknowledgement failed: \(Self.errorCode(error), privacy: .public)")
         }
     }
 
@@ -546,12 +593,49 @@ final class CrossDeviceSyncController: ObservableObject {
         }
     }
 
+    private func startRefreshRequestPolling() {
+        guard refreshRequestPollingTask == nil else { return }
+        refreshRequestPollingTask = Task { [weak self] in
+            guard let self else { return }
+            while !Task.isCancelled, self.isEnabled {
+                await self.pollForRefreshRequest()
+                do {
+                    try await Task.sleep(for: .seconds(Self.refreshRequestPollInterval))
+                } catch {
+                    return
+                }
+            }
+        }
+    }
+
+    private func pollForRefreshRequest() async {
+        guard isEnabled, SyncCapabilityProbe.hasRequiredEntitlements else { return }
+        do {
+            let cloud = CloudKitPrivateSnapshotStore(
+                containerIdentifier: Self.cloudContainerIdentifier
+            )
+            let request = try await cloud.fetchRefreshRequest()
+            pendingRefreshRequest = request
+            if request != nil {
+                // A pending phone request bypasses content-fingerprint and
+                // heartbeat de-duplication, but still uses the serialized queue.
+                scheduleUpload(after: 0, forceHeartbeat: true)
+            }
+        } catch {
+            // Ordinary publishing owns the user-visible sync state. A lightweight
+            // control-record poll failure remains a redacted diagnostic and the
+            // next interval retries without masking a valid last upload.
+            logger.error("Phone refresh request check failed: \(Self.errorCode(error), privacy: .public)")
+        }
+    }
+
     private func handleICloudAccountChanged() {
         guard isEnabled else { return }
         iCloudAvailable = nil
         syncKeyAvailable = nil
         clearGuidanceIssue()
         scheduleUpload(after: 0, forceHeartbeat: true)
+        Task { await pollForRefreshRequest() }
     }
 
     private func updateGuidance(for failure: Failure, at now: Date) {

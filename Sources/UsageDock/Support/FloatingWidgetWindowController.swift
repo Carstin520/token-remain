@@ -8,14 +8,19 @@ import SwiftUI
 final class FloatingWidgetWindowController: NSWindowController, NSWindowDelegate {
     /// 用户点浮窗自己的关闭按钮时,同步回设置开关。
     var onUserClose: (() -> Void)?
+    private let onBecameVisible: () -> Void
+    private var wasActuallyVisible = false
+    private var visibilityObserver: NSObjectProtocol?
 
     init(
         store: UsageStore,
         feedStore: AIFeedStore,
         launchAtLogin: LaunchAtLoginManager,
         layout: PopoverLayoutStore,
-        onOpenDashboard: @escaping (DashboardSection) -> Void
+        onOpenDashboard: @escaping (DashboardSection) -> Void,
+        onBecameVisible: @escaping () -> Void
     ) {
+        self.onBecameVisible = onBecameVisible
         let hosting = NSHostingController(
             rootView: UsageMenuView(
                 store: store,
@@ -48,11 +53,26 @@ final class FloatingWidgetWindowController: NSWindowController, NSWindowDelegate
 
         super.init(window: panel)
         panel.delegate = self
+        visibilityObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.didChangeOcclusionStateNotification,
+            object: panel,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.updateVisibility()
+            }
+        }
     }
 
     @available(*, unavailable)
     required init?(coder: NSCoder) {
         fatalError("init(coder:) is not supported")
+    }
+
+    deinit {
+        if let visibilityObserver {
+            NotificationCenter.default.removeObserver(visibilityObserver)
+        }
     }
 
     func show() {
@@ -61,13 +81,27 @@ final class FloatingWidgetWindowController: NSWindowController, NSWindowDelegate
             window.center()
         }
         window.orderFrontRegardless()
+        updateVisibility()
     }
 
     func hide() {
         window?.orderOut(nil)
+        wasActuallyVisible = false
     }
 
     func windowWillClose(_ notification: Notification) {
+        wasActuallyVisible = false
         onUserClose?()
+    }
+
+    private func updateVisibility() {
+        guard let window else { return }
+        let isActuallyVisible = window.isVisible
+            && !window.isMiniaturized
+            && window.occlusionState.contains(.visible)
+        defer { wasActuallyVisible = isActuallyVisible }
+        if isActuallyVisible && !wasActuallyVisible {
+            onBecameVisible()
+        }
     }
 }

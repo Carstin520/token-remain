@@ -50,7 +50,10 @@ final class StatusBarController: NSObject {
     private lazy var dashboardController = DashboardWindowController(
         store: store,
         feedStore: feedStore,
-        launchAtLogin: launchAtLogin
+        launchAtLogin: launchAtLogin,
+        onBecameVisible: { [weak self] in
+            self?.refreshVisibleSurface()
+        }
     )
     private lazy var floatingWidgetController: FloatingWidgetWindowController = {
         let controller = FloatingWidgetWindowController(
@@ -60,6 +63,9 @@ final class StatusBarController: NSObject {
             layout: popoverLayout,
             onOpenDashboard: { [weak self] section in
                 self?.openDashboard(section)
+            },
+            onBecameVisible: { [weak self] in
+                self?.refreshVisibleSurface()
             }
         )
         controller.onUserClose = {
@@ -78,9 +84,8 @@ final class StatusBarController: NSObject {
         if visible {
             floatingControllerCreated = true
             popoverLayout.prepareForPresentation()
-            floatingWidgetController.show()
             store.refreshLocalUsage()
-            refreshFeedIfStale()
+            floatingWidgetController.show()
         } else if floatingControllerCreated {
             floatingWidgetController.hide()
         }
@@ -203,8 +208,18 @@ final class StatusBarController: NSObject {
             popoverLayout.prepareForPresentation()
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
             store.refreshLocalUsage()
-            refreshFeedIfStale()
+            refreshVisibleSurface()
         }
+    }
+
+    /// Presentation catches up only sources whose active-surface interval is
+    /// due. Repeated opens or occlusion notifications therefore preserve both
+    /// freshness and the energy win instead of forcing every provider request.
+    private func refreshVisibleSurface() {
+        Task { [weak self] in
+            await self?.store.refreshForVisibleSurface()
+        }
+        refreshFeedIfStale()
     }
 
     /// 界面从不可见转为可见时,Feed 若比轮询间隔旧就补拉一次;
@@ -218,9 +233,8 @@ final class StatusBarController: NSObject {
     private func openDashboard(_ section: DashboardSection) {
         popover.performClose(nil)
         dashboardCreated = true
-        dashboardController.show(section: section)
         store.refreshLocalUsage()
-        refreshFeedIfStale()
+        dashboardController.show(section: section)
     }
 
     /// 本地用量与 AI Feed 是否正被某个界面展示。仅在这些界面可见时,
@@ -229,9 +243,20 @@ final class StatusBarController: NSObject {
     /// 不能为了读可见性把窗口先建出来。
     private var isPrimarySurfaceVisible: Bool {
         if popover.isShown { return true }
-        if dashboardCreated, dashboardController.window?.isVisible == true { return true }
-        if floatingControllerCreated, floatingWidgetController.window?.isVisible == true { return true }
+        if dashboardCreated, Self.windowIsActuallyVisible(dashboardController.window) { return true }
+        if floatingControllerCreated,
+           Self.windowIsActuallyVisible(floatingWidgetController.window) { return true }
         return false
+    }
+
+    /// `NSWindow.isVisible` stays true while another app fully covers the
+    /// window. Occlusion is the useful energy signal: a covered/minimized
+    /// surface cannot benefit from minute-level background work.
+    private static func windowIsActuallyVisible(_ window: NSWindow?) -> Bool {
+        guard let window else { return false }
+        return window.isVisible
+            && !window.isMiniaturized
+            && window.occlusionState.contains(.visible)
     }
 
     /// Opens the primary desktop window from app launch, Dock reopen, or menu UI.
@@ -243,6 +268,13 @@ final class StatusBarController: NSObject {
     /// `--open-dashboard` argument.
     func openDashboardForPreview(section: DashboardSection = .overview) {
         showDashboard(section: section)
+    }
+
+    /// Closes an already-created Dashboard for the hidden-idle performance
+    /// launch hook. Regular user flows continue to close the native window.
+    func closeDashboardForPerformanceMeasurement() {
+        guard dashboardCreated else { return }
+        dashboardController.close()
     }
 
     /// Opens the menu popover for visual QA when launched with

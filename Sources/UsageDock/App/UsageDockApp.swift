@@ -64,6 +64,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             DispatchQueue.main.async { [weak self] in
                 self?.statusBarController?.showDashboard(section: section)
             }
+        } else if arguments.contains("--measure-hidden-dashboard") {
+            DispatchQueue.main.async { [weak self] in
+                self?.statusBarController?.showDashboard(section: .overview)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
+                    self?.statusBarController?.closeDashboardForPerformanceMeasurement()
+                }
+            }
         } else if arguments.contains("--open-dashboard") || arguments.contains("--open-ai-feed") {
             DispatchQueue.main.async { [weak self] in
                 self?.statusBarController?.showDashboard(section: .overview)
@@ -72,6 +79,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
                 self?.statusBarController?.openPopoverForPreview()
             }
+        } else if arguments.contains("--menu-bar-only") {
+            // Performance/QA hook: keep the real app bundle and menu-bar stack
+            // running without creating the Dashboard, so hidden-idle energy can
+            // be sampled reproducibly without UI automation.
         } else {
             DispatchQueue.main.async { [weak self] in
                 self?.statusBarController?.showDashboard(section: .overview)

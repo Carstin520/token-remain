@@ -11,9 +11,9 @@ Remaining quota, reset countdowns and today's cost for Claude Code, Codex, Curso
 ![macOS](https://img.shields.io/badge/macOS-14%2B_Sonoma-000?logo=apple&logoColor=white)
 ![Universal](https://img.shields.io/badge/Universal-Apple_Silicon_%2B_Intel-7C5CFF)
 ![Notarized](https://img.shields.io/badge/Apple-Notarized-34C759?logo=apple&logoColor=white)
-![Latest](https://img.shields.io/badge/latest-v1.2.1-22D3EE)
+![Latest](https://img.shields.io/badge/latest-v1.2.3-22D3EE)
 
-**1.2 release `v1.2.1`** (build 15, Universal Mac Release build)
+**1.2 release `v1.2.3`** (build 17, Universal Mac Release build)
 
 [Website / Download](https://tokenremain.com) · [Privacy Policy](https://tokenremain.com/privacy) · [Support](https://tokenremain.com/support) · [Report an issue](https://github.com/Carstin520/token-remain/issues)
 
@@ -43,7 +43,7 @@ Remaining quota, reset countdowns and today's cost for Claude Code, Codex, Curso
 - 📊 **More local usage sources** — ccusage dynamically discovers 15+ local agents; Trae reads only timestamps, model names, and token counters from a folder you select; Windsurf adds independent daily/weekly quota with cross-device display support.
 - 🔑 **Explicit Keychain consent** — Cross-app read-only access for Claude and Codex begins only from a user action. Background refreshes stay silent and never surprise you with a system authorization prompt.
 - ⬆️ **Always update to the latest release** — Adaptive signed-feed checks run about four times a day when current, twice while an update is pending, and use bounded retry backoff after failures. Clicking Update performs a fresh lookup and installs the newest release available then, not merely the version after yours.
-- ⚙️ **Lighter, more reliable refreshes** — Codex session caching tolerates bounded clock skew and prunes deleted records; AI Feed polling pauses while hidden; tool discovery runs every five minutes; expired countdown and Dock artwork-cache issues are fixed.
+- ⚙️ **Session-aware, low-power refreshes** — Local Codex/Claude activity or a genuinely visible surface keeps minute-level freshness; idle, hidden, or fully occluded windows fall back to at least five minutes. Dashboard animation pauses while hidden, and Codex parses only new or rewritten session files.
 
 ## 📸 Real screenshots
 
@@ -167,7 +167,7 @@ to their respective terms.
 
 ## 📦 Current release
 
-- **Version** — `v1.2.1` (build 15), the Universal Mac Release build.
+- **Version** — `v1.2.3` (build 17), the Universal Mac Release build.
 - **Platform** — macOS 14 Sonoma or later on Apple Silicon (arm64) and Intel (x86_64).
 - **Distribution** — The website always downloads the latest `TokenRemain.dmg`; each GitHub Release also retains a DMG named with its version and build.
 - **Cost figures** — Costs are API list-price estimates, not your subscription bill. When a credential expires, data pauses and the app explains how to restore it.
