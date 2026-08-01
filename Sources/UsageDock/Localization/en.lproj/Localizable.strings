@@ -89,6 +89,7 @@
 "usage.provider_help" = "%1$@: %2$@ API cost, %3$@ tokens, %4$@ of total";
 "usage.provider_accessibility" = "%1$@, %2$@ API cost, %3$@ tokens";
 "quota.loading_official" = "Reading official quota…";
+"quota.login_recovery_hint" = "Login not detected; sign in to restore data automatically";
 "feed.updating" = "Updating";
 "feed.item_count" = "%d items";
 "feed.filtering" = "Finding updates worth your attention…";
@@ -357,10 +358,10 @@
 "settings.login_item_note" = "Uses the native macOS login-item manager";
 "settings.manual_only" = "Manual only";
 "settings.menubar_hidden" = "Not shown in the menu bar";
-"settings.dashboard_fable" = "Show Fable in Claude quota card";
-"settings.dashboard_fable_hint" = "Displays Fable's weekly limit on the Dashboard. It never appears in the menu bar widget.";
-"settings.dashboard_codex_spark" = "Show GPT-5.3-Codex-Spark in Codex quota card";
-"settings.dashboard_codex_spark_hint" = "Displays the model-specific weekly limit on the Dashboard.";
+"settings.menubar_fable" = "Show Fable in the menu bar Claude widget";
+"settings.menubar_fable_hint" = "Displays Fable's weekly limit in the Claude quota widget in the menu bar.";
+"settings.menubar_codex_spark" = "Show GPT-5.3-Codex-Spark in the menu bar Codex widget";
+"settings.menubar_codex_spark_hint" = "Displays the model-specific weekly limit in the Codex quota widget in the menu bar.";
 "settings.menubar_hint" = "Check the apps whose text should live in the menu bar; keep it to 3 or fewer so it stays narrow. With all off, \"TR\" is shown.";
 "settings.menubar_mode_compact" = "Compact";
 "settings.menubar_mode_compact_description" = "Show every selected app as an icon; percentages remain in the tooltip.";

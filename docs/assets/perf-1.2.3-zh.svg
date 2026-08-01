@@ -1,0 +1,52 @@
+<svg viewBox="0 0 920 400" width="920" height="400" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="v1.2.2 与 v1.2.3 能耗对比:平均 CPU 9.65% 降到 0.449%,归因平均功耗 31.6 mW 降到 7.34 mW,中断唤醒每秒 64.0 次降到 2.77 次">
+  <style>
+    .sans { font-family: -apple-system, 'SF Pro Text', 'PingFang SC', 'Segoe UI', 'Noto Sans SC', sans-serif; }
+    .mono { font-family: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace; }
+  </style>
+
+  <!-- 卡片 -->
+  <rect x="0.5" y="0.5" width="919" height="399" rx="14" fill="#0D1420" stroke="#223044"/>
+
+  <!-- 标题 -->
+  <text x="32" y="44" class="sans" font-size="17" font-weight="600" fill="#E9EDF5">v1.2.2 → v1.2.3 能耗与后台开销对比</text>
+  <text x="32" y="68" class="sans" font-size="12" fill="#8B97AB">隐藏 Dashboard · 活跃 Codex 会话 · Apple M5 Pro · macOS 26.5.2 · 条长按各指标的 v1.2.2 基线归一</text>
+
+  <!-- 图例 -->
+  <rect x="700" y="30" width="12" height="12" rx="3" fill="#8F7BF2"/>
+  <text x="718" y="41" class="mono" font-size="12" fill="#8B97AB">v1.2.2</text>
+  <rect x="788" y="30" width="12" height="12" rx="3" fill="#3ECFE0"/>
+  <text x="806" y="41" class="mono" font-size="12" fill="#8B97AB">v1.2.3</text>
+
+  <!-- 基线 -->
+  <line x1="31.5" y1="104" x2="31.5" y2="336" stroke="#223044" stroke-width="1"/>
+
+  <!-- 组 1:平均 CPU -->
+  <text x="32" y="112" class="sans" font-size="13" fill="#8B97AB">平均 CPU 占用</text>
+  <path d="M32,122 h556 a4,4 0 0 1 4,4 v8 a4,4 0 0 1 -4,4 h-556 z" fill="#8F7BF2"/>
+  <text x="602" y="135" class="mono" font-size="13" fill="#E9EDF5">9.65%</text>
+  <path d="M32,146 h22 a4,4 0 0 1 4,4 v8 a4,4 0 0 1 -4,4 h-22 z" fill="#3ECFE0"/>
+  <text x="68" y="159" class="mono" font-size="13" fill="#E9EDF5">0.449%</text>
+  <text x="888" y="146" text-anchor="end" class="mono" font-size="26" font-weight="700" fill="#57D19A">↓ 95.3%</text>
+  <text x="888" y="164" text-anchor="end" class="sans" font-size="11" fill="#8B97AB">降幅</text>
+
+  <!-- 组 2:归因平均功耗 -->
+  <text x="32" y="196" class="sans" font-size="13" fill="#8B97AB">归因平均功耗</text>
+  <path d="M32,206 h556 a4,4 0 0 1 4,4 v8 a4,4 0 0 1 -4,4 h-556 z" fill="#8F7BF2"/>
+  <text x="602" y="219" class="mono" font-size="13" fill="#E9EDF5">31.6 mW</text>
+  <path d="M32,230 h126 a4,4 0 0 1 4,4 v8 a4,4 0 0 1 -4,4 h-126 z" fill="#3ECFE0"/>
+  <text x="172" y="243" class="mono" font-size="13" fill="#E9EDF5">7.34 mW</text>
+  <text x="888" y="230" text-anchor="end" class="mono" font-size="26" font-weight="700" fill="#57D19A">↓ 76.8%</text>
+  <text x="888" y="248" text-anchor="end" class="sans" font-size="11" fill="#8B97AB">降幅</text>
+
+  <!-- 组 3:中断唤醒 -->
+  <text x="32" y="280" class="sans" font-size="13" fill="#8B97AB">中断唤醒</text>
+  <path d="M32,290 h556 a4,4 0 0 1 4,4 v8 a4,4 0 0 1 -4,4 h-556 z" fill="#8F7BF2"/>
+  <text x="602" y="303" class="mono" font-size="13" fill="#E9EDF5">64.0 次/秒</text>
+  <path d="M32,314 h20 a4,4 0 0 1 4,4 v8 a4,4 0 0 1 -4,4 h-20 z" fill="#3ECFE0"/>
+  <text x="66" y="327" class="mono" font-size="13" fill="#E9EDF5">2.77 次/秒</text>
+  <text x="888" y="314" text-anchor="end" class="mono" font-size="26" font-weight="700" fill="#57D19A">↓ 95.7%</text>
+  <text x="888" y="332" text-anchor="end" class="sans" font-size="11" fill="#8B97AB">降幅</text>
+
+  <!-- 脚注 -->
+  <text x="32" y="376" class="sans" font-size="11" fill="#8B97AB">进程级实测,单机特定工作负载,不应换算为所有机型的续航 · 方法与边界见 docs/performance-v1.2.3.md</text>
+</svg>

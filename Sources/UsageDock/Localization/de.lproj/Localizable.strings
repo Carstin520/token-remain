@@ -88,6 +88,7 @@
 "usage.provider_help" = "%1$@: API-Kosten %2$@, %3$@ tokens, %4$@ der Gesamtnutzung";
 "usage.provider_accessibility" = "%1$@, API-Kosten %2$@, %3$@ tokens";
 "quota.loading_official" = "Offizielles Kontingent wird gelesen…";
+"quota.login_recovery_hint" = "Keine Anmeldung erkannt; nach der Anmeldung werden Daten automatisch wiederhergestellt";
 "feed.updating" = "Wird aktualisiert";
 "feed.item_count" = "%d Einträge";
 "feed.filtering" = "Relevante Neuigkeiten werden gesucht…";
@@ -356,10 +357,10 @@
 "settings.login_item_note" = "Verwendet die native macOS-Anmeldeobjektverwaltung";
 "settings.manual_only" = "Nur manuell";
 "settings.menubar_hidden" = "Nicht in der Menüleiste";
-"settings.dashboard_fable" = "Fable in der Claude-Kontingentkarte anzeigen";
-"settings.dashboard_fable_hint" = "Zeigt das wöchentliche Fable-Limit im Dashboard. Im Menüleisten-Widget wird es nie angezeigt.";
-"settings.dashboard_codex_spark" = "GPT-5.3-Codex-Spark in der Codex-Kontingentkarte anzeigen";
-"settings.dashboard_codex_spark_hint" = "Zeigt das modellspezifische Wochenlimit im Dashboard.";
+"settings.menubar_fable" = "Fable im Claude-Menüleisten-Widget anzeigen";
+"settings.menubar_fable_hint" = "Zeigt das wöchentliche Fable-Limit im Claude-Kontingent-Widget der Menüleiste.";
+"settings.menubar_codex_spark" = "GPT-5.3-Codex-Spark im Codex-Menüleisten-Widget anzeigen";
+"settings.menubar_codex_spark_hint" = "Zeigt das modellspezifische Wochenlimit im Codex-Kontingent-Widget der Menüleiste.";
 "settings.menubar_hint" = "Apps auswählen, deren Text dauerhaft in der Menüleiste steht; am besten höchstens 3, damit sie schmal bleibt. Sind alle deaktiviert, wird „TR“ angezeigt.";
 "settings.menubar_mode_compact" = "Kompakt";
 "settings.menubar_mode_compact_description" = "Alle ausgewählten Apps nur als Symbol anzeigen; Prozente bleiben im Tooltip.";

@@ -88,6 +88,7 @@
 "usage.provider_help" = "%1$@: API लागत %2$@, %3$@ tokens, कुल का %4$@";
 "usage.provider_accessibility" = "%1$@, API लागत %2$@, %3$@ tokens";
 "quota.loading_official" = "आधिकारिक कोटा पढ़ा जा रहा है…";
+"quota.login_recovery_hint" = "लॉगिन नहीं मिला; लॉग इन करने पर डेटा अपने आप वापस आ जाएगा";
 "feed.updating" = "अपडेट हो रहा है";
 "feed.item_count" = "%d आइटम";
 "feed.filtering" = "ध्यान देने योग्य अपडेट खोजे जा रहे हैं…";

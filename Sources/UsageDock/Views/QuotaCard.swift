@@ -1,98 +1,94 @@
 import SwiftUI
 
 /// Full provider quota card: brand row + plan pill, then one row per official
-/// window (remaining %, progress bar, reset label). Shown in the popover and in
-/// the Dashboard's Limits section. Renders a waiting state before data arrives.
+/// window (remaining %, progress bar, reset label). Shown in the Dashboard's
+/// Limits section. Renders a waiting state before data arrives.
 struct QuotaCard: View {
+    /// Every card in the Dashboard grid occupies the same visual slot. The
+    /// title remains pinned while a provider with extra windows scrolls inside
+    /// the card instead of making its grid row taller.
+    static let dashboardContentHeight: CGFloat = 198
+    /// Reserve one shared title slot for every grid card so quota rows stay
+    /// aligned even when a compact connection warning is present.
+    private static let headerHeight: CGFloat = 26
+
     let provider: ProviderQuota.Provider
     let quota: ProviderQuota?
     var serviceStatus: ProviderServiceStatus?
     /// Provider 级状态说明(如 Cursor 登录过期的恢复提示)。
     var notice: String?
-    @ObservedObject var preferences: PreferencesStore = .shared
-
-    static func scopedWindows(
-        in quota: ProviderQuota,
-        showFable: Bool,
-        showCodexSpark: Bool
-    ) -> [ScopedQuotaWindow] {
-        quota.uniqueScopedWindows.filter { scoped in
-            if scoped.isFable { return showFable }
-            if scoped.isCodexSpark { return showCodexSpark }
-            return true
-        }
+    static func scopedWindows(in quota: ProviderQuota) -> [ScopedQuotaWindow] {
+        quota.uniqueScopedWindows
     }
 
     var body: some View {
         DashboardCard(padding: 13) {
             VStack(alignment: .leading, spacing: 11) {
                 header
-
-                if let quota {
-                    QuotaWindowRow(
-                        window: quota.primary,
-                        provider: provider
-                    )
-                    if let secondary = quota.secondary {
-                        Divider().overlay(DashboardTheme.border)
-                        QuotaWindowRow(
-                            window: secondary,
-                            provider: provider
-                        )
+                ScrollView(.vertical) {
+                    VStack(alignment: .leading, spacing: 11) {
+                        quotaContent
                     }
-                    ForEach(
-                        Self.scopedWindows(
-                            in: quota,
-                            showFable: preferences.showFableQuotaInDashboard,
-                            showCodexSpark: preferences.showCodexSparkQuotaInDashboard
-                        ),
-                        id: \.scopeID
-                    ) { scoped in
-                        Divider().overlay(DashboardTheme.border)
-                        QuotaWindowRow(
-                            window: scoped.window,
-                            provider: provider,
-                            scopeName: scoped.displayName
-                        )
-                    }
-                    if let extraUsage = quota.extraUsage {
-                        Divider().overlay(DashboardTheme.border)
-                        ExtraUsageRow(extraUsage: extraUsage)
-                    }
-                    TimelineView(.periodic(from: .now, by: 60)) { context in
-                        let isStale = context.date.timeIntervalSince(quota.capturedAt) >= 600
-                        Label {
-                            Text(UsageFormatting.freshnessDescription(since: quota.capturedAt, now: context.date))
-                                .numericFont(10)
-                        } icon: {
-                            Image(systemName: isStale ? "exclamationmark.circle.fill" : "checkmark.circle.fill")
-                        }
-                        .font(.system(size: 10))
-                        .foregroundStyle(isStale ? DashboardTheme.warning : DashboardTheme.mutedText)
-                    }
-                } else if notice == nil {
-                    HStack(spacing: 8) {
-                        ProgressView().controlSize(.small)
-                        Text(L10n.text("quota.loading_official"))
-                            .font(.system(size: 12))
-                            .foregroundStyle(DashboardTheme.secondaryText)
-                    }
-                    .frame(maxWidth: .infinity, minHeight: 40, alignment: .leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-
-                if let notice {
-                    Label(notice, systemImage: "moon.zzz.fill")
-                        .font(.system(size: 11))
-                        .foregroundStyle(DashboardTheme.secondaryText)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
+                .scrollIndicators(.automatic)
             }
+            .frame(height: Self.dashboardContentHeight, alignment: .top)
         }
         .accessibilityElement(children: .contain)
     }
 
+    @ViewBuilder
+    private var quotaContent: some View {
+        if let quota {
+            QuotaWindowRow(
+                window: quota.primary,
+                provider: provider
+            )
+            if let secondary = quota.secondary {
+                Divider().overlay(DashboardTheme.border)
+                QuotaWindowRow(
+                    window: secondary,
+                    provider: provider
+                )
+            }
+            ForEach(Self.scopedWindows(in: quota), id: \.scopeID) { scoped in
+                Divider().overlay(DashboardTheme.border)
+                QuotaWindowRow(
+                    window: scoped.window,
+                    provider: provider,
+                    scopeName: scoped.displayName
+                )
+            }
+            if let extraUsage = quota.extraUsage {
+                Divider().overlay(DashboardTheme.border)
+                ExtraUsageRow(extraUsage: extraUsage)
+            }
+            TimelineView(.periodic(from: .now, by: 60)) { context in
+                let isStale = context.date.timeIntervalSince(quota.capturedAt) >= 600
+                Label {
+                    Text(UsageFormatting.freshnessDescription(since: quota.capturedAt, now: context.date))
+                        .numericFont(10)
+                } icon: {
+                    Image(systemName: isStale ? "exclamationmark.circle.fill" : "checkmark.circle.fill")
+                }
+                .font(.system(size: 10))
+                .foregroundStyle(isStale ? DashboardTheme.warning : DashboardTheme.mutedText)
+            }
+        } else if notice == nil {
+            HStack(spacing: 8) {
+                ProgressView().controlSize(.small)
+                Text(L10n.text("quota.loading_official"))
+                    .font(.system(size: 12))
+                    .foregroundStyle(DashboardTheme.secondaryText)
+            }
+            .frame(maxWidth: .infinity, minHeight: 40, alignment: .leading)
+        }
+
+    }
+
     private var header: some View {
-        HStack(spacing: 8) {
+        HStack(alignment: .top, spacing: 8) {
             HStack(spacing: 8) {
                 BrandIcon(provider: provider)
                     .foregroundStyle(DashboardTheme.text)
@@ -102,12 +98,18 @@ struct QuotaCard: View {
                     .foregroundStyle(DashboardTheme.text)
                     .lineLimit(1)
                     .minimumScaleFactor(0.82)
-                    .layoutPriority(1)
+                    .layoutPriority(2)
             }
+            .padding(.top, 3)
             .directReorderHandle()
 
+            if let notice {
+                QuotaConnectionNotice(message: notice)
+                    .layoutPriority(1)
+            }
             if let serviceStatus, serviceStatus.isAbnormal {
                 ServiceStatusBadge(status: serviceStatus)
+                    .padding(.top, 2)
             }
 
             Color.clear
@@ -117,11 +119,44 @@ struct QuotaCard: View {
 
             if let plan = quota?.planName, !plan.isEmpty {
                 TagPill(text: plan)
+                    .padding(.top, 2)
                     .directReorderHandle()
             }
         }
-        .frame(maxWidth: .infinity, minHeight: 22)
+        .frame(maxWidth: .infinity, minHeight: Self.headerHeight, alignment: .top)
         .contentShape(Rectangle())
+    }
+}
+
+/// Prominent recovery guidance pinned beside the provider name. Keeping it in
+/// the fixed header makes login/install failures visible even when the quota
+/// rows below need to scroll.
+private struct QuotaConnectionNotice: View {
+    let message: String
+
+    var body: some View {
+        Label {
+            Text(L10n.text("quota.login_recovery_hint"))
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+        } icon: {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 9, weight: .bold))
+        }
+        .font(.system(size: 10, weight: .semibold))
+        .foregroundStyle(DashboardTheme.warning)
+        .padding(.horizontal, 7)
+        .padding(.vertical, 4)
+        .background {
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .fill(DashboardTheme.warning.opacity(0.11))
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .stroke(DashboardTheme.warning.opacity(0.42), lineWidth: 1)
+        }
+        .help(message)
+        .accessibilityLabel(L10n.text("quota.login_recovery_hint"))
     }
 }
 

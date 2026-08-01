@@ -88,6 +88,7 @@
 "usage.provider_help" = "%1$@: chi phí API %2$@, %3$@ tokens, %4$@ tổng số";
 "usage.provider_accessibility" = "%1$@, chi phí API %2$@, %3$@ tokens";
 "quota.loading_official" = "Đang đọc hạn mức chính thức…";
+"quota.login_recovery_hint" = "Không phát hiện đăng nhập; hãy đăng nhập để dữ liệu tự động khôi phục";
 "feed.updating" = "Đang cập nhật";
 "feed.item_count" = "%d mục";
 "feed.filtering" = "Đang tìm các cập nhật đáng chú ý…";

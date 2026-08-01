@@ -8,6 +8,7 @@ struct PopoverQuotaWidget: View {
     /// 跟随在窗口行之后,无数据时替代加载态。
     var notice: String?
     @ObservedObject var layout: PopoverLayoutStore
+    @ObservedObject var preferences: PreferencesStore = .shared
 
     private var widget: PopoverWidget {
         PopoverWidget.allCases.first { $0.provider == provider } ?? .claude
@@ -50,10 +51,15 @@ struct PopoverQuotaWidget: View {
 
     static func scopedWindows(
         in quota: ProviderQuota,
-        isExpanded: Bool
+        isExpanded: Bool,
+        showFable: Bool,
+        showCodexSpark: Bool
     ) -> [ScopedQuotaWindow] {
-        guard isExpanded else { return [] }
-        return quota.uniqueScopedWindows.filter { !$0.isFable }
+        quota.uniqueScopedWindows.filter { scoped in
+            if scoped.isFable { return showFable }
+            if scoped.isCodexSpark { return showCodexSpark }
+            return isExpanded
+        }
     }
 
     var body: some View {
@@ -97,7 +103,9 @@ struct PopoverQuotaWidget: View {
                     ForEach(
                         Self.scopedWindows(
                             in: quota,
-                            isExpanded: isExpanded
+                            isExpanded: isExpanded,
+                            showFable: preferences.showFableQuotaInMenuBarWidget,
+                            showCodexSpark: preferences.showCodexSparkQuotaInMenuBarWidget
                         ),
                         id: \.scopeID
                     ) { scoped in

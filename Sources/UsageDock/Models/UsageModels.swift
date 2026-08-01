@@ -90,6 +90,24 @@ struct ProviderQuota: Sendable, Codable {
         )
     }
 
+    /// A general account refresh can succeed while the secondary `/usage`
+    /// probe temporarily omits model-scoped rows. Preserve the previous
+    /// window only while it still belongs to the current quota cycle; a newer
+    /// scoped value from this snapshot always wins in `mergingScopedWindows`.
+    func retainingActiveScopedWindows(
+        from previous: ProviderQuota,
+        now: Date,
+        undatedRetention: TimeInterval = 86_400
+    ) -> ProviderQuota {
+        let active = previous.uniqueScopedWindows.filter { scoped in
+            if let resetsAt = scoped.window.resetsAt {
+                return resetsAt > now
+            }
+            return now.timeIntervalSince(previous.capturedAt) < undatedRetention
+        }
+        return mergingScopedWindows(active)
+    }
+
     enum Provider: String, Sendable, Codable, Hashable {
         case claude = "Claude Code"
         case codex = "Codex"

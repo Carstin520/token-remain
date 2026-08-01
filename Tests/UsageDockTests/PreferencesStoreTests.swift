@@ -10,29 +10,29 @@ struct PreferencesStoreTests {
         let store = PreferencesStore(defaults: testDefaults())
         #expect(store.menuBarProviders == [.claude, .codex])
         #expect(store.menuBarDisplayMode == .full)
-        #expect(!store.showFableQuotaInDashboard)
-        #expect(!store.showCodexSparkQuotaInDashboard)
+        #expect(!store.showFableQuotaInMenuBarWidget)
+        #expect(!store.showCodexSparkQuotaInMenuBarWidget)
         #expect(store.refreshMinutes == 5)
         #expect(store.refreshInterval == 300)
         #expect(!store.floatingWidgetEnabled)
     }
 
-    @Test("Dashboard model quota preferences default off and persist")
-    func dashboardModelQuotaPreferences() {
+    @Test("Menu bar model quota preferences default off and persist")
+    func menuBarModelQuotaPreferences() {
         let defaults = testDefaults()
         let store = PreferencesStore(defaults: defaults)
-        #expect(!store.showFableQuotaInDashboard)
-        #expect(!store.showCodexSparkQuotaInDashboard)
+        #expect(!store.showFableQuotaInMenuBarWidget)
+        #expect(!store.showCodexSparkQuotaInMenuBarWidget)
 
-        store.setShowFableQuotaInDashboard(true)
-        store.setShowCodexSparkQuotaInDashboard(true)
+        store.setShowFableQuotaInMenuBarWidget(true)
+        store.setShowCodexSparkQuotaInMenuBarWidget(true)
         let reloaded = PreferencesStore(defaults: defaults)
-        #expect(reloaded.showFableQuotaInDashboard)
-        #expect(reloaded.showCodexSparkQuotaInDashboard)
+        #expect(reloaded.showFableQuotaInMenuBarWidget)
+        #expect(reloaded.showCodexSparkQuotaInMenuBarWidget)
     }
 
-    @Test("Dashboard model quota filters honor both independent preferences")
-    func dashboardModelQuotaFilters() {
+    @Test("Dashboard quota cards always include available model windows")
+    func dashboardModelQuotaWindows() {
         let quota = ProviderQuota(
             provider: .claude,
             primary: QuotaWindow(usedPercent: 10, windowMinutes: 300, resetsAt: nil),
@@ -53,31 +53,11 @@ struct PreferencesStoreTests {
             ]
         )
 
-        #expect(
-            QuotaCard.scopedWindows(
-                in: quota,
-                showFable: false,
-                showCodexSpark: false
-            ).isEmpty
-        )
-        #expect(
-            QuotaCard.scopedWindows(
-                in: quota,
-                showFable: true,
-                showCodexSpark: false
-            ).map(\.scopeID) == ["fable"]
-        )
-        #expect(
-            QuotaCard.scopedWindows(
-                in: quota,
-                showFable: false,
-                showCodexSpark: true
-            ).map(\.scopeID) == ["codex_bengalfox"]
-        )
+        #expect(QuotaCard.scopedWindows(in: quota).map(\.scopeID) == ["fable", "codex_bengalfox"])
     }
 
-    @Test("Menu bar widget never shows Fable")
-    func menuBarWidgetHidesFable() {
+    @Test("Menu bar widget model rows honor both independent preferences")
+    func menuBarWidgetModelQuotaFilters() {
         let quota = ProviderQuota(
             provider: .claude,
             primary: QuotaWindow(usedPercent: 10, windowMinutes: 300, resetsAt: nil),
@@ -91,6 +71,11 @@ struct PreferencesStoreTests {
                     window: QuotaWindow(usedPercent: 70, windowMinutes: 10_080, resetsAt: nil)
                 ),
                 ScopedQuotaWindow(
+                    scopeID: "codex_bengalfox",
+                    displayName: "GPT-5.3-Codex-Spark",
+                    window: QuotaWindow(usedPercent: 50, windowMinutes: 10_080, resetsAt: nil)
+                ),
+                ScopedQuotaWindow(
                     scopeID: "future_model",
                     displayName: "Future Model",
                     window: QuotaWindow(usedPercent: 30, windowMinutes: 10_080, resetsAt: nil)
@@ -98,9 +83,37 @@ struct PreferencesStoreTests {
             ]
         )
 
-        #expect(PopoverQuotaWidget.scopedWindows(in: quota, isExpanded: false).isEmpty)
         #expect(
-            PopoverQuotaWidget.scopedWindows(in: quota, isExpanded: true)
+            PopoverQuotaWidget.scopedWindows(
+                in: quota,
+                isExpanded: false,
+                showFable: false,
+                showCodexSpark: false
+            ).isEmpty
+        )
+        #expect(
+            PopoverQuotaWidget.scopedWindows(
+                in: quota,
+                isExpanded: false,
+                showFable: true,
+                showCodexSpark: false
+            ).map(\.scopeID) == ["fable"]
+        )
+        #expect(
+            PopoverQuotaWidget.scopedWindows(
+                in: quota,
+                isExpanded: false,
+                showFable: false,
+                showCodexSpark: true
+            ).map(\.scopeID) == ["codex_bengalfox"]
+        )
+        #expect(
+            PopoverQuotaWidget.scopedWindows(
+                in: quota,
+                isExpanded: true,
+                showFable: false,
+                showCodexSpark: false
+            )
                 .map(\.scopeID) == ["future_model"]
         )
     }

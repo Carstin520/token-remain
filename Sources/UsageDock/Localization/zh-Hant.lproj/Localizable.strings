@@ -89,6 +89,7 @@
 "usage.provider_help" = "%1$@：%2$@ API 花費，%3$@ tokens，佔 %4$@";
 "usage.provider_accessibility" = "%1$@，%2$@ API 花費，%3$@ tokens";
 "quota.loading_official" = "正在讀取官方額度…";
+"quota.login_recovery_hint" = "未偵測到登入，登入後資料會自動恢復";
 "feed.updating" = "更新中";
 "feed.item_count" = "%d 則";
 "feed.filtering" = "正在篩選值得關注的新動態…";
@@ -357,10 +358,10 @@
 "settings.login_item_note" = "使用 macOS 原生登入項目管理";
 "settings.manual_only" = "僅手動";
 "settings.menubar_hidden" = "未顯示在選單列";
-"settings.dashboard_fable" = "在 Claude 額度卡顯示 Fable";
-"settings.dashboard_fable_hint" = "在 Dashboard 顯示 Fable 每週額度；選單列小工具始終不顯示。";
-"settings.dashboard_codex_spark" = "在 Codex 額度卡顯示 GPT-5.3-Codex-Spark";
-"settings.dashboard_codex_spark_hint" = "在 Dashboard 顯示此模型的獨立每週額度。";
+"settings.menubar_fable" = "在選單列 Claude 組件顯示 Fable";
+"settings.menubar_fable_hint" = "開啟後，Claude 的選單列額度組件會顯示 Fable 每週額度。";
+"settings.menubar_codex_spark" = "在選單列 Codex 組件顯示 GPT-5.3-Codex-Spark";
+"settings.menubar_codex_spark_hint" = "開啟後，Codex 的選單列額度組件會顯示此模型的獨立每週額度。";
 "settings.menubar_hint" = "勾選要常駐選單列文字的 App；建議不超過 3 項以免過寬。全部關閉時會顯示「TR」。";
 "settings.menubar_mode_compact" = "精簡";
 "settings.menubar_mode_compact_description" = "只顯示每個已勾選 App 的圖示；百分比仍可在提示中查看。";

@@ -88,6 +88,7 @@
 "usage.provider_help" = "%1$@: costo API %2$@, %3$@ tokens, %4$@ del totale";
 "usage.provider_accessibility" = "%1$@, costo API %2$@, %3$@ tokens";
 "quota.loading_official" = "Lettura della quota ufficiale…";
+"quota.login_recovery_hint" = "Accesso non rilevato; accedi per ripristinare automaticamente i dati";
 "feed.updating" = "Aggiornamento";
 "feed.item_count" = "%d elementi";
 "feed.filtering" = "Ricerca delle novità più rilevanti…";

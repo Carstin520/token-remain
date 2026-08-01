@@ -21,7 +21,7 @@ struct OverviewSection: View {
 
             kpiRow
 
-            HStack(alignment: .top, spacing: 14) {
+            LazyVGrid(columns: overviewPanelColumns, alignment: .leading, spacing: DashboardOverviewLayout.gridSpacing) {
                 UsageCostCompositionCard(
                     insights: insights,
                     localUsageStatus: localUsageStatus,
@@ -29,9 +29,6 @@ struct OverviewSection: View {
                     onRetry: onRetryCCUsage
                 )
                 officialQuotaPanel
-            }
-
-            HStack(alignment: .top, spacing: 14) {
                 TrendingStoriesCard(posts: feedStore.topStories)
                 riskDetailPanel
             }
@@ -42,6 +39,17 @@ struct OverviewSection: View {
 
     private var updatedText: String? {
         insights.lastUpdated.map { L10n.format("common.updated_at", $0.formatted(date: .omitted, time: .standard)) }
+    }
+
+    private var overviewPanelColumns: [GridItem] {
+        [
+            GridItem(
+                .flexible(minimum: 280),
+                spacing: DashboardOverviewLayout.gridSpacing,
+                alignment: .top
+            ),
+            GridItem(.flexible(minimum: 280), alignment: .top)
+        ]
     }
 
     // MARK: - KPIs (all real)
@@ -108,40 +116,37 @@ struct OverviewSection: View {
     // MARK: - Official quota (real, live)
 
     private var officialQuotaPanel: some View {
-        DashboardCard {
-            VStack(alignment: .leading, spacing: 14) {
-                PanelHeader(title: L10n.text("quota.official_title"), subtitle: L10n.text("quota.official_subtitle")) {
-                    TagPill(text: "LIVE", color: DashboardTheme.codex, background: DashboardTheme.surface2)
+        OverviewPanelCard(contentSpacing: 10) {
+            PanelHeader(title: L10n.text("quota.official_title"), subtitle: L10n.text("quota.official_subtitle")) {
+                TagPill(text: "LIVE", color: DashboardTheme.codex, background: DashboardTheme.surface2)
+            }
+        } content: {
+            let rows = officialQuotaProviders.compactMap { scarcestWindow(for: $0) }
+
+            if rows.isEmpty {
+                EmptyStateView(
+                    icon: "gauge.with.dots.needle.bottom.0percent",
+                    title: L10n.text("quota.loading_official_title"),
+                    message: L10n.text("quota.loading_official_message")
+                )
+            } else {
+                ForEach(rows) { window in
+                    OfficialQuotaRow(window: window)
                 }
-
-                let rows = officialQuotaProviders.compactMap { scarcestWindow(for: $0) }
-
-                if rows.isEmpty {
-                    EmptyStateView(
-                        icon: "gauge.with.dots.needle.bottom.0percent",
-                        title: L10n.text("quota.loading_official_title"),
-                        message: L10n.text("quota.loading_official_message")
+                Divider().overlay(DashboardTheme.border)
+                HStack {
+                    Text(L10n.text("overview.risk_level"))
+                        .font(.system(size: 11))
+                        .foregroundStyle(DashboardTheme.secondaryText)
+                    Spacer()
+                    PixelBadge(
+                        text: insights.riskLevel.badge,
+                        color: insights.riskLevel.tint,
+                        filled: insights.riskLevel == .high
                     )
-                } else {
-                    ForEach(rows) { window in
-                        OfficialQuotaRow(window: window)
-                    }
-                    Divider().overlay(DashboardTheme.border)
-                    HStack {
-                        Text(L10n.text("overview.risk_level"))
-                            .font(.system(size: 11))
-                            .foregroundStyle(DashboardTheme.secondaryText)
-                        Spacer()
-                        PixelBadge(
-                            text: insights.riskLevel.badge,
-                            color: insights.riskLevel.tint,
-                            filled: insights.riskLevel == .high
-                        )
-                    }
                 }
             }
         }
-        .frame(maxWidth: .infinity)
     }
 
     /// 今日 token 用量最高的两个 provider;没有本地统计时默认 Claude / Codex。
@@ -164,51 +169,48 @@ struct OverviewSection: View {
     // MARK: - Risk detail (real)
 
     private var riskDetailPanel: some View {
-        DashboardCard {
-            VStack(alignment: .leading, spacing: 12) {
-                let now = Date()
-                let risk = insights.riskLevel(at: now)
-                let paceAssessment = insights.paceAssessment(at: now)
+        OverviewPanelCard(contentSpacing: 8) {
+            PanelHeader(title: L10n.text("overview.risk_panel_title"), subtitle: L10n.text("overview.risk_panel_subtitle"))
+        } content: {
+            let now = Date()
+            let risk = insights.riskLevel(at: now)
+            let paceAssessment = insights.paceAssessment(at: now)
 
-                PanelHeader(title: L10n.text("overview.risk_panel_title"), subtitle: L10n.text("overview.risk_panel_subtitle"))
+            HStack(spacing: 8) {
+                PixelBadge(text: risk.badge, color: risk.tint, filled: risk == .high)
+                Text(insights.decisionHeadline(at: now))
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(DashboardTheme.text)
+            }
 
-                HStack(spacing: 8) {
-                    PixelBadge(text: risk.badge, color: risk.tint, filled: risk == .high)
-                    Text(insights.decisionHeadline(at: now))
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(DashboardTheme.text)
+            Text(insights.decisionSummary(at: now))
+                .font(.system(size: 12))
+                .foregroundStyle(DashboardTheme.secondaryText)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if let window = paceAssessment?.window ?? insights.constrainingWindow {
+                Divider().overlay(DashboardTheme.border)
+                InfoRow(
+                    label: L10n.text("overview.scarcest_window"),
+                    value: "\(window.provider.displayName) · \(UsageFormatting.windowName(minutes: window.windowMinutes))"
+                )
+                InfoRow(
+                    label: L10n.text("overview.remaining_quota"),
+                    value: UsageFormatting.percent(window.remainingPercent),
+                    valueColor: risk.tint
+                )
+                if let runOutAt = paceAssessment?.pace.estimatedRunOutAt {
+                    InfoRow(
+                        label: L10n.text("overview.projected_depletion"),
+                        value: L10n.format("overview.in_duration", UsageFormatting.durationUntil(runOutAt, now: now)),
+                        valueColor: DashboardTheme.warning
+                    )
                 }
-
-                Text(insights.decisionSummary(at: now))
-                    .font(.system(size: 12))
-                    .foregroundStyle(DashboardTheme.secondaryText)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                if let window = paceAssessment?.window ?? insights.constrainingWindow {
-                    Divider().overlay(DashboardTheme.border)
-                    InfoRow(
-                        label: L10n.text("overview.scarcest_window"),
-                        value: "\(window.provider.displayName) · \(UsageFormatting.windowName(minutes: window.windowMinutes))"
-                    )
-                    InfoRow(
-                        label: L10n.text("overview.remaining_quota"),
-                        value: UsageFormatting.percent(window.remainingPercent),
-                        valueColor: risk.tint
-                    )
-                    if let runOutAt = paceAssessment?.pace.estimatedRunOutAt {
-                        InfoRow(
-                            label: L10n.text("overview.projected_depletion"),
-                            value: L10n.format("overview.in_duration", UsageFormatting.durationUntil(runOutAt, now: now)),
-                            valueColor: DashboardTheme.warning
-                        )
-                    }
-                    if let reset = window.resetsAt {
-                        InfoRow(label: L10n.text("overview.projected_reset"), value: UsageFormatting.resetDescription(to: reset))
-                    }
+                if let reset = window.resetsAt {
+                    InfoRow(label: L10n.text("overview.projected_reset"), value: UsageFormatting.resetDescription(to: reset))
                 }
             }
         }
-        .frame(maxWidth: .infinity)
     }
 }
 
