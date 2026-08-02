@@ -54,15 +54,24 @@ struct ThemeContrastTests {
 
     @Test("Every provider quota accent is visible on the dark meter")
     func providerAccentContrast() {
+        var assignedAccents: [Color] = []
         for provider in ProviderQuota.Provider.displayOrder {
             let accent = DashboardTheme.accent(for: provider)
             #expect(contrast(accent, DashboardTheme.surface) >= 3.0)
             #expect(contrast(accent, DashboardTheme.track) >= 3.0)
             #expect(!colorsMatch(accent, DashboardTheme.danger))
+            #expect(colorsMatch(
+                DashboardTheme.quotaAccent(for: provider, remainingPercent: 50),
+                accent
+            ))
+            for assignedAccent in assignedAccents {
+                #expect(!colorsMatch(accent, assignedAccent))
+            }
+            assignedAccents.append(accent)
         }
     }
 
-    @Test("Only critically low quota switches a provider meter to red")
+    @Test("Provider quota meters retain theme colors until critically low")
     func lowQuotaUsesDangerRed() {
         #expect(colorsMatch(
             DashboardTheme.quotaAccent(for: .claude, remainingPercent: 9.9),
@@ -76,6 +85,12 @@ struct ThemeContrastTests {
             DashboardTheme.quotaAccent(for: .codex, remainingPercent: 100),
             DashboardTheme.codexAccent
         ))
+        #expect(!colorsMatch(DashboardTheme.claudeAccent, DashboardTheme.codexAccent))
+    }
+
+    @Test("TokenRemain links use the product violet")
+    func productLinkAccent() {
+        #expect(colorsMatch(DashboardTheme.link, DashboardTheme.violet))
     }
 
     /// Semantic status colors are UI components (badges/glyphs) always paired
@@ -86,6 +101,20 @@ struct ThemeContrastTests {
         #expect(contrast(DashboardTheme.success, DashboardTheme.surface) >= 3.0)
         #expect(contrast(DashboardTheme.warning, DashboardTheme.surface) >= 3.0)
         #expect(contrast(DashboardTheme.danger, DashboardTheme.surface) >= 3.0)
+    }
+
+    @Test("Feed priority accents keep information separate from warnings")
+    func feedPrioritySemantics() {
+        let quotaAccent = DashboardTheme.feedAccent(for: .tokenReset)
+        let updateAccent = DashboardTheme.feedAccent(for: .majorUpdate)
+
+        #expect(colorsMatch(quotaAccent, DashboardTheme.information))
+        #expect(colorsMatch(quotaAccent, DashboardTheme.cyan))
+        #expect(!colorsMatch(quotaAccent, DashboardTheme.violet))
+        #expect(!colorsMatch(quotaAccent, DashboardTheme.warning))
+        #expect(colorsMatch(updateAccent, DashboardTheme.violetDim))
+        #expect(contrast(quotaAccent, DashboardTheme.surface) >= 3.0)
+        #expect(contrast(updateAccent, DashboardTheme.surface) >= 3.0)
     }
 
     /// Filled badges (e.g. HIGH risk) print ink text on the status field — white

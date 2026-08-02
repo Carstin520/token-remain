@@ -17,17 +17,18 @@ struct UsageDockGlassGroup<Content: View>: View {
     }
 }
 
-/// Neutral system material. The glass stays uncolored so the only hues on
-/// screen come from content (provider bars, semantic status, the one link
-/// accent) — brand identity lives in the logo, not the backdrop.
+/// Neutral system material. A substantial ink scrim suppresses unrelated
+/// wallpaper/window colors while retaining enough translucency for native glass
+/// depth. Intentional hues come from providers, semantic status and actions.
 struct UsageDockCanvasBackground: View {
     var body: some View {
         if #available(macOS 26.0, *) {
             ZStack {
                 Rectangle().fill(.ultraThinMaterial)
-                // A thin ink scrim keeps text legible on bright desktops while
-                // the glass stays visibly translucent (was 0.72 — near-opaque).
-                DashboardTheme.canvas.opacity(0.35)
+                // Keep environmental blue/red from becoming an accidental app
+                // theme. 0.62 remains translucent but reads consistently neutral
+                // across bright and strongly colored desktops.
+                DashboardTheme.canvas.opacity(0.62)
             }
             .ignoresSafeArea()
         } else {

@@ -48,3 +48,40 @@ extension View {
         font(DashboardTheme.Typo.wordmark(size, weight))
     }
 }
+
+enum TokenRemainWordmarkStyle {
+    case brand
+    case monochrome
+}
+
+/// The desktop wordmark remains native text so it scales crisply and reads as
+/// one accessible heading instead of a decorative raster asset. The Dashboard
+/// may use the two-tone brand lockup; compact menu-bar chrome uses one neutral
+/// color so branding does not introduce a second decorative accent.
+struct TokenRemainWordmark: View {
+    var size: CGFloat
+    var weight: Font.Weight = .bold
+    var style: TokenRemainWordmarkStyle = .brand
+
+    private var tokenColor: Color {
+        DashboardTheme.brandToken
+    }
+
+    private var remainColor: Color {
+        style == .monochrome ? DashboardTheme.brandToken : DashboardTheme.brandRemain
+    }
+
+    var body: some View {
+        HStack(spacing: 0) {
+            Text("Token")
+                .foregroundStyle(tokenColor)
+            Text("Remain")
+                .foregroundStyle(remainColor)
+        }
+        .wordmarkFont(size, weight)
+        .lineLimit(1)
+        .fixedSize(horizontal: true, vertical: false)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("TokenRemain")
+    }
+}

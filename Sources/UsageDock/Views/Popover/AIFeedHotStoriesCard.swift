@@ -58,7 +58,7 @@ struct AIFeedHotStoriesCard: View {
         } label: {
             HStack(spacing: 9) {
                 Circle()
-                    .fill(accentColor(for: post))
+                    .fill(DashboardTheme.feedAccent(for: post.priority))
                     .frame(width: 6, height: 6)
 
                 VStack(alignment: .leading, spacing: 3) {
@@ -106,14 +106,4 @@ struct AIFeedHotStoriesCard: View {
             .joined(separator: " ")
     }
 
-    // Priority is encoded by brightness, not hue: only the semantic amber for
-    // token resets keeps a color; everything else stays neutral so the popover
-    // reads as one palette.
-    private func accentColor(for post: AIFeedPost) -> Color {
-        switch post.priority {
-        case .tokenReset: return DashboardTheme.warning
-        case .majorUpdate: return DashboardTheme.text
-        case .normal: return DashboardTheme.mutedText
-        }
-    }
 }

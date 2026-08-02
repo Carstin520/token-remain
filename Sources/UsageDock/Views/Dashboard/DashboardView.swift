@@ -22,6 +22,7 @@ struct DashboardView: View {
     @ObservedObject var visibility: DashboardVisibility
     @ObservedObject var tracked: TrackedProvidersStore = .shared
     @ObservedObject private var appUpdater = AppUpdateController.shared
+    @State private var limitsReorderInteraction = DirectReorderInteraction<ProviderQuota.Provider>()
 #if TOKENREMAIN_CLOUD_SYNC
     @ObservedObject private var cloudSync = CrossDeviceSyncController.shared
 #endif
@@ -223,10 +224,7 @@ struct DashboardView: View {
                 animated: visibility.isVisible
             )
 
-            Text("TokenRemain")
-                .wordmarkFont(15)
-                .foregroundStyle(DashboardTheme.text)
-                .lineLimit(1)
+            TokenRemainWordmark(size: 15)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
@@ -310,15 +308,24 @@ struct DashboardView: View {
 
     // MARK: - Detail
 
+    @ViewBuilder
     private var detail: some View {
-        ScrollView {
-            UsageDockGlassGroup(spacing: 16) {
-                sectionContent
-                    .padding(28)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+        if navigator.selection == .settings {
+            SettingsSection(store: store, launchAtLogin: launchAtLogin)
+                .padding(28)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .background { UsageDockCanvasBackground() }
+        } else {
+            ScrollView {
+                UsageDockGlassGroup(spacing: 16) {
+                    sectionContent
+                        .padding(28)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
             }
+            .scrollDisabled(limitsReorderInteraction.isActive)
+            .background { UsageDockCanvasBackground() }
         }
-        .background { UsageDockCanvasBackground() }
         // The NSWindow keeps its title property (set in DashboardWindowController)
         // for Mission Control / the window switcher, while `titleVisibility =
         // .hidden` suppresses duplicate titlebar text.
@@ -343,7 +350,8 @@ struct DashboardView: View {
                 insights: insights,
                 notices: store.providerNotices,
                 serviceStatuses: store.serviceStatuses,
-                store: store
+                store: store,
+                reorderInteraction: limitsReorderInteraction
             )
         case .trends:
             TrendsSection(

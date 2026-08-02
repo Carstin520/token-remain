@@ -317,4 +317,33 @@ struct DirectReorderInteractionTests {
         interaction.cancel(item: .a)
         #expect(!interaction.isActive)
     }
+
+    @Test("An interrupted press clears selection and re-arms the component")
+    func interruptedPressClearsStateAndRearms() {
+        let interaction = DirectReorderInteraction<Item>()
+        interaction.updateFrame(CGRect(x: 0, y: 0, width: 100, height: 100), for: .a)
+        interaction.setPressing(true, item: .a)
+        interaction.update(
+            item: .a,
+            location: CGPoint(x: 12, y: 13),
+            translation: CGSize(width: 2, height: 3),
+            candidates: [.a],
+            layout: .grid(spacing: 14)
+        )
+
+        // Mirrors window/app interruption cleanup from the AppKit bridge.
+        interaction.cancel(item: .a)
+        #expect(!interaction.isActive)
+        #expect(!interaction.isPressing(.a))
+
+        interaction.setPressing(true, item: .a)
+        interaction.update(
+            item: .a,
+            location: CGPoint(x: 11, y: 11),
+            translation: CGSize(width: 1, height: 1),
+            candidates: [.a],
+            layout: .grid(spacing: 14)
+        )
+        #expect(interaction.isDragging(.a))
+    }
 }

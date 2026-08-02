@@ -56,6 +56,14 @@ struct ExtraUsage: Sendable, Codable, Equatable {
     let monthlyLimitUSD: Double?
 }
 
+/// Saved Codex rate-limit resets reported by ChatGPT's official usage endpoint.
+/// `applicableAvailableCount` can be lower than the banked total when only part
+/// of the balance applies to the user's current workspace or limit state.
+struct CodexRateLimitResetCredits: Sendable, Codable, Equatable {
+    let availableCount: Int
+    let applicableAvailableCount: Int?
+}
+
 struct ProviderQuota: Sendable, Codable {
     let provider: Provider
     let primary: QuotaWindow
@@ -68,6 +76,9 @@ struct ProviderQuota: Sendable, Codable {
     /// Legacy primary-window field retained so existing caches stay compatible.
     /// New multi-window data belongs on each `QuotaWindow`.
     var remainingBalance: QuotaBalance? = nil
+    /// Codex-only banked resets. Nil means the current source did not expose the
+    /// official reset-credit fields; zero is a real, successfully fetched count.
+    var codexResetCredits: CodexRateLimitResetCredits? = nil
 
     /// Terminal repainting and older cached snapshots can contain the same
     /// model-scoped quota more than once. Keep the latest reading for each
@@ -113,7 +124,8 @@ struct ProviderQuota: Sendable, Codable {
             capturedAt: capturedAt,
             extraUsage: extraUsage,
             scopedWindows: merged.isEmpty ? nil : merged,
-            remainingBalance: remainingBalance
+            remainingBalance: remainingBalance,
+            codexResetCredits: codexResetCredits
         )
     }
 

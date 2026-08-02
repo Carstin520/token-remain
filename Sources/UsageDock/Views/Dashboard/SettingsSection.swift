@@ -186,6 +186,7 @@ struct SettingsSection: View {
     @ObservedObject var launchAtLogin: LaunchAtLoginManager
     @ObservedObject var preferences: PreferencesStore = .shared
     @ObservedObject var tracked: TrackedProvidersStore = .shared
+    @State private var selectedCategory: SettingsCategory = .general
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -194,113 +195,150 @@ struct SettingsSection: View {
                 subtitle: DashboardSection.settings.subtitle
             )
 
-            DashboardCard {
-                VStack(alignment: .leading, spacing: 12) {
-                    PanelHeader(title: L10n.text("settings.general"))
-                    Toggle(isOn: launchAtLoginBinding) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(L10n.text("action.launch_at_login"))
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundStyle(DashboardTheme.text)
-                            Text(L10n.text("settings.login_item_note"))
-                                .font(.system(size: 11))
-                                .foregroundStyle(DashboardTheme.secondaryText)
-                        }
-                    }
-                    .toggleStyle(.switch)
-                    .tint(DashboardTheme.violet)
+            SettingsCategoryBar(selection: $selectedCategory)
 
-                    if let error = launchAtLogin.errorMessage {
-                        Label(error, systemImage: "exclamationmark.triangle.fill")
-                            .font(.system(size: 11))
-                            .foregroundStyle(DashboardTheme.warning)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
+            VStack(alignment: .leading, spacing: 10) {
+                Text(selectedCategory.detail)
+                    .font(.system(size: 11))
+                    .foregroundStyle(DashboardTheme.secondaryText)
+
+                ScrollView(.vertical) {
+                    selectedSettingsContent
+                        .padding(.trailing, 5)
+                        .padding(.bottom, 4)
+                }
+                .scrollIndicators(.automatic)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    @ViewBuilder
+    private var selectedSettingsContent: some View {
+        switch selectedCategory {
+        case .general:
+            generalSettings
+        case .menuBar:
+            menuBarSettings
+        case .refreshAndSync:
+            refreshAndSyncSettings
+        case .about:
+            aboutSettings
+        }
+    }
+
+    private var generalSettings: some View {
+        DashboardCard {
+            VStack(alignment: .leading, spacing: 12) {
+                PanelHeader(title: L10n.text("settings.general"))
+
+                preferenceToggle(
+                    title: L10n.text("action.launch_at_login"),
+                    detail: L10n.text("settings.login_item_note"),
+                    isOn: launchAtLoginBinding
+                )
+
+                if let error = launchAtLogin.errorMessage {
+                    Label(error, systemImage: "exclamationmark.triangle.fill")
+                        .font(.system(size: 11))
+                        .foregroundStyle(DashboardTheme.warning)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Divider().overlay(DashboardTheme.border)
+
+                preferenceToggle(
+                    title: L10n.text("settings.show_dock_icon"),
+                    detail: L10n.text("settings.show_dock_icon_hint"),
+                    isOn: dockIconVisibleBinding
+                )
+
+                Divider().overlay(DashboardTheme.border)
+
+                preferenceToggle(
+                    title: L10n.text("settings.floating_widget"),
+                    detail: L10n.text("settings.floating_widget_hint"),
+                    isOn: floatingBinding
+                )
+            }
+        }
+    }
+
+    private var menuBarSettings: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            DashboardCard {
+                VStack(alignment: .leading, spacing: 8) {
+                    PanelHeader(
+                        title: L10n.text("settings.menubar_title"),
+                        subtitle: L10n.text("settings.menubar_hint")
+                    )
+                    FlowToggleRow(
+                        providers: tracked.enabledOrdered,
+                        isOn: { preferences.isInMenuBar($0) },
+                        toggle: { preferences.toggleMenuBar($0) }
+                    )
                 }
             }
 
             DashboardCard {
-                VStack(alignment: .leading, spacing: 14) {
-                    PanelHeader(title: L10n.text("settings.display_refresh"))
+                VStack(alignment: .leading, spacing: 9) {
+                    PanelHeader(
+                        title: L10n.text("settings.menubar_mode_title"),
+                        subtitle: L10n.text("settings.menubar_mode_hint")
+                    )
+                    MenuBarDisplayModePicker(
+                        selectedMode: preferences.menuBarDisplayMode,
+                        select: { preferences.setMenuBarDisplayMode($0) }
+                    )
+                }
+            }
 
-                    // 菜单栏内容自选:任意追踪中的 provider 都可上菜单栏。
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(L10n.text("settings.menubar_title"))
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(DashboardTheme.text)
-                        Text(L10n.text("settings.menubar_hint"))
-                            .font(.system(size: 11))
-                            .foregroundStyle(DashboardTheme.secondaryText)
-                        FlowToggleRow(
-                            providers: tracked.enabledOrdered,
-                            isOn: { preferences.isInMenuBar($0) },
-                            toggle: { preferences.toggleMenuBar($0) }
-                        )
-                    }
+            DashboardCard {
+                VStack(alignment: .leading, spacing: 12) {
+                    PanelHeader(title: L10n.text("settings.model_quotas"))
 
-                    VStack(alignment: .leading, spacing: 7) {
-                        Text(L10n.text("settings.menubar_mode_title"))
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(DashboardTheme.text)
-                        Text(L10n.text("settings.menubar_mode_hint"))
-                            .font(.system(size: 11))
-                            .foregroundStyle(DashboardTheme.secondaryText)
-                        MenuBarDisplayModePicker(
-                            selectedMode: preferences.menuBarDisplayMode,
-                            select: { preferences.setMenuBarDisplayMode($0) }
-                        )
-                    }
-
-                    Divider().overlay(DashboardTheme.border)
-
-                    Toggle(isOn: menuBarFableBinding) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(L10n.text("settings.menubar_fable"))
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundStyle(DashboardTheme.text)
-                            Text(L10n.text("settings.menubar_fable_hint"))
-                                .font(.system(size: 11))
-                                .foregroundStyle(DashboardTheme.secondaryText)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                    }
-                    .toggleStyle(.switch)
-                    .tint(DashboardTheme.violet)
+                    preferenceToggle(
+                        title: L10n.text("settings.menubar_fable"),
+                        detail: L10n.text("settings.menubar_fable_hint"),
+                        isOn: menuBarFableBinding
+                    )
                     .disabled(!tracked.isEnabled(.claude))
 
                     Divider().overlay(DashboardTheme.border)
 
-                    Toggle(isOn: menuBarCodexSparkBinding) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(L10n.text("settings.menubar_codex_spark"))
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundStyle(DashboardTheme.text)
-                            Text(L10n.text("settings.menubar_codex_spark_hint"))
-                                .font(.system(size: 11))
-                                .foregroundStyle(DashboardTheme.secondaryText)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                    }
-                    .toggleStyle(.switch)
-                    .tint(DashboardTheme.violet)
+                    preferenceToggle(
+                        title: L10n.text("settings.menubar_codex_spark"),
+                        detail: L10n.text("settings.menubar_codex_spark_hint"),
+                        isOn: menuBarCodexSparkBinding
+                    )
                     .disabled(!tracked.isEnabled(.codex))
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
 
-                    Divider().overlay(DashboardTheme.border)
+    private var refreshAndSyncSettings: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            DashboardCard {
+                VStack(alignment: .leading, spacing: 12) {
+                    PanelHeader(title: L10n.text("settings.refresh_rate"))
 
-                    // 直查刷新频率。
-                    HStack(alignment: .firstTextBaseline) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(L10n.text("settings.refresh_rate"))
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundStyle(DashboardTheme.text)
-                            Text(L10n.text("settings.refresh_rate_hint"))
-                                .font(.system(size: 11))
-                                .foregroundStyle(DashboardTheme.secondaryText)
-                        }
-                        Spacer()
+                    HStack(alignment: .firstTextBaseline, spacing: 16) {
+                        Text(L10n.text("settings.refresh_rate_hint"))
+                            .font(.system(size: 11))
+                            .foregroundStyle(DashboardTheme.secondaryText)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: 12)
                         Picker("", selection: refreshBinding) {
                             ForEach(PreferencesStore.refreshChoices, id: \.self) { minutes in
-                                Text(minutes == 0 ? L10n.text("settings.manual_only") : L10n.format("settings.minutes_format", minutes)).tag(minutes)
+                                Text(
+                                    minutes == 0
+                                        ? L10n.text("settings.manual_only")
+                                        : L10n.format("settings.minutes_format", minutes)
+                                )
+                                .tag(minutes)
                             }
                         }
                         .labelsHidden()
@@ -310,37 +348,54 @@ struct SettingsSection: View {
 
                     Divider().overlay(DashboardTheme.border)
 
-                    // 桌面浮窗。
-                    Toggle(isOn: floatingBinding) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(L10n.text("settings.floating_widget"))
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundStyle(DashboardTheme.text)
-                            Text(L10n.text("settings.floating_widget_hint"))
-                                .font(.system(size: 11))
-                                .foregroundStyle(DashboardTheme.secondaryText)
+                    HStack {
+                        Spacer()
+                        Button {
+                            Task { await store.refresh(forceCCUsage: true, forceClaude: true) }
+                        } label: {
+                            Label(
+                                store.isRefreshing
+                                    ? L10n.text("settings.refreshing")
+                                    : L10n.text("settings.refresh_now"),
+                                systemImage: "arrow.clockwise"
+                            )
                         }
+                        .disabled(store.isRefreshing)
+                        .usageDockActionButtonStyle()
                     }
-                    .toggleStyle(.switch)
-                    .tint(DashboardTheme.violet)
                 }
             }
 
 #if TOKENREMAIN_CLOUD_SYNC
             CrossDeviceSyncSettingsCard()
 #endif
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var aboutSettings: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            DashboardCard {
+                VStack(alignment: .leading, spacing: 10) {
+                    PanelHeader(title: L10n.text("settings.about"))
+                    InfoRow(label: L10n.text("settings.version"), value: appVersion)
+                    InfoRow(label: L10n.text("settings.data_label"), value: L10n.text("settings.data_value"))
+                    HStack {
+                        Text(L10n.text("settings.stats_source"))
+                            .font(.system(size: 12))
+                            .foregroundStyle(DashboardTheme.secondaryText)
+                        Spacer()
+                        Link("ccusage.com", destination: URL(string: "https://ccusage.com/")!)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(DashboardTheme.link)
+                    }
+                }
+            }
 
             DashboardCard {
                 VStack(alignment: .leading, spacing: 12) {
                     PanelHeader(title: L10n.text("settings.actions"))
                     HStack(spacing: 10) {
-                        Button {
-                            Task { await store.refresh(forceCCUsage: true, forceClaude: true) }
-                        } label: {
-                            Label(store.isRefreshing ? L10n.text("settings.refreshing") : L10n.text("settings.refresh_now"), systemImage: "arrow.clockwise")
-                        }
-                        .disabled(store.isRefreshing)
-
                         Button {
                             launchAtLogin.restart()
                         } label: {
@@ -359,24 +414,38 @@ struct SettingsSection: View {
                     .controlSize(.large)
                 }
             }
-
-            DashboardCard {
-                VStack(alignment: .leading, spacing: 10) {
-                    PanelHeader(title: L10n.text("settings.about"))
-                    InfoRow(label: L10n.text("settings.version"), value: appVersion)
-                    InfoRow(label: L10n.text("settings.data_label"), value: L10n.text("settings.data_value"))
-                    HStack {
-                        Text(L10n.text("settings.stats_source"))
-                            .font(.system(size: 12))
-                            .foregroundStyle(DashboardTheme.secondaryText)
-                        Spacer()
-                        Link("ccusage.com", destination: URL(string: "https://ccusage.com/")!)
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(DashboardTheme.link)
-                    }
-                }
-            }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func preferenceLabel(title: String, detail: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(DashboardTheme.text)
+            Text(detail)
+                .font(.system(size: 11))
+                .foregroundStyle(DashboardTheme.secondaryText)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func preferenceToggle(
+        title: String,
+        detail: String,
+        isOn: Binding<Bool>
+    ) -> some View {
+        HStack(alignment: .center, spacing: 16) {
+            preferenceLabel(title: title, detail: detail)
+                .accessibilityHidden(true)
+            Spacer(minLength: 16)
+            Toggle(title, isOn: isOn)
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .tint(DashboardTheme.violet)
+                .accessibilityHint(detail)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var refreshBinding: Binding<Int> {
@@ -390,6 +459,13 @@ struct SettingsSection: View {
         Binding(
             get: { preferences.floatingWidgetEnabled },
             set: { preferences.setFloatingWidgetEnabled($0) }
+        )
+    }
+
+    private var dockIconVisibleBinding: Binding<Bool> {
+        Binding(
+            get: { !preferences.dockIconHidden },
+            set: { preferences.setDockIconHidden(!$0) }
         )
     }
 

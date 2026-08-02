@@ -413,6 +413,7 @@ private struct DirectReorderPressBridge: NSViewRepresentable {
         weak var installedView: NSView?
         private var pendingAnchor: DirectReorderPointerAnchor?
         private var activeAnchor: DirectReorderPointerAnchor?
+        private var mouseUpFallbackMonitor: Any?
 
         private lazy var recognizer: NSPressGestureRecognizer = {
             let recognizer = NSPressGestureRecognizer(
@@ -439,22 +440,17 @@ private struct DirectReorderPressBridge: NSViewRepresentable {
 
         func install(on view: NSView?) {
             guard let view, installedView !== view else { return }
-            detach(cancelActivePress: false)
+            // Moving this bridge to another window while a press is active is
+            // an interruption, not a continuation: the fixed pointer anchor
+            // belongs to the old content view. Always release shared reorder
+            // state before installing on the replacement view.
+            detach()
             installedView = view
             view.addGestureRecognizer(recognizer)
         }
 
         func detach() {
-            detach(cancelActivePress: true)
-        }
-
-        private func detach(cancelActivePress: Bool) {
-            if cancelActivePress, activeAnchor != nil {
-                configuration.setPressing(false)
-                configuration.cancel()
-            }
-            pendingAnchor = nil
-            activeAnchor = nil
+            cancelActiveSequence()
             installedView?.removeGestureRecognizer(recognizer)
             installedView = nil
         }
@@ -479,6 +475,7 @@ private struct DirectReorderPressBridge: NSViewRepresentable {
             case .began:
                 let anchor = pendingAnchor ?? fallbackAnchor(for: recognizer)
                 activeAnchor = anchor
+                beginInterruptionFallbacks()
                 let sample = anchor.sample(at: stablePointerLocation(for: recognizer))
                 configuration.setPressing(true)
                 // Preserve any natural trackpad slide that happened during the
@@ -494,33 +491,113 @@ private struct DirectReorderPressBridge: NSViewRepresentable {
 
             case .ended:
                 guard let activeAnchor else {
-                    configuration.cancel()
+                    cancelActiveSequence()
                     return
                 }
                 let sample = activeAnchor.sample(at: stablePointerLocation(for: recognizer))
                 configuration.finish(sample.location, sample.translation)
                 self.activeAnchor = nil
                 pendingAnchor = nil
+                endInterruptionFallbacks()
 
             case .cancelled:
-                configuration.setPressing(false)
-                configuration.cancel()
-                activeAnchor = nil
-                pendingAnchor = nil
+                cancelActiveSequence()
 
             case .failed:
-                activeAnchor = nil
-                pendingAnchor = nil
+                // AppKit can fail a recognizer when its view/window changes
+                // mid-sequence. Treat that exactly like cancellation so the
+                // shared interaction cannot remain permanently active.
+                cancelActiveSequence()
 
             case .possible:
                 break
 
             @unknown default:
-                configuration.setPressing(false)
-                configuration.cancel()
-                activeAnchor = nil
-                pendingAnchor = nil
+                cancelActiveSequence()
             }
+        }
+
+        /// AppKit normally delivers `.ended` or `.cancelled`, but mouse-up can
+        /// be lost when a window resigns key status, the app deactivates, or a
+        /// SwiftUI hierarchy is replaced during a press. Those interruption
+        /// paths previously left `DirectReorderInteraction.activeItem` set,
+        /// making scrolling and later drags appear frozen until relaunch.
+        private func beginInterruptionFallbacks() {
+            endInterruptionFallbacks()
+
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(handlePressInterruption(_:)),
+                name: NSApplication.didResignActiveNotification,
+                object: NSApp
+            )
+            if let window = installedView?.window {
+                NotificationCenter.default.addObserver(
+                    self,
+                    selector: #selector(handlePressInterruption(_:)),
+                    name: NSWindow.didResignKeyNotification,
+                    object: window
+                )
+                NotificationCenter.default.addObserver(
+                    self,
+                    selector: #selector(handlePressInterruption(_:)),
+                    name: NSWindow.willCloseNotification,
+                    object: window
+                )
+            }
+
+            // Run after AppKit has offered the mouse-up to the recognizer. A
+            // normal `.ended` clears `activeAnchor`; this block only repairs a
+            // missing terminal callback while the app remains active.
+            mouseUpFallbackMonitor = NSEvent.addLocalMonitorForEvents(
+                matching: .leftMouseUp
+            ) { [weak self] event in
+                DispatchQueue.main.async { [weak self] in
+                    guard self?.activeAnchor != nil else { return }
+                    self?.cancelActiveSequence()
+                }
+                return event
+            }
+        }
+
+        private func endInterruptionFallbacks() {
+            NotificationCenter.default.removeObserver(
+                self,
+                name: NSApplication.didResignActiveNotification,
+                object: NSApp
+            )
+            if let window = installedView?.window {
+                NotificationCenter.default.removeObserver(
+                    self,
+                    name: NSWindow.didResignKeyNotification,
+                    object: window
+                )
+                NotificationCenter.default.removeObserver(
+                    self,
+                    name: NSWindow.willCloseNotification,
+                    object: window
+                )
+            }
+            if let mouseUpFallbackMonitor {
+                NSEvent.removeMonitor(mouseUpFallbackMonitor)
+                self.mouseUpFallbackMonitor = nil
+            }
+        }
+
+        @objc private func handlePressInterruption(_ notification: Notification) {
+            cancelActiveSequence()
+        }
+
+        private func cancelActiveSequence() {
+            // Cancellation is item-scoped by DirectReorderInteraction, so it
+            // is safe to release this handle even if AppKit already discarded
+            // its anchor. This closes the exact orphaned-state path where the
+            // recognizer failed first and SwiftUI dismantled the bridge later.
+            configuration.setPressing(false)
+            configuration.cancel()
+            activeAnchor = nil
+            pendingAnchor = nil
+            endInterruptionFallbacks()
         }
 
         private func fallbackAnchor(

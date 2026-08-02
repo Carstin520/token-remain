@@ -37,16 +37,15 @@ struct RiskStrip: View {
             }
             .padding(.horizontal, 13)
             .padding(.vertical, 10)
-            // The semantic signal lives in the badge + border; the card face
-            // stays near-neutral so one banner doesn't wash the whole popover
-            // in amber/red.
+            // Localize semantic color to the badge. A colored card face or
+            // outline competes with the meters and makes medium risk feel like
+            // a persistent alert rather than a decision summary.
             .usageDockGlassSurface(
                 cornerRadius: 13,
-                tint: risk.tint.opacity(0.07),
-                fallbackBackground: risk.tint.opacity(0.05),
-                fallbackBorder: risk.tint.opacity(0.28)
+                fallbackBackground: DashboardTheme.surface,
+                fallbackBorder: DashboardTheme.border
             )
-            .pixelTicks(cornerRadius: 13, color: risk.tint.opacity(0.35))
+            .pixelTicks(cornerRadius: 13)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(L10n.format(
                 "risk.accessibility_summary",

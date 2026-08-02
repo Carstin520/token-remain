@@ -15,6 +15,7 @@ struct PreferencesStoreTests {
         #expect(store.refreshMinutes == 5)
         #expect(store.refreshInterval == 300)
         #expect(!store.floatingWidgetEnabled)
+        #expect(!store.dockIconHidden)
     }
 
     @Test("Menu bar model quota preferences default off and persist")
@@ -163,6 +164,15 @@ struct PreferencesStoreTests {
         let defaults = testDefaults()
         PreferencesStore(defaults: defaults).setFloatingWidgetEnabled(true)
         #expect(PreferencesStore(defaults: defaults).floatingWidgetEnabled)
+    }
+
+    @Test("Dock icon visibility persists and maps to the native activation policy")
+    func dockIconVisibility() {
+        let defaults = testDefaults()
+        PreferencesStore(defaults: defaults).setDockIconHidden(true)
+        #expect(PreferencesStore(defaults: defaults).dockIconHidden)
+        #expect(DockIconVisibility.activationPolicy(hidden: true) == .accessory)
+        #expect(DockIconVisibility.activationPolicy(hidden: false) == .regular)
     }
 
     private func testDefaults() -> UserDefaults {

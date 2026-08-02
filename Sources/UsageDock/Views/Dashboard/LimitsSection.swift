@@ -13,7 +13,7 @@ struct LimitsSection: View {
     var serviceStatuses: [ProviderQuota.Provider: ProviderServiceStatus] = [:]
     @ObservedObject var store: UsageStore
     @ObservedObject var tracked: TrackedProvidersStore = .shared
-    @State private var reorderInteraction = DirectReorderInteraction<ProviderQuota.Provider>()
+    let reorderInteraction: DirectReorderInteraction<ProviderQuota.Provider>
 
     private func quota(for provider: ProviderQuota.Provider) -> ProviderQuota? {
         insights.quota(for: provider)

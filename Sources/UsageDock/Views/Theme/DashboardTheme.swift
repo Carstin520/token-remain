@@ -5,10 +5,13 @@ import SwiftUI
 /// These are the confirmed "TokenRemain" mobile palette (`TRTheme`): a
 /// pixel-tech, low-contrast robot visual language on an ink ground.
 ///
-/// Two color roles are kept deliberately separate:
-/// - **Product accents** use violet + cyan (links, selection, meta badges,
-///   pixel chrome).
-/// - **Provider identity** uses a distinct categorical palette for quota bars.
+/// Three color roles are kept deliberately separate:
+/// - **Product accents** use violet for navigation and selection;
+///   cyan is reserved for informational emphasis such as quota/Token news and
+///   the robot's signal details.
+/// - **Provider identity** keeps each app's assigned hue in quota meters,
+///   comparison charts and official provider glyphs. Saturation, luminance and
+///   opacity may adapt to context; the identifying hue must not be reassigned.
 /// - **Semantic status** uses conventional green / amber / red so a warning
 ///   looks like a warning — always paired with a glyph + text label, never
 ///   color alone.
@@ -16,32 +19,40 @@ import SwiftUI
 /// macOS 26 surfaces use system Liquid Glass and materials; these colors retain
 /// the product identity and keep macOS 14/15 visually compatible.
 enum DashboardTheme {
-    // Surfaces
-    static let canvas = Color(hex: 0x070B12)     // window / popover background
-    static let surface = Color(hex: 0x0D1420)    // primary card
-    static let surface2 = Color(hex: 0x141D2C)   // secondary chip / inset
-    static let surface3 = Color(hex: 0x1B2536)   // raised element
-    static let border = Color(hex: 0x223044)     // 1px card borders, pixel ticks
-    static let track = Color(hex: 0x1B2536)      // empty segment / progress track
+    // Reference brand lockup: near-black ground, cool-white "Token", and
+    // violet "Remain". Keep these semantic so the wordmark and product chrome
+    // stay synchronized without affecting provider or status colors.
+    static let brandCanvas = Color(hex: 0x0D0E10)
+    static let brandToken = Color(hex: 0xF2F3F5)
+    static let brandRemain = Color(hex: 0x9B8AFB)
+
+    // Surfaces — restrained, hue-neutral charcoal. Large fields must not
+    // compete with provider identity or semantic status colors.
+    static let canvas = brandCanvas              // window / popover background
+    static let surface = Color(hex: 0x121316)    // primary card
+    static let surface2 = Color(hex: 0x1A1B1F)   // secondary chip / inset
+    static let surface3 = Color(hex: 0x23252A)   // raised element
+    static let border = Color(hex: 0x32353C)     // 1px card borders, pixel ticks
+    static let track = Color(hex: 0x272A30)      // empty segment / progress track
 
     // Text (Color 3)
-    static let text = Color(hex: 0xE9EDF5)
-    static let secondaryText = Color(hex: 0x8B97AB)
-    static let mutedText = Color(hex: 0x55617A)
+    static let text = brandToken
+    static let secondaryText = Color(hex: 0xA7ABB4)
+    static let mutedText = Color(hex: 0x6F7580)
 
     // Color 1 — violet: robot and primary product accent
-    static let violet = Color(hex: 0x8F7BF2)
-    static let violetDim = Color(hex: 0x5B4FB0)
+    static let violet = brandRemain
+    static let violetDim = Color(hex: 0x6357B8)
 
-    // Color 2 — cyan: links, countdowns and product chrome
+    // Cyan is the informational highlight and the robot's signal detail. It is
+    // intentionally distinct from violet interaction chrome and amber warnings.
     static let cyan = Color(hex: 0x3ECFE0)
     static let cyanDim = Color(hex: 0x2B8FA0)
 
-    // Provider quota palette. Red is deliberately absent: it is reserved for
-    // a critically low remaining quota. Every entry sits in the same muted
-    // tonal band (saturation ~35-45%, similar lightness) so hue alone carries
-    // identity and adjacent cards read as one calm system instead of a mix of
-    // fluorescent brand colors.
+    // Provider theme palette. Red is deliberately absent: it is reserved for
+    // critically low remaining quota. These are quieter, contrast-matched
+    // expressions of each app's identity hue; assignments remain stable across
+    // quota meters and comparisons and are paired with a glyph or text label.
     static let claudeAccent = Color(hex: 0xBF8471)      // muted terracotta
     static let codexAccent = Color(hex: 0x6687C5)       // muted steel blue
     static let cursorAccent = Color(hex: 0x9684CD)      // muted violet
@@ -81,9 +92,9 @@ enum DashboardTheme {
     // MARK: - Official provider brand marks (glyph tint only)
 
     /// Official brand colors used ONLY for the provider identity glyph (the
-    /// starburst / terminal-prompt marks in `BrandIcon`). These are deliberately
-    /// named separately from the categorical quota palette even when the current
-    /// Claude/Codex values intentionally match their meter identity colors.
+    /// starburst / terminal-prompt marks in `BrandIcon`). Glyphs can carry the
+    /// saturated brand expression while larger meters use the quieter,
+    /// contrast-matched provider accents above.
     static let claudeBrand = Color(hex: 0xD97757)   // Anthropic coral (official, full saturation)
     static let codexBrand = Color(hex: 0x3578F6)    // Codex deep blue (official, full saturation)
 
@@ -93,8 +104,24 @@ enum DashboardTheme {
     static let codex = codexAccent
     /// Primary brand accent.
     static let purple = violet
-    /// Links use the cyan accent.
-    static let link = cyan
+    /// Links share the same violet as TokenRemain selection chrome.
+    static let link = violet
+
+    // MARK: - Semantic content emphasis
+
+    /// Product information that deserves attention without implying danger:
+    /// quota changes, token pricing, reset announcements and hot-story rank.
+    static let information = cyan
+
+    /// Single source of truth for AI-feed priority chrome across Dashboard,
+    /// Trending and the menu-bar popover.
+    static func feedAccent(for priority: AIFeedPriority) -> Color {
+        switch priority {
+        case .tokenReset: return information
+        case .majorUpdate: return violetDim
+        case .normal: return mutedText
+        }
+    }
 
     // MARK: - Semantic status (conventional green / amber / red)
     // Always paired with a glyph + text label at the call site — never color alone.
@@ -106,7 +133,7 @@ enum DashboardTheme {
     /// high / danger (paired with a "‼" glyph at the call site).
     static let danger = Color(hex: 0xFF6B6B)
 
-    /// The flat accent color for a provider's segment bars and glyphs.
+    /// The stable theme accent for a provider's quota meter and comparisons.
     static func accent(for provider: ProviderQuota.Provider) -> Color {
         switch provider {
         case .claude: return claudeAccent
@@ -132,7 +159,7 @@ enum DashboardTheme {
     }
 
     /// Quota meters reserve red for the same critical threshold as `RiskLevel`.
-    /// At 10% and above, the provider's stable identity color is restored.
+    /// At 10% and above, the provider's stable theme color is restored.
     static func quotaAccent(
         for provider: ProviderQuota.Provider,
         remainingPercent: Double

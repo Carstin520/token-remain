@@ -24,6 +24,7 @@ final class PreferencesStore: ObservableObject {
     static let menuBarCodexSparkQuotaKey = "tokenRemain.dashboardCodexSparkQuota.v1"
     static let refreshKey = "tokenRemain.refreshMinutes.v1"
     static let floatingKey = "tokenRemain.floatingWidget.v1"
+    static let dockIconHiddenKey = "tokenRemain.dockIconHidden.v1"
 
     /// 刷新频率可选档位(分钟);0 = 仅手动刷新。
     static let refreshChoices = [1, 5, 15, 30, 0]
@@ -40,6 +41,8 @@ final class PreferencesStore: ObservableObject {
     @Published private(set) var refreshMinutes: Int
     /// 桌面浮窗(置顶的挂件面板)。
     @Published private(set) var floatingWidgetEnabled: Bool
+    /// 隐藏 Dock 与应用切换器里的应用图标；菜单栏入口保持可用。
+    @Published private(set) var dockIconHidden: Bool
 
     private let defaults: UserDefaults
 
@@ -57,6 +60,7 @@ final class PreferencesStore: ObservableObject {
         let storedMinutes = defaults.object(forKey: Self.refreshKey) as? Int
         refreshMinutes = storedMinutes.map { Self.refreshChoices.contains($0) ? $0 : 5 } ?? 5
         floatingWidgetEnabled = defaults.bool(forKey: Self.floatingKey)
+        dockIconHidden = defaults.bool(forKey: Self.dockIconHiddenKey)
     }
 
     func isInMenuBar(_ provider: ProviderQuota.Provider) -> Bool {
@@ -99,6 +103,11 @@ final class PreferencesStore: ObservableObject {
     func setFloatingWidgetEnabled(_ enabled: Bool) {
         floatingWidgetEnabled = enabled
         defaults.set(enabled, forKey: Self.floatingKey)
+    }
+
+    func setDockIconHidden(_ hidden: Bool) {
+        dockIconHidden = hidden
+        defaults.set(hidden, forKey: Self.dockIconHiddenKey)
     }
 
     /// 自动刷新间隔(秒);仅手动模式返回 nil。

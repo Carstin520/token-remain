@@ -5,9 +5,9 @@ import SwiftUI
 /// `feedStore.topStories`.
 ///
 /// Ranking is frozen upstream; this view only decides how loudly to say
-/// "this is the most trending thing". Rank 1 gets a warm ember accent and a
-/// visible glow, rank 2 a quieter purple — no other chrome in the card borrows
-/// these colors, so the accent always means rank.
+/// "this is the most trending thing". Rank 1 gets an informational cyan accent
+/// and visible glow, while rank 2 uses a quieter violet. Priority-specific feed
+/// semantics can override rank hue without changing the rank label or strength.
 struct TrendingStoriesCard: View {
     let posts: [AIFeedPost]
 
@@ -53,7 +53,7 @@ enum TrendingRank {
     var accent: Color {
         // Kept within the three-color system: rank 1 = cyan (attention),
         // rank 2 = violet. Rank still reads unambiguously via glyph + label.
-        self == .first ? DashboardTheme.cyan : DashboardTheme.violet
+        self == .first ? DashboardTheme.information : DashboardTheme.violet
     }
 
     var backgroundOpacity: Double {
@@ -74,6 +74,12 @@ private struct TrendingStoryRow: View {
     let post: AIFeedPost
     let rank: TrendingRank
 
+    private var accent: Color {
+        post.priority == .normal
+            ? rank.accent
+            : DashboardTheme.feedAccent(for: post.priority)
+    }
+
     var body: some View {
         Button {
             NSWorkspace.shared.open(post.postURL)
@@ -82,10 +88,10 @@ private struct TrendingStoryRow: View {
                 HStack(spacing: 6) {
                     Image(systemName: rank.symbol)
                         .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(rank.accent)
+                        .foregroundStyle(accent)
                     Text(rank.label)
                         .numericFont(10, .heavy)
-                        .foregroundStyle(rank.accent)
+                        .foregroundStyle(accent)
 
                     Text(post.displayName)
                         .font(.system(size: 11, weight: .semibold))
@@ -122,13 +128,13 @@ private struct TrendingStoryRow: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 11, style: .continuous)
-                    .fill(rank.accent.opacity(rank.backgroundOpacity))
+                    .fill(accent.opacity(rank.backgroundOpacity))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 11, style: .continuous)
-                    .strokeBorder(rank.accent.opacity(rank.borderOpacity), lineWidth: 1)
+                    .strokeBorder(accent.opacity(rank.borderOpacity), lineWidth: 1)
             )
-            .shadow(color: rank.accent.opacity(rank.glowRadius > 0 ? 0.28 : 0), radius: rank.glowRadius)
+            .shadow(color: accent.opacity(rank.glowRadius > 0 ? 0.28 : 0), radius: rank.glowRadius)
             .contentShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
         }
         .buttonStyle(.plain)

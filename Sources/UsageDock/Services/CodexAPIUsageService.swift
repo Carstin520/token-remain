@@ -125,7 +125,21 @@ enum CodexAPIUsageParser {
             primary: primary,
             secondary: secondary,
             planName: planName(object["plan_type"]),
-            capturedAt: now
+            capturedAt: now,
+            codexResetCredits: resetCredits(object["rate_limit_reset_credits"])
+        )
+    }
+
+    static func resetCredits(_ value: Any?) -> CodexRateLimitResetCredits? {
+        guard let object = value as? [String: Any],
+              let available = wholeNumber(object["available_count"])
+        else {
+            return nil
+        }
+        return CodexRateLimitResetCredits(
+            availableCount: max(0, available),
+            applicableAvailableCount: wholeNumber(object["applicable_available_count"])
+                .map { max(0, min($0, available)) }
         )
     }
 
@@ -188,6 +202,11 @@ enum CodexAPIUsageParser {
         if let number = value as? NSNumber { return number.doubleValue }
         if let text = value as? String { return Double(text) }
         return nil
+    }
+
+    private static func wholeNumber(_ value: Any?) -> Int? {
+        guard let number = number(value), number.isFinite else { return nil }
+        return Int(number.rounded(.towardZero))
     }
 }
 
