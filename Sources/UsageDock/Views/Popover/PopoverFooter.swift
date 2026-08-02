@@ -16,7 +16,7 @@ struct PopoverFooter: View {
             } label: {
                 Text(L10n.text("action.open_dashboard"))
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(DashboardTheme.link)
+                    .foregroundStyle(DashboardTheme.text)
             }
             .buttonStyle(.plain)
             .help(L10n.text("action.open_dashboard_help"))

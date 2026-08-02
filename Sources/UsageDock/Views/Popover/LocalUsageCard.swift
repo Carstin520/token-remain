@@ -263,4 +263,5 @@ struct LocalUsageCard: View {
             UsageFormatting.compactNumber(entry.tokens)
         ))
     }
+
 }

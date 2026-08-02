@@ -11,6 +11,10 @@ struct CodexAPIUsageParserTests {
         let payload = """
         {
           "plan_type": "pro",
+          "rate_limit_reset_credits": {
+            "available_count": 3,
+            "applicable_available_count": 2
+          },
           "rate_limit": {
             "primary_window": {"used_percent": 12.3, "limit_window_seconds": 18000, "reset_at": 1784005200},
             "secondary_window": {"used_percent": 55, "limit_window_seconds": 604800, "reset_after_seconds": 3600}
@@ -27,6 +31,34 @@ struct CodexAPIUsageParserTests {
         #expect(quota.secondary?.windowMinutes == 10_080)
         #expect(quota.secondary?.resetsAt == now.addingTimeInterval(3600))
         #expect(quota.planName == "Pro 20x")
+        #expect(quota.codexResetCredits == CodexRateLimitResetCredits(
+            availableCount: 3,
+            applicableAvailableCount: 2
+        ))
+        #expect(quota.mergingScopedWindows([]).codexResetCredits == quota.codexResetCredits)
+    }
+
+    @Test("Reset credit counts accept numeric strings and clamp invalid ranges")
+    func resetCredits() {
+        #expect(
+            CodexAPIUsageParser.resetCredits([
+                "available_count": "2",
+                "applicable_available_count": 9
+            ]) == CodexRateLimitResetCredits(
+                availableCount: 2,
+                applicableAvailableCount: 2
+            )
+        )
+        #expect(
+            CodexAPIUsageParser.resetCredits([
+                "available_count": -3,
+                "applicable_available_count": -1
+            ]) == CodexRateLimitResetCredits(
+                availableCount: 0,
+                applicableAvailableCount: 0
+            )
+        )
+        #expect(CodexAPIUsageParser.resetCredits([:]) == nil)
     }
 
     @Test("A weekly limit parked in the primary slot is classified by duration")

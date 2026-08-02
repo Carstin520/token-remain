@@ -171,6 +171,11 @@ final class StatusBarController: NSObject {
             .sink { [weak self] _ in self?.updateStatusImage() }
             .store(in: &cancellables)
 
+        PreferencesStore.shared.$dockIconHidden
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.updateStatusImage() }
+            .store(in: &cancellables)
+
         // 桌面浮窗随设置开关。
         PreferencesStore.shared.$floatingWidgetEnabled
             .receive(on: RunLoop.main)
@@ -328,6 +333,7 @@ final class StatusBarController: NSObject {
             claudeRemaining: claudeRemaining,
             codexRemaining: codexRemaining
         )
+        let dockIconHidden = PreferencesStore.shared.dockIconHidden
 
         let insights = UsageInsights(
             claude: nil,
@@ -355,6 +361,7 @@ final class StatusBarController: NSObject {
             displayMode.rawValue,
             segments.map { "\($0.0.rawValue):\($0.1)" }.joined(separator: ","),
             dockIconKey,
+            dockIconHidden ? "dock-hidden" : "dock-visible",
             tooltip
         ].joined(separator: "|")
         guard fingerprint != lastStatusFingerprint else { return }
@@ -391,7 +398,11 @@ final class StatusBarController: NSObject {
         // 渲染(含色彩转换),与图片对象是否复用无关,必须按内容去重。
         // Dock 与应用切换器的实际显示不超过 128pt@2x,256px 渲染足够,
         // 单张位图成本也从 ~4MB 降到 ~256KB。
-        if dockIconKey != lastDockIconKey {
+        if dockIconHidden {
+            // Force one fresh render if the icon is shown again after quota
+            // values changed while the app was in menu-bar-only mode.
+            lastDockIconKey = nil
+        } else if dockIconKey != lastDockIconKey {
             lastDockIconKey = dockIconKey
             NSApp.applicationIconImage = TokenRemainHeadLogoArtwork.image(
                 claudeRemaining: claudeRemaining,
@@ -405,8 +416,11 @@ final class StatusBarController: NSObject {
         _ provider: ProviderQuota.Provider,
         size: CGFloat
     ) -> NSAttributedString {
-        let image = BrandIcon.image(for: provider).copy() as! NSImage
-        image.size = NSSize(width: size, height: size)
+        // `BrandIcon.image` already returns a provider-owned NSImage at the
+        // requested size. Avoid force-casting `NSCopying.copy()` here: an
+        // unexpected image subclass implementation would otherwise terminate
+        // the entire menu-bar process while refreshing its title.
+        let image = BrandIcon.image(for: provider, size: size)
 
         let attachment = NSTextAttachment()
         attachment.attachmentCell = NSTextAttachmentCell(imageCell: image)

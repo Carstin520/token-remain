@@ -169,22 +169,24 @@ struct OverviewSection: View {
     // MARK: - Risk detail (real)
 
     private var riskDetailPanel: some View {
-        OverviewPanelCard(contentSpacing: 8) {
+        OverviewPanelCard(contentSpacing: 6, scrollsContent: false) {
             PanelHeader(title: L10n.text("overview.risk_panel_title"), subtitle: L10n.text("overview.risk_panel_subtitle"))
         } content: {
             let now = Date()
             let risk = insights.riskLevel(at: now)
             let paceAssessment = insights.paceAssessment(at: now)
 
-            HStack(spacing: 8) {
+            HStack(spacing: 7) {
                 PixelBadge(text: risk.badge, color: risk.tint, filled: risk == .high)
                 Text(insights.decisionHeadline(at: now))
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(DashboardTheme.text)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
             }
 
             Text(insights.decisionSummary(at: now))
-                .font(.system(size: 12))
+                .font(.system(size: 11))
                 .foregroundStyle(DashboardTheme.secondaryText)
                 .fixedSize(horizontal: false, vertical: true)
 
@@ -192,22 +194,29 @@ struct OverviewSection: View {
                 Divider().overlay(DashboardTheme.border)
                 InfoRow(
                     label: L10n.text("overview.scarcest_window"),
-                    value: "\(window.provider.displayName) · \(UsageFormatting.windowName(minutes: window.windowMinutes))"
+                    value: "\(window.provider.displayName) · \(UsageFormatting.windowName(minutes: window.windowMinutes))",
+                    fontSize: 11
                 )
                 InfoRow(
                     label: L10n.text("overview.remaining_quota"),
                     value: UsageFormatting.percent(window.remainingPercent),
-                    valueColor: risk.tint
+                    valueColor: risk.tint,
+                    fontSize: 11
                 )
                 if let runOutAt = paceAssessment?.pace.estimatedRunOutAt {
                     InfoRow(
                         label: L10n.text("overview.projected_depletion"),
                         value: L10n.format("overview.in_duration", UsageFormatting.durationUntil(runOutAt, now: now)),
-                        valueColor: DashboardTheme.warning
+                        valueColor: DashboardTheme.warning,
+                        fontSize: 11
                     )
                 }
                 if let reset = window.resetsAt {
-                    InfoRow(label: L10n.text("overview.projected_reset"), value: UsageFormatting.resetDescription(to: reset))
+                    InfoRow(
+                        label: L10n.text("overview.projected_reset"),
+                        value: UsageFormatting.resetDescription(to: reset),
+                        fontSize: 11
+                    )
                 }
             }
         }

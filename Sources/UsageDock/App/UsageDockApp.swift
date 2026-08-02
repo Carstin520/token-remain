@@ -1,5 +1,21 @@
 import AppKit
+import Combine
 import SwiftUI
+
+/// SwiftUI has no runtime API for Dock presence. Keep the AppKit boundary to
+/// this single activation-policy mapping while PreferencesStore remains the
+/// persisted source of truth.
+enum DockIconVisibility {
+    static func activationPolicy(hidden: Bool) -> NSApplication.ActivationPolicy {
+        hidden ? .accessory : .regular
+    }
+
+    @discardableResult
+    @MainActor
+    static func apply(hidden: Bool, to application: NSApplication? = nil) -> Bool {
+        (application ?? NSApp).setActivationPolicy(activationPolicy(hidden: hidden))
+    }
+}
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -8,6 +24,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var launchAtLogin = LaunchAtLoginManager()
     private var statusBarController: StatusBarController?
     private var feedNotificationObserver: NSObjectProtocol?
+    private var dockIconCancellable: AnyCancellable?
     func applicationDidFinishLaunching(_ notification: Notification) {
         let arguments = ProcessInfo.processInfo.arguments
 #if DEBUG
@@ -27,9 +44,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 #endif
 
-        // TokenRemain is a desktop app with a persistent Dashboard and a
-        // companion menu-bar status item.
-        NSApp.setActivationPolicy(.regular)
+        // Apply the persisted presence choice before creating any windows so a
+        // menu-bar-only user never sees a transient Dock icon during launch.
+        let preferences = PreferencesStore.shared
+        DockIconVisibility.apply(hidden: preferences.dockIconHidden)
+        dockIconCancellable = preferences.$dockIconHidden
+            .dropFirst()
+            .removeDuplicates()
+            .sink { hidden in
+                DockIconVisibility.apply(hidden: hidden)
+            }
         statusBarController = StatusBarController(
             store: store,
             feedStore: feedStore,

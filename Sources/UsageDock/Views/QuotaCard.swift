@@ -4,10 +4,10 @@ import SwiftUI
 /// window (remaining %, progress bar, reset label). Shown in the Dashboard's
 /// Limits section. Renders a waiting state before data arrives.
 struct QuotaCard: View {
-    /// Short cards share one visual baseline. Providers with extra official
-    /// windows grow naturally so the Dashboard owns the only vertical scroll
-    /// surface and no quota row can overlap the next grid row.
-    static let dashboardMinimumContentHeight: CGFloat = 198
+    /// Every card in the Dashboard grid occupies the same visual slot. Keep the
+    /// provider header pinned and let extra quota windows scroll inside the card
+    /// so one multi-window provider cannot make the whole grid row taller.
+    static let dashboardContentHeight: CGFloat = 198
     /// Reserve one shared title slot for every grid card so quota rows stay
     /// aligned even when a compact connection warning is present.
     private static let headerHeight: CGFloat = 26
@@ -33,14 +33,15 @@ struct QuotaCard: View {
         DashboardCard(padding: 13) {
             VStack(alignment: .leading, spacing: 11) {
                 header
-                quotaContent
+                ScrollView(.vertical) {
+                    VStack(alignment: .leading, spacing: 11) {
+                        quotaContent
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .scrollIndicators(.automatic)
             }
-            .frame(
-                maxWidth: .infinity,
-                minHeight: Self.dashboardMinimumContentHeight,
-                maxHeight: .infinity,
-                alignment: .topLeading
-            )
+            .frame(height: Self.dashboardContentHeight, alignment: .top)
         }
         .accessibilityElement(children: .contain)
     }
@@ -48,6 +49,10 @@ struct QuotaCard: View {
     @ViewBuilder
     private var quotaContent: some View {
         if let quota {
+            if provider == .codex, let credits = quota.codexResetCredits {
+                CodexResetCreditsCard(credits: credits)
+                Divider().overlay(DashboardTheme.border)
+            }
             QuotaWindowRow(
                 window: quota.primary,
                 provider: provider,
@@ -165,6 +170,89 @@ struct QuotaCard: View {
             alignment: .top
         )
         .contentShape(Rectangle())
+    }
+}
+
+/// Codex's banked rate-limit reset balance lives inside the Codex quota card so
+/// it stays attached to the limit it can restore. The official usage response
+/// exposes the real counts but not a per-credit expiry timestamp, so the UI
+/// states OpenAI's normal 30-day validity without inventing an absolute date.
+struct CodexResetCreditsCard: View {
+    let credits: CodexRateLimitResetCredits
+
+    static let managementURL = URL(string: "https://chatgpt.com/codex/settings/usage")!
+
+    private var countText: String {
+        if let applicable = credits.applicableAvailableCount,
+           applicable != credits.availableCount {
+            return L10n.format(
+                "codex.reset_credits.applicable_count",
+                applicable,
+                credits.availableCount
+            )
+        }
+        return L10n.format("codex.reset_credits.available_count", credits.availableCount)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            HStack(spacing: 7) {
+                Image(systemName: "arrow.counterclockwise.circle.fill")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(
+                        credits.availableCount > 0
+                            ? DashboardTheme.success
+                            : DashboardTheme.mutedText
+                    )
+                Text(L10n.text("codex.reset_credits.title"))
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(DashboardTheme.text)
+                Spacer(minLength: 8)
+                Text(countText)
+                    .numericFont(11, .semibold)
+                    .foregroundStyle(
+                        credits.availableCount > 0
+                            ? DashboardTheme.success
+                            : DashboardTheme.secondaryText
+                    )
+            }
+
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Label(
+                    L10n.text("codex.reset_credits.expiration"),
+                    systemImage: "calendar.badge.clock"
+                )
+                .font(.system(size: 9.5))
+                .foregroundStyle(DashboardTheme.secondaryText)
+                .fixedSize(horizontal: false, vertical: true)
+
+                Spacer(minLength: 6)
+
+                Link(destination: Self.managementURL) {
+                    HStack(spacing: 3) {
+                        Text(L10n.text("codex.reset_credits.manage"))
+                        Image(systemName: "arrow.up.right")
+                            .font(.system(size: 8, weight: .semibold))
+                    }
+                }
+                .font(.system(size: 9.5, weight: .semibold))
+                .foregroundStyle(DashboardTheme.link)
+            }
+        }
+        .padding(.horizontal, 9)
+        .padding(.vertical, 8)
+        .background {
+            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                .fill(DashboardTheme.surface2)
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                .stroke(DashboardTheme.border, lineWidth: 1)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            "\(L10n.text("codex.reset_credits.title")), \(countText), \(L10n.text("codex.reset_credits.expiration"))"
+        )
     }
 }
 

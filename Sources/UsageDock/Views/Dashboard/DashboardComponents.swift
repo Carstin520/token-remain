@@ -147,16 +147,17 @@ struct InfoRow: View {
     let label: String
     let value: String
     var valueColor: Color = DashboardTheme.text
+    var fontSize: CGFloat = 12
 
     var body: some View {
         HStack(alignment: .firstTextBaseline) {
             Text(label)
-                .font(.system(size: 12))
+                .font(.system(size: fontSize))
                 .foregroundStyle(DashboardTheme.secondaryText)
                 .lineLimit(1)
             Spacer(minLength: 12)
             Text(value)
-                .numericFont(12, .medium)
+                .numericFont(fontSize, .medium)
                 .foregroundStyle(valueColor)
                 .multilineTextAlignment(.trailing)
                 .lineLimit(1)

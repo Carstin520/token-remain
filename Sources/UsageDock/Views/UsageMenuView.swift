@@ -90,6 +90,10 @@ struct UsageMenuView: View {
             }
         }
         .coordinateSpace(name: Self.reorderCoordinateSpace)
+        // Keep the captured reorder geometry stable for the lifetime of a
+        // press. Interruption fallbacks in the shared interaction guarantee
+        // this is re-enabled even if AppKit loses the normal gesture end.
+        .scrollDisabled(reorderInteraction.isActive)
         .frame(width: 380)
         .frame(height: min(measuredHeight, maxHeight))
         .background { UsageDockCanvasBackground() }
@@ -137,9 +141,7 @@ struct UsageMenuView: View {
     private var header: some View {
         HStack(alignment: .center, spacing: 10) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("TokenRemain")
-                    .wordmarkFont(18)
-                    .foregroundStyle(DashboardTheme.text)
+                TokenRemainWordmark(size: 18, style: .monochrome)
 
                 TimelineView(.periodic(from: .now, by: 60)) { context in
                     Text(updatedSubtitle(at: context.date))
