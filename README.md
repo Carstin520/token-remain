@@ -11,12 +11,12 @@
 ![macOS](https://img.shields.io/badge/macOS-14%2B_Sonoma-000?logo=apple&logoColor=white)
 ![Universal](https://img.shields.io/badge/Universal-Apple_Silicon_%2B_Intel-7C5CFF)
 ![Notarized](https://img.shields.io/badge/Apple-Notarized-34C759?logo=apple&logoColor=white)
-![Latest](https://img.shields.io/badge/latest-v1.2.5-22D3EE)
+![Latest](https://img.shields.io/badge/latest-v1.2.6-22D3EE)
 ![License](https://img.shields.io/badge/license-Apache--2.0-8A94A6)
 
 ### [⬇️ 下载 TokenRemain.dmg](https://tokenremain.com)
 
-<sub>当前发布 `v1.2.5` · build 19 · Universal Mac Release 构建</sub>
+<sub>当前发布 `v1.2.6` · build 20 · Universal Mac Release 构建</sub>
 
 [官网](https://tokenremain.com) · [隐私政策](https://tokenremain.com/privacy) · [支持](https://tokenremain.com/support) · [问题反馈](https://github.com/Carstin520/token-remain/issues)
 
@@ -27,7 +27,7 @@
 ---
 
 > **TokenRemain** 是对外品牌名,`UsageDock` 是仓库内部代号(下载文件名为 `TokenRemain.dmg`)。
-> 应用为菜单栏专用,不显示 Dock 图标;所有百分比与进度条都表示**剩余**额度。
+> 应用始终保留菜单栏入口;可在设置中选择显示或隐藏 Dashboard 的 Dock 图标。所有百分比与进度条都表示**剩余**额度。
 
 ## ⚡ v1.2.3:一次大幅的能耗优化
 
@@ -234,7 +234,7 @@ bash ./script/build_and_run.sh --verify
 
 ## 📦 当前发布
 
-- **版本**:`v1.2.5`(build 19)——Universal Mac Release 构建。
+- **版本**:`v1.2.6`(build 20)——Universal Mac Release 构建。
 - **平台**:macOS 14 Sonoma 及以上,同时支持 Apple Silicon(arm64)与 Intel(x86_64)。
 - **分发**:官网始终下载最新的 `TokenRemain.dmg`;GitHub Release 同时保留带版本与 build 号的 DMG 归档。
 - **成本口径**:成本为 API 标价估算,不等于订阅账单;凭证过期时数据会暂停并提示恢复方式。

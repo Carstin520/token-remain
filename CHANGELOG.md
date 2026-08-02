@@ -3,6 +3,34 @@
 All notable product changes are recorded here. TokenRemain uses Semantic
 Versioning for public releases.
 
+## 1.2.6 — 2026-08-02
+
+### Added
+
+- Show Codex banked reset credits when the official usage endpoint provides
+  them, while preserving compatibility with older cached quota snapshots.
+- Add a Dashboard setting that can show or hide TokenRemain in the Dock and
+  app switcher without removing its persistent menu-bar entry.
+- Organize Dashboard settings into General, Menu Bar, Refresh & Sync, and About
+  categories so related controls remain one click away.
+
+### Changed
+
+- Unify the desktop palette around neutral glass surfaces while retaining each
+  provider's assigned identity color and conventional status colors.
+- Use a monochrome TokenRemain wordmark in the compact popover, semantic AI
+  Feed dots for quota and major-update stories, and a denser non-scrolling risk
+  card in Dashboard Overview.
+- Refine quota, usage-cost, Trending, and AI Feed cards for clearer hierarchy,
+  calmer contrast, and more consistent fixed-size layouts.
+
+### Fixed
+
+- Cancel an active direct-reorder sequence when the app or window is
+  interrupted, preventing a lost mouse-up from leaving later drags frozen.
+- Render provider menu-bar attachments without force-casting copied images,
+  avoiding a possible status refresh crash with unexpected image subclasses.
+
 ## 1.2.5 — 2026-08-01
 
 ### Added
@@ -398,3 +426,4 @@ Versioning for public releases.
 [1.2.3]: https://github.com/Carstin520/token-remain/releases/tag/v1.2.3
 [1.2.4]: https://github.com/Carstin520/token-remain/releases/tag/v1.2.4
 [1.2.5]: https://github.com/Carstin520/token-remain/releases/tag/v1.2.5
+[1.2.6]: https://github.com/Carstin520/token-remain/releases/tag/v1.2.6
