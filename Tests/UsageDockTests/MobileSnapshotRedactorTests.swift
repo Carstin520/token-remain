@@ -26,7 +26,12 @@ struct MobileSnapshotRedactorTests {
         let now = Date(timeIntervalSince1970: 1_784_764_800)
         let quota = ProviderQuota(
             provider: .claude,
-            primary: QuotaWindow(usedPercent: 42, windowMinutes: 300, resetsAt: now + 60),
+            primary: QuotaWindow(
+                usedPercent: 42,
+                windowMinutes: 300,
+                resetsAt: now + 60,
+                remainingBalance: QuotaBalance(amount: 8.25, currencyCode: "USD")
+            ),
             secondary: QuotaWindow(usedPercent: 7, windowMinutes: 10_080, resetsAt: nil),
             planName: "Max 5x",
             capturedAt: now,
@@ -53,6 +58,10 @@ struct MobileSnapshotRedactorTests {
         #expect(snapshot.providers.first?.planName == "Max 5x")
         #expect(snapshot.providers.first?.scopedWindows?.first?.scopeID == "fable")
         #expect(snapshot.providers.first?.scopedWindows?.first?.window.usedPercent == 63)
+        #expect(snapshot.providers.first?.windows.first?.remainingBalance == SyncedQuotaBalance(
+            amount: 8.25,
+            currencyCode: "USD"
+        ))
         #expect(snapshot.aggregateUsage == nil)
         #expect(snapshot.dailyUsageHistory == nil)
         #expect(text.contains("Max 5x"))

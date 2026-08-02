@@ -16,6 +16,7 @@ enum SyncContentFingerprint {
             let usedPercent: Double
             let windowMinutes: Int
             let resetsAt: Date?
+            let remainingBalance: QuotaBalance?
         }
         struct Provider: Codable {
             let id: String
@@ -37,11 +38,12 @@ enum SyncContentFingerprint {
             return Provider(
                 id: MobileSnapshotRedactor.stableID(for: provider),
                 planName: SyncedProviderQuota.sanitizedPlanName(quota.planName),
-                windows: [quota.primary, quota.secondary].compactMap { $0 }.map {
+                windows: [quota.primary, quota.secondary].compactMap { $0 }.enumerated().map { index, window in
                     Window(
-                        usedPercent: min(max($0.usedPercent, 0), 100),
-                        windowMinutes: max(0, $0.windowMinutes),
-                        resetsAt: $0.resetsAt
+                        usedPercent: min(max(window.usedPercent, 0), 100),
+                        windowMinutes: max(0, window.windowMinutes),
+                        resetsAt: window.resetsAt,
+                        remainingBalance: window.remainingBalance ?? (index == 0 ? quota.remainingBalance : nil)
                     )
                 },
                 scopedWindows: (quota.scopedWindows ?? []).map {
@@ -51,7 +53,8 @@ enum SyncContentFingerprint {
                         window: Window(
                             usedPercent: min(max($0.window.usedPercent, 0), 100),
                             windowMinutes: max(0, $0.window.windowMinutes),
-                            resetsAt: $0.window.resetsAt
+                            resetsAt: $0.window.resetsAt,
+                            remainingBalance: $0.window.remainingBalance
                         )
                     )
                 }

@@ -3,14 +3,15 @@ import SwiftUI
 /// Dashboard Limits: the authoritative view of every official quota window,
 /// reusing the popover's `QuotaCard`. Pure live data. Providers that are not
 /// connected yet render their onboarding hint inside the card instead of an
-/// endless spinner — connecting is automatic (log into the tool) for every
-/// provider except Z.ai, whose API key lives in the Data Sources section.
+/// endless spinner. Providers that require a pasted API key or cookie expose
+/// that setup directly in the empty quota card.
 struct LimitsSection: View {
     private static let reorderCoordinateSpace = "tokenremain.dashboard.limits.direct-reorder"
 
     let insights: UsageInsights
     var notices: [ProviderQuota.Provider: String] = [:]
     var serviceStatuses: [ProviderQuota.Provider: ProviderServiceStatus] = [:]
+    @ObservedObject var store: UsageStore
     @ObservedObject var tracked: TrackedProvidersStore = .shared
     @State private var reorderInteraction = DirectReorderInteraction<ProviderQuota.Provider>()
 
@@ -36,7 +37,8 @@ struct LimitsSection: View {
                         provider: provider,
                         quota: quota(for: provider),
                         serviceStatus: serviceStatuses[provider],
-                        notice: notices[provider]
+                        notice: notices[provider],
+                        store: store
                     )
                         .frame(maxWidth: .infinity, alignment: .top)
                         .directReorder(

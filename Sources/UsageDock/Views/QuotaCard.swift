@@ -4,10 +4,10 @@ import SwiftUI
 /// window (remaining %, progress bar, reset label). Shown in the Dashboard's
 /// Limits section. Renders a waiting state before data arrives.
 struct QuotaCard: View {
-    /// Every card in the Dashboard grid occupies the same visual slot. The
-    /// title remains pinned while a provider with extra windows scrolls inside
-    /// the card instead of making its grid row taller.
-    static let dashboardContentHeight: CGFloat = 198
+    /// Short cards share one visual baseline. Providers with extra official
+    /// windows grow naturally so the Dashboard owns the only vertical scroll
+    /// surface and no quota row can overlap the next grid row.
+    static let dashboardMinimumContentHeight: CGFloat = 198
     /// Reserve one shared title slot for every grid card so quota rows stay
     /// aligned even when a compact connection warning is present.
     private static let headerHeight: CGFloat = 26
@@ -17,23 +17,30 @@ struct QuotaCard: View {
     var serviceStatus: ProviderServiceStatus?
     /// Provider 级状态说明(如 Cursor 登录过期的恢复提示)。
     var notice: String?
+    /// Supplied by Dashboard Limits so manually configured providers can be
+    /// connected in-place on their first empty quota card.
+    var store: UsageStore? = nil
     static func scopedWindows(in quota: ProviderQuota) -> [ScopedQuotaWindow] {
         quota.uniqueScopedWindows
+    }
+
+    private var credentialConfiguration: ProviderCredentialConfiguration? {
+        guard quota == nil else { return nil }
+        return ProviderCredentialConfiguration.resolve(for: provider)
     }
 
     var body: some View {
         DashboardCard(padding: 13) {
             VStack(alignment: .leading, spacing: 11) {
                 header
-                ScrollView(.vertical) {
-                    VStack(alignment: .leading, spacing: 11) {
-                        quotaContent
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .scrollIndicators(.automatic)
+                quotaContent
             }
-            .frame(height: Self.dashboardContentHeight, alignment: .top)
+            .frame(
+                maxWidth: .infinity,
+                minHeight: Self.dashboardMinimumContentHeight,
+                maxHeight: .infinity,
+                alignment: .topLeading
+            )
         }
         .accessibilityElement(children: .contain)
     }
@@ -43,7 +50,8 @@ struct QuotaCard: View {
         if let quota {
             QuotaWindowRow(
                 window: quota.primary,
-                provider: provider
+                provider: provider,
+                remainingBalance: quota.primary.remainingBalance ?? quota.remainingBalance
             )
             if let secondary = quota.secondary {
                 Divider().overlay(DashboardTheme.border)
@@ -75,6 +83,33 @@ struct QuotaCard: View {
                 .font(.system(size: 10))
                 .foregroundStyle(isStale ? DashboardTheme.warning : DashboardTheme.mutedText)
             }
+        } else if let credentialConfiguration, let store {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(
+                    L10n.text(
+                        credentialConfiguration.isCookie
+                            ? "provider.detect.needs_cookie_hint"
+                            : "provider.detect.needs_api_key_hint"
+                    )
+                )
+                .font(.system(size: 11))
+                .foregroundStyle(DashboardTheme.secondaryText)
+                .fixedSize(horizontal: false, vertical: true)
+
+                ProviderCredentialEntryRow(
+                    store: store,
+                    provider: provider,
+                    configuration: credentialConfiguration
+                )
+
+                if let notice {
+                    Text(notice)
+                        .font(.system(size: 10))
+                        .foregroundStyle(DashboardTheme.warning)
+                        .lineLimit(2)
+                        .help(notice)
+                }
+            }
         } else if notice == nil {
             HStack(spacing: 8) {
                 ProgressView().controlSize(.small)
@@ -103,7 +138,7 @@ struct QuotaCard: View {
             .padding(.top, 3)
             .directReorderHandle()
 
-            if let notice {
+            if let notice, credentialConfiguration == nil {
                 QuotaConnectionNotice(message: notice)
                     .layoutPriority(1)
             }
@@ -123,7 +158,12 @@ struct QuotaCard: View {
                     .directReorderHandle()
             }
         }
-        .frame(maxWidth: .infinity, minHeight: Self.headerHeight, alignment: .top)
+        .frame(
+            maxWidth: .infinity,
+            minHeight: Self.headerHeight,
+            maxHeight: Self.headerHeight,
+            alignment: .top
+        )
         .contentShape(Rectangle())
     }
 }
@@ -191,6 +231,7 @@ struct QuotaWindowRow: View {
     let provider: ProviderQuota.Provider
     var showsDetails = true
     var scopeName: String?
+    var remainingBalance: QuotaBalance? = nil
 
     private var remainingPercent: Double {
         min(100, max(0, 100 - window.usedPercent))
@@ -215,7 +256,7 @@ struct QuotaWindowRow: View {
                             .help(L10n.text("pace.ahead_warning"))
                             .accessibilityLabel(L10n.text("pace.ahead_warning"))
                     }
-                    Text(L10n.format("quota.remaining", UsageFormatting.percent(remainingPercent)))
+                    Text(remainingText)
                         .numericFont(14, .bold)
                         .foregroundStyle(DashboardTheme.text)
                 }
@@ -258,7 +299,24 @@ struct QuotaWindowRow: View {
                 windowAccessibilityDescriptor
             )
         )
-        .accessibilityValue(L10n.format("quota.remaining", UsageFormatting.percent(remainingPercent)))
+        .accessibilityValue(remainingText)
+    }
+
+    private var remainingText: String {
+        L10n.format(
+            "quota.remaining",
+            Self.remainingValueText(
+                remainingPercent: remainingPercent,
+                remainingBalance: remainingBalance ?? window.remainingBalance
+            )
+        )
+    }
+
+    static func remainingValueText(
+        remainingPercent: Double,
+        remainingBalance: QuotaBalance?
+    ) -> String {
+        remainingBalance?.displayText ?? UsageFormatting.percent(remainingPercent)
     }
 
     private var windowTitle: String {

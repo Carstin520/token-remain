@@ -181,13 +181,18 @@ struct AdaptiveRefreshPolicyTests {
     @Test("Sync fingerprint ignores capture-only churn but detects quota changes")
     func contentFingerprint() {
         let start = Date(timeIntervalSince1970: 1_784_764_800)
-        func quota(usedPercent: Double, capturedAt: Date) -> ProviderQuota {
+        func quota(
+            usedPercent: Double,
+            capturedAt: Date,
+            balance: Double = 10
+        ) -> ProviderQuota {
             ProviderQuota(
                 provider: .claude,
                 primary: QuotaWindow(
                     usedPercent: usedPercent,
                     windowMinutes: 300,
-                    resetsAt: start + 300
+                    resetsAt: start + 300,
+                    remainingBalance: QuotaBalance(amount: balance, currencyCode: "USD")
                 ),
                 secondary: nil,
                 planName: "Pro",
@@ -209,8 +214,18 @@ struct AdaptiveRefreshPolicyTests {
             history: nil,
             includesUsageHistory: false
         )
+        let balanceChanged = SyncContentFingerprint.make(
+            quotas: [.claude: quota(
+                usedPercent: 42,
+                capturedAt: start + 60,
+                balance: 9
+            )],
+            history: nil,
+            includesUsageHistory: false
+        )
         #expect(first == recaptured)
         #expect(first != changed)
+        #expect(first != balanceChanged)
     }
     #endif
 }

@@ -727,8 +727,8 @@ final class UsageStore: ObservableObject {
         errorMessage = combined.isEmpty ? nil : combined
     }
 
-    /// 保存用户在「数据源」页粘贴的 API Key(入钥匙串),随即直查一次。
-    /// 仅 Z.ai / OpenRouter 这类无本地凭证的 provider 需要。
+    /// 保存用户在「额度」卡或「数据源」页粘贴的凭据(入钥匙串),
+    /// 随即直查一次。凭据可以是 API Key、Cookie 或 AK:SK 组合。
     func saveAPIKey(_ key: String, for provider: ProviderQuota.Provider) async {
         do {
             switch provider {

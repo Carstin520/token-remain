@@ -127,12 +127,20 @@ struct OpenCodeUsageService {
             primary: QuotaWindow(
                 usedPercent: min(100, max(0, sessionSpend / sessionCapUSD * 100)),
                 windowMinutes: 300,
-                resetsAt: sessionResetsAt
+                resetsAt: sessionResetsAt,
+                remainingBalance: QuotaBalance(
+                    amount: max(0, sessionCapUSD - sessionSpend),
+                    currencyCode: "USD"
+                )
             ),
             secondary: QuotaWindow(
                 usedPercent: min(100, max(0, weeklySpend / weeklyCapUSD * 100)),
                 windowMinutes: 10_080,
-                resetsAt: Date(timeIntervalSince1970: weekEndMs / 1000)
+                resetsAt: Date(timeIntervalSince1970: weekEndMs / 1000),
+                remainingBalance: QuotaBalance(
+                    amount: max(0, weeklyCapUSD - weeklySpend),
+                    currencyCode: "USD"
+                )
             ),
             planName: "Go",
             capturedAt: now

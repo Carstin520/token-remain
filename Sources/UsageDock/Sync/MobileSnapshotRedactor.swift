@@ -97,11 +97,16 @@ enum MobileSnapshotRedactor {
             providerID: stableID(for: quota.provider),
             windows: [quota.primary, quota.secondary]
                 .compactMap { $0 }
-                .map {
-                    SyncedQuotaWindow(
-                        usedPercent: min(max($0.usedPercent, 0), 100),
-                        windowMinutes: max(0, $0.windowMinutes),
-                        resetsAt: $0.resetsAt
+                .enumerated()
+                .map { index, window in
+                    let balance = window.remainingBalance ?? (index == 0 ? quota.remainingBalance : nil)
+                    return SyncedQuotaWindow(
+                        usedPercent: min(max(window.usedPercent, 0), 100),
+                        windowMinutes: max(0, window.windowMinutes),
+                        resetsAt: window.resetsAt,
+                        remainingBalance: balance.map {
+                            SyncedQuotaBalance(amount: $0.amount, currencyCode: $0.currencyCode)
+                        }
                     )
                 },
             capturedAt: quota.capturedAt,
@@ -114,7 +119,10 @@ enum MobileSnapshotRedactor {
                     window: SyncedQuotaWindow(
                         usedPercent: min(max($0.window.usedPercent, 0), 100),
                         windowMinutes: max(0, $0.window.windowMinutes),
-                        resetsAt: $0.window.resetsAt
+                        resetsAt: $0.window.resetsAt,
+                        remainingBalance: $0.window.remainingBalance.map {
+                            SyncedQuotaBalance(amount: $0.amount, currencyCode: $0.currencyCode)
+                        }
                     )
                 )
             }

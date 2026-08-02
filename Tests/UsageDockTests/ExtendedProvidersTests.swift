@@ -4,7 +4,7 @@ import Testing
 
 @Suite("Extended providers (token-monitor compat)")
 struct ExtendedProvidersTests {
-    @Test("DeepSeek balance maps to availability meter with amount in plan pill")
+    @Test("DeepSeek balance keeps its availability meter and exposes a monetary value")
     func deepseek() throws {
         let payload = """
         {"is_available": true, "balance_infos": [
@@ -17,11 +17,44 @@ struct ExtendedProvidersTests {
         #expect(quota.primary.usedPercent == 0)
         #expect(quota.primary.windowMinutes == 0)
         #expect(quota.planName == "余额 ¥110.55")
+        #expect(quota.remainingBalance == QuotaBalance(amount: 110.55, currencyCode: "CNY"))
+        #expect(quota.primary.remainingBalance == QuotaBalance(amount: 110.55, currencyCode: "CNY"))
+        #expect(quota.remainingBalance?.displayText == "¥110.55")
+        #expect(
+            QuotaWindowRow.remainingValueText(
+                remainingPercent: 100,
+                remainingBalance: quota.remainingBalance
+            ) == "¥110.55"
+        )
 
         let exhausted = try DeepSeekUsageService.parse(
             Data(#"{"is_available": false, "balance_infos": []}"#.utf8)
         )
         #expect(exhausted.primary.usedPercent == 100)
+        #expect(exhausted.remainingBalance?.displayText == "0.00")
+    }
+
+    @Test("Currency display covers CNY, USD, JPY, and unknown codes")
+    func currencyDisplay() {
+        #expect(QuotaBalance(amount: 12.3, currencyCode: "CNY").displayText == "¥12.30")
+        #expect(QuotaBalance(amount: 12.3, currencyCode: "usd").displayText == "$12.30")
+        #expect(QuotaBalance(amount: 12.3, currencyCode: " JPY ").displayText == "¥12.30")
+        #expect(QuotaBalance(amount: 12.3, currencyCode: "USDT").displayText == "USDT 12.30")
+        #expect(QuotaBalance(amount: .infinity, currencyCode: "USD").displayText == "$0.00")
+    }
+
+    @Test("DeepSeek keeps the first positive balance when both official currencies are funded")
+    func deepseekDualCurrency() throws {
+        let payload = """
+        {"is_available": true, "balance_infos": [
+            {"currency": "USD", "total_balance": "4.25"},
+            {"currency": "CNY", "total_balance": "30.00"}
+        ]}
+        """
+        let quota = try DeepSeekUsageService.parse(Data(payload.utf8))
+        #expect(quota.primary.remainingBalance == QuotaBalance(amount: 4.25, currencyCode: "USD"))
+        #expect(quota.primary.remainingBalance?.displayText == "$4.25")
+        #expect(quota.primary.usedPercent == 0)
     }
 
     @Test("Kimi limits entries split into session and weekly windows")
@@ -118,6 +151,10 @@ struct ExtendedProvidersTests {
         #expect(store.load() == "sk-ds")
         #expect(ProviderSecretStore.descriptor(for: .kiro) == nil)
         #expect(ProviderSecretStore.descriptors.count == 7)
+        #expect(ProviderCredentialConfiguration.resolve(for: .zai)?.isCookie == false)
+        #expect(ProviderCredentialConfiguration.resolve(for: .deepseek)?.isCookie == false)
+        #expect(ProviderCredentialConfiguration.resolve(for: .mimo)?.isCookie == true)
+        #expect(ProviderCredentialConfiguration.resolve(for: .claude) == nil)
     }
 
     @Test("Quota cache round-trips the dictionary format and reads legacy fields")
@@ -127,12 +164,14 @@ struct ExtendedProvidersTests {
             primary: QuotaWindow(usedPercent: 10, windowMinutes: 300, resetsAt: nil),
             secondary: nil,
             planName: nil,
-            capturedAt: Date(timeIntervalSince1970: 1_784_000_000)
+            capturedAt: Date(timeIntervalSince1970: 1_784_000_000),
+            remainingBalance: QuotaBalance(amount: 12.34, currencyCode: "USD")
         )
         let snapshot = QuotaCache.Snapshot(byProvider: [.kimi: quota])
         let encoded = try JSONEncoder().encode(snapshot)
         let decoded = try JSONDecoder().decode(QuotaCache.Snapshot.self, from: encoded)
         #expect(decoded.byProvider[.kimi]?.primary.usedPercent == 10)
+        #expect(decoded.byProvider[.kimi]?.remainingBalance?.displayText == "$12.34")
 
         // v1 逐字段格式仍可读。
         let legacy = """
@@ -142,5 +181,6 @@ struct ExtendedProvidersTests {
         """
         let migrated = try JSONDecoder().decode(QuotaCache.Snapshot.self, from: Data(legacy.utf8))
         #expect(migrated.byProvider[.claude]?.primary.usedPercent == 5)
+        #expect(migrated.byProvider[.claude]?.remainingBalance == nil)
     }
 }

@@ -6,6 +6,29 @@ struct QuotaWindow: Sendable, Codable {
     /// Claude can report a freshly-reset window before it knows the next reset time.
     /// Keep that official "unknown" state instead of carrying forward an expired date.
     let resetsAt: Date?
+    /// Some providers expose a monetary cap for each individual window. The
+    /// percentage still drives the meter; this replaces only the remaining text.
+    var remainingBalance: QuotaBalance? = nil
+}
+
+/// A monetary remainder reported or derived for one quota window. The meter
+/// still uses `QuotaWindow.usedPercent`; this replaces only its remaining text.
+struct QuotaBalance: Sendable, Codable, Equatable {
+    let amount: Double
+    let currencyCode: String
+
+    var displayText: String {
+        let normalizedCode = currencyCode.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        let symbol = switch normalizedCode {
+        case "CNY", "JPY": "¥"
+        case "USD": "$"
+        case "EUR": "€"
+        case "GBP": "£"
+        default: normalizedCode.isEmpty ? "" : "\(normalizedCode) "
+        }
+        let safeAmount = amount.isFinite ? max(0, amount) : 0
+        return "\(symbol)\(String(format: "%.2f", safeAmount))"
+    }
 }
 
 /// A provider-specific quota that shares a duration with a general window but
@@ -42,6 +65,9 @@ struct ProviderQuota: Sendable, Codable {
     var extraUsage: ExtraUsage? = nil
     /// Optional so existing cached snapshots decode without a schema migration.
     var scopedWindows: [ScopedQuotaWindow]? = nil
+    /// Legacy primary-window field retained so existing caches stay compatible.
+    /// New multi-window data belongs on each `QuotaWindow`.
+    var remainingBalance: QuotaBalance? = nil
 
     /// Terminal repainting and older cached snapshots can contain the same
     /// model-scoped quota more than once. Keep the latest reading for each
@@ -86,7 +112,8 @@ struct ProviderQuota: Sendable, Codable {
             planName: planName,
             capturedAt: capturedAt,
             extraUsage: extraUsage,
-            scopedWindows: merged.isEmpty ? nil : merged
+            scopedWindows: merged.isEmpty ? nil : merged,
+            remainingBalance: remainingBalance
         )
     }
 

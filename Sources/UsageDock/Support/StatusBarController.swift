@@ -33,6 +33,9 @@ enum StatusBarPresentation {
     }
 
     static func remainingText(for quota: ProviderQuota?) -> String {
+        if let balance = quota?.primary.remainingBalance ?? quota?.remainingBalance {
+            return balance.displayText
+        }
         guard let primary = primaryRemainingPercent(in: quota) else { return "—" }
         return UsageFormatting.percent(primary)
     }
@@ -340,7 +343,7 @@ final class StatusBarController: NSObject {
         ]
         for provider in ProviderQuota.Provider.displayOrder {
             guard let quota = store.quotaValue(for: provider) else { continue }
-            let remaining = UsageFormatting.percent(max(0, 100 - quota.primary.usedPercent))
+            let remaining = StatusBarPresentation.remainingText(for: quota)
             tooltipLines.append(L10n.format("statusbar.tooltip_remaining", provider.displayName, remaining))
         }
         let tooltip = tooltipLines.joined(separator: L10n.text("statusbar.tooltip_separator"))

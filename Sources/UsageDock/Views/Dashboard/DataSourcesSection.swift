@@ -174,28 +174,15 @@ struct DataSourcesSection: View {
         switch provider {
         case .claude, .codex:
             ProviderAuthorizationRow(store: store, provider: provider)
-        case .openrouter:
-            APIKeyRow(
-                store: store,
-                provider: provider,
-                placeholder: L10n.text("datasource.openrouter_key_placeholder"),
-                hasStoredKey: OpenRouterKeyStore().hasStoredKey()
-            )
-        case .zai:
-            APIKeyRow(
-                store: store,
-                provider: provider,
-                placeholder: L10n.text("datasource.zai_key_placeholder"),
-                hasStoredKey: ZAIKeyStore().hasStoredKey()
-            )
         default:
-            if let descriptor = ProviderSecretStore.descriptor(for: provider) {
-                APIKeyRow(
+            if let configuration = ProviderCredentialConfiguration.resolve(for: provider) {
+                ProviderCredentialEntryRow(
                     store: store,
                     provider: provider,
-                    placeholder: descriptor.placeholder,
-                    hasStoredKey: ProviderSecretStore(provider: provider).hasStoredSecret()
+                    configuration: configuration
                 )
+                .padding(.top, 8)
+                .padding(.leading, 20)
             }
         }
     }
@@ -378,64 +365,6 @@ private struct TraeAgentDirectoryRow: View {
                 .padding(.leading, 20)
             }
         }
-    }
-}
-
-/// 需要 API Key / Cookie 的 provider 的一次性接入入口:
-/// 粘贴 → 存钥匙串 → 立即直查。已接入时显示替换/清除;Key 永不回显。
-private struct APIKeyRow: View {
-    @ObservedObject var store: UsageStore
-    let provider: ProviderQuota.Provider
-    let placeholder: String
-    @State var hasStoredKey: Bool
-    @State private var draftKey = ""
-    @State private var isSaving = false
-
-    private func storedKeyExists() -> Bool {
-        switch provider {
-        case .zai: return ZAIKeyStore().hasStoredKey()
-        case .openrouter: return OpenRouterKeyStore().hasStoredKey()
-        default: return ProviderSecretStore(provider: provider).hasStoredSecret()
-        }
-    }
-
-    var body: some View {
-        HStack(spacing: 8) {
-            SecureField(hasStoredKey ? L10n.text("datasource.key_saved_placeholder") : placeholder, text: $draftKey)
-                .textFieldStyle(.roundedBorder)
-                .font(.system(size: 11))
-                .disabled(isSaving)
-
-            Button(hasStoredKey ? L10n.text("action.replace") : L10n.text("action.save")) {
-                let key = draftKey.trimmingCharacters(in: .whitespacesAndNewlines)
-                guard !key.isEmpty else { return }
-                isSaving = true
-                Task {
-                    await store.saveAPIKey(key, for: provider)
-                    draftKey = ""
-                    hasStoredKey = storedKeyExists()
-                    isSaving = false
-                }
-            }
-            .disabled(draftKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSaving)
-
-            if hasStoredKey {
-                Button(L10n.text("action.clear")) {
-                    isSaving = true
-                    Task {
-                        await store.clearAPIKey(for: provider)
-                        hasStoredKey = storedKeyExists()
-                        isSaving = false
-                    }
-                }
-                .disabled(isSaving)
-            }
-        }
-        .controlSize(.small)
-        .padding(.top, 8)
-        .padding(.leading, 20)
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel(L10n.format("datasource.api_key_settings", provider.displayName))
     }
 }
 

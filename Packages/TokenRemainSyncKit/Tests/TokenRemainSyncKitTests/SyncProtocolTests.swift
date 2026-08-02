@@ -39,6 +39,44 @@ private func snapshot(
 
 @Suite("Cross-device sync protocol")
 struct SyncProtocolTests {
+    @Test("Per-window monetary balances round-trip and preserve the percentage meter")
+    func monetaryBalanceRoundTrip() throws {
+        let provider = SyncedProviderQuota(
+            providerID: SyncedProviderID.openrouter,
+            windows: [SyncedQuotaWindow(
+                usedPercent: 37.5,
+                windowMinutes: 0,
+                resetsAt: nil,
+                remainingBalance: SyncedQuotaBalance(amount: 62.5, currencyCode: "USD")
+            )],
+            capturedAt: fixedNow,
+            statusCode: .available
+        )
+        let decoded = try MobileUsageSnapshot.decodedPayload(
+            from: snapshot(providers: [provider]).encodedPayload()
+        )
+        #expect(decoded.providers.first?.windows.first?.usedPercent == 37.5)
+        #expect(decoded.providers.first?.windows.first?.remainingBalance == SyncedQuotaBalance(
+            amount: 62.5,
+            currencyCode: "USD"
+        ))
+
+        let invalid = SyncedProviderQuota(
+            providerID: SyncedProviderID.openrouter,
+            windows: [SyncedQuotaWindow(
+                usedPercent: 37.5,
+                windowMinutes: 0,
+                resetsAt: nil,
+                remainingBalance: SyncedQuotaBalance(amount: 62.5, currencyCode: "USD $")
+            )],
+            capturedAt: fixedNow,
+            statusCode: .available
+        )
+        #expect(throws: SyncValidationError.invalidBalance(SyncedProviderID.openrouter)) {
+            try snapshot(providers: [invalid]).validatedForTransport(configuration: fixedConfiguration)
+        }
+    }
+
     @Test("Named scoped quota windows round-trip without changing legacy windows")
     func scopedQuotaRoundTrip() throws {
         let provider = SyncedProviderQuota(

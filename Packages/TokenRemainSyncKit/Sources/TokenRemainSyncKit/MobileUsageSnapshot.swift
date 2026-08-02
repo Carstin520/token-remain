@@ -72,16 +72,33 @@ public enum SyncedSourceStatus: String, Codable, Sendable, CaseIterable {
     case expired
 }
 
+public struct SyncedQuotaBalance: Codable, Sendable, Equatable {
+    public let amount: Double
+    public let currencyCode: String
+
+    public init(amount: Double, currencyCode: String) {
+        self.amount = amount
+        self.currencyCode = currencyCode
+    }
+}
+
 public struct SyncedQuotaWindow: Codable, Sendable, Equatable {
     public let usedPercent: Double
     /// `0` represents a non-periodic pool; otherwise this is a positive window.
     public let windowMinutes: Int
     public let resetsAt: Date?
+    public let remainingBalance: SyncedQuotaBalance?
 
-    public init(usedPercent: Double, windowMinutes: Int, resetsAt: Date?) {
+    public init(
+        usedPercent: Double,
+        windowMinutes: Int,
+        resetsAt: Date?,
+        remainingBalance: SyncedQuotaBalance? = nil
+    ) {
         self.usedPercent = usedPercent
         self.windowMinutes = windowMinutes
         self.resetsAt = resetsAt
+        self.remainingBalance = remainingBalance
     }
 }
 
@@ -374,7 +391,8 @@ public struct MobileUsageSnapshot: Codable, Sendable, Equatable {
                         SyncedQuotaWindow(
                             usedPercent: $0.usedPercent,
                             windowMinutes: $0.windowMinutes,
-                            resetsAt: try $0.resetsAt.map(SyncTimestamp.normalized)
+                            resetsAt: try $0.resetsAt.map(SyncTimestamp.normalized),
+                            remainingBalance: $0.remainingBalance
                         )
                     },
                     capturedAt: try SyncTimestamp.normalized(provider.capturedAt),
@@ -387,7 +405,8 @@ public struct MobileUsageSnapshot: Codable, Sendable, Equatable {
                             window: SyncedQuotaWindow(
                                 usedPercent: scoped.window.usedPercent,
                                 windowMinutes: scoped.window.windowMinutes,
-                                resetsAt: try scoped.window.resetsAt.map(SyncTimestamp.normalized)
+                                resetsAt: try scoped.window.resetsAt.map(SyncTimestamp.normalized),
+                                remainingBalance: scoped.window.remainingBalance
                             )
                         )
                     }
@@ -500,6 +519,7 @@ public struct MobileUsageSnapshot: Codable, Sendable, Equatable {
             if let resetsAt = window.resetsAt {
                 try SyncTimestamp.validate(resetsAt, field: .resetsAt)
             }
+            try validate(balance: window.remainingBalance, providerID: provider.providerID)
         }
         var scopeIDs = Set<String>()
         for scoped in provider.scopedWindows ?? [] {
@@ -518,6 +538,23 @@ public struct MobileUsageSnapshot: Codable, Sendable, Equatable {
             if let resetsAt = window.resetsAt {
                 try SyncTimestamp.validate(resetsAt, field: .resetsAt)
             }
+            try validate(balance: window.remainingBalance, providerID: provider.providerID)
+        }
+    }
+
+    private func validate(balance: SyncedQuotaBalance?, providerID: String) throws {
+        guard let balance else { return }
+        let code = balance.currencyCode.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard balance.amount.isFinite,
+              balance.amount >= 0,
+              code == balance.currencyCode,
+              code.utf8.count <= 12,
+              code.utf8.allSatisfy({ byte in
+                  (byte >= 48 && byte <= 57) ||
+                      (byte >= 65 && byte <= 90) ||
+                      (byte >= 97 && byte <= 122)
+              }) else {
+            throw SyncValidationError.invalidBalance(providerID)
         }
     }
 
@@ -739,6 +776,7 @@ public enum SyncValidationError: Error, Sendable, Equatable {
     case duplicateWindow(String, Int)
     case invalidPercent(String)
     case invalidWindowMinutes(String)
+    case invalidBalance(String)
     case invalidAggregateUsage
     case invalidDailyUsageHistory
     case invalidCuratedFeed

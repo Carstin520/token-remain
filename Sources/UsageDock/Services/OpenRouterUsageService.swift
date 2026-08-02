@@ -82,20 +82,26 @@ enum OpenRouterUsageParser {
               let usage = number(payload["total_usage"]) else {
             throw OpenRouterUsageService.ServiceError.invalidResponse
         }
-        let credits = max(0, number(payload["total_credits"]) ?? 0)
+        let rawCredits = number(payload["total_credits"]) ?? 0
+        let rawUsage = usage
+        let credits = rawCredits.isFinite ? max(0, rawCredits) : 0
+        let safeUsage = rawUsage.isFinite ? max(0, rawUsage) : 0
         guard credits > 0 else {
             throw OpenRouterUsageService.ServiceError.noCredits
         }
+        let remaining = max(0, credits - safeUsage)
         return ProviderQuota(
             provider: .openrouter,
             primary: QuotaWindow(
-                usedPercent: min(100, max(0, usage / credits * 100)),
+                usedPercent: min(100, max(0, safeUsage / credits * 100)),
                 windowMinutes: 0,
-                resetsAt: nil
+                resetsAt: nil,
+                remainingBalance: QuotaBalance(amount: remaining, currencyCode: "USD")
             ),
             secondary: nil,
             planName: planName,
-            capturedAt: now
+            capturedAt: now,
+            remainingBalance: QuotaBalance(amount: remaining, currencyCode: "USD")
         )
     }
 

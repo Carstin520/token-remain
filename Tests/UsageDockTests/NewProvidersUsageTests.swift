@@ -136,6 +136,8 @@ struct OpenRouterUsageParserTests {
         #expect(quota.primary.usedPercent == 37.5)
         #expect(quota.primary.windowMinutes == 0)
         #expect(quota.primary.resetsAt == nil)
+        #expect(quota.primary.remainingBalance == QuotaBalance(amount: 62.5, currencyCode: "USD"))
+        #expect(quota.primary.remainingBalance?.displayText == "$62.50")
         #expect(quota.planName == "Pay As You Go")
     }
 
@@ -228,7 +230,9 @@ struct OpenCodeUsageMathTests {
         #expect(abs(quota.primary.usedPercent - 3.0 / 12 * 100) < 0.0001)
         #expect(quota.primary.windowMinutes == 300)
         #expect(quota.primary.resetsAt != nil)
+        #expect(quota.primary.remainingBalance == QuotaBalance(amount: 9, currencyCode: "USD"))
         #expect(quota.secondary != nil)
+        #expect(quota.secondary?.remainingBalance == QuotaBalance(amount: 21, currencyCode: "USD"))
         #expect(quota.planName == "Go")
     }
 

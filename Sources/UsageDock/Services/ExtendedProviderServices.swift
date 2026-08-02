@@ -76,7 +76,7 @@ enum ExtendedHTTP {
 // MARK: - DeepSeek(API Key,预充余额)
 
 /// `GET api.deepseek.com/user/balance`。DeepSeek 是纯按量余额、无窗口上限:
-/// 进度条只承载"有/无余额"的可用性,金额本身放在计划名里如实展示。
+/// 进度条只承载"有/无余额"的可用性,主数值直接展示剩余金额。
 struct DeepSeekUsageService {
     func fetch(now: Date = .now) async throws -> ProviderQuota {
         guard let key = ProviderSecretStore(provider: .deepseek).load() else {
@@ -98,22 +98,27 @@ struct DeepSeekUsageService {
         let available = body["is_available"] as? Bool ?? !infos.isEmpty
         // 优先取有余额的一行(通常是 CNY / USD 各一行)。
         let row = infos.first { (ExtendedHTTP.number($0["total_balance"]) ?? 0) > 0 } ?? infos.first
-        let amount = row.flatMap { ExtendedHTTP.number($0["total_balance"]) } ?? 0
+        let rawAmount = row.flatMap { ExtendedHTTP.number($0["total_balance"]) } ?? 0
+        let amount = rawAmount.isFinite ? max(0, rawAmount) : 0
         let currency = (row?["currency"] as? String) ?? ""
         return ProviderQuota(
             provider: .deepseek,
             primary: QuotaWindow(
                 usedPercent: available && amount > 0 ? 0 : 100,
                 windowMinutes: 0,
-                resetsAt: nil
+                resetsAt: nil,
+                remainingBalance: QuotaBalance(amount: amount, currencyCode: currency)
             ),
             secondary: nil,
+            // Keep the legacy sanitized label for older synced clients while
+            // current quota rows consume the structured balance below.
             planName: L10n.format(
                 "service.deepseek.balance_plan",
                 currency == "CNY" ? "¥" : (currency == "USD" ? "$" : "\(currency) "),
                 String(format: "%.2f", amount)
             ),
-            capturedAt: now
+            capturedAt: now,
+            remainingBalance: QuotaBalance(amount: amount, currencyCode: currency)
         )
     }
 }

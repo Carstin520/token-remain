@@ -342,7 +342,8 @@ struct DashboardView: View {
             LimitsSection(
                 insights: insights,
                 notices: store.providerNotices,
-                serviceStatuses: store.serviceStatuses
+                serviceStatuses: store.serviceStatuses,
+                store: store
             )
         case .trends:
             TrendsSection(

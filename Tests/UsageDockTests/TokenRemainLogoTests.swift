@@ -102,6 +102,20 @@ final class TokenRemainLogoTests: XCTestCase {
         )
     }
 
+    func testMenuBarShowsMonetaryBalanceInsteadOfAvailabilityPercent() {
+        let deepSeek = ProviderQuota(
+            provider: .deepseek,
+            primary: QuotaWindow(usedPercent: 0, windowMinutes: 0, resetsAt: nil),
+            secondary: nil,
+            planName: "Balance ¥90.56",
+            capturedAt: .now,
+            remainingBalance: QuotaBalance(amount: 90.56, currencyCode: "CNY")
+        )
+
+        XCTAssertEqual(StatusBarPresentation.primaryRemainingPercent(in: deepSeek), 100)
+        XCTAssertEqual(StatusBarPresentation.remainingText(for: deepSeek), "¥90.56")
+    }
+
     func testEmotionBandsCoverFullQuotaRange() {
         XCTAssertEqual(TokenRemainLogoState.resolve(remainingPercent: 100), .excitedStars)
         XCTAssertEqual(TokenRemainLogoState.resolve(remainingPercent: 90), .happyCarets)

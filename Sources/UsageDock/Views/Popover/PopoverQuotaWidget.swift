@@ -30,15 +30,21 @@ struct PopoverQuotaWidget: View {
         status?.isAbnormal == true ? status : nil
     }
 
-    private var orderedWindows: [QuotaWindow] {
+    private var orderedWindows: [(window: QuotaWindow, remainingBalance: QuotaBalance?)] {
         guard let quota else { return [] }
-        return [quota.primary, quota.secondary]
-            .compactMap { $0 }
+        var windows = [(
+            window: quota.primary,
+            remainingBalance: quota.primary.remainingBalance ?? quota.remainingBalance
+        )]
+        if let secondary = quota.secondary {
+            windows.append((window: secondary, remainingBalance: secondary.remainingBalance))
+        }
+        return windows
             .sorted { lhs, rhs in
-                if lhs.windowMinutes == rhs.windowMinutes {
-                    return lhs.usedPercent > rhs.usedPercent
+                if lhs.window.windowMinutes == rhs.window.windowMinutes {
+                    return lhs.window.usedPercent > rhs.window.usedPercent
                 }
-                return lhs.windowMinutes < rhs.windowMinutes
+                return lhs.window.windowMinutes < rhs.window.windowMinutes
             }
     }
 
@@ -85,17 +91,19 @@ struct PopoverQuotaWidget: View {
                     // expanding only reveals its details and appends longer
                     // windows beneath it.
                     QuotaWindowRow(
-                        window: shortestWindow,
+                        window: shortestWindow.window,
                         provider: provider,
-                        showsDetails: isExpanded
+                        showsDetails: isExpanded,
+                        remainingBalance: shortestWindow.remainingBalance
                     )
 
                     if isExpanded {
-                        ForEach(Array(orderedWindows.dropFirst().enumerated()), id: \.offset) { _, window in
+                        ForEach(Array(orderedWindows.dropFirst().enumerated()), id: \.offset) { _, item in
                             Divider().overlay(DashboardTheme.border)
                             QuotaWindowRow(
-                                window: window,
-                                provider: provider
+                                window: item.window,
+                                provider: provider,
+                                remainingBalance: item.remainingBalance
                             )
                         }
                     }
