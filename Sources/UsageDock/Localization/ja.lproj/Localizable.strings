@@ -544,3 +544,15 @@
 "usage.unpriced_models_format" = "ccusage に次のモデルの価格がないため、コスト合計を非表示にしました：%1$@";
 "usage.provider_price_unavailable_accessibility" = "%1$@、%2$@ tokens、価格を取得できません";
 "trends.unpriced_history_format" = "次のモデルに価格がないため、過去のコスト推移は不完全です：%1$@";
+"direct_sync.title" = "Windows 直接同期";
+"direct_sync.subtitle" = "ローカルネットワークで暗号化した上限スナップショットを交換";
+"direct_sync.address" = "Mac アドレス";
+"direct_sync.paired_devices" = "ペアリング済みデバイス";
+"direct_sync.pairing_code" = "1 回限りのペアリングコード";
+"direct_sync.expires_at" = "%1$@ に期限切れ";
+"direct_sync.start_pairing" = "ペアリングを開始";
+"direct_sync.cancel_pairing" = "ペアリングをキャンセル";
+"direct_sync.privacy_note" = "正規化した上限スナップショットのみを交換します。プロバイダー認証情報は各デバイスに残り、CloudKit と電話同期は使用しません。";
+"direct_sync.state.starting" = "起動中";
+"direct_sync.state.listening" = "準備完了";
+"direct_sync.state.failed" = "利用不可";

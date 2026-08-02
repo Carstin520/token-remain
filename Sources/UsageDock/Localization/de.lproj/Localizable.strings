@@ -544,3 +544,15 @@
 "usage.unpriced_models_format" = "ccusage hat für diese Modelle keinen Preis; Kostensummen werden ausgeblendet: %1$@";
 "usage.provider_price_unavailable_accessibility" = "%1$@, %2$@ Tokens, Preis nicht verfügbar";
 "trends.unpriced_history_format" = "Historische Kostentrends sind unvollständig, da diese Modelle keinen Preis haben: %1$@";
+"direct_sync.title" = "Direkte Windows-Synchronisierung";
+"direct_sync.subtitle" = "Verschlüsselter Kontingentaustausch im lokalen Netzwerk";
+"direct_sync.address" = "Mac-Adresse";
+"direct_sync.paired_devices" = "Gekoppelte Geräte";
+"direct_sync.pairing_code" = "Einmaliger Kopplungscode";
+"direct_sync.expires_at" = "Läuft um %1$@ ab";
+"direct_sync.start_pairing" = "Kopplung starten";
+"direct_sync.cancel_pairing" = "Kopplung abbrechen";
+"direct_sync.privacy_note" = "Nur normalisierte Kontingentdaten werden ausgetauscht. Anbieterzugänge bleiben auf ihrem Gerät; CloudKit und Telefonsynchronisierung werden nicht verwendet.";
+"direct_sync.state.starting" = "Wird gestartet";
+"direct_sync.state.listening" = "Bereit";
+"direct_sync.state.failed" = "Nicht verfügbar";

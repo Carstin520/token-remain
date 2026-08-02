@@ -545,3 +545,15 @@
 "usage.unpriced_models_format" = "ccusage has no price for these models, so cost totals are hidden: %1$@";
 "usage.provider_price_unavailable_accessibility" = "%1$@, %2$@ tokens, price unavailable";
 "trends.unpriced_history_format" = "Historical cost trends are incomplete because these models have no price: %1$@";
+"direct_sync.title" = "Windows direct sync";
+"direct_sync.subtitle" = "Encrypted quota exchange on your local network";
+"direct_sync.address" = "Mac address";
+"direct_sync.paired_devices" = "Paired devices";
+"direct_sync.pairing_code" = "One-time pairing code";
+"direct_sync.expires_at" = "Expires at %1$@";
+"direct_sync.start_pairing" = "Start pairing";
+"direct_sync.cancel_pairing" = "Cancel pairing";
+"direct_sync.privacy_note" = "Only normalized quota snapshots cross devices. Provider credentials stay on the device that owns them; CloudKit and phone sync are not used.";
+"direct_sync.state.starting" = "Starting";
+"direct_sync.state.listening" = "Ready";
+"direct_sync.state.failed" = "Unavailable";

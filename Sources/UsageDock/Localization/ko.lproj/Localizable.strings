@@ -544,3 +544,15 @@
 "usage.unpriced_models_format" = "ccusage에 다음 모델의 가격이 없어 비용 합계를 숨겼습니다: %1$@";
 "usage.provider_price_unavailable_accessibility" = "%1$@, %2$@ tokens, 가격을 사용할 수 없음";
 "trends.unpriced_history_format" = "다음 모델에 가격이 없어 과거 비용 추세가 불완전합니다: %1$@";
+"direct_sync.title" = "Windows 직접 동기화";
+"direct_sync.subtitle" = "로컬 네트워크에서 암호화된 한도 스냅샷 교환";
+"direct_sync.address" = "Mac 주소";
+"direct_sync.paired_devices" = "페어링된 기기";
+"direct_sync.pairing_code" = "일회용 페어링 코드";
+"direct_sync.expires_at" = "%1$@에 만료";
+"direct_sync.start_pairing" = "페어링 시작";
+"direct_sync.cancel_pairing" = "페어링 취소";
+"direct_sync.privacy_note" = "정규화된 한도 스냅샷만 기기 간에 교환됩니다. 공급자 자격 증명은 해당 기기에 남으며 CloudKit 및 휴대폰 동기화는 사용하지 않습니다.";
+"direct_sync.state.starting" = "시작 중";
+"direct_sync.state.listening" = "준비됨";
+"direct_sync.state.failed" = "사용할 수 없음";

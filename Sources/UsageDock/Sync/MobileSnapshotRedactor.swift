@@ -1,4 +1,3 @@
-#if TOKENREMAIN_CLOUD_SYNC
 import Foundation
 import TokenRemainSyncKit
 
@@ -155,4 +154,3 @@ enum MobileSnapshotRedactor {
         }
     }
 }
-#endif

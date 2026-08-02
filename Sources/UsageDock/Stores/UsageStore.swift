@@ -1,6 +1,7 @@
 import Combine
 import Foundation
 import OSLog
+import TokenRemainSyncKit
 
 @MainActor
 final class UsageStore: ObservableObject {
@@ -28,6 +29,10 @@ final class UsageStore: ObservableObject {
     /// 各 provider 当前快照的唯一存储。逐 provider 的具名访问器保留在下方,
     /// 视图无需感知字典结构。
     @Published private(set) var quotas: [ProviderQuota.Provider: ProviderQuota] = [:]
+    /// Device-local readings remain separate from direct-sync readings so a
+    /// Windows snapshot is never cached or echoed back as if this Mac produced it.
+    private var localQuotas: [ProviderQuota.Provider: ProviderQuota] = [:]
+    private var directSyncSnapshots: [UUID: MobileUsageSnapshot] = [:]
 
     var claude: ProviderQuota? { quotas[.claude] }
     var codex: ProviderQuota? { quotas[.codex] }
@@ -187,7 +192,7 @@ final class UsageStore: ObservableObject {
 
     private func assign(_ value: ProviderQuota?, to provider: ProviderQuota.Provider) {
         let resolvedValue: ProviderQuota?
-        if let value, let previous = quotas[provider] {
+        if let value, let previous = localQuotas[provider] {
             resolvedValue = value.retainingActiveScopedWindows(
                 from: previous,
                 now: value.capturedAt
@@ -199,7 +204,8 @@ final class UsageStore: ObservableObject {
         if resolvedValue != nil {
             tracked.markConnected(provider)
         }
-        quotas[provider] = resolvedValue
+        localQuotas[provider] = resolvedValue
+        recomputeEffectiveQuotas()
         if let resolvedValue {
             let updated = quotaUsageHistory.recording(resolvedValue)
             if updated != quotaUsageHistory {
@@ -305,7 +311,8 @@ final class UsageStore: ObservableObject {
         )
         traeAgentDirectories = traeAgentTrajectoryStore.availableDirectories
         if let cached = quotaCache.load() {
-            quotas = cached.byProvider
+            localQuotas = cached.byProvider
+            recomputeEffectiveQuotas()
             // 升级兼容：旧版没有独立连接历史，已有成功快照就是最可靠的
             // “曾连接”证据。
             for provider in cached.byProvider.keys {
@@ -823,7 +830,36 @@ final class UsageStore: ObservableObject {
     }
 
     private func currentSnapshot() -> QuotaCache.Snapshot {
-        .init(byProvider: quotas)
+        .init(byProvider: localQuotas)
+    }
+
+    /// Applies an already authenticated and replay-checked direct-sync value.
+    /// The freshest reading wins independently per provider; local cache and
+    /// outbound Mac snapshots continue to contain only Mac-produced readings.
+    func applyDirectSyncSnapshot(_ snapshot: MobileUsageSnapshot) {
+        directSyncSnapshots[snapshot.sourceInstanceID] = snapshot
+        for provider in DirectSyncSnapshotAdapter.quotas(from: snapshot).keys {
+            tracked.markConnected(provider)
+        }
+        recomputeEffectiveQuotas()
+    }
+
+    var localQuotasForDirectSync: [ProviderQuota.Provider: ProviderQuota] {
+        localQuotas
+    }
+
+    private func recomputeEffectiveQuotas(now: Date = Date()) {
+        directSyncSnapshots = directSyncSnapshots.filter { $0.value.expiresAt >= now }
+        var merged = localQuotas.filter { tracked.isEnabled($0.key) }
+        for snapshot in directSyncSnapshots.values {
+            for (provider, quota) in DirectSyncSnapshotAdapter.quotas(from: snapshot)
+            where tracked.isEnabled(provider) {
+                if merged[provider].map({ quota.capturedAt > $0.capturedAt }) ?? true {
+                    merged[provider] = quota
+                }
+            }
+        }
+        quotas = merged
     }
 
     deinit {

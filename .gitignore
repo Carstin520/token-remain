@@ -10,3 +10,5 @@ design/token-remain-logo-gallery/
 broadcast/.dev.vars
 broadcast/.wrangler/
 broadcast/node_modules/
+windows/node_modules/
+windows/release/

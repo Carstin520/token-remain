@@ -545,3 +545,15 @@
 "usage.unpriced_models_format" = "ccusage 暫無以下模型的價格，成本合計已隱藏：%1$@";
 "usage.provider_price_unavailable_accessibility" = "%1$@，%2$@ tokens，價格暫不可用";
 "trends.unpriced_history_format" = "以下模型缺少價格，歷史成本趨勢不完整：%1$@";
+"direct_sync.title" = "Windows 直接同步";
+"direct_sync.subtitle" = "在區域網路內加密交換額度快照";
+"direct_sync.address" = "Mac 位址";
+"direct_sync.paired_devices" = "已配對裝置";
+"direct_sync.pairing_code" = "一次性配對碼";
+"direct_sync.expires_at" = "於 %1$@ 失效";
+"direct_sync.start_pairing" = "開始配對";
+"direct_sync.cancel_pairing" = "取消配對";
+"direct_sync.privacy_note" = "僅在裝置間交換標準化額度快照。服務商憑證始終留在所屬裝置上；此通道不使用 CloudKit，也不與手機同步。";
+"direct_sync.state.starting" = "正在啟動";
+"direct_sync.state.listening" = "已就緒";
+"direct_sync.state.failed" = "無法使用";

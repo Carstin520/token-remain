@@ -59,6 +59,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             feedStore: feedStore,
             launchAtLogin: launchAtLogin
         )
+        DirectSyncController.shared.attach(to: store)
         feedNotificationObserver = NotificationCenter.default.addObserver(
             forName: .tokenRemainOpenAIFeed,
             object: nil,

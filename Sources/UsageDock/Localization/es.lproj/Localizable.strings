@@ -544,3 +544,15 @@
 "usage.unpriced_models_format" = "ccusage no tiene precio para estos modelos; se ocultan los totales de coste: %1$@";
 "usage.provider_price_unavailable_accessibility" = "%1$@, %2$@ tokens, precio no disponible";
 "trends.unpriced_history_format" = "El historial de costes está incompleto porque estos modelos no tienen precio: %1$@";
+"direct_sync.title" = "Sincronización directa con Windows";
+"direct_sync.subtitle" = "Intercambio cifrado de cuotas en la red local";
+"direct_sync.address" = "Dirección del Mac";
+"direct_sync.paired_devices" = "Dispositivos enlazados";
+"direct_sync.pairing_code" = "Código de enlace de un solo uso";
+"direct_sync.expires_at" = "Caduca a las %1$@";
+"direct_sync.start_pairing" = "Iniciar enlace";
+"direct_sync.cancel_pairing" = "Cancelar enlace";
+"direct_sync.privacy_note" = "Solo se intercambian resúmenes de cuota normalizados. Las credenciales permanecen en su dispositivo; no se usan CloudKit ni la sincronización con el teléfono.";
+"direct_sync.state.starting" = "Iniciando";
+"direct_sync.state.listening" = "Listo";
+"direct_sync.state.failed" = "No disponible";
