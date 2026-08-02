@@ -191,7 +191,7 @@ function relativeTime(value, fallback = "Never") {
   if (!value) return fallback;
   const minutes = Math.round((value - Date.now()) / 60_000);
   if (Math.abs(minutes) < 1) return "now";
-  if (minutes > 0) return `in ${minutes < 60 ? `${minutes} min` : `${Math.floor(minutes / 60)} hr ${minutes % 60} min`}`;
+  if (minutes > 0) return minutes < 60 ? `${minutes} min` : `${Math.floor(minutes / 60)} hr ${minutes % 60} min`;
   const ago = Math.abs(minutes);
   return `${ago < 60 ? `${ago} min` : `${Math.floor(ago / 60)} hr`} ago`;
 }
