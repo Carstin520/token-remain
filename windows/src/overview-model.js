@@ -15,5 +15,21 @@ export function buildOverviewSummary(providers = [], now = Date.now()) {
     .reduce((current, entry) => (
       !current || entry.resetsAt < current.resetsAt ? entry : current
     ), undefined);
-  return { tightest, nextReset };
+  return {
+    tightest,
+    nextReset,
+    trackedCount: trackedProviderCount(providers),
+    risk: riskLevel(tightest?.remaining),
+  };
+}
+
+export function trackedProviderCount(providers = []) {
+  return providers.filter((provider) => provider.windows?.length).length;
+}
+
+export function riskLevel(remaining) {
+  if (!Number.isFinite(remaining)) return undefined;
+  if (remaining < 25) return "high";
+  if (remaining < 50) return "medium";
+  return "low";
 }

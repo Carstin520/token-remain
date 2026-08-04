@@ -11,7 +11,7 @@ const PROVIDERS = {
   codex: { name: "Codex", icon: codexIcon, color: "var(--codex)" },
 };
 const SECTIONS = {
-  overview: { title: "Overview", subtitle: "AI quota at a glance" },
+  overview: { title: "Overview", subtitle: "Quota risk, official limits, and encrypted sync" },
   limits: { title: "Limits", subtitle: "Every active official quota window" },
   devices: { title: "Devices", subtitle: "Direct, encrypted sync on your local network" },
   settings: { title: "Settings", subtitle: "Windows collection and privacy" },
@@ -41,7 +41,7 @@ function App() {
       <main className="main-content">
         <Header state={state} section={section} onRefresh={() => action(api.refresh)} />
         {error && <div className="error-banner">{error}</div>}
-        {section === "overview" && <Overview state={state} />}
+        {section === "overview" && <Overview state={state} onSelect={setSection} />}
         {section === "limits" && <Limits state={state} />}
         {section === "devices" && <Devices state={state} action={action} />}
         {section === "settings" && <Settings state={state} />}
@@ -90,38 +90,48 @@ function Header({ state, section, onRefresh }) {
   );
 }
 
-function Overview({ state }) {
+function Overview({ state, onSelect }) {
   const summary = buildOverviewSummary(state.providers);
-  const tightestMeta = summary.tightest ? PROVIDERS[summary.tightest.providerID] : undefined;
   const nextResetMeta = summary.nextReset ? PROVIDERS[summary.nextReset.providerID] : undefined;
   const syncPresentation = syncSummary(state.sync);
+  const trackedProviders = state.providers
+    .filter((provider) => provider.windows?.length)
+    .map((provider) => PROVIDERS[provider.providerID]?.name)
+    .filter(Boolean)
+    .join(" · ");
   return (
     <section className="content-section overview-section">
       <div className="overview-summary">
-        <SummaryItem
-          icon={tightestMeta ? <img src={tightestMeta.icon} alt="" /> : <GaugeIcon />}
-          label="Tightest quota"
+        <MetricCard
+          label="Lowest remaining quota"
           value={summary.tightest ? formatPercent(summary.tightest.remaining) : "—"}
-          detail={tightestMeta?.name || "Waiting for quota"}
-          tone={summary.tightest?.providerID}
+          detail={summary.risk ? `${summary.risk} risk` : "Waiting for quota"}
+          tone={summary.risk || "muted"}
         />
-        <SummaryItem
-          icon={<ClockIcon />}
+        <MetricCard
+          compact
           label="Next reset"
           value={summary.nextReset ? formatReset(summary.nextReset.resetsAt) : "—"}
           detail={nextResetMeta?.name || "No reset scheduled"}
-          tone="codex"
+          tone="violet"
         />
-        <SummaryItem
-          icon={state.sync.paired ? <CheckCircleIcon /> : <DevicesIcon />}
+        <MetricCard
+          label="Tracked providers"
+          value={String(summary.trackedCount)}
+          detail={trackedProviders || "Waiting for quota"}
+        />
+        <MetricCard
+          compact
           label="Sync status"
           value={syncPresentation.value}
           detail={syncPresentation.detail}
           tone={syncPresentation.tone}
         />
       </div>
-      <OfficialQuota state={state} />
-      <SyncStrip sync={state.sync} deviceName={state.deviceName} />
+      <div className="overview-panels">
+        <OfficialQuota state={state} risk={summary.risk} />
+        <DirectSyncPanel state={state} onManage={() => onSelect("devices")} />
+      </div>
     </section>
   );
 }
@@ -136,19 +146,27 @@ function Limits({ state }) {
   );
 }
 
-function SummaryItem({ icon, label, value, detail, tone }) {
+function MetricCard({ compact = false, icon, label, value, detail, tone }) {
   return (
-    <div className={`summary-item ${tone ? `tone-${tone}` : ""}`}>
-      <div className="summary-icon">{icon}</div>
-      <div><span>{label}</span><strong>{value}</strong><small>{detail}</small></div>
-    </div>
+    <article className={`metric-card ${compact ? "compact-value" : ""} ${tone ? `tone-${tone}` : ""}`}>
+      <span className="metric-label">{label}</span>
+      <div className="metric-value-row">
+        {icon && <span className="metric-icon">{icon}</span>}
+        <strong>{value}</strong>
+      </div>
+      <span className="metric-detail">{detail}</span>
+    </article>
   );
 }
 
-function OfficialQuota({ state }) {
+function OfficialQuota({ state, risk }) {
+  const fresh = state.lastUpdatedAt && Date.now() - state.lastUpdatedAt < 120_000;
   return (
     <section className="official-quota">
-      <div className="panel-heading"><h2>Official Quota</h2><p>Tightest windows from your active providers</p></div>
+      <div className="panel-heading panel-heading-row">
+        <div><h2>Official Quota</h2><p>Tightest windows from your active providers</p></div>
+        {fresh && <span className="badge badge-live">LIVE</span>}
+      </div>
       <div className="compact-quota-list">
         {["claude", "codex"].map((id) => (
           <CompactQuotaRow
@@ -158,6 +176,10 @@ function OfficialQuota({ state }) {
             notice={state.notices[id]}
           />
         ))}
+      </div>
+      <div className="risk-footer">
+        <span>Risk level</span>
+        <strong className={`badge badge-${risk || "unknown"}`}>{risk?.toUpperCase() || "UNKNOWN"}</strong>
       </div>
     </section>
   );
@@ -169,14 +191,19 @@ function CompactQuotaRow({ provider, notice, id }) {
   const remaining = primary ? Math.max(0, 100 - primary.usedPercent) : undefined;
   return (
     <article className="compact-quota-row">
-      <div className="compact-provider"><img src={meta.icon} alt="" /><div><h3>{meta.name}</h3><p>{provider?.planName || "Official usage"}</p></div></div>
       {primary ? (
         <>
-          <div className="compact-remaining"><span>Remaining</span><strong style={{ color: meta.color }}>{formatPercent(remaining)}</strong></div>
-          <div className="compact-meter"><Meter value={remaining} color={meta.color} /><span>{formatWindow(primary.windowMinutes)}</span></div>
-          <div className="compact-reset"><strong>{formatReset(primary.resetsAt)}</strong><span>Captured {formatTime(provider.capturedAt)}</span></div>
+          <div className="compact-quota-head">
+            <div className="compact-provider"><img src={meta.icon} alt="" /><div><h3>{meta.name}</h3><p>{provider?.planName || "Official usage"}</p></div></div>
+            <strong className="compact-percent" style={{ color: meta.color }}>{formatPercent(remaining)}</strong>
+          </div>
+          <Meter value={remaining} color={meta.color} />
+          <div className="compact-quota-meta">
+            <span>{formatWindow(primary.windowMinutes)}</span>
+            <span>Resets <strong>{formatReset(primary.resetsAt)}</strong> · Captured {formatTime(provider.capturedAt)}</span>
+          </div>
         </>
-      ) : <div className="compact-empty"><strong>No quota yet</strong><span>{notice || `${meta.name} is not signed in on this PC.`}</span></div>}
+      ) : <div className="compact-empty"><div className="compact-provider"><img src={meta.icon} alt="" /><div><h3>{meta.name}</h3><p>Official usage</p></div></div><span>{notice || `${meta.name} is not signed in on this PC.`}</span></div>}
     </article>
   );
 }
@@ -205,7 +232,17 @@ function ProviderCard({ provider, notice, id, detailed = false }) {
 function Meter({ value, color }) {
   const segments = 12;
   const active = Math.round((value / 100) * segments);
-  return <div className="meter" aria-label={`${formatPercent(value)} remaining`}>{Array.from({ length: segments }, (_, index) => <i key={index} style={{ background: index < active ? color : undefined }} />)}</div>;
+  return <div className="meter" role="meter" aria-label="Quota remaining" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(value)} aria-valuetext={`${formatPercent(value)} remaining`}>{Array.from({ length: segments }, (_, index) => <i className={index < active ? "active" : ""} key={index} style={{ background: index < active ? color : undefined }} />)}</div>;
+}
+
+function DirectSyncPanel({ state, onManage }) {
+  return (
+    <section className="direct-sync-panel">
+      <div className="panel-heading"><h2>Direct Sync</h2><p>Encrypted direct sync between your devices</p></div>
+      <SyncStrip sync={state.sync} deviceName={state.deviceName} />
+      <button className="manage-devices" onClick={onManage}><SettingsIcon /><span>Manage devices</span><ChevronRightIcon /></button>
+    </section>
+  );
 }
 
 function SyncStrip({ sync, deviceName }) {
@@ -284,8 +321,7 @@ function DevicesIcon() { return <Icon><rect x="3" y="5" width="13" height="10" r
 function SettingsIcon() { return <Icon><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"/></Icon>; }
 function RefreshIcon() { return <Icon><path d="M20 7v5h-5"/><path d="M4 17v-5h5"/><path d="M6.1 8a7 7 0 0 1 11.5-2.6L20 7M4 17l2.4 1.6A7 7 0 0 0 17.9 16"/></Icon>; }
 function LockIcon() { return <Icon><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></Icon>; }
-function ClockIcon() { return <Icon><circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/></Icon>; }
-function CheckCircleIcon() { return <Icon><circle cx="12" cy="12" r="8"/><path d="m8.5 12 2.3 2.3 4.7-5"/></Icon>; }
+function ChevronRightIcon() { return <Icon><path d="m9 6 6 6-6 6"/></Icon>; }
 
 function createPreviewAPI() {
   let preview = {
