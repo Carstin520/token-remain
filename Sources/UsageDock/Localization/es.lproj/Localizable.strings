@@ -548,6 +548,8 @@
 "direct_sync.subtitle" = "Intercambio cifrado de cuotas en la red local";
 "direct_sync.address" = "Dirección del Mac";
 "direct_sync.paired_devices" = "Dispositivos enlazados";
+"direct_sync.share_history_title" = "Compartir uso diario con dispositivos enlazados";
+"direct_sync.share_history_detail" = "Envía solo los totales diarios de tokens de Claude y Codex y el coste estimado mediante sincronización directa cifrada.";
 "direct_sync.pairing_code" = "Código de enlace de un solo uso";
 "direct_sync.expires_at" = "Caduca a las %1$@";
 "direct_sync.start_pairing" = "Iniciar enlace";

@@ -548,6 +548,8 @@
 "direct_sync.subtitle" = "Verschlüsselter Kontingentaustausch im lokalen Netzwerk";
 "direct_sync.address" = "Mac-Adresse";
 "direct_sync.paired_devices" = "Gekoppelte Geräte";
+"direct_sync.share_history_title" = "Tägliche Nutzung mit gekoppelten Geräten teilen";
+"direct_sync.share_history_detail" = "Sendet nur tägliche Claude- und Codex-Token-Summen und geschätzte Kosten über die verschlüsselte Direktsynchronisierung.";
 "direct_sync.pairing_code" = "Einmaliger Kopplungscode";
 "direct_sync.expires_at" = "Läuft um %1$@ ab";
 "direct_sync.start_pairing" = "Kopplung starten";

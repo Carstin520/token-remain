@@ -18,6 +18,15 @@ export class StateStore {
       await this.save();
     }
     if (!this.state.sourceInstanceID) this.state.sourceInstanceID = newSourceID();
+    if (this.state.protectedRemoteSnapshot) {
+      if (!this.safeStorage.isEncryptionAvailable()) throw new Error("Windows credential protection is unavailable");
+      this.state.remoteSnapshot = JSON.parse(this.safeStorage.decryptString(
+        Buffer.from(this.state.protectedRemoteSnapshot, "base64"),
+      ));
+    } else if (this.state.remoteSnapshot) {
+      this.setRemoteSnapshot(this.state.remoteSnapshot);
+      await this.save();
+    }
     return this.state;
   }
 
@@ -52,14 +61,25 @@ export class StateStore {
   async disconnect() {
     delete this.state.pairedMac;
     delete this.state.remoteSnapshot;
+    delete this.state.protectedRemoteSnapshot;
     delete this.state.lastSyncAt;
     await this.save();
+  }
+
+  setRemoteSnapshot(snapshot) {
+    if (!this.safeStorage.isEncryptionAvailable()) throw new Error("Windows credential protection is unavailable");
+    this.state.remoteSnapshot = snapshot;
+    this.state.protectedRemoteSnapshot = this.safeStorage
+      .encryptString(JSON.stringify(snapshot))
+      .toString("base64");
   }
 
   async save() {
     await mkdir(dirname(this.path), { recursive: true });
     const temporary = `${this.path}.next`;
-    await writeFile(temporary, JSON.stringify(this.state, null, 2), { mode: 0o600 });
+    const persisted = { ...this.state };
+    delete persisted.remoteSnapshot;
+    await writeFile(temporary, JSON.stringify(persisted, null, 2), { mode: 0o600 });
     await rename(temporary, this.path);
   }
 }

@@ -85,3 +85,45 @@ test("Mac responses bind the paired source and reject replayed sequences", () =>
     lastRemoteSequence: 0,
   }), /unexpected source/i);
 });
+
+test("Authenticated history round trips and rejects unsafe aggregate fields", () => {
+  const now = Date.now();
+  const day = new Date(now).toISOString().slice(0, 10);
+  const base = makeSnapshot({ sourceInstanceID, sequence: 11, providers: [], now });
+  const snapshot = {
+    ...base,
+    dailyUsageHistory: {
+      sourceDay: day,
+      capturedAt: now,
+      days: [{ day, claudeTokens: 12, claudeCost: 0.5, codexTokens: 34, codexCost: 1.25 }],
+    },
+  };
+  const envelope = sealSnapshot(snapshot, { key, keyID, nonce: Buffer.alloc(12, 0xb4) });
+  assert.deepEqual(openEnvelope(envelope, { key, expectedKeyID: keyID }).dailyUsageHistory, snapshot.dailyUsageHistory);
+
+  const invalid = {
+    ...snapshot,
+    sequence: 12,
+    dailyUsageHistory: {
+      ...snapshot.dailyUsageHistory,
+      days: [{ ...snapshot.dailyUsageHistory.days[0], claudeCost: Infinity }],
+    },
+  };
+  const invalidEnvelope = sealSnapshot(invalid, { key, keyID, nonce: Buffer.alloc(12, 0xc5) });
+  assert.throws(() => openEnvelope(invalidEnvelope, { key, expectedKeyID: keyID }), /cost/i);
+});
+
+test("History validation rejects duplicate days and more than thirty entries", () => {
+  const now = Date.now();
+  const day = new Date(now).toISOString().slice(0, 10);
+  const base = makeSnapshot({ sourceInstanceID, sequence: 13, providers: [], now });
+  const row = { day, claudeTokens: 1, claudeCost: 1, codexTokens: 1, codexCost: 1 };
+  for (const [sequence, days, message] of [
+    [13, [row, row], /sorted|unique/i],
+    [14, Array.from({ length: 31 }, () => row), /history/i],
+  ]) {
+    const snapshot = { ...base, sequence, dailyUsageHistory: { sourceDay: day, capturedAt: now, days } };
+    const envelope = sealSnapshot(snapshot, { key, keyID, nonce: Buffer.alloc(12, sequence) });
+    assert.throws(() => openEnvelope(envelope, { key, expectedKeyID: keyID }), message);
+  }
+});

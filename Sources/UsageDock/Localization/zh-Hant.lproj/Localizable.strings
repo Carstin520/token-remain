@@ -549,6 +549,8 @@
 "direct_sync.subtitle" = "在區域網路內加密交換額度快照";
 "direct_sync.address" = "Mac 位址";
 "direct_sync.paired_devices" = "已配對裝置";
+"direct_sync.share_history_title" = "與已配對裝置共享每日用量";
+"direct_sync.share_history_detail" = "僅透過加密直連傳送每日 Claude、Codex token 總量和估算費用。";
 "direct_sync.pairing_code" = "一次性配對碼";
 "direct_sync.expires_at" = "於 %1$@ 失效";
 "direct_sync.start_pairing" = "開始配對";

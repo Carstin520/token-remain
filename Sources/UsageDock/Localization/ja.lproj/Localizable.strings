@@ -548,6 +548,8 @@
 "direct_sync.subtitle" = "ローカルネットワークで暗号化した上限スナップショットを交換";
 "direct_sync.address" = "Mac アドレス";
 "direct_sync.paired_devices" = "ペアリング済みデバイス";
+"direct_sync.share_history_title" = "ペアリング済みデバイスと日別使用量を共有";
+"direct_sync.share_history_detail" = "暗号化された直接同期で、Claude と Codex の日別トークン合計と推定コストのみを送信します。";
 "direct_sync.pairing_code" = "1 回限りのペアリングコード";
 "direct_sync.expires_at" = "%1$@ に期限切れ";
 "direct_sync.start_pairing" = "ペアリングを開始";

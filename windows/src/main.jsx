@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import appIcon from "../../site/assets/brand/appicon-mac.png";
 import claudeIcon from "../../site/assets/providers/claude-code.svg";
 import codexIcon from "../../site/assets/providers/codex.svg";
-import { buildOverviewSummary } from "./overview-model.js";
+import { buildOverviewSummary, buildTodayUsage } from "./overview-model.js";
 import "./styles.css";
 
 const PROVIDERS = {
@@ -11,7 +11,7 @@ const PROVIDERS = {
   codex: { name: "Codex", icon: codexIcon, color: "var(--codex)" },
 };
 const SECTIONS = {
-  overview: { title: "Overview", subtitle: "Quota risk, official limits, and encrypted sync" },
+  overview: { title: "Overview", subtitle: "Quota risk, today's usage, and estimated cost" },
   limits: { title: "Limits", subtitle: "Every active official quota window" },
   devices: { title: "Devices", subtitle: "Direct, encrypted sync on your local network" },
   settings: { title: "Settings", subtitle: "Windows collection and privacy" },
@@ -34,6 +34,12 @@ function App() {
     catch (reason) { setError(reason.message); }
   }
 
+  async function openExternal(url) {
+    setError(undefined);
+    try { await api.openExternal(url); }
+    catch (reason) { setError(reason.message); }
+  }
+
   if (!state) return <div className="loading">Loading TokenRemain…</div>;
   return (
     <div className="app-shell">
@@ -41,7 +47,7 @@ function App() {
       <main className="main-content">
         <Header state={state} section={section} onRefresh={() => action(api.refresh)} />
         {error && <div className="error-banner">{error}</div>}
-        {section === "overview" && <Overview state={state} onSelect={setSection} />}
+        {section === "overview" && <Overview state={state} onSelect={setSection} onOpen={openExternal} />}
         {section === "limits" && <Limits state={state} />}
         {section === "devices" && <Devices state={state} action={action} />}
         {section === "settings" && <Settings state={state} />}
@@ -90,15 +96,10 @@ function Header({ state, section, onRefresh }) {
   );
 }
 
-function Overview({ state, onSelect }) {
+function Overview({ state, onSelect, onOpen }) {
   const summary = buildOverviewSummary(state.providers);
-  const nextResetMeta = summary.nextReset ? PROVIDERS[summary.nextReset.providerID] : undefined;
-  const syncPresentation = syncSummary(state.sync);
-  const trackedProviders = state.providers
-    .filter((provider) => provider.windows?.length)
-    .map((provider) => PROVIDERS[provider.providerID]?.name)
-    .filter(Boolean)
-    .join(" · ");
+  const today = buildTodayUsage(state.dailyUsageHistory);
+  const risk = summary.riskNotes;
   return (
     <section className="content-section overview-section">
       <div className="overview-summary">
@@ -109,31 +110,126 @@ function Overview({ state, onSelect }) {
           tone={summary.risk || "muted"}
         />
         <MetricCard
-          compact
-          label="Next reset"
-          value={summary.nextReset ? formatReset(summary.nextReset.resetsAt) : "—"}
-          detail={nextResetMeta?.name || "No reset scheduled"}
-          tone="violet"
+          label="Today's Tokens"
+          value={today?.totalTokens ? compactNumber(today.totalTokens) : "—"}
+          detail={state.dailyUsageHistory ? "Synced from Mac history" : "Daily history not shared"}
         />
         <MetricCard
-          label="Tracked providers"
-          value={String(summary.trackedCount)}
-          detail={trackedProviders || "Waiting for quota"}
+          label="Today's Est. Cost"
+          value={Number.isFinite(today?.totalCost) ? formatMoney(today.totalCost) : "—"}
+          detail={today?.totalTokens && !Number.isFinite(today?.totalCost) ? "Cost unavailable in synced aggregate" : "Estimated from Mac history"}
         />
         <MetricCard
           compact
-          label="Sync status"
-          value={syncPresentation.value}
-          detail={syncPresentation.detail}
-          tone={syncPresentation.tone}
+          label={risk.projectedRunOutAt ? "Projected runway" : "Quota sustainability"}
+          value={risk.projectedRunOutAt ? formatDurationUntil(risk.projectedRunOutAt) : summary.risk ? "To reset" : "—"}
+          detail={risk.projectedRunOutAt ? `${risk.window.providerName} ${formatWindowShort(risk.window.windowMinutes)} · before reset` : "At the current window pace"}
+          tone={risk.projectedRunOutAt ? "medium" : summary.risk === "low" ? "healthy" : summary.risk}
         />
       </div>
-      <div className="overview-panels">
+      <div className="overview-grid">
+        <UsageCostCard state={state} today={today} onManage={() => onSelect("devices")} />
         <OfficialQuota state={state} risk={summary.risk} />
-        <DirectSyncPanel state={state} onManage={() => onSelect("devices")} />
+        <TrendingCard state={state} onOpen={onOpen} />
+        <RiskNotes risk={risk} />
+      </div>
+      <DirectSyncPanel state={state} onManage={() => onSelect("devices")} />
+    </section>
+  );
+}
+
+function UsageCostCard({ state, today, onManage }) {
+  const hasEntries = Boolean(today?.entries?.length);
+  let rotation = 0;
+  const stops = Number.isFinite(today?.totalCost) && today.totalCost > 0
+    ? today.entries.flatMap((entry) => {
+      const start = rotation;
+      rotation += entry.costShare;
+      return [`${PROVIDERS[entry.id]?.color || "var(--violet)"} ${start}%`, `${PROVIDERS[entry.id]?.color || "var(--violet)"} ${rotation}%`];
+    }).join(", ")
+    : "#2a2c35 0 100%";
+  return (
+    <section className="dashboard-panel usage-cost-card">
+      <PanelHeading title="Today's Usage & Cost" subtitle="By provider · synced daily aggregate" />
+      {hasEntries ? (
+        <>
+          <div className="usage-composition">
+            <div className="donut" style={{ background: `conic-gradient(${stops})` }}>
+              <div><strong>{Number.isFinite(today.totalCost) ? formatMoney(today.totalCost) : "—"}</strong><span>{Number.isFinite(today.totalCost) ? "Est. today" : "Cost unavailable"}</span></div>
+            </div>
+            <div className="usage-provider-list">
+              {today.entries.map((entry) => (
+                <div className="usage-provider-row" key={entry.id}>
+                  <span className="provider-dot" style={{ background: PROVIDERS[entry.id]?.color }} />
+                  <strong>{entry.displayName}</strong>
+                  <span>{compactNumber(entry.tokens)} · {entry.cost > 0 ? formatMoney(entry.cost) : "—"}</span>
+                  <b>{Number.isFinite(entry.costShare) ? formatPercent(entry.costShare) : "—"}</b>
+                </div>
+              ))}
+            </div>
+          </div>
+          <p className="panel-source">Captured {formatTime(today.capturedAt)} on Mac · daily aggregate only</p>
+        </>
+      ) : (
+        <PanelEmpty
+          title={!state.sync.paired ? "Pair your Mac to see today's usage" : state.dailyUsageHistory ? "Nothing recorded today yet" : "No usage history from your Mac yet"}
+          message={!state.sync.paired ? "Direct sync can bring the same daily aggregate to this PC." : state.dailyUsageHistory ? "TokenRemain will show this card after Claude or Codex records usage for the source Mac's current day." : "Turn on “Share daily usage with paired devices” in TokenRemain › Devices on your Mac."}
+          action={!state.sync.paired ? <button className="inline-action" onClick={onManage}>Manage devices</button> : undefined}
+        />
+      )}
+    </section>
+  );
+}
+
+function TrendingCard({ state, onOpen }) {
+  const posts = state.trending || [];
+  return (
+    <section className="dashboard-panel trending-card">
+      <PanelHeading title="Trending" subtitle="What matters most right now" trailing={<span className="badge badge-hot">HOT</span>} />
+      {posts.length ? (
+        <div className="trending-list">
+          {posts.slice(0, 2).map((post, index) => (
+            <button className={`trend-row trend-${index + 1}`} key={post.id} onClick={() => onOpen(post.url)}>
+              <div className="trend-meta"><strong><span>{index === 0 ? "♨" : "ϟ"}</span> #{index + 1}</strong><b>{post.displayName}</b><time>{relativeTime(post.publishedAt)}</time><span className="open-arrow">↗</span></div>
+              <p>{post.text}</p>
+              <div className="trend-metrics"><span>▢ {compactNumber(post.metrics.replies)}</span><span>⇄ {compactNumber(post.metrics.reposts)}</span><span>♡ {compactNumber(post.metrics.likes)}</span></div>
+            </button>
+          ))}
+          <p className="panel-source">Public TokenRemain feed{state.feedError ? ` · cached (${state.feedError})` : ""}</p>
+        </div>
+      ) : <PanelEmpty title={state.feedLoading ? "Loading trending…" : state.feedError ? "Trending is temporarily unavailable" : "Nothing trending right now"} message={state.feedError || "The public feed has no current stories."} />}
+    </section>
+  );
+}
+
+function RiskNotes({ risk }) {
+  if (!risk.window) return (
+    <section className="dashboard-panel risk-notes">
+      <PanelHeading title="Risk Notes" subtitle="Based on the tightest quota window" />
+      <PanelEmpty title="Waiting for official quota" message="No official quota snapshot yet. TokenRemain will retry automatically." />
+    </section>
+  );
+  return (
+    <section className="dashboard-panel risk-notes">
+      <PanelHeading title="Risk Notes" subtitle="Based on the tightest quota window" />
+      <div className="risk-headline"><span className={`badge badge-${risk.level}`}>{risk.level.toUpperCase()}</span><strong>{risk.headline}</strong></div>
+      <p className="risk-summary">{risk.summary}</p>
+      <div className="risk-details">
+        <Info label="Tightest window" value={`${risk.window.providerName} · ${formatWindowShort(risk.window.windowMinutes)}`} />
+        <Info label="Remaining quota" value={formatPercent(risk.window.remaining)} />
+        {risk.projectedRunOutAt && <Info label="Projected depletion" value={formatDurationUntil(risk.projectedRunOutAt)} />}
+        {risk.window.resetsAt && <Info label="Projected reset" value={`Resets ${formatReset(risk.window.resetsAt)}`} />}
       </div>
     </section>
   );
+}
+
+function PanelHeading({ title, subtitle, trailing }) {
+  return <div className="panel-heading panel-heading-row"><div><h2>{title}</h2><p>{subtitle}</p></div>{trailing}</div>;
+}
+
+function PanelEmpty({ title, message, action }) {
+  return <div className="panel-empty"><strong>{title}</strong><p>{message}</p>{action}</div>;
 }
 
 function Limits({ state }) {
@@ -168,7 +264,7 @@ function OfficialQuota({ state, risk }) {
         {fresh && <span className="badge badge-live">LIVE</span>}
       </div>
       <div className="compact-quota-list">
-        {["claude", "codex"].map((id) => (
+        {["codex", "claude"].map((id) => (
           <CompactQuotaRow
             key={id}
             id={id}
@@ -270,7 +366,7 @@ function Devices({ state, action }) {
         <div className="card-heading"><div><h3>This Windows PC</h3><p>{state.deviceName} · source {state.sourceInstanceID.slice(0, 6).toUpperCase()}</p></div><span className="healthy"><span className="status-dot" />Monitoring</span></div>
       </div>
       <div className="settings-card">
-        <div className="card-heading"><div><h3>Mac direct sync</h3><p>Quota snapshots only; provider credentials never leave either device.</p></div><span className={state.sync.paired ? "healthy" : "muted"}>{state.sync.paired ? "Paired" : "Not paired"}</span></div>
+        <div className="card-heading"><div><h3>Mac direct sync</h3><p>Quota snapshots and optional daily aggregates; provider credentials never leave either device.</p></div><span className={state.sync.paired ? "healthy" : "muted"}>{state.sync.paired ? "Paired" : "Not paired"}</span></div>
         {state.sync.paired ? (
           <div className="paired-details"><Info label="Mac" value={state.sync.deviceName || "Mac"} /><Info label="Address" value={state.sync.macURL} /><Info label="Encryption" value={state.sync.encryption} /><Info label="Last sync" value={state.sync.lastSyncAt ? relativeTime(state.sync.lastSyncAt) : state.sync.error || "Waiting"} /><button className="secondary danger" onClick={() => action(api.disconnect)}>Disconnect</button></div>
         ) : (
@@ -296,8 +392,23 @@ function Settings() {
 function Info({ label, value }) { return <div className="info-row"><span>{label}</span><strong>{value}</strong></div>; }
 
 function formatPercent(value) { return `${Math.round(value)}%`; }
+function formatMoney(value) { return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value); }
+function compactNumber(value) {
+  if (!Number.isFinite(value)) return "—";
+  if (Math.abs(value) >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(value >= 10_000_000_000 ? 1 : 2).replace(/\.0+$/, "")}B`;
+  if (Math.abs(value) >= 1_000_000) return `${(value / 1_000_000).toFixed(value >= 10_000_000 ? 1 : 2).replace(/\.0+$/, "")}M`;
+  if (Math.abs(value) >= 1_000) return `${(value / 1_000).toFixed(value >= 10_000 ? 1 : 2).replace(/\.0+$/, "")}K`;
+  return String(Math.round(value));
+}
 function formatTime(value) { return new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" }).format(new Date(value)); }
 function formatReset(value) { return value ? relativeTime(value, "Unknown") : "Unknown"; }
+function formatDurationUntil(value, now = Date.now()) {
+  const minutes = Math.max(0, Math.floor((value - now) / 60_000));
+  const days = Math.floor(minutes / 1_440);
+  const hours = Math.floor(minutes % 1_440 / 60);
+  const remainder = minutes % 60;
+  return [days ? `${days} d` : "", hours ? `${hours} hr` : "", !days && remainder ? `${remainder} min` : ""].filter(Boolean).join(" ") || "now";
+}
 function relativeTime(value, fallback = "Never") {
   if (!value) return fallback;
   const minutes = Math.round((value - Date.now()) / 60_000);
@@ -307,6 +418,7 @@ function relativeTime(value, fallback = "Never") {
   return `${ago < 60 ? `${ago} min` : `${Math.floor(ago / 60)} hr`} ago`;
 }
 function formatWindow(minutes) { if (!minutes) return "Total"; if (minutes % 10080 === 0) return `${minutes / 10080} week window`; if (minutes % 1440 === 0) return `${minutes / 1440} day window`; if (minutes % 60 === 0) return `${minutes / 60} hr window`; return `${minutes} min window`; }
+function formatWindowShort(minutes) { if (!minutes) return "Total"; if (minutes % 1440 === 0) return `${minutes / 1440} d`; if (minutes % 60 === 0) return `${minutes / 60} hr`; return `${minutes} min`; }
 
 function syncSummary(sync) {
   if (sync.error) return { value: "Needs attention", detail: sync.error, tone: "warning" };
@@ -324,23 +436,32 @@ function LockIcon() { return <Icon><rect x="5" y="10" width="14" height="10" rx=
 function ChevronRightIcon() { return <Icon><path d="m9 6 6 6-6 6"/></Icon>; }
 
 function createPreviewAPI() {
+  const previewNow = Date.now();
+  const previewDay = new Date(previewNow).toISOString().slice(0, 10);
   let preview = {
     sourceInstanceID: "8ad9c4b2-5ac9-44d7-b313-ae4f3fc59fb0",
     deviceName: "Windows PC",
-    lastUpdatedAt: Date.now(),
+    lastUpdatedAt: previewNow,
     isRefreshing: false,
     notices: {},
     providers: [
-      { providerID: "claude", capturedAt: Date.now(), planName: "Max 20x", windows: [{ usedPercent: 43, windowMinutes: 300, resetsAt: Date.now() + 10_320_000 }, { usedPercent: 18, windowMinutes: 10_080, resetsAt: Date.now() + 421_200_000 }] },
-      { providerID: "codex", capturedAt: Date.now(), planName: "Pro 5x", windows: [{ usedPercent: 63, windowMinutes: 300, resetsAt: Date.now() + 43_200_000 }, { usedPercent: 31, windowMinutes: 10_080, resetsAt: Date.now() + 331_200_000 }] },
+      { providerID: "claude", capturedAt: previewNow, planName: "Max 20x", windows: [{ usedPercent: 43, windowMinutes: 300, resetsAt: previewNow + 10_320_000 }, { usedPercent: 18, windowMinutes: 10_080, resetsAt: previewNow + 421_200_000 }] },
+      { providerID: "codex", capturedAt: previewNow, planName: "Pro 5x", windows: [{ usedPercent: 63, windowMinutes: 300, resetsAt: previewNow + 43_200_000 }, { usedPercent: 31, windowMinutes: 10_080, resetsAt: previewNow + 331_200_000 }] },
     ],
-    sync: { paired: true, macURL: "http://mac-studio.local:47831/", deviceName: "Mac Studio", lastSyncAt: Date.now() - 60_000, encryption: "AES-256-GCM" },
+    dailyUsageHistory: { sourceDay: previewDay, capturedAt: previewNow, days: [{ day: previewDay, claudeTokens: 11_480_000, claudeCost: 8.24, codexTokens: 32_040_000, codexCost: 22.95 }] },
+    trending: [
+      { id: "1", displayName: "OpenAI", text: "An internal version of our next major model produced new results on long-standing open problems in mathematics and theoretical computer science.", publishedAt: previewNow - 12 * 60 * 60_000, url: "https://x.com/OpenAI/status/1234567890123456789", metrics: { replies: 377, reposts: 587, likes: 8_900 } },
+      { id: "2", displayName: "Tibo", text: "A week of efficiency improvements is rolling out, with refreshed usage limits for coding workflows.", publishedAt: previewNow - 3 * 24 * 60 * 60_000, url: "https://x.com/thsottiaux/status/1234567890123456790", metrics: { replies: 2_900, reposts: 1_100, likes: 23_900 } },
+    ],
+    feedLoading: false,
+    sync: { paired: true, macURL: "http://mac-studio.local:47831/", deviceName: "Mac Studio", lastSyncAt: previewNow - 60_000, encryption: "AES-256-GCM" },
   };
   return {
     getState: async () => preview,
     refresh: async () => ({ ...preview, lastUpdatedAt: Date.now() }),
     pair: async () => preview,
     disconnect: async () => (preview = { ...preview, sync: { paired: false } }),
+    openExternal: async () => true,
     onStateChanged: () => () => {},
   };
 }

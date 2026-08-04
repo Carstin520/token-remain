@@ -267,10 +267,58 @@ function validateConsumedSnapshot(snapshot) {
   if (!Array.isArray(snapshot.providers) || snapshot.providers.length > 32) throw new Error("Invalid providers");
   for (const provider of snapshot.providers) {
     if (!/^[a-z0-9][a-z0-9._-]{0,63}$/.test(provider.providerID || "")) throw new Error("Invalid provider ID");
+    if (!Number.isFinite(provider.capturedAt) || provider.capturedAt > now + 5 * 60 * 1000) throw new Error("Invalid provider date");
     if (!Array.isArray(provider.windows) || provider.windows.length > 8) throw new Error("Invalid quota windows");
-    for (const window of provider.windows) {
-      if (!Number.isFinite(window.usedPercent) || window.usedPercent < 0 || window.usedPercent > 100) throw new Error("Invalid quota percent");
-      if (!Number.isInteger(window.windowMinutes) || window.windowMinutes < 0 || window.windowMinutes > 525600) throw new Error("Invalid quota duration");
+    for (const window of provider.windows) validateWindow(window, now);
+    if (provider.scopedWindows !== undefined) {
+      if (!Array.isArray(provider.scopedWindows) || provider.scopedWindows.length > 16) throw new Error("Invalid scoped quota windows");
+      for (const scoped of provider.scopedWindows) {
+        if (!/^[a-z0-9][a-z0-9_-]{0,31}$/.test(scoped?.scopeID || "")) throw new Error("Invalid quota scope");
+        if (typeof scoped.displayName !== "string" || Buffer.byteLength(scoped.displayName) > 64) throw new Error("Invalid quota scope name");
+        validateWindow(scoped.window, now);
+      }
     }
   }
+  validateDailyUsageHistory(snapshot.dailyUsageHistory, now);
+}
+
+function validateWindow(window, now) {
+  if (!Number.isFinite(window?.usedPercent) || window.usedPercent < 0 || window.usedPercent > 100) throw new Error("Invalid quota percent");
+  if (!Number.isInteger(window.windowMinutes) || window.windowMinutes < 0 || window.windowMinutes > 525600) throw new Error("Invalid quota duration");
+  if (window.resetsAt !== undefined && window.resetsAt !== null) {
+    if (!Number.isFinite(window.resetsAt) || Math.abs(window.resetsAt - now) > 366 * 24 * 60 * 60 * 1000) {
+      throw new Error("Invalid quota reset date");
+    }
+  }
+}
+
+function validateDailyUsageHistory(history, now) {
+  if (history === undefined || history === null) return;
+  if (!Array.isArray(history.days) || history.days.length > 30) throw new Error("Invalid daily usage history");
+  if (!Number.isFinite(history.capturedAt) || history.capturedAt > now + 5 * 60 * 1000) throw new Error("Invalid history date");
+  const earliest = utcDayKey(now - 30 * 24 * 60 * 60 * 1000);
+  const latest = utcDayKey(now + 24 * 60 * 60 * 1000);
+  if (history.sourceDay !== undefined) validateDayKey(history.sourceDay, earliest, latest);
+  let previous;
+  for (const day of history.days) {
+    validateDayKey(day?.day, earliest, latest);
+    if (previous !== undefined && previous >= day.day) throw new Error("Daily usage days must be sorted and unique");
+    previous = day.day;
+    for (const key of ["claudeTokens", "codexTokens"]) {
+      if (!Number.isSafeInteger(day[key]) || day[key] < 0 || day[key] > 1_000_000_000_000_000) throw new Error("Invalid daily token total");
+    }
+    for (const key of ["claudeCost", "codexCost"]) {
+      if (!Number.isFinite(day[key]) || day[key] < 0 || day[key] > 1_000_000) throw new Error("Invalid daily cost total");
+    }
+  }
+}
+
+function validateDayKey(value, earliest, latest) {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new Error("Invalid daily usage day");
+  const parsed = Date.parse(`${value}T00:00:00.000Z`);
+  if (!Number.isFinite(parsed) || utcDayKey(parsed) !== value || value < earliest || value > latest) throw new Error("Invalid daily usage day");
+}
+
+function utcDayKey(value) {
+  return new Date(value).toISOString().slice(0, 10);
 }

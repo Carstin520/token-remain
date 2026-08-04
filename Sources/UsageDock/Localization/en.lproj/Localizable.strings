@@ -549,6 +549,8 @@
 "direct_sync.subtitle" = "Encrypted quota exchange on your local network";
 "direct_sync.address" = "Mac address";
 "direct_sync.paired_devices" = "Paired devices";
+"direct_sync.share_history_title" = "Share daily usage with paired devices";
+"direct_sync.share_history_detail" = "Sends only daily Claude and Codex token totals and estimated cost over encrypted direct sync.";
 "direct_sync.pairing_code" = "One-time pairing code";
 "direct_sync.expires_at" = "Expires at %1$@";
 "direct_sync.start_pairing" = "Start pairing";

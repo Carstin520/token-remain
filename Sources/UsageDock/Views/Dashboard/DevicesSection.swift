@@ -50,6 +50,19 @@ struct DevicesSection: View {
                         value: "\(directSync.peers.count)"
                     )
 
+                    Toggle(isOn: sharesUsageHistoryBinding) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(L10n.text("direct_sync.share_history_title"))
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundStyle(DashboardTheme.text)
+                            Text(L10n.text("direct_sync.share_history_detail"))
+                                .font(.system(size: 10))
+                                .foregroundStyle(DashboardTheme.secondaryText)
+                        }
+                    }
+                    .toggleStyle(.switch)
+                    .tint(DashboardTheme.violet)
+
                     if let code = directSync.pairingCode {
                         Divider().overlay(DashboardTheme.border)
                         Text(L10n.text("direct_sync.pairing_code"))
@@ -158,6 +171,13 @@ struct DevicesSection: View {
         case .listening: L10n.text("direct_sync.state.listening")
         case .failed: L10n.text("direct_sync.state.failed")
         }
+    }
+
+    private var sharesUsageHistoryBinding: Binding<Bool> {
+        Binding(
+            get: { directSync.sharesUsageHistory },
+            set: directSync.setSharesUsageHistory
+        )
     }
 
     private var directSyncStatusColor: Color {

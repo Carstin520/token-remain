@@ -548,6 +548,8 @@
 "direct_sync.subtitle" = "로컬 네트워크에서 암호화된 한도 스냅샷 교환";
 "direct_sync.address" = "Mac 주소";
 "direct_sync.paired_devices" = "페어링된 기기";
+"direct_sync.share_history_title" = "페어링된 기기와 일일 사용량 공유";
+"direct_sync.share_history_detail" = "암호화된 직접 동기화로 Claude 및 Codex의 일일 토큰 합계와 예상 비용만 전송합니다.";
 "direct_sync.pairing_code" = "일회용 페어링 코드";
 "direct_sync.expires_at" = "%1$@에 만료";
 "direct_sync.start_pairing" = "페어링 시작";

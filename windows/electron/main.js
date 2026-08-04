@@ -1,8 +1,9 @@
-import { app, BrowserWindow, ipcMain, Menu, nativeImage, safeStorage, Tray } from "electron";
+import { app, BrowserWindow, ipcMain, Menu, nativeImage, safeStorage, shell, Tray } from "electron";
 import { hostname } from "node:os";
 import { join } from "node:path";
 import { collectClaude } from "./collectors/claude.js";
 import { collectCodex } from "./collectors/codex.js";
+import { fetchCuratedFeed, isAllowedPostURL } from "./feed.js";
 import { StateStore } from "./state-store.js";
 import { makeSnapshot } from "./sync/crypto.js";
 import { exchangeSnapshot, pairWithMac } from "./sync/client.js";
@@ -126,6 +127,11 @@ function registerIPC() {
     notifyRenderer();
     return publicState();
   });
+  ipcMain.handle("feed:open", async (_event, value) => {
+    if (!isAllowedPostURL(value)) throw new Error("This feed link is not allowed");
+    await shell.openExternal(value, { activate: true });
+    return true;
+  });
 }
 
 async function refreshAll() {
@@ -136,25 +142,35 @@ async function refreshAll() {
 
 async function performRefresh() {
   store.state.isRefreshing = true;
+  store.state.feedLoading = !store.state.trending?.length;
   notifyRenderer();
-  const results = await Promise.allSettled([collectClaude(), collectCodex()]);
+  const results = await Promise.allSettled([collectClaude(), collectCodex(), fetchCuratedFeed()]);
   const providers = [];
   const notices = {};
-  for (const [index, result] of results.entries()) {
+  for (const [index, result] of results.slice(0, 2).entries()) {
     const id = index === 0 ? "claude" : "codex";
     if (result.status === "fulfilled") providers.push(result.value);
     else notices[id] = publicError(result.reason);
   }
   if (providers.length) {
     store.state.providers = providers;
-    store.state.sequence = Math.min(Number.MAX_SAFE_INTEGER, (store.state.sequence || 0) + 1);
-    store.state.lastUpdatedAt = Date.now();
   }
   store.state.notices = notices;
 
+  const feedResult = results[2];
+  if (feedResult.status === "fulfilled") {
+    store.state.trending = feedResult.value;
+    store.state.feedUpdatedAt = Date.now();
+    delete store.state.feedError;
+  } else {
+    store.state.feedError = publicError(feedResult.reason);
+  }
+  store.state.feedLoading = false;
+
   try {
     const paired = store.getPairedMac();
-    if (paired && store.state.providers.length) {
+    if (paired) {
+      store.state.sequence = Math.min(Number.MAX_SAFE_INTEGER, (store.state.sequence || 0) + 1);
       const snapshot = makeSnapshot({
         sourceInstanceID: store.state.sourceInstanceID,
         sequence: store.state.sequence,
@@ -166,7 +182,7 @@ async function performRefresh() {
         lastRemoteSequence: paired.lastRemoteSequence,
         snapshot,
       });
-      store.state.remoteSnapshot = remoteSnapshot;
+      store.setRemoteSnapshot(remoteSnapshot);
       store.state.pairedMac.lastRemoteSequence = remoteSnapshot.sequence;
       store.state.lastSyncAt = Date.now();
       delete store.state.syncError;
@@ -174,6 +190,7 @@ async function performRefresh() {
   } catch (error) {
     store.state.syncError = publicError(error);
   }
+  store.state.lastUpdatedAt = Date.now();
   store.state.isRefreshing = false;
   await store.save();
   notifyRenderer();
@@ -190,6 +207,11 @@ function publicState() {
     notices: store?.state?.notices || {},
     lastUpdatedAt: store?.state?.lastUpdatedAt,
     isRefreshing: Boolean(store?.state?.isRefreshing),
+    dailyUsageHistory: store?.state?.remoteSnapshot?.dailyUsageHistory,
+    trending: store?.state?.trending || [],
+    feedLoading: Boolean(store?.state?.feedLoading),
+    feedError: store?.state?.feedError,
+    feedUpdatedAt: store?.state?.feedUpdatedAt,
     sync: {
       paired: Boolean(paired),
       macURL: paired?.baseURL,
