@@ -1,10 +1,10 @@
 import { env, exports } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
+import { classify } from "../src/classification";
 import { enqueueDueDailyDigests } from "../src/push";
 import {
   buildPrimaryQuery,
   buildRotatingQuery,
-  classify,
   ingestCandidates,
   isEligibleRotatingAuthor,
   isOriginalPost,
@@ -41,6 +41,16 @@ describe("TokenRemain broadcast worker", () => {
           accounts: ROTATING_ACCOUNTS.map((account) => account.username),
           dailyLimit: 20,
         },
+      },
+      filtering: {
+        classifierVersion: 2,
+        maximumAgeHours: {
+          token_reset: 36,
+          major_update: 72,
+          normal: 48,
+        },
+        rotatingMinimumRelevanceScore: 100,
+        dailyDigestRequiresFreshHours: 24,
       },
     });
   });
@@ -116,7 +126,7 @@ describe("TokenRemain broadcast worker", () => {
       text: "A new TokenRemain update is available.",
       authorUsername: "owner",
       authorDisplayName: "TokenRemain",
-      publishedAt: "2026-07-23T10:00:00Z",
+      publishedAt: new Date().toISOString(),
       url: "https://x.com/owner/status/1900000000000000001",
       priority: "normal",
       tier: "primary",
@@ -144,6 +154,35 @@ describe("TokenRemain broadcast worker", () => {
     });
   });
 
+  it("normalizes legacy stored priority when serving the public feed", async () => {
+    const id = "1900000000000000002";
+    const publish = await exports.default.fetch("https://broadcast.test/v1/admin/feed/items", {
+      method: "POST",
+      headers: {
+        authorization: "Bearer test-admin-token",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        id,
+        text: "The experiment used $2,000 worth of API tokens.",
+        authorUsername: "OpenAI",
+        authorDisplayName: "OpenAI",
+        publishedAt: new Date().toISOString(),
+        url: `https://x.com/OpenAI/status/${id}`,
+        priority: "token_reset",
+        tier: "primary",
+        metrics: { likes: 10, reposts: 2, replies: 1 },
+      }),
+    });
+    expect(publish.status).toBe(201);
+
+    const response = await exports.default.fetch("https://broadcast.test/v1/ai-feed");
+    const feed = await response.json<{
+      items: Array<{ id: string; priority: string }>;
+    }>();
+    expect(feed.items.find((item) => item.id === id)?.priority).toBe("normal");
+  });
+
   it("rejects invalid device and admin inputs", async () => {
     const unauthorized = await exports.default.fetch("https://broadcast.test/v1/admin/feed/items", {
       method: "POST",
@@ -167,9 +206,14 @@ describe("TokenRemain broadcast worker", () => {
     expect(invalidDevice.status).toBe(400);
   });
 
-  it("classifies quota and launch messages before neutral posts", () => {
+  it("requires paired semantics for quota and launch priority", () => {
     expect(classify("Usage quota resets every five hours.")).toBe("token_reset");
     expect(classify("Introducing our new model today.")).toBe("major_update");
+    expect(classify("GPT-5 API price reduction is permanent.")).toBe("major_update");
+    expect(classify("The experiment used $2,000 worth of API tokens.")).toBe("normal");
+    expect(classify("One day we created the reset button.")).toBe("normal");
+    expect(classify("Microsoft released GPT-4 before OpenAI.")).toBe("normal");
+    expect(classify("OpenAI is focusing on announcing benefits of new models.")).toBe("normal");
     expect(classify("A quiet day at the office.")).toBe("normal");
   });
 
@@ -215,6 +259,60 @@ describe("TokenRemain broadcast worker", () => {
       "codex",
       "claude",
     ]);
+  });
+
+  it("drops posts after their priority-specific freshness window", () => {
+    const now = new Date("2026-08-04T12:00:00Z");
+    const rows = [
+      feedRow({
+        id: "stale-reset",
+        username: "OpenAI",
+        text: "Codex quota reset for paid users",
+        publishedAt: "2026-08-02T22:59:00Z",
+        likes: 100_000,
+        reposts: 10_000,
+        replies: 1_000,
+        selectionScore: 10_000,
+        tier: "primary",
+        priority: "token_reset",
+      }),
+      feedRow({
+        id: "stale-major",
+        username: "AnthropicAI",
+        text: "Introducing a new Claude model",
+        publishedAt: "2026-08-01T10:59:00Z",
+        likes: 100_000,
+        reposts: 10_000,
+        replies: 1_000,
+        selectionScore: 10_000,
+        tier: "primary",
+        priority: "major_update",
+      }),
+      feedRow({
+        id: "stale-normal",
+        username: "OpenAI",
+        text: "Codex model research",
+        publishedAt: "2026-08-02T10:59:00Z",
+        likes: 100_000,
+        reposts: 10_000,
+        replies: 1_000,
+        selectionScore: 10_000,
+        tier: "primary",
+      }),
+      feedRow({
+        id: "fresh",
+        username: "OpenAI",
+        text: "Codex model research update",
+        publishedAt: "2026-08-04T11:00:00Z",
+        likes: 1,
+        reposts: 0,
+        replies: 0,
+        selectionScore: 1,
+        tier: "primary",
+      }),
+    ];
+
+    expect(rankFeedItems(rows, now).map((row) => row.id)).toEqual(["fresh"]);
   });
 
   it("includes quote posts while excluding replies and reposts", () => {
@@ -381,7 +479,9 @@ describe("TokenRemain broadcast worker", () => {
     expect(feed).not.toContain("X_BEARER_TOKEN");
   });
 
-  it("queues one local-day digest even when the newest feed item is older than 24 hours", async () => {
+  it("queues a local-day digest only when the feed has a post from the last 24 hours", async () => {
+    await env.DB.prepare("DELETE FROM push_deliveries").run();
+    await env.DB.prepare("DELETE FROM feed_items").run();
     const installationId = "installation_daily_123456";
     const registrationKey = "registration_key_daily_123456789012345";
     const publish = await exports.default.fetch("https://broadcast.test/v1/admin/feed/items", {
@@ -423,7 +523,31 @@ describe("TokenRemain broadcast worker", () => {
       env,
       new Date("2026-07-23T01:00:00Z"),
     );
-    expect(queued).toBeGreaterThanOrEqual(1);
+    expect(queued).toBe(0);
+
+    await exports.default.fetch("https://broadcast.test/v1/admin/feed/items", {
+      method: "POST",
+      headers: {
+        authorization: "Bearer test-admin-token",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        id: "1900000000000000100",
+        text: "A fresh public update is available today.",
+        authorUsername: "owner",
+        authorDisplayName: "TokenRemain",
+        publishedAt: "2026-07-23T00:30:00Z",
+        url: "https://x.com/owner/status/1900000000000000100",
+        priority: "normal",
+        tier: "primary",
+        metrics: { likes: 0, reposts: 0, replies: 0 },
+      }),
+    });
+    const freshQueued = await enqueueDueDailyDigests(
+      env,
+      new Date("2026-07-23T01:00:00Z"),
+    );
+    expect(freshQueued).toBeGreaterThanOrEqual(1);
     const delivery = await env.DB.prepare(
       `SELECT kind, digest_local_date FROM push_deliveries
        WHERE installation_id = ?`,

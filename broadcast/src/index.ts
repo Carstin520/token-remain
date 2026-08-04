@@ -4,6 +4,10 @@ import { getFeed, publishAdminItem } from "./feed";
 import { errorResponse, json } from "./http";
 import { consumePushBatch } from "./push";
 import { runScheduled } from "./scheduled";
+import {
+  feedMaximumAgeHours,
+  minimumRotatingRelevanceScore,
+} from "./selection";
 import type { Env, PushJob } from "./types";
 import {
   PRIMARY_ACCOUNTS,
@@ -37,6 +41,12 @@ export default {
               accounts: ROTATING_ACCOUNTS.map((account) => account.username),
               dailyLimit: ROTATING_DAILY_LIMIT,
             },
+          },
+          filtering: {
+            classifierVersion: 2,
+            maximumAgeHours: feedMaximumAgeHours,
+            rotatingMinimumRelevanceScore: minimumRotatingRelevanceScore,
+            dailyDigestRequiresFreshHours: 24,
           },
         });
       }

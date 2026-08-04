@@ -65,7 +65,7 @@ final class AIFeedStore: ObservableObject {
     }
 
     var topStories: [AIFeedPost] {
-        Array(posts.prefix(2))
+        Array(recommendedPosts.prefix(2))
     }
 
     var sourceTitle: String {

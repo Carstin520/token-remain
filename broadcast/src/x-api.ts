@@ -1,6 +1,7 @@
 import { upsertFeedItem } from "./feed";
+import { classify } from "./classification";
 import { isRelevantRotatingPost } from "./selection";
-import type { Env, FeedPriority, FeedTier } from "./types";
+import type { Env, FeedTier } from "./types";
 import type { AdminFeedItem } from "./validation";
 
 export const PRIMARY_ACCOUNTS = [
@@ -458,15 +459,4 @@ function utcDayBounds(now: Date): { start: string; end: string } {
   const end = new Date(start);
   end.setUTCDate(end.getUTCDate() + 1);
   return { start: start.toISOString(), end: end.toISOString() };
-}
-
-export function classify(text: string): FeedPriority {
-  const normalized = text.toLowerCase();
-  if (/(token|quota|usage limit|rate limit|额度|限额|重置|reset)/u.test(normalized)) {
-    return "token_reset";
-  }
-  if (/(launch|introduc|release|available now|new model|api|pricing|price|发布|上线|模型|价格)/u.test(normalized)) {
-    return "major_update";
-  }
-  return "normal";
 }

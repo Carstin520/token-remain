@@ -17,8 +17,9 @@ enum FeedPriorityClassifier {
 
     private static func isTokenReset(_ text: String) -> Bool {
         let usageTerms = [
-            "token", "context window", "usage limit", "rate limit", "quota",
+            "context window", "usage limit", "rate limit", "quota",
             "message limit", "compute limit", "weekly limit", "hourly limit",
+            "token limit", "token budget",
             "paid user", "all plans", "reset bank", "banked reset",
             "额度", "配额", "速率限制", "上下文窗口"
         ]
@@ -33,13 +34,15 @@ enum FeedPriorityClassifier {
 
     private static func isMajorUpdate(_ text: String) -> Bool {
         let releaseTerms = [
-            "introducing", "we're launching", "we are launching", "released",
-            "now available", "rolling out", "we shipped", "announcing",
-            "general availability", "breaking change", "deprecat", "sunset",
-            "new model", "pricing update", "price change", "outage", "incident",
+            "introducing", "we're launching", "we are launching",
+            "now available", "rolling out", "we shipped", "we're announcing",
+            "we are announcing", "announcing our",
+            "general availability", "public beta", "now live", "breaking change",
+            "deprecat", "sunset", "pricing update", "price change",
+            "price reduction", "price cut", "outage", "incident",
             "degraded", "back online", "resolved", "service restored",
-            "推出", "发布", "上线", "正式可用", "重大更新", "弃用", "停止支持",
-            "价格调整", "故障", "中断", "服务恢复"
+            "推出", "发布", "上线", "正式可用", "公开测试", "重大更新", "弃用",
+            "停止支持", "价格调整", "降价", "故障", "中断", "服务恢复"
         ]
         let productTerms = [
             "model", "api", "claude", "gpt", "chatgpt", "openai", "anthropic",

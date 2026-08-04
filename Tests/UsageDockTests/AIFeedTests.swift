@@ -45,6 +45,11 @@ struct AIFeedTests {
     @Test("Major model launches are pinned without treating ordinary chatter as major")
     func majorUpdatePriority() {
         #expect(FeedPriorityClassifier.classify("Introducing our new model, available now in the API.") == .majorUpdate)
+        #expect(FeedPriorityClassifier.classify("GPT API price reduction is permanent.") == .majorUpdate)
+        #expect(FeedPriorityClassifier.classify("The experiment used $2,000 worth of API tokens.") == .normal)
+        #expect(FeedPriorityClassifier.classify("One day we created the reset button.") == .normal)
+        #expect(FeedPriorityClassifier.classify("Microsoft released GPT-4 before OpenAI.") == .normal)
+        #expect(FeedPriorityClassifier.classify("OpenAI is focusing on announcing benefits of new models.") == .normal)
         #expect(FeedPriorityClassifier.classify("I enjoyed talking about model behavior today.") == .normal)
     }
 
@@ -173,6 +178,44 @@ struct AIFeedTests {
         #expect(curated.filter { $0.username == "elonmusk" }.count == 3)
         #expect(!curated.contains { $0.id == "noise" })
         #expect(curated.contains { $0.id == "other" })
+    }
+
+    @Test("Display curation removes posts after their priority freshness window")
+    func displayCurationDropsExpiredPosts() {
+        let now = Date(timeIntervalSince1970: 2_000_000_000)
+        let posts = [
+            makePost(
+                id: "stale-reset",
+                username: "OpenAI",
+                createdAt: now.addingTimeInterval(-37 * 3_600),
+                tier: .primary,
+                priority: .tokenReset
+            ),
+            makePost(
+                id: "stale-major",
+                username: "AnthropicAI",
+                createdAt: now.addingTimeInterval(-73 * 3_600),
+                tier: .primary,
+                priority: .majorUpdate
+            ),
+            makePost(
+                id: "stale-normal",
+                username: "OpenAI",
+                createdAt: now.addingTimeInterval(-49 * 3_600),
+                tier: .primary
+            ),
+            makePost(
+                id: "fresh",
+                username: "OpenAI",
+                createdAt: now.addingTimeInterval(-1 * 3_600),
+                tier: .primary
+            ),
+        ]
+
+        #expect(
+            AIFeedCollectionPolicy.curateForDisplay(posts, now: now).map(\.id)
+                == ["fresh"]
+        )
     }
 
     @Test("Important reminders normally stop at seven and never exceed ten")

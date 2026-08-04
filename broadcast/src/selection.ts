@@ -1,7 +1,12 @@
 import type { FeedItemRow } from "./types";
 
-const minimumRotatingRelevanceScore = 40;
+export const minimumRotatingRelevanceScore = 100;
 const maxNormalPostsPerAuthor = 3;
+export const feedMaximumAgeHours = {
+  token_reset: 36,
+  major_update: 72,
+  normal: 48,
+} as const;
 
 export function rankFeedItems(
   rows: FeedItemRow[],
@@ -9,9 +14,10 @@ export function rankFeedItems(
 ): FeedItemRow[] {
   const ranked = rows
     .filter((row) => (
-      row.tier !== "rotating"
+      isWithinFreshnessWindow(row, now)
+      && (row.tier !== "rotating"
       || row.priority !== "normal"
-      || topicRelevanceScore(row.text) >= minimumRotatingRelevanceScore
+      || topicRelevanceScore(row.text) >= minimumRotatingRelevanceScore)
     ))
     .sort((left, right) => {
       const scoreDifference = trendingScore(right, now) - trendingScore(left, now);
@@ -32,6 +38,16 @@ export function rankFeedItems(
     normalCounts.set(author, count + 1);
     return true;
   });
+}
+
+export function isWithinFreshnessWindow(
+  row: Pick<FeedItemRow, "priority" | "published_at">,
+  now = new Date(),
+): boolean {
+  const publishedAt = Date.parse(row.published_at);
+  if (!Number.isFinite(publishedAt)) return false;
+  const ageHours = Math.max(0, (now.getTime() - publishedAt) / 3_600_000);
+  return ageHours <= feedMaximumAgeHours[row.priority];
 }
 
 export function isRelevantRotatingPost(
@@ -81,14 +97,14 @@ function trendingScore(row: FeedItemRow, now: Date): number {
   );
   const engagement = Math.max(0, row.likes + 2 * row.reposts + row.replies);
   const velocity = (engagement + 1) / Math.pow(ageHours, 0.8);
-  const momentum = Math.min(2_500, Math.trunc(Math.log2(velocity + 1) * 240));
+  const momentum = Math.min(1_600, Math.trunc(Math.log2(velocity + 1) * 180));
   const priority = row.priority === "token_reset"
-    ? 1_800
+    ? 1_500
     : row.priority === "major_update"
-      ? 900
+      ? 600
       : 0;
-  const relevance = Math.max(0, topicRelevanceScore(row.text)) * 4;
-  const freshness = Math.max(0, 360 - Math.trunc(ageHours * 12));
+  const relevance = Math.max(0, topicRelevanceScore(row.text)) * 3;
+  const freshness = Math.max(0, 720 - Math.trunc(ageHours * 15));
   const source = row.tier === "primary" ? 50 : 0;
   return momentum + priority + relevance + freshness + source;
 }
