@@ -3,11 +3,18 @@ import { createRoot } from "react-dom/client";
 import appIcon from "../../site/assets/brand/appicon-mac.png";
 import claudeIcon from "../../site/assets/providers/claude-code.svg";
 import codexIcon from "../../site/assets/providers/codex.svg";
+import { buildOverviewSummary } from "./overview-model.js";
 import "./styles.css";
 
 const PROVIDERS = {
   claude: { name: "Claude", icon: claudeIcon, color: "var(--claude)" },
   codex: { name: "Codex", icon: codexIcon, color: "var(--codex)" },
+};
+const SECTIONS = {
+  overview: { title: "Overview", subtitle: "AI quota at a glance" },
+  limits: { title: "Limits", subtitle: "Every active official quota window" },
+  devices: { title: "Devices", subtitle: "Direct, encrypted sync on your local network" },
+  settings: { title: "Settings", subtitle: "Windows collection and privacy" },
 };
 const api = window.tokenRemain ?? (import.meta.env.DEV ? createPreviewAPI() : undefined);
 
@@ -32,7 +39,7 @@ function App() {
     <div className="app-shell">
       <Sidebar section={section} onSelect={setSection} />
       <main className="main-content">
-        <Header state={state} onRefresh={() => action(api.refresh)} />
+        <Header state={state} section={section} onRefresh={() => action(api.refresh)} />
         {error && <div className="error-banner">{error}</div>}
         {section === "overview" && <Overview state={state} />}
         {section === "limits" && <Limits state={state} />}
@@ -56,13 +63,13 @@ function Sidebar({ section, onSelect }) {
       <div className="nav-label">MONITOR</div>
       <nav>
         {items.slice(0, 3).map(([id, name, Icon]) => (
-          <button key={id} className={section === id ? "selected" : ""} onClick={() => onSelect(id)}><Icon />{name}</button>
+          <button key={id} className={section === id ? "selected" : ""} aria-current={section === id ? "page" : undefined} onClick={() => onSelect(id)}><Icon />{name}</button>
         ))}
       </nav>
       <div className="nav-label system-label">SYSTEM</div>
       <nav>
         {items.slice(3).map(([id, name, Icon]) => (
-          <button key={id} className={section === id ? "selected" : ""} onClick={() => onSelect(id)}><Icon />{name}</button>
+          <button key={id} className={section === id ? "selected" : ""} aria-current={section === id ? "page" : undefined} onClick={() => onSelect(id)}><Icon />{name}</button>
         ))}
       </nav>
       <div className="privacy-status"><span className="status-dot" />Credentials stay on this PC</div>
@@ -70,10 +77,11 @@ function Sidebar({ section, onSelect }) {
   );
 }
 
-function Header({ state, onRefresh }) {
+function Header({ state, section, onRefresh }) {
+  const meta = SECTIONS[section];
   return (
     <header>
-      <div><h1>TokenRemain</h1><p>AI quota at a glance</p></div>
+      <div><h1>{meta.title}</h1><p>{meta.subtitle}</p></div>
       <div className="header-actions">
         <span>{state.lastUpdatedAt ? `Updated ${formatTime(state.lastUpdatedAt)}` : "Waiting for local data"}</span>
         <button className="refresh" onClick={onRefresh} disabled={state.isRefreshing}><RefreshIcon />{state.isRefreshing ? "Refreshing…" : "Refresh"}</button>
@@ -83,12 +91,36 @@ function Header({ state, onRefresh }) {
 }
 
 function Overview({ state }) {
+  const summary = buildOverviewSummary(state.providers);
+  const tightestMeta = summary.tightest ? PROVIDERS[summary.tightest.providerID] : undefined;
+  const nextResetMeta = summary.nextReset ? PROVIDERS[summary.nextReset.providerID] : undefined;
+  const syncPresentation = syncSummary(state.sync);
   return (
-    <section className="content-section">
-      <div className="section-heading"><h2>Overview</h2><p>Official quota windows from this PC and your paired Mac.</p></div>
-      <div className="quota-grid">
-        {["claude", "codex"].map((id) => <ProviderCard key={id} provider={state.providers.find((item) => item.providerID === id)} notice={state.notices[id]} id={id} />)}
+    <section className="content-section overview-section">
+      <div className="overview-summary">
+        <SummaryItem
+          icon={tightestMeta ? <img src={tightestMeta.icon} alt="" /> : <GaugeIcon />}
+          label="Tightest quota"
+          value={summary.tightest ? formatPercent(summary.tightest.remaining) : "—"}
+          detail={tightestMeta?.name || "Waiting for quota"}
+          tone={summary.tightest?.providerID}
+        />
+        <SummaryItem
+          icon={<ClockIcon />}
+          label="Next reset"
+          value={summary.nextReset ? formatReset(summary.nextReset.resetsAt) : "—"}
+          detail={nextResetMeta?.name || "No reset scheduled"}
+          tone="codex"
+        />
+        <SummaryItem
+          icon={state.sync.paired ? <CheckCircleIcon /> : <DevicesIcon />}
+          label="Sync status"
+          value={syncPresentation.value}
+          detail={syncPresentation.detail}
+          tone={syncPresentation.tone}
+        />
       </div>
+      <OfficialQuota state={state} />
       <SyncStrip sync={state.sync} deviceName={state.deviceName} />
     </section>
   );
@@ -97,11 +129,55 @@ function Overview({ state }) {
 function Limits({ state }) {
   return (
     <section className="content-section">
-      <div className="section-heading"><h2>Limits</h2><p>Every active official quota window.</p></div>
       <div className="quota-grid">
         {["claude", "codex"].map((id) => <ProviderCard detailed key={id} provider={state.providers.find((item) => item.providerID === id)} notice={state.notices[id]} id={id} />)}
       </div>
     </section>
+  );
+}
+
+function SummaryItem({ icon, label, value, detail, tone }) {
+  return (
+    <div className={`summary-item ${tone ? `tone-${tone}` : ""}`}>
+      <div className="summary-icon">{icon}</div>
+      <div><span>{label}</span><strong>{value}</strong><small>{detail}</small></div>
+    </div>
+  );
+}
+
+function OfficialQuota({ state }) {
+  return (
+    <section className="official-quota">
+      <div className="panel-heading"><h2>Official Quota</h2><p>Tightest windows from your active providers</p></div>
+      <div className="compact-quota-list">
+        {["claude", "codex"].map((id) => (
+          <CompactQuotaRow
+            key={id}
+            id={id}
+            provider={state.providers.find((item) => item.providerID === id)}
+            notice={state.notices[id]}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function CompactQuotaRow({ provider, notice, id }) {
+  const meta = PROVIDERS[id];
+  const primary = provider?.windows?.[0];
+  const remaining = primary ? Math.max(0, 100 - primary.usedPercent) : undefined;
+  return (
+    <article className="compact-quota-row">
+      <div className="compact-provider"><img src={meta.icon} alt="" /><div><h3>{meta.name}</h3><p>{provider?.planName || "Official usage"}</p></div></div>
+      {primary ? (
+        <>
+          <div className="compact-remaining"><span>Remaining</span><strong style={{ color: meta.color }}>{formatPercent(remaining)}</strong></div>
+          <div className="compact-meter"><Meter value={remaining} color={meta.color} /><span>{formatWindow(primary.windowMinutes)}</span></div>
+          <div className="compact-reset"><strong>{formatReset(primary.resetsAt)}</strong><span>Captured {formatTime(provider.capturedAt)}</span></div>
+        </>
+      ) : <div className="compact-empty"><strong>No quota yet</strong><span>{notice || `${meta.name} is not signed in on this PC.`}</span></div>}
+    </article>
   );
 }
 
@@ -153,7 +229,6 @@ function Devices({ state, action }) {
   }
   return (
     <section className="content-section">
-      <div className="section-heading"><h2>Devices</h2><p>Direct, encrypted sync on your local network. CloudKit is not used.</p></div>
       <div className="settings-card">
         <div className="card-heading"><div><h3>This Windows PC</h3><p>{state.deviceName} · source {state.sourceInstanceID.slice(0, 6).toUpperCase()}</p></div><span className="healthy"><span className="status-dot" />Monitoring</span></div>
       </div>
@@ -176,7 +251,6 @@ function Devices({ state, action }) {
 function Settings() {
   return (
     <section className="content-section">
-      <div className="section-heading"><h2>Settings</h2><p>Windows collection and privacy boundaries.</p></div>
       <div className="settings-card policy-list"><Info label="Refresh interval" value="1 minute" /><Info label="Credential access" value="Read-only local CLI files" /><Info label="Sync transport" value="Encrypted LAN snapshots" /><Info label="CloudKit / phone sync" value="Not used in this Windows branch" /></div>
     </section>
   );
@@ -197,6 +271,12 @@ function relativeTime(value, fallback = "Never") {
 }
 function formatWindow(minutes) { if (!minutes) return "Total"; if (minutes % 10080 === 0) return `${minutes / 10080} week window`; if (minutes % 1440 === 0) return `${minutes / 1440} day window`; if (minutes % 60 === 0) return `${minutes / 60} hr window`; return `${minutes} min window`; }
 
+function syncSummary(sync) {
+  if (sync.error) return { value: "Needs attention", detail: sync.error, tone: "warning" };
+  if (sync.paired) return { value: "Connected", detail: "Encrypted direct sync", tone: "healthy" };
+  return { value: "Windows only", detail: "Pair a Mac in Devices", tone: "violet" };
+}
+
 function Icon({ children }) { return <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{children}</svg>; }
 function GridIcon() { return <Icon><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></Icon>; }
 function GaugeIcon() { return <Icon><path d="M5 17a8 8 0 1 1 14 0"/><path d="m12 13 4-4"/><path d="M8 19h8"/></Icon>; }
@@ -204,6 +284,8 @@ function DevicesIcon() { return <Icon><rect x="3" y="5" width="13" height="10" r
 function SettingsIcon() { return <Icon><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"/></Icon>; }
 function RefreshIcon() { return <Icon><path d="M20 7v5h-5"/><path d="M4 17v-5h5"/><path d="M6.1 8a7 7 0 0 1 11.5-2.6L20 7M4 17l2.4 1.6A7 7 0 0 0 17.9 16"/></Icon>; }
 function LockIcon() { return <Icon><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></Icon>; }
+function ClockIcon() { return <Icon><circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/></Icon>; }
+function CheckCircleIcon() { return <Icon><circle cx="12" cy="12" r="8"/><path d="m8.5 12 2.3 2.3 4.7-5"/></Icon>; }
 
 function createPreviewAPI() {
   let preview = {
