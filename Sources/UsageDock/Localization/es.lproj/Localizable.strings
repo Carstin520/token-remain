@@ -320,9 +320,10 @@
 "service.codex.snapshot_missing" = "No se encontró la instantánea principal de Codex; abre ChatGPT, Codex o una herramienta de desarrollo con sesión iniciada";
 "service.codex.token_expired" = "Las credenciales de Codex han caducado; inicia sesión de nuevo en ChatGPT o Codex";
 "codex.reset_credits.title" = "Tarjetas para restablecer el límite";
-"codex.reset_credits.available_count" = "%1$d disponibles";
-"codex.reset_credits.applicable_count" = "%1$d utilizables · %2$d en total";
-"codex.reset_credits.expiration" = "Suelen caducar 30 días después de concederse; confirma la fecha exacta en Codex";
+"codex.reset_credits.empty" = "No hay tarjetas de restablecimiento";
+"codex.reset_credits.usable_balance" = "Utilizable · %1$d guardadas";
+"codex.reset_credits.unusable_balance" = "Aún no utilizable · %1$d guardadas";
+"codex.reset_credits.expiration" = "Se puede usar al alcanzar un límite aplicable; suele caducar 30 días después de concederse y la API no indica la fecha exacta";
 "codex.reset_credits.manage" = "Ver";
 "service.common.api_key_missing" = "No hay API Key de %1$@ configurada; pégala directamente en su tarjeta de cuota";
 "service.common.api_key_rejected" = "%1$@ rechazó la API Key actual (HTTP %2$d); actualízala en su tarjeta de cuota";
