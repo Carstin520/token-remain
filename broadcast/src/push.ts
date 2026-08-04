@@ -29,15 +29,14 @@ export async function enqueueItemBroadcast(env: Env, itemID: string): Promise<nu
 
 export async function enqueueDueDailyDigests(env: Env, now = new Date()): Promise<number> {
   const devices = await activeDevices(env);
-  const publishedItem = await env.DB.prepare(
-    `SELECT 1 AS present
+  const freshItemCount = await env.DB.prepare(
+    `SELECT COUNT(*) AS count
      FROM feed_items
-     WHERE status = 'published' AND datetime(published_at) >= datetime(?, '-14 days')
-     LIMIT 1`,
+     WHERE status = 'published' AND datetime(published_at) >= datetime(?, '-1 day')`,
   )
     .bind(now.toISOString())
-    .first<number>("present");
-  if (!publishedItem) return 0;
+    .first<number>("count");
+  if (!freshItemCount) return 0;
 
   let queued = 0;
   for (const device of devices) {

@@ -5,7 +5,7 @@ enum AIFeedCollectionPolicy {
     static let maxRotatingPostsPerDay = 25
     static let fetchResultsPerTier = 100
     static let rotatingAccountLimit = 5
-    static let minimumRotatingRelevanceScore = 40
+    static let minimumRotatingRelevanceScore = 100
     static let maxNormalPostsPerAuthor = 3
     static let preferredImportantPostLimit = 7
     static let maximumImportantPostLimit = 10
@@ -121,6 +121,7 @@ enum AIFeedCollectionPolicy {
     ) -> [AIFeedPost] {
         var normalCounts: [String: Int] = [:]
         return sortForRecommendation(posts, now: now).filter { post in
+            guard isWithinFreshnessWindow(post, now: now) else { return false }
             if post.priority != .normal { return true }
             if post.tier == .rotating,
                topicRelevanceScore(for: post.text) < minimumRotatingRelevanceScore {
@@ -176,36 +177,36 @@ enum AIFeedCollectionPolicy {
         let ageHours = max(0.5, now.timeIntervalSince(post.createdAt) / 3_600)
         let engagement = Double(max(0, engagementScore(for: post)))
         let velocity = (engagement + 1) / pow(ageHours, 0.8)
-        let momentumScore = min(2_500, Int(log2(velocity + 1) * 240))
+        let momentumScore = min(1_600, Int(log2(velocity + 1) * 180))
 
         let priorityScore: Int
         switch post.priority {
-        case .tokenReset: priorityScore = 1_800
-        case .majorUpdate: priorityScore = 900
+        case .tokenReset: priorityScore = 1_500
+        case .majorUpdate: priorityScore = 600
         case .normal: priorityScore = 0
         }
 
-        let relevanceScore = max(0, topicRelevanceScore(for: post.text)) * 4
-        let freshnessScore = max(0, 360 - Int(ageHours * 12))
+        let relevanceScore = max(0, topicRelevanceScore(for: post.text)) * 3
+        let freshnessScore = max(0, 720 - Int(ageHours * 15))
         let sourceScore = post.tier == .primary ? 50 : 0
         return momentumScore + priorityScore + relevanceScore + freshnessScore + sourceScore
     }
 
     static func recommendationScore(for post: AIFeedPost, now: Date = Date()) -> Int {
-        let priorityScore: Int
-        switch post.priority {
-        case .tokenReset: priorityScore = 100_000
-        case .majorUpdate: priorityScore = 50_000
-        case .normal: priorityScore = 0
-        }
+        trendingScore(for: post, now: now)
+    }
 
-        let relevanceScore = topicRelevanceScore(for: post.text) * 5
-        let engagement = max(0, engagementScore(for: post))
-        let engagementScore = min(120, Int(Double(engagement).squareRoot()) * 4)
+    static func isWithinFreshnessWindow(
+        _ post: AIFeedPost,
+        now: Date = Date()
+    ) -> Bool {
         let ageHours = max(0, now.timeIntervalSince(post.createdAt) / 3_600)
-        let freshnessScore = max(0, 72 - Int(ageHours * 3))
-        let sourceScore = post.tier == .primary ? 30 : 0
-        return priorityScore + relevanceScore + engagementScore + freshnessScore + sourceScore
+        let maximumAgeHours: Double = switch post.priority {
+        case .tokenReset: 36
+        case .majorUpdate: 72
+        case .normal: 48
+        }
+        return ageHours <= maximumAgeHours
     }
 
     static func topicRelevanceScore(for text: String) -> Int {

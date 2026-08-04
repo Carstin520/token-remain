@@ -320,9 +320,10 @@
 "service.codex.snapshot_missing" = "Codex のメインクォータスナップショットが見つかりません。ChatGPT、Codex、またはログイン済みの開発ツールを開いてください";
 "service.codex.token_expired" = "Codex のログイン認証情報の有効期限が切れています。ChatGPT または Codex で再度ログインしてください";
 "codex.reset_credits.title" = "利用上限リセットカード";
-"codex.reset_credits.available_count" = "%1$d 枚利用可能";
-"codex.reset_credits.applicable_count" = "%1$d 枚利用可能・合計 %2$d 枚";
-"codex.reset_credits.expiration" = "通常は付与後 30 日で期限切れになります。正確な日時は Codex で確認してください";
+"codex.reset_credits.empty" = "リセットカードなし";
+"codex.reset_credits.usable_balance" = "使用可能・保有 %1$d 枚";
+"codex.reset_credits.unusable_balance" = "現在使用不可・保有 %1$d 枚";
+"codex.reset_credits.expiration" = "対象の上限に達すると使用可能です。通常は付与後 30 日で期限切れになりますが、API は正確な日時を提供しません";
 "codex.reset_credits.manage" = "表示";
 "service.common.api_key_missing" = "%1$@の APIキーが未設定です。対応するクォータカードに直接貼り付けてください";
 "service.common.api_key_rejected" = "%1$@が現在の APIキーを拒否しました(HTTP %2$d)。対応するクォータカードで更新してください";

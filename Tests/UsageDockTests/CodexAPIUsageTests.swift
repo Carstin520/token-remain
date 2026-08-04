@@ -61,6 +61,30 @@ struct CodexAPIUsageParserTests {
         #expect(CodexAPIUsageParser.resetCredits([:]) == nil)
     }
 
+    @Test("Reset cards present applicability as a state and retain banked balance")
+    func resetCreditStatusText() {
+        let unavailable = CodexResetCreditsCard(credits: CodexRateLimitResetCredits(
+            availableCount: 1,
+            applicableAvailableCount: 0
+        ))
+        #expect(!unavailable.isUsable)
+        #expect(unavailable.statusText == L10n.format("codex.reset_credits.unusable_balance", 1))
+
+        let usable = CodexResetCreditsCard(credits: CodexRateLimitResetCredits(
+            availableCount: 3,
+            applicableAvailableCount: 2
+        ))
+        #expect(usable.isUsable)
+        #expect(usable.statusText == L10n.format("codex.reset_credits.usable_balance", 3))
+
+        let empty = CodexResetCreditsCard(credits: CodexRateLimitResetCredits(
+            availableCount: 0,
+            applicableAvailableCount: 0
+        ))
+        #expect(!empty.isUsable)
+        #expect(empty.statusText == L10n.text("codex.reset_credits.empty"))
+    }
+
     @Test("A weekly limit parked in the primary slot is classified by duration")
     func weeklyInPrimarySlot() throws {
         let payload = """

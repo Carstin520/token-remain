@@ -3,6 +3,25 @@
 All notable product changes are recorded here. TokenRemain uses Semantic
 Versioning for public releases.
 
+## 1.2.7 — 2026-08-04
+
+### Changed
+
+- Keep AI Feed recommendations timely with priority-specific freshness windows,
+  a higher relevance threshold, and balanced engagement, relevance, and recency
+  scoring.
+- Classify quota changes and major AI releases using paired meaning instead of
+  broad single-word matches, reducing false priority labels on ordinary posts.
+- Show Codex reset cards as usable, not yet usable, or empty while preserving
+  the official banked balance and accurately explaining the expiry-data limit.
+
+### Fixed
+
+- Prevent three- or four-day-old AI Feed items from remaining in Dashboard top
+  stories after the server or local cache has fresher recommendations.
+- Require daily AI Feed digests to have an item from the last 24 hours instead
+  of notifying from a two-week-old feed history.
+
 ## 1.2.6 — 2026-08-02
 
 ### Added
@@ -427,3 +446,4 @@ Versioning for public releases.
 [1.2.4]: https://github.com/Carstin520/token-remain/releases/tag/v1.2.4
 [1.2.5]: https://github.com/Carstin520/token-remain/releases/tag/v1.2.5
 [1.2.6]: https://github.com/Carstin520/token-remain/releases/tag/v1.2.6
+[1.2.7]: https://github.com/Carstin520/token-remain/releases/tag/v1.2.7

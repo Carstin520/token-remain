@@ -321,9 +321,10 @@
 "service.codex.snapshot_missing" = "找不到 Codex 主額度快照；請開啟 ChatGPT、Codex 或已登入的開發工具取得用量";
 "service.codex.token_expired" = "Codex 登入憑證已過期；請在 ChatGPT 或 Codex 中重新登入";
 "codex.reset_credits.title" = "額度重置卡";
-"codex.reset_credits.available_count" = "%1$d 張可用";
-"codex.reset_credits.applicable_count" = "目前可用 %1$d · 共 %2$d 張";
-"codex.reset_credits.expiration" = "通常在獲贈後 30 天到期；確切時間請至 Codex 確認";
+"codex.reset_credits.empty" = "暫無重置卡";
+"codex.reset_credits.usable_balance" = "可使用 · 已存 %1$d 張";
+"codex.reset_credits.unusable_balance" = "暫不可使用 · 已存 %1$d 張";
+"codex.reset_credits.expiration" = "達到適用額度上限後可使用；通常在獲贈後 30 天到期，介面不提供確切日期";
 "codex.reset_credits.manage" = "查看";
 "service.common.api_key_missing" = "尚未設定 %1$@ API Key；請直接在對應額度卡中貼上";
 "service.common.api_key_rejected" = "%1$@ 拒絕了目前的 API Key（HTTP %2$d）；請在對應額度卡中更新";

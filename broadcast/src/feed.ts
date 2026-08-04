@@ -1,4 +1,5 @@
 import { bearerToken, constantTimeEqual, HttpError, json, readJSON } from "./http";
+import { classify } from "./classification";
 import type { AdminFeedItem } from "./validation";
 import type { Env, FeedItemRow } from "./types";
 import { enqueueItemBroadcast } from "./push";
@@ -16,8 +17,12 @@ export async function getFeed(env: Env): Promise<Response> {
      LIMIT 50`,
   ).all<FeedItemRow>();
 
+  const normalizedRows = result.results.map((row) => ({
+    ...row,
+    priority: classify(row.text),
+  }));
   const response = json({
-    items: rankFeedItems(result.results).map(publicFeedItem),
+    items: rankFeedItems(normalizedRows).map(publicFeedItem),
   });
   response.headers.set("cache-control", "public, max-age=60, stale-while-revalidate=300");
   return response;

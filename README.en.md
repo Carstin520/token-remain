@@ -11,12 +11,12 @@ Remaining quota, reset countdowns and today's cost for Claude Code, Codex, Curso
 ![macOS](https://img.shields.io/badge/macOS-14%2B_Sonoma-000?logo=apple&logoColor=white)
 ![Universal](https://img.shields.io/badge/Universal-Apple_Silicon_%2B_Intel-7C5CFF)
 ![Notarized](https://img.shields.io/badge/Apple-Notarized-34C759?logo=apple&logoColor=white)
-![Latest](https://img.shields.io/badge/latest-v1.2.6-22D3EE)
+![Latest](https://img.shields.io/badge/latest-v1.2.7-22D3EE)
 ![License](https://img.shields.io/badge/license-Apache--2.0-8A94A6)
 
 ### [⬇️ Download TokenRemain.dmg](https://tokenremain.com)
 
-<sub>Current release `v1.2.6` · build 20 · Universal Mac Release build</sub>
+<sub>Current release `v1.2.7` · build 21 · Universal Mac Release build</sub>
 
 [Website](https://tokenremain.com) · [Privacy Policy](https://tokenremain.com/privacy) · [Support](https://tokenremain.com/support) · [Report an issue](https://github.com/Carstin520/token-remain/issues)
 
@@ -237,7 +237,7 @@ This public repository contains only the TokenRemain macOS desktop client and it
 
 ## 📦 Current release
 
-- **Version** — `v1.2.6` (build 20), the Universal Mac Release build.
+- **Version** — `v1.2.7` (build 21), the Universal Mac Release build.
 - **Platform** — macOS 14 Sonoma or later on Apple Silicon (arm64) and Intel (x86_64).
 - **Distribution** — The website always downloads the latest `TokenRemain.dmg`; each GitHub Release also retains a DMG named with its version and build.
 - **Cost figures** — Costs are API list-price estimates, not your subscription bill. When a credential expires, data pauses and the app explains how to restore it.
