@@ -131,6 +131,14 @@ struct PopoverQuotaWidget: View {
                             Divider().overlay(DashboardTheme.border)
                             ExtraUsageRow(extraUsage: extraUsage)
                         }
+                        if let balance = quota.accountBalance {
+                            Divider().overlay(DashboardTheme.border)
+                            AccountBalanceRow(balance: balance)
+                        }
+                        if let spend = quota.spend, spend.hasValues {
+                            Divider().overlay(DashboardTheme.border)
+                            ProviderSpendRow(spend: spend)
+                        }
                         freshnessRow(quota)
                     }
                     if let notice {

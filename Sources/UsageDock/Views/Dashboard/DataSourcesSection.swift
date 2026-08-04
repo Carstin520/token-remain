@@ -192,6 +192,8 @@ struct DataSourcesSection: View {
         case .claude: return "Claude Code"
         case .grok: return L10n.text("datasource.name_grok")
         case .zai: return L10n.text("datasource.name_zai")
+        case .zaiTeam: return "GLM Team"
+        case .thirdParty: return L10n.text("datasource.name_third_party")
         default: return provider.displayName
         }
     }
@@ -209,6 +211,8 @@ struct DataSourcesSection: View {
         case .antigravity: return L10n.text("datasource.detail.antigravity")
         case .opencode: return L10n.text("datasource.detail.opencode")
         case .zai: return L10n.text("datasource.detail.zai")
+        case .zaiTeam: return L10n.text("datasource.detail.zai_team")
+        case .thirdParty: return L10n.text("datasource.detail.third_party")
         case .kiro: return L10n.text("datasource.detail.kiro")
         case .ollama: return L10n.text("datasource.detail.ollama")
         default: return L10n.text("datasource.detail.default")

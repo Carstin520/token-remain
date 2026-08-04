@@ -14,6 +14,7 @@ enum ExtendedProviderError: LocalizedError, Sendable {
     case secretRejected(ProviderQuota.Provider, Int)
     case requestFailed(ProviderQuota.Provider, Int)
     case invalidResponse(ProviderQuota.Provider)
+    case invalidSecret(ProviderQuota.Provider, detail: String)
     case notInstalled(ProviderQuota.Provider, hint: String)
 
     var errorDescription: String? {
@@ -26,6 +27,8 @@ enum ExtendedProviderError: LocalizedError, Sendable {
             return L10n.format("service.common.request_failed", provider.displayName, status)
         case .invalidResponse(let provider):
             return L10n.format("service.common.invalid_response", provider.displayName)
+        case .invalidSecret(_, let detail):
+            return detail
         case .notInstalled(_, let hint):
             return hint
         }
@@ -34,13 +37,34 @@ enum ExtendedProviderError: LocalizedError, Sendable {
 
 /// 共享 HTTP 小工具:发请求、统一 401/403 → secretRejected 语义。
 enum ExtendedHTTP {
+    private final class NoRedirectDelegate: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
+        func urlSession(
+            _ session: URLSession,
+            task: URLSessionTask,
+            willPerformHTTPRedirection response: HTTPURLResponse,
+            newRequest request: URLRequest,
+            completionHandler: @escaping (URLRequest?) -> Void
+        ) {
+            completionHandler(nil)
+        }
+    }
+
+    /// Reuse connections for providers that must observe 3xx responses instead
+    /// of following them to a login page or a credential-exfiltration target.
+    private static let noRedirectSession = URLSession(
+        configuration: .ephemeral,
+        delegate: NoRedirectDelegate(),
+        delegateQueue: nil
+    )
+
     static func request(
         _ provider: ProviderQuota.Provider,
         url: URL,
         method: String = "GET",
         headers: [String: String] = [:],
         body: Data? = nil,
-        timeout: TimeInterval = 12
+        timeout: TimeInterval = 12,
+        followRedirects: Bool = true
     ) async throws -> Data {
         var request = URLRequest(url: url)
         request.httpMethod = method
@@ -49,13 +73,16 @@ enum ExtendedHTTP {
         for (key, value) in headers {
             request.setValue(value, forHTTPHeaderField: key)
         }
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let session = followRedirects ? URLSession.shared : noRedirectSession
+        let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else {
             throw ExtendedProviderError.invalidResponse(provider)
         }
         switch http.statusCode {
         case 200..<300: return data
-        case 401, 403: throw ExtendedProviderError.secretRejected(provider, http.statusCode)
+        case 300..<400 where !followRedirects,
+             401, 403:
+            throw ExtendedProviderError.secretRejected(provider, http.statusCode)
         default: throw ExtendedProviderError.requestFailed(provider, http.statusCode)
         }
     }
@@ -311,43 +338,109 @@ struct MiniMaxUsageService {
     }
 }
 
-// MARK: - MiMo Code(Cookie,月度 token 池)
+// MARK: - MiMo Code(Cookie,钱包余额 + Token Plan)
 
-/// `GET platform.xiaomimimo.com/api/v1/balance`(Cookie + 控制台 Referer)。
-/// 条目 `name == "month_total_token"` 携带 used/limit/percent → 月度窗口。
+/// MiMo 控制台把钱包和 Token Plan 拆在不同接口。余额是必须成功的
+/// 基线；用户资料、套餐详情和套餐用量均为尽力读取，避免其中一个可选
+/// 接口短暂波动时把仍然有效的钱包余额一起丢掉。
 struct MiMoUsageService {
     func fetch(now: Date = .now) async throws -> ProviderQuota {
-        guard let cookie = ProviderSecretStore(provider: .mimo).load() else {
+        guard let rawCookie = ProviderSecretStore(provider: .mimo).load() else {
             throw ExtendedProviderError.notConfigured(.mimo)
         }
-        let data = try await ExtendedHTTP.request(
+        guard let cookie = Self.normalizedCookie(rawCookie) else {
+            throw ExtendedProviderError.invalidSecret(
+                .mimo,
+                detail: L10n.text("service.mimo.cookie_incomplete")
+            )
+        }
+        let base = "https://platform.xiaomimimo.com/api/v1"
+        let headers = [
+            "Cookie": cookie,
+            "Accept": "application/json, text/plain, */*",
+            "Origin": "https://platform.xiaomimimo.com",
+            "Referer": "https://platform.xiaomimimo.com/#/console/balance"
+        ]
+        async let balanceAttempt = ExtendedHTTP.request(
             .mimo,
-            url: URL(string: "https://platform.xiaomimimo.com/api/v1/balance")!,
-            headers: [
-                "Cookie": cookie,
-                "Accept": "application/json",
-                "Referer": "https://platform.xiaomimimo.com/#/console/balance"
-            ]
+            url: URL(string: "\(base)/balance")!,
+            headers: headers,
+            followRedirects: false
         )
-        return try Self.parse(data, now: now)
+        async let detailAttempt = try? ExtendedHTTP.request(
+            .mimo,
+            url: URL(string: "\(base)/tokenPlan/detail")!,
+            headers: headers,
+            followRedirects: false
+        )
+        async let usageAttempt = try? ExtendedHTTP.request(
+            .mimo,
+            url: URL(string: "\(base)/tokenPlan/usage")!,
+            headers: headers,
+            followRedirects: false
+        )
+        let balanceData = try await balanceAttempt
+        try Self.validateBusinessResponse(balanceData)
+        return try await Self.parse(
+            balanceData: balanceData,
+            detailData: detailAttempt,
+            usageData: usageAttempt,
+            now: now
+        )
     }
 
-    static func parse(_ data: Data, now: Date = .now) throws -> ProviderQuota {
-        guard let body = ExtendedHTTP.json(data),
-              let item = findMonthTotal(in: body) else {
+    static func normalizedCookie(_ raw: String) -> String? {
+        let allowed = Set([
+            "api-platform_serviceToken", "userId", "api-platform_ph", "api-platform_slh"
+        ])
+        var text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if text.lowercased().hasPrefix("cookie:") {
+            text = String(text.dropFirst("cookie:".count))
+        }
+        var values: [String: String] = [:]
+        for component in text.split(separator: ";") {
+            let pair = component.split(separator: "=", maxSplits: 1).map(String.init)
+            guard pair.count == 2 else { continue }
+            let name = pair[0].trimmingCharacters(in: .whitespacesAndNewlines)
+            let value = pair[1].trimmingCharacters(in: .whitespacesAndNewlines)
+            if allowed.contains(name), !value.isEmpty { values[name] = value }
+        }
+        guard values["api-platform_serviceToken"] != nil, values["userId"] != nil else {
+            return nil
+        }
+        return values.keys.sorted().map { "\($0)=\(values[$0]!)" }.joined(separator: "; ")
+    }
+
+    private static func validateBusinessResponse(_ data: Data) throws {
+        guard let body = ExtendedHTTP.json(data) else {
             throw ExtendedProviderError.invalidResponse(.mimo)
         }
-        let used = ExtendedHTTP.number(item["used"])
-        let limit = ExtendedHTTP.number(item["limit"]) ?? ExtendedHTTP.number(item["total"])
-        var percent = ExtendedHTTP.number(item["percent"])
-        if percent == nil, let used, let limit, limit > 0 {
-            percent = used / limit * 100
+        guard let code = ExtendedHTTP.number(body["code"]) else { return }
+        if code == 401 || code == 403 {
+            throw ExtendedProviderError.secretRejected(.mimo, Int(code))
         }
-        guard let percent else { throw ExtendedProviderError.invalidResponse(.mimo) }
+        if code != 0 {
+            throw ExtendedProviderError.invalidResponse(.mimo)
+        }
+    }
+
+    /// Legacy single-payload entry point retained for older fixtures. It
+    /// accepts either the old embedded month_total_token shape or a wallet
+    /// balance response.
+    static func parse(_ data: Data, now: Date = .now) throws -> ProviderQuota {
+        guard let body = ExtendedHTTP.json(data) else {
+            throw ExtendedProviderError.invalidResponse(.mimo)
+        }
+        if balance(in: body) != nil {
+            return try parse(balanceData: data, now: now)
+        }
+        guard let usage = planUsage(in: body), let percent = usage.usedPercent else {
+            throw ExtendedProviderError.invalidResponse(.mimo)
+        }
         return ProviderQuota(
             provider: .mimo,
             primary: QuotaWindow(
-                usedPercent: ExtendedHTTP.clamp(percent <= 1 && (used ?? 2) <= 1 ? percent * 100 : percent),
+                usedPercent: percent,
                 windowMinutes: 43_200,
                 resetsAt: nil
             ),
@@ -355,6 +448,165 @@ struct MiMoUsageService {
             planName: nil,
             capturedAt: now
         )
+    }
+
+    static func parse(
+        balanceData: Data,
+        detailData: Data? = nil,
+        usageData: Data? = nil,
+        now: Date = .now
+    ) throws -> ProviderQuota {
+        guard let balanceBody = ExtendedHTTP.json(balanceData),
+              let wallet = balance(in: balanceBody) else {
+            throw ExtendedProviderError.invalidResponse(.mimo)
+        }
+        let detail = detailData.flatMap(ExtendedHTTP.json).map { planDetail(in: $0, now: now) }
+        let usage = usageData.flatMap(ExtendedHTTP.json).flatMap(planUsage)
+        let hasPlan = detail?.isActive == true
+            && (usage?.limit ?? 0) > 0
+            && usage?.usedPercent != nil
+
+        let walletWindow = QuotaWindow(
+            usedPercent: wallet.amount > 0 ? 0 : 100,
+            windowMinutes: 0,
+            resetsAt: nil,
+            remainingBalance: QuotaBalance(
+                amount: wallet.amount,
+                currencyCode: wallet.currency
+            )
+        )
+        let planWindow = hasPlan ? QuotaWindow(
+            usedPercent: usage?.usedPercent ?? 0,
+            windowMinutes: 43_200,
+            resetsAt: detail?.resetsAt
+        ) : nil
+
+        return ProviderQuota(
+            provider: .mimo,
+            primary: planWindow ?? walletWindow,
+            secondary: planWindow == nil ? nil : walletWindow,
+            planName: detail?.label.isEmpty == false ? detail?.label : nil,
+            capturedAt: now,
+            remainingBalance: planWindow == nil ? walletWindow.remainingBalance : nil
+        )
+    }
+
+    private struct WalletBalance {
+        let amount: Double
+        let currency: String
+    }
+
+    private struct PlanDetail {
+        let label: String
+        let resetsAt: Date?
+        let isActive: Bool
+    }
+
+    private struct PlanUsage {
+        let used: Double?
+        let limit: Double?
+        let usedPercent: Double?
+    }
+
+    private static func unwrapped(_ body: [String: Any]) -> [String: Any] {
+        (body["data"] as? [String: Any]) ?? body
+    }
+
+    private static func balance(in body: [String: Any]) -> WalletBalance? {
+        let payload = unwrapped(body)
+        guard let rawAmount = ExtendedHTTP.number(payload["balance"]), rawAmount.isFinite else {
+            return nil
+        }
+        let currency = ((payload["currency"] as? String) ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .uppercased()
+        return WalletBalance(amount: max(0, rawAmount), currency: currency)
+    }
+
+    private static func planDetail(in body: [String: Any], now: Date) -> PlanDetail {
+        let payload = unwrapped(body)
+        let label = firstText(
+            payload,
+            keys: ["planCode", "plan_code", "planName", "plan_name"]
+        )
+        let status = firstText(
+            payload,
+            keys: ["planStatus", "plan_status", "subscriptionStatus", "subscription_status", "status", "state"]
+        ).lowercased()
+        let resetsAt = firstText(
+            payload,
+            keys: ["currentPeriodEnd", "current_period_end"]
+        ).nilIfEmpty.flatMap(parseDate)
+        let noPlan = ["default", "none", "no_plan", "not_subscribed", "unsubscribed"]
+            .contains(label.lowercased().replacingOccurrences(of: "-", with: "_"))
+        let expired = ["expired", "ended"].contains(status)
+            || (resetsAt.map { $0 <= now } == true)
+        let hasExplicitActiveFlag = payload["active"] is Bool || payload["isActive"] is Bool
+        let explicitActive = ["active", "subscribed"].contains(status)
+            || payload["active"] as? Bool == true
+            || payload["isActive"] as? Bool == true
+        let inferredActive = status.isEmpty && !hasExplicitActiveFlag
+            && !label.isEmpty && resetsAt.map { $0 > now } == true
+        return PlanDetail(
+            label: label,
+            resetsAt: resetsAt,
+            isActive: !noPlan && !expired && (explicitActive || inferredActive)
+        )
+    }
+
+    private static func planUsage(in body: [String: Any]) -> PlanUsage? {
+        let payload = unwrapped(body)
+        let month = (payload["monthUsage"] as? [String: Any])
+            ?? (payload["month_usage"] as? [String: Any])
+            ?? payload
+        let item: [String: Any]
+        if let items = month["items"] as? [[String: Any]], !items.isEmpty {
+            guard let total = items.first(where: {
+                ($0["name"] as? String)?.lowercased() == "month_total_token"
+            }) else {
+                return nil
+            }
+            item = total
+        } else {
+            item = findMonthTotal(in: month) ?? month
+        }
+        let used = ExtendedHTTP.number(item["used"])
+        let limit = ExtendedHTTP.number(item["limit"])
+            ?? ExtendedHTTP.number(item["total"])
+        let percent: Double?
+        if let used, let limit, limit > 0 {
+            percent = ExtendedHTTP.clamp(used / limit * 100)
+        } else if let ratio = ExtendedHTTP.number(item["percent"]), ratio.isFinite {
+            // MiMo's percent field is always a 0…1 ratio and can exceed 1
+            // slightly after the request that exhausts a plan.
+            percent = ExtendedHTTP.clamp(ratio * 100)
+        } else {
+            percent = nil
+        }
+        guard used != nil || limit != nil || percent != nil else { return nil }
+        return PlanUsage(used: used, limit: limit, usedPercent: percent)
+    }
+
+    private static func firstText(_ body: [String: Any], keys: [String]) -> String {
+        for key in keys {
+            if let value = body[key] as? String {
+                let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !trimmed.isEmpty { return trimmed }
+            }
+        }
+        return ""
+    }
+
+    private static func parseDate(_ raw: String) -> Date? {
+        let normalized = raw.replacingOccurrences(of: " ", with: "T")
+        let fractional = ISO8601DateFormatter()
+        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let utcFractional = ISO8601DateFormatter()
+        utcFractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return fractional.date(from: normalized)
+            ?? ISO8601DateFormatter().date(from: normalized)
+            ?? utcFractional.date(from: "\(normalized)Z")
+            ?? ISO8601DateFormatter().date(from: "\(normalized)Z")
     }
 
     /// 容器结构历史上变过,递归找 `name == month_total_token` 的对象。
@@ -372,6 +624,10 @@ struct MiMoUsageService {
         }
         return nil
     }
+}
+
+private extension String {
+    var nilIfEmpty: String? { isEmpty ? nil : self }
 }
 
 // MARK: - Qoder(Cookie,Credits)

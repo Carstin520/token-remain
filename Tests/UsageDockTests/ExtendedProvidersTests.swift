@@ -104,6 +104,70 @@ struct ExtendedProvidersTests {
         #expect(quota.primary.windowMinutes == 43_200)
     }
 
+    @Test("MiMo combines an active Token Plan with the wallet balance")
+    func mimoManagedAccount() throws {
+        let balance = Data(#"{"data":{"balance":"12.5","currency":"CNY"}}"#.utf8)
+        let detail = Data(#"{"data":{"planName":"Coding Pro","status":"active","currentPeriodEnd":"2030-08-31T00:00:00Z"}}"#.utf8)
+        let usage = Data(#"{"data":{"monthUsage":{"items":[{"name":"month_total_token","used":850,"limit":1000,"percent":0.85}]}}}"#.utf8)
+        let quota = try MiMoUsageService.parse(
+            balanceData: balance,
+            detailData: detail,
+            usageData: usage,
+            now: Date(timeIntervalSince1970: 1_784_000_000)
+        )
+        #expect(quota.primary.usedPercent == 85)
+        #expect(quota.primary.windowMinutes == 43_200)
+        #expect(quota.secondary?.remainingBalance == QuotaBalance(amount: 12.5, currencyCode: "CNY"))
+        #expect(quota.planName == "Coding Pro")
+    }
+
+    @Test("MiMo explicit inactive state and unrelated usage items do not create a plan")
+    func mimoInactivePlan() throws {
+        let balance = Data(#"{"data":{"balance":12,"currency":"CNY"}}"#.utf8)
+        let detail = Data(#"{"data":{"planName":"Coding Pro","active":false,"currentPeriodEnd":"2030-08-31T00:00:00Z"}}"#.utf8)
+        let usage = Data(#"{"data":{"monthUsage":{"items":[{"name":"day_token","used":1,"limit":10}]}}}"#.utf8)
+        let quota = try MiMoUsageService.parse(
+            balanceData: balance,
+            detailData: detail,
+            usageData: usage,
+            now: Date(timeIntervalSince1970: 1_784_000_000)
+        )
+        #expect(quota.primary.windowMinutes == 0)
+        #expect(quota.secondary == nil)
+        #expect(quota.primary.remainingBalance == QuotaBalance(amount: 12, currencyCode: "CNY"))
+    }
+
+    @Test("MiMo accepts fractional period ends without an explicit timezone")
+    func mimoFractionalLocalPeriodEnd() throws {
+        let balance = Data(#"{"data":{"balance":12,"currency":"CNY"}}"#.utf8)
+        let detail = Data(#"{"data":{"planName":"Coding Pro","currentPeriodEnd":"2030-08-31 00:00:00.123"}}"#.utf8)
+        let usage = Data(#"{"data":{"monthUsage":{"items":[{"name":"month_total_token","used":40,"limit":100,"percent":0.4}]}}}"#.utf8)
+        let quota = try MiMoUsageService.parse(
+            balanceData: balance,
+            detailData: detail,
+            usageData: usage,
+            now: Date(timeIntervalSince1970: 1_784_000_000)
+        )
+        #expect(quota.primary.usedPercent == 40)
+        #expect(quota.planName == "Coding Pro")
+    }
+
+    @Test("MiMo percent is always a ratio when used and limit are absent")
+    func mimoRatioScale() throws {
+        let payload = Data(#"{"monthUsage":{"items":[{"name":"month_total_token","percent":1.005}]}}"#.utf8)
+        let quota = try MiMoUsageService.parse(payload)
+        #expect(quota.primary.usedPercent == 100)
+    }
+
+    @Test("MiMo cookie keeps only the managed-session fields and requires identity")
+    func mimoCookieNormalization() {
+        let normalized = MiMoUsageService.normalizedCookie(
+            "Cookie: userId=u1; noise=drop; api-platform_serviceToken=t1; api-platform_ph=p1"
+        )
+        #expect(normalized == "api-platform_ph=p1; api-platform_serviceToken=t1; userId=u1")
+        #expect(MiMoUsageService.normalizedCookie("api-platform_serviceToken=t1") == nil)
+    }
+
     @Test("Qoder merges total and shared credit pools")
     func qoder() throws {
         let payload = """
@@ -150,7 +214,7 @@ struct ExtendedProvidersTests {
         store.environment = ["DEEPSEEK_API_KEY": " sk-ds "]
         #expect(store.load() == "sk-ds")
         #expect(ProviderSecretStore.descriptor(for: .kiro) == nil)
-        #expect(ProviderSecretStore.descriptors.count == 7)
+        #expect(ProviderSecretStore.descriptors.count == 9)
         #expect(ProviderCredentialConfiguration.resolve(for: .zai)?.isCookie == false)
         #expect(ProviderCredentialConfiguration.resolve(for: .deepseek)?.isCookie == false)
         #expect(ProviderCredentialConfiguration.resolve(for: .mimo)?.isCookie == true)

@@ -109,7 +109,7 @@ struct BrandIcon: View {
             return Artwork(resourceName: "cursor", isTemplate: true)
         case .grok:
             return Artwork(resourceName: "grok", isTemplate: true)
-        case .zai:
+        case .zai, .zaiTeam:
             return Artwork(resourceName: "zai", isTemplate: true)
         case .copilot:
             return Artwork(resourceName: "github-copilot", isTemplate: true)
@@ -139,6 +139,8 @@ struct BrandIcon: View {
             return Artwork(resourceName: "volcengine", isTemplate: false)
         case .ollama:
             return Artwork(resourceName: "ollama", isTemplate: true)
+        case .thirdParty:
+            return nil
         }
     }
 

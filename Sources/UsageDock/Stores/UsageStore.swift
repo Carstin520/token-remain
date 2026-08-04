@@ -216,6 +216,7 @@ final class UsageStore: ObservableObject {
         case .cursor: return { try await CursorUsageService().fetch() }
         case .grok: return { try await GrokUsageService().fetch() }
         case .zai: return { try await ZAIUsageService().fetch() }
+        case .zaiTeam: return { try await ZAITeamUsageService().fetch() }
         case .copilot: return { try await CopilotUsageService().fetch() }
         case .devin: return { try await DevinUsageService().fetch() }
         case .windsurf: return { try await WindsurfUsageService().fetch() }
@@ -230,6 +231,7 @@ final class UsageStore: ObservableObject {
         case .kiro: return { try await KiroUsageService().fetch() }
         case .volcengine: return { try await VolcengineUsageService().fetch() }
         case .ollama: return { try await OllamaUsageService().fetch() }
+        case .thirdParty: return { try await ThirdPartyUsageService().fetch() }
         case .claude, .codex: return nil
         }
     }
@@ -756,6 +758,13 @@ final class UsageStore: ObservableObject {
             try? ProviderSecretStore(provider: provider).clear()
         }
         await refreshKeyProvider(provider)
+    }
+
+    /// Region selection is non-secret account metadata. Persist it separately
+    /// from the API key and immediately re-query the same single Z.ai account.
+    func setZAIRegion(_ region: ZAIAPIRegion) async {
+        ZAIRegionStore().save(region)
+        await refreshKeyProvider(.zai)
     }
 
     /// 由数据源页的明确用户操作触发。与后台刷新不同，这条路径允许 macOS

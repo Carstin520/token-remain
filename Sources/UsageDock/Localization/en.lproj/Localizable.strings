@@ -105,6 +105,22 @@
 "usage.trend" = "Usage Trend";
 "quota.extra_usage" = "Extra Usage";
 "quota.spent" = "%@ spent";
+"quota.official_spend" = "Official Spend";
+"quota.account_balance" = "Account Balance";
+"quota.spend_week" = "This Week";
+"quota.spend_month" = "This Month";
+"quota.spend_all_time" = "All Time";
+"datasource.zai_region" = "API Region";
+"datasource.zai_region_global" = "Global";
+"datasource.zai_region_china" = "China";
+"service.mimo.cookie_incomplete" = "MiMo needs both api-platform_serviceToken and userId cookies.";
+"secret.placeholder.zai_team" = "Paste JSON with apiKey, organization, and project";
+"secret.placeholder.third_party" = "Paste a single-account New API or custom balance JSON config";
+"service.zai_team.config_incomplete" = "GLM Team needs apiKey, organization, and project in one JSON object.";
+"service.third_party.config_incomplete" = "Third-party API needs a valid single-account JSON configuration.";
+"datasource.name_third_party" = "Third-party API";
+"datasource.detail.zai_team" = "China-region Team Plan API (configuration stored in the local keychain)";
+"datasource.detail.third_party" = "New API-compatible or custom balance endpoint (configuration stored in the local keychain)";
 "duration.total" = "Total";
 
 "action.cancel" = "Cancel";

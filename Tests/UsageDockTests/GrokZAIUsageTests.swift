@@ -113,6 +113,8 @@ struct ZAIUsageParserTests {
         #expect(quota.primary.resetsAt == Date(timeIntervalSince1970: 1_784_005_200))
         #expect(quota.secondary?.usedPercent == 44)
         #expect(quota.secondary?.windowMinutes == 10_080)
+        #expect(quota.scopedWindows?.first?.scopeID == "zai_mcp_monthly")
+        #expect(quota.scopedWindows?.first?.window.usedPercent == 3)
         #expect(quota.planName == "GLM Coding Max")
     }
 
@@ -124,6 +126,14 @@ struct ZAIUsageParserTests {
         let quota = try ZAIUsageParser.parse(Data(payload.utf8))
         #expect(quota.primary.windowMinutes == 10_080)
         #expect(quota.secondary == nil)
+    }
+
+    @Test("Two longer token limits remain visible in ascending duration order")
+    func twoLongWindows() throws {
+        let payload = #"{"data":{"limits":[{"type":"TOKENS_LIMIT","unit":1,"number":1,"percentage":20},{"type":"TOKENS_LIMIT","unit":1,"number":30,"percentage":70}]}}"#
+        let quota = try ZAIUsageParser.parse(Data(payload.utf8))
+        #expect(quota.primary.windowMinutes == 1_440)
+        #expect(quota.secondary?.windowMinutes == 43_200)
     }
 
     @Test("The no-coding-plan business response is detected")
@@ -142,8 +152,20 @@ struct ZAIUsageParserTests {
 
     @Test("Subscription list yields the product name")
     func planName() {
-        let payload = #"{"data": [{"productName": "GLM Coding Pro"}]}"#
+        let payload = #"{"data": [{"productName": "GLM Coding Pro", "next_renew_time": "2026-09-01T00:00:00Z"}]}"#
         #expect(ZAIUsageParser.planName(Data(payload.utf8)) == "GLM Coding Pro")
+        #expect(
+            ZAIUsageParser.subscriptionResetAt(Data(payload.utf8))
+                == ISO8601DateFormatter().date(from: "2026-09-01T00:00:00Z")
+        )
+    }
+
+    @Test("limit_type and subscription renewal populate the MCP window")
+    func mcpFallbackReset() throws {
+        let payload = Data(#"{"data":{"limits":[{"limit_type":"TIME_LIMIT","percentage":30}]}}"#.utf8)
+        let reset = try #require(ISO8601DateFormatter().date(from: "2026-09-01T00:00:00Z"))
+        let quota = try ZAIUsageParser.parse(payload, subscriptionResetAt: reset)
+        #expect(quota.scopedWindows?.first?.window.resetsAt == reset)
     }
 }
 
@@ -167,5 +189,29 @@ struct ZAIKeyStoreTests {
         store.homeDirectory = FileManager.default.temporaryDirectory
             .appendingPathComponent("usagedock-zai-missing-\(UUID().uuidString)", isDirectory: true)
         #expect(store.load() == "env-key")
+    }
+}
+
+@Suite("Z.ai region")
+struct ZAIRegionStoreTests {
+    @Test("China aliases select the bigmodel endpoint")
+    func aliases() {
+        #expect(ZAIAPIRegion.parse("bigmodel-cn") == .china)
+        #expect(ZAIAPIRegion.parse("https://open.bigmodel.cn") == .china)
+        #expect(ZAIAPIRegion.parse("global") == .global)
+        #expect(ZAIAPIRegion.china.baseURL.host == "open.bigmodel.cn")
+    }
+
+    @Test("Saved region persists when no environment override exists")
+    func persistence() throws {
+        let suite = "ZAIRegionStoreTests-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        var store = ZAIRegionStore(defaults: defaults)
+        store.environment = [:]
+        store.save(.china)
+        #expect(store.load() == .china)
+        store.environment = ["ZAI_API_REGION": "global"]
+        #expect(store.load() == .global)
     }
 }

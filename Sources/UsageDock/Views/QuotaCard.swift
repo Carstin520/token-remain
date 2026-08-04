@@ -77,6 +77,14 @@ struct QuotaCard: View {
                 Divider().overlay(DashboardTheme.border)
                 ExtraUsageRow(extraUsage: extraUsage)
             }
+            if let balance = quota.accountBalance {
+                Divider().overlay(DashboardTheme.border)
+                AccountBalanceRow(balance: balance)
+            }
+            if let spend = quota.spend, spend.hasValues {
+                Divider().overlay(DashboardTheme.border)
+                ProviderSpendRow(spend: spend)
+            }
             TimelineView(.periodic(from: .now, by: 60)) { context in
                 let isStale = context.date.timeIntervalSince(quota.capturedAt) >= 600
                 Label {
@@ -312,6 +320,61 @@ struct ExtraUsageRow: View {
                 .foregroundStyle(DashboardTheme.secondaryText)
             Spacer(minLength: 8)
             Text(valueText)
+                .numericFont(12, .semibold)
+                .foregroundStyle(DashboardTheme.text)
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// Compact official spend summary used by providers such as OpenRouter. A
+/// missing bucket remains hidden instead of looking like a real $0 reading.
+struct ProviderSpendRow: View {
+    let spend: ProviderSpend
+
+    private var items: [(String, Double)] {
+        [
+            (L10n.text("usage.spend_today"), spend.todayUSD),
+            (L10n.text("quota.spend_week"), spend.weekUSD),
+            (L10n.text("quota.spend_month"), spend.monthUSD),
+            (L10n.text("quota.spend_all_time"), spend.allTimeUSD)
+        ].compactMap { label, value in
+            guard let value, value.isFinite else { return nil }
+            return (label, max(0, value))
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(L10n.text("quota.official_spend"))
+                .font(.system(size: 12))
+                .foregroundStyle(DashboardTheme.secondaryText)
+            ForEach(Array(items.enumerated()), id: \.offset) { _, item in
+                HStack(alignment: .firstTextBaseline) {
+                    Text(item.0)
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(DashboardTheme.secondaryText)
+                    Spacer(minLength: 8)
+                    Text(UsageFormatting.compactUSD(item.1))
+                        .numericFont(10.5, .semibold)
+                        .foregroundStyle(DashboardTheme.text)
+                }
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
+struct AccountBalanceRow: View {
+    let balance: QuotaBalance
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(L10n.text("quota.account_balance"))
+                .font(.system(size: 12))
+                .foregroundStyle(DashboardTheme.secondaryText)
+            Spacer(minLength: 8)
+            Text(balance.displayText)
                 .numericFont(12, .semibold)
                 .foregroundStyle(DashboardTheme.text)
         }

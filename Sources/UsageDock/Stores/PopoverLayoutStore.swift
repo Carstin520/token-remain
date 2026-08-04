@@ -7,6 +7,7 @@ enum PopoverWidget: String, CaseIterable, Codable, Identifiable {
     case cursor
     case grok
     case zai
+    case zaiTeam
     case copilot
     case devin
     case windsurf
@@ -21,6 +22,7 @@ enum PopoverWidget: String, CaseIterable, Codable, Identifiable {
     case kiro
     case volcengine
     case ollama
+    case thirdParty
     case localUsage
     case aiFeed
 
@@ -41,12 +43,14 @@ enum PopoverWidget: String, CaseIterable, Codable, Identifiable {
         case .cursor: return "cursorarrow"
         case .grok: return "bolt"
         case .zai: return "z.square"
+        case .zaiTeam: return "person.3"
         case .copilot: return "airpodsmax"
         case .devin: return "hexagon"
         case .windsurf: return "wind"
         case .openrouter: return "arrow.triangle.branch"
         case .antigravity: return "arrow.up.forward"
         case .opencode: return "terminal"
+        case .thirdParty: return "network"
         case .localUsage: return "chart.donut"
         case .aiFeed: return "newspaper"
         default: return "square.grid.2x2"
@@ -65,6 +69,7 @@ enum PopoverWidget: String, CaseIterable, Codable, Identifiable {
         case .cursor: return .cursor
         case .grok: return .grok
         case .zai: return .zai
+        case .zaiTeam: return .zaiTeam
         case .copilot: return .copilot
         case .devin: return .devin
         case .windsurf: return .windsurf
@@ -79,6 +84,7 @@ enum PopoverWidget: String, CaseIterable, Codable, Identifiable {
         case .kiro: return .kiro
         case .volcengine: return .volcengine
         case .ollama: return .ollama
+        case .thirdParty: return .thirdParty
         case .localUsage, .aiFeed: return nil
         }
     }
@@ -94,15 +100,15 @@ final class PopoverLayoutStore: ObservableObject {
     static let defaultsKey = "tokenRemain.popoverLayout.v1"
     static let defaultOrder: [PopoverWidget] = [
         .claude, .codex, .cursor, .copilot, .devin, .windsurf,
-        .grok, .openrouter, .antigravity, .opencode, .zai,
-        .deepseek, .kimi, .minimax, .mimo, .qoder, .kiro, .volcengine, .ollama,
+        .grok, .openrouter, .antigravity, .opencode, .zai, .zaiTeam,
+        .deepseek, .kimi, .minimax, .mimo, .qoder, .kiro, .volcengine, .ollama, .thirdParty,
         .localUsage, .aiFeed
     ]
     /// 首次出现时默认隐藏的挂件:主流三家之外的 provider 面向少数用户,
     /// 通过 "+" 菜单一键添加,不给其他用户增加弹窗长度。
     static let defaultHidden: Set<PopoverWidget> = [
-        .grok, .zai, .copilot, .devin, .windsurf, .openrouter, .antigravity, .opencode,
-        .deepseek, .kimi, .minimax, .mimo, .qoder, .kiro, .volcengine, .ollama
+        .grok, .zai, .zaiTeam, .copilot, .devin, .windsurf, .openrouter, .antigravity, .opencode,
+        .deepseek, .kimi, .minimax, .mimo, .qoder, .kiro, .volcengine, .ollama, .thirdParty
     ]
 
     @Published private(set) var order: [PopoverWidget]

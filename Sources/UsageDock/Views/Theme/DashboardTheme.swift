@@ -141,6 +141,7 @@ enum DashboardTheme {
         case .cursor: return cursorAccent
         case .grok: return grokAccent
         case .zai: return zaiAccent
+        case .zaiTeam: return Color(hex: 0x5A82D1)
         case .copilot: return copilotAccent
         case .devin: return devinAccent
         case .windsurf: return Color(hex: 0x70AFA6)
@@ -155,6 +156,7 @@ enum DashboardTheme {
         case .kiro: return Color(hex: 0xA292C7)          // muted lavender
         case .volcengine: return Color(hex: 0x6BA3C4)    // muted volcano sky
         case .ollama: return Color(hex: 0xCBD5E1)        // light slate
+        case .thirdParty: return Color(hex: 0x7C91A8)
         }
     }
 

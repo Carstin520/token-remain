@@ -37,25 +37,40 @@ struct OpenRouterUsageService {
             throw ServiceError.missingKey
         }
 
-        let (data, http) = try await Self.get(Self.creditsURL, apiKey: apiKey)
-        switch http.statusCode {
-        case 200..<300:
-            break
-        case 401, 403:
-            throw ServiceError.keyRejected(http.statusCode)
-        default:
-            throw ServiceError.requestFailed(http.statusCode)
+        // The two endpoints expose complementary data and either can remain
+        // useful while the other is temporarily unavailable. Fetch both at
+        // once so a key-level cap never waits on the account credits request.
+        async let creditsAttempt = Self.getResult(Self.creditsURL, apiKey: apiKey)
+        async let keyAttempt = Self.getResult(Self.keyURL, apiKey: apiKey)
+        let (creditsResult, keyResult) = await (creditsAttempt, keyAttempt)
+        let creditsResponse = try? creditsResult.get()
+        let keyResponse = try? keyResult.get()
+
+        let creditsData = creditsResponse.flatMap {
+            (200..<300).contains($0.1.statusCode) ? $0.0 : nil
+        }
+        let keyData = keyResponse.flatMap {
+            (200..<300).contains($0.1.statusCode) ? $0.0 : nil
+        }
+        guard creditsData != nil || keyData != nil else {
+            let statuses = [creditsResponse?.1.statusCode, keyResponse?.1.statusCode].compactMap { $0 }
+            if let rejected = statuses.first(where: { $0 == 401 || $0 == 403 }),
+               statuses.allSatisfy({ $0 == 401 || $0 == 403 }) {
+                throw ServiceError.keyRejected(rejected)
+            }
+            if statuses.isEmpty {
+                if case .failure(let error) = creditsResult { throw error }
+                if case .failure(let error) = keyResult { throw error }
+            }
+            throw ServiceError.requestFailed(statuses.first ?? 0)
         }
 
-        // 计划名(Free tier / Pay as you go)取自 /key,尽力而为。
-        var planName: String?
-        if let (keyData, keyHTTP) = try? await Self.get(Self.keyURL, apiKey: apiKey),
-           (200..<300).contains(keyHTTP.statusCode) {
-            planName = OpenRouterUsageParser.planName(keyData)
-        }
-
-        let quota = try OpenRouterUsageParser.parse(data, planName: planName, now: now)
-        Self.logger.info("OpenRouter quota served by credits API")
+        let quota = try OpenRouterUsageParser.parse(
+            creditsData: creditsData,
+            keyData: keyData,
+            now: now
+        )
+        Self.logger.info("OpenRouter quota served by key and credits APIs")
         return quota
     }
 
@@ -70,48 +85,125 @@ struct OpenRouterUsageService {
         }
         return (data, http)
     }
+
+    private static func getResult(
+        _ url: URL,
+        apiKey: String
+    ) async -> Result<(Data, HTTPURLResponse), Error> {
+        do { return .success(try await get(url, apiKey: apiKey)) }
+        catch { return .failure(error) }
+    }
 }
 
 /// `/v1/credits` 响应(`data.total_credits` 累计充值、`data.total_usage` 累计
 /// 消费,单位美元)→ ProviderQuota。这不是滚动窗口而是终身余额,
 /// windowMinutes 用 0 哨兵表示"累计",无重置时间。
 enum OpenRouterUsageParser {
+    /// Backward-compatible entry point used by cached fixtures and focused
+    /// parser tests that only contain the credits response.
     static func parse(_ data: Data, planName: String? = nil, now: Date = .now) throws -> ProviderQuota {
-        guard let root = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
-              let payload = root["data"] as? [String: Any],
-              let usage = number(payload["total_usage"]) else {
+        try parse(creditsData: data, keyData: nil, planNameOverride: planName, now: now)
+    }
+
+    static func parse(
+        creditsData: Data?,
+        keyData: Data?,
+        planNameOverride: String? = nil,
+        now: Date = .now
+    ) throws -> ProviderQuota {
+        let creditsPayload = creditsData.flatMap(payload)
+        let keyPayload = keyData.flatMap(payload)
+        let keyWindow = keyPayload.flatMap(limitWindow)
+        let creditsWindow = creditsPayload.flatMap(creditsWindow)
+        guard let primary = keyWindow ?? creditsWindow else {
             throw OpenRouterUsageService.ServiceError.invalidResponse
         }
-        let rawCredits = number(payload["total_credits"]) ?? 0
-        let rawUsage = usage
-        let credits = rawCredits.isFinite ? max(0, rawCredits) : 0
-        let safeUsage = rawUsage.isFinite ? max(0, rawUsage) : 0
-        guard credits > 0 else {
-            throw OpenRouterUsageService.ServiceError.noCredits
-        }
-        let remaining = max(0, credits - safeUsage)
+
+        let spend = keyPayload.map(spendSummary).flatMap { $0.hasValues ? $0 : nil }
+        let primaryBalance = primary.remainingBalance
+        let canPublishCreditsWindow = keyWindow.map {
+            $0.windowMinutes != creditsWindow?.windowMinutes
+        } ?? false
         return ProviderQuota(
             provider: .openrouter,
-            primary: QuotaWindow(
-                usedPercent: min(100, max(0, safeUsage / credits * 100)),
-                windowMinutes: 0,
-                resetsAt: nil,
-                remainingBalance: QuotaBalance(amount: remaining, currencyCode: "USD")
-            ),
-            secondary: nil,
-            planName: planName,
+            primary: primary,
+            secondary: canPublishCreditsWindow ? creditsWindow : nil,
+            planName: planNameOverride ?? keyPayload.flatMap(planName),
             capturedAt: now,
-            remainingBalance: QuotaBalance(amount: remaining, currencyCode: "USD")
+            spend: spend,
+            accountBalance: keyWindow != nil && !canPublishCreditsWindow
+                ? creditsWindow?.remainingBalance
+                : nil,
+            remainingBalance: primaryBalance
         )
     }
 
     static func planName(_ data: Data) -> String? {
-        guard let root = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
-              let payload = root["data"] as? [String: Any],
-              let isFree = payload["is_free_tier"] as? Bool else {
+        payload(data).flatMap(planName)
+    }
+
+    private static func payload(_ data: Data) -> [String: Any]? {
+        guard let root = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
             return nil
         }
+        return (root["data"] as? [String: Any]) ?? root
+    }
+
+    private static func planName(_ payload: [String: Any]) -> String? {
+        if payload["is_management_key"] as? Bool == true { return "Management" }
+        guard let isFree = payload["is_free_tier"] as? Bool else { return nil }
         return isFree ? "Free Tier" : "Pay As You Go"
+    }
+
+    private static func limitWindow(_ payload: [String: Any]) -> QuotaWindow? {
+        guard let limit = number(payload["limit"]), limit.isFinite, limit > 0 else { return nil }
+        let rawUsed = number(payload["usage"])
+        let rawRemaining = number(payload["limit_remaining"])
+        guard rawUsed != nil || rawRemaining != nil else { return nil }
+        let used = max(0, rawUsed ?? (limit - (rawRemaining ?? limit)))
+        let remaining = max(0, rawRemaining ?? (limit - used))
+        let reset = (payload["limit_reset"] as? String)?.lowercased()
+        let minutes = switch reset {
+        case "daily": 1_440
+        case "weekly": 10_080
+        case "monthly": 43_200
+        default: 0
+        }
+        return QuotaWindow(
+            usedPercent: min(100, max(0, used / limit * 100)),
+            windowMinutes: minutes,
+            resetsAt: nil,
+            remainingBalance: QuotaBalance(amount: remaining, currencyCode: "USD")
+        )
+    }
+
+    private static func creditsWindow(_ payload: [String: Any]) -> QuotaWindow? {
+        guard let rawCredits = number(payload["total_credits"]), rawCredits.isFinite, rawCredits >= 0,
+              let rawUsage = number(payload["total_usage"]), rawUsage.isFinite, rawUsage >= 0 else {
+            return nil
+        }
+        let credits = max(0, rawCredits)
+        let usage = max(0, rawUsage)
+        let remaining = max(0, credits - usage)
+        return QuotaWindow(
+            usedPercent: credits > 0 ? min(100, max(0, usage / credits * 100)) : 100,
+            windowMinutes: 0,
+            resetsAt: nil,
+            remainingBalance: QuotaBalance(amount: remaining, currencyCode: "USD")
+        )
+    }
+
+    private static func spendSummary(_ payload: [String: Any]) -> ProviderSpend {
+        func amount(_ key: String) -> Double? {
+            guard let value = number(payload[key]), value.isFinite else { return nil }
+            return max(0, value)
+        }
+        return ProviderSpend(
+            todayUSD: amount("usage_daily"),
+            weekUSD: amount("usage_weekly"),
+            monthUSD: amount("usage_monthly"),
+            allTimeUSD: amount("usage")
+        )
     }
 
     private static func number(_ value: Any?) -> Double? {

@@ -104,6 +104,22 @@
 "usage.trend" = "使用トレンド";
 "quota.extra_usage" = "追加利用";
 "quota.spent" = "%@ 使用";
+"quota.official_spend" = "公式の支出";
+"quota.account_balance" = "アカウント残高";
+"quota.spend_week" = "今週";
+"quota.spend_month" = "今月";
+"quota.spend_all_time" = "累計";
+"datasource.zai_region" = "APIリージョン";
+"datasource.zai_region_global" = "グローバル";
+"datasource.zai_region_china" = "中国";
+"service.mimo.cookie_incomplete" = "MiMo には api-platform_serviceToken と userId の両方の Cookie が必要です。";
+"secret.placeholder.zai_team" = "apiKey、organization、project を含む JSON を貼り付け";
+"secret.placeholder.third_party" = "単一アカウントの New API またはカスタム残高 JSON 設定を貼り付け";
+"service.zai_team.config_incomplete" = "GLM Team には apiKey、organization、project が必要です。";
+"service.third_party.config_incomplete" = "有効な単一アカウント JSON 設定が必要です。";
+"datasource.name_third_party" = "サードパーティ API";
+"datasource.detail.zai_team" = "中国リージョンの Team Plan API（設定はローカルキーチェーンに保存）";
+"datasource.detail.third_party" = "New API 互換またはカスタム残高エンドポイント";
 "duration.total" = "累計";
 
 "action.cancel" = "キャンセル";

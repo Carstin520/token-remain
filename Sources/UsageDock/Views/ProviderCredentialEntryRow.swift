@@ -45,6 +45,7 @@ struct ProviderCredentialEntryRow: View {
     @State private var hasStoredCredential: Bool
     @State private var draft = ""
     @State private var isSaving = false
+    @State private var zaiRegion: ZAIAPIRegion
 
     init(
         store: UsageStore,
@@ -57,49 +58,77 @@ struct ProviderCredentialEntryRow: View {
         _hasStoredCredential = State(
             initialValue: ProviderCredentialConfiguration.hasStoredCredential(for: provider)
         )
+        _zaiRegion = State(initialValue: ZAIRegionStore().load())
     }
 
     var body: some View {
-        HStack(spacing: 8) {
-            SecureField(
-                hasStoredCredential
-                    ? L10n.text("datasource.key_saved_placeholder")
-                    : configuration.placeholder,
-                text: $draft
-            )
-            .textFieldStyle(.roundedBorder)
-            .font(.system(size: 11))
-            .disabled(isSaving)
-
-            Button(
-                hasStoredCredential ? L10n.text("action.replace") : L10n.text("action.save")
-            ) {
-                let credential = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-                guard !credential.isEmpty else { return }
-                isSaving = true
-                Task {
-                    await store.saveAPIKey(credential, for: provider)
-                    draft = ""
-                    hasStoredCredential = ProviderCredentialConfiguration.hasStoredCredential(
-                        for: provider
-                    )
-                    isSaving = false
+        VStack(alignment: .leading, spacing: 7) {
+            if provider == .zai {
+                HStack(spacing: 8) {
+                    Text(L10n.text("datasource.zai_region"))
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(DashboardTheme.secondaryText)
+                    Picker(
+                        L10n.text("datasource.zai_region"),
+                        selection: Binding(
+                            get: { zaiRegion },
+                            set: { newRegion in
+                                zaiRegion = newRegion
+                                Task { await store.setZAIRegion(newRegion) }
+                            }
+                        )
+                    ) {
+                        ForEach(ZAIAPIRegion.allCases, id: \.self) { region in
+                            Text(region.displayName).tag(region)
+                        }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.segmented)
+                    .frame(maxWidth: 230)
                 }
             }
-            .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSaving)
 
-            if hasStoredCredential {
-                Button(L10n.text("action.clear")) {
+            HStack(spacing: 8) {
+                SecureField(
+                    hasStoredCredential
+                        ? L10n.text("datasource.key_saved_placeholder")
+                        : configuration.placeholder,
+                    text: $draft
+                )
+                .textFieldStyle(.roundedBorder)
+                .font(.system(size: 11))
+                .disabled(isSaving)
+
+                Button(
+                    hasStoredCredential ? L10n.text("action.replace") : L10n.text("action.save")
+                ) {
+                    let credential = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard !credential.isEmpty else { return }
                     isSaving = true
                     Task {
-                        await store.clearAPIKey(for: provider)
+                        await store.saveAPIKey(credential, for: provider)
+                        draft = ""
                         hasStoredCredential = ProviderCredentialConfiguration.hasStoredCredential(
                             for: provider
                         )
                         isSaving = false
                     }
                 }
-                .disabled(isSaving)
+                .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSaving)
+
+                if hasStoredCredential {
+                    Button(L10n.text("action.clear")) {
+                        isSaving = true
+                        Task {
+                            await store.clearAPIKey(for: provider)
+                            hasStoredCredential = ProviderCredentialConfiguration.hasStoredCredential(
+                                for: provider
+                            )
+                            isSaving = false
+                        }
+                    }
+                    .disabled(isSaving)
+                }
             }
         }
         .controlSize(.small)

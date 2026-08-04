@@ -44,7 +44,15 @@ struct ProviderSecretStore {
         Descriptor(provider: .ollama,
                    envKeys: ["OLLAMA_COOKIE"],
                    placeholder: L10n.text("secret.placeholder.ollama"),
-                   isCookie: true)
+                   isCookie: true),
+        Descriptor(provider: .zaiTeam,
+                   envKeys: ["TOKENREMAIN_ZAI_TEAM_CONFIG"],
+                   placeholder: L10n.text("secret.placeholder.zai_team"),
+                   isCookie: false),
+        Descriptor(provider: .thirdParty,
+                   envKeys: ["TOKENREMAIN_THIRD_PARTY_CONFIG"],
+                   placeholder: L10n.text("secret.placeholder.third_party"),
+                   isCookie: false)
     ]
 
     static func descriptor(for provider: ProviderQuota.Provider) -> Descriptor? {

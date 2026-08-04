@@ -105,6 +105,22 @@
 "usage.trend" = "用量趨勢";
 "quota.extra_usage" = "額外用量";
 "quota.spent" = "已花 %@";
+"quota.official_spend" = "官方消費";
+"quota.account_balance" = "帳戶餘額";
+"quota.spend_week" = "本週";
+"quota.spend_month" = "本月";
+"quota.spend_all_time" = "累計";
+"datasource.zai_region" = "API 區域";
+"datasource.zai_region_global" = "全球";
+"datasource.zai_region_china" = "中國";
+"service.mimo.cookie_incomplete" = "MiMo Cookie 必須同時包含 api-platform_serviceToken 和 userId。";
+"secret.placeholder.zai_team" = "貼上包含 apiKey、organization、project 的 JSON";
+"secret.placeholder.third_party" = "貼上單帳號 New API 或自訂餘額 JSON 設定";
+"service.zai_team.config_incomplete" = "GLM Team 需要在一個 JSON 物件中提供 apiKey、organization 和 project。";
+"service.third_party.config_incomplete" = "第三方 API 需要有效的單帳號 JSON 設定。";
+"datasource.name_third_party" = "第三方 API";
+"datasource.detail.zai_team" = "中國區 Team Plan API（設定僅存本機鑰匙圈）";
+"datasource.detail.third_party" = "New API 相容或自訂餘額端點（設定僅存本機鑰匙圈）";
 "duration.total" = "累計";
 
 "action.cancel" = "取消";

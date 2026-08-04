@@ -29,16 +29,30 @@ struct ZAIUsageService {
         }
     }
 
-    private static let quotaURL = URL(string: "https://api.z.ai/api/monitor/usage/quota/limit")!
-    private static let subscriptionURL = URL(string: "https://api.z.ai/api/biz/subscription/list")!
+    private static let quotaPath = "/api/monitor/usage/quota/limit"
+    private static let subscriptionPath = "/api/biz/subscription/list"
     private static let logger = Logger(subsystem: "com.jamesli.usagedock", category: "ZAIUsage")
+
+    var region: ZAIAPIRegion = ZAIRegionStore().load()
 
     func fetch(now: Date = .now) async throws -> ProviderQuota {
         guard let apiKey = ZAIKeyStore().load() else {
             throw ServiceError.missingKey
         }
 
-        let (data, http) = try await Self.get(Self.quotaURL, apiKey: apiKey)
+        // Region is an explicit privacy boundary: never retry the credential
+        // against the other jurisdiction's host without a user action.
+        return try await fetch(apiKey: apiKey, region: region, now: now)
+    }
+
+    private func fetch(
+        apiKey: String,
+        region: ZAIAPIRegion,
+        now: Date
+    ) async throws -> ProviderQuota {
+        let quotaURL = region.baseURL.appending(path: Self.quotaPath)
+        let subscriptionURL = region.baseURL.appending(path: Self.subscriptionPath)
+        let (data, http) = try await Self.get(quotaURL, apiKey: apiKey)
         switch http.statusCode {
         case 200..<300:
             break
@@ -53,13 +67,20 @@ struct ZAIUsageService {
 
         // 计划名尽力而为,失败不影响额度本身。
         var planName: String?
-        if let (subData, subHTTP) = try? await Self.get(Self.subscriptionURL, apiKey: apiKey),
+        var subscriptionResetAt: Date?
+        if let (subData, subHTTP) = try? await Self.get(subscriptionURL, apiKey: apiKey),
            (200..<300).contains(subHTTP.statusCode) {
             planName = ZAIUsageParser.planName(subData)
+            subscriptionResetAt = ZAIUsageParser.subscriptionResetAt(subData)
         }
 
-        let quota = try ZAIUsageParser.parse(data, planName: planName, now: now)
-        Self.logger.info("Z.ai quota served by monitor API")
+        let quota = try ZAIUsageParser.parse(
+            data,
+            planName: planName,
+            subscriptionResetAt: subscriptionResetAt,
+            now: now
+        )
+        Self.logger.info("Z.ai quota served by monitor API in \(region.rawValue, privacy: .public) region")
         return quota
     }
 
@@ -77,11 +98,16 @@ struct ZAIUsageService {
 }
 
 /// `/api/monitor/usage/quota/limit` 响应 → ProviderQuota。`data.limits` 数组里
-/// `TOKENS_LIMIT` 条目的窗口由 `(unit, number)` 编码(unit 3=小时、4=天、
-/// 6=周、5=月):亚天级窗口作 5 小时式会话主窗口,多天窗口作周级副窗口;
+/// `TOKENS_LIMIT` 条目的窗口由 `(unit, number)` 编码(unit 5=分钟、3=小时、
+/// 1/4=天、6=周):亚天级窗口作 5 小时式会话主窗口,多天窗口作周级副窗口;
 /// `percentage` 为已用百分比,`nextResetTime` 为 epoch 毫秒。
 enum ZAIUsageParser {
-    static func parse(_ data: Data, planName: String? = nil, now: Date = .now) throws -> ProviderQuota {
+    static func parse(
+        _ data: Data,
+        planName: String? = nil,
+        subscriptionResetAt: Date? = nil,
+        now: Date = .now
+    ) throws -> ProviderQuota {
         guard let root = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
             throw ZAIUsageService.ServiceError.invalidResponse
         }
@@ -90,23 +116,53 @@ enum ZAIUsageParser {
             throw ZAIUsageService.ServiceError.invalidResponse
         }
 
-        var session: QuotaWindow?
-        var weekly: QuotaWindow?
+        var tokenWindows: [QuotaWindow] = []
+        var scopedWindows: [ScopedQuotaWindow] = []
         for entry in limits {
-            let type = (entry["type"] as? String) ?? (entry["name"] as? String)
-            guard type == "TOKENS_LIMIT",
-                  let minutes = windowMinutes(entry),
-                  let window = window(entry, minutes: minutes) else {
-                continue
-            }
-            if minutes < 24 * 60 {
-                if session == nil { session = window }
-            } else if weekly == nil {
-                weekly = window
+            let type = (
+                (entry["type"] as? String)
+                    ?? (entry["limit_type"] as? String)
+                    ?? (entry["name"] as? String)
+                    ?? ""
+            )
+                .uppercased()
+            if type == "TOKENS_LIMIT",
+               let minutes = windowMinutes(entry),
+               let quotaWindow = window(entry, minutes: minutes) {
+                tokenWindows.append(quotaWindow)
+            } else if type == "TIME_LIMIT",
+                      let quotaWindow = window(
+                          entry,
+                          minutes: 43_200,
+                          fallbackResetAt: subscriptionResetAt
+                      ) {
+                scopedWindows.append(
+                    ScopedQuotaWindow(
+                        scopeID: "zai_mcp_monthly",
+                        displayName: "MCP",
+                        window: quotaWindow
+                    )
+                )
             }
         }
 
-        guard let primary = session ?? weekly else {
+        tokenWindows.sort { $0.windowMinutes < $1.windowMinutes }
+        var seenWindowMinutes = Set<Int>()
+        tokenWindows = tokenWindows.filter { seenWindowMinutes.insert($0.windowMinutes).inserted }
+        let session: QuotaWindow?
+        let weekly: QuotaWindow?
+        if tokenWindows.count >= 2 {
+            session = tokenWindows.first
+            weekly = tokenWindows.last
+        } else if let only = tokenWindows.first, only.windowMinutes <= 6 * 60 {
+            session = only
+            weekly = nil
+        } else {
+            session = nil
+            weekly = tokenWindows.first
+        }
+
+        guard let primary = session ?? weekly ?? scopedWindows.first?.window else {
             throw ZAIUsageService.ServiceError.invalidResponse
         }
         return ProviderQuota(
@@ -114,7 +170,8 @@ enum ZAIUsageParser {
             primary: primary,
             secondary: session == nil ? nil : weekly,
             planName: planName,
-            capturedAt: now
+            capturedAt: now,
+            scopedWindows: scopedWindows.isEmpty ? nil : scopedWindows
         )
     }
 
@@ -140,16 +197,35 @@ enum ZAIUsageParser {
         return name
     }
 
+    static func subscriptionResetAt(_ data: Data) -> Date? {
+        guard let root = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+              let list = root["data"] as? [[String: Any]],
+              let first = list.first else {
+            return nil
+        }
+        let value = first["next_renew_time"] ?? first["nextRenewTime"]
+        if let timestamp = number(value) {
+            return Date(timeIntervalSince1970: timestamp < 20_000_000_000 ? timestamp : timestamp / 1000)
+        }
+        guard let raw = value as? String else { return nil }
+        let normalized = raw.replacingOccurrences(of: " ", with: "T")
+        let fractional = ISO8601DateFormatter()
+        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return fractional.date(from: normalized)
+            ?? ISO8601DateFormatter().date(from: normalized)
+            ?? ISO8601DateFormatter().date(from: "\(normalized)Z")
+    }
+
     private static func windowMinutes(_ entry: [String: Any]) -> Int? {
         guard let unit = number(entry["unit"]), let count = number(entry["number"]), count > 0 else {
             return nil
         }
         let unitMinutes: Double
         switch unit {
+        case 1, 4: unitMinutes = 24 * 60
         case 3: unitMinutes = 60
-        case 4: unitMinutes = 24 * 60
+        case 5: unitMinutes = 1
         case 6: unitMinutes = 7 * 24 * 60
-        case 5: unitMinutes = 30 * 24 * 60
         default: return nil
         }
         let minutes = unitMinutes * count
@@ -157,9 +233,29 @@ enum ZAIUsageParser {
         return Int(minutes)
     }
 
-    private static func window(_ entry: [String: Any], minutes: Int) -> QuotaWindow? {
-        guard let percent = number(entry["percentage"]) else { return nil }
-        let resetsAt = number(entry["nextResetTime"]).map { Date(timeIntervalSince1970: $0 / 1000) }
+    private static func window(
+        _ entry: [String: Any],
+        minutes: Int,
+        fallbackResetAt: Date? = nil
+    ) -> QuotaWindow? {
+        let percent: Double?
+        if let total = number(entry["usage"]), total > 0 {
+            let remaining = number(entry["remaining"])
+            let current = number(entry["currentValue"] ?? entry["current_value"])
+            if remaining != nil || current != nil {
+                let usedFromRemaining = remaining.map { total - $0 }
+                let used = max(0, min(total, max(usedFromRemaining ?? 0, current ?? 0)))
+                percent = used / total * 100
+            } else {
+                percent = number(entry["percentage"] ?? entry["usedPercent"] ?? entry["used_percent"])
+            }
+        } else {
+            percent = number(entry["percentage"] ?? entry["usedPercent"] ?? entry["used_percent"])
+        }
+        guard let percent else { return nil }
+        let resetsAt = number(entry["nextResetTime"] ?? entry["next_reset_time"]).map {
+            Date(timeIntervalSince1970: $0 < 20_000_000_000 ? $0 : $0 / 1000)
+        } ?? fallbackResetAt
         return QuotaWindow(
             usedPercent: min(100, max(0, percent)),
             windowMinutes: minutes,
@@ -171,6 +267,54 @@ enum ZAIUsageParser {
         if let number = value as? NSNumber { return number.doubleValue }
         if let text = value as? String { return Double(text) }
         return nil
+    }
+}
+
+enum ZAIAPIRegion: String, CaseIterable, Sendable {
+    case global
+    case china
+
+    var baseURL: URL {
+        switch self {
+        case .global: URL(string: "https://api.z.ai")!
+        case .china: URL(string: "https://open.bigmodel.cn")!
+        }
+    }
+
+    var displayName: String {
+        switch self {
+        case .global: L10n.text("datasource.zai_region_global")
+        case .china: L10n.text("datasource.zai_region_china")
+        }
+    }
+
+    static func parse(_ value: String?) -> Self? {
+        guard let raw = value?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
+              !raw.isEmpty else { return nil }
+        if raw == "cn" || raw == "china" || raw == "bigmodel" || raw == "bigmodel-cn"
+            || raw.contains("bigmodel.cn") {
+            return .china
+        }
+        if raw == "global" || raw.contains("api.z.ai") { return .global }
+        return nil
+    }
+}
+
+struct ZAIRegionStore {
+    static let defaultsKey = "tokenRemain.zai.apiRegion.v1"
+
+    var defaults: UserDefaults = .standard
+    var environment: [String: String] = ProcessInfo.processInfo.environment
+
+    func load() -> ZAIAPIRegion {
+        for key in ["ZAI_API_REGION", "Z_AI_API_REGION", "Z_AI_API_HOST", "ZAI_API_HOST"] {
+            if let region = ZAIAPIRegion.parse(environment[key]) { return region }
+        }
+        return ZAIAPIRegion.parse(defaults.string(forKey: Self.defaultsKey)) ?? .global
+    }
+
+    func save(_ region: ZAIAPIRegion) {
+        defaults.set(region.rawValue, forKey: Self.defaultsKey)
     }
 }
 
@@ -187,8 +331,8 @@ struct ZAIKeyStore {
     }
 
     func load() -> String? {
-        if let key = normalized(environment["ZAI_API_KEY"]) {
-            return key
+        for name in ["ZAI_API_KEY", "Z_AI_API_KEY", "GLM_API_KEY", "ZHIPU_API_KEY"] {
+            if let key = normalized(environment[name]) { return key }
         }
         let configFile = homeDirectory.appending(path: ".config/zai/key.json")
         if let text = try? String(contentsOf: configFile, encoding: .utf8),

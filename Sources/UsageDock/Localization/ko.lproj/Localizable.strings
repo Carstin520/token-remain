@@ -104,6 +104,22 @@
 "usage.trend" = "사용 추이";
 "quota.extra_usage" = "추가 사용";
 "quota.spent" = "%@ 사용";
+"quota.official_spend" = "공식 지출";
+"quota.account_balance" = "계정 잔액";
+"quota.spend_week" = "이번 주";
+"quota.spend_month" = "이번 달";
+"quota.spend_all_time" = "전체 기간";
+"datasource.zai_region" = "API 리전";
+"datasource.zai_region_global" = "글로벌";
+"datasource.zai_region_china" = "중국";
+"service.mimo.cookie_incomplete" = "MiMo에는 api-platform_serviceToken 및 userId 쿠키가 모두 필요합니다.";
+"secret.placeholder.zai_team" = "apiKey, organization, project가 포함된 JSON 붙여넣기";
+"secret.placeholder.third_party" = "단일 계정 New API 또는 사용자 지정 잔액 JSON 설정 붙여넣기";
+"service.zai_team.config_incomplete" = "GLM Team에는 apiKey, organization, project가 필요합니다.";
+"service.third_party.config_incomplete" = "유효한 단일 계정 JSON 설정이 필요합니다.";
+"datasource.name_third_party" = "타사 API";
+"datasource.detail.zai_team" = "중국 리전 Team Plan API(설정은 로컬 키체인에 저장)";
+"datasource.detail.third_party" = "New API 호환 또는 사용자 지정 잔액 엔드포인트";
 "duration.total" = "누적";
 
 "action.cancel" = "취소";

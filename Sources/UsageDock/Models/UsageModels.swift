@@ -56,6 +56,22 @@ struct ExtraUsage: Sendable, Codable, Equatable {
     let monthlyLimitUSD: Double?
 }
 
+/// Provider-reported API spend buckets. These are account aggregates rather
+/// than TokenRemain's local ccusage estimates, so keep them attached to the
+/// official provider snapshot and never infer missing buckets as zero.
+struct ProviderSpend: Sendable, Codable, Equatable {
+    let todayUSD: Double?
+    let weekUSD: Double?
+    let monthUSD: Double?
+    let allTimeUSD: Double?
+
+    var hasValues: Bool {
+        [todayUSD, weekUSD, monthUSD, allTimeUSD].contains { value in
+            value?.isFinite == true
+        }
+    }
+}
+
 /// Saved Codex rate-limit resets reported by ChatGPT's official usage endpoint.
 /// `applicableAvailableCount` can be lower than the banked total when only part
 /// of the balance applies to the user's current workspace or limit state.
@@ -71,6 +87,12 @@ struct ProviderQuota: Sendable, Codable {
     let planName: String?
     let capturedAt: Date
     var extraUsage: ExtraUsage? = nil
+    /// Optional so older cached snapshots continue to decode unchanged.
+    var spend: ProviderSpend? = nil
+    /// A provider-wide wallet that is distinct from any individual rate-limit
+    /// window. Kept out of mobile sync until the shared schema has an explicit
+    /// balance field instead of overloading duplicate zero-minute windows.
+    var accountBalance: QuotaBalance? = nil
     /// Optional so existing cached snapshots decode without a schema migration.
     var scopedWindows: [ScopedQuotaWindow]? = nil
     /// Legacy primary-window field retained so existing caches stay compatible.
@@ -123,6 +145,8 @@ struct ProviderQuota: Sendable, Codable {
             planName: planName,
             capturedAt: capturedAt,
             extraUsage: extraUsage,
+            spend: spend,
+            accountBalance: accountBalance,
             scopedWindows: merged.isEmpty ? nil : merged,
             remainingBalance: remainingBalance,
             codexResetCredits: codexResetCredits
@@ -153,6 +177,7 @@ struct ProviderQuota: Sendable, Codable {
         case cursor = "Cursor"
         case grok = "Grok"
         case zai = "Z.ai"
+        case zaiTeam = "GLM Team"
         case copilot = "Copilot"
         case devin = "Devin"
         case windsurf = "Windsurf"
@@ -167,13 +192,14 @@ struct ProviderQuota: Sendable, Codable {
         case kiro = "Kiro"
         case volcengine = "Volcengine"
         case ollama = "Ollama"
+        case thirdParty = "Third-party APIs"
 
         /// UI 展示与遍历用的稳定顺序(nonisolated,供任何上下文使用)。
         static let displayOrder: [Provider] = [
             .claude, .codex, .cursor, .copilot, .devin, .windsurf,
-            .grok, .openrouter, .antigravity, .opencode, .zai,
+            .grok, .openrouter, .antigravity, .opencode, .zai, .zaiTeam,
             .deepseek, .kimi, .minimax, .mimo, .qoder,
-            .kiro, .volcengine, .ollama
+            .kiro, .volcengine, .ollama, .thirdParty
         ]
 
         /// UI 里的短名(rawValue 保留历史值以兼容缓存/持久化)。
@@ -184,6 +210,7 @@ struct ProviderQuota: Sendable, Codable {
             case .cursor: return "Cursor"
             case .grok: return "Grok"
             case .zai: return "Z.ai"
+            case .zaiTeam: return "GLM Team"
             case .copilot: return "Copilot"
             case .devin: return "Devin"
             case .windsurf: return "Windsurf"
@@ -198,6 +225,7 @@ struct ProviderQuota: Sendable, Codable {
             case .kiro: return "Kiro"
             case .volcengine: return "Volcengine"
             case .ollama: return "Ollama"
+            case .thirdParty: return "Third-party"
             }
         }
     }
@@ -534,6 +562,7 @@ extension ProviderQuota.Provider {
         case .cursor: "cursor"
         case .grok: "grok"
         case .zai: "zai"
+        case .zaiTeam: "zaiteam"
         case .copilot: "copilot"
         case .devin: "devin"
         case .windsurf: "windsurf"
@@ -548,6 +577,7 @@ extension ProviderQuota.Provider {
         case .kiro: "kiro"
         case .volcengine: "volcengine"
         case .ollama: "ollama"
+        case .thirdParty: "thirdparty"
         }
     }
 }

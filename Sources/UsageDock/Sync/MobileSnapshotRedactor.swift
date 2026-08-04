@@ -138,6 +138,7 @@ enum MobileSnapshotRedactor {
         case .cursor: "cursor"
         case .grok: "grok"
         case .zai: "zai"
+        case .zaiTeam: "zaiteam"
         case .copilot: "copilot"
         case .devin: "devin"
         case .windsurf: "windsurf"
@@ -152,6 +153,7 @@ enum MobileSnapshotRedactor {
         case .kiro: "kiro"
         case .volcengine: "volcengine"
         case .ollama: "ollama"
+        case .thirdParty: "thirdparty"
         }
     }
 }

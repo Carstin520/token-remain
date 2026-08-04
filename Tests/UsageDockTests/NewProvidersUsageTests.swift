@@ -141,11 +141,37 @@ struct OpenRouterUsageParserTests {
         #expect(quota.planName == "Pay As You Go")
     }
 
-    @Test("Zero purchased credits is a guidance error, not a fake meter")
-    func zeroCredits() {
-        #expect(throws: (any Error).self) {
-            try OpenRouterUsageParser.parse(Data(#"{"data": {"total_credits": 0, "total_usage": 0}}"#.utf8))
-        }
+    @Test("Zero purchased credits is a real depleted balance")
+    func zeroCredits() throws {
+        let quota = try OpenRouterUsageParser.parse(
+            Data(#"{"data": {"total_credits": 0, "total_usage": 0}}"#.utf8)
+        )
+        #expect(quota.primary.usedPercent == 100)
+        #expect(quota.primary.remainingBalance == QuotaBalance(amount: 0, currencyCode: "USD"))
+    }
+
+    @Test("Key limit, credits, plan, and spend buckets are preserved together")
+    func parsesKeyDetails() throws {
+        let credits = Data(#"{"data": {"total_credits": 100, "total_usage": 25}}"#.utf8)
+        let key = Data(#"{"data": {"limit": 40, "usage": 10, "limit_remaining": 30, "limit_reset": "weekly", "is_free_tier": false, "usage_daily": 1.5, "usage_weekly": 4, "usage_monthly": 9}}"#.utf8)
+        let quota = try OpenRouterUsageParser.parse(creditsData: credits, keyData: key)
+        #expect(quota.primary.windowMinutes == 10_080)
+        #expect(quota.primary.usedPercent == 25)
+        #expect(quota.primary.remainingBalance == QuotaBalance(amount: 30, currencyCode: "USD"))
+        #expect(quota.secondary?.windowMinutes == 0)
+        #expect(quota.secondary?.remainingBalance == QuotaBalance(amount: 75, currencyCode: "USD"))
+        #expect(quota.planName == "Pay As You Go")
+        #expect(quota.spend == ProviderSpend(todayUSD: 1.5, weekUSD: 4, monthUSD: 9, allTimeUSD: 10))
+    }
+
+    @Test("A key limit without cadence does not duplicate the lifetime credits window")
+    func avoidsDuplicateLifetimeWindows() throws {
+        let credits = Data(#"{"data":{"total_credits":20,"total_usage":5}}"#.utf8)
+        let key = Data(#"{"data":{"limit":10,"usage":2}}"#.utf8)
+        let quota = try OpenRouterUsageParser.parse(creditsData: credits, keyData: key)
+        #expect(quota.primary.windowMinutes == 0)
+        #expect(quota.secondary == nil)
+        #expect(quota.accountBalance == QuotaBalance(amount: 15, currencyCode: "USD"))
     }
 
     @Test("The zero-minute window renders as a lifetime label")
@@ -233,6 +259,9 @@ struct OpenCodeUsageMathTests {
         #expect(quota.primary.remainingBalance == QuotaBalance(amount: 9, currencyCode: "USD"))
         #expect(quota.secondary != nil)
         #expect(quota.secondary?.remainingBalance == QuotaBalance(amount: 21, currencyCode: "USD"))
+        let monthly = quota.scopedWindows?.first(where: { $0.scopeID == "opencode_monthly" })
+        #expect(monthly?.window.remainingBalance == QuotaBalance(amount: 51, currencyCode: "USD"))
+        #expect(monthly?.window.resetsAt != nil)
         #expect(quota.planName == "Go")
     }
 
@@ -242,5 +271,29 @@ struct OpenCodeUsageMathTests {
         let rows = OpenCodeUsageService.parseRows(output)
         #expect(rows.count == 2)
         #expect(rows[0].cost == 1.25)
+    }
+
+    @Test("Anchored monthly boundaries retain the subscription day")
+    func anchoredMonth() {
+        let anchor = Date(timeIntervalSince1970: 1_766_243_700) // 2025-12-20 12:35 UTC
+        let now = Date(timeIntervalSince1970: 1_770_000_000)
+        let bounds = OpenCodeUsageService.monthBounds(
+            nowMs: now.timeIntervalSince1970 * 1000,
+            anchorMs: anchor.timeIntervalSince1970 * 1000
+        )
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        #expect(calendar.component(.day, from: Date(timeIntervalSince1970: bounds.startMs / 1000)) == 20)
+        #expect(calendar.component(.day, from: Date(timeIntervalSince1970: bounds.endMs / 1000)) == 20)
+    }
+
+    @Test("An idle session has no moving synthetic reset timestamp")
+    func idleSessionReset() {
+        let now = Date(timeIntervalSince1970: 1_784_000_000)
+        let quota = OpenCodeUsageService.quota(
+            costs: [(now.timeIntervalSince1970 * 1000 - 8 * 3_600_000, 2)],
+            now: now
+        )
+        #expect(quota.primary.resetsAt == nil)
     }
 }

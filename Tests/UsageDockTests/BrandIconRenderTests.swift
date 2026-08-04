@@ -4,10 +4,10 @@ import Testing
 
 @Suite("Brand icon rendering")
 struct BrandIconRenderTests {
-    @Test("Every non-Claude/Codex provider has one distinct bundled brand asset")
+    @Test("Branded providers have explicit artwork; shared products reuse only their real brand")
     func authenticArtworkCoverage() throws {
         let resourceProviders = ProviderQuota.Provider.displayOrder.filter {
-            $0 != .claude && $0 != .codex
+            $0 != .claude && $0 != .codex && $0 != .thirdParty
         }
         var resourceNames = Set<String>()
 
@@ -16,10 +16,12 @@ struct BrandIconRenderTests {
                 BrandIcon.artwork(for: provider),
                 "\(provider.displayName) is missing an explicit brand artwork mapping"
             )
-            #expect(
-                resourceNames.insert(artwork.resourceName).inserted,
-                "\(provider.displayName) reuses another provider's brand resource"
-            )
+            let inserted = resourceNames.insert(artwork.resourceName).inserted
+            if provider == .zaiTeam {
+                #expect(!inserted && artwork.resourceName == "zai")
+            } else {
+                #expect(inserted, "\(provider.displayName) reuses another provider's brand resource")
+            }
 
             let resourceURL = try #require(
                 BrandIcon.resourceURL(for: artwork),
@@ -29,7 +31,8 @@ struct BrandIconRenderTests {
             #expect(FileManager.default.fileExists(atPath: resourceURL.path))
         }
 
-        #expect(resourceNames.count == resourceProviders.count)
+        #expect(resourceNames.count == resourceProviders.count - 1)
+        #expect(BrandIcon.artwork(for: .thirdParty) == nil)
     }
 
     @Test("Menu-bar brand images render with visible content for every provider")
