@@ -1,0 +1,99 @@
+name: Windows validation
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - codex/windows-multidevice-adapter
+    paths:
+      - "windows/**"
+      - ".github/workflows/windows-validation.yml"
+  pull_request:
+    paths:
+      - "windows/**"
+      - ".github/workflows/windows-validation.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows 11 ARM64
+            runner: windows-11-arm
+          - name: Windows Server 2025 x64
+            runner: windows-2025
+
+    defaults:
+      run:
+        working-directory: windows
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: windows/package-lock.json
+
+      - name: Show runner environment
+        shell: pwsh
+        run: |
+          node --version
+          npm --version
+          Write-Host "Runner architecture: $env:RUNNER_ARCH"
+          Get-ComputerInfo | Select-Object WindowsProductName, WindowsVersion, OsBuildNumber, OsArchitecture
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests and production build
+        run: npm run check
+
+      - name: Build NSIS and portable packages
+        run: npm run dist:win
+
+      - name: Verify package files
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $packages = @(Get-ChildItem release -File -Filter "*.exe")
+          if (-not ($packages.Name -like "*Setup*.exe")) {
+            throw "NSIS installer was not produced"
+          }
+          if (-not ($packages.Name -notlike "*Setup*.exe")) {
+            throw "Portable executable was not produced"
+          }
+          $packages | ForEach-Object {
+            $hash = Get-FileHash $_.FullName -Algorithm SHA256
+            Write-Host "$($_.Name) $($_.Length) bytes SHA256=$($hash.Hash)"
+          }
+
+      - name: Smoke-test install, launch, uninstall, and portable app
+        shell: pwsh
+        run: ./scripts/ci-windows-smoke.ps1
+
+      - name: Upload Windows packages
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tokenremain-${{ matrix.runner }}
+          if-no-files-found: ignore
+          retention-days: 7
+          path: |
+            windows/release/*.exe
+            windows/release/*.blockmap
+            windows/release/builder-effective-config.yaml
