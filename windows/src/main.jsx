@@ -14,7 +14,7 @@ const SECTIONS = {
   overview: { title: "Overview", subtitle: "Quota risk, today's usage, and estimated cost" },
   limits: { title: "Limits", subtitle: "Every active official quota window" },
   devices: { title: "Devices", subtitle: "Direct, encrypted sync on your local network" },
-  settings: { title: "Settings", subtitle: "Windows collection and privacy" },
+  settings: { title: "Settings", subtitle: "Direct sync, Windows collection, and privacy" },
 };
 const api = window.tokenRemain ?? (import.meta.env.DEV ? createPreviewAPI() : undefined);
 
@@ -50,7 +50,7 @@ function App() {
         {section === "overview" && <Overview state={state} onSelect={setSection} onOpen={openExternal} />}
         {section === "limits" && <Limits state={state} />}
         {section === "devices" && <Devices state={state} action={action} />}
-        {section === "settings" && <Settings state={state} />}
+        {section === "settings" && <Settings state={state} onSelect={setSection} />}
       </main>
     </div>
   );
@@ -133,7 +133,6 @@ function Overview({ state, onSelect, onOpen }) {
         <TrendingCard state={state} onOpen={onOpen} />
         <RiskNotes risk={risk} />
       </div>
-      <DirectSyncPanel state={state} onManage={() => onSelect("devices")} />
     </section>
   );
 }
@@ -381,9 +380,10 @@ function Devices({ state, action }) {
   );
 }
 
-function Settings() {
+function Settings({ state, onSelect }) {
   return (
-    <section className="content-section">
+    <section className="content-section settings-section">
+      <DirectSyncPanel state={state} onManage={() => onSelect("devices")} />
       <div className="settings-card policy-list"><Info label="Refresh interval" value="1 minute" /><Info label="Credential access" value="Read-only local CLI files" /><Info label="Sync transport" value="Encrypted LAN snapshots" /><Info label="CloudKit / phone sync" value="Not used in this Windows branch" /></div>
     </section>
   );

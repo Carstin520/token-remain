@@ -158,6 +158,8 @@ header p { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
 .manage-devices svg { width: 18px; height: 18px; }
 .manage-devices svg:first-child { color: var(--muted); }
 .settings-card { margin-bottom: 15px; padding: 21px; }
+.settings-section { display: grid; gap: 16px; }
+.settings-section .settings-card { margin-bottom: 0; }
 .card-heading { display: flex; justify-content: space-between; align-items: center; }
 .healthy { display: flex; align-items: center; gap: 7px; color: var(--green); font-size: 11px; font-weight: 600; }
 .muted { color: var(--muted); font-size: 11px; }
