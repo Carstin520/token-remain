@@ -564,6 +564,10 @@
 "trends.unpriced_history_format" = "以下模型缺少价格，历史成本趋势不完整：%1$@";
 "action.close" = "关闭";
 "settings.quota_details" = "额度明细";
+"settings.quota_summary_title" = "额度摘要显示";
+"settings.quota_summary_hint" = "选择菜单栏、Dock 与 Dashboard 摘要优先显示哪个账号级额度窗口；模型专属额度不参与。";
+"settings.quota_summary_shortest" = "最短窗口（默认）";
+"settings.quota_summary_tightest" = "剩余额度最低";
 "settings.antigravity_3p" = "显示 Antigravity 第三方额度池";
 "settings.antigravity_3p_hint" = "显示可选的 Claude/第三方 5 小时与周额度；默认隐藏。";
 "trends.model_other_format" = "其他（%1$d 个模型）";

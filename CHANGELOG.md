@@ -5,6 +5,12 @@ Versioning for public releases.
 
 ## 1.2.9 — 2026-08-06
 
+### Added
+
+- Add a persistent quota-summary preference: default to the shortest
+  account-wide window, or optionally show the account-wide window with the
+  least remaining quota across the menu bar, Dock, and Dashboard summaries.
+
 ### Fixed
 
 - Keep Claude account-wide quota summaries consistent across the Dashboard,

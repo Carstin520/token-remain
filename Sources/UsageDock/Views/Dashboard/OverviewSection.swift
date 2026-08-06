@@ -9,6 +9,7 @@ struct OverviewSection: View {
     let isCCUsageRefreshing: Bool
     let onRetryCCUsage: () -> Void
     @ObservedObject var feedStore: AIFeedStore
+    @ObservedObject var preferences: PreferencesStore = .shared
     let errorMessage: String?
 
     var body: some View {
@@ -121,7 +122,7 @@ struct OverviewSection: View {
                 TagPill(text: "LIVE", color: DashboardTheme.codex, background: DashboardTheme.surface2)
             }
         } content: {
-            let rows = officialQuotaProviders.compactMap { scarcestWindow(for: $0) }
+            let rows = officialQuotaProviders.compactMap { summaryWindow(for: $0) }
 
             if rows.isEmpty {
                 EmptyStateView(
@@ -157,11 +158,14 @@ struct OverviewSection: View {
         for fallback in fallbacks where !candidates.contains(fallback) {
             candidates.append(fallback)
         }
-        return Array(candidates.filter { scarcestWindow(for: $0) != nil }.prefix(2))
+        return Array(candidates.filter { summaryWindow(for: $0) != nil }.prefix(2))
     }
 
-    private func scarcestWindow(for provider: ProviderQuota.Provider) -> UsageInsights.Window? {
-        insights.scarcestGeneralWindow(for: provider)
+    private func summaryWindow(for provider: ProviderQuota.Provider) -> UsageInsights.Window? {
+        insights.summaryGeneralWindow(
+            for: provider,
+            strategy: preferences.quotaSummaryStrategy
+        )
     }
 
     // MARK: - Risk detail (real)
@@ -221,7 +225,7 @@ struct OverviewSection: View {
     }
 }
 
-/// A provider's scarcest window shown as a mini progress summary.
+/// A provider's selected account-level window shown as a mini progress summary.
 private struct OfficialQuotaRow: View {
     let window: UsageInsights.Window
 

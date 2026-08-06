@@ -76,11 +76,11 @@ final class TokenRemainLogoTests: XCTestCase {
         )
     }
 
-    func testMenuBarSummaryUsesTightestGeneralWindowAndIgnoresFableQuota() {
+    func testMenuBarSummaryDefaultsToShortestGeneralWindowAndIgnoresFableQuota() {
         let claude = ProviderQuota(
             provider: .claude,
-            primary: QuotaWindow(usedPercent: 20, windowMinutes: 300, resetsAt: nil),
-            secondary: QuotaWindow(usedPercent: 29, windowMinutes: 10_080, resetsAt: nil),
+            primary: QuotaWindow(usedPercent: 11, windowMinutes: 300, resetsAt: nil),
+            secondary: QuotaWindow(usedPercent: 28, windowMinutes: 10_080, resetsAt: nil),
             planName: nil,
             capturedAt: .now,
             scopedWindows: [
@@ -94,15 +94,22 @@ final class TokenRemainLogoTests: XCTestCase {
 
         XCTAssertEqual(
             StatusBarPresentation.headlineRemainingPercent(in: claude),
-            71
+            89
         )
         XCTAssertEqual(
             StatusBarPresentation.remainingText(for: claude),
-            "71%"
+            "89%"
         )
         XCTAssertEqual(
             StatusBarPresentation.tooltipProviderLabel(.claude, quota: claude),
-            "Claude · \(UsageFormatting.windowName(minutes: 10_080))"
+            "Claude · \(UsageFormatting.windowName(minutes: 300))"
+        )
+        XCTAssertEqual(
+            StatusBarPresentation.headlineRemainingPercent(
+                in: claude,
+                strategy: .lowestRemaining
+            ),
+            72
         )
     }
 
@@ -224,7 +231,7 @@ final class TokenRemainLogoTests: XCTestCase {
     }
 
     @MainActor
-    func testDockLogoComparesEachProvidersTightestGeneralWindow() {
+    func testDockLogoDefaultsEachProviderToItsShortestGeneralWindow() {
         let claude = ProviderQuota(
             provider: .claude,
             primary: QuotaWindow(usedPercent: 0, windowMinutes: 300, resetsAt: nil),
@@ -241,14 +248,22 @@ final class TokenRemainLogoTests: XCTestCase {
         )
 
         let selection = UsageStore.logoQuotaSelection(from: [claude, codex])
-        XCTAssertEqual(selection?.provider, .claude)
+        XCTAssertEqual(selection?.provider, .codex)
         XCTAssertEqual(selection?.windowMinutes, 10_080)
-        XCTAssertEqual(selection?.remainingPercent, 15)
-        XCTAssertEqual(UsageStore.aggregateRemainingPercent(from: [claude, codex]), 15)
+        XCTAssertEqual(selection?.remainingPercent, 46)
+        XCTAssertEqual(UsageStore.aggregateRemainingPercent(from: [claude, codex]), 46)
+
+        let tightest = UsageStore.logoQuotaSelection(
+            from: [claude, codex],
+            strategy: .lowestRemaining
+        )
+        XCTAssertEqual(tightest?.provider, .claude)
+        XCTAssertEqual(tightest?.windowMinutes, 10_080)
+        XCTAssertEqual(tightest?.remainingPercent, 15)
     }
 
     @MainActor
-    func testDockLogoUsesTightestWindowEvenWhenItIsSecondary() {
+    func testDockLogoUsesShortestWindowEvenWhenItIsSecondary() {
         let claude = ProviderQuota(
             provider: .claude,
             primary: QuotaWindow(usedPercent: 20, windowMinutes: 10_080, resetsAt: nil),

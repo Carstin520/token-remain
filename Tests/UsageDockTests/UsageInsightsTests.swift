@@ -72,7 +72,7 @@ struct UsageInsightsTests {
         let claude = ProviderQuota(
             provider: .claude,
             primary: QuotaWindow(usedPercent: 11, windowMinutes: 300, resetsAt: nil),
-            secondary: QuotaWindow(usedPercent: 29, windowMinutes: 10_080, resetsAt: nil),
+            secondary: QuotaWindow(usedPercent: 28, windowMinutes: 10_080, resetsAt: nil),
             planName: nil,
             capturedAt: .now,
             scopedWindows: [
@@ -87,8 +87,20 @@ struct UsageInsightsTests {
         let headline = try #require(insights.scarcestGeneralWindow(for: .claude))
 
         #expect(headline.windowMinutes == 10_080)
-        #expect(headline.remainingPercent == 71)
+        #expect(headline.remainingPercent == 72)
         #expect(headline.scopeName == nil)
+
+        let defaultSummary = try #require(
+            insights.summaryGeneralWindow(for: .claude, strategy: .shortestWindow)
+        )
+        #expect(defaultSummary.windowMinutes == 300)
+        #expect(defaultSummary.remainingPercent == 89)
+
+        let tightestSummary = try #require(
+            insights.summaryGeneralWindow(for: .claude, strategy: .lowestRemaining)
+        )
+        #expect(tightestSummary.windowMinutes == 10_080)
+        #expect(tightestSummary.remainingPercent == 72)
     }
 
     @Test("Duplicate scoped windows from an old snapshot appear only once")

@@ -563,6 +563,10 @@
 "trends.unpriced_history_format" = "El historial de costes está incompleto porque estos modelos no tienen precio: %1$@";
 "action.close" = "Close";
 "settings.quota_details" = "Quota details";
+"settings.quota_summary_title" = "Resumen de cuota";
+"settings.quota_summary_hint" = "Elige qué ventana de cuota de cuenta priorizan la barra de menús, el Dock y el Dashboard; se excluyen las cuotas de modelos.";
+"settings.quota_summary_shortest" = "Ventana más corta (predeterminado)";
+"settings.quota_summary_tightest" = "Menor cuota restante";
 "settings.antigravity_3p" = "Show Antigravity third-party pools";
 "settings.antigravity_3p_hint" = "Show the optional Claude/third-party 5-hour and weekly pools; hidden by default.";
 "trends.model_other_format" = "Other (%1$d models)";

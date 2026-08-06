@@ -564,6 +564,10 @@
 "trends.unpriced_history_format" = "Historical cost trends are incomplete because these models have no price: %1$@";
 "action.close" = "Close";
 "settings.quota_details" = "Quota details";
+"settings.quota_summary_title" = "Quota summary display";
+"settings.quota_summary_hint" = "Choose which account-level quota window the menu bar, Dock, and Dashboard summaries prioritize; model-specific quotas stay excluded.";
+"settings.quota_summary_shortest" = "Shortest window (default)";
+"settings.quota_summary_tightest" = "Lowest remaining quota";
 "settings.antigravity_3p" = "Show Antigravity third-party pools";
 "settings.antigravity_3p_hint" = "Show the optional Claude/third-party 5-hour and weekly pools; hidden by default.";
 "trends.model_other_format" = "Other (%1$d models)";

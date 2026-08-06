@@ -84,6 +84,15 @@ struct CodexRateLimitResetCredits: Sendable, Codable, Equatable {
     let applicableAvailableCount: Int?
 }
 
+/// Chooses which account-wide window represents a provider on compact summary
+/// surfaces. Named model/pool limits are never candidates for either strategy.
+enum QuotaSummaryStrategy: String, CaseIterable, Identifiable, Sendable {
+    case shortestWindow
+    case lowestRemaining
+
+    var id: String { rawValue }
+}
+
 struct ProviderQuota: Sendable, Codable {
     struct GeneralQuotaSummary: Sendable {
         let window: QuotaWindow
@@ -112,10 +121,14 @@ struct ProviderQuota: Sendable, Codable {
     /// official reset-credit fields; zero is a real, successfully fetched count.
     var codexResetCredits: CodexRateLimitResetCredits? = nil
 
-    /// The tightest account-wide window for compact/headline surfaces. Named
-    /// model or pool limits stay out of this selection and remain available via
-    /// `uniqueScopedWindows` for explicitly labelled detail rows.
+    /// The shortest account-wide window is the default compact/headline value.
+    /// This preserves the historical 5-hour-first behavior while keeping named
+    /// model or pool limits out of every account-level summary.
     var generalQuotaSummary: GeneralQuotaSummary {
+        generalQuotaSummary(strategy: .shortestWindow)
+    }
+
+    func generalQuotaSummary(strategy: QuotaSummaryStrategy) -> GeneralQuotaSummary {
         let primarySummary = GeneralQuotaSummary(
             window: primary,
             remainingPercent: Self.remainingPercent(for: primary),
@@ -128,9 +141,26 @@ struct ProviderQuota: Sendable, Codable {
             remainingPercent: Self.remainingPercent(for: secondary),
             remainingBalance: secondary.remainingBalance
         )
-        return secondarySummary.remainingPercent < primarySummary.remainingPercent
-            ? secondarySummary
-            : primarySummary
+        switch strategy {
+        case .shortestWindow:
+            let primaryDuration = Self.summaryDuration(primarySummary.window.windowMinutes)
+            let secondaryDuration = Self.summaryDuration(secondarySummary.window.windowMinutes)
+            return secondaryDuration < primaryDuration ? secondarySummary : primarySummary
+        case .lowestRemaining:
+            if secondarySummary.remainingPercent == primarySummary.remainingPercent {
+                return Self.summaryDuration(secondarySummary.window.windowMinutes)
+                    < Self.summaryDuration(primarySummary.window.windowMinutes)
+                    ? secondarySummary
+                    : primarySummary
+            }
+            return secondarySummary.remainingPercent < primarySummary.remainingPercent
+                ? secondarySummary
+                : primarySummary
+        }
+    }
+
+    private static func summaryDuration(_ minutes: Int) -> Int {
+        minutes > 0 ? minutes : .max
     }
 
     private static func remainingPercent(for window: QuotaWindow) -> Double {

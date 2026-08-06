@@ -563,6 +563,10 @@
 "trends.unpriced_history_format" = "次のモデルに価格がないため、過去のコスト推移は不完全です：%1$@";
 "action.close" = "Close";
 "settings.quota_details" = "Quota details";
+"settings.quota_summary_title" = "クォータ概要表示";
+"settings.quota_summary_hint" = "メニューバー、Dock、Dashboard の概要で優先するアカウント単位のクォータ期間を選択します。モデル固有のクォータは対象外です。";
+"settings.quota_summary_shortest" = "最短期間（デフォルト）";
+"settings.quota_summary_tightest" = "残量が最少";
 "settings.antigravity_3p" = "Show Antigravity third-party pools";
 "settings.antigravity_3p_hint" = "Show the optional Claude/third-party 5-hour and weekly pools; hidden by default.";
 "trends.model_other_format" = "Other (%1$d models)";
