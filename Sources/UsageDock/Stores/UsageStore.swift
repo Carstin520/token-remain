@@ -128,11 +128,17 @@ final class UsageStore: ObservableObject {
     }
 
     var aggregateRemainingPercent: Double? {
-        logoQuotaSelection?.remainingPercent
+        Self.logoQuotaSelection(
+            from: allQuotas,
+            strategy: PreferencesStore.shared.quotaSummaryStrategy
+        )?.remainingPercent
     }
 
     var logoQuotaSelection: LogoQuotaSelection? {
-        Self.logoQuotaSelection(from: allQuotas)
+        Self.logoQuotaSelection(
+            from: allQuotas,
+            strategy: PreferencesStore.shared.quotaSummaryStrategy
+        )
     }
 
     func quotaValue(for provider: ProviderQuota.Provider) -> ProviderQuota? {
@@ -257,17 +263,23 @@ final class UsageStore: ObservableObject {
         }
     }
 
-    static func aggregateRemainingPercent(from quotas: [ProviderQuota?]) -> Double? {
-        logoQuotaSelection(from: quotas)?.remainingPercent
+    static func aggregateRemainingPercent(
+        from quotas: [ProviderQuota?],
+        strategy: QuotaSummaryStrategy = .shortestWindow
+    ) -> Double? {
+        logoQuotaSelection(from: quotas, strategy: strategy)?.remainingPercent
     }
 
-    /// Each provider contributes its tightest general account window to the
-    /// app-logo comparison. Model-scoped limits remain explicit detail rows and
-    /// cannot silently repaint the provider-level meter.
-    static func logoQuotaSelection(from quotas: [ProviderQuota?]) -> LogoQuotaSelection? {
+    /// Each provider contributes the account-wide window selected by the user.
+    /// Model-scoped limits remain explicit detail rows and cannot silently
+    /// repaint the provider-level meter.
+    static func logoQuotaSelection(
+        from quotas: [ProviderQuota?],
+        strategy: QuotaSummaryStrategy = .shortestWindow
+    ) -> LogoQuotaSelection? {
         quotas.compactMap { quota -> LogoQuotaSelection? in
             guard let quota else { return nil }
-            let summary = quota.generalQuotaSummary
+            let summary = quota.generalQuotaSummary(strategy: strategy)
 
             return LogoQuotaSelection(
                 provider: quota.provider,
@@ -830,7 +842,9 @@ final class UsageStore: ObservableObject {
 
     private func remainingText(for quota: ProviderQuota?) -> String {
         guard let quota else { return "—" }
-        let summary = quota.generalQuotaSummary
+        let summary = quota.generalQuotaSummary(
+            strategy: PreferencesStore.shared.quotaSummaryStrategy
+        )
         return summary.remainingBalance?.displayText
             ?? UsageFormatting.percent(summary.remainingPercent)
     }

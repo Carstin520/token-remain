@@ -268,6 +268,27 @@ struct SettingsSection: View {
             DashboardCard {
                 VStack(alignment: .leading, spacing: 12) {
                     PanelHeader(title: L10n.text("settings.quota_details"))
+                    HStack(alignment: .center, spacing: 16) {
+                        preferenceLabel(
+                            title: L10n.text("settings.quota_summary_title"),
+                            detail: L10n.text("settings.quota_summary_hint")
+                        )
+                        Spacer(minLength: 16)
+                        Picker("", selection: quotaSummaryStrategyBinding) {
+                            Text(L10n.text("settings.quota_summary_shortest"))
+                                .tag(QuotaSummaryStrategy.shortestWindow)
+                            Text(L10n.text("settings.quota_summary_tightest"))
+                                .tag(QuotaSummaryStrategy.lowestRemaining)
+                        }
+                        .labelsHidden()
+                        .pickerStyle(.menu)
+                        .frame(width: 180)
+                        .accessibilityLabel(L10n.text("settings.quota_summary_title"))
+                        .accessibilityHint(L10n.text("settings.quota_summary_hint"))
+                    }
+
+                    Divider().overlay(DashboardTheme.border)
+
                     preferenceToggle(
                         title: L10n.text("settings.antigravity_3p"),
                         detail: L10n.text("settings.antigravity_3p_hint"),
@@ -486,6 +507,13 @@ struct SettingsSection: View {
         Binding(
             get: { preferences.showAntigravityThirdPartyQuota },
             set: { preferences.setShowAntigravityThirdPartyQuota($0) }
+        )
+    }
+
+    private var quotaSummaryStrategyBinding: Binding<QuotaSummaryStrategy> {
+        Binding(
+            get: { preferences.quotaSummaryStrategy },
+            set: { preferences.setQuotaSummaryStrategy($0) }
         )
     }
 

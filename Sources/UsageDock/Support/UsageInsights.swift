@@ -104,6 +104,32 @@ struct UsageInsights {
             .min { $0.remainingPercent < $1.remainingPercent }
     }
 
+    /// The account-wide window chosen for provider summary UI. Risk continues
+    /// to use `scarcestGeneralWindow` independently of this display preference.
+    func summaryGeneralWindow(
+        for provider: ProviderQuota.Provider,
+        strategy: QuotaSummaryStrategy
+    ) -> Window? {
+        let candidates = generalWindows.filter { $0.provider == provider }
+        switch strategy {
+        case .shortestWindow:
+            return candidates.min {
+                let lhs = $0.windowMinutes > 0 ? $0.windowMinutes : .max
+                let rhs = $1.windowMinutes > 0 ? $1.windowMinutes : .max
+                return lhs < rhs
+            }
+        case .lowestRemaining:
+            return candidates.min {
+                if $0.remainingPercent == $1.remainingPercent {
+                    let lhs = $0.windowMinutes > 0 ? $0.windowMinutes : .max
+                    let rhs = $1.windowMinutes > 0 ? $1.windowMinutes : .max
+                    return lhs < rhs
+                }
+                return $0.remainingPercent < $1.remainingPercent
+            }
+        }
+    }
+
     private func window(
         _ source: QuotaWindow,
         provider: ProviderQuota.Provider,

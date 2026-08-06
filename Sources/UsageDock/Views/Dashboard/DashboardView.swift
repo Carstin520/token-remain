@@ -21,6 +21,7 @@ struct DashboardView: View {
     @ObservedObject var navigator: DashboardNavigator
     @ObservedObject var visibility: DashboardVisibility
     @ObservedObject var tracked: TrackedProvidersStore = .shared
+    @ObservedObject var preferences: PreferencesStore = .shared
     @ObservedObject private var appUpdater = AppUpdateController.shared
     @State private var limitsReorderInteraction = DirectReorderInteraction<ProviderQuota.Provider>()
 #if TOKENREMAIN_CLOUD_SYNC

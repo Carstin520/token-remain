@@ -563,6 +563,10 @@
 "trends.unpriced_history_format" = "Historische Kostentrends sind unvollständig, da diese Modelle keinen Preis haben: %1$@";
 "action.close" = "Close";
 "settings.quota_details" = "Quota details";
+"settings.quota_summary_title" = "Kontingentübersicht";
+"settings.quota_summary_hint" = "Wähle, welches Kontingentfenster auf Kontoebene in Menüleiste, Dock und Dashboard priorisiert wird; Modellkontingente bleiben ausgeschlossen.";
+"settings.quota_summary_shortest" = "Kürzestes Fenster (Standard)";
+"settings.quota_summary_tightest" = "Geringstes Restkontingent";
 "settings.antigravity_3p" = "Show Antigravity third-party pools";
 "settings.antigravity_3p_hint" = "Show the optional Claude/third-party 5-hour and weekly pools; hidden by default.";
 "trends.model_other_format" = "Other (%1$d models)";

@@ -10,12 +10,23 @@ struct PreferencesStoreTests {
         let store = PreferencesStore(defaults: testDefaults())
         #expect(store.menuBarProviders == [.claude, .codex])
         #expect(store.menuBarDisplayMode == .full)
+        #expect(store.quotaSummaryStrategy == .shortestWindow)
         #expect(!store.showCodexSparkQuotaInMenuBarWidget)
         #expect(!store.showAntigravityThirdPartyQuota)
         #expect(store.refreshMinutes == 5)
         #expect(store.refreshInterval == 300)
         #expect(!store.floatingWidgetEnabled)
         #expect(!store.dockIconHidden)
+    }
+
+    @Test("Quota summary defaults to shortest window and persists alternatives")
+    func quotaSummaryStrategy() {
+        let defaults = testDefaults()
+        PreferencesStore(defaults: defaults).setQuotaSummaryStrategy(.lowestRemaining)
+        #expect(PreferencesStore(defaults: defaults).quotaSummaryStrategy == .lowestRemaining)
+
+        defaults.set("future-strategy", forKey: PreferencesStore.quotaSummaryStrategyKey)
+        #expect(PreferencesStore(defaults: defaults).quotaSummaryStrategy == .shortestWindow)
     }
 
     @Test("Antigravity third-party pools default off and persist")

@@ -28,23 +28,30 @@ enum StatusBarPresentation {
         return [mostConstrained]
     }
 
-    static func headlineRemainingPercent(in quota: ProviderQuota?) -> Double? {
-        quota?.generalQuotaSummary.remainingPercent
+    static func headlineRemainingPercent(
+        in quota: ProviderQuota?,
+        strategy: QuotaSummaryStrategy = .shortestWindow
+    ) -> Double? {
+        quota?.generalQuotaSummary(strategy: strategy).remainingPercent
     }
 
-    static func remainingText(for quota: ProviderQuota?) -> String {
-        if let balance = quota?.generalQuotaSummary.remainingBalance {
+    static func remainingText(
+        for quota: ProviderQuota?,
+        strategy: QuotaSummaryStrategy = .shortestWindow
+    ) -> String {
+        if let balance = quota?.generalQuotaSummary(strategy: strategy).remainingBalance {
             return balance.displayText
         }
-        guard let remaining = headlineRemainingPercent(in: quota) else { return "—" }
+        guard let remaining = headlineRemainingPercent(in: quota, strategy: strategy) else { return "—" }
         return UsageFormatting.percent(remaining)
     }
 
     static func tooltipProviderLabel(
         _ provider: ProviderQuota.Provider,
-        quota: ProviderQuota?
+        quota: ProviderQuota?,
+        strategy: QuotaSummaryStrategy = .shortestWindow
     ) -> String {
-        guard let summary = quota?.generalQuotaSummary else { return provider.displayName }
+        guard let summary = quota?.generalQuotaSummary(strategy: strategy) else { return provider.displayName }
         return "\(provider.displayName) · \(UsageFormatting.windowName(minutes: summary.window.windowMinutes))"
     }
 }
@@ -175,6 +182,11 @@ final class StatusBarController: NSObject {
             .store(in: &cancellables)
 
         PreferencesStore.shared.$menuBarDisplayMode
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.updateStatusImage() }
+            .store(in: &cancellables)
+
+        PreferencesStore.shared.$quotaSummaryStrategy
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.updateStatusImage() }
             .store(in: &cancellables)
@@ -314,10 +326,14 @@ final class StatusBarController: NSObject {
             configured: PreferencesStore.shared.menuBarProviders,
             tracked: tracked.enabled
         )
+        let summaryStrategy = PreferencesStore.shared.quotaSummaryStrategy
         let remainingPercent = Dictionary(
             uniqueKeysWithValues: selectedProviders.compactMap { provider in
                 let quota = store.quotaValue(for: provider)
-                return StatusBarPresentation.headlineRemainingPercent(in: quota)
+                return StatusBarPresentation.headlineRemainingPercent(
+                    in: quota,
+                    strategy: summaryStrategy
+                )
                     .map { (provider, $0) }
             }
         )
@@ -328,12 +344,21 @@ final class StatusBarController: NSObject {
             remainingPercent: remainingPercent
         )
         let segments: [(ProviderQuota.Provider, String)] = displayedProviders.map { provider in
-            let remaining = StatusBarPresentation.remainingText(for: store.quotaValue(for: provider))
+            let remaining = StatusBarPresentation.remainingText(
+                for: store.quotaValue(for: provider),
+                strategy: summaryStrategy
+            )
             return (provider, remaining)
         }
 
-        let claudeRemaining = UsageStore.logoQuotaSelection(from: [store.quotaValue(for: .claude)])?.remainingPercent
-        let codexRemaining = UsageStore.logoQuotaSelection(from: [store.quotaValue(for: .codex)])?.remainingPercent
+        let claudeRemaining = UsageStore.logoQuotaSelection(
+            from: [store.quotaValue(for: .claude)],
+            strategy: summaryStrategy
+        )?.remainingPercent
+        let codexRemaining = UsageStore.logoQuotaSelection(
+            from: [store.quotaValue(for: .codex)],
+            strategy: summaryStrategy
+        )?.remainingPercent
         let state = TokenRemainLogoState.resolve(
             remainingPercent: [claudeRemaining, codexRemaining].compactMap { $0 }.min()
         )
@@ -357,8 +382,12 @@ final class StatusBarController: NSObject {
         ]
         for provider in ProviderQuota.Provider.displayOrder {
             guard let quota = store.quotaValue(for: provider) else { continue }
-            let remaining = StatusBarPresentation.remainingText(for: quota)
-            let providerLabel = StatusBarPresentation.tooltipProviderLabel(provider, quota: quota)
+            let remaining = StatusBarPresentation.remainingText(for: quota, strategy: summaryStrategy)
+            let providerLabel = StatusBarPresentation.tooltipProviderLabel(
+                provider,
+                quota: quota,
+                strategy: summaryStrategy
+            )
             tooltipLines.append(L10n.format("statusbar.tooltip_remaining", providerLabel, remaining))
         }
         let tooltip = tooltipLines.joined(separator: L10n.text("statusbar.tooltip_separator"))
@@ -368,6 +397,7 @@ final class StatusBarController: NSObject {
         // 先算显示指纹,不变就整体跳过,避免反复重建富文本与 Dock 重绘。
         let fingerprint = [
             displayMode.rawValue,
+            summaryStrategy.rawValue,
             segments.map { "\($0.0.rawValue):\($0.1)" }.joined(separator: ","),
             dockIconKey,
             dockIconHidden ? "dock-hidden" : "dock-visible",

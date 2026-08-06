@@ -563,6 +563,10 @@
 "trends.unpriced_history_format" = "다음 모델에 가격이 없어 과거 비용 추세가 불완전합니다: %1$@";
 "action.close" = "Close";
 "settings.quota_details" = "Quota details";
+"settings.quota_summary_title" = "할당량 요약 표시";
+"settings.quota_summary_hint" = "메뉴 막대, Dock 및 Dashboard 요약에서 우선 표시할 계정 단위 할당량 창을 선택합니다. 모델별 할당량은 제외됩니다.";
+"settings.quota_summary_shortest" = "가장 짧은 창(기본값)";
+"settings.quota_summary_tightest" = "남은 할당량이 가장 적음";
 "settings.antigravity_3p" = "Show Antigravity third-party pools";
 "settings.antigravity_3p_hint" = "Show the optional Claude/third-party 5-hour and weekly pools; hidden by default.";
 "trends.model_other_format" = "Other (%1$d models)";

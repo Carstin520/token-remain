@@ -18,6 +18,7 @@ final class PreferencesStore: ObservableObject {
 
     static let menuBarKey = "tokenRemain.menuBarProviders.v1"
     static let menuBarDisplayModeKey = "tokenRemain.menuBarDisplayMode.v1"
+    static let quotaSummaryStrategyKey = "tokenRemain.quotaSummaryStrategy.v1"
     static let menuBarCodexSparkQuotaKey = "tokenRemain.dashboardCodexSparkQuota.v1"
     static let antigravityThirdPartyQuotaKey = "tokenRemain.antigravityThirdPartyQuota.v1"
     static let refreshKey = "tokenRemain.refreshMinutes.v1"
@@ -31,6 +32,8 @@ final class PreferencesStore: ObservableObject {
     @Published private(set) var menuBarProviders: [ProviderQuota.Provider]
     /// 菜单栏所选 provider 的呈现密度。默认完整显示以兼容历史行为。
     @Published private(set) var menuBarDisplayMode: MenuBarDisplayMode
+    /// Which account-level window compact summary surfaces display.
+    @Published private(set) var quotaSummaryStrategy: QuotaSummaryStrategy
     /// 菜单栏 Codex 小组件是否显示 GPT-5.3-Codex-Spark 独立额度；默认关闭。
     @Published private(set) var showCodexSparkQuotaInMenuBarWidget: Bool
     /// Dashboard/popover 是否显示 Antigravity 的 Claude/第三方共享额度池。
@@ -53,6 +56,8 @@ final class PreferencesStore: ObservableObject {
         }
         menuBarDisplayMode = defaults.string(forKey: Self.menuBarDisplayModeKey)
             .flatMap(MenuBarDisplayMode.init(rawValue:)) ?? .full
+        quotaSummaryStrategy = defaults.string(forKey: Self.quotaSummaryStrategyKey)
+            .flatMap(QuotaSummaryStrategy.init(rawValue:)) ?? .shortestWindow
         showCodexSparkQuotaInMenuBarWidget = defaults.bool(forKey: Self.menuBarCodexSparkQuotaKey)
         showAntigravityThirdPartyQuota = defaults.bool(forKey: Self.antigravityThirdPartyQuotaKey)
         let storedMinutes = defaults.object(forKey: Self.refreshKey) as? Int
@@ -80,6 +85,11 @@ final class PreferencesStore: ObservableObject {
     func setMenuBarDisplayMode(_ mode: MenuBarDisplayMode) {
         menuBarDisplayMode = mode
         defaults.set(mode.rawValue, forKey: Self.menuBarDisplayModeKey)
+    }
+
+    func setQuotaSummaryStrategy(_ strategy: QuotaSummaryStrategy) {
+        quotaSummaryStrategy = strategy
+        defaults.set(strategy.rawValue, forKey: Self.quotaSummaryStrategyKey)
     }
 
     func setShowCodexSparkQuotaInMenuBarWidget(_ enabled: Bool) {
