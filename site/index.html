@@ -954,7 +954,7 @@ footer.site .disclaimer{
                 <div class="stage-slides">
                   <p class="slide on"><span class="tag" data-i18n="cap-dash-t">Dashboard · Overview</span><span class="cap" data-i18n="cap-dash-c">Real local usage: today's tokens and estimated cost split by provider, with official quota progress and risk hints beside them.</span></p>
                   <p class="slide"><span class="tag" data-i18n="cap-dash2-t">Dashboard · Limits</span><span class="cap" data-i18n="cap-dash2-c">The Limits page: every provider's official windows — 5-hour and 7-day progress, reset countdowns, and pace warnings that flag running ahead of budget.</span></p>
-                  <p class="slide"><span class="tag" data-i18n="cap-dash3-t">Dashboard · Trends</span><span class="cap" data-i18n="cap-dash3-c">The Trends page: stacked daily token bars per provider plus quota-consumption curves, so weekly rhythm and spikes stand out at a glance.</span></p>
+                  <p class="slide"><span class="tag" data-i18n="cap-dash3-t">Dashboard · Trends</span><span class="cap" data-i18n="cap-dash3-c">The Trends page: stacked daily token bars per provider plus quota-consumption curves, so weekly rhythm and spikes stand out at a glance. Click any day for a per-model input / output / cache breakdown.</span></p>
                 </div>
               </figcaption>
             </figure>
@@ -1036,13 +1036,15 @@ footer.site .disclaimer{
       </div>
       <div class="prov lift"><div class="pn"><img class="brand-logo mono" src="assets/providers/cursor.svg" alt="">Cursor<span class="mode">AUTO</span></div><p data-i18n="pv-cursor-d">Monthly billing-cycle quota and reset countdown. Read-only queries of <code>state.vscdb</code>.</p></div>
       <div class="prov lift"><div class="pn"><img class="brand-logo mono" src="assets/providers/grok.svg" alt="">Grok<span class="mode">AUTO</span></div><p data-i18n="pv-grok-d">Weekly pool remaining. Reads the Grok CLI's existing credentials.</p></div>
-      <div class="prov lift"><div class="pn"><img class="brand-logo mono" src="assets/providers/zai.svg" alt="">Z.ai GLM<span class="mode key">API KEY</span></div><p data-i18n="pv-zai-d">Coding Plan session / weekly windows. The key lives only in your Keychain.</p></div>
+      <div class="prov lift"><div class="pn"><img class="brand-logo mono" src="assets/providers/zai.svg" alt="">Z.ai GLM<span class="mode key">API KEY</span></div><p data-i18n="pv-zai-d">Coding Plan session / weekly windows, on the Global or China endpoint you choose. The key lives only in your Keychain.</p></div>
+      <div class="prov lift"><div class="pn"><img class="brand-logo mono" src="assets/providers/zai.svg" alt="">GLM Team<span class="mode key">API KEY</span></div><p data-i18n="pv-zt-d">China-region Team Plan quota pools. The JSON config lives only in your Keychain.</p></div>
       <div class="prov lift"><div class="pn"><img class="brand-logo" src="assets/providers/copilot.svg" alt="">Copilot<span class="mode">AUTO</span></div><p data-i18n="pv-copilot-d">Monthly credits. Reads your local GitHub sign-in.</p></div>
       <div class="prov lift"><div class="pn"><img class="brand-logo" src="assets/providers/devin.svg" alt="">Devin<span class="mode">AUTO</span></div><p data-i18n="pv-devin-d">Daily / weekly quotas.</p></div>
       <div class="prov lift"><div class="pn"><img class="brand-logo" src="assets/providers/windsurf.png" alt="">Windsurf<span class="mode">AUTO</span></div><p data-i18n="pv-windsurf-d">Daily / weekly quotas from Windsurf's read-only local login state.</p></div>
-      <div class="prov lift"><div class="pn"><img class="brand-logo" src="assets/providers/openrouter.svg" alt="">OpenRouter<span class="mode key">API KEY</span></div><p data-i18n="pv-or-d">Prepaid credit balance.</p></div>
-      <div class="prov lift"><div class="pn"><img class="brand-logo" src="assets/providers/antigravity.svg" alt="">Antigravity<span class="mode">AUTO</span></div><p data-i18n="pv-ag-d">Quota pools. Reads the local sign-in state.</p></div>
-      <div class="prov lift"><div class="pn"><img class="brand-logo mono" src="assets/providers/opencode.svg" alt="">OpenCode<span class="mode">LOCAL</span></div><p data-i18n="pv-oc-d">Go plan usage, estimated from a local database scan — fully offline.</p></div>
+      <div class="prov lift"><div class="pn"><img class="brand-logo" src="assets/providers/openrouter.svg" alt="">OpenRouter<span class="mode key">API KEY</span></div><p data-i18n="pv-or-d">Prepaid credit balance, official spend and per-key limits.</p></div>
+      <div class="prov lift"><div class="pn"><img class="brand-logo" src="assets/providers/antigravity.svg" alt="">Antigravity<span class="mode">AUTO</span></div><p data-i18n="pv-ag-d">Quota pools, plus optional Claude / third-party pools. Reads the local sign-in state.</p></div>
+      <div class="prov lift"><div class="pn"><img class="brand-logo mono" src="assets/providers/opencode.svg" alt="">OpenCode<span class="mode">LOCAL</span></div><p data-i18n="pv-oc-d">Go plan 5-hour, weekly and monthly usage, estimated from a local database scan — fully offline.</p></div>
+      <div class="prov lift"><div class="pn"><svg class="brand-logo mono" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="5" cy="12" r="2.2"/><circle cx="19" cy="5" r="2.2"/><circle cx="19" cy="19" r="2.2"/><path d="M7.1 10.9 16.9 6M7.1 13.1l9.8 4.9"/></svg><span data-i18n="pv-3p-n">Third-party API</span><span class="mode key">API KEY</span></div><p data-i18n="pv-3p-d">New API-compatible account balance APIs or a custom balance endpoint. The config lives only in your Keychain.</p></div>
       <div class="prov wide lift">
         <div class="pn"><span data-i18n="pv-compat-n">token-monitor compatibility layer</span></div>
         <div class="names">
@@ -1390,7 +1392,7 @@ var ZH={
   "s-lede":"菜单栏弹窗在上方已经见过——下面全部是<strong style=\"color:var(--text)\">正在运行的最新版实机截图</strong>：桌面 Dashboard、重新设计的 iPhone 版与 Apple Watch 速览。所有屏幕的数字统一使用 SF Mono；装饰全部退场，层级只来自字号与留白。iPhone 与手表截图跑的是内置演示场景，所以带着 DEMO 标记。",
   "cap-dash-t":"Dashboard · 概览","cap-dash-c":"真实本地用量：今日 Token 与估算成本按服务商拆分，旁边是官方额度实时进度与风险提示。",
   "cap-dash2-t":"Dashboard · 额度","cap-dash2-c":"额度页：每个服务商的官方窗口——5 小时 / 7 天进度、重置倒计时，以及用量超前时的节奏预警。",
-  "cap-dash3-t":"Dashboard · 趋势","cap-dash3-c":"趋势页：按服务商堆叠的每日 Token 柱状图与额度消耗曲线，一眼看出每周节奏与用量高峰。",
+  "cap-dash3-t":"Dashboard · 趋势","cap-dash3-c":"趋势页：按服务商堆叠的每日 Token 柱状图与额度消耗曲线，一眼看出每周节奏与用量高峰。点击任意一天可展开按模型的输入 / 输出 / 缓存明细。",
   "cap-pov-t":"iPhone · 概览","cap-pov-c":"今日 Token 完整数字领衔，配估算成本与「超过全球 N% 用户」评价；额度结论与风险徽章紧随其后。长按拖拽任意卡片即可重排页面。",
   "cap-paf-t":"iPhone · AI 资讯","cap-paf-c":"精选动态升级为独立标签页：时间线阅读流，额度/Token 与重大更新芯片置顶，本机归档你见过的每条动态。",
   "cap-ptr-t":"iPhone · 趋势","cap-ptr-c":"同步历史上的剩余额度曲线，加每日堆叠：7 / 14 / 30 天与 Tokens / 费用双口径。",
@@ -1402,13 +1404,16 @@ var ZH={
   "pv-codex-d":"主账户 5 小时 / 7 天实时窗口。服务端接口直查，离线回退最近本地快照；用量超前时给出用尽预测。",
   "pv-cursor-d":"月度账期剩余与重置倒计时。<code>state.vscdb</code> 只读查询。",
   "pv-grok-d":"周池剩余额度。只读 Grok CLI 已有凭证。",
-  "pv-zai-d":"Coding Plan 会话 / 周窗口。Key 只存钥匙串。",
+  "pv-zai-d":"Coding Plan 会话 / 周窗口，全球 / 中国区任选。Key 只存钥匙串。",
+  "pv-zt-d":"中国区 Team Plan 配额。JSON 配置只存钥匙串。",
   "pv-copilot-d":"月度 Credits。只读本机 GitHub 登录。",
   "pv-devin-d":"日 / 周配额。",
   "pv-windsurf-d":"日 / 周配额；只读 Windsurf 本机登录态。",
-  "pv-or-d":"预充积分余额。",
-  "pv-ag-d":"配额池。只读本机登录态。",
-  "pv-oc-d":"Go 套餐用量。本地数据库扫描估算，纯本地。",
+  "pv-or-d":"预充积分余额、官方消费与 Key 限额。",
+  "pv-ag-d":"配额池，可选显示 Claude/第三方池。只读本机登录态。",
+  "pv-oc-d":"Go 套餐 5 小时 / 周 / 月用量。本地数据库扫描估算，纯本地。",
+  "pv-3p-n":"第三方 API",
+  "pv-3p-d":"New API 兼容账户余额 API 或自定义余额接口。配置只存钥匙串。",
   "pv-compat-n":"token-monitor 兼容层","pv-volc":"火山引擎",
   "pv-note":"各服务的凭证位置与接口方式在仓库 <code>README</code> 有完整说明；节奏预测基于真实窗口进度与官方重置时间，判断当前用量能否撑到重置。",
   "fe-h2":"影响额度的 AI 动态，替你排好序",
