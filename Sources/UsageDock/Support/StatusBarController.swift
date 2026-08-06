@@ -28,16 +28,24 @@ enum StatusBarPresentation {
         return [mostConstrained]
     }
 
-    static func primaryRemainingPercent(in quota: ProviderQuota?) -> Double? {
-        quota.map { min(100, max(0, 100 - $0.primary.usedPercent)) }
+    static func headlineRemainingPercent(in quota: ProviderQuota?) -> Double? {
+        quota?.generalQuotaSummary.remainingPercent
     }
 
     static func remainingText(for quota: ProviderQuota?) -> String {
-        if let balance = quota?.primary.remainingBalance ?? quota?.remainingBalance {
+        if let balance = quota?.generalQuotaSummary.remainingBalance {
             return balance.displayText
         }
-        guard let primary = primaryRemainingPercent(in: quota) else { return "—" }
-        return UsageFormatting.percent(primary)
+        guard let remaining = headlineRemainingPercent(in: quota) else { return "—" }
+        return UsageFormatting.percent(remaining)
+    }
+
+    static func tooltipProviderLabel(
+        _ provider: ProviderQuota.Provider,
+        quota: ProviderQuota?
+    ) -> String {
+        guard let summary = quota?.generalQuotaSummary else { return provider.displayName }
+        return "\(provider.displayName) · \(UsageFormatting.windowName(minutes: summary.window.windowMinutes))"
     }
 }
 
@@ -309,7 +317,7 @@ final class StatusBarController: NSObject {
         let remainingPercent = Dictionary(
             uniqueKeysWithValues: selectedProviders.compactMap { provider in
                 let quota = store.quotaValue(for: provider)
-                return StatusBarPresentation.primaryRemainingPercent(in: quota)
+                return StatusBarPresentation.headlineRemainingPercent(in: quota)
                     .map { (provider, $0) }
             }
         )
@@ -350,7 +358,8 @@ final class StatusBarController: NSObject {
         for provider in ProviderQuota.Provider.displayOrder {
             guard let quota = store.quotaValue(for: provider) else { continue }
             let remaining = StatusBarPresentation.remainingText(for: quota)
-            tooltipLines.append(L10n.format("statusbar.tooltip_remaining", provider.displayName, remaining))
+            let providerLabel = StatusBarPresentation.tooltipProviderLabel(provider, quota: quota)
+            tooltipLines.append(L10n.format("statusbar.tooltip_remaining", providerLabel, remaining))
         }
         let tooltip = tooltipLines.joined(separator: L10n.text("statusbar.tooltip_separator"))
 

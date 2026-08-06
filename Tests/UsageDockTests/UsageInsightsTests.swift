@@ -67,6 +67,30 @@ struct UsageInsightsTests {
         #expect(insights.constrainingWindow?.scopeName == nil)
     }
 
+    @Test("Provider headline ignores a tighter scoped model limit")
+    func providerHeadlineIgnoresScopedModelLimit() throws {
+        let claude = ProviderQuota(
+            provider: .claude,
+            primary: QuotaWindow(usedPercent: 11, windowMinutes: 300, resetsAt: nil),
+            secondary: QuotaWindow(usedPercent: 29, windowMinutes: 10_080, resetsAt: nil),
+            planName: nil,
+            capturedAt: .now,
+            scopedWindows: [
+                ScopedQuotaWindow(
+                    scopeID: "fable",
+                    displayName: "Fable",
+                    window: QuotaWindow(usedPercent: 52, windowMinutes: 10_080, resetsAt: nil)
+                )
+            ]
+        )
+        let insights = UsageInsights(claude: claude, codex: nil, daily: nil)
+        let headline = try #require(insights.scarcestGeneralWindow(for: .claude))
+
+        #expect(headline.windowMinutes == 10_080)
+        #expect(headline.remainingPercent == 71)
+        #expect(headline.scopeName == nil)
+    }
+
     @Test("Duplicate scoped windows from an old snapshot appear only once")
     func deduplicatesScopedWindows() {
         let first = ScopedQuotaWindow(

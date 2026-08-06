@@ -88,11 +88,20 @@ struct UsageInsights {
     }
 
     /// Scoped model/pool limits remain inspectable in quota detail, but they
-    /// never become the app-wide status signal. This keeps optional Fable,
-    /// Spark, MiniMax model lanes, and third-party pools from repainting the
-    /// global risk state.
-    private var riskWindows: [Window] {
+    /// never become a provider's headline or the app-wide status signal. This
+    /// keeps optional Fable, Spark, MiniMax model lanes, and third-party pools
+    /// from repainting the general provider quota shown across summary surfaces.
+    var generalWindows: [Window] {
         windows.filter { $0.scopeName == nil }
+    }
+
+    /// The general account window with the least quota remaining for a provider.
+    /// Summary surfaces use this instead of selecting from `windows`, which also
+    /// contains named model limits such as Claude Fable.
+    func scarcestGeneralWindow(for provider: ProviderQuota.Provider) -> Window? {
+        generalWindows
+            .filter { $0.provider == provider }
+            .min { $0.remainingPercent < $1.remainingPercent }
     }
 
     private func window(
@@ -117,12 +126,12 @@ struct UsageInsights {
     /// Lowest remaining percentage across every known window, or `nil` when no
     /// official quota has been read yet.
     var minRemainingPercent: Double? {
-        riskWindows.map(\.remainingPercent).min()
+        generalWindows.map(\.remainingPercent).min()
     }
 
     /// The window that defines the current risk (the scarcest one).
     var constrainingWindow: Window? {
-        riskWindows.min(by: { $0.remainingPercent < $1.remainingPercent })
+        generalWindows.min(by: { $0.remainingPercent < $1.remainingPercent })
     }
 
     var riskLevel: RiskLevel {
@@ -150,7 +159,7 @@ struct UsageInsights {
     /// The earliest projected depletion among windows that will not last until
     /// reset at the current average pace.
     func paceAssessment(at now: Date = .now) -> PaceAssessment? {
-        riskWindows
+        generalWindows
             .compactMap { window -> PaceAssessment? in
                 guard let pace = pace(for: window, at: now),
                       !pace.willLastUntilReset,

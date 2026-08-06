@@ -85,6 +85,12 @@ struct CodexRateLimitResetCredits: Sendable, Codable, Equatable {
 }
 
 struct ProviderQuota: Sendable, Codable {
+    struct GeneralQuotaSummary: Sendable {
+        let window: QuotaWindow
+        let remainingPercent: Double
+        let remainingBalance: QuotaBalance?
+    }
+
     let provider: Provider
     let primary: QuotaWindow
     let secondary: QuotaWindow?
@@ -105,6 +111,32 @@ struct ProviderQuota: Sendable, Codable {
     /// Codex-only banked resets. Nil means the current source did not expose the
     /// official reset-credit fields; zero is a real, successfully fetched count.
     var codexResetCredits: CodexRateLimitResetCredits? = nil
+
+    /// The tightest account-wide window for compact/headline surfaces. Named
+    /// model or pool limits stay out of this selection and remain available via
+    /// `uniqueScopedWindows` for explicitly labelled detail rows.
+    var generalQuotaSummary: GeneralQuotaSummary {
+        let primarySummary = GeneralQuotaSummary(
+            window: primary,
+            remainingPercent: Self.remainingPercent(for: primary),
+            remainingBalance: primary.remainingBalance ?? remainingBalance
+        )
+        guard let secondary else { return primarySummary }
+
+        let secondarySummary = GeneralQuotaSummary(
+            window: secondary,
+            remainingPercent: Self.remainingPercent(for: secondary),
+            remainingBalance: secondary.remainingBalance
+        )
+        return secondarySummary.remainingPercent < primarySummary.remainingPercent
+            ? secondarySummary
+            : primarySummary
+    }
+
+    private static func remainingPercent(for window: QuotaWindow) -> Double {
+        guard window.usedPercent.isFinite else { return 100 }
+        return min(100, max(0, 100 - window.usedPercent))
+    }
 
     /// Terminal repainting and older cached snapshots can contain the same
     /// model-scoped quota more than once. Keep the latest reading for each

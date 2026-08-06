@@ -3,6 +3,17 @@
 All notable product changes are recorded here. TokenRemain uses Semantic
 Versioning for public releases.
 
+## 1.2.9 — 2026-08-06
+
+### Fixed
+
+- Keep Claude account-wide quota summaries consistent across the Dashboard,
+  Dock icon, menu bar, tooltip, risk level, and synced mobile snapshot instead
+  of allowing the tighter Fable model quota to impersonate the general limit.
+- Deduplicate repeated scoped quota readings case-insensitively while retaining
+  the newest reading, preventing terminal repaint rows from producing duplicate
+  Fable entries on Mac, iPhone, Apple Watch, and widgets.
+
 ## 1.2.8 — 2026-08-06
 
 ### Added
@@ -482,3 +493,4 @@ Versioning for public releases.
 [1.2.6]: https://github.com/Carstin520/token-remain/releases/tag/v1.2.6
 [1.2.7]: https://github.com/Carstin520/token-remain/releases/tag/v1.2.7
 [1.2.8]: https://github.com/Carstin520/token-remain/releases/tag/v1.2.8
+[1.2.9]: https://github.com/Carstin520/token-remain/releases/tag/v1.2.9

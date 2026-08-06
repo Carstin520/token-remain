@@ -161,9 +161,7 @@ struct OverviewSection: View {
     }
 
     private func scarcestWindow(for provider: ProviderQuota.Provider) -> UsageInsights.Window? {
-        insights.windows
-            .filter { $0.provider == provider }
-            .min { $0.remainingPercent < $1.remainingPercent }
+        insights.scarcestGeneralWindow(for: provider)
     }
 
     // MARK: - Risk detail (real)
