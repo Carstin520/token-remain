@@ -3,6 +3,40 @@
 All notable product changes are recorded here. TokenRemain uses Semantic
 Versioning for public releases.
 
+## 1.2.8 — 2026-08-06
+
+### Added
+
+- Add single-account GLM Team quota monitoring and configurable third-party
+  balance adapters for New API account tokens, API tokens, and field-mapped
+  HTTPS balance endpoints.
+- Add optional Antigravity third-party 5-hour and weekly pools, model-scoped
+  MiniMax quota rows, and an OpenCode Go monthly spending window.
+- Add pinned-day model breakdowns to Dashboard Trends with token/cost modes,
+  input/output/cache detail, unpriced-model markers, and a bounded Other tail.
+
+### Changed
+
+- Expand Z.ai with explicit Global/China endpoint selection, multiple token
+  windows, and a separate MCP monthly pool without cross-region credential
+  retries.
+- Preserve OpenRouter key limits, prepaid credits, account balance, plan name,
+  and official daily/weekly/monthly/all-time spend in one snapshot.
+- Combine active MiMo Token Plan usage with wallet balance while forwarding
+  only the required cookie fields and refusing credential-bearing redirects.
+- Keep scoped model pools out of the global risk, pace, quota-history, Dock,
+  and primary menu-bar summary calculations; Spark weekly display remains
+  optional while its 5-hour pool is ignored.
+- Keep model-level ccusage history local to the Mac and publish only aggregate
+  mobile history through the explicit mobile provider allowlist.
+
+### Fixed
+
+- Keep depleted and zero-value monetary balances visible instead of treating
+  them as missing data, and avoid duplicate lifetime OpenRouter windows.
+- Decode older usage-history caches without model detail and bound new model
+  history so it cannot grow without limit.
+
 ## 1.2.7 — 2026-08-04
 
 ### Changed
@@ -447,3 +481,4 @@ Versioning for public releases.
 [1.2.5]: https://github.com/Carstin520/token-remain/releases/tag/v1.2.5
 [1.2.6]: https://github.com/Carstin520/token-remain/releases/tag/v1.2.6
 [1.2.7]: https://github.com/Carstin520/token-remain/releases/tag/v1.2.7
+[1.2.8]: https://github.com/Carstin520/token-remain/releases/tag/v1.2.8

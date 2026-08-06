@@ -6,17 +6,17 @@
 
 **你的 AI 用量额度,常驻在 Mac 菜单栏**
 
-一个地方查看 Claude Code、Codex、Cursor、Windsurf、Grok、GLM 等 **19+** 家 AI 编码工具的<br/>剩余额度、重置倒计时与今日成本。凭证只留在本机,绝不刷新、绝不上传。
+一个地方查看 Claude Code、Codex、Cursor、Windsurf、Grok、GLM 等 **21+** 家 AI 编码工具的<br/>剩余额度、重置倒计时与今日成本。凭证只留在本机,绝不刷新、绝不上传。
 
 ![macOS](https://img.shields.io/badge/macOS-14%2B_Sonoma-000?logo=apple&logoColor=white)
 ![Universal](https://img.shields.io/badge/Universal-Apple_Silicon_%2B_Intel-7C5CFF)
 ![Notarized](https://img.shields.io/badge/Apple-Notarized-34C759?logo=apple&logoColor=white)
-![Latest](https://img.shields.io/badge/latest-v1.2.7-22D3EE)
+![Latest](https://img.shields.io/badge/latest-v1.2.8-22D3EE)
 ![License](https://img.shields.io/badge/license-Apache--2.0-8A94A6)
 
 ### [⬇️ 下载 TokenRemain.dmg](https://tokenremain.com)
 
-<sub>当前发布 `v1.2.7` · build 21 · Universal Mac Release 构建</sub>
+<sub>当前发布 `v1.2.8` · build 22 · Universal Mac Release 构建</sub>
 
 [官网](https://tokenremain.com) · [隐私政策](https://tokenremain.com/privacy) · [支持](https://tokenremain.com/support) · [问题反馈](https://github.com/Carstin520/token-remain/issues)
 
@@ -140,6 +140,7 @@ v1.2.3 针对隐藏界面与后台刷新做了系统级优化 —— 消除隐�
 - 🤖 **模型级额度窗口** — Claude Fable 用量与 GPT-5.3-Codex-Spark 独立窗口进入详细额度视图与加密快照;两类模型行默认隐藏,可分别控制是否在对应菜单栏额度组件中显示。
 - 🖱️ **长按直接拖拽排序** — Dashboard 卡片长按即可拖动重排并实时位移;锁定、置顶与展开控件保留独立可点击区域,不会被拖拽误触。
 - 📊 **更多本地用量来源** — ccusage 动态发现 15+ 种本地 Agent;Trae 只读取用户所选轨迹目录中的时间、模型与 Token 计数;Windsurf 提供独立日/周额度,并支持跨设备展示。
+- 🧩 **更细的额度与模型趋势** — GLM Team、New API/自定义余额接口、Antigravity 第三方模型池与 MiniMax 模型级额度独立展示;Dashboard Trends 可查看指定日期的模型 Token/成本及 Input、Output、Cache 构成。
 - 🔑 **明确的钥匙串授权** — Claude 与 Codex 的跨 App 只读访问由用户主动触发;后台刷新始终静默,不会突然弹出系统授权窗口。
 - ⬆️ **始终更新到最新版** — 自适应检查签名更新源:无更新时每天约四次、有待安装更新时每天约两次,失败后有界退避;用户点击更新时会重新查询最新发布,直接安装当时的最新版本,而不是当前版本的“下一个版本”。
 - ⚙️ **会话感知的低功耗刷新** — 本地 Codex/Claude 会话活跃或界面真实可见时保持分钟级新鲜度;静止、隐藏或被完全遮挡时退到至少五分钟。会话活动通过文件系统事件与时间戳探测,Codex 只增量解析新增或改写的会话日志,Dashboard 隐藏即暂停机器人动画。实测对比见上方[「能耗优化」](#-v123一次大幅的能耗优化)一节。
@@ -160,13 +161,13 @@ v1.2.3 针对隐藏界面与后台刷新做了系统级优化 —— 消除隐�
 | <img src="site/assets/providers/devin.svg" width="16" alt="" /> **Devin** | 🟢 自动 | 日 / 周配额 |
 | <img src="site/assets/providers/windsurf.png" width="16" alt="" /> **Windsurf** | 🟢 自动 | 日 / 周配额;只读 Windsurf 自己的 `state.vscdb` 登录态 |
 | <img src="site/assets/providers/antigravity.svg" width="16" alt="" /> **Antigravity** | 🟢 自动 | 配额池;只读本机登录态 |
-| <img src="site/assets/providers/opencode.svg" width="16" alt="" /> **OpenCode** | 💾 纯本地 | Go 套餐用量,本地数据库扫描估算,完全离线 |
-| <img src="site/assets/providers/zai.svg" width="16" alt="" /> **Z.ai**(GLM Coding Plan)| 🔑 API Key | 会话 / 周窗口;Key 仅存 macOS 钥匙串 |
-| <img src="site/assets/providers/openrouter.svg" width="16" alt="" /> **OpenRouter** | 🔑 API Key | 预充积分余额 |
+| <img src="site/assets/providers/opencode.svg" width="16" alt="" /> **OpenCode** | 💾 纯本地 | Go 套餐 5 小时 / 周 / 月用量,本地数据库扫描估算,完全离线 |
+| <img src="site/assets/providers/zai.svg" width="16" alt="" /> **Z.ai**(GLM Coding Plan)| 🔑 API Key | Global / 中国区会话、周窗口与 MCP 月额度;Key 仅存 macOS 钥匙串 |
+| <img src="site/assets/providers/openrouter.svg" width="16" alt="" /> **OpenRouter** | 🔑 API Key | Key 限额、预充 Credits、账户余额与官方消费 |
 
 > 🟢 **自动** = 登录对应工具即接入(Claude/Codex 支持官方桌面 App,CLI 非必需)· 🔑 **API Key** = 需粘贴一次密钥(存钥匙串)· 💾 **纯本地** = 只扫描本地文件,不联网
 
-### token-monitor 兼容层(8 家)
+### token-monitor 兼容层(10 家)
 
 | 应用 | 接入方式 | | 应用 | 接入方式 |
 | :-- | :-- | :-- | :-- | :-- |
@@ -174,6 +175,7 @@ v1.2.3 针对隐藏界面与后台刷新做了系统级优化 —— 消除隐�
 | <img src="site/assets/providers/kimi.svg" width="16" alt="" /> **Kimi** | API Key / kimi-auth Cookie | | <img src="site/assets/providers/kiro.svg" width="16" alt="" /> **Kiro** | `kiro-cli /usage` 解析 |
 | <img src="site/assets/providers/minimax.svg" width="16" alt="" /> **MiniMax** | API Key | | <img src="site/assets/providers/volcengine.svg" width="16" alt="" /> **火山引擎**(Volcengine)| AK:SK 签名 |
 | <img src="site/assets/providers/mimo.svg" width="16" alt="" /> **MiMo Code** | Cookie | | <img src="site/assets/providers/ollama.svg" width="16" alt="" /> **Ollama** | session Cookie |
+| <img src="site/assets/providers/zai.svg" width="16" alt="" /> **GLM Team** | API Key + Org + Project | | **第三方 API** | New API / 自定义余额接口 |
 
 ### 本地 Token / 成本来源
 
@@ -234,7 +236,7 @@ bash ./script/build_and_run.sh --verify
 
 ## 📦 当前发布
 
-- **版本**:`v1.2.7`(build 21)——Universal Mac Release 构建。
+- **版本**:`v1.2.8`(build 22)——Universal Mac Release 构建。
 - **平台**:macOS 14 Sonoma 及以上,同时支持 Apple Silicon(arm64)与 Intel(x86_64)。
 - **分发**:官网始终下载最新的 `TokenRemain.dmg`;GitHub Release 同时保留带版本与 build 号的 DMG 归档。
 - **成本口径**:成本为 API 标价估算,不等于订阅账单;凭证过期时数据会暂停并提示恢复方式。

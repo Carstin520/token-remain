@@ -6,17 +6,17 @@
 
 **Your AI quota, always in the Mac menu bar**
 
-Remaining quota, reset countdowns and today's cost for Claude Code, Codex, Cursor, Windsurf, Grok, GLM<br/>and **19+** AI coding tools — all in one place. Credentials stay on your machine: never refreshed, never uploaded.
+Remaining quota, reset countdowns and today's cost for Claude Code, Codex, Cursor, Windsurf, Grok, GLM<br/>and **21+** AI coding tools — all in one place. Credentials stay on your machine: never refreshed, never uploaded.
 
 ![macOS](https://img.shields.io/badge/macOS-14%2B_Sonoma-000?logo=apple&logoColor=white)
 ![Universal](https://img.shields.io/badge/Universal-Apple_Silicon_%2B_Intel-7C5CFF)
 ![Notarized](https://img.shields.io/badge/Apple-Notarized-34C759?logo=apple&logoColor=white)
-![Latest](https://img.shields.io/badge/latest-v1.2.7-22D3EE)
+![Latest](https://img.shields.io/badge/latest-v1.2.8-22D3EE)
 ![License](https://img.shields.io/badge/license-Apache--2.0-8A94A6)
 
 ### [⬇️ Download TokenRemain.dmg](https://tokenremain.com)
 
-<sub>Current release `v1.2.7` · build 21 · Universal Mac Release build</sub>
+<sub>Current release `v1.2.8` · build 22 · Universal Mac Release build</sub>
 
 [Website](https://tokenremain.com) · [Privacy Policy](https://tokenremain.com/privacy) · [Support](https://tokenremain.com/support) · [Report an issue](https://github.com/Carstin520/token-remain/issues)
 
@@ -140,6 +140,7 @@ v1.2.3 is a system-level optimization pass over hidden surfaces and background r
 - 🤖 **Model-level quota windows** — Claude Fable usage and dedicated GPT-5.3-Codex-Spark windows join the detailed quota view and encrypted snapshot; both start hidden and can be enabled independently inside their matching menu-bar quota cards.
 - 🖱️ **Direct long-press reordering** — Long-press a Dashboard card to drag it into place with live displacement; lock, pin and expand controls keep their own clickable regions and never get caught by the drag.
 - 📊 **More local usage sources** — ccusage dynamically discovers 15+ local agents; Trae reads only timestamps, model names, and token counters from a folder you select; Windsurf adds independent daily/weekly quota with cross-device display support.
+- 🧩 **More precise quota and model trends** — GLM Team, New API/custom balance endpoints, Antigravity third-party pools, and MiniMax model lanes remain distinct; Dashboard Trends can inspect a pinned day's model tokens/cost and input, output, and cache composition.
 - 🔑 **Explicit Keychain consent** — Cross-app read-only access for Claude and Codex begins only from a user action. Background refreshes stay silent and never surprise you with a system authorization prompt.
 - ⬆️ **Always update to the latest release** — Adaptive signed-feed checks run about four times a day when current, twice while an update is pending, and use bounded retry backoff after failures. Clicking Update performs a fresh lookup and installs the newest release available then, not merely the version after yours.
 - ⚙️ **Session-aware, low-power refreshes** — Local Codex/Claude activity or a genuinely visible surface keeps minute-level freshness; idle, hidden, or fully occluded windows fall back to at least five minutes. Session activity is tracked through filesystem events and timestamp probes, Codex parses only new or rewritten session logs, and the Dashboard robot animation pauses the moment it's hidden. Measured comparison in the [power-efficiency section](#-v123-a-major-power-efficiency-release) above.
@@ -160,13 +161,13 @@ Most services **connect automatically the moment you're signed in**: TokenRemain
 | <img src="site/assets/providers/devin.svg" width="16" alt="" /> **Devin** | 🟢 Auto | Daily / weekly quotas |
 | <img src="site/assets/providers/windsurf.png" width="16" alt="" /> **Windsurf** | 🟢 Auto | Daily / weekly quotas; reads Windsurf's own `state.vscdb` login state read-only |
 | <img src="site/assets/providers/antigravity.svg" width="16" alt="" /> **Antigravity** | 🟢 Auto | Quota pools; reads the local sign-in state |
-| <img src="site/assets/providers/opencode.svg" width="16" alt="" /> **OpenCode** | 💾 Local only | Go plan usage, estimated from a local database scan — fully offline |
-| <img src="site/assets/providers/zai.svg" width="16" alt="" /> **Z.ai** (GLM Coding Plan) | 🔑 API key | Coding Plan session / weekly windows; the key lives only in your Keychain |
-| <img src="site/assets/providers/openrouter.svg" width="16" alt="" /> **OpenRouter** | 🔑 API key | Prepaid credit balance |
+| <img src="site/assets/providers/opencode.svg" width="16" alt="" /> **OpenCode** | 💾 Local only | Go plan 5-hour / weekly / monthly usage, estimated from a local database scan — fully offline |
+| <img src="site/assets/providers/zai.svg" width="16" alt="" /> **Z.ai** (GLM Coding Plan) | 🔑 API key | Global / China session and weekly windows plus an MCP monthly pool; the key lives only in your Keychain |
+| <img src="site/assets/providers/openrouter.svg" width="16" alt="" /> **OpenRouter** | 🔑 API key | Key limits, prepaid credits, account balance, and official spend |
 
 > 🟢 **Auto** = connected as soon as the tool is signed in (Claude/Codex work with the official desktop apps — no CLI required) · 🔑 **API key** = paste a key once (stored in the Keychain) · 💾 **Local only** = scans local files, never goes online
 
-### token-monitor compatibility layer (8)
+### token-monitor compatibility layer (10)
 
 | Service | Connection | | Service | Connection |
 | :-- | :-- | :-- | :-- | :-- |
@@ -174,6 +175,7 @@ Most services **connect automatically the moment you're signed in**: TokenRemain
 | <img src="site/assets/providers/kimi.svg" width="16" alt="" /> **Kimi** | API key / kimi-auth cookie | | <img src="site/assets/providers/kiro.svg" width="16" alt="" /> **Kiro** | `kiro-cli /usage` parsing |
 | <img src="site/assets/providers/minimax.svg" width="16" alt="" /> **MiniMax** | API key | | <img src="site/assets/providers/volcengine.svg" width="16" alt="" /> **Volcengine** | AK:SK signing |
 | <img src="site/assets/providers/mimo.svg" width="16" alt="" /> **MiMo Code** | Cookie | | <img src="site/assets/providers/ollama.svg" width="16" alt="" /> **Ollama** | Session cookie |
+| <img src="site/assets/providers/zai.svg" width="16" alt="" /> **GLM Team** | API key + org + project | | **Third-party APIs** | New API / custom balance endpoint |
 
 ### Local token and cost sources
 
@@ -237,7 +239,7 @@ This public repository contains only the TokenRemain macOS desktop client and it
 
 ## 📦 Current release
 
-- **Version** — `v1.2.7` (build 21), the Universal Mac Release build.
+- **Version** — `v1.2.8` (build 22), the Universal Mac Release build.
 - **Platform** — macOS 14 Sonoma or later on Apple Silicon (arm64) and Intel (x86_64).
 - **Distribution** — The website always downloads the latest `TokenRemain.dmg`; each GitHub Release also retains a DMG named with its version and build.
 - **Cost figures** — Costs are API list-price estimates, not your subscription bill. When a credential expires, data pauses and the app explains how to restore it.
