@@ -76,11 +76,11 @@ final class TokenRemainLogoTests: XCTestCase {
         )
     }
 
-    func testMenuBarSummaryIgnoresFableQuota() {
+    func testMenuBarSummaryUsesTightestGeneralWindowAndIgnoresFableQuota() {
         let claude = ProviderQuota(
             provider: .claude,
             primary: QuotaWindow(usedPercent: 20, windowMinutes: 300, resetsAt: nil),
-            secondary: QuotaWindow(usedPercent: 10, windowMinutes: 10_080, resetsAt: nil),
+            secondary: QuotaWindow(usedPercent: 29, windowMinutes: 10_080, resetsAt: nil),
             planName: nil,
             capturedAt: .now,
             scopedWindows: [
@@ -93,12 +93,16 @@ final class TokenRemainLogoTests: XCTestCase {
         )
 
         XCTAssertEqual(
-            StatusBarPresentation.primaryRemainingPercent(in: claude),
-            80
+            StatusBarPresentation.headlineRemainingPercent(in: claude),
+            71
         )
         XCTAssertEqual(
             StatusBarPresentation.remainingText(for: claude),
-            "80%"
+            "71%"
+        )
+        XCTAssertEqual(
+            StatusBarPresentation.tooltipProviderLabel(.claude, quota: claude),
+            "Claude · \(UsageFormatting.windowName(minutes: 10_080))"
         )
     }
 
@@ -112,7 +116,7 @@ final class TokenRemainLogoTests: XCTestCase {
             remainingBalance: QuotaBalance(amount: 90.56, currencyCode: "CNY")
         )
 
-        XCTAssertEqual(StatusBarPresentation.primaryRemainingPercent(in: deepSeek), 100)
+        XCTAssertEqual(StatusBarPresentation.headlineRemainingPercent(in: deepSeek), 100)
         XCTAssertEqual(StatusBarPresentation.remainingText(for: deepSeek), "¥90.56")
     }
 
@@ -220,7 +224,7 @@ final class TokenRemainLogoTests: XCTestCase {
     }
 
     @MainActor
-    func testDockLogoComparesEachProvidersShortestAvailableSession() {
+    func testDockLogoComparesEachProvidersTightestGeneralWindow() {
         let claude = ProviderQuota(
             provider: .claude,
             primary: QuotaWindow(usedPercent: 0, windowMinutes: 300, resetsAt: nil),
@@ -237,24 +241,24 @@ final class TokenRemainLogoTests: XCTestCase {
         )
 
         let selection = UsageStore.logoQuotaSelection(from: [claude, codex])
-        XCTAssertEqual(selection?.provider, .codex)
+        XCTAssertEqual(selection?.provider, .claude)
         XCTAssertEqual(selection?.windowMinutes, 10_080)
-        XCTAssertEqual(selection?.remainingPercent, 46)
-        XCTAssertEqual(UsageStore.aggregateRemainingPercent(from: [claude, codex]), 46)
+        XCTAssertEqual(selection?.remainingPercent, 15)
+        XCTAssertEqual(UsageStore.aggregateRemainingPercent(from: [claude, codex]), 15)
     }
 
     @MainActor
-    func testDockLogoUsesShortestWindowEvenWhenItIsSecondary() {
+    func testDockLogoUsesTightestWindowEvenWhenItIsSecondary() {
         let claude = ProviderQuota(
             provider: .claude,
-            primary: QuotaWindow(usedPercent: 92, windowMinutes: 10_080, resetsAt: nil),
-            secondary: QuotaWindow(usedPercent: 20, windowMinutes: 300, resetsAt: nil),
+            primary: QuotaWindow(usedPercent: 20, windowMinutes: 10_080, resetsAt: nil),
+            secondary: QuotaWindow(usedPercent: 92, windowMinutes: 300, resetsAt: nil),
             planName: nil,
             capturedAt: .now
         )
 
         let selection = UsageStore.logoQuotaSelection(from: [claude])
         XCTAssertEqual(selection?.windowMinutes, 300)
-        XCTAssertEqual(selection?.remainingPercent, 80)
+        XCTAssertEqual(selection?.remainingPercent, 8)
     }
 }

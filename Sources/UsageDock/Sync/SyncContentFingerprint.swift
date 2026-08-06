@@ -46,7 +46,7 @@ enum SyncContentFingerprint {
                         remainingBalance: window.remainingBalance ?? (index == 0 ? quota.remainingBalance : nil)
                     )
                 },
-                scopedWindows: (quota.scopedWindows ?? []).map {
+                scopedWindows: quota.uniqueScopedWindows.map {
                     ScopedWindow(
                         scopeID: $0.scopeID,
                         displayName: $0.displayName,

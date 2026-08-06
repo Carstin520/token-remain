@@ -72,6 +72,54 @@ struct MobileSnapshotRedactorTests {
         #expect(!text.contains(ProviderQuota.Provider.claude.rawValue))
     }
 
+    @Test("Duplicate cached model windows cross devices only once")
+    func deduplicatesScopedWindowsBeforeSync() throws {
+        let now = Date(timeIntervalSince1970: 1_784_764_800)
+        let oldFable = ScopedQuotaWindow(
+            scopeID: "fable",
+            displayName: "Fable",
+            window: QuotaWindow(usedPercent: 20, windowMinutes: 10_080, resetsAt: now + 60)
+        )
+        let latestFable = ScopedQuotaWindow(
+            scopeID: "FABLE",
+            displayName: "Fable",
+            window: QuotaWindow(usedPercent: 63, windowMinutes: 10_080, resetsAt: now + 120)
+        )
+        func quota(scopedWindows: [ScopedQuotaWindow]) -> ProviderQuota {
+            ProviderQuota(
+                provider: .claude,
+                primary: QuotaWindow(usedPercent: 10, windowMinutes: 300, resetsAt: now + 300),
+                secondary: QuotaWindow(usedPercent: 15, windowMinutes: 10_080, resetsAt: now + 600),
+                planName: nil,
+                capturedAt: now,
+                scopedWindows: scopedWindows
+            )
+        }
+
+        let duplicated = quota(scopedWindows: [oldFable, latestFable])
+        let canonical = quota(scopedWindows: [latestFable])
+        let snapshot = MobileSnapshotRedactor.makeSnapshot(
+            from: [.claude: duplicated],
+            sourceInstanceID: UUID(),
+            sequence: 1,
+            generatedAt: now
+        )
+        let syncedFable = try #require(snapshot.providers.first?.scopedWindows)
+
+        #expect(syncedFable.count == 1)
+        #expect(syncedFable.first?.scopeID == "FABLE")
+        #expect(syncedFable.first?.window.usedPercent == 63)
+        #expect(SyncContentFingerprint.make(
+            quotas: [.claude: duplicated],
+            history: nil,
+            includesUsageHistory: false
+        ) == SyncContentFingerprint.make(
+            quotas: [.claude: canonical],
+            history: nil,
+            includesUsageHistory: false
+        ))
+    }
+
     @Test("Every supported Mac provider is published and credential-like plan labels are removed")
     func allProviders() {
         let now = Date(timeIntervalSince1970: 1_784_764_800)

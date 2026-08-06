@@ -261,26 +261,18 @@ final class UsageStore: ObservableObject {
         logoQuotaSelection(from: quotas)?.remainingPercent
     }
 
-    /// Each provider contributes only its shortest recurring quota window to
-    /// the app-logo comparison. This avoids comparing Claude's five-hour and
-    /// seven-day windows against Codex's single seven-day window as if all
-    /// three represented equivalent sessions.
+    /// Each provider contributes its tightest general account window to the
+    /// app-logo comparison. Model-scoped limits remain explicit detail rows and
+    /// cannot silently repaint the provider-level meter.
     static func logoQuotaSelection(from quotas: [ProviderQuota?]) -> LogoQuotaSelection? {
         quotas.compactMap { quota -> LogoQuotaSelection? in
             guard let quota else { return nil }
-            let windows = [quota.primary, quota.secondary].compactMap { $0 }
-            guard let shortest = windows.min(by: { lhs, rhs in
-                // A zero-minute window is a lifetime meter, not a session.
-                // Keep it as a fallback only when the provider has no recurring window.
-                let lhsDuration = lhs.windowMinutes > 0 ? lhs.windowMinutes : Int.max
-                let rhsDuration = rhs.windowMinutes > 0 ? rhs.windowMinutes : Int.max
-                return lhsDuration < rhsDuration
-            }) else { return nil }
+            let summary = quota.generalQuotaSummary
 
             return LogoQuotaSelection(
                 provider: quota.provider,
-                remainingPercent: min(max(100 - shortest.usedPercent, 0), 100),
-                windowMinutes: shortest.windowMinutes
+                remainingPercent: summary.remainingPercent,
+                windowMinutes: summary.window.windowMinutes
             )
         }
         .min(by: { $0.remainingPercent < $1.remainingPercent })
@@ -838,7 +830,9 @@ final class UsageStore: ObservableObject {
 
     private func remainingText(for quota: ProviderQuota?) -> String {
         guard let quota else { return "—" }
-        return UsageFormatting.percent(max(0, 100 - quota.primary.usedPercent))
+        let summary = quota.generalQuotaSummary
+        return summary.remainingBalance?.displayText
+            ?? UsageFormatting.percent(summary.remainingPercent)
     }
 }
 

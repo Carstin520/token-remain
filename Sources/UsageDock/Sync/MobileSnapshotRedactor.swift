@@ -114,7 +114,7 @@ enum MobileSnapshotRedactor {
             capturedAt: quota.capturedAt,
             statusCode: .available,
             planName: SyncedProviderQuota.sanitizedPlanName(quota.planName),
-            scopedWindows: quota.scopedWindows?.map {
+            scopedWindows: quota.uniqueScopedWindows.isEmpty ? nil : quota.uniqueScopedWindows.map {
                 SyncedScopedQuotaWindow(
                     scopeID: $0.scopeID,
                     displayName: $0.displayName,
