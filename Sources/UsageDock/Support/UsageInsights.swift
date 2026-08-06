@@ -87,6 +87,14 @@ struct UsageInsights {
         return result
     }
 
+    /// Scoped model/pool limits remain inspectable in quota detail, but they
+    /// never become the app-wide status signal. This keeps optional Fable,
+    /// Spark, MiniMax model lanes, and third-party pools from repainting the
+    /// global risk state.
+    private var riskWindows: [Window] {
+        windows.filter { $0.scopeName == nil }
+    }
+
     private func window(
         _ source: QuotaWindow,
         provider: ProviderQuota.Provider,
@@ -109,12 +117,12 @@ struct UsageInsights {
     /// Lowest remaining percentage across every known window, or `nil` when no
     /// official quota has been read yet.
     var minRemainingPercent: Double? {
-        windows.map(\.remainingPercent).min()
+        riskWindows.map(\.remainingPercent).min()
     }
 
     /// The window that defines the current risk (the scarcest one).
     var constrainingWindow: Window? {
-        windows.min(by: { $0.remainingPercent < $1.remainingPercent })
+        riskWindows.min(by: { $0.remainingPercent < $1.remainingPercent })
     }
 
     var riskLevel: RiskLevel {
@@ -142,7 +150,7 @@ struct UsageInsights {
     /// The earliest projected depletion among windows that will not last until
     /// reset at the current average pace.
     func paceAssessment(at now: Date = .now) -> PaceAssessment? {
-        windows
+        riskWindows
             .compactMap { window -> PaceAssessment? in
                 guard let pace = pace(for: window, at: now),
                       !pace.willLastUntilReset,

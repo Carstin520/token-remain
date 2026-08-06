@@ -10,25 +10,31 @@ struct PreferencesStoreTests {
         let store = PreferencesStore(defaults: testDefaults())
         #expect(store.menuBarProviders == [.claude, .codex])
         #expect(store.menuBarDisplayMode == .full)
-        #expect(!store.showFableQuotaInMenuBarWidget)
         #expect(!store.showCodexSparkQuotaInMenuBarWidget)
+        #expect(!store.showAntigravityThirdPartyQuota)
         #expect(store.refreshMinutes == 5)
         #expect(store.refreshInterval == 300)
         #expect(!store.floatingWidgetEnabled)
         #expect(!store.dockIconHidden)
     }
 
-    @Test("Menu bar model quota preferences default off and persist")
+    @Test("Antigravity third-party pools default off and persist")
+    func antigravityThirdPartyPreference() {
+        let defaults = testDefaults()
+        let store = PreferencesStore(defaults: defaults)
+        #expect(!store.showAntigravityThirdPartyQuota)
+        store.setShowAntigravityThirdPartyQuota(true)
+        #expect(PreferencesStore(defaults: defaults).showAntigravityThirdPartyQuota)
+    }
+
+    @Test("Menu bar Spark quota preference defaults off and persists")
     func menuBarModelQuotaPreferences() {
         let defaults = testDefaults()
         let store = PreferencesStore(defaults: defaults)
-        #expect(!store.showFableQuotaInMenuBarWidget)
         #expect(!store.showCodexSparkQuotaInMenuBarWidget)
 
-        store.setShowFableQuotaInMenuBarWidget(true)
         store.setShowCodexSparkQuotaInMenuBarWidget(true)
         let reloaded = PreferencesStore(defaults: defaults)
-        #expect(reloaded.showFableQuotaInMenuBarWidget)
         #expect(reloaded.showCodexSparkQuotaInMenuBarWidget)
     }
 
@@ -57,7 +63,46 @@ struct PreferencesStoreTests {
         #expect(QuotaCard.scopedWindows(in: quota).map(\.scopeID) == ["fable", "codex_bengalfox"])
     }
 
-    @Test("Menu bar widget model rows honor both independent preferences")
+    @Test("Antigravity third-party rows honor the explicit display preference")
+    func antigravityThirdPartyQuotaFilters() {
+        let quota = ProviderQuota(
+            provider: .antigravity,
+            primary: QuotaWindow(usedPercent: 10, windowMinutes: 300, resetsAt: nil),
+            secondary: nil,
+            planName: nil,
+            capturedAt: .now,
+            scopedWindows: [
+                ScopedQuotaWindow(
+                    scopeID: "antigravity_3p_5h",
+                    displayName: "Claude / Third-party",
+                    window: QuotaWindow(usedPercent: 25, windowMinutes: 300, resetsAt: nil)
+                )
+            ]
+        )
+
+        #expect(QuotaCard.scopedWindows(
+            in: quota,
+            showAntigravityThirdParty: false
+        ).isEmpty)
+        #expect(QuotaCard.scopedWindows(
+            in: quota,
+            showAntigravityThirdParty: true
+        ).map(\.scopeID) == ["antigravity_3p_5h"])
+        #expect(PopoverQuotaWidget.scopedWindows(
+            in: quota,
+            isExpanded: true,
+            showCodexSpark: false,
+            showAntigravityThirdParty: false
+        ).isEmpty)
+        #expect(PopoverQuotaWidget.scopedWindows(
+            in: quota,
+            isExpanded: true,
+            showCodexSpark: false,
+            showAntigravityThirdParty: true
+        ).map(\.scopeID) == ["antigravity_3p_5h"])
+    }
+
+    @Test("Menu bar excludes Fable while Spark stays explicitly optional")
     func menuBarWidgetModelQuotaFilters() {
         let quota = ProviderQuota(
             provider: .claude,
@@ -88,7 +133,6 @@ struct PreferencesStoreTests {
             PopoverQuotaWidget.scopedWindows(
                 in: quota,
                 isExpanded: false,
-                showFable: false,
                 showCodexSpark: false
             ).isEmpty
         )
@@ -96,15 +140,6 @@ struct PreferencesStoreTests {
             PopoverQuotaWidget.scopedWindows(
                 in: quota,
                 isExpanded: false,
-                showFable: true,
-                showCodexSpark: false
-            ).map(\.scopeID) == ["fable"]
-        )
-        #expect(
-            PopoverQuotaWidget.scopedWindows(
-                in: quota,
-                isExpanded: false,
-                showFable: false,
                 showCodexSpark: true
             ).map(\.scopeID) == ["codex_bengalfox"]
         )
@@ -112,7 +147,6 @@ struct PreferencesStoreTests {
             PopoverQuotaWidget.scopedWindows(
                 in: quota,
                 isExpanded: true,
-                showFable: false,
                 showCodexSpark: false
             )
                 .map(\.scopeID) == ["future_model"]

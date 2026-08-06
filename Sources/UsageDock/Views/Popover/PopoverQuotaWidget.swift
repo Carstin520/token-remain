@@ -58,12 +58,15 @@ struct PopoverQuotaWidget: View {
     static func scopedWindows(
         in quota: ProviderQuota,
         isExpanded: Bool,
-        showFable: Bool,
-        showCodexSpark: Bool
+        showCodexSpark: Bool,
+        showAntigravityThirdParty: Bool = false
     ) -> [ScopedQuotaWindow] {
         quota.uniqueScopedWindows.filter { scoped in
-            if scoped.isFable { return showFable }
+            if scoped.isFable { return false }
             if scoped.isCodexSpark { return showCodexSpark }
+            if scoped.isAntigravityThirdParty {
+                return isExpanded && showAntigravityThirdParty
+            }
             return isExpanded
         }
     }
@@ -112,8 +115,8 @@ struct PopoverQuotaWidget: View {
                         Self.scopedWindows(
                             in: quota,
                             isExpanded: isExpanded,
-                            showFable: preferences.showFableQuotaInMenuBarWidget,
-                            showCodexSpark: preferences.showCodexSparkQuotaInMenuBarWidget
+                            showCodexSpark: preferences.showCodexSparkQuotaInMenuBarWidget,
+                            showAntigravityThirdParty: preferences.showAntigravityThirdPartyQuota
                         ),
                         id: \.scopeID
                     ) { scoped in

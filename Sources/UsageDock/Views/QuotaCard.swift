@@ -20,8 +20,15 @@ struct QuotaCard: View {
     /// Supplied by Dashboard Limits so manually configured providers can be
     /// connected in-place on their first empty quota card.
     var store: UsageStore? = nil
-    static func scopedWindows(in quota: ProviderQuota) -> [ScopedQuotaWindow] {
-        quota.uniqueScopedWindows
+    @ObservedObject var preferences: PreferencesStore = .shared
+
+    static func scopedWindows(
+        in quota: ProviderQuota,
+        showAntigravityThirdParty: Bool = true
+    ) -> [ScopedQuotaWindow] {
+        quota.uniqueScopedWindows.filter {
+            showAntigravityThirdParty || !$0.isAntigravityThirdParty
+        }
     }
 
     private var credentialConfiguration: ProviderCredentialConfiguration? {
@@ -65,7 +72,13 @@ struct QuotaCard: View {
                     provider: provider
                 )
             }
-            ForEach(Self.scopedWindows(in: quota), id: \.scopeID) { scoped in
+            ForEach(
+                Self.scopedWindows(
+                    in: quota,
+                    showAntigravityThirdParty: preferences.showAntigravityThirdPartyQuota
+                ),
+                id: \.scopeID
+            ) { scoped in
                 Divider().overlay(DashboardTheme.border)
                 QuotaWindowRow(
                     window: scoped.window,

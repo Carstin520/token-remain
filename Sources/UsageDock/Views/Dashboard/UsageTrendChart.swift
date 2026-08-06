@@ -51,6 +51,7 @@ struct UsageTrendCard: View {
 
     @State private var range: TrendRange = .twoWeeks
     @State private var metric: TrendMetric = .tokens
+    @State private var pinnedDayID: Date?
 
     private var availableAgentIDs: [String] {
         Self.agentIDs(in: days)
@@ -84,12 +85,26 @@ struct UsageTrendCard: View {
                 UsageTrendChart(
                     days: shown,
                     metric: metric,
-                    visibleAgentIDs: visibleAgentIDs
+                    visibleAgentIDs: visibleAgentIDs,
+                    pinnedDayID: $pinnedDayID
                 )
                     .frame(height: 208)
+
+                if let pinnedDay = shown.first(where: { $0.id == pinnedDayID }) {
+                    TrendModelBreakdownPanel(
+                        breakdown: .make(
+                            day: pinnedDay,
+                            agentIDs: availableAgentIDs.filter(visibleAgentIDs.contains),
+                            metric: metric
+                        ),
+                        metric: metric,
+                        onClose: { pinnedDayID = nil }
+                    )
+                }
             }
         }
         .frame(maxWidth: .infinity)
+        .onChange(of: range) { _, _ in pinnedDayID = nil }
     }
 
     private var controls: some View {
@@ -154,6 +169,7 @@ struct UsageTrendChart: View {
     let days: [DailyUsageHistory.Day]
     let metric: TrendMetric
     let visibleAgentIDs: Set<String>
+    @Binding var pinnedDayID: Date?
 
     @State private var activeIndex: Int?
 
@@ -212,7 +228,9 @@ struct UsageTrendChart: View {
                             color: Self.color(forAgentID: agentID)
                         )
                     }
-                    let dimmed = activeIndex != nil && activeIndex != index
+                    let dimmed = pinnedDayID != nil
+                        ? pinnedDayID != day.id
+                        : activeIndex != nil && activeIndex != index
 
                     BarColumn(
                         segments: segments,
@@ -223,8 +241,20 @@ struct UsageTrendChart: View {
                     .frame(width: columnW, height: plotH)
                     .position(x: centerX, y: plotH / 2)
                     .accessibilityLabel(accessibilityLabel(for: day))
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        pinnedDayID = pinnedDayID == day.id ? nil : day.id
+                    }
 
                     xLabel(index: index, day: day, centerX: centerX, y: plotH)
+
+                    if pinnedDayID == day.id {
+                        RoundedRectangle(cornerRadius: 1, style: .continuous)
+                            .fill(DashboardTheme.violet)
+                            .frame(width: max(12, barW), height: 2)
+                            .position(x: centerX, y: plotH - 1)
+                            .allowsHitTesting(false)
+                    }
                 }
 
                 if hasVisibleSeries,
@@ -264,8 +294,12 @@ struct UsageTrendChart: View {
                 }
             }
             .animation(.easeOut(duration: 0.12), value: activeIndex)
+            .animation(.easeOut(duration: 0.16), value: pinnedDayID)
             .animation(.easeOut(duration: 0.18), value: visibleAgentIDs)
         }
+        .focusable()
+        .onExitCommand { pinnedDayID = nil }
+        .onMoveCommand(perform: movePinnedDay)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(
             hasVisibleSeries ? L10n.text("trends.chart_accessibility") : L10n.text("trends.chart_accessibility_empty")
@@ -380,7 +414,8 @@ struct UsageTrendChart: View {
                     color: Self.color(forAgentID: $0)
                 )
             },
-            total: valueLabel(total(day))
+            total: valueLabel(total(day)),
+            hint: L10n.text("trends.tooltip_click_hint")
         )
         .frame(width: tooltipW)
         .position(x: clampedX, y: y)
@@ -492,6 +527,20 @@ struct UsageTrendChart: View {
         let scalarSum = id.unicodeScalars.reduce(0) { $0 + Int($1.value) }
         return DashboardTheme.providerSlots[scalarSum % DashboardTheme.providerSlots.count]
     }
+
+    private func movePinnedDay(_ direction: MoveCommandDirection) {
+        guard !days.isEmpty else { return }
+        let current = pinnedDayID.flatMap { id in days.firstIndex { $0.id == id } }
+            ?? days.count - 1
+        switch direction {
+        case .left:
+            pinnedDayID = days[max(0, current - 1)].id
+        case .right:
+            pinnedDayID = days[min(days.count - 1, current + 1)].id
+        default:
+            break
+        }
+    }
 }
 
 // MARK: - Bar column
@@ -594,6 +643,7 @@ private struct TrendTooltip: View {
     let title: String
     let rows: [TrendTooltipRow]
     let total: String
+    let hint: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
@@ -613,6 +663,9 @@ private struct TrendTooltip: View {
                     .numericFont(10, .bold)
                     .foregroundStyle(DashboardTheme.text)
             }
+            Text(hint)
+                .font(.system(size: 9))
+                .foregroundStyle(DashboardTheme.mutedText)
         }
         .padding(.horizontal, 9)
         .padding(.vertical, 8)

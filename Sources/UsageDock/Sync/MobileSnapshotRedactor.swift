@@ -12,7 +12,9 @@ enum MobileSnapshotRedactor {
     /// presentation-independent and remains an explicit privacy boundary: only
     /// normalized quota windows, timestamps, source state and a sanitized plan
     /// label cross devices; credentials and raw provider responses never do.
-    static let publishedProviders: [ProviderQuota.Provider] = ProviderQuota.Provider.displayOrder
+    static let publishedProviders: [ProviderQuota.Provider] = ProviderQuota.Provider.displayOrder.filter {
+        SyncedProviderID.supportedOnCurrentMobile.contains(stableID(for: $0))
+    }
 
     static func makeSnapshot(
         from quotas: [ProviderQuota.Provider: ProviderQuota],

@@ -562,3 +562,12 @@
 "usage.unpriced_models_format" = "ccusage 暫無以下模型的價格，成本合計已隱藏：%1$@";
 "usage.provider_price_unavailable_accessibility" = "%1$@，%2$@ tokens，價格暫不可用";
 "trends.unpriced_history_format" = "以下模型缺少價格，歷史成本趨勢不完整：%1$@";
+"action.close" = "關閉";
+"settings.quota_details" = "額度明細";
+"settings.antigravity_3p" = "顯示 Antigravity 第三方額度池";
+"settings.antigravity_3p_hint" = "顯示可選的 Claude/第三方 5 小時與每週額度；預設隱藏。";
+"trends.model_other_format" = "其他（%1$d 個模型）";
+"trends.model_detail_tag" = "模型明細";
+"trends.model_detail_accumulating" = "模型明細從此版本開始累積；舊快取日期無法回填按模型資料。";
+"trends.model_io_format" = "輸入 %1$@ · 輸出 %2$@ · 快取 %3$@";
+"trends.tooltip_click_hint" = "點擊查看模型明細";

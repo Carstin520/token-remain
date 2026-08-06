@@ -43,6 +43,30 @@ struct UsageInsightsTests {
         #expect(windows.last?.id.contains("scope-fable") == true)
     }
 
+    @Test("Scoped model limits stay out of global risk and pace selection")
+    func scopedLimitsDoNotDriveGlobalRisk() {
+        let codex = ProviderQuota(
+            provider: .codex,
+            primary: QuotaWindow(usedPercent: 20, windowMinutes: 300, resetsAt: nil),
+            secondary: QuotaWindow(usedPercent: 30, windowMinutes: 10_080, resetsAt: nil),
+            planName: nil,
+            capturedAt: .now,
+            scopedWindows: [
+                ScopedQuotaWindow(
+                    scopeID: "codex_bengalfox",
+                    displayName: "GPT-5.3-Codex-Spark",
+                    window: QuotaWindow(usedPercent: 99, windowMinutes: 10_080, resetsAt: nil)
+                )
+            ]
+        )
+        let insights = UsageInsights(claude: nil, codex: codex, daily: nil)
+
+        #expect(insights.windows.count == 3)
+        #expect(insights.minRemainingPercent == 70)
+        #expect(insights.riskLevel == .low)
+        #expect(insights.constrainingWindow?.scopeName == nil)
+    }
+
     @Test("Duplicate scoped windows from an old snapshot appear only once")
     func deduplicatesScopedWindows() {
         let first = ScopedQuotaWindow(

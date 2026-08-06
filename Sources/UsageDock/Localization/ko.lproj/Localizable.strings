@@ -561,3 +561,12 @@
 "usage.unpriced_models_format" = "ccusage에 다음 모델의 가격이 없어 비용 합계를 숨겼습니다: %1$@";
 "usage.provider_price_unavailable_accessibility" = "%1$@, %2$@ tokens, 가격을 사용할 수 없음";
 "trends.unpriced_history_format" = "다음 모델에 가격이 없어 과거 비용 추세가 불완전합니다: %1$@";
+"action.close" = "Close";
+"settings.quota_details" = "Quota details";
+"settings.antigravity_3p" = "Show Antigravity third-party pools";
+"settings.antigravity_3p_hint" = "Show the optional Claude/third-party 5-hour and weekly pools; hidden by default.";
+"trends.model_other_format" = "Other (%1$d models)";
+"trends.model_detail_tag" = "MODEL DETAIL";
+"trends.model_detail_accumulating" = "Model detail accumulates from this version onward; older cached days cannot be backfilled.";
+"trends.model_io_format" = "In %1$@ · Out %2$@ · Cache %3$@";
+"trends.tooltip_click_hint" = "Click for model detail";

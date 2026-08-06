@@ -47,6 +47,10 @@ struct ScopedQuotaWindow: Sendable, Codable {
         scopeID.caseInsensitiveCompare("codex_bengalfox") == .orderedSame
             || displayName.localizedCaseInsensitiveContains("Codex-Spark")
     }
+
+    var isAntigravityThirdParty: Bool {
+        scopeID.lowercased().hasPrefix("antigravity_3p_")
+    }
 }
 
 /// 订阅限额之外的按量付费消费(Claude 的 extra usage credits)。
@@ -266,17 +270,73 @@ struct DailyUsage: Sendable {
 /// coding clients without requiring TokenRemain to add another fixed database
 /// column or ship a new chart implementation.
 struct DailyUsageHistory: Sendable, Codable {
+    struct ModelUsage: Sendable, Codable, Identifiable, Equatable {
+        let id: String
+        let inputTokens: Int64
+        let outputTokens: Int64
+        let cacheTokens: Int64
+        let cost: Double
+        /// Number of concrete model identifiers represented by this row.
+        /// Named rows remain one; the bounded `other` row carries its tail size.
+        let constituentCount: Int
+
+        init(
+            id: String,
+            inputTokens: Int64,
+            outputTokens: Int64,
+            cacheTokens: Int64,
+            cost: Double,
+            constituentCount: Int = 1
+        ) {
+            self.id = id
+            self.inputTokens = inputTokens
+            self.outputTokens = outputTokens
+            self.cacheTokens = cacheTokens
+            self.cost = cost
+            self.constituentCount = max(1, constituentCount)
+        }
+
+        private enum CodingKeys: String, CodingKey {
+            case id, inputTokens, outputTokens, cacheTokens, cost, constituentCount
+        }
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            id = try container.decode(String.self, forKey: .id)
+            inputTokens = try container.decode(Int64.self, forKey: .inputTokens)
+            outputTokens = try container.decode(Int64.self, forKey: .outputTokens)
+            cacheTokens = try container.decode(Int64.self, forKey: .cacheTokens)
+            cost = try container.decode(Double.self, forKey: .cost)
+            constituentCount = max(
+                1,
+                try container.decodeIfPresent(Int.self, forKey: .constituentCount) ?? 1
+            )
+        }
+
+        var totalTokens: Int64 {
+            inputTokens + outputTokens + cacheTokens
+        }
+    }
+
     struct Agent: Sendable, Codable, Identifiable, Equatable {
         let id: String
         let tokens: Int64
         let cost: Double
         let unpricedModels: [String]
+        let models: [ModelUsage]
 
-        init(id: String, tokens: Int64, cost: Double, unpricedModels: [String] = []) {
+        init(
+            id: String,
+            tokens: Int64,
+            cost: Double,
+            unpricedModels: [String] = [],
+            models: [ModelUsage] = []
+        ) {
             self.id = id
             self.tokens = tokens
             self.cost = cost
             self.unpricedModels = unpricedModels
+            self.models = DailyUsageHistory.boundedModels(models)
         }
 
         private enum CodingKeys: String, CodingKey {
@@ -284,6 +344,7 @@ struct DailyUsageHistory: Sendable, Codable {
             case tokens
             case cost
             case unpricedModels
+            case models
         }
 
         init(from decoder: Decoder) throws {
@@ -295,6 +356,9 @@ struct DailyUsageHistory: Sendable, Codable {
                 [String].self,
                 forKey: .unpricedModels
             ) ?? []
+            models = DailyUsageHistory.boundedModels(
+                try container.decodeIfPresent([ModelUsage].self, forKey: .models) ?? []
+            )
         }
 
         func encode(to encoder: Encoder) throws {
@@ -305,7 +369,68 @@ struct DailyUsageHistory: Sendable, Codable {
             if !unpricedModels.isEmpty {
                 try container.encode(unpricedModels, forKey: .unpricedModels)
             }
+            if !models.isEmpty {
+                try container.encode(models, forKey: .models)
+            }
         }
+    }
+
+    /// Keep the local cache economically bounded even when a relay reports many
+    /// short-lived model aliases. Seven named rows plus one aggregated tail is
+    /// enough for the on-demand Dashboard detail without growing sync payloads.
+    static func boundedModels(_ rows: [ModelUsage], cap: Int = 8) -> [ModelUsage] {
+        guard cap > 0 else { return [] }
+        var merged: [String: ModelUsage] = [:]
+        for row in rows {
+            let id = row.id.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            guard !id.isEmpty, id != "<synthetic>" else { continue }
+            let previous = merged[id]
+            merged[id] = ModelUsage(
+                id: id,
+                inputTokens: (previous?.inputTokens ?? 0) + max(0, row.inputTokens),
+                outputTokens: (previous?.outputTokens ?? 0) + max(0, row.outputTokens),
+                cacheTokens: (previous?.cacheTokens ?? 0) + max(0, row.cacheTokens),
+                cost: (previous?.cost ?? 0) + max(0, row.cost),
+                constituentCount: max(previous?.constituentCount ?? 1, row.constituentCount)
+            )
+        }
+
+        let carriedOther = merged.removeValue(forKey: "other")
+        let ordered = merged.values.sorted {
+            if $0.totalTokens == $1.totalTokens {
+                if $0.cost == $1.cost { return $0.id < $1.id }
+                return $0.cost > $1.cost
+            }
+            return $0.totalTokens > $1.totalTokens
+        }
+        if ordered.count + (carriedOther == nil ? 0 : 1) <= cap {
+            return ordered + [carriedOther].compactMap { $0 }
+        }
+
+        let namedCount = max(0, cap - 1)
+        let kept = Array(ordered.prefix(namedCount))
+        let tail = Array(ordered.dropFirst(namedCount)) + [carriedOther].compactMap { $0 }
+        guard let firstTail = tail.first else { return kept }
+        let other = tail.dropFirst().reduce(
+            ModelUsage(
+                id: "other",
+                inputTokens: firstTail.inputTokens,
+                outputTokens: firstTail.outputTokens,
+                cacheTokens: firstTail.cacheTokens,
+                cost: firstTail.cost,
+                constituentCount: firstTail.constituentCount
+            )
+        ) { result, row in
+            ModelUsage(
+                id: "other",
+                inputTokens: result.inputTokens + row.inputTokens,
+                outputTokens: result.outputTokens + row.outputTokens,
+                cacheTokens: result.cacheTokens + row.cacheTokens,
+                cost: result.cost + row.cost,
+                constituentCount: result.constituentCount + row.constituentCount
+            )
+        }
+        return other.totalTokens > 0 || other.cost > 0 ? kept + [other] : kept
     }
 
     struct Day: Sendable, Codable, Identifiable {
@@ -473,7 +598,10 @@ struct LocalUsageSnapshot: Sendable {
                     cost: (previous?.cost ?? 0) + max(0, agent.cost),
                     unpricedModels: Array(Set(
                         (previous?.unpricedModels ?? []) + agent.unpricedModels
-                    )).sorted()
+                    )).sorted(),
+                    models: DailyUsageHistory.boundedModels(
+                        (previous?.models ?? []) + agent.models
+                    )
                 )
             }
             return DailyUsageHistory.Day(

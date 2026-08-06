@@ -229,40 +229,55 @@ struct SettingsSection: View {
     }
 
     private var generalSettings: some View {
-        DashboardCard {
-            VStack(alignment: .leading, spacing: 12) {
-                PanelHeader(title: L10n.text("settings.general"))
+        VStack(alignment: .leading, spacing: 14) {
+            DashboardCard {
+                VStack(alignment: .leading, spacing: 12) {
+                    PanelHeader(title: L10n.text("settings.general"))
 
-                preferenceToggle(
-                    title: L10n.text("action.launch_at_login"),
-                    detail: L10n.text("settings.login_item_note"),
-                    isOn: launchAtLoginBinding
-                )
+                    preferenceToggle(
+                        title: L10n.text("action.launch_at_login"),
+                        detail: L10n.text("settings.login_item_note"),
+                        isOn: launchAtLoginBinding
+                    )
 
-                if let error = launchAtLogin.errorMessage {
-                    Label(error, systemImage: "exclamationmark.triangle.fill")
-                        .font(.system(size: 11))
-                        .foregroundStyle(DashboardTheme.warning)
-                        .fixedSize(horizontal: false, vertical: true)
+                    if let error = launchAtLogin.errorMessage {
+                        Label(error, systemImage: "exclamationmark.triangle.fill")
+                            .font(.system(size: 11))
+                            .foregroundStyle(DashboardTheme.warning)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    Divider().overlay(DashboardTheme.border)
+
+                    preferenceToggle(
+                        title: L10n.text("settings.show_dock_icon"),
+                        detail: L10n.text("settings.show_dock_icon_hint"),
+                        isOn: dockIconVisibleBinding
+                    )
+
+                    Divider().overlay(DashboardTheme.border)
+
+                    preferenceToggle(
+                        title: L10n.text("settings.floating_widget"),
+                        detail: L10n.text("settings.floating_widget_hint"),
+                        isOn: floatingBinding
+                    )
                 }
+            }
 
-                Divider().overlay(DashboardTheme.border)
-
-                preferenceToggle(
-                    title: L10n.text("settings.show_dock_icon"),
-                    detail: L10n.text("settings.show_dock_icon_hint"),
-                    isOn: dockIconVisibleBinding
-                )
-
-                Divider().overlay(DashboardTheme.border)
-
-                preferenceToggle(
-                    title: L10n.text("settings.floating_widget"),
-                    detail: L10n.text("settings.floating_widget_hint"),
-                    isOn: floatingBinding
-                )
+            DashboardCard {
+                VStack(alignment: .leading, spacing: 12) {
+                    PanelHeader(title: L10n.text("settings.quota_details"))
+                    preferenceToggle(
+                        title: L10n.text("settings.antigravity_3p"),
+                        detail: L10n.text("settings.antigravity_3p_hint"),
+                        isOn: antigravityThirdPartyBinding
+                    )
+                    .disabled(!tracked.isEnabled(.antigravity))
+                }
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var menuBarSettings: some View {
@@ -297,15 +312,6 @@ struct SettingsSection: View {
             DashboardCard {
                 VStack(alignment: .leading, spacing: 12) {
                     PanelHeader(title: L10n.text("settings.model_quotas"))
-
-                    preferenceToggle(
-                        title: L10n.text("settings.menubar_fable"),
-                        detail: L10n.text("settings.menubar_fable_hint"),
-                        isOn: menuBarFableBinding
-                    )
-                    .disabled(!tracked.isEnabled(.claude))
-
-                    Divider().overlay(DashboardTheme.border)
 
                     preferenceToggle(
                         title: L10n.text("settings.menubar_codex_spark"),
@@ -469,23 +475,17 @@ struct SettingsSection: View {
         )
     }
 
-    private var menuBarFableBinding: Binding<Bool> {
-        Binding(
-            get: { preferences.showFableQuotaInMenuBarWidget },
-            set: { enabled in
-                preferences.setShowFableQuotaInMenuBarWidget(enabled)
-                guard enabled else { return }
-                Task {
-                    await store.refresh(forceCCUsage: false, forceClaude: true)
-                }
-            }
-        )
-    }
-
     private var menuBarCodexSparkBinding: Binding<Bool> {
         Binding(
             get: { preferences.showCodexSparkQuotaInMenuBarWidget },
             set: { preferences.setShowCodexSparkQuotaInMenuBarWidget($0) }
+        )
+    }
+
+    private var antigravityThirdPartyBinding: Binding<Bool> {
+        Binding(
+            get: { preferences.showAntigravityThirdPartyQuota },
+            set: { preferences.setShowAntigravityThirdPartyQuota($0) }
         )
     }
 

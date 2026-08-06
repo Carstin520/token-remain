@@ -474,8 +474,6 @@ final class UsageStore: ObservableObject {
 
         // async-let 的子任务不在主 actor 上,启用判断先在这里(主 actor)取好。
         let codexEnabled = tracked.isEnabled(.codex)
-        let forceFableSupplement = forceClaude
-            && PreferencesStore.shared.showFableQuotaInMenuBarWidget
         let dueAuxProviders = Self.auxProviders.filter { provider in
             guard tracked.isEnabled(provider) else { return false }
             if forceClaude { return true }
@@ -494,9 +492,7 @@ final class UsageStore: ObservableObject {
                 group.addTask {
                     .claude(
                         await result {
-                            try await ClaudeUsageService().fetch(
-                                forceScopedUsageProbe: forceFableSupplement
-                            )
+                            try await ClaudeUsageService().fetch()
                         }
                     )
                 }

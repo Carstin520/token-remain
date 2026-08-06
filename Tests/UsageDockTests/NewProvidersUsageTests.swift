@@ -191,7 +191,8 @@ struct AntigravityUsageParserTests {
               {"buckets": [
                 {"bucketId": "gemini-5h", "remainingFraction": 0.8, "resetTime": "2026-07-22T02:00:00Z"},
                 {"bucketId": "gemini-weekly", "remainingFraction": 0.4},
-                {"bucketId": "3p-5h", "remainingFraction": 0.9}
+                {"bucketId": "3p-5h", "remainingFraction": 0.9},
+                {"bucketId": "3p-weekly", "remainingFraction": 0.7}
               ]}
             ]
           }
@@ -203,6 +204,13 @@ struct AntigravityUsageParserTests {
         #expect(quota.primary.windowMinutes == 300)
         #expect(quota.primary.resetsAt != nil)
         #expect(abs((quota.secondary?.usedPercent ?? 0) - 60) < 0.0001)
+        #expect(quota.uniqueScopedWindows.map(\.scopeID) == [
+            "antigravity_3p_5h",
+            "antigravity_3p_weekly"
+        ])
+        let scopedUsage = quota.uniqueScopedWindows.map(\.window.usedPercent)
+        #expect(abs(scopedUsage[0] - 10) < 0.0001)
+        #expect(abs(scopedUsage[1] - 30) < 0.0001)
     }
 
     @Test("Keychain payload decoding handles agy JSON and bearer fallbacks")

@@ -87,7 +87,7 @@ struct AntigravityUsageService {
 /// `{"groups": [{"buckets": [{bucketId, remainingFraction, resetTime}]}]}`
 /// (或包一层 `response`)。四个池按精确 bucketId 匹配:`gemini-5h` /
 /// `gemini-weekly` 为主池(映射 primary/secondary),`3p-5h` / `3p-weekly`
-/// 是共享的第三方(Claude)池——单卡双窗模型放不下,取主池展示。
+/// 是共享的第三方(Claude)池,作为可由用户显示/隐藏的 scoped windows。
 /// `remainingFraction` 0…1,翻转为已用百分比。
 enum AntigravityUsageParser {
     static func parse(_ data: Data, now: Date = .now) throws -> ProviderQuota {
@@ -120,12 +120,29 @@ enum AntigravityUsageParser {
             throw AntigravityUsageService.ServiceError.quotaUnavailable
         }
         let secondary = pools["gemini-5h"] == nil ? nil : pools["gemini-weekly"]
+        let thirdPartyWindows: [ScopedQuotaWindow] = [
+            pools["3p-5h"].map {
+                ScopedQuotaWindow(
+                    scopeID: "antigravity_3p_5h",
+                    displayName: "Claude / Third-party",
+                    window: $0
+                )
+            },
+            pools["3p-weekly"].map {
+                ScopedQuotaWindow(
+                    scopeID: "antigravity_3p_weekly",
+                    displayName: "Claude / Third-party",
+                    window: $0
+                )
+            }
+        ].compactMap { $0 }
         return ProviderQuota(
             provider: .antigravity,
             primary: primary,
             secondary: secondary,
             planName: nil,
-            capturedAt: now
+            capturedAt: now,
+            scopedWindows: thirdPartyWindows.isEmpty ? nil : thirdPartyWindows
         )
     }
 

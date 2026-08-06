@@ -561,3 +561,12 @@
 "usage.unpriced_models_format" = "ccusage に次のモデルの価格がないため、コスト合計を非表示にしました：%1$@";
 "usage.provider_price_unavailable_accessibility" = "%1$@、%2$@ tokens、価格を取得できません";
 "trends.unpriced_history_format" = "次のモデルに価格がないため、過去のコスト推移は不完全です：%1$@";
+"action.close" = "Close";
+"settings.quota_details" = "Quota details";
+"settings.antigravity_3p" = "Show Antigravity third-party pools";
+"settings.antigravity_3p_hint" = "Show the optional Claude/third-party 5-hour and weekly pools; hidden by default.";
+"trends.model_other_format" = "Other (%1$d models)";
+"trends.model_detail_tag" = "MODEL DETAIL";
+"trends.model_detail_accumulating" = "Model detail accumulates from this version onward; older cached days cannot be backfilled.";
+"trends.model_io_format" = "In %1$@ · Out %2$@ · Cache %3$@";
+"trends.tooltip_click_hint" = "Click for model detail";

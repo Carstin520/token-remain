@@ -310,30 +310,77 @@ struct MiniMaxUsageService {
         let rows = ((body["data"] as? [String: Any])?["model_remains"] as? [[String: Any]])
             ?? (body["model_remains"] as? [[String: Any]])
             ?? []
-        guard let row = rows.first(where: { ($0["model_name"] as? String) == "general" }) ?? rows.first else {
+        guard let primaryIndex = rows.firstIndex(where: {
+            ($0["model_name"] as? String)?.caseInsensitiveCompare("general") == .orderedSame
+        }) ?? rows.indices.first else {
             throw ExtendedProviderError.invalidResponse(.minimax)
         }
+        let row = rows[primaryIndex]
 
-        func window(_ percentKey: String, _ endKey: String, minutes: Int) -> QuotaWindow? {
-            guard let remaining = ExtendedHTTP.number(row[percentKey]) else { return nil }
-            let resetsAt = ExtendedHTTP.number(row[endKey]).map { Date(timeIntervalSince1970: $0 / 1000) }
+        func window(
+            in source: [String: Any],
+            _ percentKey: String,
+            _ endKey: String,
+            minutes: Int
+        ) -> QuotaWindow? {
+            guard let remaining = ExtendedHTTP.number(source[percentKey]) else { return nil }
+            let resetsAt = ExtendedHTTP.number(source[endKey]).map { Date(timeIntervalSince1970: $0 / 1000) }
             return QuotaWindow(
                 usedPercent: ExtendedHTTP.clamp(100 - remaining),
                 windowMinutes: minutes,
                 resetsAt: resetsAt
             )
         }
-        let session = window("current_interval_remaining_percent", "end_time", minutes: 300)
-        let weekly = window("current_weekly_remaining_percent", "weekly_end_time", minutes: 10_080)
+        let session = window(in: row, "current_interval_remaining_percent", "end_time", minutes: 300)
+        let weekly = window(in: row, "current_weekly_remaining_percent", "weekly_end_time", minutes: 10_080)
         guard let primary = session ?? weekly else {
             throw ExtendedProviderError.invalidResponse(.minimax)
+        }
+        var scopedWindows: [ScopedQuotaWindow] = []
+        for (index, lane) in rows.enumerated() where index != primaryIndex {
+            let rawName = ((lane["model_name"] as? String) ?? "")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !rawName.isEmpty else { continue }
+            let slug = rawName.lowercased()
+                .replacingOccurrences(of: #"[^a-z0-9]+"#, with: "_", options: .regularExpression)
+                .trimmingCharacters(in: CharacterSet(charactersIn: "_"))
+            guard !slug.isEmpty else { continue }
+            if let laneSession = window(
+                in: lane,
+                "current_interval_remaining_percent",
+                "end_time",
+                minutes: 300
+            ) {
+                scopedWindows.append(
+                    ScopedQuotaWindow(
+                        scopeID: "minimax_\(slug)_session",
+                        displayName: rawName,
+                        window: laneSession
+                    )
+                )
+            }
+            if let laneWeekly = window(
+                in: lane,
+                "current_weekly_remaining_percent",
+                "weekly_end_time",
+                minutes: 10_080
+            ) {
+                scopedWindows.append(
+                    ScopedQuotaWindow(
+                        scopeID: "minimax_\(slug)_weekly",
+                        displayName: rawName,
+                        window: laneWeekly
+                    )
+                )
+            }
         }
         return ProviderQuota(
             provider: .minimax,
             primary: primary,
             secondary: session == nil ? nil : weekly,
             planName: "Coding Plan",
-            capturedAt: now
+            capturedAt: now,
+            scopedWindows: scopedWindows.isEmpty ? nil : scopedWindows
         )
     }
 }

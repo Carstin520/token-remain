@@ -210,12 +210,25 @@ struct CCUsageService {
                         id: $0.agent.lowercased(),
                         tokens: $0.totalTokens,
                         cost: $0.totalCost,
-                        unpricedModels: unpricedModels(in: $0)
+                        unpricedModels: unpricedModels(in: $0),
+                        models: historyModels(in: $0)
                     )
                 }
             )
         }
         .sorted { $0.date < $1.date }
         return DailyUsageHistory(days: days, capturedAt: now)
+    }
+
+    private static func historyModels(in agent: Agent) -> [DailyUsageHistory.ModelUsage] {
+        DailyUsageHistory.boundedModels((agent.modelBreakdowns ?? []).map { row in
+            DailyUsageHistory.ModelUsage(
+                id: row.modelName,
+                inputTokens: row.inputTokens,
+                outputTokens: row.outputTokens,
+                cacheTokens: row.cacheCreationTokens + row.cacheReadTokens,
+                cost: row.cost
+            )
+        })
     }
 }

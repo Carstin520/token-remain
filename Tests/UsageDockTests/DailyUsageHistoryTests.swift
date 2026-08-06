@@ -96,6 +96,8 @@ struct DailyUsageHistoryTests {
 
         #expect(agent.tokens == 99_960_288)
         #expect(agent.unpricedModels == ["claude-opus-5"])
+        #expect(snapshot.history.days.first?.agents.first?.models.first?.id == "claude-opus-5")
+        #expect(snapshot.history.days.first?.agents.first?.models.first?.cacheTokens == 99_666_170)
         #expect(insights.totalCost == nil)
         #expect(insights.unpricedModels == ["claude-opus-5"])
         #expect(snapshot.history.days.first?.totalCost == nil)
@@ -252,6 +254,74 @@ struct DailyUsageHistoryTests {
         )
         #expect(decoded.days.first?.tokens(forAgentID: "gemini") == 123)
         #expect(decoded.days.first?.cost(forAgentID: "gemini") == 0.45)
+    }
+
+    @Test("Model history is bounded to named rows plus an aggregated tail")
+    func boundedModelHistory() {
+        let rows = (0..<10).map { index in
+            return DailyUsageHistory.ModelUsage(
+                id: "model-\(index)",
+                inputTokens: Int64(100 - index),
+                outputTokens: 1,
+                cacheTokens: 0,
+                cost: Double(index) / 10
+            )
+        }
+        let bounded = DailyUsageHistory.boundedModels(rows)
+        #expect(bounded.count == 8)
+        #expect(bounded.last?.id == "other")
+        #expect(bounded.last?.constituentCount == 3)
+        #expect(bounded.reduce(0) { $0 + $1.totalTokens } == rows.reduce(0) { $0 + $1.totalTokens })
+    }
+
+    @Test("Pinned-day projection ranks five models and keeps the tail as Other")
+    func modelBreakdownProjection() {
+        let models: [DailyUsageHistory.ModelUsage] = (0..<7).map { index in
+            let inputTokens = Int64((7 - index) * 100)
+            let outputTokens = Int64(index)
+            return DailyUsageHistory.ModelUsage(
+                id: "claude-model-\(index)",
+                inputTokens: inputTokens,
+                outputTokens: outputTokens,
+                cacheTokens: 0,
+                cost: Double(7 - index)
+            )
+        }
+        let day = DailyUsageHistory.Day(
+            date: Date(timeIntervalSince1970: 1_000),
+            agents: [
+                .init(
+                    id: "claude",
+                    tokens: 2_821,
+                    cost: 28,
+                    unpricedModels: ["claude-model-6"],
+                    models: models
+                )
+            ]
+        )
+        let breakdown = TrendDayModelBreakdown.make(
+            day: day,
+            agentIDs: ["claude"],
+            metric: .tokens
+        )
+        let rows = breakdown.groups.first?.rows ?? []
+        #expect(rows.count == 6)
+        #expect(rows.last?.id == "other")
+        #expect(rows.last?.constituentCount == 2)
+        #expect(rows.last?.isUnpriced == true)
+        let displayedTotal = rows.reduce(Int64(0)) { $0 + $1.totalTokens }
+        let sourceTotal = models.reduce(Int64(0)) { $0 + $1.totalTokens }
+        #expect(displayedTotal == sourceTotal)
+    }
+
+    @Test("Older cached agents decode without model detail")
+    func preModelCacheMigration() throws {
+        let json = #"{"id":"claude","tokens":123,"cost":0.5}"#
+        let agent = try JSONDecoder().decode(
+            DailyUsageHistory.Agent.self,
+            from: Data(json.utf8)
+        )
+        #expect(agent.models.isEmpty)
     }
 
     @Test("Rows with unparseable periods are dropped rather than guessed")

@@ -91,7 +91,7 @@ struct MobileSnapshotRedactorTests {
             generatedAt: now
         )
 
-        #expect(snapshot.providers.count == ProviderQuota.Provider.displayOrder.count)
+        #expect(snapshot.providers.count == SyncedProviderID.supportedOnCurrentMobile.count)
         #expect(Set(snapshot.providers.map(\.providerID)) == SyncedProviderID.supportedOnCurrentMobile)
         #expect(snapshot.providers.first { $0.providerID == "cursor" }?.planName == nil)
     }
@@ -103,10 +103,23 @@ struct MobileSnapshotRedactorTests {
             days: [
                 DailyUsageHistory.Day(
                     date: now - 86_400,
-                    claudeTokens: 12_000_000,
-                    claudeCost: 22.5,
-                    codexTokens: 7_000_000,
-                    codexCost: 9.75
+                    agents: [
+                        .init(
+                            id: "claude",
+                            tokens: 12_000_000,
+                            cost: 22.5,
+                            models: [
+                                .init(
+                                    id: "private-model-alias",
+                                    inputTokens: 12_000_000,
+                                    outputTokens: 0,
+                                    cacheTokens: 0,
+                                    cost: 22.5
+                                )
+                            ]
+                        ),
+                        .init(id: "codex", tokens: 7_000_000, cost: 9.75)
+                    ]
                 ),
                 DailyUsageHistory.Day(
                     date: now,
@@ -147,6 +160,9 @@ struct MobileSnapshotRedactorTests {
         for deniedField in ["prompt", "project", "session", "account", "path", "request"] {
             #expect(!text.lowercased().contains(deniedField))
         }
+        #expect(!text.contains("modelBreakdowns"))
+        #expect(!text.contains("models"))
+        #expect(!text.contains("private-model-alias"))
         #expect(throws: Never.self) {
             try on.validatedForTransport(configuration: .current(now: now))
         }

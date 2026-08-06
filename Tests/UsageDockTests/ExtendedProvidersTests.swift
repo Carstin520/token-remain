@@ -89,6 +89,8 @@ struct ExtendedProvidersTests {
         #expect(quota.primary.usedPercent == 27.5)
         #expect(quota.primary.windowMinutes == 300)
         #expect(quota.secondary?.usedPercent == 60)
+        #expect(quota.uniqueScopedWindows.map(\.scopeID) == ["minimax_video_session"])
+        #expect(quota.uniqueScopedWindows.first?.window.usedPercent == 100)
     }
 
     @Test("MiMo month_total_token is found anywhere in the payload")
