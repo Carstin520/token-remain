@@ -106,7 +106,14 @@ enum ExtendedHTTP {
 /// 进度条只承载"有/无余额"的可用性,主数值直接展示剩余金额。
 struct DeepSeekUsageService {
     func fetch(now: Date = .now) async throws -> ProviderQuota {
-        guard let key = ProviderSecretStore(provider: .deepseek).load() else {
+        try await fetch(apiKey: nil, now: now)
+    }
+
+    /// A host CLI can already hold the DeepSeek key used by its Anthropic/OpenAI
+    /// compatibility route. Prefer that read-only credential, then fall back to
+    /// TokenRemain's ordinary provider key sources.
+    func fetch(apiKey: String?, now: Date = .now) async throws -> ProviderQuota {
+        guard let key = normalized(apiKey) ?? ProviderSecretStore(provider: .deepseek).load() else {
             throw ExtendedProviderError.notConfigured(.deepseek)
         }
         let data = try await ExtendedHTTP.request(
@@ -115,6 +122,11 @@ struct DeepSeekUsageService {
             headers: ["Authorization": "Bearer \(key)", "Accept": "application/json"]
         )
         return try Self.parse(data, now: now)
+    }
+
+    private func normalized(_ value: String?) -> String? {
+        let result = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return result.isEmpty ? nil : result
     }
 
     static func parse(_ data: Data, now: Date = .now) throws -> ProviderQuota {
@@ -158,7 +170,13 @@ struct DeepSeekUsageService {
 /// window{duration,timeUnit},按窗口时长分会话/周。
 struct KimiUsageService {
     func fetch(now: Date = .now) async throws -> ProviderQuota {
-        guard let secret = ProviderSecretStore(provider: .kimi).load() else {
+        try await fetch(secret: nil, now: now)
+    }
+
+    func fetch(secret routedSecret: String?, now: Date = .now) async throws -> ProviderQuota {
+        let cleaned = routedSecret?.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let secret = (cleaned?.isEmpty == false ? cleaned : nil)
+            ?? ProviderSecretStore(provider: .kimi).load() else {
             throw ExtendedProviderError.notConfigured(.kimi)
         }
         let data: Data
@@ -282,7 +300,13 @@ struct KimiUsageService {
 /// `current_weekly_remaining_percent` / `weekly_end_time`。百分比可能是字符串。
 struct MiniMaxUsageService {
     func fetch(now: Date = .now) async throws -> ProviderQuota {
-        guard let key = ProviderSecretStore(provider: .minimax).load() else {
+        try await fetch(apiKey: nil, now: now)
+    }
+
+    func fetch(apiKey routedKey: String?, now: Date = .now) async throws -> ProviderQuota {
+        let cleaned = routedKey?.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let key = (cleaned?.isEmpty == false ? cleaned : nil)
+            ?? ProviderSecretStore(provider: .minimax).load() else {
             throw ExtendedProviderError.notConfigured(.minimax)
         }
         let hosts = ["https://api.minimax.io", "https://api.minimaxi.com"]

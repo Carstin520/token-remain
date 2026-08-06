@@ -84,6 +84,17 @@ struct CodexRateLimitResetCredits: Sendable, Codable, Equatable {
     let applicableAvailableCount: Int?
 }
 
+/// Identifies the account/API that actually owns a quota while preserving the
+/// host application as `ProviderQuota.provider`. For example, Claude Code can
+/// remain the card identity while its balance is attributed to DeepSeek API.
+/// Only a normalized route identifier is cached; credentials and full URLs are
+/// deliberately excluded from this model.
+struct QuotaAttribution: Sendable, Codable, Equatable {
+    let provider: ProviderQuota.Provider?
+    let displayName: String
+    let routeIdentifier: String
+}
+
 /// Chooses which account-wide window represents a provider on compact summary
 /// surfaces. Named model/pool limits are never candidates for either strategy.
 enum QuotaSummaryStrategy: String, CaseIterable, Identifiable, Sendable {
@@ -120,6 +131,9 @@ struct ProviderQuota: Sendable, Codable {
     /// Codex-only banked resets. Nil means the current source did not expose the
     /// official reset-credit fields; zero is a real, successfully fetched count.
     var codexResetCredits: CodexRateLimitResetCredits? = nil
+    /// Nil means the quota belongs to the host provider itself. A non-nil value
+    /// names the API account that supplied the displayed limit or balance.
+    var attribution: QuotaAttribution? = nil
 
     /// The shortest account-wide window is the default compact/headline value.
     /// This preserves the historical 5-hour-first behavior while keeping named
@@ -215,7 +229,31 @@ struct ProviderQuota: Sendable, Codable {
             accountBalance: accountBalance,
             scopedWindows: merged.isEmpty ? nil : merged,
             remainingBalance: remainingBalance,
-            codexResetCredits: codexResetCredits
+            codexResetCredits: codexResetCredits,
+            attribution: attribution
+        )
+    }
+
+    /// Re-hosts an API provider's quota under the application that consumed it.
+    /// The billing source remains explicit so UI and caches never imply that a
+    /// DeepSeek/OpenRouter balance is an official Claude or Codex allowance.
+    func attributed(
+        to hostProvider: Provider,
+        source: QuotaAttribution
+    ) -> ProviderQuota {
+        ProviderQuota(
+            provider: hostProvider,
+            primary: primary,
+            secondary: secondary,
+            planName: planName,
+            capturedAt: capturedAt,
+            extraUsage: extraUsage,
+            spend: spend,
+            accountBalance: accountBalance,
+            scopedWindows: scopedWindows,
+            remainingBalance: remainingBalance,
+            codexResetCredits: codexResetCredits,
+            attribution: source
         )
     }
 

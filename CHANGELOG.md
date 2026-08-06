@@ -3,6 +3,23 @@
 All notable product changes are recorded here. TokenRemain uses Semantic
 Versioning for public releases.
 
+## 1.2.10 — 2026-08-06
+
+### Added
+
+- Detect third-party API routing used by Claude Code, Codex, and OpenCode while
+  keeping each coding app as the card identity and naming the API that owns the
+  displayed balance or limit.
+
+### Fixed
+
+- Fetch quota from the routed provider instead of falling back to the host
+  application's official subscription or local snapshots, and isolate cached
+  history when the active billing route changes.
+- Carry the routed API name, icon, and accent through quota cards, Overview,
+  risk and trend surfaces, menu-bar summaries, tooltips, accessibility labels,
+  and privacy-filtered device sync.
+
 ## 1.2.9 — 2026-08-06
 
 ### Added
@@ -500,3 +517,4 @@ Versioning for public releases.
 [1.2.7]: https://github.com/Carstin520/token-remain/releases/tag/v1.2.7
 [1.2.8]: https://github.com/Carstin520/token-remain/releases/tag/v1.2.8
 [1.2.9]: https://github.com/Carstin520/token-remain/releases/tag/v1.2.9
+[1.2.10]: https://github.com/Carstin520/token-remain/releases/tag/v1.2.10

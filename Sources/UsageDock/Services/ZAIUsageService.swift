@@ -36,13 +36,22 @@ struct ZAIUsageService {
     var region: ZAIAPIRegion = ZAIRegionStore().load()
 
     func fetch(now: Date = .now) async throws -> ProviderQuota {
-        guard let apiKey = ZAIKeyStore().load() else {
+        try await fetch(apiKey: nil, region: nil, now: now)
+    }
+
+    func fetch(
+        apiKey routedKey: String?,
+        region routedRegion: ZAIAPIRegion?,
+        now: Date = .now
+    ) async throws -> ProviderQuota {
+        let cleaned = routedKey?.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let apiKey = (cleaned?.isEmpty == false ? cleaned : nil) ?? ZAIKeyStore().load() else {
             throw ServiceError.missingKey
         }
 
         // Region is an explicit privacy boundary: never retry the credential
         // against the other jurisdiction's host without a user action.
-        return try await fetch(apiKey: apiKey, region: region, now: now)
+        return try await fetch(apiKey: apiKey, region: routedRegion ?? region, now: now)
     }
 
     private func fetch(

@@ -875,7 +875,7 @@ footer.site .disclaimer{
       <p class="req-line">
         <span>macOS 14+</span><span class="sep">·</span>
         <span>Universal (Apple Silicon + Intel)</span><span class="sep">·</span>
-        <span id="releaseVersion" data-release-version="1.2.9" aria-live="polite">Version 1.2.9 · Universal Mac</span>
+        <span id="releaseVersion" data-release-version="1.2.10" aria-live="polite">Version 1.2.10 · Universal Mac</span>
       </p>
       <p class="releases-hint"><span data-i18n="h-hint">Signed with Developer ID and notarized by Apple.</span></p>
     </div>
@@ -1024,7 +1024,7 @@ footer.site .disclaimer{
           Claude Code<span class="mode">AUTO</span>
         </div>
         <span class="minibar" data-fill="13" data-color="#D97757"></span>
-        <p data-i18n="pv-claude-d">Official 5-hour / 7-day windows with reset countdowns. Direct oauth/usage queries, degrading to a PTY probe when credentials misbehave — refresh tokens are never touched.</p>
+        <p data-i18n="pv-claude-d">Official windows stay under Claude; external routes such as DeepSeek keep the Claude card while naming the API that owns the balance.</p>
       </div>
       <div class="prov featp lift">
         <div class="pn">
@@ -1032,7 +1032,7 @@ footer.site .disclaimer{
           Codex<span class="mode">AUTO</span>
         </div>
         <span class="minibar" data-fill="6" data-color="#5C7FD8"></span>
-        <p data-i18n="pv-codex-d">Live 5-hour / 7-day windows for the main account. Direct server queries with local snapshot fallback; burn-ahead ETA when you're running hot.</p>
+        <p data-i18n="pv-codex-d">Official windows stay under Codex; custom model providers keep the Codex card while naming the API that owns the quota.</p>
       </div>
       <div class="prov lift"><div class="pn"><img class="brand-logo mono" src="assets/providers/cursor.svg" alt="">Cursor<span class="mode">AUTO</span></div><p data-i18n="pv-cursor-d">Monthly billing-cycle quota and reset countdown. Read-only queries of <code>state.vscdb</code>.</p></div>
       <div class="prov lift"><div class="pn"><img class="brand-logo mono" src="assets/providers/grok.svg" alt="">Grok<span class="mode">AUTO</span></div><p data-i18n="pv-grok-d">Weekly pool remaining. Reads the Grok CLI's existing credentials.</p></div>
@@ -1044,7 +1044,7 @@ footer.site .disclaimer{
       <div class="prov lift"><div class="pn"><img class="brand-logo" src="assets/providers/windsurf.png" alt="">Windsurf<span class="mode">AUTO</span></div><p data-i18n="pv-windsurf-d">Daily / weekly quotas from Windsurf's read-only local login state.</p></div>
       <div class="prov lift"><div class="pn"><img class="brand-logo" src="assets/providers/openrouter.svg" alt="">OpenRouter<span class="mode key">API KEY</span></div><p data-i18n="pv-or-d">Prepaid credit balance, official spend and per-key limits.</p></div>
       <div class="prov lift"><div class="pn"><img class="brand-logo" src="assets/providers/antigravity.svg" alt="">Antigravity<span class="mode">AUTO</span></div><p data-i18n="pv-ag-d">Quota pools, plus optional Claude / third-party pools. Reads the local sign-in state.</p></div>
-      <div class="prov lift"><div class="pn"><img class="brand-logo mono" src="assets/providers/opencode.svg" alt="">OpenCode<span class="mode">LOCAL</span></div><p data-i18n="pv-oc-d">Go plan 5-hour, weekly and monthly usage, estimated from a local database scan — fully offline.</p></div>
+      <div class="prov lift"><div class="pn"><img class="brand-logo mono" src="assets/providers/opencode.svg" alt="">OpenCode<span class="mode">AUTO</span></div><p data-i18n="pv-oc-d">Go plan usage stays local; configured third-party providers keep the OpenCode card while naming the API quota source.</p></div>
       <div class="prov lift"><div class="pn"><svg class="brand-logo mono" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="5" cy="12" r="2.2"/><circle cx="19" cy="5" r="2.2"/><circle cx="19" cy="19" r="2.2"/><path d="M7.1 10.9 16.9 6M7.1 13.1l9.8 4.9"/></svg><span data-i18n="pv-3p-n">Third-party API</span><span class="mode key">API KEY</span></div><p data-i18n="pv-3p-d">New API-compatible account balance APIs or a custom balance endpoint. The config lives only in your Keychain.</p></div>
       <div class="prov wide lift">
         <div class="pn"><span data-i18n="pv-compat-n">More services · incl. token-monitor compatibility</span></div>
@@ -1401,8 +1401,8 @@ var ZH={
   "cap-wg-t":"Widgets · 小组件","cap-wg-c":"中 / 小两档桌面小组件：最低剩余、双 provider 段条与重置倒计时，一眼扫完。",
   "pv-h2":"支持的服务",
   "pv-lede":"绝大多数服务<strong style=\"color:var(--text)\">登录即自动接入</strong>：只读各工具已经存在本机的凭证，不额外登录、不代刷。每张卡片注明数据从哪来。",
-  "pv-claude-d":"官方 5 小时 / 7 天窗口 + 重置倒计时。oauth/usage 直查，凭证异常时自动降级 PTY 探针，绝不触碰 refresh token。",
-  "pv-codex-d":"主账户 5 小时 / 7 天实时窗口。服务端接口直查，离线回退最近本地快照；用量超前时给出用尽预测。",
+  "pv-claude-d":"官方窗口仍显示在 Claude 卡片中；DeepSeek 等外部路由保持 Claude 身份，并标明实际拥有余额的 API。",
+  "pv-codex-d":"官方窗口仍显示在 Codex 卡片中；使用自定义 model provider 时保持 Codex 身份，并标明实际 API 额度来源。",
   "pv-cursor-d":"月度账期剩余与重置倒计时。<code>state.vscdb</code> 只读查询。",
   "pv-grok-d":"周池剩余额度。只读 Grok CLI 已有凭证。",
   "pv-ds-d":"按量付费账户余额。Key 只存钥匙串。",
@@ -1413,7 +1413,7 @@ var ZH={
   "pv-windsurf-d":"日 / 周配额；只读 Windsurf 本机登录态。",
   "pv-or-d":"预充积分余额、官方消费与 Key 限额。",
   "pv-ag-d":"配额池，可选显示 Claude/第三方池。只读本机登录态。",
-  "pv-oc-d":"Go 套餐 5 小时 / 周 / 月用量。本地数据库扫描估算，纯本地。",
+  "pv-oc-d":"Go 套餐继续本地估算；配置第三方 provider 时保持 OpenCode 身份，并标明实际 API 额度来源。",
   "pv-3p-n":"第三方 API",
   "pv-3p-d":"New API 兼容账户余额 API 或自定义余额接口。配置只存钥匙串。",
   "pv-compat-n":"更多服务 · 含 token-monitor 兼容接入","pv-volc":"火山引擎",

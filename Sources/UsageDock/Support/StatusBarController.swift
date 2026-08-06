@@ -52,7 +52,13 @@ enum StatusBarPresentation {
         strategy: QuotaSummaryStrategy = .shortestWindow
     ) -> String {
         guard let summary = quota?.generalQuotaSummary(strategy: strategy) else { return provider.displayName }
-        return "\(provider.displayName) · \(UsageFormatting.windowName(minutes: summary.window.windowMinutes))"
+        let identity: String
+        if let source = quota?.attribution?.displayName {
+            identity = "\(provider.displayName) · \(source)"
+        } else {
+            identity = provider.displayName
+        }
+        return "\(identity) · \(UsageFormatting.windowName(minutes: summary.window.windowMinutes))"
     }
 }
 

@@ -79,13 +79,20 @@ struct QuotaTrendRowData: Identifiable {
 
     var id: ProviderQuota.Provider { provider }
     var latest: QuotaUsageHistory.Sample { samples[samples.count - 1] }
+    var displayName: String {
+        latest.attribution.map { "\(provider.displayName) · \($0.displayName)" }
+            ?? provider.displayName
+    }
+    var accentProvider: ProviderQuota.Provider {
+        latest.attribution?.provider ?? provider
+    }
 }
 
 private struct QuotaTrendRow: View {
     let row: QuotaTrendRowData
     let cutoff: Date
 
-    private var color: Color { DashboardTheme.accent(for: row.provider) }
+    private var color: Color { DashboardTheme.accent(for: row.accentProvider) }
 
     var body: some View {
         HStack(spacing: 14) {
@@ -93,7 +100,7 @@ private struct QuotaTrendRow: View {
                 BrandIcon(provider: row.provider)
                     .foregroundStyle(color)
                     .frame(width: 16, height: 16)
-                Text(row.provider.displayName)
+                Text(row.displayName)
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(DashboardTheme.text)
                     .lineLimit(1)
@@ -121,7 +128,7 @@ private struct QuotaTrendRow: View {
         .accessibilityLabel(
             L10n.format(
                 "trends.quota_row_accessibility",
-                row.provider.displayName,
+                row.displayName,
                 UsageFormatting.windowName(minutes: row.latest.windowMinutes),
                 UsageFormatting.percent(row.latest.usedPercent)
             )

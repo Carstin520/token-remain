@@ -96,6 +96,7 @@ struct PopoverQuotaWidget: View {
                     QuotaWindowRow(
                         window: shortestWindow.window,
                         provider: provider,
+                        attribution: quota.attribution,
                         showsDetails: isExpanded,
                         remainingBalance: shortestWindow.remainingBalance
                     )
@@ -106,6 +107,7 @@ struct PopoverQuotaWidget: View {
                             QuotaWindowRow(
                                 window: item.window,
                                 provider: provider,
+                                attribution: quota.attribution,
                                 remainingBalance: item.remainingBalance
                             )
                         }
@@ -124,6 +126,7 @@ struct PopoverQuotaWidget: View {
                         QuotaWindowRow(
                             window: scoped.window,
                             provider: provider,
+                            attribution: quota.attribution,
                             showsDetails: isExpanded,
                             scopeName: scoped.displayName
                         )

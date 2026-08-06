@@ -63,13 +63,15 @@ struct QuotaCard: View {
             QuotaWindowRow(
                 window: quota.primary,
                 provider: provider,
+                attribution: quota.attribution,
                 remainingBalance: quota.primary.remainingBalance ?? quota.remainingBalance
             )
             if let secondary = quota.secondary {
                 Divider().overlay(DashboardTheme.border)
                 QuotaWindowRow(
                     window: secondary,
-                    provider: provider
+                    provider: provider,
+                    attribution: quota.attribution
                 )
             }
             ForEach(
@@ -83,6 +85,7 @@ struct QuotaCard: View {
                 QuotaWindowRow(
                     window: scoped.window,
                     provider: provider,
+                    attribution: quota.attribution,
                     scopeName: scoped.displayName
                 )
             }
@@ -399,6 +402,7 @@ struct AccountBalanceRow: View {
 struct QuotaWindowRow: View {
     let window: QuotaWindow
     let provider: ProviderQuota.Provider
+    var attribution: QuotaAttribution? = nil
     var showsDetails = true
     var scopeName: String?
     var remainingBalance: QuotaBalance? = nil
@@ -414,6 +418,12 @@ struct QuotaWindowRow: View {
         TimelineView(.periodic(from: .now, by: 60)) { context in
             VStack(alignment: .leading, spacing: showsDetails ? 7 : 6) {
                 HStack(alignment: .firstTextBaseline) {
+                    if let sourceProvider = attribution?.provider,
+                       sourceProvider != provider {
+                        BrandIcon(provider: sourceProvider)
+                            .frame(width: 12, height: 12)
+                            .foregroundStyle(DashboardTheme.secondaryText)
+                    }
                     Text(windowTitle)
                         .font(.system(size: 13))
                         .foregroundStyle(DashboardTheme.secondaryText)
@@ -434,7 +444,7 @@ struct QuotaWindowRow: View {
                 SegmentBar(
                     value: remainingPercent / 100,
                     accent: DashboardTheme.quotaAccent(
-                        for: provider,
+                        for: attribution?.provider ?? provider,
                         remainingPercent: remainingPercent
                     )
                 )
@@ -465,7 +475,7 @@ struct QuotaWindowRow: View {
         .accessibilityLabel(
             L10n.format(
                 "quota.window_accessibility",
-                provider.displayName,
+                accessibilityProviderName,
                 windowAccessibilityDescriptor
             )
         )
@@ -490,15 +500,32 @@ struct QuotaWindowRow: View {
     }
 
     private var windowTitle: String {
-        let duration = L10n.format("quota.window", UsageFormatting.windowName(minutes: window.windowMinutes))
-        guard let scopeName else { return duration }
-        return "\(scopeName) · \(duration)"
+        Self.displayTitle(
+            windowMinutes: window.windowMinutes,
+            scopeName: scopeName,
+            attribution: attribution
+        )
+    }
+
+    static func displayTitle(
+        windowMinutes: Int,
+        scopeName: String?,
+        attribution: QuotaAttribution?
+    ) -> String {
+        let duration = L10n.format("quota.window", UsageFormatting.windowName(minutes: windowMinutes))
+        let scoped = scopeName.map { "\($0) · \(duration)" } ?? duration
+        guard let source = attribution?.displayName else { return scoped }
+        return "\(source) · \(scoped)"
     }
 
     private var windowAccessibilityDescriptor: String {
         let duration = UsageFormatting.windowName(minutes: window.windowMinutes)
-        guard let scopeName else { return duration }
-        return "\(scopeName) · \(duration)"
+        return scopeName.map { "\($0) · \(duration)" } ?? duration
+    }
+
+    private var accessibilityProviderName: String {
+        guard let source = attribution?.displayName else { return provider.displayName }
+        return "\(provider.displayName) · \(source)"
     }
 }
 
