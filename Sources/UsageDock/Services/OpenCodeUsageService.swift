@@ -45,6 +45,17 @@ struct OpenCodeUsageService {
         return home.appending(path: ".local/share/opencode")
     }()
 
+    var configurationDirectory: URL = {
+        let environment = ProcessInfo.processInfo.environment
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        if let xdg = environment["XDG_CONFIG_HOME"]?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !xdg.isEmpty {
+            return URL(fileURLWithPath: (xdg as NSString).expandingTildeInPath)
+                .appending(path: "opencode")
+        }
+        return home.appending(path: ".config/opencode")
+    }()
+
     func fetch(now: Date = .now) async throws -> ProviderQuota {
         let fileManager = FileManager.default
         guard fileManager.fileExists(atPath: dataDirectory.path) else {
@@ -56,6 +67,25 @@ struct OpenCodeUsageService {
             .map { dataDirectory.appending(path: $0).path }
         guard !databases.isEmpty else {
             throw ServiceError.noUsage
+        }
+
+        if let providerID = await Self.latestProviderID(in: databases),
+           providerID.caseInsensitiveCompare("opencode-go") != .orderedSame {
+            let baseURL = Self.providerBaseURL(
+                providerID: providerID,
+                configurationDirectory: configurationDirectory
+            )
+            let credential = Self.providerCredential(
+                providerID: providerID,
+                dataDirectory: dataDirectory
+            )
+            let route = HostAppQuotaRouteDetector.externalRoute(
+                hostProvider: .opencode,
+                providerID: providerID,
+                baseURL: baseURL,
+                credential: credential
+            )
+            return try await HostAppQuotaRoutingService().fetchExternal(route)
         }
 
         // Current monthly window is at most 31 days. Forty days leaves enough
@@ -118,6 +148,137 @@ struct OpenCodeUsageService {
         let quota = Self.quota(costs: costs, now: now, anchorMs: earliestMs)
         Self.logger.info("OpenCode quota derived from local database scan")
         return quota
+    }
+
+    /// The newest assistant message is the best local evidence of the provider
+    /// OpenCode actually used. Configuration alone is insufficient because a
+    /// user can switch models/providers per session.
+    static func latestProviderID(in databases: [String]) async -> String? {
+        var latest: (timestamp: Double, providerID: String)?
+        let sql = """
+        SELECT json_array(
+          CAST(COALESCE(json_extract(data,'$.time.created'), time_created) AS INTEGER),
+          json_extract(data,'$.providerID')
+        )
+        FROM message
+        WHERE json_valid(data)
+          AND json_extract(data,'$.role') = 'assistant'
+          AND json_type(data,'$.providerID') = 'text'
+        ORDER BY CAST(COALESCE(json_extract(data,'$.time.created'), time_created) AS INTEGER) DESC
+        LIMIT 1;
+        """
+        for database in databases {
+            guard let output = try? await ProcessRunner.run(
+                "/usr/bin/sqlite3", arguments: ["-readonly", database, sql]
+            ), let candidate = parseProviderRouteRow(output) else { continue }
+            if latest.map({ candidate.timestamp > $0.timestamp }) ?? true {
+                latest = candidate
+            }
+        }
+        return latest?.providerID
+    }
+
+    static func parseProviderRouteRow(_ data: Data) -> (timestamp: Double, providerID: String)? {
+        guard let text = String(data: data, encoding: .utf8)?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+              let row = try? JSONSerialization.jsonObject(with: Data(text.utf8)) as? [Any],
+              row.count >= 2,
+              let timestamp = (row[0] as? NSNumber)?.doubleValue,
+              let providerID = (row[1] as? String)?
+                .trimmingCharacters(in: .whitespacesAndNewlines),
+              !providerID.isEmpty else {
+            return nil
+        }
+        return (timestamp, providerID)
+    }
+
+    static func providerBaseURL(
+        providerID: String,
+        configurationDirectory: URL
+    ) -> URL? {
+        for name in ["opencode.json", "opencode.jsonc"] {
+            let url = configurationDirectory.appending(path: name)
+            guard let text = try? String(contentsOf: url, encoding: .utf8),
+                  let data = strippingJSONComments(text).data(using: .utf8),
+                  let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let providers = root["provider"] as? [String: Any],
+                  let provider = providers[providerID] as? [String: Any] else { continue }
+            let options = provider["options"] as? [String: Any]
+            let raw = (options?["baseURL"] as? String)
+                ?? (options?["baseUrl"] as? String)
+                ?? (provider["baseURL"] as? String)
+                ?? (provider["baseUrl"] as? String)
+            if let raw, let url = HostAppQuotaRouteDetector.normalizedBaseURL(raw) {
+                return url
+            }
+        }
+        return nil
+    }
+
+    static func providerCredential(providerID: String, dataDirectory: URL) -> String? {
+        let url = dataDirectory.appending(path: "auth.json")
+        guard let data = try? Data(contentsOf: url),
+              let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let entry = root[providerID] as? [String: Any] else { return nil }
+        for key in ["key", "apiKey", "token"] {
+            let value = (entry[key] as? String)?
+                .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            if !value.isEmpty { return value }
+        }
+        return nil
+    }
+
+    /// JSONC support used only to locate a provider base URL. Strings are kept
+    /// byte-for-byte while line/block comments are removed.
+    static func strippingJSONComments(_ text: String) -> String {
+        enum State { case normal, string, lineComment, blockComment }
+        var state = State.normal
+        var result = ""
+        var index = text.startIndex
+        var escaped = false
+        while index < text.endIndex {
+            let next = text.index(after: index)
+            let character = text[index]
+            let following = next < text.endIndex ? text[next] : nil
+            switch state {
+            case .normal:
+                if character == "\"" {
+                    state = .string
+                    result.append(character)
+                } else if character == "/", following == "/" {
+                    state = .lineComment
+                    index = next
+                } else if character == "/", following == "*" {
+                    state = .blockComment
+                    index = next
+                } else {
+                    result.append(character)
+                }
+            case .string:
+                result.append(character)
+                if escaped {
+                    escaped = false
+                } else if character == "\\" {
+                    escaped = true
+                } else if character == "\"" {
+                    state = .normal
+                }
+            case .lineComment:
+                if character.isNewline {
+                    state = .normal
+                    result.append(character)
+                }
+            case .blockComment:
+                if character == "*", following == "/" {
+                    state = .normal
+                    index = next
+                } else if character.isNewline {
+                    result.append(character)
+                }
+            }
+            index = text.index(after: index)
+        }
+        return result
     }
 
     /// sqlite 输出是一行 JSON 数组的数组:`[[time_created, cost], …]`。

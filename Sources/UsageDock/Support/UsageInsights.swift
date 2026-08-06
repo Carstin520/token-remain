@@ -60,6 +60,16 @@ struct UsageInsights {
         let remainingPercent: Double
         let resetsAt: Date?
         let scopeName: String?
+        let attribution: QuotaAttribution?
+
+        var displayName: String {
+            guard let source = attribution?.displayName else { return provider.displayName }
+            return "\(provider.displayName) · \(source)"
+        }
+
+        var accentProvider: ProviderQuota.Provider {
+            attribution?.provider ?? provider
+        }
     }
 
     struct PaceAssessment {
@@ -71,16 +81,27 @@ struct UsageInsights {
     var windows: [Window] {
         var result: [Window] = []
         for quota in quotas {
-            result.append(window(quota.primary, provider: quota.provider, slot: "primary"))
+            result.append(window(
+                quota.primary,
+                provider: quota.provider,
+                slot: "primary",
+                attribution: quota.attribution
+            ))
             if let secondary = quota.secondary {
-                result.append(window(secondary, provider: quota.provider, slot: "secondary"))
+                result.append(window(
+                    secondary,
+                    provider: quota.provider,
+                    slot: "secondary",
+                    attribution: quota.attribution
+                ))
             }
             for scoped in quota.uniqueScopedWindows {
                 result.append(window(
                     scoped.window,
                     provider: quota.provider,
                     slot: "scope-\(scoped.scopeID)",
-                    scopeName: scoped.displayName
+                    scopeName: scoped.displayName,
+                    attribution: quota.attribution
                 ))
             }
         }
@@ -134,7 +155,8 @@ struct UsageInsights {
         _ source: QuotaWindow,
         provider: ProviderQuota.Provider,
         slot: String,
-        scopeName: String? = nil
+        scopeName: String? = nil,
+        attribution: QuotaAttribution? = nil
     ) -> Window {
         Window(
             id: "\(provider.rawValue)-\(slot)-\(source.windowMinutes)",
@@ -143,7 +165,8 @@ struct UsageInsights {
             usedPercent: min(100, max(0, source.usedPercent)),
             remainingPercent: min(100, max(0, 100 - source.usedPercent)),
             resetsAt: source.resetsAt,
-            scopeName: scopeName
+            scopeName: scopeName,
+            attribution: attribution
         )
     }
 

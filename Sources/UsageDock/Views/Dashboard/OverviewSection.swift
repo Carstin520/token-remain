@@ -103,7 +103,7 @@ struct OverviewSection: View {
             )
         }
 
-        let provider = assessment.window.provider.displayName
+        let provider = assessment.window.displayName
         let window = UsageFormatting.windowName(minutes: assessment.window.windowMinutes)
         return MetricCard(
             label: L10n.text("overview.kpi.projected_available"),
@@ -196,7 +196,7 @@ struct OverviewSection: View {
                 Divider().overlay(DashboardTheme.border)
                 InfoRow(
                     label: L10n.text("overview.scarcest_window"),
-                    value: "\(window.provider.displayName) · \(UsageFormatting.windowName(minutes: window.windowMinutes))",
+                    value: "\(window.displayName) · \(UsageFormatting.windowName(minutes: window.windowMinutes))",
                     fontSize: 11
                 )
                 InfoRow(
@@ -234,7 +234,7 @@ private struct OfficialQuotaRow: View {
             HStack {
                 BrandIcon(provider: window.provider)
                     .frame(width: 18, height: 18)
-                Text(window.provider.displayName)
+                Text(window.displayName)
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(DashboardTheme.text)
                     .lineLimit(1)
@@ -248,7 +248,7 @@ private struct OfficialQuotaRow: View {
             SegmentBar(
                 value: window.remainingPercent / 100,
                 accent: DashboardTheme.quotaAccent(
-                    for: window.provider,
+                    for: window.accentProvider,
                     remainingPercent: window.remainingPercent
                 ),
                 height: 5
@@ -266,6 +266,6 @@ private struct OfficialQuotaRow: View {
             }
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(L10n.format("quota.provider_remaining", window.provider.displayName, UsageFormatting.percent(window.remainingPercent)))
+        .accessibilityLabel(L10n.format("quota.provider_remaining", window.displayName, UsageFormatting.percent(window.remainingPercent)))
     }
 }

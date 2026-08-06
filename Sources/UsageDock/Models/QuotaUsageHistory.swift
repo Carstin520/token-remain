@@ -13,6 +13,9 @@ struct QuotaUsageHistory: Sendable, Codable, Equatable {
         let windowMinutes: Int
         let resetsAt: Date?
         let capturedAt: Date
+        /// Optional so pre-routing history caches remain decodable. Trend
+        /// queries keep only the latest route for each host application.
+        var attribution: QuotaAttribution? = nil
 
         var id: String {
             "\(provider.rawValue)-\(capturedAt.timeIntervalSinceReferenceDate)"
@@ -37,8 +40,11 @@ struct QuotaUsageHistory: Sendable, Codable, Equatable {
         for provider: ProviderQuota.Provider,
         since cutoff: Date? = nil
     ) -> [Sample] {
-        samples.filter { sample in
-            sample.provider == provider
+        let providerSamples = samples.filter { $0.provider == provider }
+        let currentRouteID = providerSamples.max(by: { $0.capturedAt < $1.capturedAt })?
+            .attribution?.routeIdentifier
+        return providerSamples.filter { sample in
+            sample.attribution?.routeIdentifier == currentRouteID
                 && cutoff.map { sample.capturedAt >= $0 } != false
         }
     }
@@ -51,7 +57,8 @@ struct QuotaUsageHistory: Sendable, Codable, Equatable {
             usedPercent: min(100, max(0, quota.primary.usedPercent)),
             windowMinutes: quota.primary.windowMinutes,
             resetsAt: quota.primary.resetsAt,
-            capturedAt: quota.capturedAt
+            capturedAt: quota.capturedAt,
+            attribution: quota.attribution
         )
         let retentionCutoff = sample.capturedAt.addingTimeInterval(-Self.retentionDuration)
         var updated = samples.filter { $0.capturedAt >= retentionCutoff }

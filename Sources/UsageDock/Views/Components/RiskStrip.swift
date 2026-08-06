@@ -23,7 +23,7 @@ struct RiskStrip: View {
                     if let window = insights.constrainingWindow {
                         Text(L10n.format(
                             "risk.provider_remaining",
-                            window.provider.displayName,
+                            window.displayName,
                             UsageFormatting.percent(window.remainingPercent)
                         ))
                             .numericFont(10, .medium)
@@ -56,7 +56,7 @@ struct RiskStrip: View {
                 insights.constrainingWindow.map {
                     L10n.format(
                         "risk.provider_remaining",
-                        $0.provider.displayName,
+                        $0.displayName,
                         UsageFormatting.percent($0.remainingPercent)
                     )
                 } ?? ""

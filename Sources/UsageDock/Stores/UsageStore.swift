@@ -92,6 +92,7 @@ final class UsageStore: ObservableObject {
     private var latestLocalUsageSnapshot: LocalUsageSnapshot?
     private let disabledLocalUsageSourcesKey = "tokenRemain.disabledLocalUsageSources.v1"
     private let sessionActivityMonitor: LocalAISessionActivityMonitor
+    private let hostQuotaRouter: HostAppQuotaRoutingService
 
     private enum QuotaRefreshOutput {
         case claude(Result<ProviderQuota, Error>)
@@ -116,10 +117,11 @@ final class UsageStore: ObservableObject {
     /// warning is never more optimistic than the quota cards below it.
     /// Claude / Codex 之外、只有 API(或本地扫描)一条直查路径的 provider,
     /// 统一走 5 分钟节奏的批量抓取。
-    static let auxProviders: [ProviderQuota.Provider] = [
-        .cursor, .grok, .zai, .copilot, .devin, .windsurf,
+    nonisolated static let auxProviders: [ProviderQuota.Provider] = [
+        .cursor, .grok, .zai, .zaiTeam, .copilot, .devin, .windsurf,
         .openrouter, .antigravity, .opencode,
-        .deepseek, .kimi, .minimax, .mimo, .qoder, .kiro, .volcengine, .ollama
+        .deepseek, .kimi, .minimax, .mimo, .qoder, .kiro, .volcengine, .ollama,
+        .thirdParty
     ]
 
     /// 当前全部 provider 快照(含未追踪的 nil),固定顺序。
@@ -193,7 +195,8 @@ final class UsageStore: ObservableObject {
 
     private func assign(_ value: ProviderQuota?, to provider: ProviderQuota.Provider) {
         let resolvedValue: ProviderQuota?
-        if let value, let previous = quotas[provider] {
+        if let value, let previous = quotas[provider],
+           Self.quotaRoutesMatch(value, previous) {
             resolvedValue = value.retainingActiveScopedWindows(
                 from: previous,
                 now: value.capturedAt
@@ -213,6 +216,13 @@ final class UsageStore: ObservableObject {
                 quotaUsageHistoryCache.save(updated)
             }
         }
+    }
+
+    nonisolated static func quotaRoutesMatch(
+        _ lhs: ProviderQuota,
+        _ rhs: ProviderQuota
+    ) -> Bool {
+        lhs.attribution?.routeIdentifier == rhs.attribution?.routeIdentifier
     }
 
     private static func auxFetcher(
@@ -303,6 +313,9 @@ final class UsageStore: ObservableObject {
         self.tracked = tracked
         self.defaults = defaults
         self.sessionActivityMonitor = sessionActivityMonitor
+        hostQuotaRouter = HostAppQuotaRoutingService(
+            detector: HostAppQuotaRouteDetector(homeDirectory: home)
+        )
         traeAgentTrajectoryStore = TraeAgentTrajectoryStore(defaults: defaults, home: home)
         disabledLocalUsageSourceIDs = Set(
             (defaults.stringArray(forKey: disabledLocalUsageSourcesKey) ?? [])
@@ -312,12 +325,24 @@ final class UsageStore: ObservableObject {
         traeAgentDirectories = traeAgentTrajectoryStore.availableDirectories
         if let cached = quotaCache.load() {
             quotas = cached.byProvider
+            for hostProvider in [ProviderQuota.Provider.claude, .codex] {
+                let currentRoute = hostQuotaRouter.route(for: hostProvider)
+                let cachedRouteID = quotas[hostProvider]?.attribution?.routeIdentifier
+                let currentRouteID = currentRoute.source?.routeIdentifier
+                if cachedRouteID != currentRouteID {
+                    quotas[hostProvider] = nil
+                }
+            }
+            // OpenCode's active provider is resolved asynchronously from its
+            // message database. Do not flash any cached route at launch; the
+            // initial auxiliary refresh immediately repopulates the right one.
+            quotas[.opencode] = nil
             // 升级兼容：旧版没有独立连接历史，已有成功快照就是最可靠的
             // “曾连接”证据。
-            for provider in cached.byProvider.keys {
+            for provider in quotas.keys {
                 tracked.markConnected(provider)
             }
-            lastClaudeAttempt = cached.byProvider[.claude]?.capturedAt
+            lastClaudeAttempt = quotas[.claude]?.capturedAt
         }
         history = historyCache.load()
         discoveredLocalUsageSourceIDs.formUnion(
@@ -478,6 +503,8 @@ final class UsageStore: ObservableObject {
 
         // async-let 的子任务不在主 actor 上,启用判断先在这里(主 actor)取好。
         let codexEnabled = tracked.isEnabled(.codex)
+        let hostQuotaRouter = self.hostQuotaRouter
+        let codexRouteIsExternal = hostQuotaRouter.route(for: .codex).isExternal
         let dueAuxProviders = Self.auxProviders.filter { provider in
             guard tracked.isEnabled(provider) else { return false }
             if forceClaude { return true }
@@ -496,16 +523,21 @@ final class UsageStore: ObservableObject {
                 group.addTask {
                     .claude(
                         await result {
-                            try await ClaudeUsageService().fetch()
+                            try await hostQuotaRouter.fetchClaude()
                         }
                     )
                 }
             }
-            if codexEnabled && (codexAPIDue || codexLocalDue) {
+            if Self.shouldRefreshCodex(
+                enabled: codexEnabled,
+                routeIsExternal: codexRouteIsExternal,
+                apiDue: codexAPIDue,
+                localSnapshotDue: codexLocalDue
+            ) {
                 group.addTask {
                     .codex(
                         await result {
-                            try await CodexUsageService().fetch(preferAPI: codexAPIDue)
+                            try await hostQuotaRouter.fetchCodex(preferAPI: codexAPIDue)
                         }
                     )
                 }
@@ -569,6 +601,9 @@ final class UsageStore: ObservableObject {
                 UserDefaults.standard.removeObject(forKey: claudeRetryAfterKey)
                 logger.info("Claude quota refreshed; primary usage: \(value.primary.usedPercent, privacy: .public)%, reset time available: \(value.primary.resetsAt != nil, privacy: .public)")
             case .failure(let error):
+                if Self.invalidatesCachedQuota(error) {
+                    assign(nil, to: .claude)
+                }
                 providerNotices[.claude] = error.localizedDescription
                 if let serviceError = error as? ClaudeUsageService.ServiceError {
                     let retryAfter = now.addingTimeInterval(serviceError.retryDelay)
@@ -585,10 +620,15 @@ final class UsageStore: ObservableObject {
             switch codexResult {
             case .success(let value):
                 providerNotices[.codex] = nil
-                if codex.map({ value.capturedAt > $0.capturedAt }) ?? true {
+                if codex.map({
+                    !Self.quotaRoutesMatch(value, $0) || value.capturedAt > $0.capturedAt
+                }) ?? true {
                     assign(value, to: .codex)
                 }
             case .failure(let error):
+                if Self.invalidatesCachedQuota(error) {
+                    assign(nil, to: .codex)
+                }
                 if codexAPIDue || codex == nil {
                     providerNotices[.codex] = error.localizedDescription
                     errors.append("Codex: \(error.localizedDescription)")
@@ -777,18 +817,26 @@ final class UsageStore: ObservableObject {
             switch provider {
             case .claude:
                 lastClaudeAttempt = now
-                quota = try await ClaudeOAuthUsageService().fetch(
-                    now: now,
-                    keychainInteraction: .allowed
-                )
+                if hostQuotaRouter.route(for: .claude).isExternal {
+                    quota = try await hostQuotaRouter.fetchClaude()
+                } else {
+                    quota = try await ClaudeOAuthUsageService().fetch(
+                        now: now,
+                        keychainInteraction: .allowed
+                    )
+                }
                 claudeRetryAfter = nil
                 UserDefaults.standard.removeObject(forKey: claudeRetryAfterKey)
             case .codex:
                 lastCodexAPIAttempt = now
-                quota = try await CodexAPIUsageService().fetch(
-                    now: now,
-                    keychainInteraction: .allowed
-                )
+                if hostQuotaRouter.route(for: .codex).isExternal {
+                    quota = try await hostQuotaRouter.fetchCodex(preferAPI: true)
+                } else {
+                    quota = try await CodexAPIUsageService().fetch(
+                        now: now,
+                        keychainInteraction: .allowed
+                    )
+                }
             default:
                 return false
             }
@@ -799,6 +847,10 @@ final class UsageStore: ObservableObject {
             logger.info("Explicit read-only credential authorization succeeded for \(provider.rawValue, privacy: .public)")
             return true
         } catch {
+            if Self.invalidatesCachedQuota(error) {
+                assign(nil, to: provider)
+                quotaCache.save(currentSnapshot())
+            }
             providerNotices[provider] = error.localizedDescription
             logger.error("Explicit read-only credential authorization failed for \(provider.rawValue, privacy: .public): \(error.localizedDescription, privacy: .public)")
             return false
@@ -827,12 +879,28 @@ final class UsageStore: ObservableObject {
             assign(value)
             providerNotices[provider] = nil
         case .failure(let error):
+            if Self.invalidatesCachedQuota(error) {
+                self.assign(nil, to: provider)
+            }
             providerNotices[provider] = error.localizedDescription
         }
     }
 
     private func currentSnapshot() -> QuotaCache.Snapshot {
         .init(byProvider: quotas)
+    }
+
+    nonisolated static func shouldRefreshCodex(
+        enabled: Bool,
+        routeIsExternal: Bool,
+        apiDue: Bool,
+        localSnapshotDue: Bool
+    ) -> Bool {
+        enabled && (apiDue || (!routeIsExternal && localSnapshotDue))
+    }
+
+    nonisolated static func invalidatesCachedQuota(_ error: Error) -> Bool {
+        error is HostAppQuotaRoutingError
     }
 
     deinit {

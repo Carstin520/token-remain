@@ -33,7 +33,12 @@ struct OpenRouterUsageService {
     private static let logger = Logger(subsystem: "com.jamesli.usagedock", category: "OpenRouterUsage")
 
     func fetch(now: Date = .now) async throws -> ProviderQuota {
-        guard let apiKey = OpenRouterKeyStore().load() else {
+        try await fetch(apiKey: nil, now: now)
+    }
+
+    func fetch(apiKey routedKey: String?, now: Date = .now) async throws -> ProviderQuota {
+        let cleaned = routedKey?.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let apiKey = (cleaned?.isEmpty == false ? cleaned : nil) ?? OpenRouterKeyStore().load() else {
             throw ServiceError.missingKey
         }
 
