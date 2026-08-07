@@ -1,4 +1,4 @@
-const PROVIDER_NAMES = { claude: "Claude", codex: "Codex" };
+import { providerMeta } from "./provider-meta.js";
 
 export function buildOverviewSummary(providers = [], now = Date.now()) {
   const risk = buildRiskNotes(providers, now);
@@ -117,7 +117,7 @@ export function buildTodayUsage(history, now = Date.now()) {
 
 function quotaEntries(providers) {
   return providers.flatMap((provider) => {
-    const providerName = PROVIDER_NAMES[provider.providerID] || provider.providerID;
+    const providerName = providerMeta(provider.providerID).name;
     const windows = [...(provider.windows || []), ...(provider.scopedWindows || []).map((scope) => ({
       ...scope.window,
       scopeName: scope.displayName,

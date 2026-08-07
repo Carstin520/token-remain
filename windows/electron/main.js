@@ -7,6 +7,7 @@ import { fetchCuratedFeed, isAllowedPostURL } from "./feed.js";
 import { StateStore } from "./state-store.js";
 import { makeSnapshot } from "./sync/crypto.js";
 import { exchangeSnapshot, pairWithMac } from "./sync/client.js";
+import { mergeProviders } from "../src/provider-meta.js";
 
 const REFRESH_INTERVAL_MS = 60_000;
 let mainWindow;
@@ -202,7 +203,7 @@ function publicState() {
   return {
     sourceInstanceID: store?.state?.sourceInstanceID,
     deviceName: hostname(),
-    providers: mergedProviders(store?.state?.providers || [], store?.state?.remoteSnapshot?.providers || []),
+    providers: mergeProviders(store?.state?.providers || [], store?.state?.remoteSnapshot?.providers || []),
     localProviders: store?.state?.providers || [],
     notices: store?.state?.notices || {},
     lastUpdatedAt: store?.state?.lastUpdatedAt,
@@ -221,15 +222,6 @@ function publicState() {
       encryption: paired ? "AES-256-GCM" : undefined,
     },
   };
-}
-
-function mergedProviders(local, remote) {
-  const result = new Map();
-  for (const provider of [...remote, ...local]) {
-    const previous = result.get(provider.providerID);
-    if (!previous || provider.capturedAt >= previous.capturedAt) result.set(provider.providerID, provider);
-  }
-  return ["claude", "codex"].map((id) => result.get(id)).filter(Boolean);
 }
 
 function notifyRenderer() {

@@ -10,6 +10,10 @@ small Electron shell.
 - Calls the same official quota endpoints used by the macOS app.
 - Never refreshes, rewrites, copies, or syncs provider credentials.
 - Exchanges only normalized quota snapshots with a paired Mac on the LAN.
+- Preserves every provider in the Mac snapshot and exposes Overview, Limits,
+  Trends, Devices, Data Sources, and Settings with honest Windows data states.
+- Supports persistent full-card reordering in Limits: direct mouse drag,
+  long-press touch/pen drag, and `Alt` + arrow keys for keyboard users.
 - Protects every snapshot with AES-256-GCM and stores the paired-device key with
   Windows `safeStorage` (DPAPI-backed on normal Windows installations).
 - Does not use CloudKit and does not interact with the iPhone app.

@@ -290,6 +290,12 @@ function validateWindow(window, now) {
       throw new Error("Invalid quota reset date");
     }
   }
+  if (window.remainingBalance !== undefined && window.remainingBalance !== null) {
+    const { amount, currencyCode } = window.remainingBalance;
+    if (!Number.isFinite(amount) || amount < 0 || typeof currencyCode !== "string" || !/^[A-Za-z0-9]{1,12}$/.test(currencyCode)) {
+      throw new Error("Invalid quota balance");
+    }
+  }
 }
 
 function validateDailyUsageHistory(history, now) {

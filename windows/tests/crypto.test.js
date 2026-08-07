@@ -113,6 +113,29 @@ test("Authenticated history round trips and rejects unsafe aggregate fields", ()
   assert.throws(() => openEnvelope(invalidEnvelope, { key, expectedKeyID: keyID }), /cost/i);
 });
 
+test("Synced provider balances use the same bounded wire shape as macOS", () => {
+  const now = Date.now();
+  const base = makeSnapshot({ sourceInstanceID, sequence: 15, providers: [], now });
+  const valid = {
+    ...base,
+    providers: [{
+      providerID: "openrouter",
+      capturedAt: now,
+      windows: [{ usedPercent: 20, windowMinutes: 0, remainingBalance: { amount: 42.75, currencyCode: "USD" } }],
+    }],
+  };
+  const validEnvelope = sealSnapshot(valid, { key, keyID, nonce: Buffer.alloc(12, 0xd5) });
+  assert.equal(openEnvelope(validEnvelope, { key, expectedKeyID: keyID }).providers[0].windows[0].remainingBalance.amount, 42.75);
+
+  const invalid = {
+    ...valid,
+    sequence: 16,
+    providers: [{ ...valid.providers[0], windows: [{ ...valid.providers[0].windows[0], remainingBalance: { amount: 42.75, currencyCode: "USD<script>" } }] }],
+  };
+  const invalidEnvelope = sealSnapshot(invalid, { key, keyID, nonce: Buffer.alloc(12, 0xe5) });
+  assert.throws(() => openEnvelope(invalidEnvelope, { key, expectedKeyID: keyID }), /balance/i);
+});
+
 test("History validation rejects duplicate days and more than thirty entries", () => {
   const now = Date.now();
   const day = new Date(now).toISOString().slice(0, 10);
