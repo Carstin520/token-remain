@@ -2,9 +2,11 @@ import Foundation
 import OSLog
 
 /// Z.ai(智谱 GLM Coding Plan)额度直查。参考 OpenUsage(MIT)的 Z.ai
-/// provider。Z.ai 没有本地工具凭证可复用，需要用户手动提供
-/// API Key：优先读环境变量与 CLI 惯用配置文件，最后读
-/// 用户在「数据源」页粘贴、存入钥匙串的 Key。
+/// provider 与 TokenTracker 的 ZCode 本地凭证口径。取数顺序:
+/// ① 路由来的显式 Key(带显式区域);② ZCode 本地凭证自动发现
+/// (`~/.zcode/v2`,只读解密,见 ZCodeCredentialReader——凭证自带辖区,
+/// 端点由辖区唯一决定);③ 手动 Key(环境变量/配置文件/钥匙串,
+/// 配合用户显式选择的区域)。
 struct ZAIUsageService {
     enum ServiceError: LocalizedError, Sendable {
         case missingKey
@@ -34,6 +36,20 @@ struct ZAIUsageService {
     private static let logger = Logger(subsystem: "com.jamesli.usagedock", category: "ZAIUsage")
 
     var region: ZAIAPIRegion = ZAIRegionStore().load()
+    /// 测试注入:ZCode 本地凭证候选发现。
+    var loadLocalCandidates: () -> [ZCodeAuthCandidate] = {
+        ZCodeCredentialReader().authCandidates()
+    }
+    /// 测试注入:手动 Key 读取。
+    var loadManualKey: () -> String? = { ZAIKeyStore().load() }
+    /// 测试注入:start-plan 请求要带的 ZCode 客户端标识(只读)。
+    var loadStartPlanDeviceMid: () -> String? = {
+        ZCodeCredentialReader().credentialValue("zcodefeedbackclientid")
+    }
+    /// 测试注入:已安装 ZCode.app 的版本号。
+    var zcodeAppVersion: () -> String = { ZCodeQuotaContract.appVersion() }
+    /// 测试注入:HTTP 请求。
+    var perform: (URLRequest) async throws -> (Data, HTTPURLResponse) = ZAIUsageService.perform
 
     func fetch(now: Date = .now) async throws -> ProviderQuota {
         try await fetch(apiKey: nil, region: nil, now: now)
@@ -45,13 +61,74 @@ struct ZAIUsageService {
         now: Date = .now
     ) async throws -> ProviderQuota {
         let cleaned = routedKey?.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let apiKey = (cleaned?.isEmpty == false ? cleaned : nil) ?? ZAIKeyStore().load() else {
-            throw ServiceError.missingKey
+        if let routed = cleaned, !routed.isEmpty {
+            // Region is an explicit privacy boundary: never retry the credential
+            // against the other jurisdiction's host without a user action.
+            return try await fetch(apiKey: routed, region: routedRegion ?? region, now: now)
         }
 
-        // Region is an explicit privacy boundary: never retry the credential
-        // against the other jurisdiction's host without a user action.
-        return try await fetch(apiKey: apiKey, region: routedRegion ?? region, now: now)
+        // ZCode 本地凭证:候选自带辖区与契约,逐个尝试;全部不可用才
+        // 回落手动 Key。候选凭证绝不参与手动 Key 的显式区域选择,也绝不
+        // 跨辖区重试。
+        var localError: Error?
+        for candidate in loadLocalCandidates() {
+            do {
+                return try await fetch(candidate: candidate, now: now)
+            } catch {
+                if localError == nil { localError = error }
+            }
+        }
+        if let manualKey = loadManualKey() {
+            return try await fetch(apiKey: manualKey, region: routedRegion ?? region, now: now)
+        }
+        if let localError { throw localError }
+        throw ServiceError.missingKey
+    }
+
+    /// ZCode 候选取数:coding-plan 走辖区 monitor 限额接口(裸 token),
+    /// start-plan 走 zcode.z.ai 计费余额接口(Bearer + ZCode 头)。
+    /// 计划名从响应自身提取,不再用 Bearer 契约去碰订阅接口。
+    private func fetch(candidate: ZCodeAuthCandidate, now: Date) async throws -> ProviderQuota {
+        let contract = ZCodeQuotaContract.request(
+            for: candidate,
+            appVersion: zcodeAppVersion(),
+            deviceMid: candidate.planKind == .start ? loadStartPlanDeviceMid() : nil
+        )
+        var request = URLRequest(url: contract.url)
+        request.timeoutInterval = 10
+        for (name, value) in contract.headers {
+            request.setValue(value, forHTTPHeaderField: name)
+        }
+        let (data, http) = try await perform(request)
+        switch http.statusCode {
+        case 200..<300:
+            break
+        case 401, 403:
+            throw ServiceError.keyRejected(http.statusCode)
+        default:
+            throw ServiceError.requestFailed(http.statusCode)
+        }
+        switch candidate.planKind {
+        case .coding:
+            if ZAIUsageParser.isNoCodingPlan(data) {
+                throw ServiceError.noCodingPlan
+            }
+            let quota = try ZAIUsageParser.parse(
+                data,
+                planName: ZCodeQuotaContract.codingPlanName(data),
+                now: now
+            )
+            Self.logger.info(
+                "Z.ai quota served by ZCode local credential (\(candidate.providerKey, privacy: .public))"
+            )
+            return quota
+        case .start:
+            let quota = try ZCodeQuotaContract.parseBilling(data, now: now)
+            Self.logger.info(
+                "Z.ai quota served by ZCode local credential (\(candidate.providerKey, privacy: .public))"
+            )
+            return quota
+        }
     }
 
     private func fetch(
@@ -61,7 +138,7 @@ struct ZAIUsageService {
     ) async throws -> ProviderQuota {
         let quotaURL = region.baseURL.appending(path: Self.quotaPath)
         let subscriptionURL = region.baseURL.appending(path: Self.subscriptionPath)
-        let (data, http) = try await Self.get(quotaURL, apiKey: apiKey)
+        let (data, http) = try await get(quotaURL, apiKey: apiKey)
         switch http.statusCode {
         case 200..<300:
             break
@@ -77,7 +154,7 @@ struct ZAIUsageService {
         // 计划名尽力而为,失败不影响额度本身。
         var planName: String?
         var subscriptionResetAt: Date?
-        if let (subData, subHTTP) = try? await Self.get(subscriptionURL, apiKey: apiKey),
+        if let (subData, subHTTP) = try? await get(subscriptionURL, apiKey: apiKey),
            (200..<300).contains(subHTTP.statusCode) {
             planName = ZAIUsageParser.planName(subData)
             subscriptionResetAt = ZAIUsageParser.subscriptionResetAt(subData)
@@ -93,11 +170,15 @@ struct ZAIUsageService {
         return quota
     }
 
-    private static func get(_ url: URL, apiKey: String) async throws -> (Data, HTTPURLResponse) {
+    private func get(_ url: URL, apiKey: String) async throws -> (Data, HTTPURLResponse) {
         var request = URLRequest(url: url)
         request.timeoutInterval = 10
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
+        return try await perform(request)
+    }
+
+    private static func perform(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse else {
             throw ServiceError.invalidResponse

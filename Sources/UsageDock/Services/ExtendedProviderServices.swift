@@ -162,23 +162,65 @@ struct DeepSeekUsageService {
     }
 }
 
-// MARK: - Kimi(API Key 或 kimi-auth Cookie 值)
+// MARK: - Kimi(本地 CLI 凭证自动发现 + API Key 或 kimi-auth Cookie 值)
 
-/// Key 形态走 `GET api.kimi.com/coding/v1/usages`(Bearer);JWT 形态按
-/// kimi-auth 走 `POST www.kimi.com/apiv2 …BillingService/GetUsages`。
+/// 取数顺序:① 路由来的显式凭证;② Kimi Code CLI 本地 access_token
+/// (只读、留 60 秒余量,见 KimiLocalCredentialReader);③ 手动粘贴的
+/// 钥匙串凭证。CLI token 固定走 Code API(Bearer),手动凭证维持原有
+/// 双口径:Key 形态走 `GET api.kimi.com/coding/v1/usages`(Bearer);
+/// JWT 形态按 kimi-auth 走 `POST www.kimi.com/apiv2 …BillingService/GetUsages`。
 /// 响应 `limits[]` 每项:detail{used/limit/remaining/percent} +
 /// window{duration,timeUnit},按窗口时长分会话/周。
 struct KimiUsageService {
+    /// 测试注入:本地 CLI 凭证发现。
+    var loadLocalCredential: (Date) -> KimiLocalCredential? = {
+        KimiLocalCredentialReader().load(now: $0)
+    }
+    /// 测试注入:手动凭证读取。
+    var loadManualSecret: () -> String? = { ProviderSecretStore(provider: .kimi).load() }
+    /// 测试注入:HTTP 请求。
+    var httpRequest: (URL, String, [String: String], Data?) async throws -> Data = {
+        try await ExtendedHTTP.request(.kimi, url: $0, method: $1, headers: $2, body: $3)
+    }
+
     func fetch(now: Date = .now) async throws -> ProviderQuota {
         try await fetch(secret: nil, now: now)
     }
 
     func fetch(secret routedSecret: String?, now: Date = .now) async throws -> ProviderQuota {
         let cleaned = routedSecret?.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let secret = (cleaned?.isEmpty == false ? cleaned : nil)
-            ?? ProviderSecretStore(provider: .kimi).load() else {
+        if let routed = cleaned, !routed.isEmpty {
+            return try await fetchManual(secret: routed, now: now)
+        }
+        let manual = loadManualSecret()
+        // CLI 凭证优先于手动粘贴:CLI 会定期换新,手动 JWT 长期过期正是
+        // 401 的主要来源;CLI token 意外被拒时仍回落手动流程。
+        if let local = loadLocalCredential(now) {
+            do {
+                return try await fetchLocal(local, now: now)
+            } catch {
+                guard manual != nil else { throw error }
+            }
+        }
+        guard let manual else {
             throw ExtendedProviderError.notConfigured(.kimi)
         }
+        return try await fetchManual(secret: manual, now: now)
+    }
+
+    /// CLI access_token 一律走官方 Code API;它虽形如 JWT,但不是
+    /// kimi-auth 网页会话,绝不能路由到 www.kimi.com/apiv2 口径。
+    private func fetchLocal(_ credential: KimiLocalCredential, now: Date) async throws -> ProviderQuota {
+        let data = try await httpRequest(
+            KimiLocalCredentialReader.usageURL,
+            "GET",
+            KimiLocalCredentialReader.requestHeaders(for: credential),
+            nil
+        )
+        return try Self.parse(data, now: now)
+    }
+
+    private func fetchManual(secret: String, now: Date) async throws -> ProviderQuota {
         let data: Data
         if secret.split(separator: ".").count == 3 {
             // kimi-auth 是 JWT:走网页端 Connect 接口,带官方前端同款头。
@@ -197,18 +239,18 @@ struct KimiUsageService {
                 if let ssid = payload["ssid"] { headers["x-msh-session-id"] = "\(ssid)" }
                 if let sub = payload["sub"] { headers["x-traffic-id"] = "\(sub)" }
             }
-            data = try await ExtendedHTTP.request(
-                .kimi,
-                url: URL(string: "https://www.kimi.com/apiv2/kimi.gateway.billing.v1.BillingService/GetUsages")!,
-                method: "POST",
-                headers: headers,
-                body: Data(#"{"scope": ["FEATURE_CODING"]}"#.utf8)
+            data = try await httpRequest(
+                URL(string: "https://www.kimi.com/apiv2/kimi.gateway.billing.v1.BillingService/GetUsages")!,
+                "POST",
+                headers,
+                Data(#"{"scope": ["FEATURE_CODING"]}"#.utf8)
             )
         } else {
-            data = try await ExtendedHTTP.request(
-                .kimi,
-                url: URL(string: "https://api.kimi.com/coding/v1/usages")!,
-                headers: ["Authorization": "Bearer \(secret)", "Accept": "application/json"]
+            data = try await httpRequest(
+                URL(string: "https://api.kimi.com/coding/v1/usages")!,
+                "GET",
+                ["Authorization": "Bearer \(secret)", "Accept": "application/json"],
+                nil
             )
         }
         return try Self.parse(data, now: now)
@@ -701,59 +743,7 @@ private extension String {
     var nilIfEmpty: String? { isEmpty ? nil : self }
 }
 
-// MARK: - Qoder(Cookie,Credits)
-
-/// `GET qoder.com/api/v2/me/usages/big_model_credits`(Cookie)。
-/// `totalQuota.quotaSummary{usedValue,limitValue}`(+可选 sharedQuota)
-/// 合并为月度 Credits 百分比。
-struct QoderUsageService {
-    func fetch(now: Date = .now) async throws -> ProviderQuota {
-        guard let cookie = ProviderSecretStore(provider: .qoder).load() else {
-            throw ExtendedProviderError.notConfigured(.qoder)
-        }
-        let data = try await ExtendedHTTP.request(
-            .qoder,
-            url: URL(string: "https://qoder.com/api/v2/me/usages/big_model_credits")!,
-            headers: ["Cookie": cookie, "Accept": "application/json"]
-        )
-        return try Self.parse(data, now: now)
-    }
-
-    static func parse(_ data: Data, now: Date = .now) throws -> ProviderQuota {
-        guard let body = ExtendedHTTP.json(data) else {
-            throw ExtendedProviderError.invalidResponse(.qoder)
-        }
-        let payload = (body["data"] as? [String: Any]) ?? body
-        func summary(_ key: String, _ snakeKey: String) -> (used: Double, total: Double)? {
-            guard let container = (payload[key] ?? payload[snakeKey]) as? [String: Any],
-                  let quotaSummary = (container["quotaSummary"] ?? container["quota_summary"]) as? [String: Any],
-                  let used = ExtendedHTTP.number(quotaSummary["usedValue"] ?? quotaSummary["used_value"]),
-                  let total = ExtendedHTTP.number(quotaSummary["limitValue"] ?? quotaSummary["limit_value"]),
-                  used >= 0, total >= 0 else {
-                return nil
-            }
-            return (used, total)
-        }
-        guard let total = summary("totalQuota", "total_quota") else {
-            throw ExtendedProviderError.invalidResponse(.qoder)
-        }
-        let shared = summary("sharedQuota", "shared_quota")
-        let usedCredits = total.used + (shared?.used ?? 0)
-        let totalCredits = total.total + (shared?.total ?? 0)
-        guard totalCredits > 0 else { throw ExtendedProviderError.invalidResponse(.qoder) }
-        return ProviderQuota(
-            provider: .qoder,
-            primary: QuotaWindow(
-                usedPercent: ExtendedHTTP.clamp(usedCredits / totalCredits * 100),
-                windowMinutes: 43_200,
-                resetsAt: nil
-            ),
-            secondary: nil,
-            planName: nil,
-            capturedAt: now
-        )
-    }
-}
+// Qoder(本地 IPC 优先 + Cookie 兜底)移至 QoderUsageService.swift。
 
 // MARK: - Kiro(CLI 子进程)
 
