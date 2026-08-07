@@ -1,6 +1,9 @@
 const DEFAULT_FEED_ENDPOINT = "https://api.tokenremain.com/v1/ai-feed";
 const MAX_RESPONSE_BYTES = 256 * 1024;
 const MAX_ITEMS = 50;
+// Keep enough validated posts for the dashboard's Trending / Important / More
+// groups; ranking and curation happen in the renderer's feed model.
+const MAX_KEPT_ITEMS = 24;
 const ALLOWED_PRIORITIES = new Set(["token_reset", "major_update", "normal"]);
 const ALLOWED_TIERS = new Set(["primary", "rotating"]);
 
@@ -36,7 +39,7 @@ export function decodeCuratedFeed(payload, { now = Date.now() } = {}) {
   return payload.items.flatMap((item) => {
     try { return [decodeItem(item, now)]; }
     catch { return []; }
-  }).slice(0, 2);
+  }).slice(0, MAX_KEPT_ITEMS);
 }
 
 export function isAllowedPostURL(value) {

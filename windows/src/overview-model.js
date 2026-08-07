@@ -82,7 +82,7 @@ export function buildRiskNotes(providers = [], now = Date.now()) {
         : level === "medium" ? "Watch your usage pace"
           : level === "low" ? "Usage pace is healthy" : "Waiting for official quota",
     summary: projected
-      ? `${window.providerName} ${formatWindowShort(window.windowMinutes)} is projected to run out after ${formatDuration(projected.pace.estimatedRunOutAt - now)}, before the official reset. Slow down or switch providers.`
+      ? `${window.providerName} ${formatWindowShort(window.windowMinutes)} is projected to run out in ${formatDuration(projected.pace.estimatedRunOutAt - now)}, before the official reset. Slow down or switch providers.`
       : level === "high" ? "Quota is nearly depleted. Use carefully or wait for the window to reset."
         : level === "medium" ? "Some windows are running low. Slow down or watch the reset time."
           : level === "low" ? "At the current pace, your quota should last until the next reset."
@@ -113,6 +113,29 @@ export function buildTodayUsage(history, now = Date.now()) {
     totalTokens,
     totalCost,
   };
+}
+
+/// The account-level window a provider summary row shows. Mirrors the Mac's
+/// default "shortest window" strategy (cc16345): scoped windows never summarize
+/// a provider; the 0-minute total sentinel only wins when nothing rolls.
+export function summaryWindow(provider) {
+  const windows = (provider?.windows || []).filter((window) => Number.isFinite(window.usedPercent));
+  if (!windows.length) return undefined;
+  const rolling = windows.filter((window) => Number.isInteger(window.windowMinutes) && window.windowMinutes > 0);
+  if (!rolling.length) return windows[0];
+  return rolling.reduce((current, window) => (window.windowMinutes < current.windowMinutes ? window : current));
+}
+
+/// Overview "Official Quota" shows the two most-used providers with data —
+/// ranked by today's synced tokens, then Claude / Codex, then anything else
+/// with a snapshot — exactly like the Mac's officialQuotaProviders.
+export function rankOfficialQuotaProviders(providers = [], today = undefined) {
+  const candidates = (today?.entries || []).map((entry) => entry.id);
+  for (const fallback of ["claude", "codex", ...providers.map((provider) => provider.providerID)]) {
+    if (!candidates.includes(fallback)) candidates.push(fallback);
+  }
+  const byID = new Map(providers.map((provider) => [provider.providerID, provider]));
+  return candidates.filter((id) => summaryWindow(byID.get(id))).slice(0, 2);
 }
 
 function quotaEntries(providers) {

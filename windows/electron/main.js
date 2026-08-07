@@ -133,6 +133,20 @@ function registerIPC() {
     await shell.openExternal(value, { activate: true });
     return true;
   });
+  ipcMain.handle("settings:set-launch-at-login", (_event, value) => {
+    app.setLoginItemSettings({ openAtLogin: Boolean(value) });
+    notifyRenderer();
+    return publicState();
+  });
+  ipcMain.handle("app:relaunch", () => {
+    isQuitting = true;
+    app.relaunch();
+    app.quit();
+  });
+  ipcMain.handle("app:quit", () => {
+    isQuitting = true;
+    app.quit();
+  });
 }
 
 async function refreshAll() {
@@ -194,8 +208,26 @@ async function performRefresh() {
   store.state.lastUpdatedAt = Date.now();
   store.state.isRefreshing = false;
   await store.save();
+  updateTrayTooltip();
   notifyRenderer();
   return publicState();
+}
+
+/// Mirrors the Mac menu-bar readout in the Windows tray tooltip:
+/// "Claude 57% · Codex 37%" for the providers with live quota.
+function updateTrayTooltip() {
+  if (!tray) return;
+  const summaries = publicState().providers.flatMap((provider) => {
+    const rolling = (provider.windows || []).filter((window) => window.windowMinutes > 0);
+    const window = rolling.reduce(
+      (current, candidate) => (!current || candidate.windowMinutes < current.windowMinutes ? candidate : current),
+      undefined,
+    ) || provider.windows?.[0];
+    if (!window || !Number.isFinite(window.usedPercent)) return [];
+    const name = provider.providerID.charAt(0).toUpperCase() + provider.providerID.slice(1);
+    return [`${name} ${Math.round(Math.min(100, Math.max(0, 100 - window.usedPercent)))}%`];
+  });
+  tray.setToolTip(summaries.length ? `TokenRemain — ${summaries.slice(0, 4).join(" · ")}` : "TokenRemain");
 }
 
 function publicState() {
@@ -203,6 +235,8 @@ function publicState() {
   return {
     sourceInstanceID: store?.state?.sourceInstanceID,
     deviceName: hostname(),
+    appVersion: app.getVersion(),
+    launchAtLogin: Boolean(app.getLoginItemSettings().openAtLogin),
     providers: mergeProviders(store?.state?.providers || [], store?.state?.remoteSnapshot?.providers || []),
     localProviders: store?.state?.providers || [],
     notices: store?.state?.notices || {},

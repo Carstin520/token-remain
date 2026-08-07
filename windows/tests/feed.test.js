@@ -29,6 +29,15 @@ test("Feed decoder keeps valid items, skips malformed neighbors, and tolerates f
   assert.equal(decoded[1].tier, "primary");
 });
 
+test("Feed decoder retains enough posts for Trending, Important, and More groups", () => {
+  const items = Array.from({ length: 30 }, (_, index) => item({
+    id: `${1234567890123456000 + index}`,
+    url: `https://x.com/OpenAI/status/${1234567890123456000 + index}`,
+  }));
+  const decoded = decodeCuratedFeed({ items }, { now });
+  assert.equal(decoded.length, 24);
+});
+
 test("Feed links are restricted to canonical HTTPS post URLs", () => {
   assert.equal(isAllowedPostURL("https://x.com/OpenAI/status/1234567890123456789"), true);
   assert.equal(isAllowedPostURL("http://x.com/OpenAI/status/1234567890123456789"), false);
