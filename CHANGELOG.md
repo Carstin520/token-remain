@@ -3,6 +3,25 @@
 All notable product changes are recorded here. TokenRemain uses Semantic
 Versioning for public releases.
 
+## 1.2.11 — 2026-08-07
+
+### Added
+
+- Discover the running Qoder desktop session through its read-only local IPC
+  service, with the existing manually supplied cookie retained as a fallback.
+- Discover fresh Kimi Code CLI credentials and ZCode Start/Coding Plan
+  credentials from their app-owned local files without refreshing or writing
+  those credentials.
+
+### Fixed
+
+- Keep Qoder international and China sessions pinned to their matching origin,
+  avoiding the stale-cookie request path that could return HTTP 401.
+- Send Kimi CLI tokens only to the official Kimi Code usage endpoint, and bind
+  each ZCode credential to its own plan contract and Z.ai/BigModel jurisdiction.
+- Align Codex reset-card availability and expiry presentation with the official
+  response instead of inferring usable credit from incomplete fields.
+
 ## 1.2.10 — 2026-08-06
 
 ### Added
@@ -518,3 +537,4 @@ Versioning for public releases.
 [1.2.8]: https://github.com/Carstin520/token-remain/releases/tag/v1.2.8
 [1.2.9]: https://github.com/Carstin520/token-remain/releases/tag/v1.2.9
 [1.2.10]: https://github.com/Carstin520/token-remain/releases/tag/v1.2.10
+[1.2.11]: https://github.com/Carstin520/token-remain/releases/tag/v1.2.11
