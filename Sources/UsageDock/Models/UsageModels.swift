@@ -76,12 +76,12 @@ struct ProviderSpend: Sendable, Codable, Equatable {
     }
 }
 
-/// Saved Codex rate-limit resets reported by ChatGPT's official usage endpoint.
-/// `applicableAvailableCount` can be lower than the banked total when only part
-/// of the balance applies to the user's current workspace or limit state.
+/// Saved Codex rate-limit resets reported by ChatGPT's usage service. OpenAI's
+/// documented `account/rateLimits/read` contract calls `availableCount`
+/// authoritative. The private wham response can also contain an undocumented
+/// `applicable_available_count`; do not persist or interpret it as UI state.
 struct CodexRateLimitResetCredits: Sendable, Codable, Equatable {
     let availableCount: Int
-    let applicableAvailableCount: Int?
 }
 
 /// Identifies the account/API that actually owns a quota while preserving the

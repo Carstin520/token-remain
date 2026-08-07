@@ -137,9 +137,7 @@ enum CodexAPIUsageParser {
             return nil
         }
         return CodexRateLimitResetCredits(
-            availableCount: max(0, available),
-            applicableAvailableCount: wholeNumber(object["applicable_available_count"])
-                .map { max(0, min($0, available)) }
+            availableCount: max(0, available)
         )
     }
 

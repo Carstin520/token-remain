@@ -338,9 +338,8 @@
 "service.codex.token_expired" = "Codex login credentials expired; sign in again with ChatGPT or Codex";
 "codex.reset_credits.title" = "Rate-limit reset cards";
 "codex.reset_credits.empty" = "No reset cards";
-"codex.reset_credits.usable_balance" = "Usable · %1$d banked";
-"codex.reset_credits.unusable_balance" = "Not usable yet · %1$d banked";
-"codex.reset_credits.expiration" = "Usable after an eligible limit is reached; usually expires 30 days after grant, and the API provides no exact date";
+"codex.reset_credits.available_balance" = "%1$d available";
+"codex.reset_credits.expiration" = "Use from Codex Usage; valid for 30 days after grant";
 "codex.reset_credits.manage" = "View";
 "service.common.api_key_missing" = "No %1$@ API key configured; paste one directly in its quota card";
 "service.common.api_key_rejected" = "%1$@ rejected the current API key (HTTP %2$d); update it in its quota card";
