@@ -338,9 +338,8 @@
 "service.codex.token_expired" = "Codex 登录凭证已过期；请打开 ChatGPT 或 Codex 重新登录";
 "codex.reset_credits.title" = "额度重置卡";
 "codex.reset_credits.empty" = "暂无重置卡";
-"codex.reset_credits.usable_balance" = "可使用 · 已存 %1$d 张";
-"codex.reset_credits.unusable_balance" = "暂不可使用 · 已存 %1$d 张";
-"codex.reset_credits.expiration" = "达到适用额度上限后可使用；通常获赠后 30 天到期，接口不提供具体日期";
+"codex.reset_credits.available_balance" = "%1$d 张可用";
+"codex.reset_credits.expiration" = "请前往 Codex 用量页使用；获赠后 30 天内有效";
 "codex.reset_credits.manage" = "查看";
 "service.common.api_key_missing" = "未配置 %1$@ API Key；请直接在对应额度卡中粘贴";
 "service.common.api_key_rejected" = "%1$@ 拒绝了当前 API Key（HTTP %2$d）；请在对应额度卡中更新";

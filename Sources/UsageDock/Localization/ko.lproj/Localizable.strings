@@ -337,9 +337,8 @@
 "service.codex.token_expired" = "Codex 로그인 자격 증명이 만료되었습니다. ChatGPT 또는 Codex에서 다시 로그인하세요";
 "codex.reset_credits.title" = "사용량 한도 재설정 카드";
 "codex.reset_credits.empty" = "재설정 카드 없음";
-"codex.reset_credits.usable_balance" = "사용 가능 · %1$d개 보유";
-"codex.reset_credits.unusable_balance" = "아직 사용 불가 · %1$d개 보유";
-"codex.reset_credits.expiration" = "해당 한도에 도달하면 사용할 수 있습니다. 일반적으로 지급 후 30일 뒤 만료되며 API는 정확한 날짜를 제공하지 않습니다";
+"codex.reset_credits.available_balance" = "%1$d개 사용 가능";
+"codex.reset_credits.expiration" = "Codex 사용량 페이지에서 사용할 수 있으며 지급 후 30일간 유효합니다";
 "codex.reset_credits.manage" = "보기";
 "service.common.api_key_missing" = "%1$@ API Key가 구성되지 않았습니다. 해당 할당량 카드에 바로 붙여넣으세요";
 "service.common.api_key_rejected" = "%1$@이(가) 현재 API Key를 거부했습니다 (HTTP %2$d). 해당 할당량 카드에서 업데이트하세요";

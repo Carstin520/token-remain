@@ -337,9 +337,8 @@
 "service.codex.token_expired" = "Codex-Anmeldedaten abgelaufen; bitte in ChatGPT oder Codex erneut anmelden";
 "codex.reset_credits.title" = "Karten zum Zurücksetzen des Limits";
 "codex.reset_credits.empty" = "Keine Reset-Karten";
-"codex.reset_credits.usable_balance" = "Nutzbar · %1$d gespeichert";
-"codex.reset_credits.unusable_balance" = "Noch nicht nutzbar · %1$d gespeichert";
-"codex.reset_credits.expiration" = "Nach Erreichen eines passenden Limits nutzbar; läuft meist 30 Tage nach Vergabe ab, die API liefert kein genaues Datum";
+"codex.reset_credits.available_balance" = "%1$d verfügbar";
+"codex.reset_credits.expiration" = "Über Codex-Nutzung verwendbar; 30 Tage nach Vergabe gültig";
 "codex.reset_credits.manage" = "Anzeigen";
 "service.common.api_key_missing" = "Kein API Key für %1$@ konfiguriert; direkt in die entsprechende Kontingentkarte einfügen";
 "service.common.api_key_rejected" = "%1$@ hat den aktuellen API Key abgelehnt (HTTP %2$d); bitte in der entsprechenden Kontingentkarte aktualisieren";

@@ -199,29 +199,24 @@ struct QuotaCard: View {
 
 /// Codex's banked rate-limit reset balance lives inside the Codex quota card so
 /// it stays attached to the limit it can restore. The official usage response
-/// exposes the banked and currently applicable counts but not a per-credit
-/// expiry timestamp. Present applicability as an action state instead of a
-/// misleading quantity, while keeping the banked balance visible.
+/// exposes the banked count but not a per-credit expiry timestamp. OpenAI's
+/// documented app-server contract calls `availableCount` authoritative, while
+/// actual redemption can still return `nothingToReset` when no window qualifies.
+/// Show the balance here and leave redemption eligibility to Codex Usage.
 struct CodexResetCreditsCard: View {
     let credits: CodexRateLimitResetCredits
 
     static let managementURL = URL(string: "https://chatgpt.com/codex/settings/usage")!
 
-    var isUsable: Bool {
-        guard credits.availableCount > 0 else { return false }
-        return (credits.applicableAvailableCount ?? credits.availableCount) > 0
+    var hasAvailableReset: Bool {
+        credits.availableCount > 0
     }
 
     var statusText: String {
         guard credits.availableCount > 0 else {
             return L10n.text("codex.reset_credits.empty")
         }
-        return L10n.format(
-            isUsable
-                ? "codex.reset_credits.usable_balance"
-                : "codex.reset_credits.unusable_balance",
-            credits.availableCount
-        )
+        return L10n.format("codex.reset_credits.available_balance", credits.availableCount)
     }
 
     var body: some View {
@@ -230,7 +225,7 @@ struct CodexResetCreditsCard: View {
                 Image(systemName: "arrow.counterclockwise.circle.fill")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(
-                        isUsable
+                        hasAvailableReset
                             ? DashboardTheme.success
                             : DashboardTheme.mutedText
                     )
@@ -241,7 +236,7 @@ struct CodexResetCreditsCard: View {
                 Text(statusText)
                     .numericFont(11, .semibold)
                     .foregroundStyle(
-                        isUsable
+                        hasAvailableReset
                             ? DashboardTheme.success
                             : DashboardTheme.secondaryText
                     )

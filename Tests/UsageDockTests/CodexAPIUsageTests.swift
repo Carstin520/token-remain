@@ -32,21 +32,19 @@ struct CodexAPIUsageParserTests {
         #expect(quota.secondary?.resetsAt == now.addingTimeInterval(3600))
         #expect(quota.planName == "Pro 20x")
         #expect(quota.codexResetCredits == CodexRateLimitResetCredits(
-            availableCount: 3,
-            applicableAvailableCount: 2
+            availableCount: 3
         ))
         #expect(quota.mergingScopedWindows([]).codexResetCredits == quota.codexResetCredits)
     }
 
-    @Test("Reset credit counts accept numeric strings and clamp invalid ranges")
+    @Test("The documented available count accepts numeric strings and clamps negatives")
     func resetCredits() {
         #expect(
             CodexAPIUsageParser.resetCredits([
                 "available_count": "2",
                 "applicable_available_count": 9
             ]) == CodexRateLimitResetCredits(
-                availableCount: 2,
-                applicableAvailableCount: 2
+                availableCount: 2
             )
         )
         #expect(
@@ -54,34 +52,30 @@ struct CodexAPIUsageParserTests {
                 "available_count": -3,
                 "applicable_available_count": -1
             ]) == CodexRateLimitResetCredits(
-                availableCount: 0,
-                applicableAvailableCount: 0
+                availableCount: 0
             )
         )
         #expect(CodexAPIUsageParser.resetCredits([:]) == nil)
     }
 
-    @Test("Reset cards present applicability as a state and retain banked balance")
+    @Test("The authoritative available count drives the reset-card balance")
     func resetCreditStatusText() {
-        let unavailable = CodexResetCreditsCard(credits: CodexRateLimitResetCredits(
-            availableCount: 1,
-            applicableAvailableCount: 0
+        let available = CodexResetCreditsCard(credits: CodexRateLimitResetCredits(
+            availableCount: 1
         ))
-        #expect(!unavailable.isUsable)
-        #expect(unavailable.statusText == L10n.format("codex.reset_credits.unusable_balance", 1))
+        #expect(available.hasAvailableReset)
+        #expect(available.statusText == L10n.format("codex.reset_credits.available_balance", 1))
 
         let usable = CodexResetCreditsCard(credits: CodexRateLimitResetCredits(
-            availableCount: 3,
-            applicableAvailableCount: 2
+            availableCount: 3
         ))
-        #expect(usable.isUsable)
-        #expect(usable.statusText == L10n.format("codex.reset_credits.usable_balance", 3))
+        #expect(usable.hasAvailableReset)
+        #expect(usable.statusText == L10n.format("codex.reset_credits.available_balance", 3))
 
         let empty = CodexResetCreditsCard(credits: CodexRateLimitResetCredits(
-            availableCount: 0,
-            applicableAvailableCount: 0
+            availableCount: 0
         ))
-        #expect(!empty.isUsable)
+        #expect(!empty.hasAvailableReset)
         #expect(empty.statusText == L10n.text("codex.reset_credits.empty"))
     }
 
