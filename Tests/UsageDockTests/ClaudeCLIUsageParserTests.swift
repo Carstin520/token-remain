@@ -167,12 +167,15 @@ struct ClaudeCLIUsageParserTests {
         #expect(scoped[0].window.usedPercent == 14)
     }
 
-    @Test("A repainted all-models label is not treated as a model quota")
-    func ignoresDamagedAllModelsLabel() throws {
+    @Test(
+        "A repainted all-models label is not treated as a model quota",
+        arguments: ["all odels", "ll models", "ll model", "all model", "all  models"]
+    )
+    func ignoresDamagedAllModelsLabel(damagedLabel: String) throws {
         let output = """
         Current session
         8% used
-        Current week (all odels)
+        Current week (\(damagedLabel))
         7% used
         Resets Jul 31 at 1pm
         Current week (Fable)
@@ -183,5 +186,67 @@ struct ClaudeCLIUsageParserTests {
         let quota = try ClaudeCLIUsageParser.parse(Data(output.utf8))
 
         #expect(quota.uniqueScopedWindows.map(\.scopeID) == ["fable"])
+    }
+
+    @Test("Real model labels survive the all-models filter")
+    func keepsRealModelLabels() throws {
+        let output = """
+        Current session
+        8% used
+        Current week (all models)
+        7% used
+        Resets Jul 31 at 1pm
+        Current week (Opus)
+        20% used
+        Resets Aug 1 at 1pm
+        Current week (Fable)
+        14% used
+        Resets Aug 1 at 1pm
+        """
+
+        let quota = try ClaudeCLIUsageParser.parse(Data(output.utf8))
+
+        #expect(quota.uniqueScopedWindows.map(\.scopeID) == ["opus", "fable"])
+    }
+}
+
+@Suite("Scoped quota window sanitation")
+struct ScopedQuotaWindowSanitationTests {
+    private func scoped(_ scopeID: String, _ displayName: String) -> ScopedQuotaWindow {
+        ScopedQuotaWindow(
+            scopeID: scopeID,
+            displayName: displayName,
+            window: QuotaWindow(usedPercent: 5, windowMinutes: 10_080, resetsAt: nil)
+        )
+    }
+
+    @Test("Drops all-models rows cached by an earlier build")
+    func purgesCachedGeneralWeeklyRows() {
+        let quota = ProviderQuota(
+            provider: .claude,
+            primary: QuotaWindow(usedPercent: 47, windowMinutes: 300, resetsAt: nil),
+            secondary: QuotaWindow(usedPercent: 5, windowMinutes: 10_080, resetsAt: nil),
+            planName: nil,
+            capturedAt: .now,
+            scopedWindows: [
+                scoped("ll_model", "ll model"),
+                scoped("ll_models", "ll models"),
+                scoped("fable", "Fable")
+            ]
+        )
+
+        #expect(quota.uniqueScopedWindows.map(\.scopeID) == ["fable"])
+    }
+
+    @Test("Keeps scopes that merely share letters with the label")
+    func keepsUnrelatedScopes() {
+        #expect(!ScopedQuotaWindow.isGeneralWeeklyLabel("Fable"))
+        #expect(!ScopedQuotaWindow.isGeneralWeeklyLabel("Opus"))
+        #expect(!ScopedQuotaWindow.isGeneralWeeklyLabel("Monthly"))
+        #expect(!ScopedQuotaWindow.isGeneralWeeklyLabel("MCP"))
+        #expect(!ScopedQuotaWindow.isGeneralWeeklyLabel("Claude / Third-party"))
+        #expect(!ScopedQuotaWindow.isGeneralWeeklyLabel("modes"))
+        #expect(ScopedQuotaWindow.isGeneralWeeklyLabel("all models"))
+        #expect(ScopedQuotaWindow.isGeneralWeeklyLabel("ll models"))
     }
 }

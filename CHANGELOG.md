@@ -3,6 +3,14 @@
 All notable product changes are recorded here. TokenRemain uses Semantic
 Versioning for public releases.
 
+## Unreleased
+
+### Fixed
+
+- Stop the Claude weekly "all models" row from reappearing as one or two extra
+  model cards when the `/usage` terminal capture drops glyphs from its label,
+  and drop such rows from snapshots cached by an earlier build.
+
 ## 1.2.11 — 2026-08-07
 
 ### Added
