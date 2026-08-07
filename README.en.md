@@ -26,8 +26,6 @@ Remaining quota, reset countdowns and today's cost for Claude Code, Codex, Curso
 
 ---
 
-> **TokenRemain** is the public product name; `UsageDock` is the internal codename in this repo. Every percentage and progress bar represents **remaining** quota.
-
 ## ✨ What it does
 
 - 🧭 **One unified quota panel** — Claude/Codex official 5-hour · 7-day windows, Cursor's monthly billing cycle, Grok's weekly pool, GLM session/weekly windows — side by side with reset countdowns.
