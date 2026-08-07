@@ -1,4 +1,6 @@
 import type { Env } from "./types";
+import { snapshotDownloadHistory } from "./downloads";
+import { snapshotStarHistory } from "./stars";
 import { enqueueDueDailyDigests } from "./push";
 import { syncPrimaryPosts, syncRotatingPosts } from "./x-api";
 
@@ -33,6 +35,16 @@ export async function runScheduled(
     }
     const queued = await enqueueDueDailyDigests(env, new Date(controller.scheduledTime));
     console.log("Daily digest scheduling complete", { queued });
+    try {
+      await snapshotDownloadHistory(env, new Date(controller.scheduledTime));
+    } catch (error) {
+      console.error("Download history snapshot failed", safeError(error));
+    }
+    try {
+      await snapshotStarHistory(env, new Date(controller.scheduledTime));
+    } catch (error) {
+      console.error("Star history snapshot failed", safeError(error));
+    }
   }
 
   await env.DB.prepare(

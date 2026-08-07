@@ -1,7 +1,13 @@
 import { registerDevice, unregisterDevice } from "./devices";
-import { getDownloadStats, redirectToMacDownload } from "./downloads";
+import {
+  getDownloadChart,
+  getDownloadHistory,
+  getDownloadStats,
+  redirectToMacDownload,
+} from "./downloads";
 import { getFeed, publishAdminItem } from "./feed";
 import { errorResponse, json } from "./http";
+import { getStarHistory } from "./stars";
 import { consumePushBatch } from "./push";
 import { runScheduled } from "./scheduled";
 import {
@@ -58,6 +64,15 @@ export default {
       }
       if (request.method === "GET" && url.pathname === "/v1/downloads/stats") {
         return await getDownloadStats(env);
+      }
+      if (request.method === "GET" && url.pathname === "/v1/downloads/history") {
+        return await getDownloadHistory(env);
+      }
+      if (request.method === "GET" && url.pathname === "/v1/downloads/chart.svg") {
+        return await getDownloadChart(env, url);
+      }
+      if (request.method === "GET" && url.pathname === "/v1/stars/history") {
+        return await getStarHistory(env);
       }
       if (request.method === "POST" && url.pathname === "/v1/devices/register") {
         return await registerDevice(request, env);

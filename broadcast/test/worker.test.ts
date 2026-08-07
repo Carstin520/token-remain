@@ -83,6 +83,11 @@ describe("TokenRemain broadcast worker", () => {
   });
 
   it("records only an aggregate Mac download count before redirecting", async () => {
+    const baseline = await env.DB.prepare(
+      "SELECT total_count FROM download_counters WHERE asset = 'macos_dmg'",
+    ).first<{ total_count: number }>();
+    expect(baseline?.total_count).toBeGreaterThanOrEqual(163);
+
     const first = await exports.default.fetch(new Request(
       "https://broadcast.test/v1/downloads/macos",
       { redirect: "manual" },
@@ -106,7 +111,7 @@ describe("TokenRemain broadcast worker", () => {
     expect(stats.headers.get("access-control-allow-origin")).toBe("*");
     await expect(stats.json()).resolves.toMatchObject({
       macos: {
-        totalDownloads: 2,
+        totalDownloads: (baseline?.total_count ?? 0) + 2,
       },
     });
 
@@ -118,6 +123,72 @@ describe("TokenRemain broadcast worker", () => {
       "total_count",
       "updated_at",
     ]);
+  });
+
+  it("keeps an anonymous daily history and renders the download chart", async () => {
+    for (let i = 0; i < 3; i += 1) {
+      const response = await exports.default.fetch(new Request(
+        "https://broadcast.test/v1/downloads/macos",
+        { redirect: "manual" },
+      ));
+      expect(response.status).toBe(302);
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+    const total = await env.DB.prepare(
+      "SELECT total_count FROM download_counters WHERE asset = 'macos_dmg'",
+    ).first<{ total_count: number }>();
+    const history = await exports.default.fetch(
+      "https://broadcast.test/v1/downloads/history",
+    );
+    expect(history.status).toBe(200);
+    expect(history.headers.get("access-control-allow-origin")).toBe("*");
+    const historyBody = (await history.json()) as {
+      macos: { days: Array<{ day: string; totalDownloads: number }> };
+    };
+    expect(historyBody.macos.days.at(-1)).toEqual({
+      day: today,
+      totalDownloads: total?.total_count,
+    });
+
+    const chart = await exports.default.fetch(
+      "https://broadcast.test/v1/downloads/chart.svg?theme=dark&lang=zh",
+    );
+    expect(chart.status).toBe(200);
+    expect(chart.headers.get("content-type")).toBe("image/svg+xml; charset=utf-8");
+    const svg = await chart.text();
+    expect(svg).toContain("<svg");
+    expect(svg).toContain(`>${total?.total_count}</text>`);
+    expect(svg).toContain("官网累计下载");
+
+    const light = await exports.default.fetch(
+      "https://broadcast.test/v1/downloads/chart.svg?theme=light",
+    );
+    expect(light.status).toBe(200);
+    await expect(light.text()).resolves.toContain("WEBSITE DOWNLOADS");
+  });
+
+  it("serves recorded daily star-count snapshots", async () => {
+    await env.DB.prepare(
+      `INSERT INTO star_history (day, star_count, updated_at) VALUES (?, ?, ?)
+       ON CONFLICT(day) DO UPDATE SET star_count = excluded.star_count`,
+    )
+      .bind("2026-08-05", 12, "2026-08-05T00:00:00.000Z")
+      .run();
+
+    const response = await exports.default.fetch(
+      "https://broadcast.test/v1/stars/history",
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get("access-control-allow-origin")).toBe("*");
+    const body = (await response.json()) as {
+      repo: string;
+      days: Array<{ day: string; stars: number }>;
+    };
+    expect(body.repo).toBe("Carstin520/token-remain");
+    expect(body.days).toContainEqual({ day: "2026-08-05", stars: 12 });
+    // The migration seeds today with the count recorded at authoring time.
+    expect(body.days.at(-1)?.stars).toBeGreaterThanOrEqual(15);
   });
 
   it("publishes an authenticated item through the public feed contract", async () => {
