@@ -1616,7 +1616,9 @@ var TITLES={en:"TokenRemain — Your AI quota, always in the menu bar",zh:"Token
     })
     .then(function(release){
       var version=String(release.tag_name||'').replace(/^v/,'');
-      if(!/^\d+\.\d+\.\d+$/.test(version))return;
+      var versionMatch=version.match(/^(\d+\.\d+\.\d+)(?:\+build\.\d+)?$/);
+      if(!versionMatch)return;
+      version=versionMatch[1];
       releaseVersion=version;
       releaseVersionEl.dataset.releaseVersion=version;
       renderReleaseVersion(document.documentElement.lang==='zh-CN'?'zh':'en');

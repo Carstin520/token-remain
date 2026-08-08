@@ -6,6 +6,11 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 INFO_PLIST="$ROOT_DIR/Resources/Info.plist"
 VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$INFO_PLIST")"
 BUILD="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$INFO_PLIST")"
+RELEASE_TAG_FILE="$ROOT_DIR/RELEASE_TAG"
+RELEASE_TAG="v$VERSION"
+if [[ -r "$RELEASE_TAG_FILE" ]]; then
+  RELEASE_TAG="$(/usr/bin/tr -d '[:space:]' < "$RELEASE_TAG_FILE")"
+fi
 CCUSAGE_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :TokenRemainBundledCCUsageVersion' "$INFO_PLIST")"
 OUTPUT_DIR="${TOKENREMAIN_RELEASE_OUTPUT_DIR:-$ROOT_DIR/dist-release/$VERSION-$BUILD}"
 APP="$OUTPUT_DIR/TokenRemain.app"
@@ -141,7 +146,7 @@ generate_update_feed() {
   }
   rm -f "$APPCAST"
   "$tool" \
-    --download-url-prefix "https://github.com/Carstin520/token-remain/releases/download/v$VERSION/" \
+    --download-url-prefix "https://github.com/Carstin520/token-remain/releases/download/$RELEASE_TAG/" \
     --link "https://tokenremain.com" \
     --maximum-deltas 0 \
     "$OUTPUT_DIR"

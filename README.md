@@ -16,7 +16,7 @@
 
 ### [⬇️ 下载 TokenRemain.dmg](https://tokenremain.com)
 
-<sub>`v1.2.11` · build 25 · Universal(Apple Silicon + Intel)· macOS 14+</sub>
+<sub>`v1.2.11` · build 26 · Universal(Apple Silicon + Intel)· macOS 14+</sub>
 
 [官网](https://tokenremain.com) · [隐私政策](https://tokenremain.com/privacy) · [支持](https://tokenremain.com/support) · [问题反馈](https://github.com/Carstin520/token-remain/issues) · [更新记录](CHANGELOG.md)
 

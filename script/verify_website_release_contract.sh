@@ -3,6 +3,11 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VERSION="$(/usr/bin/tr -d '[:space:]' < "$ROOT_DIR/VERSION")"
+RELEASE_TAG_FILE="$ROOT_DIR/RELEASE_TAG"
+RELEASE_TAG="v$VERSION"
+if [[ -r "$RELEASE_TAG_FILE" ]]; then
+  RELEASE_TAG="$(/usr/bin/tr -d '[:space:]' < "$RELEASE_TAG_FILE")"
+fi
 INDEX="$ROOT_DIR/site/index.html"
 SUPPORT="$ROOT_DIR/site/support.html"
 PRIVACY="$ROOT_DIR/site/privacy.html"
@@ -53,15 +58,15 @@ if [[ "${1:-}" == "--public" ]]; then
     "https://api.github.com/repos/Carstin520/token-remain/releases/latest" \
     | /usr/bin/python3 -c 'import json, sys; print(json.load(sys.stdin).get("tag_name", ""))')" \
     || fail "cannot resolve the latest GitHub release"
-  [[ "$LATEST_TAG" == "v$VERSION" ]] \
-    || fail "latest GitHub release is $LATEST_TAG, expected v$VERSION"
+  [[ "$LATEST_TAG" == "$RELEASE_TAG" ]] \
+    || fail "latest GitHub release is $LATEST_TAG, expected $RELEASE_TAG"
 
   DOWNLOAD_HEADERS="$(/usr/bin/curl -fsSI "$DOWNLOAD_URL" | /usr/bin/tr -d '\r')" \
     || fail "latest Mac download is unavailable"
   /usr/bin/grep -Fqi \
-    "location: https://github.com/Carstin520/token-remain/releases/download/v$VERSION/TokenRemain.dmg" \
+    "location: https://github.com/Carstin520/token-remain/releases/download/$RELEASE_TAG/TokenRemain.dmg" \
     <<< "$DOWNLOAD_HEADERS" \
-    || fail "latest Mac download does not resolve to v$VERSION"
+    || fail "latest Mac download does not resolve to $RELEASE_TAG"
 
-  echo "public website release verified: homepage + GitHub release + TokenRemain.dmg all match v$VERSION"
+  echo "public website release verified: homepage + GitHub release + TokenRemain.dmg all match $RELEASE_TAG"
 fi

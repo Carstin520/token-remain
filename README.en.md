@@ -16,7 +16,7 @@ Remaining quota, reset countdowns and today's cost for Claude Code, Codex, Curso
 
 ### [⬇️ Download TokenRemain.dmg](https://tokenremain.com)
 
-<sub>`v1.2.11` · build 25 · Universal (Apple Silicon + Intel) · macOS 14+</sub>
+<sub>`v1.2.11` · build 26 · Universal (Apple Silicon + Intel) · macOS 14+</sub>
 
 [Website](https://tokenremain.com) · [Privacy Policy](https://tokenremain.com/privacy) · [Support](https://tokenremain.com/support) · [Report an issue](https://github.com/Carstin520/token-remain/issues) · [Changelog](CHANGELOG.md)
 
