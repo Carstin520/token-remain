@@ -3,6 +3,7 @@ import {
   getDownloadChart,
   getDownloadHistory,
   getDownloadStats,
+  inspectMacDownloadRedirect,
   redirectToMacDownload,
 } from "./downloads";
 import { getFeed, publishAdminItem } from "./feed";
@@ -61,6 +62,9 @@ export default {
       }
       if (request.method === "GET" && url.pathname === "/v1/downloads/macos") {
         return await redirectToMacDownload(env);
+      }
+      if (request.method === "HEAD" && url.pathname === "/v1/downloads/macos") {
+        return inspectMacDownloadRedirect();
       }
       if (request.method === "GET" && url.pathname === "/v1/downloads/stats") {
         return await getDownloadStats(env);

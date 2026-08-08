@@ -209,7 +209,7 @@ rm -rf ~/Library/Caches/com.jamesli.usagedock ~/Library/Application\ Support/com
   <img src="https://api.tokenremain.com/v1/downloads/chart.svg?theme=dark&amp;lang=zh" width="920" alt="官网累计下载趋势图,数据来自匿名聚合计数器的每日快照" />
 </picture>
 
-<sub>基线为截至 2026-08-07 的 163 次历史下载([明细](docs/download-baseline.md)),此后由匿名计数器逐日累计,不含任何个人数据。</sub>
+<sub>基线为截至 2026-08-07 的 163 次历史下载([明细](docs/download-baseline.md)),此后由匿名下载入口即时累计,并每小时与 GitHub 上的 DMG 下载总数对账,不含任何个人数据。</sub>
 
 </div>
 

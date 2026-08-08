@@ -209,7 +209,7 @@ Issues and pull requests are welcome. Build steps, tests, repository layout and 
   <img src="https://api.tokenremain.com/v1/downloads/chart.svg?theme=dark&amp;lang=en" width="920" alt="Cumulative website download chart, rendered from daily snapshots of the anonymous aggregate counter" />
 </picture>
 
-<sub>Starts from 163 historical downloads as of 2026-08-07 ([breakdown](docs/download-baseline.md)) and grows via daily snapshots of an anonymous counter; no personal data involved.</sub>
+<sub>Starts from 163 historical downloads as of 2026-08-07 ([breakdown](docs/download-baseline.md)), then grows through the anonymous download link and an hourly reconciliation with GitHub's DMG download total; no personal data involved.</sub>
 
 </div>
 

@@ -1,6 +1,7 @@
 import { env, exports } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import { classify } from "../src/classification";
+import { syncDownloadCounterFromGitHub } from "../src/downloads";
 import { enqueueDueDailyDigests } from "../src/push";
 import {
   buildPrimaryQuery,
@@ -104,6 +105,22 @@ describe("TokenRemain broadcast worker", () => {
     ));
     expect(second.status).toBe(302);
 
+    const beforeHead = await env.DB.prepare(
+      "SELECT total_count FROM download_counters WHERE asset = 'macos_dmg'",
+    ).first<{ total_count: number }>();
+    const head = await exports.default.fetch(new Request(
+      "https://broadcast.test/v1/downloads/macos",
+      { method: "HEAD", redirect: "manual" },
+    ));
+    expect(head.status).toBe(302);
+    expect(head.headers.get("location")).toBe(
+      "https://github.com/Carstin520/token-remain/releases/latest/download/TokenRemain.dmg",
+    );
+    const afterHead = await env.DB.prepare(
+      "SELECT total_count FROM download_counters WHERE asset = 'macos_dmg'",
+    ).first<{ total_count: number }>();
+    expect(afterHead?.total_count).toBe(beforeHead?.total_count);
+
     const stats = await exports.default.fetch(
       "https://broadcast.test/v1/downloads/stats",
     );
@@ -123,6 +140,46 @@ describe("TokenRemain broadcast worker", () => {
       "total_count",
       "updated_at",
     ]);
+  });
+
+  it("reconciles fixed-name GitHub DMG totals without lowering the counter", async () => {
+    const before = await env.DB.prepare(
+      "SELECT total_count FROM download_counters WHERE asset = 'macos_dmg'",
+    ).first<{ total_count: number }>();
+    const target = (before?.total_count ?? 0) + 25;
+    const requestedUrls: string[] = [];
+    const githubFetch = async (input: string): Promise<Response> => {
+      requestedUrls.push(input);
+      return Response.json([
+        {
+          assets: [
+            { name: "TokenRemain.dmg", download_count: target },
+            { name: "TokenRemain-1.2.11-26.dmg", download_count: 999 },
+            { name: "TokenRemain-1.2.11-26-macOS.zip", download_count: 999 },
+          ],
+        },
+      ]);
+    };
+
+    const raised = await syncDownloadCounterFromGitHub(
+      env,
+      new Date("2026-08-08T14:08:25Z"),
+      githubFetch,
+    );
+    expect(raised).toEqual({ githubTotal: target, effectiveTotal: target });
+    expect(requestedUrls).toEqual([
+      "https://api.github.com/repos/Carstin520/token-remain/releases?per_page=100&page=1",
+    ]);
+
+    const lowerFetch = async (): Promise<Response> => Response.json([
+      { assets: [{ name: "TokenRemain.dmg", download_count: target - 10 }] },
+    ]);
+    const preserved = await syncDownloadCounterFromGitHub(
+      env,
+      new Date("2026-08-08T15:08:25Z"),
+      lowerFetch,
+    );
+    expect(preserved).toEqual({ githubTotal: target - 10, effectiveTotal: target });
   });
 
   it("keeps an anonymous daily history and renders the download chart", async () => {
