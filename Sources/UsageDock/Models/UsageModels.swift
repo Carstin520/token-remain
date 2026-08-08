@@ -51,6 +51,30 @@ struct ScopedQuotaWindow: Sendable, Codable {
     var isAntigravityThirdParty: Bool {
         scopeID.lowercased().hasPrefix("antigravity_3p_")
     }
+
+    /// Claude Code names the general weekly cap `Current week (all models)`.
+    /// It is the same value as the secondary window, never a model-scoped one,
+    /// so a reading carrying that label must not become an extra card.
+    var isGeneralWeeklyLabel: Bool {
+        Self.isGeneralWeeklyLabel(scopeID) || Self.isGeneralWeeklyLabel(displayName)
+    }
+
+    /// Terminal repainting drops glyphs from the label — `all odels`,
+    /// `ll models`, and a copy captured before the trailing `s` painted all
+    /// reach the parser. Accept any spelling that is still `all models` with up
+    /// to two characters missing; no real model name survives that test.
+    static func isGeneralWeeklyLabel(_ name: String) -> Bool {
+        let reference = "allmodels"
+        let normalized = name.lowercased().filter { $0.isASCII && $0.isLetter }
+        guard normalized.count >= reference.count - 2 else { return false }
+        var index = normalized.startIndex
+        for character in reference where index < normalized.endIndex {
+            if normalized[index] == character {
+                index = normalized.index(after: index)
+            }
+        }
+        return index == normalized.endIndex
+    }
 }
 
 /// 订阅限额之外的按量付费消费(Claude 的 extra usage credits)。
@@ -185,10 +209,13 @@ struct ProviderQuota: Sendable, Codable {
     /// Terminal repainting and older cached snapshots can contain the same
     /// model-scoped quota more than once. Keep the latest reading for each
     /// stable scope while preserving the service's original display order.
+    /// Damaged `all models` labels are dropped here rather than only at parse
+    /// time, so a snapshot cached before the parser learned to reject them
+    /// stops rendering phantom cards on the next launch.
     var uniqueScopedWindows: [ScopedQuotaWindow] {
         var order: [String] = []
         var latestByScope: [String: ScopedQuotaWindow] = [:]
-        for scoped in scopedWindows ?? [] {
+        for scoped in scopedWindows ?? [] where !scoped.isGeneralWeeklyLabel {
             let key = scoped.scopeID.lowercased()
             if latestByScope[key] == nil {
                 order.append(key)

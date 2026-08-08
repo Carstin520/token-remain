@@ -314,12 +314,11 @@ enum ClaudeCLIUsageParser {
             guard let nameRange = Range(match.range(at: 1), in: text),
                   let bodyRange = Range(match.range(at: 2), in: text) else { return nil }
             let name = text[nameRange].trimmingCharacters(in: .whitespacesAndNewlines)
-            let normalizedName = name.lowercased()
-                .replacingOccurrences(of: #"[^a-z]"#, with: "", options: .regularExpression)
-            // Terminal repainting can drop one leading glyph and turn
-            // `all models` into `all odels`. It is still the general weekly
-            // row, not a model-scoped quota.
-            guard !(normalizedName.contains("all") && normalizedName.contains("odel")) else {
+            // Terminal repainting can drop glyphs anywhere in the label and
+            // turn `all models` into `all odels`, `ll models`, or a copy caught
+            // before the trailing `s` painted. Every one of those is still the
+            // general weekly row, not a model-scoped quota.
+            guard !ScopedQuotaWindow.isGeneralWeeklyLabel(name) else {
                 return nil
             }
             let body = String(text[bodyRange])
