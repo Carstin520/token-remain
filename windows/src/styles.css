@@ -1,34 +1,6 @@
-/* Palette = macOS DashboardTheme: neutral charcoal surfaces, violet product
-   accent, cyan information, conventional green/amber/red status, muted
-   provider identity hues. */
-:root {
-  font-family: "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
-  color: #f2f3f5;
-  background: #0d0e10;
-  font-synthesis: none;
-  --bg: #0d0e10;
-  --surface: #121316;
-  --surface-2: #1a1b1f;
-  --surface-3: #23252a;
-  --border: #32353c;
-  --track: #272a30;
-  --text: #f2f3f5;
-  --secondary: #a7abb4;
-  --muted: #6f7580;
-  --violet: #9b8afb;
-  --violet-dim: #6357b8;
-  --cyan: #3ecfe0;
-  --success: #57d19a;
-  --warning: #ffb554;
-  --danger: #ff6b6b;
-  --claude: #bf8471;
-  --codex: #6687c5;
-  --mono: "Cascadia Mono", Consolas, monospace;
-}
-* { box-sizing: border-box; }
+@import "./theme.css";
+
 html, body, #root { width: 100%; height: 100%; margin: 0; overflow: hidden; }
-button, input { font: inherit; }
-button { color: inherit; }
 .loading { height: 100%; display: grid; place-items: center; color: var(--muted); background: var(--bg); }
 .app-shell { display: grid; grid-template-columns: 224px 1fr; height: 100%; background: var(--bg); }
 
@@ -95,17 +67,6 @@ nav svg { width: 16px; height: 16px; }
 .panel-heading p { margin: 3px 0 0; color: var(--secondary); font-size: 10px; }
 .divider { width: 100%; margin: 10px 0; border: 0; border-top: 1px solid var(--border); }
 
-/* Pixel badge — uppercase mono chip; HIGH risk fills red with ink text. */
-.badge { display: inline-flex; align-items: center; padding: 3px 7px; border: 1px solid currentColor; border-radius: 3px; font-family: var(--mono); font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; background: var(--surface-2); white-space: nowrap; }
-.badge.tone-low { color: var(--success); border-color: rgba(87, 209, 154, .55); }
-.badge.tone-medium { color: var(--warning); border-color: rgba(255, 181, 84, .55); }
-.badge.tone-high { color: var(--danger); border-color: rgba(255, 107, 107, .55); }
-.badge.tone-high.filled { color: #0d0e10; background: var(--danger); border-color: transparent; }
-.badge.tone-unknown { color: var(--secondary); border-color: rgba(167, 171, 180, .45); }
-.badge.tone-codex { color: var(--codex); border-color: rgba(102, 135, 197, .55); }
-.badge.tone-cyan { color: var(--cyan); border-color: rgba(62, 207, 224, .55); }
-.badge.tone-plan { color: var(--secondary); border-color: rgba(167, 171, 180, .45); }
-
 .info-row { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; padding: 5px 0; color: var(--secondary); font-size: 12px; }
 .info-row strong { max-width: 70%; overflow-wrap: anywhere; color: var(--text); text-align: right; font-family: var(--mono); font-weight: 500; }
 .info-row strong.tone-low { color: var(--success); }
@@ -119,10 +80,6 @@ nav svg { width: 16px; height: 16px; }
 .inline-action { margin-top: 10px; padding: 7px 11px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface-2); cursor: pointer; font-size: 11px; }
 .inline-action:hover { border-color: var(--violet-dim); color: var(--violet); }
 .quiet-note { margin: 4px 0 0; color: var(--secondary); font-size: 12px; }
-
-/* Segment meter — the Mac SegmentBar block progress. */
-.segment-bar { display: flex; gap: 3px; }
-.segment-bar i { flex: 1; border-radius: 2px; background: var(--track); }
 
 /* KPI tiles */
 .overview-section { gap: 14px; }
@@ -344,9 +301,6 @@ nav svg { width: 16px; height: 16px; }
 .pair-form input { width: 100%; height: 36px; padding: 0 11px; border: 1px solid var(--border); border-radius: 7px; outline: none; color: var(--text); background: var(--bg); font-size: 12px; }
 .pair-form input:focus { border-color: var(--violet); box-shadow: 0 0 0 2px rgba(155, 138, 251, .12); }
 
-.spinning { animation: spin 1s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
-
 @media (max-width: 1020px) {
   .app-shell { grid-template-columns: 210px 1fr; }
   .content-column { padding: 20px 22px 26px; }
@@ -367,11 +321,6 @@ nav svg { width: 16px; height: 16px; }
 @media (prefers-reduced-motion: no-preference) {
   button, input { transition: color .15s ease, background .15s ease, border-color .15s ease, opacity .15s ease; }
 }
-@media (prefers-reduced-motion: reduce) {
-  .spinning { animation: none; }
-}
 @media (forced-colors: active) {
   nav button.selected, .settings-tabs button.selected { outline: 2px solid Highlight; outline-offset: -2px; }
-  .segment-bar i { border: 1px solid CanvasText; forced-color-adjust: none; }
-  .badge { border-color: currentColor; }
 }

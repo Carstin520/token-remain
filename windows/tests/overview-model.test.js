@@ -59,6 +59,8 @@ test("Usage pace ports the Swift window projection and keeps the Mac's risk copy
   assert.equal(usagePace({ usedPercent: 50, windowMinutes: 0, resetsAt: now + 1_000 }, now), undefined);
   const notes = buildRiskNotes([{ providerID: "codex", windows: [{ usedPercent: 63, windowMinutes: 300, resetsAt: now + 3 * 60 * 60_000 }] }], now);
   assert.equal(notes.level, "medium");
+  assert.equal(notes.projectedDepletion, "1 hr 10 min");
+  assert.doesNotMatch(notes.projectedDepletion, /^in\b/);
   // macOS risk.summary.projected_runout: "… is projected to run out in %@, before the official reset."
   assert.match(notes.summary, /is projected to run out in .*, before the official reset/);
   const summary = buildOverviewSummary([

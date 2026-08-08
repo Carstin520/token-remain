@@ -71,18 +71,22 @@ export function buildRiskNotes(providers = [], now = Date.now()) {
   ), undefined);
   const window = projected?.entry || tightest;
   const level = riskLevel(tightest?.remaining, Boolean(projected));
+  const projectedDepletion = projected
+    ? formatDuration(projected.pace.estimatedRunOutAt - now)
+    : undefined;
   return {
     level,
     tightest,
     window,
     projectedRunOutAt: projected?.pace.estimatedRunOutAt,
+    projectedDepletion,
     headline: projected
       ? "Current pace may run out early"
       : level === "high" ? "Quota is nearly depleted"
         : level === "medium" ? "Watch your usage pace"
           : level === "low" ? "Usage pace is healthy" : "Waiting for official quota",
     summary: projected
-      ? `${window.providerName} ${formatWindowShort(window.windowMinutes)} is projected to run out in ${formatDuration(projected.pace.estimatedRunOutAt - now)}, before the official reset. Slow down or switch providers.`
+      ? `${window.providerName} ${formatWindowShort(window.windowMinutes)} is projected to run out in ${projectedDepletion}, before the official reset. Slow down or switch providers.`
       : level === "high" ? "Quota is nearly depleted. Use carefully or wait for the window to reset."
         : level === "medium" ? "Some windows are running low. Slow down or watch the reset time."
           : level === "low" ? "At the current pace, your quota should last until the next reset."

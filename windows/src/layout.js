@@ -24,14 +24,21 @@ export function moveItem(order, activeID, destinationID) {
   return next;
 }
 
-export function readStoredOrder(storage, key, availableIDs) {
-  if (!storage) return normalizeOrder([], availableIDs);
+/// The raw persisted order, or undefined when this PC has none yet. Surfaces
+/// come here to tell "the user arranged these cards" apart from "no preference
+/// recorded", which they answer with their own default ranking.
+export function peekStoredOrder(storage, key) {
+  if (!storage) return undefined;
   try {
     const decoded = JSON.parse(storage.getItem(key) || "null");
-    return normalizeOrder(decoded?.order, availableIDs);
+    return Array.isArray(decoded?.order) ? decoded.order : undefined;
   } catch {
-    return normalizeOrder([], availableIDs);
+    return undefined;
   }
+}
+
+export function readStoredOrder(storage, key, availableIDs) {
+  return normalizeOrder(peekStoredOrder(storage, key), availableIDs);
 }
 
 export function writeStoredOrder(storage, key, order) {

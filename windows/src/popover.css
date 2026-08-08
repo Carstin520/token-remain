@@ -1,0 +1,137 @@
+@import "./theme.css";
+
+/* Tray popover — the Mac menu-bar popover's information hierarchy at Windows
+   density. Fixed header and footer, one scroll region between them, so the
+   window can be capped to the current monitor's work area without clipping. */
+html, body, #root { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+body { background: transparent; }
+
+.popover-root {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  height: 100%;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  overflow: hidden;
+}
+/* Windows 11 22H2+ only; every other build keeps the opaque surface above. */
+html[data-material="acrylic"] .popover-root { background: rgba(13, 14, 16, .74); }
+
+.popover-loading { display: grid; height: 100%; place-items: center; color: var(--muted); font-size: 12px; }
+
+/* Header */
+.popover-header { display: flex; align-items: center; gap: 8px; padding: 11px 12px 9px; border-bottom: 1px solid var(--border); }
+.popover-brand { font-size: 14px; font-weight: 700; letter-spacing: -.2px; white-space: nowrap; }
+.popover-brand b { color: var(--violet); font-weight: 700; }
+.popover-updated { flex: 1; min-width: 0; overflow: hidden; color: var(--muted); font-family: var(--mono); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.icon-button { display: grid; flex: 0 0 26px; width: 26px; height: 26px; place-items: center; padding: 0; border: 1px solid var(--border); border-radius: 50%; background: var(--surface-2); cursor: pointer; }
+.icon-button:hover { border-color: var(--violet-dim); color: var(--violet); }
+.icon-button:disabled { opacity: .55; cursor: default; }
+.icon-button svg { width: 13px; height: 13px; }
+
+/* Scroll region */
+.popover-scroll { min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 10px 12px 12px; scrollbar-width: thin; scrollbar-color: var(--surface-3) transparent; }
+.popover-scroll::-webkit-scrollbar { width: 8px; }
+.popover-scroll::-webkit-scrollbar-thumb { border: 2px solid transparent; border-radius: 8px; background: var(--surface-3); background-clip: content-box; }
+.popover-sections { display: grid; align-content: start; gap: 9px; min-width: 0; }
+
+.popover-card { min-width: 0; padding: 10px 11px; border: 1px solid var(--border); border-radius: 11px; background: var(--surface); }
+.popover-card-head { display: flex; align-items: center; gap: 7px; margin-bottom: 8px; }
+.popover-card-head h2 { flex: 1; min-width: 0; margin: 0; overflow: hidden; font-size: 11.5px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.popover-card-head strong { font-family: var(--mono); font-size: 12.5px; font-weight: 700; white-space: nowrap; }
+.popover-empty { margin: 0; color: var(--secondary); font-size: 11px; line-height: 1.5; }
+.popover-empty strong { display: block; margin-bottom: 3px; color: var(--text); font-size: 11.5px; font-weight: 600; }
+
+/* Risk strip */
+.popover-risk { display: grid; gap: 5px; }
+.popover-risk-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.popover-risk-head strong { min-width: 0; overflow: hidden; font-size: 12.5px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.popover-risk-detail { display: flex; align-items: center; gap: 6px; min-width: 0; color: var(--secondary); font-family: var(--mono); font-size: 10px; }
+.popover-risk-detail svg { flex: 0 0 11px; width: 11px; height: 11px; }
+.popover-risk-detail span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.popover-risk-detail.tone-medium { color: var(--warning); }
+.popover-risk-detail.tone-high { color: var(--danger); }
+
+/* Provider quota cards */
+.popover-quota { display: grid; gap: 9px; }
+.popover-quota-card { display: grid; gap: 6px; width: 100%; padding: 9px 11px; border: 1px solid var(--border); border-radius: 11px; background: var(--surface); color: inherit; text-align: left; cursor: pointer; }
+.popover-quota-card:hover { background: var(--surface-2); }
+.popover-quota-head { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.popover-quota-head img, .popover-quota-head .provider-mark-fallback { flex: 0 0 16px; width: 16px; height: 16px; border-radius: 4px; }
+.provider-mark-fallback { display: grid; place-items: center; border: 1px solid var(--border); color: var(--violet); background: var(--surface-2); font-family: var(--mono); font-size: 7px; font-weight: 700; }
+.popover-quota-head .quota-name { min-width: 0; overflow: hidden; font-size: 12.5px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.popover-quota-head .risk-mark { flex: 0 0 11px; width: 11px; height: 11px; }
+.popover-quota-head .risk-mark.tone-medium { color: var(--warning); }
+.popover-quota-head .risk-mark.tone-high { color: var(--danger); }
+.popover-quota-head strong { margin-left: auto; font-family: var(--mono); font-size: 12.5px; font-weight: 700; white-space: nowrap; }
+.popover-quota-meta { display: flex; justify-content: space-between; gap: 10px; min-width: 0; color: var(--muted); font-size: 10px; }
+.popover-quota-meta span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.popover-quota-meta span:last-child { flex: 0 0 auto; font-family: var(--mono); }
+.popover-quota-notice { display: flex; align-items: center; gap: 5px; color: var(--warning); font-size: 10px; }
+.popover-quota-notice svg { flex: 0 0 11px; width: 11px; height: 11px; }
+.popover-quota-notice span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Today's local usage */
+.popover-usage-rows { display: grid; gap: 5px; }
+.popover-usage-row { display: grid; grid-template-columns: 7px minmax(0, 1fr) auto auto; align-items: center; gap: 8px; min-width: 0; }
+.popover-usage-row i { width: 7px; height: 7px; border-radius: 50%; }
+.popover-usage-row span { overflow: hidden; font-size: 11.5px; text-overflow: ellipsis; white-space: nowrap; }
+.popover-usage-row em { color: var(--secondary); font-family: var(--mono); font-size: 10px; font-style: normal; }
+.popover-usage-row b { min-width: 34px; font-family: var(--mono); font-size: 11px; font-weight: 700; text-align: right; }
+.popover-spend { display: grid; gap: 3px; margin-top: 9px; padding-top: 9px; border-top: 1px solid var(--border); }
+.popover-spend-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; min-width: 0; }
+.popover-spend-row span { flex: 0 0 auto; color: var(--secondary); font-size: 10.5px; font-weight: 500; }
+.popover-spend-row strong { overflow: hidden; font-family: var(--mono); font-size: 10.5px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.popover-trend-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: end; gap: 8px; margin-top: 7px; }
+.popover-trend-row > span { color: var(--secondary); font-size: 10.5px; font-weight: 500; }
+/* Bars normalise to the window peak; the newest day is the solid one. */
+.popover-trend { display: flex; align-items: flex-end; justify-self: end; gap: 2px; width: 100%; max-width: 170px; height: 22px; }
+.popover-trend i { flex: 1; min-width: 2px; border-radius: 1.5px 1.5px 0 0; background: var(--secondary); opacity: .55; }
+.popover-trend i.is-latest { opacity: 1; }
+/* A day with no recorded usage is a real zero, drawn as a baseline tick so it
+   never reads as a short bar. */
+.popover-trend i.is-zero { height: 2px; border-radius: 1px; opacity: .3; }
+
+/* AI Feed */
+.popover-feed { display: grid; gap: 7px; }
+.popover-feed-row { display: grid; width: 100%; gap: 3px; padding: 7px 8px; border: 1px solid transparent; border-radius: 8px; background: var(--surface-2); color: inherit; text-align: left; cursor: pointer; }
+.popover-feed-row:hover { border-color: var(--violet-dim); }
+.popover-feed-meta { display: flex; align-items: center; gap: 6px; min-width: 0; color: var(--muted); font-size: 9.5px; }
+.popover-feed-meta i { flex: 0 0 6px; width: 6px; height: 6px; border-radius: 50%; }
+/* The meta line stays one row: a long account name gives up width first, and
+   the priority label truncates rather than wrapping. */
+.popover-feed-meta b { flex: 0 1 auto; overflow: hidden; color: var(--secondary); font-size: 10px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.popover-feed-meta time { flex: 0 0 auto; font-family: var(--mono); }
+.popover-feed-meta .feed-priority { flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.popover-feed-meta .open-arrow { margin-left: auto; }
+.popover-feed-meta svg { width: 10px; height: 10px; }
+.popover-feed-row p { display: -webkit-box; overflow: hidden; margin: 0; color: var(--text); font-size: 11px; line-height: 1.45; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.link-button { padding: 0; border: 0; background: transparent; color: var(--violet); cursor: pointer; font-size: 10px; font-weight: 600; }
+.link-button:hover { text-decoration: underline; }
+
+/* Footer */
+.popover-footer { display: flex; align-items: center; gap: 8px; padding: 9px 12px 10px; border-top: 1px solid var(--border); }
+.popover-footer button { padding: 5px 8px; border: 0; border-radius: 6px; background: transparent; cursor: pointer; font-size: 11.5px; font-weight: 600; }
+.popover-footer button:hover { background: var(--surface-2); }
+.popover-footer .footer-dashboard { color: var(--text); }
+.popover-footer .footer-secondary { color: var(--secondary); }
+.popover-footer .footer-quit { color: var(--secondary); }
+.popover-footer .footer-quit:hover { color: #e2a09f; background: rgba(255, 107, 107, .1); }
+.popover-footer .footer-spacer { flex: 1; }
+.popover-error { padding: 7px 9px; border: 1px solid rgba(255, 107, 107, .36); border-radius: 8px; color: #f0aaa8; background: rgba(111, 39, 42, .18); font-size: 10.5px; line-height: 1.45; }
+
+button:focus-visible, [tabindex]:focus-visible { outline: 2px solid rgba(155, 138, 251, .85); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .popover-quota-card, .popover-feed-row, .icon-button, .popover-footer button {
+    transition: color .15s ease, background .15s ease, border-color .15s ease;
+  }
+}
+@media (forced-colors: active) {
+  .popover-root { border-color: CanvasText; }
+  .popover-card, .popover-quota-card, .popover-feed-row { border-color: CanvasText; }
+  /* Opacity carries the newest-day emphasis, which forced colours flatten, so
+     fall back to an outline every bar keeps. */
+  .popover-trend i { border: 1px solid CanvasText; opacity: 1; forced-color-adjust: none; }
+}

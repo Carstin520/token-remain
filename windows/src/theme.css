@@ -1,0 +1,57 @@
+/* Palette = macOS DashboardTheme: neutral charcoal surfaces, violet product
+   accent, cyan information, conventional green/amber/red status, muted
+   provider identity hues. Shared by the dashboard window and the tray popover
+   so both surfaces stay one design system. */
+:root {
+  font-family: "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  color: #f2f3f5;
+  background: #0d0e10;
+  font-synthesis: none;
+  --bg: #0d0e10;
+  --surface: #121316;
+  --surface-2: #1a1b1f;
+  --surface-3: #23252a;
+  --border: #32353c;
+  --track: #272a30;
+  --text: #f2f3f5;
+  --secondary: #a7abb4;
+  --muted: #6f7580;
+  --violet: #9b8afb;
+  --violet-dim: #6357b8;
+  --cyan: #3ecfe0;
+  --success: #57d19a;
+  --warning: #ffb554;
+  --danger: #ff6b6b;
+  --claude: #bf8471;
+  --codex: #6687c5;
+  --mono: "Cascadia Mono", Consolas, monospace;
+}
+* { box-sizing: border-box; }
+button, input { font: inherit; }
+button { color: inherit; }
+
+/* Segment meter — the Mac SegmentBar block progress. */
+.segment-bar { display: flex; gap: 3px; }
+.segment-bar i { flex: 1; border-radius: 2px; background: var(--track); }
+
+/* Pixel badge — uppercase mono chip; HIGH risk fills red with ink text. */
+.badge { display: inline-flex; align-items: center; padding: 3px 7px; border: 1px solid currentColor; border-radius: 3px; font-family: var(--mono); font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; background: var(--surface-2); white-space: nowrap; }
+.badge.tone-low { color: var(--success); border-color: rgba(87, 209, 154, .55); }
+.badge.tone-medium { color: var(--warning); border-color: rgba(255, 181, 84, .55); }
+.badge.tone-high { color: var(--danger); border-color: rgba(255, 107, 107, .55); }
+.badge.tone-high.filled { color: #0d0e10; background: var(--danger); border-color: transparent; }
+.badge.tone-unknown { color: var(--secondary); border-color: rgba(167, 171, 180, .45); }
+.badge.tone-codex { color: var(--codex); border-color: rgba(102, 135, 197, .55); }
+.badge.tone-cyan { color: var(--cyan); border-color: rgba(62, 207, 224, .55); }
+.badge.tone-plan { color: var(--secondary); border-color: rgba(167, 171, 180, .45); }
+
+.spinning { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .spinning { animation: none; }
+}
+@media (forced-colors: active) {
+  .segment-bar i { border: 1px solid CanvasText; forced-color-adjust: none; }
+  .badge { border-color: currentColor; }
+}
