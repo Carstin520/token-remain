@@ -5,12 +5,6 @@ Versioning for public releases.
 
 ## Unreleased
 
-### Fixed
-
-- Stop the Claude weekly "all models" row from reappearing as one or two extra
-  model cards when the `/usage` terminal capture drops glyphs from its label,
-  and drop such rows from snapshots cached by an earlier build.
-
 ## 1.2.11 — 2026-08-07
 
 ### Added
@@ -23,6 +17,9 @@ Versioning for public releases.
 
 ### Fixed
 
+- Stop the Claude weekly "all models" row from reappearing as one or two extra
+  model cards when the `/usage` terminal capture drops glyphs from its label,
+  and drop such rows from snapshots cached by an earlier build.
 - Keep Qoder international and China sessions pinned to their matching origin,
   avoiding the stale-cookie request path that could return HTTP 401.
 - Send Kimi CLI tokens only to the official Kimi Code usage endpoint, and bind
@@ -545,4 +542,4 @@ Versioning for public releases.
 [1.2.8]: https://github.com/Carstin520/token-remain/releases/tag/v1.2.8
 [1.2.9]: https://github.com/Carstin520/token-remain/releases/tag/v1.2.9
 [1.2.10]: https://github.com/Carstin520/token-remain/releases/tag/v1.2.10
-[1.2.11]: https://github.com/Carstin520/token-remain/releases/tag/v1.2.11
+[1.2.11]: https://github.com/Carstin520/token-remain/releases/tag/v1.2.11%2Bbuild.26
