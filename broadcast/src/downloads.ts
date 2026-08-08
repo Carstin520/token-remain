@@ -2,8 +2,126 @@ import { json } from "./http";
 import type { Env } from "./types";
 
 const MACOS_ASSET = "macos_dmg";
+const GITHUB_REPO = "Carstin520/token-remain";
+const GITHUB_RELEASES_PAGE_SIZE = 100;
+const GITHUB_RELEASES_MAX_PAGES = 20;
 const MACOS_DOWNLOAD_URL =
-  "https://github.com/Carstin520/token-remain/releases/latest/download/TokenRemain.dmg";
+  `https://github.com/${GITHUB_REPO}/releases/latest/download/TokenRemain.dmg`;
+
+interface GitHubDownloadPage {
+  releaseCount: number;
+  assetCount: number;
+  totalDownloads: number;
+}
+
+export interface DownloadSyncResult {
+  githubTotal: number;
+  effectiveTotal: number;
+}
+
+function parseGitHubDownloadPage(value: unknown): GitHubDownloadPage {
+  if (!Array.isArray(value)) {
+    throw new Error("GitHub releases lookup returned a non-array response");
+  }
+
+  let assetCount = 0;
+  let totalDownloads = 0;
+  for (const release of value) {
+    if (typeof release !== "object" || release === null || !("assets" in release)) continue;
+    const assets = release.assets;
+    if (!Array.isArray(assets)) continue;
+    for (const asset of assets) {
+      if (typeof asset !== "object" || asset === null) continue;
+      if (!("name" in asset) || asset.name !== "TokenRemain.dmg") continue;
+      if (!("download_count" in asset)
+        || !Number.isSafeInteger(asset.download_count)
+        || (asset.download_count as number) < 0) {
+        throw new Error("GitHub release asset returned an invalid download_count");
+      }
+      assetCount += 1;
+      totalDownloads += asset.download_count as number;
+    }
+  }
+
+  return { releaseCount: value.length, assetCount, totalDownloads };
+}
+
+export async function syncDownloadCounterFromGitHub(
+  env: Env,
+  now: Date,
+  fetchImpl: (input: string, init?: RequestInit) => Promise<Response> = fetch,
+): Promise<DownloadSyncResult> {
+  let githubTotal = 0;
+  let assetCount = 0;
+  let completed = false;
+
+  for (let page = 1; page <= GITHUB_RELEASES_MAX_PAGES; page += 1) {
+    const response = await fetchImpl(
+      `https://api.github.com/repos/${GITHUB_REPO}/releases?per_page=${GITHUB_RELEASES_PAGE_SIZE}&page=${page}`,
+      {
+        headers: {
+          accept: "application/vnd.github+json",
+          "user-agent": "tokenremain-broadcast (download-counter reconciliation)",
+        },
+      },
+    );
+    if (!response.ok) {
+      throw new Error(`GitHub releases lookup failed with status ${response.status}`);
+    }
+
+    const parsed = parseGitHubDownloadPage(await response.json());
+    githubTotal += parsed.totalDownloads;
+    assetCount += parsed.assetCount;
+    if (parsed.releaseCount < GITHUB_RELEASES_PAGE_SIZE) {
+      completed = true;
+      break;
+    }
+  }
+
+  if (!completed) {
+    throw new Error("GitHub releases lookup exceeded the pagination safety limit");
+  }
+  if (assetCount === 0) {
+    throw new Error("GitHub releases lookup returned no TokenRemain.dmg assets");
+  }
+
+  const iso = now.toISOString();
+  await env.DB.prepare(
+    `INSERT INTO download_counters (asset, total_count, updated_at)
+     VALUES (?, ?, ?)
+     ON CONFLICT(asset) DO UPDATE SET
+       total_count = MAX(download_counters.total_count, excluded.total_count),
+       updated_at = CASE
+         WHEN excluded.total_count > download_counters.total_count THEN excluded.updated_at
+         ELSE download_counters.updated_at
+       END`,
+  )
+    .bind(MACOS_ASSET, githubTotal, iso)
+    .run();
+
+  const row = await env.DB.prepare(
+    "SELECT total_count FROM download_counters WHERE asset = ?",
+  )
+    .bind(MACOS_ASSET)
+    .first<{ total_count: number }>();
+
+  return {
+    githubTotal,
+    effectiveTotal: row?.total_count ?? githubTotal,
+  };
+}
+
+function macDownloadRedirectResponse(): Response {
+  return new Response(null, {
+    status: 302,
+    headers: {
+      "cache-control": "no-store",
+      location: MACOS_DOWNLOAD_URL,
+      "referrer-policy": "no-referrer",
+      "x-content-type-options": "nosniff",
+    },
+  });
+}
 
 export async function redirectToMacDownload(env: Env): Promise<Response> {
   const now = new Date();
@@ -19,15 +137,11 @@ export async function redirectToMacDownload(env: Env): Promise<Response> {
     .run();
   await snapshotDownloadHistory(env, now);
 
-  return new Response(null, {
-    status: 302,
-    headers: {
-      "cache-control": "no-store",
-      location: MACOS_DOWNLOAD_URL,
-      "referrer-policy": "no-referrer",
-      "x-content-type-options": "nosniff",
-    },
-  });
+  return macDownloadRedirectResponse();
+}
+
+export function inspectMacDownloadRedirect(): Response {
+  return macDownloadRedirectResponse();
 }
 
 export async function getDownloadStats(env: Env): Promise<Response> {

@@ -1,5 +1,5 @@
 import type { Env } from "./types";
-import { snapshotDownloadHistory } from "./downloads";
+import { snapshotDownloadHistory, syncDownloadCounterFromGitHub } from "./downloads";
 import { snapshotStarHistory } from "./stars";
 import { enqueueDueDailyDigests } from "./push";
 import { syncPrimaryPosts, syncRotatingPosts } from "./x-api";
@@ -35,6 +35,15 @@ export async function runScheduled(
     }
     const queued = await enqueueDueDailyDigests(env, new Date(controller.scheduledTime));
     console.log("Daily digest scheduling complete", { queued });
+    try {
+      const result = await syncDownloadCounterFromGitHub(
+        env,
+        new Date(controller.scheduledTime),
+      );
+      console.log("GitHub download counter reconciliation complete", result);
+    } catch (error) {
+      console.error("GitHub download counter reconciliation failed", safeError(error));
+    }
     try {
       await snapshotDownloadHistory(env, new Date(controller.scheduledTime));
     } catch (error) {

@@ -18,9 +18,12 @@ X API 凭证和内容筛选全部留在 TokenRemain Broadcast Worker。Apple 客
 
 - `GET /v1/downloads/macos`：只把 `macos_dmg` 的匿名聚合计数加一，然后
   `302` 跳转到 GitHub Release 的 `TokenRemain.dmg`。
+- `HEAD /v1/downloads/macos`：只验证相同的跳转，不增加计数。
 - `GET /v1/downloads/stats`：向官网公开累计下载次数。
 - D1 只保存一个累计整数和最后更新时间；不保存 IP、User-Agent、设备标识、
   Cookie 或逐次下载事件。
+- 每小时定时任务读取 GitHub Releases 中固定文件名 `TokenRemain.dmg` 的累计
+  请求数，并用单调不减方式对账，补回绕过官网计数入口的下载请求。
 
 ## GET /v1/ai-feed
 

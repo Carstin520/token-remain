@@ -192,7 +192,7 @@ bash ./script/build_and_run.sh --verify
   <img src="https://api.tokenremain.com/v1/downloads/chart.svg?theme=dark&amp;lang=zh" width="920" alt="官网累计下载趋势图,数据来自匿名聚合计数器的每日快照" />
 </picture>
 
-<sub>起始基线为 `TokenRemain.dmg` 历史累计 163 次(截至 2026-08-07,[明细](docs/download-baseline.md)),此后由官网匿名计数器逐日累计;不含任何个人数据。</sub>
+<sub>起始基线为 `TokenRemain.dmg` 历史累计 163 次(截至 2026-08-07,[明细](docs/download-baseline.md));官网匿名入口即时累计,并每小时与 GitHub 固定 DMG 总数单调对账;不含任何个人数据。</sub>
 
 </div>
 

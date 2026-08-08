@@ -38,6 +38,8 @@ The public website uses these additional credential-free endpoints:
 
 - `GET /v1/downloads/macos` increments one anonymous aggregate counter and
   redirects to the current notarized GitHub Release DMG.
+- `HEAD /v1/downloads/macos` verifies that redirect without incrementing the
+  counter.
 - `GET /v1/downloads/stats` returns the public aggregate Mac download count.
 - `GET /v1/downloads/history` returns the daily snapshots of that same
   aggregate total.
@@ -51,7 +53,10 @@ The counter stores only aggregate integers (the running total plus one daily
 snapshot of it) and their update times. It does not store IP addresses, device
 identifiers, user agents, cookies, or per-download events. Migration 0005 seeds
 the running total with the 163 historical `TokenRemain.dmg` downloads recorded
-by GitHub Releases as of 2026-08-07 (see `docs/download-baseline.md`).
+by GitHub Releases as of 2026-08-07. Migration 0007 reconciles the 25 requests
+missed by bypassing the Worker, and the hourly cron monotonically reconciles the
+counter with all fixed-name GitHub DMG assets thereafter (see
+`docs/download-baseline.md`).
 
 ## Production bindings
 

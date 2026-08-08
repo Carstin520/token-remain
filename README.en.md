@@ -192,7 +192,7 @@ Installs to `~/Applications/UsageDock.app`. This public repository contains only
   <img src="https://api.tokenremain.com/v1/downloads/chart.svg?theme=dark&amp;lang=en" width="920" alt="Cumulative website download chart, rendered from daily snapshots of the anonymous aggregate counter" />
 </picture>
 
-<sub>The total starts from the 163 historical `TokenRemain.dmg` downloads (as of 2026-08-07, [breakdown](docs/download-baseline.md)) and grows via daily snapshots of the website's anonymous counter; no personal data involved.</sub>
+<sub>The total starts from the 163 historical `TokenRemain.dmg` downloads (as of 2026-08-07, [breakdown](docs/download-baseline.md)); the anonymous website route increments it immediately and an hourly monotonic reconciliation catches fixed-name GitHub DMG requests; no personal data involved.</sub>
 
 </div>
 

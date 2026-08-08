@@ -7,6 +7,12 @@
 [`broadcast/migrations/0005_download_baseline.sql`](../broadcast/migrations/0005_download_baseline.sql)
 一次性写入计数器,此后由官网匿名聚合计数器继续累计。
 
+2026-08-08 核查发现官网按钮仍直接指向 GitHub,导致新增请求绕过 Worker。
+迁移 `0007_download_reconciliation.sql` 将 D1 从 163 单调抬升到当时 GitHub
+已记录的 188 次;官网与支持页随后统一改走计数入口。此后 Worker 每小时读取
+所有 Release 中固定文件名 `TokenRemain.dmg` 的累计请求数并以 `MAX` 对账,
+因此直接从 GitHub Release 页产生的同类请求也不会再让 README 图表长期滞后。
+
 - **基线**:`TokenRemain.dmg` 全量历史累计 **163** 次(GitHub Releases API,
   抓取于 2026-08-07)。
 - **不叠加旧计数**:计数器已有的 13 次(2026-07-25 起)本身就包含在这 163 次
