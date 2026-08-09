@@ -1,5 +1,6 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import { normalizeQuotaUsageHistory, recordQuotaUsageHistory } from "./quota-history.js";
 import { newSourceID } from "./sync/crypto.js";
 
 export class StateStore {
@@ -27,6 +28,13 @@ export class StateStore {
       this.setRemoteSnapshot(this.state.remoteSnapshot);
       await this.save();
     }
+    if (this.state.protectedQuotaUsageHistory) {
+      if (!this.safeStorage.isEncryptionAvailable()) throw new Error("Windows credential protection is unavailable");
+      this.state.quotaUsageHistory = JSON.parse(this.safeStorage.decryptString(
+        Buffer.from(this.state.protectedQuotaUsageHistory, "base64"),
+      ));
+    }
+    this.state.quotaUsageHistory = normalizeQuotaUsageHistory(this.state.quotaUsageHistory);
     return this.state;
   }
 
@@ -74,11 +82,22 @@ export class StateStore {
       .toString("base64");
   }
 
+  recordQuotaUsage(providers, now = Date.now()) {
+    this.state.quotaUsageHistory = recordQuotaUsageHistory(this.state.quotaUsageHistory, providers, now);
+  }
+
   async save() {
     await mkdir(dirname(this.path), { recursive: true });
     const temporary = `${this.path}.next`;
     const persisted = { ...this.state };
     delete persisted.remoteSnapshot;
+    if (this.state.quotaUsageHistory) {
+      if (!this.safeStorage.isEncryptionAvailable()) throw new Error("Windows credential protection is unavailable");
+      persisted.protectedQuotaUsageHistory = this.safeStorage
+        .encryptString(JSON.stringify(this.state.quotaUsageHistory))
+        .toString("base64");
+    }
+    delete persisted.quotaUsageHistory;
     await writeFile(temporary, JSON.stringify(persisted, null, 2), { mode: 0o600 });
     await rename(temporary, this.path);
   }

@@ -39,3 +39,29 @@ test("Remote usage history is protected at rest and restored at launch", async (
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+test("Quota snapshots accumulate locally and remain protected at rest", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "tokenremain-windows-quota-history-"));
+  try {
+    const now = Date.now();
+    const store = new StateStore({ userDataPath: directory, safeStorage });
+    await store.load();
+    store.recordQuotaUsage([{
+      providerID: "codex",
+      capturedAt: now,
+      windows: [{ usedPercent: 37, windowMinutes: 300, resetsAt: now + 60_000 }],
+    }], now);
+    await store.save();
+
+    const onDisk = await readFile(join(directory, "state-v1.json"), "utf8");
+    assert.doesNotMatch(onDisk, /"usedPercent"\s*:\s*37|"quotaUsageHistory"/);
+    assert.match(onDisk, /protectedQuotaUsageHistory/);
+
+    const restored = new StateStore({ userDataPath: directory, safeStorage });
+    await restored.load();
+    assert.equal(restored.state.quotaUsageHistory.samples[0].providerID, "codex");
+    assert.equal(restored.state.quotaUsageHistory.samples[0].usedPercent, 37);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});

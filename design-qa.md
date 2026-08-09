@@ -79,3 +79,64 @@ final result: passed
 - Console warnings/errors: none.
 
 final result: passed
+
+---
+
+# Windows Trends macOS-Parity QA
+
+## Comparison target
+
+- Source visual truth: `/var/folders/7w/9frvs6s13qg3_w5rmk61b_cc0000gn/T/TemporaryItems/NSIRD_screencaptureui_TjlbEq/Screenshot 2026-08-09 at 18.28.19.png`
+- Pre-fix Windows evidence: `/var/folders/7w/9frvs6s13qg3_w5rmk61b_cc0000gn/T/TemporaryItems/NSIRD_screencaptureui_Qd3B12/Screenshot 2026-08-09 at 18.27.58.png`
+- Rendered implementation: `/tmp/tokenremain-trends-windows-final-900x704.png`
+- Normalized source: `/tmp/tokenremain-trends-macos-reference-900x704.png`
+- Side-by-side comparison: `/tmp/tokenremain-trends-comparison.png`
+- Browser viewport: `1124 x 704` CSS px at DPR 1; implementation comparison clips the 900 px main-content region after the 224 px Windows sidebar.
+- Source pixels: `1800 x 1408` at macOS 2x density, normalized to `900 x 704`.
+- Implementation pixels: `900 x 704` at browser 1x density.
+- State: dark theme, Daily Usage default `14 d / Tokens`, Quota Consumption default `7 d`, three populated quota rows.
+
+## Full-view evidence
+
+- The first card now restores the macOS hierarchy: title/source, LIVE tag, provider legend, 7/14/30-day selector, Tokens/Cost selector, dotted total trend, one labeled y-axis, thin stacked daily bars, and responsive x-axis labels.
+- The former fixed-height tracks are gone. Every stack now starts on the baseline and represents its real value against a rounded shared axis maximum.
+- The missing Quota Consumption Trend card is present immediately below Daily Usage, with range selection, APP/WINDOW/USED/TREND columns, provider assets, and a fixed 0–100% sparkline per row.
+- At the normalized 900 x 704 comparison size, the two primary cards occupy the same above-the-fold hierarchy as the macOS source. Summary cards continue below without horizontal overflow.
+
+## Focused component evidence
+
+- Daily Usage interaction checks passed for 7, 14, and 30 days; Tokens and Cost each update the bars, total sparkline, axis values, accessible labels, and tooltip values.
+- Hovering a day exposes a bounded tooltip with date, Claude, Codex, and total values while dimming neighboring stacks.
+- Quota range checks passed for 7, 14, and 30 days. Provider rows follow the saved Limits order instead of introducing a second Windows-only ordering preference.
+- The Cursor mark uses the supplied brand SVG with a Windows presentation tint, removing the black-on-charcoal failure visible during the first comparison.
+
+## Required fidelity surfaces
+
+- Fonts and typography: Windows keeps Segoe UI Variable and Cascadia Mono as the platform-native equivalent; sizes, weights, uppercase table labels, numeric alignment, and compact control labels match the source hierarchy without truncation.
+- Spacing and layout rhythm: the oversized first card was reduced from 394 px to approximately 339 px at the QA viewport; chart plot height, row height, card gaps, panel padding, and radii now track the normalized macOS composition.
+- Colors and visual tokens: violet selection, Claude `#BF8471`, Codex `#6687C5`, Cursor `#9684CD`, charcoal surfaces, borders, gridlines, and muted axis text use the shared TokenRemain palette.
+- Image quality and asset fidelity: Claude, Codex, and Cursor use the existing provider assets. Charts are rendered from live vector/data geometry at display resolution; there are no raster chart placeholders.
+- Copy and content: macOS labels and control names are preserved. Source wording intentionally says `synced daily aggregate` / `synced from your Mac` on Windows instead of falsely claiming Windows-local ccusage.
+
+## Comparison history
+
+1. P1 before fix: Daily Usage was a non-interactive seven-day track chart with no range or metric controls, total trend, real y-axis, tooltip, or macOS density.
+2. Fix: ported the three ranges, two metrics, shared nice axis, total sparkline, stacked bars, date thinning, hover/focus tooltip, and accessible per-day summaries.
+3. P1 before fix: Quota Consumption Trend was omitted entirely and Windows retained no quota history to power it.
+4. Fix: added DPAPI-protected local quota history with 15-minute buckets and 45-day retention, plus the complete range-controlled percentage trend table and honest accumulating state.
+5. P2 first comparison: the Daily Usage card remained too tall and the Cursor SVG rendered black.
+6. Fix: normalized the chart/card proportions against the 2x source and tinted the supplied currentColor Cursor asset with its provider token.
+7. Post-fix evidence: the normalized side-by-side comparison has no remaining actionable P0, P1, or P2 mismatch. Platform font rendering and Windows-specific synced-source copy are intentional.
+
+## Verification
+
+- `npm run check`: 103/103 tests passed and the Vite production build succeeded.
+- `git diff --check`: clean.
+- Browser interactions: 7/14/30-day Daily Usage, Tokens/Cost, 7/14/30-day Quota Consumption, and day hover tooltip passed.
+- Browser console warnings/errors: none.
+
+## Follow-up polish
+
+- P3: native Windows validation should confirm the same density under 125% and 150% display scaling; browser evidence cannot replace that final device check.
+
+final result: passed

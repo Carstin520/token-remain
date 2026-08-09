@@ -384,6 +384,7 @@ async function performRefresh() {
   } catch (error) {
     store.state.syncError = publicError(error);
   }
+  store.recordQuotaUsage(mergeProviders(store.state.providers || [], store.state.remoteSnapshot?.providers || []));
   store.state.lastUpdatedAt = Date.now();
   store.state.isRefreshing = false;
   await store.save();
@@ -422,6 +423,7 @@ function publicState() {
     lastUpdatedAt: store?.state?.lastUpdatedAt,
     isRefreshing: Boolean(store?.state?.isRefreshing),
     dailyUsageHistory: store?.state?.remoteSnapshot?.dailyUsageHistory,
+    quotaUsageHistory: store?.state?.quotaUsageHistory,
     trending: store?.state?.trending || [],
     feedLoading: Boolean(store?.state?.feedLoading),
     feedError: store?.state?.feedError,

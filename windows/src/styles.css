@@ -115,6 +115,7 @@ nav svg { width: 16px; height: 16px; }
 .usage-provider-row > span:nth-child(3) { overflow: hidden; color: var(--secondary); font-family: var(--mono); font-size: 10px; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
 .usage-provider-row b { font-family: var(--mono); font-size: 12px; font-weight: 700; text-align: right; }
 .panel-source { margin: auto 0 0; padding-top: 10px; color: var(--muted); font-size: 10px; line-height: 1.45; }
+.provider-mark[data-provider="cursor"] { filter: invert(58%) sepia(13%) saturate(1352%) hue-rotate(214deg) brightness(96%) contrast(86%); }
 
 /* Official Quota */
 .official-quota-rows { display: grid; gap: 4px; }
@@ -213,17 +214,56 @@ nav svg { width: 16px; height: 16px; }
 .about-windows p:last-child { margin-bottom: 0; }
 
 /* Trends */
-.trend-history-panel { display: flex; min-height: 380px; flex-direction: column; }
-.trend-chart { display: flex; align-items: stretch; justify-content: space-around; gap: 8px; min-height: 235px; margin-top: 12px; padding: 12px 4px 0; border-bottom: 1px solid var(--border); }
-.trend-column { display: grid; flex: 1; min-width: 24px; max-width: 68px; grid-template-rows: 1fr 22px; align-items: end; justify-items: center; gap: 7px; }
-.trend-column > span { overflow: hidden; width: 100%; color: var(--muted); font-family: var(--mono); font-size: 9px; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
-.trend-bar { display: flex; width: min(72%, 34px); height: 100%; flex-direction: column-reverse; justify-content: flex-start; overflow: hidden; border-radius: 5px 5px 2px 2px; background: var(--track); }
-.trend-bar i { display: block; flex: 0 0 auto; width: 100%; min-height: 1px; }
-.trend-codex { background: var(--codex); }
-.trend-claude { background: var(--claude); }
-.trend-legend { display: flex; gap: 18px; margin-top: 12px; color: var(--secondary); font-size: 10px; }
-.trend-legend span { display: flex; align-items: center; gap: 7px; }
-.trend-legend .provider-dot { display: inline-block; }
+.trend-history-panel { display: flex; min-height: 330px; flex-direction: column; }
+.trend-card-controls { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 4px; }
+.trend-series-legend { display: flex; align-items: center; gap: 12px; min-width: 0; overflow-x: auto; }
+.trend-series-legend span { display: inline-flex; align-items: center; gap: 6px; color: var(--secondary); white-space: nowrap; }
+.trend-series-legend b { font-size: 11px; font-weight: 600; }
+.trend-series-legend i { width: 12px; height: 6px; border-radius: 2px; }
+.trend-control-groups { display: flex; align-items: center; gap: 10px; }
+.trend-segmented { display: flex; align-items: center; gap: 2px; padding: 2px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); }
+.trend-segmented button { min-width: 36px; height: 20px; padding: 0 8px; border: 0; border-radius: 5px; color: var(--secondary); background: transparent; cursor: pointer; font-family: var(--mono); font-size: 10px; font-weight: 600; }
+.trend-segmented button:hover { color: var(--text); }
+.trend-segmented button.selected { color: var(--bg); background: var(--violet); }
+.trend-total-row { display: grid; grid-template-columns: 58px minmax(0, 1fr); align-items: center; gap: 0; height: 20px; margin-top: 12px; }
+.trend-total-row span { color: var(--muted); font-size: 9px; font-weight: 500; white-space: nowrap; }
+.trend-total-row svg { width: 100%; height: 20px; overflow: visible; }
+.trend-total-row polyline { fill: none; stroke: var(--secondary); stroke-width: .7; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: .1 3.2; vector-effect: non-scaling-stroke; }
+.trend-chart-detailed { display: grid; grid-template-columns: 58px minmax(0, 1fr); height: 199px; margin-top: 8px; }
+.trend-y-axis { position: relative; height: 175px; }
+.trend-y-axis span { position: absolute; right: 8px; transform: translateY(50%); color: var(--muted); font-family: var(--mono); font-size: 9px; white-space: nowrap; }
+.trend-plot { position: relative; height: 175px; }
+.trend-gridline, .trend-baseline { position: absolute; right: 0; left: 0; height: 1px; background: color-mix(in srgb, var(--border) 55%, transparent); pointer-events: none; }
+.trend-baseline { bottom: 0; background: color-mix(in srgb, var(--secondary) 62%, transparent); }
+.trend-columns { position: absolute; inset: 0 0 -24px; display: grid; height: 199px; align-items: stretch; }
+.trend-day-column { display: grid; min-width: 0; height: 199px; padding: 0; border: 0; outline-offset: -2px; color: inherit; background: transparent; cursor: crosshair; grid-template-rows: 175px 24px; }
+.trend-day-column.dimmed .trend-stack { opacity: .4; }
+.trend-stack { display: flex; height: 175px; flex-direction: column-reverse; justify-content: flex-start; align-items: center; gap: 2px; transition: opacity .12s ease-out; }
+.trend-stack i { display: block; flex: 0 0 auto; width: 10px; min-height: 1px; }
+.range-7 .trend-stack i { width: 12px; }
+.range-30 .trend-stack i { width: 7px; }
+.trend-stack i:first-child { border-radius: 0; }
+.trend-stack i:last-child { border-radius: 2px 2px 0 0; }
+.trend-day-label { align-self: center; overflow: hidden; width: 100%; color: var(--secondary); font-family: var(--mono); font-size: 9px; line-height: 24px; text-align: center; white-space: nowrap; }
+.trend-tooltip { position: absolute; z-index: 3; top: 8px; display: grid; gap: 5px; width: 148px; padding: 8px 9px; border: 1px solid var(--border); border-radius: 7px; transform: translateX(-50%); background: var(--surface-3); box-shadow: 0 8px 20px rgba(0, 0, 0, .4); pointer-events: none; }
+.trend-tooltip > strong { font-size: 10px; }
+.trend-tooltip > span { display: grid; grid-template-columns: 8px auto 1fr; align-items: center; gap: 6px; color: var(--secondary); font-size: 10px; }
+.trend-tooltip > span i { width: 7px; height: 7px; border-radius: 2px; }
+.trend-tooltip > span b { color: var(--text); font-family: var(--mono); font-size: 9px; font-weight: 500; text-align: right; white-space: nowrap; }
+.trend-tooltip .trend-tooltip-total { grid-template-columns: auto 1fr; margin-top: 1px; padding-top: 5px; border-top: 1px solid var(--border); }
+
+.quota-trend-panel { display: flex; min-height: 188px; flex-direction: column; }
+.quota-trend-table { display: grid; }
+.quota-trend-header, .quota-trend-row { display: grid; grid-template-columns: minmax(132px, .8fr) 86px 64px minmax(240px, 3.5fr); align-items: center; column-gap: 14px; }
+.quota-trend-header { min-height: 24px; color: var(--muted); font-family: var(--mono); font-size: 9px; }
+.quota-trend-header span:nth-child(3) { text-align: right; }
+.quota-trend-row { min-height: 57px; border-top: 1px solid color-mix(in srgb, var(--border) 76%, transparent); color: var(--secondary); font-size: 10px; }
+.quota-trend-provider { display: flex; min-width: 0; align-items: center; gap: 8px; }
+.quota-trend-provider b { overflow: hidden; color: var(--text); font-size: 11px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.quota-trend-row > strong { font-family: var(--mono); font-size: 11px; text-align: right; }
+.quota-sparkline { width: 100%; height: 38px; overflow: visible; }
+.quota-sparkline line { stroke: color-mix(in srgb, var(--border) 46%, transparent); stroke-width: .7; vector-effect: non-scaling-stroke; }
+.quota-sparkline-line { fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
 .trends-summary-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 
 /* Data Sources */
@@ -317,6 +357,9 @@ nav svg { width: 16px; height: 16px; }
   .usage-provider-list { width: 100%; }
   .source-row { flex-wrap: wrap; }
   .source-status { justify-items: start; }
+  .trend-card-controls { align-items: flex-start; flex-direction: column; }
+  .trend-control-groups { width: 100%; justify-content: space-between; }
+  .quota-trend-header, .quota-trend-row { grid-template-columns: minmax(108px, 1fr) 60px 52px minmax(140px, 2fr); gap: 8px; }
 }
 @media (prefers-reduced-motion: no-preference) {
   button, input { transition: color .15s ease, background .15s ease, border-color .15s ease, opacity .15s ease; }

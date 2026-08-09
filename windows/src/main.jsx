@@ -49,6 +49,7 @@ import {
 import { LIMITS_ORDER_KEY, normalizeOrder } from "./layout.js";
 import { buildOverviewSummary, buildTodayUsage, rankOfficialQuotaProviders, summaryWindow, usagePace } from "./overview-model.js";
 import { PROVIDER_ORDER, providerMeta } from "./provider-meta.js";
+import { compactAxisValue, linePoints, quotaTrendRows, TREND_RANGES, usageTrendModel } from "./trends-model.js";
 import "./styles.css";
 
 const PROVIDER_ICON_MODULES = import.meta.glob("../../site/assets/providers/*.{svg,png}", { eager: true, import: "default" });
@@ -78,7 +79,7 @@ const api = window.tokenRemain ?? (import.meta.env.DEV ? createPreviewAPI() : un
 
 function providerPresentation(providerID) {
   const meta = providerMeta(providerID);
-  return { ...meta, icon: PROVIDER_ICONS[meta.icon] };
+  return { ...meta, id: providerID, icon: PROVIDER_ICONS[meta.icon] };
 }
 
 /// Quota meters reserve red for the same critical threshold as the Mac.
@@ -302,7 +303,7 @@ function SegmentBar({ remaining, color, segments = 14, height = 6 }) {
 
 function ProviderMark({ meta, size = 20 }) {
   return meta.icon
-    ? <img className="provider-mark" style={{ width: size, height: size }} src={meta.icon} alt="" />
+    ? <img className="provider-mark" data-provider={meta.id} style={{ width: size, height: size }} src={meta.icon} alt="" />
     : <span className="provider-mark provider-mark-fallback" style={{ width: size, height: size }} aria-hidden="true">{meta.name.slice(0, 2).toUpperCase()}</span>;
 }
 
@@ -777,52 +778,212 @@ function CaptureFreshness({ capturedAt }) {
 
 // MARK: - Trends
 
+const USAGE_TREND_PROVIDERS = ["claude", "codex"];
+
+function TrendSegmentedControl({ label, options, value, onChange }) {
+  return (
+    <div className="trend-segmented" role="group" aria-label={label}>
+      {options.map((option) => {
+        const normalized = typeof option === "object" ? option : { value: option, label: `${option} d` };
+        return (
+          <button
+            key={normalized.value}
+            className={value === normalized.value ? "selected" : ""}
+            aria-pressed={value === normalized.value}
+            onClick={() => onChange(normalized.value)}
+          >
+            {normalized.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function trendValue(value, metric) {
+  return metric === "cost" ? formatMoney(value) : `${compactNumber(Math.round(value))} tokens`;
+}
+
+function numericDayLabel(value) {
+  const date = new Date(`${value}T00:00:00Z`);
+  return `${date.getUTCMonth() + 1}/${date.getUTCDate()}`;
+}
+
+function DailyUsageTrendCard({ history }) {
+  const [range, setRange] = useState(14);
+  const [metric, setMetric] = useState("tokens");
+  const [activeIndex, setActiveIndex] = useState();
+  const model = usageTrendModel(history, { range, metric, providerIDs: USAGE_TREND_PROVIDERS });
+  const fresh = history?.capturedAt && Date.now() - history.capturedAt < 30 * 60_000;
+  const stride = model.days.length <= 7 ? 1 : model.days.length <= 14 ? 2 : 5;
+  const ticks = [1, 0.75, 0.5, 0.25];
+  const activeDay = Number.isInteger(activeIndex) ? model.days[activeIndex] : undefined;
+
+  return (
+    <section className="dashboard-panel trend-history-panel">
+      <PanelHeader
+        title="Daily Usage Trend"
+        subtitle="Selected apps stacked · synced daily aggregate"
+        trailing={fresh ? <Badge text="LIVE" tone="codex" /> : undefined}
+      />
+      <div className="trend-card-controls">
+        <div className="trend-series-legend" aria-label="Visible providers">
+          {USAGE_TREND_PROVIDERS.map((id) => {
+            const meta = providerPresentation(id);
+            return (
+              <span key={id}>
+                <ProviderMark meta={meta} size={13} />
+                <b>{meta.name}</b>
+                <i style={{ background: meta.color }} />
+              </span>
+            );
+          })}
+        </div>
+        <div className="trend-control-groups">
+          <TrendSegmentedControl label="History range" options={TREND_RANGES} value={range} onChange={setRange} />
+          <TrendSegmentedControl
+            label="Metric"
+            options={[{ value: "tokens", label: "Tokens" }, { value: "cost", label: "Cost" }]}
+            value={metric}
+            onChange={setMetric}
+          />
+        </div>
+      </div>
+
+      <div className="trend-total-row">
+        <span>Total trend</span>
+        <svg viewBox="0 0 100 20" preserveAspectRatio="none" aria-hidden="true">
+          <polyline points={linePoints(model.days.map((day) => day.total))} />
+        </svg>
+      </div>
+
+      <div className="trend-chart-detailed" onMouseLeave={() => setActiveIndex(undefined)}>
+        <div className="trend-y-axis" aria-hidden="true">
+          {ticks.map((fraction) => (
+            <span key={fraction} style={{ bottom: `${fraction * 100}%` }}>{compactAxisValue(model.maximum * fraction, metric)}</span>
+          ))}
+        </div>
+        <div className="trend-plot">
+          {ticks.map((fraction) => <i className="trend-gridline" key={fraction} style={{ bottom: `${fraction * 100}%` }} />)}
+          <i className="trend-baseline" />
+          <div className={`trend-columns range-${range}`} style={{ gridTemplateColumns: `repeat(${Math.max(1, model.days.length)}, minmax(0, 1fr))` }}>
+            {model.days.map((day, index) => {
+              const dimmed = activeDay && index !== activeIndex;
+              const labelVisible = (model.days.length - 1 - index) % stride === 0;
+              const aria = `${formatDayLabel(day.day)} · ${USAGE_TREND_PROVIDERS.map((id) => `${providerMeta(id).name} ${trendValue(day.values[id], metric)}`).join(" · ")} · Total ${trendValue(day.total, metric)}`;
+              return (
+                <button
+                  className={`trend-day-column ${dimmed ? "dimmed" : ""}`}
+                  key={day.day}
+                  aria-label={aria}
+                  onMouseEnter={() => setActiveIndex(index)}
+                  onFocus={() => setActiveIndex(index)}
+                  onBlur={() => setActiveIndex(undefined)}
+                >
+                  <span className="trend-stack">
+                    {USAGE_TREND_PROVIDERS.map((id) => day.values[id] > 0 && (
+                      <i
+                        key={id}
+                        style={{ height: `${day.values[id] / model.maximum * 100}%`, background: providerMeta(id).color }}
+                      />
+                    ))}
+                  </span>
+                  <span className="trend-day-label">{labelVisible ? numericDayLabel(day.day) : ""}</span>
+                </button>
+              );
+            })}
+          </div>
+          {activeDay && (
+            <div className="trend-tooltip" style={{ left: `${Math.min(92, Math.max(8, (activeIndex + 0.5) / model.days.length * 100))}%` }}>
+              <strong>{formatDayLabel(activeDay.day)}</strong>
+              {USAGE_TREND_PROVIDERS.map((id) => (
+                <span key={id}><i style={{ background: providerMeta(id).color }} />{providerMeta(id).name}<b>{trendValue(activeDay.values[id], metric)}</b></span>
+              ))}
+              <span className="trend-tooltip-total">Total<b>{trendValue(activeDay.total, metric)}</b></span>
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function QuotaSparkline({ row, color }) {
+  const latestPoint = row.points.split(" ").at(-1)?.split(",").map(Number);
+  return (
+    <svg className="quota-sparkline" viewBox="0 0 100 38" preserveAspectRatio="none" aria-hidden="true">
+      <line x1="0" x2="100" y1="0.5" y2="0.5" />
+      <line x1="0" x2="100" y1="19" y2="19" />
+      <line x1="0" x2="100" y1="37.5" y2="37.5" />
+      {row.samples.length > 1 && <polyline className="quota-sparkline-line" points={row.points} style={{ stroke: color }} />}
+      {latestPoint && <circle cx={latestPoint[0]} cy={latestPoint[1]} r="1.8" style={{ fill: color }} />}
+    </svg>
+  );
+}
+
+function QuotaConsumptionTrendCard({ state }) {
+  const [range, setRange] = useState(7);
+  const providerIDs = state.providers.map((provider) => provider.providerID);
+  const [order] = usePersistentOrder(providerIDs, LIMITS_ORDER_KEY);
+  const providers = normalizeOrder(order, providerIDs).flatMap((id) => {
+    const provider = state.providers.find((item) => item.providerID === id);
+    return provider ? [provider] : [];
+  });
+  const rows = quotaTrendRows(state.quotaUsageHistory, providers, range);
+  return (
+    <section className="dashboard-panel quota-trend-panel">
+      <PanelHeader
+        title="Quota Consumption Trend"
+        subtitle="Primary quota window by app · local snapshots"
+        trailing={<TrendSegmentedControl label="Quota history range" options={TREND_RANGES} value={range} onChange={setRange} />}
+      />
+      {rows.length ? (
+        <div className="quota-trend-table">
+          <div className="quota-trend-header" aria-hidden="true">
+            <span>APP</span><span>WINDOW</span><span>USED</span><span>TREND</span>
+          </div>
+          {rows.map((row) => {
+            const meta = providerPresentation(row.providerID);
+            return (
+              <div
+                className="quota-trend-row"
+                key={row.providerID}
+                aria-label={`${meta.name}, ${windowName(row.latest.windowMinutes)} window, ${formatPercent(row.latest.usedPercent)} used`}
+              >
+                <span className="quota-trend-provider"><ProviderMark meta={meta} size={18} /><b>{meta.name}</b></span>
+                <span>{windowName(row.latest.windowMinutes)}</span>
+                <strong style={{ color: meta.color }}>{formatPercent(row.latest.usedPercent)}</strong>
+                <QuotaSparkline row={row} color={meta.color} />
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <EmptyState
+          icon={TrendsIcon}
+          title="Quota trend is accumulating"
+          message="TokenRemain starts recording after a successful quota refresh. Connected apps appear automatically; earlier history cannot be backfilled."
+        />
+      )}
+    </section>
+  );
+}
+
 function Trends({ state }) {
-  const days = (state.dailyUsageHistory?.days || []).slice(-14);
-  const totals = days.map((day) => (day.claudeTokens || 0) + (day.codexTokens || 0));
-  const maximum = Math.max(1, ...totals);
+  const days = (state.dailyUsageHistory?.days || []).slice(-30);
   const today = buildTodayUsage(state.dailyUsageHistory);
-  const fresh = state.dailyUsageHistory?.capturedAt && Date.now() - state.dailyUsageHistory.capturedAt < 30 * 60_000;
   return (
     <section className="content-section trends-section">
-      <section className="dashboard-panel trend-history-panel">
-        <PanelHeader
-          title="Daily Usage Trend"
-          subtitle="Claude and Codex stacked · synced daily aggregate"
-          trailing={fresh ? <Badge text="LIVE" tone="codex" /> : undefined}
-        />
-        {days.length >= 2 ? (
-          <>
-            <div className="trend-chart" role="img" aria-label="Daily token usage for the latest synced days">
-              {days.map((day, index) => {
-                const total = totals[index];
-                const claudeHeight = day.claudeTokens / maximum * 100;
-                const codexHeight = day.codexTokens / maximum * 100;
-                return (
-                  <div className="trend-column" key={day.day} title={`${day.day}: ${compactNumber(total)} tokens`}>
-                    <div className="trend-bar">
-                      <i className="trend-codex" style={{ height: `${codexHeight}%` }} />
-                      <i className="trend-claude" style={{ height: `${claudeHeight}%` }} />
-                    </div>
-                    <span>{formatDayLabel(day.day)}</span>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="trend-legend">
-              <span><i className="provider-dot" style={{ background: providerMeta("codex").color }} />Codex</span>
-              <span><i className="provider-dot" style={{ background: providerMeta("claude").color }} />Claude</span>
-            </div>
-            <p className="panel-source">Captured {formatClock(state.dailyUsageHistory.capturedAt)} on your Mac · synced daily aggregate</p>
-          </>
-        ) : (
+      {days.length >= 2 ? <DailyUsageTrendCard history={state.dailyUsageHistory} /> : (
+        <section className="dashboard-panel trend-history-panel">
           <EmptyState
             icon={TrendsIcon}
             title="Trend data is accumulating day by day"
             message="The daily usage trend needs at least two synced days. Keep Direct Sync enabled and TokenRemain adds each Mac day automatically."
           />
-        )}
-      </section>
+        </section>
+      )}
+      <QuotaConsumptionTrendCard state={state} />
       <div className="trends-summary-grid">
         <div className="settings-card">
           <PanelHeader title="Today's Snapshot" subtitle="Where the trend starts · synced from your Mac" />
@@ -844,7 +1005,7 @@ function Trends({ state }) {
           <InfoRow label="Synced days" value={String(days.length)} />
           <InfoRow label="Oldest day" value={days[0]?.day || "Waiting"} />
           <InfoRow label="Latest day" value={days.at(-1)?.day || "Waiting"} />
-          <InfoRow label="Quota history" value="Current snapshots only" />
+          <InfoRow label="Quota history" value={state.quotaUsageHistory?.samples?.length ? `${state.quotaUsageHistory.samples.length} local snapshots` : "Accumulating"} />
         </div>
       </div>
     </section>
@@ -1115,20 +1276,31 @@ function SyncStrip({ sync, deviceName }) {
 function createPreviewAPI() {
   const previewNow = Date.now();
   const previewDay = new Date(previewNow).toISOString().slice(0, 10);
-  const previewHistoryDays = Array.from({ length: 7 }, (_, index) => {
-    const day = new Date(previewNow - (6 - index) * 24 * 60 * 60_000).toISOString().slice(0, 10);
+  const previewHistoryDays = Array.from({ length: 30 }, (_, index) => {
+    const day = new Date(previewNow - (29 - index) * 24 * 60 * 60_000).toISOString().slice(0, 10);
+    const pulse = [0.72, 0.7, 1.06, 1.03, 1.62, 1.28, 1.21, 0.18, 0.87, 0.46, 0.84, 1.02, 0.72, 0.55, 0.88][index % 15];
     return {
       day,
-      claudeTokens: 4_800_000 + index * 1_050_000,
-      claudeCost: 3.4 + index * 0.72,
-      codexTokens: 13_200_000 + index * 3_140_000,
-      codexCost: 9.45 + index * 2.25,
+      claudeTokens: Math.round((13_000_000 + (index % 5) * 6_500_000) * pulse),
+      claudeCost: Number(((8.9 + (index % 5) * 4.2) * pulse).toFixed(2)),
+      codexTokens: Math.round((92_000_000 + (index % 7) * 18_000_000) * pulse),
+      codexCost: Number(((64.5 + (index % 7) * 12.6) * pulse).toFixed(2)),
     };
   });
   const previewLocalProviders = [
     { providerID: "claude", capturedAt: previewNow, planName: "Max 20x", windows: [{ usedPercent: 43, windowMinutes: 300, resetsAt: previewNow + 10_320_000 }, { usedPercent: 18, windowMinutes: 10_080, resetsAt: previewNow + 421_200_000 }] },
     { providerID: "codex", capturedAt: previewNow - 12 * 60_000, planName: "Pro 5x", windows: [{ usedPercent: 63, windowMinutes: 300, resetsAt: previewNow + 9_000_000 }, { usedPercent: 31, windowMinutes: 10_080, resetsAt: previewNow + 331_200_000 }] },
   ];
+  const previewCursor = { providerID: "cursor", capturedAt: previewNow - 30_000, planName: "Pro", windows: [{ usedPercent: 6, windowMinutes: 44_640, resetsAt: previewNow + 284_400_000 }] };
+  const quotaSamples = [];
+  for (let index = 0; index < 60; index += 1) {
+    const capturedAt = previewNow - (59 - index) * 12 * 60 * 60_000;
+    quotaSamples.push(
+      { providerID: "claude", capturedAt, windowMinutes: 300, usedPercent: (index * 17 + (index % 4) * 3) % 96 },
+      { providerID: "cursor", capturedAt, windowMinutes: 44_640, usedPercent: Math.min(8, index * 0.11) },
+      { providerID: "codex", capturedAt, windowMinutes: 10_080, usedPercent: index < 46 ? 5 + index * 1.35 : Math.max(3, 13 - (index - 46) * 0.7) },
+    );
+  }
   const post = (id, overrides) => ({
     id,
     username: "OpenAI",
@@ -1151,10 +1323,11 @@ function createPreviewAPI() {
     localProviders: previewLocalProviders,
     providers: [
       ...previewLocalProviders,
-      { providerID: "cursor", capturedAt: previewNow - 30_000, planName: "Pro", windows: [{ usedPercent: 26, windowMinutes: 44_640, resetsAt: previewNow + 284_400_000 }] },
+      previewCursor,
       { providerID: "openrouter", capturedAt: previewNow - 30_000, planName: "Credits", windows: [{ usedPercent: 12, windowMinutes: 0, remainingBalance: { amount: 42.75, currencyCode: "USD" } }] },
     ],
     dailyUsageHistory: { sourceDay: previewDay, capturedAt: previewNow, days: previewHistoryDays },
+    quotaUsageHistory: { samples: quotaSamples },
     trending: [
       post("1234500000000000001", { priority: "token_reset", text: "Codex usage limits reset schedule is changing this week: weekly quota windows now reset at fixed UTC times for all plans.", publishedAt: previewNow - 2 * 60 * 60_000, metrics: { replies: 919, reposts: 717, likes: 12_300 } }),
       post("1234500000000000002", { username: "AnthropicAI", displayName: "Anthropic", priority: "major_update", text: "Claude Code 2.2 is rolling out with faster agentic search and lower token overhead per session.", publishedAt: previewNow - 8 * 60 * 60_000, metrics: { replies: 512, reposts: 940, likes: 9_100 } }),
