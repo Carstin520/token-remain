@@ -13,6 +13,7 @@ export default defineConfig({
       input: {
         index: fileURLToPath(new URL("index.html", import.meta.url)),
         popover: fileURLToPath(new URL("popover.html", import.meta.url)),
+        floating: fileURLToPath(new URL("floating.html", import.meta.url)),
       },
     },
   },

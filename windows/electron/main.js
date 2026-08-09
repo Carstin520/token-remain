@@ -1,4 +1,4 @@
-import { app, BrowserWindow, clipboard, ipcMain, Menu, nativeImage, safeStorage, screen, shell, Tray } from "electron";
+import { app, BrowserWindow, clipboard, ipcMain, Menu, nativeImage, net, safeStorage, screen, shell, Tray } from "electron";
 import { hostname, release } from "node:os";
 import { join } from "node:path";
 import { collectClaude } from "./collectors/claude.js";
@@ -28,9 +28,12 @@ const TRAY_DOUBLE_CLICK_GRACE_MS = 250;
 const TRAY_REOPEN_GUARD_MS = 320;
 const DASHBOARD_SECTIONS = new Set(["overview", "limits", "trends", "devices", "dataSources", "settings"]);
 const MAX_POPOVER_CONTENT_HEIGHT = 4_000;
+const FLOATING_WIDGET_WIDTH = 142;
+const FLOATING_WIDGET_HEIGHT = 54;
 
 let mainWindow;
 let popoverWindow;
+let floatingWidgetWindow;
 let store;
 let refreshPromise;
 let refreshTimer;
@@ -40,6 +43,7 @@ let trayToggleTimer;
 let popoverHiddenAt = 0;
 let popoverContentHeight = POPOVER_INITIAL_HEIGHT;
 let popoverAnchorBounds;
+let floatingBoundsSaveTimer;
 
 if (!app.requestSingleInstanceLock()) app.quit();
 
@@ -55,6 +59,7 @@ app.whenReady().then(async () => {
   createWindow();
   createPopoverWindow();
   createTray();
+  if (store.state.preferences?.floatingWidgetEnabled) showFloatingWidget();
   await refreshAll();
   refreshTimer = setInterval(refreshAll, REFRESH_INTERVAL_MS);
 });
@@ -71,6 +76,7 @@ app.on("before-quit", () => {
   isQuitting = true;
   clearInterval(refreshTimer);
   clearTimeout(trayToggleTimer);
+  clearTimeout(floatingBoundsSaveTimer);
 });
 
 function createWindow() {
@@ -83,6 +89,10 @@ function createWindow() {
     title: "TokenRemain",
     icon: iconPath(),
     show: false,
+    ...(process.platform === "win32" ? {
+      titleBarStyle: "hidden",
+      titleBarOverlay: { color: "#101114", symbolColor: "#a7abb4", height: 32 },
+    } : {}),
     webPreferences: {
       preload: join(import.meta.dirname, "preload.cjs"),
       contextIsolation: true,
@@ -102,6 +112,103 @@ function createWindow() {
   });
   mainWindow.loadFile(join(import.meta.dirname, "../dist/index.html"));
   mainWindow.once("ready-to-show", () => mainWindow.show());
+}
+
+/// A small always-on-top Windows shortcut. The grip is draggable; the quota
+/// button opens the same quick-view popup as the tray icon. It deliberately
+/// stays separate from both the dashboard and the popup so each surface keeps
+/// one job.
+function createFloatingWidgetWindow() {
+  if (floatingWidgetWindow && !floatingWidgetWindow.isDestroyed()) return floatingWidgetWindow;
+  floatingWidgetWindow = new BrowserWindow({
+    ...floatingWidgetBounds(),
+    show: false,
+    frame: false,
+    transparent: true,
+    backgroundColor: "#00000000",
+    resizable: false,
+    maximizable: false,
+    minimizable: false,
+    fullscreenable: false,
+    skipTaskbar: true,
+    alwaysOnTop: true,
+    hasShadow: true,
+    title: "TokenRemain Floating Shortcut",
+    icon: iconPath(),
+    webPreferences: {
+      preload: join(import.meta.dirname, "preload.cjs"),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      devTools: !app.isPackaged,
+    },
+  });
+  floatingWidgetWindow.setMenu(null);
+  floatingWidgetWindow.setAlwaysOnTop(true, "floating");
+  floatingWidgetWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  floatingWidgetWindow.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+  floatingWidgetWindow.webContents.on("will-navigate", (event) => event.preventDefault());
+  floatingWidgetWindow.webContents.on("context-menu", () => {
+    Menu.buildFromTemplate([
+      { label: "Open Quick View", click: () => openPopover(floatingWidgetWindow?.getBounds()) },
+      { label: "Open Dashboard", click: () => openDashboard("overview") },
+      { type: "separator" },
+      { label: "Hide Floating Shortcut", click: () => { setFloatingWidgetEnabled(false).catch(() => {}); } },
+    ]).popup({ window: floatingWidgetWindow });
+  });
+  floatingWidgetWindow.on("moved", scheduleFloatingBoundsSave);
+  floatingWidgetWindow.on("close", (event) => {
+    if (isQuitting) return;
+    event.preventDefault();
+    setFloatingWidgetEnabled(false).catch(() => {});
+  });
+  floatingWidgetWindow.loadFile(join(import.meta.dirname, "../dist/floating.html"));
+  return floatingWidgetWindow;
+}
+
+function floatingWidgetBounds() {
+  const stored = store.state.preferences?.floatingWidgetBounds;
+  const candidate = isRect(stored)
+    ? { x: stored.x, y: stored.y, width: FLOATING_WIDGET_WIDTH, height: FLOATING_WIDGET_HEIGHT }
+    : undefined;
+  if (candidate) {
+    const workArea = screen.getDisplayMatching(candidate).workArea;
+    const overlaps = candidate.x < workArea.x + workArea.width
+      && candidate.x + candidate.width > workArea.x
+      && candidate.y < workArea.y + workArea.height
+      && candidate.y + candidate.height > workArea.y;
+    if (overlaps) return candidate;
+  }
+  const workArea = screen.getPrimaryDisplay().workArea;
+  return {
+    x: workArea.x + workArea.width - FLOATING_WIDGET_WIDTH - 18,
+    y: workArea.y + 72,
+    width: FLOATING_WIDGET_WIDTH,
+    height: FLOATING_WIDGET_HEIGHT,
+  };
+}
+
+function scheduleFloatingBoundsSave() {
+  clearTimeout(floatingBoundsSaveTimer);
+  floatingBoundsSaveTimer = setTimeout(() => {
+    const bounds = floatingWidgetWindow?.getBounds();
+    if (bounds) store.setFloatingWidgetBounds(bounds).catch(() => {});
+  }, 250);
+}
+
+function showFloatingWidget() {
+  const window = createFloatingWidgetWindow();
+  window.showInactive();
+  window.setAlwaysOnTop(true, "floating");
+}
+
+async function setFloatingWidgetEnabled(enabled) {
+  await store.setFloatingWidgetEnabled(enabled);
+  if (enabled) showFloatingWidget();
+  else if (floatingWidgetWindow && !floatingWidgetWindow.isDestroyed()) floatingWidgetWindow.hide();
+  updateTrayContextMenu();
+  notifyRenderer();
+  return publicState();
 }
 
 /// The tray popover: one reused window that is hidden, never destroyed, so a
@@ -166,6 +273,13 @@ function showPopover(trayBounds) {
   popoverWindow.webContents.send("popover:shown");
 }
 
+function openPopover(anchorBounds) {
+  const floatingAnchor = floatingWidgetWindow?.isVisible()
+    ? usableTrayBounds(floatingWidgetWindow.getBounds())
+    : undefined;
+  showPopover(anchorBounds || floatingAnchor || usableTrayBounds(tray?.getBounds?.()));
+}
+
 function hidePopover(options = {}) {
   if (!popoverWindow || popoverWindow.isDestroyed() || !popoverWindow.isVisible()) return;
   if (options.dismissedByClick) popoverHiddenAt = Date.now();
@@ -177,6 +291,12 @@ function togglePopover(trayBounds) {
   const dismissedByThisClick = Date.now() - popoverHiddenAt < TRAY_REOPEN_GUARD_MS;
   if (dismissedByThisClick || popoverWindow?.isVisible()) hidePopover();
   else showPopover(trayBounds);
+}
+
+function togglePopoverFromFloating() {
+  const dismissedByThisClick = Date.now() - popoverHiddenAt < TRAY_REOPEN_GUARD_MS;
+  if (dismissedByThisClick || popoverWindow?.isVisible()) hidePopover();
+  else showPopover(usableTrayBounds(floatingWidgetWindow?.getBounds?.()));
 }
 
 /// Keeps the popover next to the tray icon and inside the work area of the
@@ -214,13 +334,7 @@ function createTray() {
   const image = nativeImage.createFromPath(iconPath()).resize({ width: 20, height: 20 });
   tray = new Tray(image);
   tray.setToolTip("TokenRemain");
-  tray.setContextMenu(Menu.buildFromTemplate([
-    { label: "Open Dashboard", click: () => openDashboard("overview") },
-    { label: "Refresh now", click: () => { refreshAll().catch(() => {}); } },
-    { label: "Settings", click: () => openDashboard("settings") },
-    { type: "separator" },
-    { label: "Quit", click: () => { isQuitting = true; app.quit(); } },
-  ]));
+  updateTrayContextMenu();
   tray.on("click", (_event, trayBounds) => {
     cancelTrayToggle();
     trayToggleTimer = setTimeout(() => {
@@ -229,6 +343,19 @@ function createTray() {
     }, TRAY_DOUBLE_CLICK_GRACE_MS);
   });
   tray.on("double-click", () => openDashboard("overview"));
+}
+
+function updateTrayContextMenu() {
+  if (!tray) return;
+  tray.setContextMenu(Menu.buildFromTemplate([
+    { label: "Open Quick View", click: () => openPopover(usableTrayBounds(tray.getBounds())) },
+    { label: "Open Dashboard", click: () => openDashboard("overview") },
+    { label: "Show Floating Shortcut", type: "checkbox", checked: Boolean(store.state.preferences?.floatingWidgetEnabled), click: (item) => { setFloatingWidgetEnabled(item.checked).catch(() => {}); } },
+    { label: "Refresh now", click: () => { refreshAll().catch(() => {}); } },
+    { label: "Settings", click: () => openDashboard("settings") },
+    { type: "separator" },
+    { label: "Quit", click: () => { isQuitting = true; app.quit(); } },
+  ]));
 }
 
 function cancelTrayToggle() {
@@ -294,6 +421,16 @@ function registerIPC() {
     notifyRenderer();
     return publicState();
   });
+  ipcMain.handle("settings:set-floating-widget", (_event, value) => setFloatingWidgetEnabled(Boolean(value)));
+  ipcMain.handle("popup:open", () => {
+    openPopover();
+    return publicState();
+  });
+  ipcMain.handle("popup:toggle-from-floating", (event) => {
+    if (event.sender !== floatingWidgetWindow?.webContents) throw new Error("This action is only available from the floating shortcut");
+    togglePopoverFromFloating();
+    return true;
+  });
   ipcMain.handle("app:relaunch", () => {
     isQuitting = true;
     app.relaunch();
@@ -338,7 +475,14 @@ async function performRefresh() {
   store.state.isRefreshing = true;
   store.state.feedLoading = !store.state.trending?.length;
   notifyRenderer();
-  const results = await Promise.allSettled([collectClaude(), collectCodex(), fetchCuratedFeed()]);
+  // Electron's net stack follows the Windows system proxy. Node's global
+  // fetch does not, which made a valid Codex login look like a quota timeout.
+  const windowsFetch = (url, options) => net.fetch(url, options);
+  const results = await Promise.allSettled([
+    collectClaude({ fetchImpl: windowsFetch }),
+    collectCodex({ fetchImpl: windowsFetch }),
+    fetchCuratedFeed(),
+  ]);
   const providers = [];
   const notices = {};
   for (const [index, result] of results.slice(0, 2).entries()) {
@@ -346,9 +490,9 @@ async function performRefresh() {
     if (result.status === "fulfilled") providers.push(result.value);
     else notices[id] = publicError(result.reason);
   }
-  if (providers.length) {
-    store.state.providers = providers;
-  }
+  // A transient network failure must not erase the last successful provider
+  // snapshot. Its notice and captured-at age tell the UI that it is stale.
+  if (providers.length) store.state.providers = mergeProviders(providers, store.state.providers || []);
   store.state.notices = notices;
 
   const feedResult = results[2];
@@ -417,6 +561,7 @@ function publicState() {
     deviceName: hostname(),
     appVersion: app.getVersion(),
     launchAtLogin: Boolean(app.getLoginItemSettings().openAtLogin),
+    floatingWidgetEnabled: Boolean(store?.state?.preferences?.floatingWidgetEnabled),
     providers: mergeProviders(store?.state?.providers || [], store?.state?.remoteSnapshot?.providers || []),
     localProviders: store?.state?.providers || [],
     notices: store?.state?.notices || {},
@@ -443,7 +588,7 @@ function publicState() {
 /// always render the same snapshot.
 function notifyRenderer() {
   const state = publicState();
-  for (const target of [mainWindow, popoverWindow]) {
+  for (const target of [mainWindow, popoverWindow, floatingWidgetWindow]) {
     if (target && !target.isDestroyed()) target.webContents.send("state:changed", state);
   }
 }

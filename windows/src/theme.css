@@ -30,6 +30,21 @@
 button, input { font: inherit; }
 button { color: inherit; }
 
+/* Chromium otherwise exposes the classic wide Windows scrollbar, which reads
+   like a foreign light stripe inside this dark desktop surface. */
+* { scrollbar-width: thin; scrollbar-color: rgba(111, 117, 128, .68) transparent; }
+*::-webkit-scrollbar { width: 9px; height: 9px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  min-height: 34px;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: rgba(111, 117, 128, .68);
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover { background-color: rgba(167, 171, 180, .76); }
+*::-webkit-scrollbar-corner { background: transparent; }
+
 /* Segment meter — the Mac SegmentBar block progress. */
 .segment-bar { display: flex; gap: 3px; }
 .segment-bar i { flex: 1; border-radius: 2px; background: var(--track); }

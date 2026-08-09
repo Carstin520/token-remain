@@ -36,6 +36,7 @@ export function buildPreviewState(now) {
     deviceName: "Preview PC (synthetic)",
     appVersion: "0.0.0-preview",
     launchAtLogin: false,
+    floatingWidgetEnabled: false,
     lastUpdatedAt: now - 90_000,
     isRefreshing: false,
     notices: {},
@@ -154,6 +155,10 @@ export function createPopoverPreviewAPI({ now = Date.now(), globalObject = globa
     setLaunchAtLogin: async (value) => {
       emitState({ ...state, launchAtLogin: Boolean(value) });
       record("setLaunchAtLogin", Boolean(value));
+    },
+    setFloatingWidgetEnabled: async (value) => {
+      emitState({ ...state, floatingWidgetEnabled: Boolean(value) });
+      record("setFloatingWidgetEnabled", Boolean(value));
     },
     relaunch: async () => record("relaunch"),
     quit: async () => record("quit"),

@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 import { parseClaudeUsage } from "../electron/collectors/claude.js";
-import { parseCodexUsage } from "../electron/collectors/codex.js";
+import { collectCodex, parseCodexUsage, resolveCodexHome } from "../electron/collectors/codex.js";
 
 const now = Date.UTC(2026, 7, 2, 10, 0, 0);
 
@@ -40,4 +43,31 @@ test("Provider percentages are bounded at the privacy boundary", () => {
   const codex = parseCodexUsage({ rate_limit: { primary_window: { used_percent: -5 } } }, now);
   assert.equal(claude.windows[0].usedPercent, 100);
   assert.equal(codex.windows[0].usedPercent, 0);
+});
+
+test("Codex home expands Windows user-profile and tilde overrides", () => {
+  assert.equal(resolveCodexHome({ CODEX_HOME: "%USERPROFILE%\\.codex-alt", USERPROFILE: "C:\\Users\\Ada" }, "C:\\Users\\Ada"), "C:\\Users\\Ada\\.codex-alt");
+  assert.equal(resolveCodexHome({ CODEX_HOME: "~/.codex-alt" }, "/Users/ada"), "/Users/ada/.codex-alt");
+});
+
+test("Codex collector accepts an injected Windows network fetch", async () => {
+  const token = `x.${Buffer.from(JSON.stringify({ exp: Math.trunc(Date.now() / 1000) + 3600 })).toString("base64url")}.x`;
+  const calls = [];
+  const fetchImpl = async (url, options) => {
+    calls.push({ url, options });
+    return new Response(JSON.stringify({
+      plan_type: "prolite",
+      rate_limit: { primary_window: { used_percent: 32, limit_window_seconds: 18_000 } },
+    }), { status: 200, headers: { "content-type": "application/json" } });
+  };
+  const directory = await mkdtemp(join(tmpdir(), "tokenremain-codex-"));
+  try {
+    await writeFile(join(directory, "auth.json"), JSON.stringify({ tokens: { access_token: token, account_id: "acct" } }));
+    const quota = await collectCodex({ env: { CODEX_HOME: directory }, fetchImpl });
+    assert.equal(quota.providerID, "codex");
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].options.headers["ChatGPT-Account-Id"], "acct");
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 });

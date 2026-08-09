@@ -2,7 +2,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { clampPercent, fetchJSON, number, parseReset, readBoundedJSON } from "./shared.js";
 
-export async function collectClaude({ env = process.env, now = Date.now() } = {}) {
+export async function collectClaude({ env = process.env, now = Date.now(), fetchImpl = fetch } = {}) {
   const directory = env.CLAUDE_CONFIG_DIR || join(homedir(), ".claude");
   let credentials;
   try {
@@ -15,14 +15,18 @@ export async function collectClaude({ env = process.env, now = Date.now() } = {}
   if (!token) throw new Error("Claude credentials contain no OAuth token");
   const expiry = number(oauth.expiresAt);
   if (expiry && expiry - now <= 120_000) throw new Error("Claude Code sign-in has expired");
-  const payload = await fetchJSON("https://api.anthropic.com/api/oauth/usage", {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: "application/json",
-      "anthropic-beta": "oauth-2025-04-20",
-      "User-Agent": "claude-code/2.1.69",
+  const payload = await fetchJSON(
+    "https://api.anthropic.com/api/oauth/usage",
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json",
+        "anthropic-beta": "oauth-2025-04-20",
+        "User-Agent": "claude-code/2.1.69",
+      },
     },
-  });
+    { fetchImpl, timeoutMs: 30_000 },
+  );
   return parseClaudeUsage(payload, {
     now,
     subscriptionType: oauth.subscriptionType,

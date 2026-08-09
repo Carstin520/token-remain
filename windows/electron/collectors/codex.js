@@ -5,8 +5,8 @@ import { clampPercent, decodeJWTExpiry, fetchJSON, number, readBoundedJSON } fro
 const SESSION_SECONDS = 300 * 60;
 const WEEK_SECONDS = 10_080 * 60;
 
-export async function collectCodex({ env = process.env, now = Date.now() } = {}) {
-  const path = join(env.CODEX_HOME || join(homedir(), ".codex"), "auth.json");
+export async function collectCodex({ env = process.env, now = Date.now(), fetchImpl = fetch } = {}) {
+  const path = join(resolveCodexHome(env), "auth.json");
   let auth;
   try {
     auth = await readBoundedJSON(path);
@@ -19,8 +19,33 @@ export async function collectCodex({ env = process.env, now = Date.now() } = {})
   if (expiry && expiry <= now) throw new Error("Codex sign-in has expired");
   const headers = { Authorization: `Bearer ${token}`, Accept: "application/json" };
   if (auth.tokens.account_id) headers["ChatGPT-Account-Id"] = auth.tokens.account_id;
-  const payload = await fetchJSON("https://chatgpt.com/backend-api/wham/usage", { headers });
+  let payload;
+  try {
+    payload = await fetchJSON(
+      "https://chatgpt.com/backend-api/wham/usage",
+      { headers },
+      { fetchImpl, timeoutMs: 30_000 },
+    );
+  } catch (error) {
+    if (error?.name === "TimeoutError" || /aborted due to timeout/i.test(error?.message || "")) {
+      throw new Error("Codex quota request timed out. Check the Windows proxy or firewall, then refresh.");
+    }
+    if (/Request failed \((401|403)\)/.test(error?.message || "")) {
+      throw new Error("Codex sign-in was rejected. Run codex logout, sign in again, then refresh.");
+    }
+    throw error;
+  }
   return parseCodexUsage(payload, now);
+}
+
+export function resolveCodexHome(env = process.env, home = homedir()) {
+  const configured = String(env.CODEX_HOME || "").trim();
+  if (!configured) return join(home, ".codex");
+  if (configured === "~") return home;
+  if (configured.startsWith("~/") || configured.startsWith("~\\")) {
+    return join(home, configured.slice(2));
+  }
+  return configured.replace(/%USERPROFILE%/gi, env.USERPROFILE || home);
 }
 
 export function parseCodexUsage(object, now = Date.now()) {

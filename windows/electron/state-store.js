@@ -35,6 +35,10 @@ export class StateStore {
       ));
     }
     this.state.quotaUsageHistory = normalizeQuotaUsageHistory(this.state.quotaUsageHistory);
+    this.state.preferences = {
+      floatingWidgetEnabled: false,
+      ...(this.state.preferences || {}),
+    };
     return this.state;
   }
 
@@ -84,6 +88,28 @@ export class StateStore {
 
   recordQuotaUsage(providers, now = Date.now()) {
     this.state.quotaUsageHistory = recordQuotaUsageHistory(this.state.quotaUsageHistory, providers, now);
+  }
+
+  async setFloatingWidgetEnabled(enabled) {
+    this.state.preferences = {
+      ...(this.state.preferences || {}),
+      floatingWidgetEnabled: Boolean(enabled),
+    };
+    await this.save();
+  }
+
+  async setFloatingWidgetBounds(bounds) {
+    if (!bounds) return;
+    this.state.preferences = {
+      ...(this.state.preferences || {}),
+      floatingWidgetBounds: {
+        x: Math.round(bounds.x),
+        y: Math.round(bounds.y),
+        width: Math.round(bounds.width),
+        height: Math.round(bounds.height),
+      },
+    };
+    await this.save();
   }
 
   async save() {

@@ -35,10 +35,10 @@ export function decodeJWTExpiry(token) {
   }
 }
 
-export async function fetchJSON(url, options) {
-  const response = await fetch(url, {
+export async function fetchJSON(url, options, { fetchImpl = fetch, timeoutMs = 10_000 } = {}) {
+  const response = await fetchImpl(url, {
     ...options,
-    signal: AbortSignal.timeout(10_000),
+    signal: AbortSignal.timeout(timeoutMs),
     redirect: "error",
   });
   if (!response.ok) throw new Error(`Request failed (${response.status})`);

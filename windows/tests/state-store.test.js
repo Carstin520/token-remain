@@ -65,3 +65,21 @@ test("Quota snapshots accumulate locally and remain protected at rest", async ()
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+test("Floating shortcut preference and last position persist", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "tokenremain-windows-floating-"));
+  try {
+    const store = new StateStore({ userDataPath: directory, safeStorage });
+    await store.load();
+    assert.equal(store.state.preferences.floatingWidgetEnabled, false);
+    await store.setFloatingWidgetEnabled(true);
+    await store.setFloatingWidgetBounds({ x: 120, y: 80, width: 142, height: 54 });
+
+    const restored = new StateStore({ userDataPath: directory, safeStorage });
+    await restored.load();
+    assert.equal(restored.state.preferences.floatingWidgetEnabled, true);
+    assert.deepEqual(restored.state.preferences.floatingWidgetBounds, { x: 120, y: 80, width: 142, height: 54 });
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});

@@ -29,6 +29,7 @@ export function RefreshIcon({ spinning }) { return <Icon spinning={spinning}><pa
 export function LockIcon() { return <Icon><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></Icon>; }
 export function ChevronRightIcon({ className }) { return <Icon className={className}><path d="m9 6 6 6-6 6"/></Icon>; }
 export function PlusIcon() { return <Icon><path d="M12 5v14"/><path d="M5 12h14"/></Icon>; }
+export function MinusIcon() { return <Icon><path d="M5 12h14"/></Icon>; }
 export function FlameIcon() { return <Icon><path d="M12 21c3.9 0 6.5-2.4 6.5-6 0-3.2-2.2-5.4-3.7-7.5-.6.9-1 1.6-1.3 2.8C12.4 8 11.4 5.5 9.2 3c-.4 3-1.2 4.4-2.4 6.2-1 1.6-1.3 3-1.3 4.8 0 4.6 3 7 6.5 7Z"/></Icon>; }
 export function BoltIcon() { return <Icon><path d="M13 3 5 13h5l-1 8 8-11h-5l1-7Z"/></Icon>; }
 export function ReplyIcon() { return <Icon><path d="M20 12a8 8 0 0 1-8 8H4l2.5-2.6A8 8 0 1 1 20 12Z"/></Icon>; }

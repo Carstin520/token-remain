@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import appIcon from "../../site/assets/brand/appicon-mac.png";
 import { DirectReorderGrid, usePersistentOrder } from "./direct-reorder.jsx";
@@ -34,7 +34,9 @@ import {
   InfoIcon,
   LockIcon,
   MoonIcon,
+  MinusIcon,
   PieIcon,
+  PlusIcon,
   PowerIcon,
   RadioIcon,
   RefreshIcon,
@@ -47,6 +49,13 @@ import {
   TrendsIcon,
 } from "./icons.jsx";
 import { LIMITS_ORDER_KEY, normalizeOrder } from "./layout.js";
+import {
+  LIMITS_VISIBILITY_KEY,
+  normalizeLimitsVisibility,
+  readLimitsVisibility,
+  setProviderVisible,
+  writeLimitsVisibility,
+} from "./limits-layout.js";
 import { buildOverviewSummary, buildTodayUsage, rankOfficialQuotaProviders, summaryWindow, usagePace } from "./overview-model.js";
 import { PROVIDER_ORDER, providerMeta } from "./provider-meta.js";
 import { compactAxisValue, linePoints, quotaTrendRows, TREND_RANGES, usageTrendModel } from "./trends-model.js";
@@ -63,7 +72,7 @@ const SECTIONS = {
   trends: { title: "Trends", subtitle: "Usage over time · synced from your Mac" },
   devices: { title: "Devices", subtitle: "This PC and its encrypted Mac link" },
   dataSources: { title: "Data Sources", subtitle: "Data-source status and privacy" },
-  settings: { title: "Settings", subtitle: "Startup, refresh, and app controls" },
+  settings: { title: "Settings", subtitle: "Quick View, startup, and app controls" },
 };
 const NAV_GROUPS = [
   { label: "MONITOR", items: ["overview", "limits", "trends", "devices"] },
@@ -146,31 +155,40 @@ function App() {
 
   if (!state) return <div className="loading">Loading TokenRemain…</div>;
   return (
-    <div className="app-shell">
-      <Sidebar state={state} section={section} onSelect={setSection} onRefresh={() => action(api.refresh)} />
-      <main className="main-content">
-        <div className="content-column">
-          <SectionTitleHeader
-            title={SECTIONS[section].title}
-            subtitle={SECTIONS[section].subtitle}
-            trailing={state.lastUpdatedAt ? `Updated ${formatClockSeconds(state.lastUpdatedAt)}` : undefined}
-          />
-          {error && <div className="error-banner" role="alert">{error}</div>}
-          {section === "overview" && <Overview state={state} onSelect={setSection} onOpen={openExternal} />}
-          {section === "limits" && <Limits state={state} />}
-          {section === "trends" && <Trends state={state} />}
-          {section === "devices" && <Devices state={state} action={action} />}
-          {section === "dataSources" && <DataSources state={state} />}
-          {section === "settings" && <Settings state={state} action={action} onSelect={setSection} />}
-        </div>
-      </main>
+    <div className="window-frame">
+      <div className="window-drag-strip" aria-hidden="true" />
+      <div className="app-shell">
+        <Sidebar
+          state={state}
+          section={section}
+          onSelect={setSection}
+          onRefresh={() => action(api.refresh)}
+          onOpenPopup={() => action(api.openPopup)}
+        />
+        <main className="main-content">
+          <div className="content-column">
+            <SectionTitleHeader
+              title={SECTIONS[section].title}
+              subtitle={SECTIONS[section].subtitle}
+              trailing={state.lastUpdatedAt ? `Updated ${formatClockSeconds(state.lastUpdatedAt)}` : undefined}
+            />
+            {error && <div className="error-banner" role="alert">{error}</div>}
+            {section === "overview" && <Overview state={state} onSelect={setSection} onOpen={openExternal} />}
+            {section === "limits" && <Limits state={state} />}
+            {section === "trends" && <Trends state={state} />}
+            {section === "devices" && <Devices state={state} action={action} />}
+            {section === "dataSources" && <DataSources state={state} />}
+            {section === "settings" && <Settings state={state} action={action} onSelect={setSection} />}
+          </div>
+        </main>
+      </div>
     </div>
   );
 }
 
 // MARK: - Sidebar
 
-function Sidebar({ state, section, onSelect, onRefresh }) {
+function Sidebar({ state, section, onSelect, onRefresh, onOpenPopup }) {
   return (
     <aside className="sidebar">
       <div className="brand">
@@ -194,14 +212,14 @@ function Sidebar({ state, section, onSelect, onRefresh }) {
           </div>
         ))}
       </div>
-      <SyncFooter state={state} onRefresh={onRefresh} />
+      <SyncFooter state={state} onRefresh={onRefresh} onOpenPopup={onOpenPopup} />
     </aside>
   );
 }
 
 /// The Mac sidebar footer: a "Sync status" glass card owning the refresh
 /// action and a green/amber/muted health readout.
-function SyncFooter({ state, onRefresh }) {
+function SyncFooter({ state, onRefresh, onOpenPopup }) {
   const needsAttention = Object.keys(state.notices || {}).length > 0 || state.sync?.error || state.feedError;
   const loading = !state.lastUpdatedAt;
   const health = loading
@@ -224,6 +242,7 @@ function SyncFooter({ state, onRefresh }) {
         </button>
       </div>
       <div className={`status-line tone-${health.tone}`}><span className="status-dot" />{health.text}</div>
+      <button className="quick-view-link" onClick={onOpenPopup}><RadioIcon />Open Quick View</button>
     </div>
   );
 }
@@ -646,16 +665,45 @@ function FeedPostCard({ post, onOpen }) {
 // MARK: - Limits
 
 function Limits({ state }) {
-  const knownProviderIDs = PROVIDER_ORDER.filter((id) => (
-    id === "claude" || id === "codex" || state.providers.some((provider) => provider.providerID === id)
-  ));
-  const providerIDs = [
-    ...knownProviderIDs,
+  const discoveredIDs = [
+    "claude",
+    "codex",
+    ...state.providers.map((provider) => provider.providerID),
+  ].filter((id, index, values) => values.indexOf(id) === index);
+  const availableIDs = [
+    ...PROVIDER_ORDER,
     ...state.providers.map((provider) => provider.providerID).filter((id) => !PROVIDER_ORDER.includes(id)),
   ];
+  const availableSignature = availableIDs.join("|");
+  const discoveredSignature = discoveredIDs.join("|");
+  const [visibility, setVisibility] = useState(() => readLimitsVisibility(
+    globalThis.localStorage,
+    LIMITS_VISIBILITY_KEY,
+    availableIDs,
+    discoveredIDs,
+  ));
+  useEffect(() => {
+    setVisibility((current) => normalizeLimitsVisibility(current, availableIDs, discoveredIDs));
+  }, [availableSignature, discoveredSignature]);
+  useEffect(() => {
+    writeLimitsVisibility(globalThis.localStorage, LIMITS_VISIBILITY_KEY, visibility);
+  }, [visibility]);
+
+  const providerIDs = visibility.visible;
+  const hiddenIDs = availableIDs.filter((id) => !providerIDs.includes(id));
   const [order, setOrder] = usePersistentOrder(providerIDs, LIMITS_ORDER_KEY);
+  const showProvider = (id) => setVisibility((current) => setProviderVisible(current, id, true, availableIDs, discoveredIDs));
+  const hideProvider = (id) => setVisibility((current) => setProviderVisible(current, id, false, availableIDs, discoveredIDs));
   return (
     <section className="content-section limits-section">
+      <div className="limits-toolbar">
+        <span>{providerIDs.length} apps shown · drag cards to reorder</span>
+        <ProviderAddMenu
+          providerIDs={hiddenIDs}
+          providers={state.providers}
+          onAdd={showProvider}
+        />
+      </div>
       <DirectReorderGrid
         className="quota-grid"
         order={normalizeOrder(order, providerIDs)}
@@ -665,13 +713,16 @@ function Limits({ state }) {
             provider={state.providers.find((item) => item.providerID === id)}
             notice={state.notices[id]}
             id={id}
+            canRemove={providerIDs.length > 1}
+            onRemove={() => hideProvider(id)}
           />
         )}
       />
       <div className="settings-card about-windows">
         <PanelHeader title="About quota windows" />
         <p>Percentages show the remaining quota within a window; usage-based services show the remaining monetary balance directly. Windows come from each provider's servers: Claude, Codex, and Z.ai usually include a 5-hour session window and a 7-day window; Cursor uses a monthly billing window; Grok uses a weekly pool.</p>
-        <p>Cards appear automatically from this PC's CLI sign-ins and every provider synced from your paired Mac. Drag a full card to reorder it — Alt plus arrow keys also works — and the order is remembered on this PC.</p>
+        <p>Use Add app and the minus control to choose what appears here. New providers reported by this PC or your paired Mac appear automatically; providers you remove stay hidden until you add them again.</p>
+        <p>Drag a full card to reorder it — Alt plus arrow keys also works — and both order and visibility are remembered on this PC.</p>
         <p>Reset times come from official snapshots; when a window has no reset time yet, it shows “Waiting for the official reset time”.</p>
       </div>
     </section>
@@ -680,7 +731,49 @@ function Limits({ state }) {
 
 /// Full provider quota card matching the Mac's QuotaCard: brand row + plan
 /// pill, then one row per official window with meter, reset, and pace.
-function QuotaCard({ provider, notice, id }) {
+function ProviderAddMenu({ providerIDs, providers, onAdd }) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef(null);
+  useEffect(() => {
+    if (!open) return undefined;
+    const dismiss = (event) => {
+      if (!rootRef.current?.contains(event.target)) setOpen(false);
+    };
+    document.addEventListener("pointerdown", dismiss, true);
+    return () => document.removeEventListener("pointerdown", dismiss, true);
+  }, [open]);
+  return (
+    <div className="provider-add" ref={rootRef}>
+      <button
+        className="secondary provider-add-trigger"
+        onClick={() => setOpen((value) => !value)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        disabled={!providerIDs.length}
+      >
+        <PlusIcon />Add app
+      </button>
+      {open && (
+        <div className="provider-add-popover" role="menu" aria-label="Add an app to Limits">
+          {providerIDs.map((id) => {
+            const meta = providerPresentation(id);
+            const available = providers.some((provider) => provider.providerID === id);
+            const local = id === "claude" || id === "codex";
+            return (
+              <button key={id} role="menuitem" onClick={() => { onAdd(id); setOpen(false); }}>
+                <ProviderMark meta={meta} size={18} />
+                <span><strong>{meta.name}</strong><small>{available ? "Quota source available" : local ? "Supported local sign-in" : "Available through Mac sync"}</small></span>
+                <PlusIcon />
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function QuotaCard({ provider, notice, id, canRemove, onRemove }) {
   const meta = providerPresentation(id);
   const windows = provider?.windows || [];
   return (
@@ -689,9 +782,16 @@ function QuotaCard({ provider, notice, id }) {
         <ProviderMark meta={meta} />
         <h3>{meta.name}</h3>
         {windows.length > 0 && notice && (
-          <span className="notice-pill" title={notice}><AlertIcon />Login not detected</span>
+          <span className="notice-pill" title={notice}><AlertIcon />Refresh issue</span>
         )}
         {provider?.planName && <Badge text={provider.planName} tone="plan" />}
+        <button
+          className="quota-remove"
+          onClick={onRemove}
+          disabled={!canRemove}
+          aria-label={`Remove ${meta.name} from Limits`}
+          title={canRemove ? `Remove ${meta.name} from Limits` : "At least one app must remain"}
+        ><MinusIcon /></button>
       </div>
       {windows.length ? (
         <>
@@ -713,8 +813,8 @@ function QuotaCard({ provider, notice, id }) {
         <div className="empty-provider">
           <MoonIcon />
           <span>{notice || (id === "claude" || id === "codex"
-            ? "Reading official quota…"
-            : `${meta.name} has no synced snapshot yet.`)}</span>
+            ? "Waiting for a local sign-in or the next quota refresh."
+            : `${meta.name} has no snapshot yet. Pair your Mac to sync supported providers.`)}</span>
         </div>
       )}
     </article>
@@ -1139,7 +1239,7 @@ function SourceHealthRow({ name, detail, healthy, capturedAt }) {
 // MARK: - Settings
 
 const SETTINGS_CATEGORIES = [
-  { id: "general", title: "General", detail: "Startup and background behavior", icon: SwitchIcon },
+  { id: "general", title: "General", detail: "Startup, quick view, and floating shortcut", icon: SwitchIcon },
   { id: "refreshSync", title: "Refresh & Sync", detail: "Update cadence and private sync", icon: RefreshIcon },
   { id: "about", title: "About", detail: "Version, data, and app controls", icon: InfoIcon },
 ];
@@ -1183,6 +1283,21 @@ function GeneralSettings({ state, action }) {
         isOn={Boolean(state.launchAtLogin)}
         onChange={(value) => action(() => api.setLaunchAtLogin(value))}
       />
+      <Divider />
+      <ToggleRow
+        title="Floating shortcut"
+        detail="Keep a small quota shortcut above other windows. Drag its grip to move it; click the quota to open Quick View."
+        isOn={Boolean(state.floatingWidgetEnabled)}
+        onChange={(value) => action(() => api.setFloatingWidgetEnabled(value))}
+      />
+      <Divider />
+      <div className="preference-row quick-view-setting">
+        <div className="preference-label">
+          <strong>Quick View popup</strong>
+          <span>Open the same compact popup as a tray-icon click. This is separate from the full Dashboard.</span>
+        </div>
+        <button className="secondary" onClick={() => action(api.openPopup)}><RadioIcon />Open now</button>
+      </div>
       <Divider />
       <div className="preference-row">
         <div className="preference-label">
@@ -1317,6 +1432,7 @@ function createPreviewAPI() {
     deviceName: "Windows PC",
     appVersion: "1.2.6-windows.1",
     launchAtLogin: false,
+    floatingWidgetEnabled: false,
     lastUpdatedAt: previewNow,
     isRefreshing: false,
     notices: {},
@@ -1347,6 +1463,8 @@ function createPreviewAPI() {
     disconnect: async () => (preview = { ...preview, sync: { paired: false } }),
     openExternal: async () => true,
     setLaunchAtLogin: async (value) => (preview = { ...preview, launchAtLogin: Boolean(value) }),
+    setFloatingWidgetEnabled: async (value) => (preview = { ...preview, floatingWidgetEnabled: Boolean(value) }),
+    openPopup: async () => preview,
     relaunch: async () => preview,
     quit: async () => preview,
     onStateChanged: () => () => {},

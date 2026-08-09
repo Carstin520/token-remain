@@ -360,6 +360,12 @@ function App() {
               checked: Boolean(state.launchAtLogin),
               onSelect: () => run(() => api.setLaunchAtLogin(!state.launchAtLogin)),
             },
+            {
+              key: "floating",
+              label: "Floating shortcut",
+              checked: Boolean(state.floatingWidgetEnabled),
+              onSelect: () => run(() => api.setFloatingWidgetEnabled(!state.floatingWidgetEnabled)),
+            },
             { key: "open-settings", label: "Open Settings", onSelect: () => openDashboard("settings") },
             { key: "relaunch", label: "Restart TokenRemain", onSelect: () => run(api.relaunch) },
           ]}

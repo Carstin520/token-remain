@@ -2,6 +2,13 @@
 
 html, body, #root { width: 100%; height: 100%; margin: 0; overflow: hidden; }
 .loading { height: 100%; display: grid; place-items: center; color: var(--muted); background: var(--bg); }
+.window-frame { display: grid; grid-template-rows: 32px minmax(0, 1fr); width: 100%; height: 100%; background: var(--bg); }
+.window-drag-strip {
+  border-bottom: 1px solid #26282e;
+  background: #101114;
+  -webkit-app-region: drag;
+  user-select: none;
+}
 .app-shell { display: grid; grid-template-columns: 224px 1fr; height: 100%; background: var(--bg); }
 
 /* Sidebar — brand mark, MONITOR/SYSTEM nav, and the sync-status footer that
@@ -31,6 +38,9 @@ nav svg { width: 16px; height: 16px; }
 .status-line.tone-warning .status-dot { background: var(--warning); }
 .status-line.tone-muted .status-dot { background: var(--muted); }
 .status-line.tone-muted { color: var(--secondary); }
+.quick-view-link { display: flex; align-items: center; gap: 6px; width: 100%; margin-top: 9px; padding: 8px 0 0; border: 0; border-top: 1px solid var(--border); color: var(--secondary); background: transparent; cursor: pointer; font-size: 10.5px; font-weight: 600; text-align: left; }
+.quick-view-link:hover { color: var(--text); }
+.quick-view-link svg { width: 13px; height: 13px; color: var(--violet); }
 
 /* Content column — the Mac detail pane: in-content section title, cards below. */
 .main-content { min-width: 0; overflow-y: auto; }
@@ -180,6 +190,18 @@ nav svg { width: 16px; height: 16px; }
 .feed-unavailable svg { flex: 0 0 14px; width: 14px; height: 14px; }
 
 /* Limits */
+.limits-toolbar { position: relative; z-index: 20; display: flex; min-height: 36px; align-items: center; justify-content: space-between; gap: 12px; }
+.limits-toolbar > span { color: var(--secondary); font-size: 11px; }
+.provider-add { position: relative; }
+.provider-add-trigger { min-height: 32px; }
+.provider-add-trigger svg { width: 14px; height: 14px; }
+.provider-add-popover { position: absolute; z-index: 30; top: calc(100% + 6px); right: 0; display: grid; width: 280px; max-height: min(430px, calc(100vh - 170px)); overflow-y: auto; padding: 5px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); box-shadow: 0 12px 30px rgba(0, 0, 0, .46); }
+.provider-add-popover > button { display: grid; grid-template-columns: 20px minmax(0, 1fr) 14px; align-items: center; gap: 9px; min-height: 46px; padding: 6px 8px; border: 0; border-radius: 7px; color: var(--text); background: transparent; cursor: pointer; text-align: left; }
+.provider-add-popover > button:hover, .provider-add-popover > button:focus-visible { background: var(--surface-3); }
+.provider-add-popover > button > span { display: grid; min-width: 0; gap: 2px; }
+.provider-add-popover strong { overflow: hidden; font-size: 11.5px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.provider-add-popover small { overflow: hidden; color: var(--muted); font-size: 9.5px; text-overflow: ellipsis; white-space: nowrap; }
+.provider-add-popover > button > svg { width: 12px; height: 12px; color: var(--muted); }
 .quota-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); align-items: stretch; gap: 14px; }
 .sortable-card { min-width: 0; cursor: grab; }
 .sortable-card > .provider-card { height: 100%; }
@@ -189,6 +211,10 @@ nav svg { width: 16px; height: 16px; }
 .provider-card { display: flex; flex-direction: column; min-height: 236px; padding: 13px 14px; }
 .provider-card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 11px; }
 .provider-card-head h3 { flex: 1; margin: 0; overflow: hidden; font-size: 14px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.quota-remove { display: grid; flex: 0 0 26px; width: 26px; height: 26px; place-items: center; padding: 0; border: 1px solid transparent; border-radius: 50%; color: var(--muted); background: transparent; cursor: pointer; }
+.quota-remove:hover:not(:disabled) { border-color: var(--border); color: var(--text); background: var(--surface-2); }
+.quota-remove:disabled { opacity: .28; cursor: default; }
+.quota-remove svg { width: 12px; height: 12px; }
 .notice-pill { display: inline-flex; align-items: center; gap: 4px; padding: 4px 7px; border: 1px solid rgba(255, 181, 84, .42); border-radius: 7px; color: var(--warning); background: rgba(255, 181, 84, .11); font-size: 10px; font-weight: 600; white-space: nowrap; }
 .notice-pill svg { width: 10px; height: 10px; }
 .quota-window { display: grid; gap: 7px; }
@@ -299,6 +325,7 @@ nav svg { width: 16px; height: 16px; }
 .preference-label strong { font-size: 13px; font-weight: 500; }
 .preference-label span { color: var(--secondary); font-size: 11px; line-height: 1.5; }
 .preference-value { color: var(--text); font-family: var(--mono); font-size: 12px; white-space: nowrap; }
+.quick-view-setting .secondary { flex: 0 0 auto; }
 .switch { position: relative; flex: 0 0 38px; width: 38px; height: 22px; padding: 0; border: 1px solid var(--border); border-radius: 99px; background: var(--surface-3); cursor: pointer; }
 .switch .knob { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--secondary); transition: left .15s ease, background .15s ease; }
 .switch.on { background: var(--violet); border-color: var(--violet); }
