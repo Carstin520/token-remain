@@ -47,7 +47,7 @@ test("Provider percentages are bounded at the privacy boundary", () => {
 
 test("Codex home expands Windows user-profile and tilde overrides", () => {
   assert.equal(resolveCodexHome({ CODEX_HOME: "%USERPROFILE%\\.codex-alt", USERPROFILE: "C:\\Users\\Ada" }, "C:\\Users\\Ada"), "C:\\Users\\Ada\\.codex-alt");
-  assert.equal(resolveCodexHome({ CODEX_HOME: "~/.codex-alt" }, "/Users/ada"), "/Users/ada/.codex-alt");
+  assert.equal(resolveCodexHome({ CODEX_HOME: "~/.codex-alt" }, "/Users/ada"), join("/Users/ada", ".codex-alt"));
 });
 
 test("Codex collector accepts an injected Windows network fetch", async () => {
