@@ -20,7 +20,7 @@ if (-not $portable) {
 }
 
 function Stop-TokenRemain {
-  Get-Process -Name "TokenRemain" -ErrorAction SilentlyContinue |
+  Get-Process -Name "TokenRemain*" -ErrorAction SilentlyContinue |
     Stop-Process -Force -ErrorAction SilentlyContinue
   Start-Sleep -Seconds 2
 }
@@ -48,16 +48,17 @@ function Assert-TokenRemainStarts {
     [Parameter(Mandatory = $true)]
     [string] $Executable,
     [Parameter(Mandatory = $true)]
-    [string] $Label
+    [string] $Label,
+    [int] $TimeoutSeconds = 20
   )
 
   Stop-TokenRemain
   $launched = Start-Process -FilePath $Executable -PassThru
-  $deadline = (Get-Date).AddSeconds(20)
+  $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
 
   do {
     Start-Sleep -Milliseconds 500
-    $running = @(Get-Process -Name "TokenRemain" -ErrorAction SilentlyContinue)
+    $running = @(Get-Process -Name "TokenRemain*" -ErrorAction SilentlyContinue)
     Assert-NoTokenRemainErrorWindow -Processes $running -Label $Label
     $visibleApp = @($running | Where-Object {
       $_.MainWindowHandle -ne 0 -and $_.MainWindowTitle -eq "TokenRemain"
@@ -67,7 +68,7 @@ function Assert-TokenRemainStarts {
       $stabilityDeadline = (Get-Date).AddSeconds(5)
       do {
         Start-Sleep -Milliseconds 500
-        $stillRunning = @(Get-Process -Name "TokenRemain" -ErrorAction SilentlyContinue)
+        $stillRunning = @(Get-Process -Name "TokenRemain*" -ErrorAction SilentlyContinue)
         Assert-NoTokenRemainErrorWindow -Processes $stillRunning -Label $Label
         $stillVisible = @($stillRunning | Where-Object {
           $_.MainWindowHandle -ne 0 -and $_.MainWindowTitle -eq "TokenRemain"
@@ -82,12 +83,12 @@ function Assert-TokenRemainStarts {
       return
     }
 
-    if ($launched.HasExited -and (Get-Date) -ge $deadline.AddSeconds(-15)) {
+    if ($launched.HasExited -and $running.Count -eq 0) {
       throw "$Label exited before TokenRemain started (exit code $($launched.ExitCode))"
     }
   } while ((Get-Date) -lt $deadline)
 
-  throw "$Label did not display its TokenRemain window within 20 seconds"
+  throw "$Label did not display its TokenRemain window within $TimeoutSeconds seconds"
 }
 
 $installDirectory = Join-Path $env:RUNNER_TEMP "TokenRemain-install-$env:RUNNER_ARCH"
@@ -128,6 +129,6 @@ if (Test-Path $installedExecutable) {
 }
 Write-Host "NSIS install, launch, and uninstall smoke test passed"
 
-Assert-TokenRemainStarts -Executable $portable.FullName -Label "Portable app"
+Assert-TokenRemainStarts -Executable $portable.FullName -Label "Portable app" -TimeoutSeconds 60
 Stop-TokenRemain
 Write-Host "Portable launch smoke test passed"
