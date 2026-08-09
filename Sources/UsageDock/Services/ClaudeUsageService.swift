@@ -307,7 +307,11 @@ enum ClaudeCLIUsageParser {
     /// Claude renders model-specific weekly caps as additional sections such as
     /// `Current week (Fable)`. Keep them separate from the all-model weekly cap.
     private static func namedWeeklyReadings(in text: String) -> [NamedWeeklyReading] {
-        let pattern = #"(?is)Current\s+week\s*\(([^)]+)\)(.*?)(?=Current\s+(?:week|session)|\z)"#
+        // A PTY repaint can leave an opening parenthesis without its matching
+        // close on that line. Do not let the model name cross a line boundary:
+        // otherwise the progress bar and reset text become a bogus scoped
+        // label that later fails the encrypted mobile snapshot allowlist.
+        let pattern = #"(?is)Current\s+week\s*\(([^\r\n)]+)\)(.*?)(?=Current\s+(?:week|session)|\z)"#
         guard let regex = try? NSRegularExpression(pattern: pattern) else { return [] }
         let fullRange = NSRange(text.startIndex..., in: text)
         return regex.matches(in: text, range: fullRange).compactMap { match in

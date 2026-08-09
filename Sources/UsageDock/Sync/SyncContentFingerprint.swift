@@ -46,15 +46,19 @@ enum SyncContentFingerprint {
                         remainingBalance: window.remainingBalance ?? (index == 0 ? quota.remainingBalance : nil)
                     )
                 },
-                scopedWindows: quota.uniqueScopedWindows.map {
-                    ScopedWindow(
-                        scopeID: $0.scopeID,
-                        displayName: $0.displayName,
+                scopedWindows: quota.uniqueScopedWindows.compactMap { scoped -> ScopedWindow? in
+                    guard MobileSnapshotRedactor.isWireSafe(scoped),
+                          let scopeID = MobileSnapshotRedactor.wireScopeID(for: scoped) else {
+                        return nil
+                    }
+                    return ScopedWindow(
+                        scopeID: scopeID,
+                        displayName: scoped.displayName,
                         window: Window(
-                            usedPercent: min(max($0.window.usedPercent, 0), 100),
-                            windowMinutes: max(0, $0.window.windowMinutes),
-                            resetsAt: $0.window.resetsAt,
-                            remainingBalance: $0.window.remainingBalance
+                            usedPercent: min(max(scoped.window.usedPercent, 0), 100),
+                            windowMinutes: max(0, scoped.window.windowMinutes),
+                            resetsAt: scoped.window.resetsAt,
+                            remainingBalance: scoped.window.remainingBalance
                         )
                     )
                 }
