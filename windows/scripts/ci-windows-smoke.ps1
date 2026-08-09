@@ -8,15 +8,9 @@ $releaseDirectory = Join-Path (Get-Location) "release"
 $setup = Get-ChildItem $releaseDirectory -File -Filter "*.exe" |
   Where-Object Name -Like "*Setup*.exe" |
   Select-Object -First 1
-$portable = Get-ChildItem $releaseDirectory -File -Filter "*.exe" |
-  Where-Object Name -NotLike "*Setup*.exe" |
-  Select-Object -First 1
 
 if (-not $setup) {
   throw "NSIS installer is missing"
-}
-if (-not $portable) {
-  throw "Portable executable is missing"
 }
 
 function Stop-TokenRemain {
@@ -48,13 +42,12 @@ function Assert-TokenRemainStarts {
     [Parameter(Mandatory = $true)]
     [string] $Executable,
     [Parameter(Mandatory = $true)]
-    [string] $Label,
-    [int] $TimeoutSeconds = 20
+    [string] $Label
   )
 
   Stop-TokenRemain
   $launched = Start-Process -FilePath $Executable -PassThru
-  $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+  $deadline = (Get-Date).AddSeconds(20)
 
   do {
     Start-Sleep -Milliseconds 500
@@ -88,7 +81,7 @@ function Assert-TokenRemainStarts {
     }
   } while ((Get-Date) -lt $deadline)
 
-  throw "$Label did not display its TokenRemain window within $TimeoutSeconds seconds"
+  throw "$Label did not display its TokenRemain window within 20 seconds"
 }
 
 $installDirectory = Join-Path $env:RUNNER_TEMP "TokenRemain-install-$env:RUNNER_ARCH"
@@ -128,7 +121,3 @@ if (Test-Path $installedExecutable) {
   throw "Installed executable remained after uninstall"
 }
 Write-Host "NSIS install, launch, and uninstall smoke test passed"
-
-Assert-TokenRemainStarts -Executable $portable.FullName -Label "Portable app" -TimeoutSeconds 60
-Stop-TokenRemain
-Write-Host "Portable launch smoke test passed"

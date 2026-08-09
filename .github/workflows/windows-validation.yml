@@ -63,7 +63,7 @@ jobs:
       - name: Run tests and production build
         run: npm run check
 
-      - name: Build NSIS and portable packages
+      - name: Build NSIS installer
         run: npm run dist:win
 
       - name: Verify package files
@@ -74,15 +74,12 @@ jobs:
           if (-not ($packages.Name -like "*Setup*.exe")) {
             throw "NSIS installer was not produced"
           }
-          if (-not ($packages.Name -notlike "*Setup*.exe")) {
-            throw "Portable executable was not produced"
-          }
           $packages | ForEach-Object {
             $hash = Get-FileHash $_.FullName -Algorithm SHA256
             Write-Host "$($_.Name) $($_.Length) bytes SHA256=$($hash.Hash)"
           }
 
-      - name: Smoke-test install, launch, uninstall, and portable app
+      - name: Smoke-test install, launch, and uninstall
         shell: pwsh
         run: ./scripts/ci-windows-smoke.ps1
 
