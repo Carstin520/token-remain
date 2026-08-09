@@ -25,7 +25,7 @@ html[data-material="acrylic"] .popover-root { background: rgba(13, 14, 16, .74);
 .popover-brand { font-size: 14px; font-weight: 700; letter-spacing: -.2px; white-space: nowrap; }
 .popover-brand b { color: var(--violet); font-weight: 700; }
 .popover-updated { flex: 1; min-width: 0; overflow: hidden; color: var(--muted); font-family: var(--mono); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
-.icon-button { display: grid; flex: 0 0 26px; width: 26px; height: 26px; place-items: center; padding: 0; border: 1px solid var(--border); border-radius: 50%; background: var(--surface-2); cursor: pointer; }
+.icon-button { display: grid; flex: 0 0 28px; width: 28px; height: 28px; place-items: center; padding: 0; border: 1px solid var(--border); border-radius: 50%; background: var(--surface-2); cursor: pointer; }
 .icon-button:hover { border-color: var(--violet-dim); color: var(--violet); }
 .icon-button:disabled { opacity: .55; cursor: default; }
 .icon-button svg { width: 13px; height: 13px; }
@@ -53,18 +53,71 @@ html[data-material="acrylic"] .popover-root { background: rgba(13, 14, 16, .74);
 .popover-risk-detail.tone-medium { color: var(--warning); }
 .popover-risk-detail.tone-high { color: var(--danger); }
 
-/* Provider quota cards */
-.popover-quota { display: grid; gap: 9px; }
-.popover-quota-card { display: grid; gap: 6px; width: 100%; padding: 9px 11px; border: 1px solid var(--border); border-radius: 11px; background: var(--surface); color: inherit; text-align: left; cursor: pointer; }
-.popover-quota-card:hover { background: var(--surface-2); }
-.popover-quota-head { display: flex; align-items: center; gap: 7px; min-width: 0; }
-.popover-quota-head img, .popover-quota-head .provider-mark-fallback { flex: 0 0 16px; width: 16px; height: 16px; border-radius: 4px; }
+/* Reorderable widget chrome — every widget keeps the popover-card surface and
+   gains a compact control cluster in its header row. */
+.popover-widget { display: grid; gap: 6px; }
+.widget-head { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.widget-head.popover-card-head { margin-bottom: 4px; }
+.widget-controls { display: flex; flex: 0 0 auto; align-items: center; gap: 4px; margin-left: auto; }
+.widget-controls .icon-button { border-color: transparent; background: transparent; color: var(--muted); }
+.widget-controls .icon-button:hover { border-color: var(--border); background: var(--surface-2); color: var(--text); }
+.widget-controls .chevron { transition: transform .15s ease; }
+.widget-controls .chevron.is-open { transform: rotate(90deg); }
+.copied-chip { padding: 2px 7px; border: 1px solid rgba(120, 220, 160, .4); border-radius: 999px; color: #8fdcb0; background: rgba(52, 120, 82, .22); font-size: 9.5px; font-weight: 600; white-space: nowrap; }
+
+/* Anchored menus (widget overflow + the header's show-hidden dropdown). */
+.menu-wrap { position: relative; display: inline-flex; }
+.menu-pop { position: absolute; z-index: 30; top: calc(100% + 4px); right: 0; display: grid; gap: 1px; min-width: 148px; padding: 4px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface-2); box-shadow: 0 8px 22px rgba(0, 0, 0, .45); }
+.menu-pop.menu-up { top: auto; bottom: calc(100% + 4px); }
+.menu-item { display: block; min-height: 28px; padding: 5px 9px; border: 0; border-radius: 6px; background: transparent; color: var(--text); cursor: pointer; font-size: 11.5px; text-align: left; white-space: nowrap; }
+.menu-item:hover:not(:disabled), .menu-item:focus-visible { background: var(--surface-3); }
+.menu-item:disabled { color: var(--muted); cursor: default; }
+/* Checkbox items reserve a checkmark column so the label never shifts. */
+.menu-item-check { position: relative; padding-left: 24px; }
+.menu-item-check::before { position: absolute; left: 8px; content: ""; }
+.menu-item-check[aria-checked="true"]::before { content: "✓"; }
+
+/* Reorderable widget stack — the popover's single-column DirectReorderGrid.
+   Slots keep the section gap; the dragged card lifts subtly above the rest. */
+.popover-reorder { display: grid; align-content: start; gap: 9px; min-width: 0; }
+.popover-reorder .sortable-card { min-width: 0; border-radius: 11px; cursor: grab; touch-action: manipulation; }
+.popover-reorder .sortable-card.is-dragging {
+  position: relative;
+  z-index: 40;
+  outline: 1px solid var(--violet-dim);
+  outline-offset: 2px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .4);
+  cursor: grabbing;
+  touch-action: none;
+  user-select: none;
+  will-change: transform;
+}
+.popover-reorder .sortable-card:focus-visible { outline: 2px solid rgba(155, 138, 251, .85); outline-offset: 2px; }
+.popover-reorder[data-reorder-active="true"] { cursor: grabbing; }
+
+.sr-only { position: absolute; overflow: hidden; clip: rect(0 0 0 0); width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; white-space: nowrap; }
+
+/* Provider quota widgets */
+.quota-summary-toggle { display: flex; flex: 1; align-items: center; gap: 7px; min-width: 0; min-height: 28px; padding: 0; border: 0; background: transparent; color: inherit; cursor: pointer; text-align: left; }
+.quota-summary-toggle img, .quota-summary-toggle .provider-mark-fallback { flex: 0 0 16px; width: 16px; height: 16px; border-radius: 4px; }
 .provider-mark-fallback { display: grid; place-items: center; border: 1px solid var(--border); color: var(--violet); background: var(--surface-2); font-family: var(--mono); font-size: 7px; font-weight: 700; }
-.popover-quota-head .quota-name { min-width: 0; overflow: hidden; font-size: 12.5px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
-.popover-quota-head .risk-mark { flex: 0 0 11px; width: 11px; height: 11px; }
-.popover-quota-head .risk-mark.tone-medium { color: var(--warning); }
-.popover-quota-head .risk-mark.tone-high { color: var(--danger); }
-.popover-quota-head strong { margin-left: auto; font-family: var(--mono); font-size: 12.5px; font-weight: 700; white-space: nowrap; }
+.quota-summary-toggle .quota-name { min-width: 0; overflow: hidden; font-size: 12.5px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.risk-mark { flex: 0 0 11px; width: 11px; height: 11px; }
+.risk-mark.tone-medium { color: var(--warning); }
+.risk-mark.tone-high { color: var(--danger); }
+.quota-summary-toggle strong { margin-left: auto; font-family: var(--mono); font-size: 12.5px; font-weight: 700; white-space: nowrap; }
+
+/* Expanded per-window list */
+.quota-windows { display: grid; gap: 8px; margin-top: 3px; padding-top: 8px; border-top: 1px solid var(--border); }
+.quota-window { display: grid; gap: 5px; min-width: 0; }
+.quota-window-head { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.quota-window-title { min-width: 0; overflow: hidden; color: var(--secondary); font-size: 11px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.quota-window-head strong { margin-left: auto; font-family: var(--mono); font-size: 11.5px; font-weight: 700; white-space: nowrap; }
+.quota-captured { display: flex; align-items: center; gap: 5px; color: var(--muted); font-family: var(--mono); font-size: 9.5px; }
+.quota-captured svg { flex: 0 0 10px; width: 10px; height: 10px; }
+/* The Mac's 10-minute stale cue: the warning triangle carries the meaning, the
+   colour only reinforces it. */
+.quota-captured.is-stale { color: var(--warning); }
 .popover-quota-meta { display: flex; justify-content: space-between; gap: 10px; min-width: 0; color: var(--muted); font-size: 10px; }
 .popover-quota-meta span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .popover-quota-meta span:last-child { flex: 0 0 auto; font-family: var(--mono); }
@@ -73,12 +126,19 @@ html[data-material="acrylic"] .popover-root { background: rgba(13, 14, 16, .74);
 .popover-quota-notice span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Today's local usage */
+.popover-usage-composition { display: grid; grid-template-columns: 52px minmax(0, 1fr); align-items: center; gap: 14px; }
+.popover-usage-ring { display: grid; width: 52px; height: 52px; place-items: center; border-radius: 50%; cursor: default; forced-color-adjust: none; }
+.popover-usage-ring-center { display: grid; width: 36px; height: 36px; place-content: center; border-radius: 50%; background: var(--surface); text-align: center; }
+.popover-usage-ring-center strong { max-width: 34px; overflow: hidden; font-family: var(--mono); font-size: 7.5px; font-weight: 700; line-height: 1.1; text-overflow: ellipsis; white-space: nowrap; }
+.popover-usage-ring-center small { margin-top: 1px; color: var(--muted); font-family: var(--mono); font-size: 6.5px; line-height: 1.1; }
 .popover-usage-rows { display: grid; gap: 5px; }
-.popover-usage-row { display: grid; grid-template-columns: 7px minmax(0, 1fr) auto auto; align-items: center; gap: 8px; min-width: 0; }
+.popover-usage-row { display: grid; grid-template-columns: 7px minmax(0, 1fr) auto auto; align-items: center; gap: 8px; min-width: 0; min-height: 22px; padding: 0 7px; border-radius: 7px; }
+.popover-usage-row.is-highlighted { background: var(--surface-3); }
 .popover-usage-row i { width: 7px; height: 7px; border-radius: 50%; }
 .popover-usage-row span { overflow: hidden; font-size: 11.5px; text-overflow: ellipsis; white-space: nowrap; }
 .popover-usage-row em { color: var(--secondary); font-family: var(--mono); font-size: 10px; font-style: normal; }
 .popover-usage-row b { min-width: 34px; font-family: var(--mono); font-size: 11px; font-weight: 700; text-align: right; }
+.popover-usage-row.is-highlighted b { color: var(--provider-color); }
 .popover-spend { display: grid; gap: 3px; margin-top: 9px; padding-top: 9px; border-top: 1px solid var(--border); }
 .popover-spend-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; min-width: 0; }
 .popover-spend-row span { flex: 0 0 auto; color: var(--secondary); font-size: 10.5px; font-weight: 500; }
@@ -107,6 +167,8 @@ html[data-material="acrylic"] .popover-root { background: rgba(13, 14, 16, .74);
 .popover-feed-meta .open-arrow { margin-left: auto; }
 .popover-feed-meta svg { width: 10px; height: 10px; }
 .popover-feed-row p { display: -webkit-box; overflow: hidden; margin: 0; color: var(--text); font-size: 11px; line-height: 1.45; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+/* Expanded feed rows drop the 2-line clamp and show the whole story text. */
+.popover-feed-row p.is-expanded { display: block; -webkit-line-clamp: unset; }
 .link-button { padding: 0; border: 0; background: transparent; color: var(--violet); cursor: pointer; font-size: 10px; font-weight: 600; }
 .link-button:hover { text-decoration: underline; }
 
@@ -119,18 +181,29 @@ html[data-material="acrylic"] .popover-root { background: rgba(13, 14, 16, .74);
 .popover-footer .footer-quit { color: var(--secondary); }
 .popover-footer .footer-quit:hover { color: #e2a09f; background: rgba(255, 107, 107, .1); }
 .popover-footer .footer-spacer { flex: 1; }
+/* The footer menu anchors to the window's left edge, not the trigger's right,
+   so it never spills outside the popover. */
+.popover-footer .menu-pop { right: auto; left: 0; }
 .popover-error { padding: 7px 9px; border: 1px solid rgba(255, 107, 107, .36); border-radius: 8px; color: #f0aaa8; background: rgba(111, 39, 42, .18); font-size: 10.5px; line-height: 1.45; }
 
 button:focus-visible, [tabindex]:focus-visible { outline: 2px solid rgba(155, 138, 251, .85); outline-offset: 2px; }
 
 @media (prefers-reduced-motion: no-preference) {
-  .popover-quota-card, .popover-feed-row, .icon-button, .popover-footer button {
+  .popover-feed-row, .icon-button, .menu-item, .popover-footer button {
     transition: color .15s ease, background .15s ease, border-color .15s ease;
   }
 }
+@media (prefers-reduced-motion: reduce) {
+  .widget-controls .chevron { transition: none; }
+}
 @media (forced-colors: active) {
   .popover-root { border-color: CanvasText; }
-  .popover-card, .popover-quota-card, .popover-feed-row { border-color: CanvasText; }
+  .popover-card, .popover-feed-row, .menu-pop { border-color: CanvasText; }
+  /* Box-shadow lift disappears under forced colours; a system-coloured
+     outline keeps the dragged card identifiable. */
+  .popover-reorder .sortable-card.is-dragging { outline: 2px solid Highlight; box-shadow: none; }
+  .popover-usage-ring { outline: 1px solid CanvasText; }
+  .popover-usage-row.is-highlighted { outline: 1px solid Highlight; }
   /* Opacity carries the newest-day emphasis, which forced colours flatten, so
      fall back to an outline every bar keeps. */
   .popover-trend i { border: 1px solid CanvasText; opacity: 1; forced-color-adjust: none; }

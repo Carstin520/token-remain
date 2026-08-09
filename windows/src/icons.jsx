@@ -27,7 +27,7 @@ export function DataSourcesIcon() { return <Icon><ellipse cx="12" cy="5" rx="7" 
 export function SettingsIcon() { return <Icon><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"/></Icon>; }
 export function RefreshIcon({ spinning }) { return <Icon spinning={spinning}><path d="M20 7v5h-5"/><path d="M4 17v-5h5"/><path d="M6.1 8a7 7 0 0 1 11.5-2.6L20 7M4 17l2.4 1.6A7 7 0 0 0 17.9 16"/></Icon>; }
 export function LockIcon() { return <Icon><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></Icon>; }
-export function ChevronRightIcon() { return <Icon><path d="m9 6 6 6-6 6"/></Icon>; }
+export function ChevronRightIcon({ className }) { return <Icon className={className}><path d="m9 6 6 6-6 6"/></Icon>; }
 export function PlusIcon() { return <Icon><path d="M12 5v14"/><path d="M5 12h14"/></Icon>; }
 export function FlameIcon() { return <Icon><path d="M12 21c3.9 0 6.5-2.4 6.5-6 0-3.2-2.2-5.4-3.7-7.5-.6.9-1 1.6-1.3 2.8C12.4 8 11.4 5.5 9.2 3c-.4 3-1.2 4.4-2.4 6.2-1 1.6-1.3 3-1.3 4.8 0 4.6 3 7 6.5 7Z"/></Icon>; }
 export function BoltIcon() { return <Icon><path d="M13 3 5 13h5l-1 8 8-11h-5l1-7Z"/></Icon>; }
@@ -44,4 +44,5 @@ export function ResetIcon() { return <Icon><path d="M4 8a8 8 0 1 1-1 6"/><path d
 export function SwitchIcon() { return <Icon><rect x="3" y="6" width="18" height="5" rx="2.5"/><circle cx="7" cy="8.5" r="1.4"/><rect x="3" y="13" width="18" height="5" rx="2.5"/><circle cx="17" cy="15.5" r="1.4"/></Icon>; }
 export function InfoIcon() { return <Icon><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5"/><path d="M12 8v.1"/></Icon>; }
 export function RestartIcon() { return <Icon><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 3v4h-4"/></Icon>; }
+export function MoreIcon() { return <Icon><path d="M5 12h.1"/><path d="M12 12h.1"/><path d="M19 12h.1"/></Icon>; }
 export function PowerIcon() { return <Icon><path d="M12 3v8"/><path d="M6.3 6.5a8 8 0 1 0 11.4 0"/></Icon>; }

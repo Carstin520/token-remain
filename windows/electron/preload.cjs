@@ -19,6 +19,7 @@ contextBridge.exposeInMainWorld("tokenRemain", {
   relaunch: () => ipcRenderer.invoke("app:relaunch"),
   quit: () => ipcRenderer.invoke("app:quit"),
   openDashboard: (section) => ipcRenderer.invoke("dashboard:open", section),
+  copyText: (text) => ipcRenderer.invoke("clipboard:copy-text", text),
   hidePopover: () => ipcRenderer.send("popover:hide"),
   resizePopover: (contentHeight) => ipcRenderer.send("popover:resize", contentHeight),
   onStateChanged: (listener) => subscribe("state:changed", listener),

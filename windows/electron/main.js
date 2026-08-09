@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Menu, nativeImage, safeStorage, screen, shell, Tray } from "electron";
+import { app, BrowserWindow, clipboard, ipcMain, Menu, nativeImage, safeStorage, screen, shell, Tray } from "electron";
 import { hostname, release } from "node:os";
 import { join } from "node:path";
 import { collectClaude } from "./collectors/claude.js";
@@ -305,6 +305,15 @@ function registerIPC() {
   });
   ipcMain.handle("dashboard:open", (_event, section) => {
     openDashboard(DASHBOARD_SECTIONS.has(section) ? section : undefined);
+    return true;
+  });
+  ipcMain.handle("clipboard:copy-text", (event, text) => {
+    // Clipboard writes are reserved for the tray popover; every other window
+    // (including the dashboard) is rejected.
+    if (!popoverWindow || popoverWindow.isDestroyed() || event.sender !== popoverWindow.webContents) {
+      throw new Error("Copy is only available from the popover");
+    }
+    clipboard.writeText(boundedString(text, 8192, "Copy text"));
     return true;
   });
   ipcMain.on("popover:hide", (event) => {

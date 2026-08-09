@@ -122,8 +122,12 @@ export function buildTodayUsage(history, now = Date.now()) {
 /// The account-level window a provider summary row shows. Mirrors the Mac's
 /// default "shortest window" strategy (cc16345): scoped windows never summarize
 /// a provider; the 0-minute total sentinel only wins when nothing rolls.
+export function isQuotaWindow(window) {
+  return Number.isFinite(window?.usedPercent);
+}
+
 export function summaryWindow(provider) {
-  const windows = (provider?.windows || []).filter((window) => Number.isFinite(window.usedPercent));
+  const windows = (provider?.windows || []).filter(isQuotaWindow);
   if (!windows.length) return undefined;
   const rolling = windows.filter((window) => Number.isInteger(window.windowMinutes) && window.windowMinutes > 0);
   if (!rolling.length) return windows[0];

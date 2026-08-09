@@ -47,6 +47,119 @@ test("Quota cards follow the shortest window and the Mac's remaining/reset copy"
   assert.equal(codex.level, "high");
 });
 
+test("Quota cards carry every valid window for the expanded view", () => {
+  const [claude] = popoverQuotaCards({ providers: [providers()[0]], notices: {} }, undefined, { now: NOW });
+  // Both Claude windows, in the snapshot's order, not just the shortest one.
+  assert.equal(claude.windows.length, 2);
+  const [fiveHour, weekly] = claude.windows;
+  assert.equal(fiveHour.title, "5 hr window");
+  assert.equal(fiveHour.name, "5 hr");
+  assert.equal(fiveHour.remaining, 57);
+  assert.equal(fiveHour.remainingText, "57% remaining");
+  assert.equal(fiveHour.resetText, "Resets in 3 hr 0 min");
+  assert.equal(fiveHour.level, "low");
+  // 43% used at 40% elapsed sits outside the ±2% on-track band, so deficit.
+  assert.equal(fiveHour.aheadOfPace, true);
+  assert.equal(weekly.title, "7 d window");
+  assert.equal(weekly.name, "7 d");
+  assert.equal(weekly.remaining, 82);
+  assert.equal(weekly.level, "low");
+  assert.equal(weekly.aheadOfPace, false);
+  // The summary read and the first-listed window quote identical copy.
+  assert.equal(claude.remainingText, fiveHour.remainingText);
+  assert.equal(claude.capturedText, "Updated just now");
+});
+
+test("The summary window leads the expanded list exactly once, under a stable key", () => {
+  // Snapshot lists the weekly window first; the summary (shortest) window must
+  // still lead without being repeated further down.
+  const [card] = popoverQuotaCards({ providers: [{ providerID: "claude", capturedAt: NOW, windows: [
+    { usedPercent: 18, windowMinutes: 10_080, resetsAt: NOW + 4 * 86_400_000 },
+    { usedPercent: 43, windowMinutes: 300, resetsAt: NOW + 3 * 3_600_000 },
+  ] }], notices: {} }, undefined, { now: NOW });
+  assert.deepEqual(card.windows.map((window) => window.title), ["5 hr window", "7 d window"]);
+  // Keys follow the snapshot position, so reordering for the summary keeps
+  // each window's identity stable.
+  assert.deepEqual(card.windows.map((window) => window.key), ["window-1", "window-0"]);
+  assert.equal(card.windowTitle, "5 hr window");
+  assert.equal(card.remainingText, card.windows[0].remainingText);
+  // Two windows sharing a duration (and therefore a title) still get distinct
+  // keys and both survive.
+  const [twin] = popoverQuotaCards({ providers: [{ providerID: "codex", capturedAt: NOW, windows: [
+    { usedPercent: 40, windowMinutes: 300, resetsAt: NOW + 3_600_000 },
+    { usedPercent: 70, windowMinutes: 300, resetsAt: NOW + 2 * 3_600_000 },
+  ] }], notices: {} }, undefined, { now: NOW });
+  assert.equal(twin.windows.length, 2);
+  assert.deepEqual(twin.windows.map((window) => window.key), ["window-0", "window-1"]);
+});
+
+test("Scoped windows join the expanded card, except Fable and invalid scopes", () => {
+  const [card] = popoverQuotaCards({ providers: [{ providerID: "claude", capturedAt: NOW, windows: [
+    { usedPercent: 43, windowMinutes: 300, resetsAt: NOW + 3 * 3_600_000 },
+  ], scopedWindows: [
+    { scopeID: "opus", displayName: "Opus", window: { usedPercent: 60, windowMinutes: 10_080, resetsAt: NOW + 86_400_000 } },
+    // Fable is the provider's own named quota; a scoped copy would double-count.
+    { scopeID: "fable", displayName: "Fable", window: { usedPercent: 10, windowMinutes: 10_080, resetsAt: NOW + 86_400_000 } },
+    { scopeID: "fable_5", displayName: "Fable 5", window: { usedPercent: 10, windowMinutes: 10_080, resetsAt: NOW + 86_400_000 } },
+    // A duplicate scope keeps the latest reading in first-seen order.
+    { scopeID: "opus", displayName: "Opus", window: { usedPercent: 90, windowMinutes: 10_080, resetsAt: NOW + 12 * 3_600_000 } },
+    // Invalid window readings never become rows.
+    { scopeID: "haiku", displayName: "Haiku", window: { windowMinutes: 10_080 } },
+  ] }], notices: {} }, undefined, { now: NOW });
+  assert.equal(card.scopedWindows.length, 1);
+  const [scoped] = card.scopedWindows;
+  assert.equal(scoped.key, "scope-opus");
+  assert.equal(scoped.scopeName, "Opus");
+  // Display name plus window duration, so equal-duration scopes stay readable.
+  assert.equal(scoped.title, "Opus · 7 d window");
+  assert.equal(scoped.remaining, 10);
+  assert.equal(scoped.remainingText, "10% remaining");
+  assert.equal(scoped.level, "medium");
+  assert.equal(scoped.resetText, "Resets in 12 hr 0 min");
+  // The account window list is untouched by scoped data.
+  assert.deepEqual(card.windows.map((window) => window.key), ["window-0"]);
+  // No scoped data means an empty list, not a missing field.
+  const [plain] = popoverQuotaCards({ providers: [{ providerID: "codex", capturedAt: NOW, windows: [
+    { usedPercent: 20, windowMinutes: 300, resetsAt: NOW + 3_600_000 },
+  ] }], notices: {} }, undefined, { now: NOW });
+  assert.deepEqual(plain.scopedWindows, []);
+});
+
+test("Freshness carries the Mac's 10-minute stale flag without changing wording", () => {
+  const provider = (capturedAt) => ({ providerID: "claude", capturedAt, windows: [
+    { usedPercent: 43, windowMinutes: 300, resetsAt: NOW + 3 * 3_600_000 },
+  ] });
+  const [fresh] = popoverQuotaCards({ providers: [provider(NOW - 9 * 60_000)], notices: {} }, undefined, { now: NOW });
+  assert.equal(fresh.capturedText, "Updated 9 min ago");
+  assert.equal(fresh.capturedStale, false);
+  const [stale] = popoverQuotaCards({ providers: [provider(NOW - 10 * 60_000)], notices: {} }, undefined, { now: NOW });
+  assert.equal(stale.capturedText, "Updated 10 min ago");
+  assert.equal(stale.capturedStale, true);
+  // No capturedAt means no freshness claim and no stale claim either.
+  const [unknown] = popoverQuotaCards({ providers: [{ providerID: "claude", windows: [
+    { usedPercent: 10, windowMinutes: 300, resetsAt: NOW + 3_600_000 },
+  ] }], notices: {} }, undefined, { now: NOW });
+  assert.equal("capturedStale" in unknown, false);
+});
+
+test("Window details use the honest balance wording and skip invalid windows", () => {
+  const [card] = popoverQuotaCards({ providers: [{ providerID: "codex", capturedAt: NOW - 5 * 60_000, windows: [
+    { usedPercent: 92, windowMinutes: 300, resetsAt: NOW + 3_600_000, remainingBalance: { amount: 4.2, currencyCode: "USD" } },
+    { usedPercent: Number.NaN, windowMinutes: 10_080 },
+    { windowMinutes: 1_440, resetsAt: NOW + 86_400_000 },
+  ] }], notices: {} }, undefined, { now: NOW });
+  // remainingBalance wins over the percent wording, matching the summary rule.
+  assert.equal(card.windows.length, 1);
+  assert.equal(card.windows[0].remainingText, "$4.20 remaining");
+  assert.equal(card.windows[0].level, "high");
+  assert.equal(card.capturedText, "Updated 5 min ago");
+  // No finite capturedAt means no freshness claim at all.
+  const [stale] = popoverQuotaCards({ providers: [{ providerID: "claude", windows: [
+    { usedPercent: 10, windowMinutes: 300, resetsAt: NOW + 3_600_000 },
+  ] }], notices: {} }, undefined, { now: NOW });
+  assert.equal("capturedText" in stale, false);
+});
+
 test("Quota cards honour the saved Limits order instead of a second layout format", () => {
   const state = { providers: providers(), notices: {} };
   const reordered = popoverQuotaCards(state, undefined, { now: NOW, storedOrder: ["cursor", "codex", "claude"] });

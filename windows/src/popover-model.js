@@ -14,6 +14,7 @@ import {
   formatMoney,
   formatPercent,
   freshnessDescription,
+  isStaleCapture,
   relativeAge,
   resetDescription,
   windowName,
@@ -23,6 +24,7 @@ import { normalizeOrder } from "./layout.js";
 import {
   buildRiskNotes,
   buildTodayUsage,
+  isQuotaWindow,
   rankOfficialQuotaProviders,
   riskLevel,
   summaryWindow,
@@ -61,15 +63,80 @@ export function popoverQuotaCards(state, today, options = {}) {
 
 function quotaCard(provider, notice, now) {
   const meta = providerMeta(provider.providerID);
-  const window = summaryWindow(provider);
-  const remaining = Math.min(100, Math.max(0, 100 - window.usedPercent));
-  const pace = usagePace(window, now);
+  const summary = summaryWindow(provider);
+  const summaryDetail = windowDetail(summary, now);
+  // Keys come from the snapshot position, never the display title, so two
+  // windows sharing a duration or title can never collide or swap rows.
+  const indexed = (provider.windows || [])
+    .map((window, index) => ({ window, index }))
+    .filter(({ window }) => isQuotaWindow(window));
   return {
     id: provider.providerID,
     name: meta.name,
     color: meta.color,
     iconFile: meta.icon,
-    windowTitle: windowTitle(window.windowMinutes),
+    windowTitle: summaryDetail.title,
+    remaining: summaryDetail.remaining,
+    remainingText: summaryDetail.remainingText,
+    resetText: summaryDetail.resetText,
+    level: summaryDetail.level,
+    aheadOfPace: summaryDetail.aheadOfPace,
+    // Every valid window exactly once, summary window first — the Mac's stable
+    // first row — with the rest kept in snapshot order.
+    windows: [
+      ...indexed.filter(({ window }) => window === summary),
+      ...indexed.filter(({ window }) => window !== summary),
+    ].map(({ window, index }) => ({ key: `window-${index}`, ...windowDetail(window, now) })),
+    scopedWindows: scopedWindowDetails(provider, now),
+    ...(Number.isFinite(provider.capturedAt)
+      ? {
+        capturedText: freshnessDescription(provider.capturedAt, now),
+        capturedStale: isStaleCapture(provider.capturedAt, now),
+      }
+      : {}),
+    notice,
+  };
+}
+
+/// Non-Fable scoped windows for the expanded card, mirroring the Mac popover:
+/// Fable's scoped weekly cap is the same quota the provider already names, so
+/// listing it again would double-count; duplicate scopes keep the latest
+/// reading in first-seen order, exactly like uniqueScopedWindows.
+function isFableScope(scope) {
+  return scope.scopeID.toLowerCase().startsWith("fable")
+    || /fable/i.test(scope.displayName || "");
+}
+
+function scopedWindowDetails(provider, now) {
+  const order = [];
+  const latestByScope = new Map();
+  for (const scope of provider.scopedWindows || []) {
+    if (typeof scope?.scopeID !== "string" || !scope.scopeID || !isQuotaWindow(scope.window)) continue;
+    if (isFableScope(scope)) continue;
+    const key = scope.scopeID.toLowerCase();
+    if (!latestByScope.has(key)) order.push(key);
+    latestByScope.set(key, scope);
+  }
+  return order.map((key) => {
+    const scope = latestByScope.get(key);
+    const detail = windowDetail(scope.window, now);
+    return {
+      ...detail,
+      key: `scope-${key}`,
+      scopeName: scope.displayName || scope.scopeID,
+      title: `${scope.displayName || scope.scopeID} · ${detail.title}`,
+    };
+  });
+}
+
+/// One window's presentation-ready read, shared by the card summary and the
+/// expanded per-window list so both quote identical remaining/reset/risk copy.
+function windowDetail(window, now) {
+  const remaining = Math.min(100, Math.max(0, 100 - window.usedPercent));
+  const pace = usagePace(window, now);
+  return {
+    title: windowTitle(window.windowMinutes),
+    name: windowName(window.windowMinutes),
     remaining,
     remainingText: window.remainingBalance
       ? `${formatBalance(window.remainingBalance)} remaining`
@@ -77,7 +144,6 @@ function quotaCard(provider, notice, now) {
     resetText: resetDescription(window.resetsAt, now),
     level: riskLevel(remaining),
     aheadOfPace: pace?.status === "deficit",
-    notice,
   };
 }
 
