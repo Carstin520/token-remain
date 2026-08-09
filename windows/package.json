@@ -33,6 +33,7 @@
     "files": [
       "dist/**/*",
       "electron/**/*",
+      "src/provider-meta.js",
       "package.json"
     ],
     "extraResources": [

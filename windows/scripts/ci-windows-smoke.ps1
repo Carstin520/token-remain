@@ -25,6 +25,24 @@ function Stop-TokenRemain {
   Start-Sleep -Seconds 2
 }
 
+function Assert-NoTokenRemainErrorWindow {
+  param(
+    [Parameter(Mandatory = $true)]
+    [AllowEmptyCollection()]
+    [object[]] $Processes,
+    [Parameter(Mandatory = $true)]
+    [string] $Label
+  )
+
+  $errorWindows = @($Processes | Where-Object {
+    $_.MainWindowTitle -match "(?i)error|javascript"
+  })
+  if ($errorWindows.Count -gt 0) {
+    $titles = ($errorWindows | ForEach-Object MainWindowTitle) -join ", "
+    throw "$Label opened an error window instead of the app: $titles"
+  }
+}
+
 function Assert-TokenRemainStarts {
   param(
     [Parameter(Mandatory = $true)]
@@ -40,10 +58,24 @@ function Assert-TokenRemainStarts {
   do {
     Start-Sleep -Milliseconds 500
     $running = @(Get-Process -Name "TokenRemain" -ErrorAction SilentlyContinue)
-    if ($running.Count -gt 0) {
-      Write-Host "$Label started with $($running.Count) TokenRemain process(es)"
-      Start-Sleep -Seconds 5
-      $stillRunning = @(Get-Process -Name "TokenRemain" -ErrorAction SilentlyContinue)
+    Assert-NoTokenRemainErrorWindow -Processes $running -Label $Label
+    $visibleApp = @($running | Where-Object {
+      $_.MainWindowHandle -ne 0 -and $_.MainWindowTitle -eq "TokenRemain"
+    })
+    if ($visibleApp.Count -gt 0) {
+      Write-Host "$Label displayed its TokenRemain window with $($running.Count) process(es)"
+      $stabilityDeadline = (Get-Date).AddSeconds(5)
+      do {
+        Start-Sleep -Milliseconds 500
+        $stillRunning = @(Get-Process -Name "TokenRemain" -ErrorAction SilentlyContinue)
+        Assert-NoTokenRemainErrorWindow -Processes $stillRunning -Label $Label
+        $stillVisible = @($stillRunning | Where-Object {
+          $_.MainWindowHandle -ne 0 -and $_.MainWindowTitle -eq "TokenRemain"
+        })
+        if ($stillVisible.Count -eq 0) {
+          throw "$Label lost its TokenRemain window during the stability window"
+        }
+      } while ((Get-Date) -lt $stabilityDeadline)
       if ($stillRunning.Count -eq 0) {
         throw "$Label exited during the stability window"
       }
@@ -55,7 +87,7 @@ function Assert-TokenRemainStarts {
     }
   } while ((Get-Date) -lt $deadline)
 
-  throw "$Label did not start within 20 seconds"
+  throw "$Label did not display its TokenRemain window within 20 seconds"
 }
 
 $installDirectory = Join-Path $env:RUNNER_TEMP "TokenRemain-install-$env:RUNNER_ARCH"
