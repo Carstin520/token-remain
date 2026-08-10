@@ -22,6 +22,7 @@ contextBridge.exposeInMainWorld("tokenRemain", {
   openExternal: (url) => ipcRenderer.invoke("feed:open", url),
   setLaunchAtLogin: (value) => ipcRenderer.invoke("settings:set-launch-at-login", value),
   setFloatingWidgetEnabled: (value) => ipcRenderer.invoke("settings:set-floating-widget", value),
+  setLanguage: (value) => ipcRenderer.invoke("settings:set-language", value),
   openPopup: () => ipcRenderer.invoke("popup:open"),
   togglePopupFromFloating: () => ipcRenderer.invoke("popup:toggle-from-floating"),
   relaunch: () => ipcRenderer.invoke("app:relaunch"),

@@ -320,9 +320,12 @@ nav svg { width: 16px; height: 16px; }
 .quota-trend-provider { display: flex; min-width: 0; align-items: center; gap: 8px; }
 .quota-trend-provider b { overflow: hidden; color: var(--text); font-size: 11px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 .quota-trend-row > strong { font-family: var(--mono); font-size: 11px; text-align: right; }
-.quota-sparkline { width: 100%; height: 38px; overflow: visible; }
+.quota-sparkline-frame { position: relative; width: 100%; height: 38px; min-width: 0; }
+.quota-sparkline { display: block; width: 100%; height: 38px; overflow: visible; }
 .quota-sparkline line { stroke: color-mix(in srgb, var(--border) 46%, transparent); stroke-width: .7; vector-effect: non-scaling-stroke; }
 .quota-sparkline-line { fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.quota-sparkline-latest { position: absolute; top: clamp(3px, var(--quota-latest-y), calc(100% - 3px)); left: clamp(3px, var(--quota-latest-x), calc(100% - 3px)); width: 5px; height: 5px; border: 1px solid color-mix(in srgb, var(--quota-accent) 68%, var(--surface)); border-radius: 50%; transform: translate(-50%, -50%); background: var(--quota-accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--surface) 82%, transparent); pointer-events: none; }
+.quota-sparkline-status { position: absolute; top: 50%; left: 8px; transform: translateY(-50%); color: var(--muted); font-family: var(--mono); font-size: 9px; letter-spacing: .01em; pointer-events: none; }
 .trends-summary-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 
 /* Data Sources */
@@ -365,6 +368,9 @@ nav svg { width: 16px; height: 16px; }
 .preference-label strong { font-size: 13px; font-weight: 500; }
 .preference-label span { color: var(--secondary); font-size: 11px; line-height: 1.5; }
 .preference-value { color: var(--text); font-family: var(--mono); font-size: 12px; white-space: nowrap; }
+.language-select { min-width: 184px; height: 34px; padding: 0 30px 0 10px; border: 1px solid var(--border); border-radius: 7px; outline: none; color: var(--text); background: var(--surface-2); font: 11px var(--sans); cursor: pointer; }
+.language-select:hover { border-color: color-mix(in srgb, var(--violet) 52%, var(--border)); }
+.language-select:focus-visible { border-color: var(--violet); box-shadow: 0 0 0 2px rgba(155, 138, 251, .16); }
 .quick-view-setting .secondary { flex: 0 0 auto; }
 .switch { position: relative; flex: 0 0 38px; width: 38px; height: 22px; padding: 0; border: 1px solid var(--border); border-radius: 99px; background: var(--surface-3); cursor: pointer; }
 .switch .knob { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--secondary); transition: left .15s ease, background .15s ease; }
@@ -420,6 +426,8 @@ nav svg { width: 16px; height: 16px; }
   .settings-tabs button { font-size: 11px; padding-inline: 8px; }
 }
 @media (max-width: 720px) {
+  .language-setting { align-items: flex-start; flex-direction: column; }
+  .language-select { width: 100%; }
   .usage-composition { grid-template-columns: 1fr; justify-items: center; }
   .usage-provider-list { width: 100%; }
   .source-row { flex-wrap: wrap; }

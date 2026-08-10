@@ -20,6 +20,7 @@ import { StateStore } from "./state-store.js";
 import { makeSnapshot } from "./sync/crypto.js";
 import { exchangeSnapshot, pairWithMac } from "./sync/client.js";
 import { mergeLocalFirstProviders, mergeProviders } from "../src/provider-meta.js";
+import { activateLanguage, tr } from "../src/i18n.js";
 
 const REFRESH_INTERVAL_MS = 60_000;
 /// A tray double-click arrives as click + double-click. Holding the popover
@@ -67,6 +68,7 @@ app.whenReady().then(async () => {
   app.setAppUserModelId("com.jamesli.tokenremain.windows");
   store = new StateStore({ userDataPath: app.getPath("userData"), safeStorage });
   await store.load();
+  activateLanguage(store.state.preferences?.language, app.getLocale());
   scanInstalledProviders();
   pricingService = new PublicPricingService({
     cacheDirectory: join(app.getPath("userData"), "pricing"),
@@ -167,10 +169,10 @@ function createFloatingWidgetWindow() {
   floatingWidgetWindow.webContents.on("will-navigate", (event) => event.preventDefault());
   floatingWidgetWindow.webContents.on("context-menu", () => {
     Menu.buildFromTemplate([
-      { label: "Open Quick View", click: () => openPopover(floatingWidgetWindow?.getBounds(), "floating") },
-      { label: "Open Dashboard", click: () => openDashboard("overview") },
+      { label: tr("Open Quick View"), click: () => openPopover(floatingWidgetWindow?.getBounds(), "floating") },
+      { label: tr("Open Dashboard"), click: () => openDashboard("overview") },
       { type: "separator" },
-      { label: "Hide Floating Shortcut", click: () => { setFloatingWidgetEnabled(false).catch(() => {}); } },
+      { label: tr("Hide Floating Shortcut"), click: () => { setFloatingWidgetEnabled(false).catch(() => {}); } },
     ]).popup({ window: floatingWidgetWindow });
   });
   floatingWidgetWindow.on("moved", scheduleFloatingBoundsSave);
@@ -394,13 +396,13 @@ function createTray() {
 function updateTrayContextMenu() {
   if (!tray) return;
   tray.setContextMenu(Menu.buildFromTemplate([
-    { label: "Open Quick View", click: () => openPopover(usableTrayBounds(tray.getBounds()), "tray") },
-    { label: "Open Dashboard", click: () => openDashboard("overview") },
-    { label: "Show Floating Shortcut", type: "checkbox", checked: Boolean(store.state.preferences?.floatingWidgetEnabled), click: (item) => { setFloatingWidgetEnabled(item.checked).catch(() => {}); } },
-    { label: "Refresh now", click: () => { refreshAll().catch(() => {}); } },
-    { label: "Settings", click: () => openDashboard("settings") },
+    { label: tr("Open Quick View"), click: () => openPopover(usableTrayBounds(tray.getBounds()), "tray") },
+    { label: tr("Open Dashboard"), click: () => openDashboard("overview") },
+    { label: tr("Show Floating Shortcut"), type: "checkbox", checked: Boolean(store.state.preferences?.floatingWidgetEnabled), click: (item) => { setFloatingWidgetEnabled(item.checked).catch(() => {}); } },
+    { label: tr("Refresh now"), click: () => { refreshAll().catch(() => {}); } },
+    { label: tr("Settings"), click: () => openDashboard("settings") },
     { type: "separator" },
-    { label: "Quit", click: () => { isQuitting = true; app.quit(); } },
+    { label: tr("Quit"), click: () => { isQuitting = true; app.quit(); } },
   ]));
 }
 
@@ -501,6 +503,13 @@ function registerIPC() {
     return publicState();
   });
   ipcMain.handle("settings:set-floating-widget", (_event, value) => setFloatingWidgetEnabled(Boolean(value)));
+  ipcMain.handle("settings:set-language", async (_event, value) => {
+    await store.setLanguage(value);
+    activateLanguage(store.state.preferences?.language, app.getLocale());
+    updateTrayContextMenu();
+    notifyRenderer();
+    return publicState();
+  });
   ipcMain.handle("popup:open", () => {
     openPopover();
     return publicState();
@@ -669,6 +678,8 @@ function publicState() {
     appVersion: app.getVersion(),
     launchAtLogin: Boolean(app.getLoginItemSettings().openAtLogin),
     floatingWidgetEnabled: Boolean(store?.state?.preferences?.floatingWidgetEnabled),
+    languagePreference: store?.state?.preferences?.language || "system",
+    systemLocale: app.getLocale(),
     onboarding: {
       completed: Boolean(store?.state?.onboardingCompleted),
       detections: providerDetections,

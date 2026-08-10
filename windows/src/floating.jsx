@@ -1,14 +1,18 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
+import { activateLanguage, SYSTEM_LANGUAGE, tr } from "./i18n.js";
 import { providerMeta } from "./provider-meta.js";
 import "./floating.css";
 
+const previewParameters = new URLSearchParams(globalThis.location?.search || "");
 const previewState = {
   providers: [
     { providerID: "claude", windows: [{ usedPercent: 54, windowMinutes: 300 }] },
     { providerID: "codex", windows: [{ usedPercent: 37, windowMinutes: 300 }] },
   ],
   notices: {},
+  languagePreference: previewParameters.get("lang") || SYSTEM_LANGUAGE,
+  systemLocale: previewParameters.get("systemLocale") || globalThis.navigator?.language || "en",
 };
 
 const previewAPI = {
@@ -84,6 +88,7 @@ function ActivityRings({ claude, codex, label }) {
 function App() {
   const [state, setState] = useState();
   const [popupOpen, setPopupOpen] = useState(false);
+  activateLanguage(state?.languagePreference || SYSTEM_LANGUAGE, state?.systemLocale);
   useEffect(() => {
     api?.getState().then(setState).catch(() => setState(previewState));
     const offState = api?.onStateChanged?.(setState);
@@ -93,18 +98,18 @@ function App() {
   const rings = useMemo(() => ringValues(state), [state]);
   const label = rings.lowest === undefined ? "—" : `${rings.lowest}%`;
   const detail = rings.lowest === undefined
-    ? "Quota is not available yet"
-    : `Lowest remaining ${rings.lowest}%. Claude ${rings.claude}%, Codex ${rings.codex}%.`;
+    ? tr("Quota is not available yet")
+    : tr("Lowest remaining %1$@. Claude %2$@, Codex %3$@.", [`${rings.lowest}%`, `${rings.claude}%`, `${rings.codex}%`]);
 
   return (
-    <div className={`floating-shell ${popupOpen ? "is-open" : ""}`} title="Drag the top grip to move · right-click for more options">
+    <div className={`floating-shell ${popupOpen ? "is-open" : ""}`} title={tr("Drag the top grip to move · right-click for more options")}>
       <span className="floating-drag-handle" aria-hidden="true"><i /><i /><i /></span>
       <button
         className="floating-open"
         onClick={() => api?.togglePopupFromFloating?.()}
-        aria-label={`${popupOpen ? "Close" : "Open"} TokenRemain Quick View. ${detail}`}
+        aria-label={`${tr(popupOpen ? "Close" : "Open")} TokenRemain ${tr("Quick View")}. ${detail}`}
         aria-expanded={popupOpen}
-        title={`${popupOpen ? "Close" : "Open"} Quick View`}
+        title={`${tr(popupOpen ? "Close" : "Open")} ${tr("Quick View")}`}
       >
         <ActivityRings claude={rings.claude} codex={rings.codex} label={label} />
       </button>

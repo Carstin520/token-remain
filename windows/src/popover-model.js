@@ -21,6 +21,7 @@ import {
   windowTitle,
 } from "./format.js";
 import { normalizeOrder } from "./layout.js";
+import { tr, trKey } from "./i18n.js";
 import {
   buildRiskNotes,
   buildTodayUsage,
@@ -140,8 +141,8 @@ function windowDetail(window, now) {
     name: windowName(window.windowMinutes),
     remaining,
     remainingText: window.remainingBalance
-      ? `${formatBalance(window.remainingBalance)} remaining`
-      : `${formatPercent(remaining)} remaining`,
+      ? trKey("quota.remaining", [formatBalance(window.remainingBalance)])
+      : trKey("quota.remaining", [formatPercent(remaining)]),
     resetText: resetDescription(window.resetsAt, now),
     level: riskLevel(remaining),
     aheadOfPace: pace?.status === "deficit",
@@ -155,14 +156,14 @@ export function popoverRisk(providers = [], now = Date.now()) {
   const tightest = notes.tightest;
   return {
     level: notes.level,
-    badge: notes.level ? notes.level.toUpperCase() : "UNKNOWN",
+    badge: notes.level && notes.level !== "unknown" ? trKey(`risk.badge.${notes.level}`, [], notes.level.toUpperCase()) : "UNKNOWN",
     headline: notes.headline,
     detail: tightest
-      ? `${tightest.providerName} ${formatPercent(tightest.remaining)} remaining`
+      ? trKey("risk.provider_remaining", [tightest.providerName, formatPercent(tightest.remaining)])
       : undefined,
     windowLabel: tightest ? `${tightest.providerName} · ${windowName(tightest.windowMinutes)}` : undefined,
     projection: Number.isFinite(notes.projectedRunOutAt) && notes.window
-      ? `${notes.window.providerName} ${windowName(notes.window.windowMinutes)} runs out in ${durationUntil(notes.projectedRunOutAt, now)}`
+      ? tr("%1$@ %2$@ runs out in %3$@", [notes.window.providerName, windowName(notes.window.windowMinutes), durationUntil(notes.projectedRunOutAt, now)])
       : undefined,
   };
 }
@@ -218,7 +219,7 @@ function bucketOf(days) {
     hasData: true,
     tokens,
     cost,
-    label: `${Number.isFinite(cost) ? formatMoney(cost) : "Price unavailable"} · ${compactNumber(tokens)} tokens`,
+    label: `${Number.isFinite(cost) ? formatMoney(cost) : tr("Price unavailable")} · ${compactNumber(tokens)} ${tr("tokens")}`,
   };
 }
 

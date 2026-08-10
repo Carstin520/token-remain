@@ -37,6 +37,8 @@ export function buildPreviewState(now) {
     appVersion: "0.0.0-preview",
     launchAtLogin: false,
     floatingWidgetEnabled: false,
+    languagePreference: "system",
+    systemLocale: "en",
     lastUpdatedAt: now - 90_000,
     isRefreshing: false,
     notices: {},
@@ -115,6 +117,13 @@ export function buildPreviewState(now) {
 
 export function createPopoverPreviewAPI({ now = Date.now(), globalObject = globalThis } = {}) {
   let state = buildPreviewState(now);
+  const parameters = new URLSearchParams(globalObject.location?.search || "");
+  const language = parameters.get("lang");
+  state = {
+    ...state,
+    languagePreference: language || "system",
+    systemLocale: parameters.get("systemLocale") || globalObject.navigator?.language || "en",
+  };
   const stateListeners = new Set();
   const shownListeners = new Set();
   const visibilityListeners = new Set();
@@ -166,6 +175,10 @@ export function createPopoverPreviewAPI({ now = Date.now(), globalObject = globa
     setFloatingWidgetEnabled: async (value) => {
       emitState({ ...state, floatingWidgetEnabled: Boolean(value) });
       record("setFloatingWidgetEnabled", Boolean(value));
+    },
+    setLanguage: async (value) => {
+      emitState({ ...state, languagePreference: value });
+      record("setLanguage", value);
     },
     relaunch: async () => record("relaunch"),
     quit: async () => record("quit"),

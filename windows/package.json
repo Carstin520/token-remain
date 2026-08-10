@@ -1,11 +1,12 @@
 {
   "name": "tokenremain-windows",
-  "version": "1.2.6-windows.1",
+  "version": "1.2.6-windows.2",
   "private": true,
   "description": "TokenRemain for Windows with local usage and encrypted direct Mac sync",
   "main": "electron/main.js",
   "type": "module",
   "scripts": {
+    "locales:generate": "node scripts/generate-locales.mjs",
     "build": "vite build",
     "start": "npm run build && electron .",
     "test": "node --test tests/*.test.js",
@@ -38,6 +39,8 @@
     "files": [
       "dist/**/*",
       "electron/**/*",
+      "src/i18n.js",
+      "src/locales.generated.js",
       "src/provider-meta.js",
       "src/usage-history.js",
       "package.json"

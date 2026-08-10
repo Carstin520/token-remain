@@ -49,6 +49,7 @@ import {
   TrendsIcon,
 } from "./icons.jsx";
 import { LIMITS_ORDER_KEY, normalizeOrder } from "./layout.js";
+import { activateLanguage, languageOptions, SYSTEM_LANGUAGE, tr, trKey } from "./i18n.js";
 import { buildOverviewSummary, buildTodayUsage, rankOfficialQuotaProviders, summaryWindow, usagePace } from "./overview-model.js";
 import { providerMeta } from "./provider-meta.js";
 import { compactAxisValue, linePoints, quotaTrendRows, TREND_RANGES, usageTrendModel } from "./trends-model.js";
@@ -105,9 +106,10 @@ function hexAlpha(hex, alpha) {
 }
 
 function timeAgo(value, fallback = "Never") {
-  if (!value) return fallback;
+  if (!value) return tr(fallback);
+  if (Date.now() - value < 60_000) return tr("just now");
   const age = relativeAge(value);
-  return age === "now" ? "just now" : `${age.split(", ")[0]} ago`;
+  return tr("%1$@ ago", [age]);
 }
 
 function initialSection() {
@@ -119,6 +121,7 @@ function App() {
   const [state, setState] = useState();
   const [section, setSection] = useState(initialSection);
   const [error, setError] = useState();
+  activateLanguage(state?.languagePreference || SYSTEM_LANGUAGE, state?.systemLocale);
 
   useEffect(() => {
     api.getState().then(setState).catch((reason) => setError(reason.message));
@@ -147,7 +150,7 @@ function App() {
     catch (reason) { setError(reason.message); }
   }
 
-  if (!state) return <div className="loading">Loading TokenRemain…</div>;
+  if (!state) return <div className="loading">{tr("Loading data…")}</div>;
   if (!state.onboarding?.completed) {
     return (
       <div className="window-frame onboarding-frame">
@@ -170,9 +173,9 @@ function App() {
         <main className="main-content">
           <div className="content-column">
             <SectionTitleHeader
-              title={SECTIONS[section].title}
-              subtitle={SECTIONS[section].subtitle}
-              trailing={state.lastUpdatedAt ? `Updated ${formatClockSeconds(state.lastUpdatedAt)}` : undefined}
+              title={tr(SECTIONS[section].title)}
+              subtitle={tr(SECTIONS[section].subtitle)}
+              trailing={state.lastUpdatedAt ? trKey("common.updated_at", [formatClockSeconds(state.lastUpdatedAt)]) : undefined}
             />
             {error && <div className="error-banner" role="alert">{error}</div>}
             {section === "overview" && <Overview state={state} onSelect={setSection} onOpen={openExternal} />}
@@ -227,8 +230,8 @@ function Onboarding({ state, action, error }) {
       <section className="onboarding-card">
         <header>
           <img src={appIcon} alt="" />
-          <h1>Welcome to TokenRemain</h1>
-          <p>We scanned this Windows PC. Detected AI tools are already checked; choose what TokenRemain should monitor locally.</p>
+          <h1>{tr("Welcome to TokenRemain")}</h1>
+          <p>{tr("We scanned this Windows PC. Detected AI tools are already checked; choose what TokenRemain should monitor locally.")}</p>
         </header>
         {error && <div className="error-banner" role="alert">{error}</div>}
         <div className="onboarding-list">
@@ -243,14 +246,14 @@ function Onboarding({ state, action, error }) {
                 aria-pressed={selected}
               >
                 <ProviderMark meta={meta} size={24} />
-                <span><strong>{meta.name}{provider.installed && <i>Detected</i>}</strong><small>{provider.detail}</small></span>
+                <span><strong>{meta.name}{provider.installed && <i>{tr("Detected")}</i>}</strong><small>{tr(provider.detail)}</small></span>
                 <CheckCircleIcon />
               </button>
             );
-          }) : <p className="onboarding-empty">No supported app was detected yet. You can add one manually or continue and configure it later.</p>}
+          }) : <p className="onboarding-empty">{tr("No installed AI coding tools detected; add one manually with + below, or install one later and TokenRemain will ask before connecting it.")}</p>}
           <div className="onboarding-add">
             <button className="onboarding-add-trigger" onClick={() => setAddOpen((value) => !value)} aria-expanded={addOpen}>
-              <PlusIcon /><span>Add another supported app</span><ChevronRightIcon />
+              <PlusIcon /><span>{tr("Add another app")}</span><ChevronRightIcon />
             </button>
             {addOpen && (
               <div className="onboarding-add-menu" role="menu">
@@ -263,11 +266,11 @@ function Onboarding({ state, action, error }) {
           </div>
         </div>
         <footer>
-          <button className="secondary" onClick={() => action(api.rescanProviders)}><RefreshIcon />Scan again</button>
+          <button className="secondary" onClick={() => action(api.rescanProviders)}><RefreshIcon />{tr("Scan again")}</button>
           <button className="primary onboarding-start" onClick={() => action(() => api.completeOnboarding([...selection]))}>
-            {selection.size ? `Monitor ${selection.size} app${selection.size === 1 ? "" : "s"}` : "Continue without apps"}
+            {selection.size ? trKey("onboarding.start_tracking", [selection.size]) : tr("Start without tracking")}
           </button>
-          <p>Detection is local and read-only. Credentials stay on this PC and are never sent to your Mac.</p>
+          <p>{tr("Detection is local and read-only. Credentials stay on this PC and are never sent to your Mac.")}</p>
         </footer>
       </section>
     </main>
@@ -286,13 +289,13 @@ function Sidebar({ state, section, onSelect, onRefresh, onOpenPopup }) {
       <div className="sidebar-nav">
         {NAV_GROUPS.map((group) => (
           <div className="nav-group" key={group.label}>
-            <div className="nav-label">{group.label}</div>
+            <div className="nav-label">{tr(group.label)}</div>
             <nav>
               {group.items.map((id) => {
                 const Icon = NAV_ICONS[id];
                 return (
                   <button key={id} className={section === id ? "selected" : ""} aria-current={section === id ? "page" : undefined} onClick={() => onSelect(id)}>
-                    <Icon />{SECTIONS[id].title}
+                    <Icon />{tr(SECTIONS[id].title)}
                   </button>
                 );
               })}
@@ -311,26 +314,26 @@ function SyncFooter({ state, onRefresh, onOpenPopup }) {
   const needsAttention = Object.keys(state.notices || {}).length > 0 || state.sync?.error || state.feedError;
   const loading = !state.lastUpdatedAt;
   const health = loading
-    ? { tone: "muted", text: "Loading data…" }
+    ? { tone: "muted", text: tr("Loading data…") }
     : needsAttention
-      ? { tone: "warning", text: "Some sources need attention" }
-      : { tone: "success", text: "All sources healthy" };
+      ? { tone: "warning", text: tr("Some sources need attention") }
+      : { tone: "success", text: tr("All sources healthy") };
   return (
     <div className="sync-footer">
       <div className="sync-footer-head">
-        <span>Sync status</span>
+        <span>{tr("Sync status")}</span>
         <button
           className="round-refresh"
           onClick={onRefresh}
           disabled={state.isRefreshing}
-          aria-label="Refresh"
-          title="Refresh every data source now"
+          aria-label={tr("Refresh")}
+          title={tr("Refresh every data source now")}
         >
           <RefreshIcon spinning={state.isRefreshing} />
         </button>
       </div>
       <div className={`status-line tone-${health.tone}`}><span className="status-dot" />{health.text}</div>
-      <button className="quick-view-link" onClick={onOpenPopup}><RadioIcon />Open Quick View</button>
+      <button className="quick-view-link" onClick={onOpenPopup}><RadioIcon />{tr("Open Quick View")}</button>
     </div>
   );
 }
@@ -366,7 +369,8 @@ function Badge({ text, tone, filled = false }) {
 }
 
 function RiskBadge({ level }) {
-  return <Badge text={(level || "unknown").toUpperCase()} tone={level || "unknown"} filled={level === "high"} />;
+  const normalized = level || "unknown";
+  return <Badge text={normalized === "unknown" ? tr("Unknown") : trKey(`risk.badge.${normalized}`, [], normalized.toUpperCase())} tone={normalized} filled={level === "high"} />;
 }
 
 function Divider() {
@@ -400,7 +404,7 @@ function SegmentBar({ remaining, color, segments = 14, height = 6 }) {
   const filled = clamped > 0 && raw < 1 ? 1 : Math.min(segments, Math.round(raw));
   const accent = quotaAccent(color, clamped);
   return (
-    <div className="segment-bar" style={{ height }} role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(clamped)} aria-valuetext={`${formatPercent(clamped)} remaining`} aria-label="Quota remaining">
+    <div className="segment-bar" style={{ height }} role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(clamped)} aria-valuetext={tr("%1$@ remaining", [formatPercent(clamped)])} aria-label={tr("Quota remaining")}>
       {Array.from({ length: segments }, (_, index) => (
         <i key={index} style={index < filled ? { background: accent } : undefined} />
       ))}
@@ -424,30 +428,30 @@ function Overview({ state, onSelect, onOpen }) {
     <section className="content-section overview-section">
       <div className="overview-summary">
         <MetricCard
-          label="Lowest remaining quota"
+          label={tr("Lowest remaining quota")}
           value={summary.tightest ? formatPercent(summary.tightest.remaining) : "—"}
           valueTone={summary.risk}
-          caption={`${(summary.risk || "unknown").toUpperCase()} RISK`}
+          caption={summary.risk ? trKey(`risk.badge.${summary.risk}`, [], summary.risk.toUpperCase()) : tr("Unknown")}
           captionTone={summary.risk || "muted"}
         />
         <MetricCard
-          label="Today's Tokens"
+          label={tr("Today's Tokens")}
           value={today?.totalTokens ? compactNumber(today.totalTokens) : "—"}
-          caption={state.localUsage?.source || "Waiting for local history"}
+          caption={tr(state.localUsage?.source || "Waiting for local history")}
         />
         <MetricCard
-          label="Today's Est. Cost"
+          label={tr("Today's Est. Cost")}
           value={Number.isFinite(today?.totalCost) ? formatMoney(today.totalCost) : "—"}
-          caption={today?.totalTokens && !Number.isFinite(today?.totalCost) ? "Price unavailable" : "API list-price estimate"}
+          caption={tr(today?.totalTokens && !Number.isFinite(today?.totalCost) ? "Price unavailable" : "API list-price estimate")}
           captionTone={today?.totalTokens && !Number.isFinite(today?.totalCost) ? "warning" : undefined}
         />
         <MetricCard
-          label={risk.projectedRunOutAt ? "Projected runway" : "Quota sustainability"}
-          value={risk.projectedRunOutAt ? durationUntil(risk.projectedRunOutAt) : summary.risk ? "Lasts to reset" : "—"}
+          label={tr(risk.projectedRunOutAt ? "Projected runway" : "Quota sustainability")}
+          value={risk.projectedRunOutAt ? durationUntil(risk.projectedRunOutAt) : summary.risk ? tr("Lasts to reset") : "—"}
           valueTone={risk.projectedRunOutAt ? "medium" : undefined}
           caption={risk.projectedRunOutAt
-            ? `${risk.window.providerName} ${windowName(risk.window.windowMinutes)} · before reset`
-            : "At the current window's average pace"}
+            ? trKey("overview.kpi.window_before_reset", [risk.window.providerName, windowName(risk.window.windowMinutes)])
+            : tr("At the current window's average pace")}
           captionTone={risk.projectedRunOutAt ? "medium" : summary.risk ? "low" : "muted"}
         />
       </div>
@@ -487,14 +491,14 @@ function UsageCostCard({ state, today, onManage }) {
     : "var(--track) 0 100%";
   return (
     <section className="dashboard-panel usage-cost-card">
-      <PanelHeader title="Today's Usage & Cost" subtitle={`By provider · ${state.localUsage?.source || "local ccusage"}`} />
+      <PanelHeader title={tr("Today's Usage & Cost")} subtitle={`${tr("By provider")} · ${tr(state.localUsage?.source || "local ccusage")}`} />
       {hasEntries ? (
         <>
           <div className="usage-composition">
             <div className="donut" style={{ background: `conic-gradient(${stops})` }}>
               <div>
                 <strong>{Number.isFinite(today.totalCost) ? formatMoney(today.totalCost) : "—"}</strong>
-                <span>{Number.isFinite(today.totalCost) ? "Est. today" : "Price unavailable"}</span>
+                <span>{tr(Number.isFinite(today.totalCost) ? "Est. today" : "Price unavailable")}</span>
               </div>
             </div>
             <div className="usage-provider-list">
@@ -508,16 +512,16 @@ function UsageCostCard({ state, today, onManage }) {
               ))}
             </div>
           </div>
-          <p className="panel-source">Snapshot for today; see Trends for multi-day history. Captured {formatClock(today.capturedAt)} from {state.localUsage?.source || "this PC"}.</p>
+          <p className="panel-source">{trKey("usage.snapshot_note")} {tr("Captured %1$@ from %2$@.", [formatClock(today.capturedAt), tr(state.localUsage?.source || "this PC")])}</p>
         </>
       ) : (
         <EmptyState
           icon={PieIcon}
-          title={state.localUsage?.error ? "Local usage could not be read" : state.dailyUsageHistory ? "No local usage today" : "No local usage history yet"}
+          title={tr(state.localUsage?.error ? "Local usage could not be read" : state.dailyUsageHistory ? "No local usage today" : "No local usage history yet")}
           message={state.localUsage?.error || (state.dailyUsageHistory
             ? "This card fills in after a supported coding agent records usage on this PC or a paired Mac."
             : "Built-in ccusage reads local agent logs automatically; pairing a Mac is optional.")}
-          action={<button className="inline-action" onClick={onManage}>View data sources</button>}
+          action={<button className="inline-action" onClick={onManage}>{tr("View data sources")}</button>}
         />
       )}
     </section>
@@ -529,8 +533,8 @@ function OfficialQuota({ state, today, risk }) {
   return (
     <section className="dashboard-panel official-quota">
       <PanelHeader
-        title="Official Quota"
-        subtitle="Tightest windows of your most-used providers"
+        title={tr("Official Quota")}
+        subtitle={tr("Tightest windows of your most-used providers")}
         trailing={<Badge text="LIVE" tone="codex" />}
       />
       {ranked.length ? (
@@ -541,15 +545,15 @@ function OfficialQuota({ state, today, risk }) {
             ))}
           </div>
           <div className="risk-footer">
-            <span>Risk level</span>
+            <span>{tr("Risk level")}</span>
             <RiskBadge level={risk} />
           </div>
         </>
       ) : (
         <EmptyState
           icon={GaugeIcon}
-          title="Reading official quota"
-          message="Server-side quota snapshots for Claude and Codex will appear here automatically."
+          title={tr("Reading official quota")}
+          message={tr("Server-side quota snapshots for Claude and Codex will appear here automatically.")}
         />
       )}
     </section>
@@ -583,13 +587,13 @@ function TrendingCard({ state, onOpen }) {
   const posts = topStories(state.trending || []);
   return (
     <section className="dashboard-panel trending-card">
-      <PanelHeader title="Trending" subtitle="What matters most right now" trailing={<Badge text="HOT" tone="cyan" />} />
+      <PanelHeader title={tr("Trending")} subtitle={tr("What matters most right now")} trailing={<Badge text="HOT" tone="cyan" />} />
       {posts.length ? (
         <>
           <div className="trending-list">
             {posts.map((post, index) => <TrendingRow key={post.id} post={post} rank={index + 1} onOpen={onOpen} />)}
           </div>
-          <p className="panel-source">Public TokenRemain feed{state.feedError ? ` · cached (${state.feedError})` : ""}</p>
+          <p className="panel-source">{tr("Public TokenRemain feed")}{state.feedError ? ` · ${tr("Cached")} (${state.feedError})` : ""}</p>
         </>
       ) : (
         <EmptyState
@@ -631,22 +635,25 @@ function TrendingRow({ post, rank, onOpen }) {
 }
 
 function RiskNotes({ risk }) {
+  const summary = risk.projectedRunOutAt && risk.window
+    ? trKey("risk.summary.projected_runout", [risk.window.providerName, windowName(risk.window.windowMinutes), durationUntil(risk.projectedRunOutAt)])
+    : trKey(`risk.summary.${risk.level || "unknown"}`, [], risk.summary);
   return (
     <section className="dashboard-panel risk-notes">
-      <PanelHeader title="Risk Notes" subtitle="Based on the tightest quota window" />
+      <PanelHeader title={tr("Risk Notes")} subtitle={tr("Based on the tightest quota window")} />
       {risk.window ? (
         <>
           <div className="risk-headline">
             <RiskBadge level={risk.level} />
-            <strong>{risk.headline}</strong>
+            <strong>{tr(risk.headline)}</strong>
           </div>
-          <p className="risk-summary">{risk.summary}</p>
+          <p className="risk-summary">{summary}</p>
           <div className="risk-details">
             <Divider />
-            <InfoRow label="Tightest window" value={`${risk.window.providerName} · ${windowName(risk.window.windowMinutes)}`} />
-            <InfoRow label="Remaining quota" value={formatPercent(risk.window.remaining)} tone={risk.level} />
-            {risk.projectedRunOutAt && <InfoRow label="Projected depletion" value={risk.projectedDepletion} tone="medium" />}
-            {risk.window.resetsAt && <InfoRow label="Projected reset" value={resetDescription(risk.window.resetsAt)} />}
+            <InfoRow label={tr("Tightest window")} value={`${risk.window.providerName} · ${windowName(risk.window.windowMinutes)}`} />
+            <InfoRow label={tr("Remaining quota")} value={formatPercent(risk.window.remaining)} tone={risk.level} />
+            {risk.projectedRunOutAt && <InfoRow label={tr("Projected depletion")} value={durationUntil(risk.projectedRunOutAt)} tone="medium" />}
+            {risk.window.resetsAt && <InfoRow label={tr("Projected reset")} value={resetDescription(risk.window.resetsAt)} />}
           </div>
         </>
       ) : (
@@ -669,9 +676,9 @@ function AIFeed({ state, onOpen }) {
   return (
     <div className="ai-feed">
       <SectionTitleHeader
-        title="AI Feed"
-        subtitle="Curated updates directly relevant to your quota and workflow"
-        trailing={state.feedUpdatedAt ? `Updated ${formatClockSeconds(state.feedUpdatedAt)}` : undefined}
+        title={tr("AI Feed")}
+        subtitle={tr("Curated updates directly relevant to your quota and workflow")}
+        trailing={state.feedUpdatedAt ? trKey("common.updated_at", [formatClockSeconds(state.feedUpdatedAt)]) : undefined}
       />
       {state.feedError && (
         <div className="settings-card feed-unavailable">
@@ -679,7 +686,7 @@ function AIFeed({ state, onOpen }) {
         </div>
       )}
       {important.length > 0 && (
-        <FeedGroup title="Important" subtitle="Quota, pricing, product launches, and service status first" posts={important} onOpen={onOpen} />
+        <FeedGroup title={tr("Important")} subtitle={tr("Quota, pricing, product launches, and service status first")} posts={important} onOpen={onOpen} />
       )}
       {curated.length === 0 && !state.feedError && (
         <div className="settings-card">
@@ -693,7 +700,7 @@ function AIFeed({ state, onOpen }) {
         </div>
       )}
       {regular.length > 0 && (
-        <FeedGroup title="More worth watching" subtitle="Ranked by relevance, recency, and engagement quality" posts={regular} onOpen={onOpen} />
+        <FeedGroup title={tr("More worth watching")} subtitle={tr("Ranked by relevance, recency, and engagement quality")} posts={regular} onOpen={onOpen} />
       )}
     </div>
   );
@@ -734,7 +741,7 @@ function FeedPostCard({ post, onOpen }) {
         </span>
         {prioritized && (
           <span className="priority-badge" style={{ color: accent, borderColor: hexAlpha(accent, 0.52) }}>
-            {post.priority === "token_reset" ? <GaugeIcon /> : <BoltIcon />}{priorityTitle(post.priority)}
+            {post.priority === "token_reset" ? <GaugeIcon /> : <BoltIcon />}{tr(priorityTitle(post.priority))}
           </span>
         )}
         <span className="open-arrow"><ArrowUpRightIcon /></span>
@@ -744,7 +751,7 @@ function FeedPostCard({ post, onOpen }) {
         <span><ReplyIcon />{compactNumber(post.metrics.replies)}</span>
         <span><RepostIcon />{compactNumber(post.metrics.reposts)}</span>
         <span><HeartIcon />{compactNumber(post.metrics.likes)}</span>
-        <span className="view-link">View on X</span>
+        <span className="view-link">{tr("View on X")}</span>
       </div>
     </button>
   );
@@ -761,7 +768,7 @@ function Limits({ state, action }) {
   return (
     <section className="content-section limits-section">
       <div className="limits-toolbar">
-        <span>{providerIDs.length} apps shown · drag cards to reorder</span>
+        <span>{tr("%1$d apps shown · drag cards to reorder", [providerIDs.length])}</span>
         <ProviderAddMenu
           providerIDs={hiddenIDs}
           providers={state.providers}
@@ -784,12 +791,12 @@ function Limits({ state, action }) {
         )}
       />
       <div className="settings-card about-windows">
-        <PanelHeader title="About quota windows" />
-        <p>Percentages show the remaining quota within a window; usage-based services show the remaining monetary balance directly. Windows come from each provider's servers: Claude, Codex, and Z.ai usually include a 5-hour session window and a 7-day window; Cursor uses a monthly billing window; Grok uses a weekly pool.</p>
-        <p>Use Add app and the minus control to choose which Windows-local adapters TokenRemain monitors. Automatic adapters reuse the app's existing sign-in; credential adapters are configured locally in Data Sources.</p>
-        <p>Mac Direct Sync is fallback-only: it fills a provider only when this PC has no local snapshot, and never replaces a Windows-local reading.</p>
-        <p>Drag a full card to reorder it — Alt plus arrow keys also works — and both order and visibility are remembered on this PC.</p>
-        <p>Reset times come from official snapshots; when a window has no reset time yet, it shows “Waiting for the official reset time”.</p>
+        <PanelHeader title={tr("About quota windows")} />
+        <p>{tr("Percentages show the remaining quota within a window; usage-based services show the remaining monetary balance directly. Windows come from each provider's servers: Claude, Codex, and Z.ai usually include a 5-hour session window and a 7-day window; Cursor uses a monthly billing window; Grok uses a weekly pool.")}</p>
+        <p>{tr("Use Add app and the minus control to choose which Windows-local adapters TokenRemain monitors. Automatic adapters reuse the app's existing sign-in; credential adapters are configured locally in Data Sources.")}</p>
+        <p>{tr("Mac Direct Sync is fallback-only: it fills a provider only when this PC has no local snapshot, and never replaces a Windows-local reading.")}</p>
+        <p>{tr("Drag a full card to reorder it — Alt plus arrow keys also works — and both order and visibility are remembered on this PC.")}</p>
+        <p>{tr("Reset times come from official snapshots; when a window has no reset time yet, it shows \"Waiting for the official reset time\".")}</p>
       </div>
     </section>
   );
@@ -817,10 +824,10 @@ function ProviderAddMenu({ providerIDs, providers, catalog, onAdd }) {
         aria-expanded={open}
         disabled={!providerIDs.length}
       >
-        <PlusIcon />Add app
+        <PlusIcon />{tr("Add app")}
       </button>
       {open && (
-        <div className="provider-add-popover" role="menu" aria-label="Add an app to Limits">
+        <div className="provider-add-popover" role="menu" aria-label={tr("Add an app to Limits")}>
           {providerIDs.map((id) => {
             const meta = providerPresentation(id);
             const available = providers.some((provider) => provider.providerID === id);
@@ -828,7 +835,7 @@ function ProviderAddMenu({ providerIDs, providers, catalog, onAdd }) {
             return (
               <button key={id} role="menuitem" onClick={() => { onAdd(id); setOpen(false); }}>
                 <ProviderMark meta={meta} size={18} />
-                <span><strong>{meta.name}</strong><small>{available ? "Windows-local quota available" : definition?.localSessionFirst ? `Uses ${definition.product} first; ${definition.credentialKind} is optional` : definition?.access === "local-credential" ? `Configure ${definition.credentialKind} locally` : definition?.installed ? "Detected on this PC" : "Supported Windows-local adapter"}</small></span>
+                <span><strong>{meta.name}</strong><small>{available ? tr("Windows-local quota available") : definition?.localSessionFirst ? tr("Uses %1$@ first; %2$@ is optional", [definition.product, definition.credentialKind]) : definition?.access === "local-credential" ? tr("Configure %1$@ locally", [definition.credentialKind]) : definition?.installed ? tr("Detected on this PC") : tr("Supported Windows-local adapter")}</small></span>
                 <PlusIcon />
               </button>
             );
@@ -843,20 +850,20 @@ function QuotaCard({ provider, notice, id, canRemove, onRemove }) {
   const meta = providerPresentation(id);
   const windows = provider?.windows || [];
   return (
-    <article className="provider-card" title="Drag the card to reorder">
+    <article className="provider-card" title={tr("Drag the card to reorder")}>
       <div className="provider-card-head">
         <ProviderMark meta={meta} />
         <h3>{meta.name}</h3>
         {windows.length > 0 && notice && (
-          <span className="notice-pill" title={notice}><AlertIcon />Refresh issue</span>
+          <span className="notice-pill" title={notice}><AlertIcon />{tr("Refresh issue")}</span>
         )}
         {provider?.planName && <Badge text={provider.planName} tone="plan" />}
         <button
           className="quota-remove"
           onClick={onRemove}
           disabled={!canRemove}
-          aria-label={`Remove ${meta.name} from Limits`}
-          title={canRemove ? `Remove ${meta.name} from Limits` : "At least one app must remain"}
+          aria-label={tr("Remove %1$@ from Limits", [meta.name])}
+          title={canRemove ? tr("Remove %1$@ from Limits", [meta.name]) : tr("At least one app must remain")}
         ><MinusIcon /></button>
       </div>
       {windows.length ? (
@@ -878,7 +885,7 @@ function QuotaCard({ provider, notice, id, canRemove, onRemove }) {
       ) : (
         <div className="empty-provider">
           <MoonIcon />
-          <span>{notice || `${meta.name} is waiting for its Windows-local sign-in or credential.`}</span>
+          <span>{notice || tr("%1$@ is waiting for its Windows-local sign-in or credential.", [meta.name])}</span>
         </div>
       )}
     </article>
@@ -890,13 +897,13 @@ function QuotaWindowRow({ window, color, scopeName }) {
   const pace = usagePace(window);
   const title = scopeName ? `${scopeName} · ${windowTitle(window.windowMinutes)}` : windowTitle(window.windowMinutes);
   const remainingText = window.remainingBalance
-    ? `${formatBalance(window.remainingBalance)} remaining`
-    : `${formatPercent(remaining)} remaining`;
+    ? tr("%1$@ remaining", [formatBalance(window.remainingBalance)])
+    : tr("%1$@ remaining", [formatPercent(remaining)]);
   return (
     <div className="quota-window">
       <div className="quota-window-head">
         <span className="quota-window-title">{title}</span>
-        {pace?.status === "deficit" && <AlertIcon className="pace-alert" title="Current usage is ahead of pace" />}
+        {pace?.status === "deficit" && <AlertIcon className="pace-alert" title={tr("Current usage is ahead of pace")} />}
         <strong>{remainingText}</strong>
       </div>
       <SegmentBar remaining={remaining} color={color} />
@@ -912,14 +919,14 @@ function QuotaPaceRow({ pace }) {
   const tone = pace.status === "reserve" ? "success"
     : pace.status === "deficit" ? (pace.willLastUntilReset ? "warning" : "danger")
       : "secondary";
-  const label = pace.status === "onTrack" ? "On track"
-    : pace.status === "reserve" ? `${formatPercent(Math.abs(pace.deltaPercent))} reserve`
-      : `${formatPercent(Math.abs(pace.deltaPercent))} ahead`;
+  const label = pace.status === "onTrack" ? tr("On track")
+    : pace.status === "reserve" ? tr("%1$@ reserve", [formatPercent(Math.abs(pace.deltaPercent))])
+      : tr("%1$@ ahead", [formatPercent(Math.abs(pace.deltaPercent))]);
   const outcome = pace.willLastUntilReset
-    ? "Lasts until reset"
+    ? tr("Lasts until reset")
     : pace.estimatedRunOutAt
-      ? `Projected to run out in ${durationUntil(pace.estimatedRunOutAt)}`
-      : "Projected to run out early";
+      ? tr("Projected to run out in %1$@", [durationUntil(pace.estimatedRunOutAt)])
+      : tr("Projected to run out early");
   return (
     <div className={`quota-pace tone-${tone}`}>
       {pace.willLastUntilReset ? <CheckCircleIcon /> : <AlertIcon />}
@@ -946,7 +953,7 @@ function TrendSegmentedControl({ label, options, value, onChange }) {
   return (
     <div className="trend-segmented" role="group" aria-label={label}>
       {options.map((option) => {
-        const normalized = typeof option === "object" ? option : { value: option, label: `${option} d` };
+        const normalized = typeof option === "object" ? option : { value: option, label: trKey("trends.range_days", [option]) };
         return (
           <button
             key={normalized.value}
@@ -985,12 +992,12 @@ function DailyUsageTrendCard({ history }) {
   return (
     <section className="dashboard-panel trend-history-panel">
       <PanelHeader
-        title="Daily Usage Trend"
-        subtitle="Detected apps stacked · local and synced aggregate"
+        title={tr("Daily Usage Trend")}
+        subtitle={tr("Detected apps stacked · local and synced aggregate")}
         trailing={fresh ? <Badge text="LIVE" tone="codex" /> : undefined}
       />
       <div className="trend-card-controls">
-        <div className="trend-series-legend" aria-label="Visible providers">
+        <div className="trend-series-legend" aria-label={tr("Visible providers")}>
           {providerIDs.map((id) => {
             const meta = providerPresentation(id);
             return (
@@ -1003,10 +1010,10 @@ function DailyUsageTrendCard({ history }) {
           })}
         </div>
         <div className="trend-control-groups">
-          <TrendSegmentedControl label="History range" options={TREND_RANGES} value={range} onChange={setRange} />
+          <TrendSegmentedControl label={tr("History range")} options={TREND_RANGES} value={range} onChange={setRange} />
           <TrendSegmentedControl
-            label="Metric"
-            options={[{ value: "tokens", label: "Tokens" }, { value: "cost", label: "Cost" }]}
+            label={tr("Metric")}
+            options={[{ value: "tokens", label: tr("Tokens") }, { value: "cost", label: tr("Cost") }]}
             value={metric}
             onChange={setMetric}
           />
@@ -1014,7 +1021,7 @@ function DailyUsageTrendCard({ history }) {
       </div>
 
       <div className="trend-total-row">
-        <span>Total trend</span>
+        <span>{tr("Total trend")}</span>
         <svg viewBox="0 0 100 20" preserveAspectRatio="none" aria-hidden="true">
           <polyline points={linePoints(model.days.map((day) => day.total))} />
         </svg>
@@ -1062,7 +1069,7 @@ function DailyUsageTrendCard({ history }) {
               {providerIDs.map((id) => (
                 <span key={id}><i style={{ background: providerMeta(id).color }} />{providerMeta(id).name}<b>{trendValue(activeDay.values[id], metric)}</b></span>
               ))}
-              <span className="trend-tooltip-total">Total<b>{trendValue(activeDay.total, metric)}</b></span>
+              <span className="trend-tooltip-total">{tr("Total")}<b>{trendValue(activeDay.total, metric)}</b></span>
             </div>
           )}
         </div>
@@ -1073,14 +1080,24 @@ function DailyUsageTrendCard({ history }) {
 
 function QuotaSparkline({ row, color }) {
   const latestPoint = row.points.split(" ").at(-1)?.split(",").map(Number);
+  const latestPosition = latestPoint && latestPoint.every(Number.isFinite)
+    ? {
+        "--quota-latest-x": `${latestPoint[0]}%`,
+        "--quota-latest-y": `${latestPoint[1] / 38 * 100}%`,
+        "--quota-accent": color,
+      }
+    : undefined;
   return (
-    <svg className="quota-sparkline" viewBox="0 0 100 38" preserveAspectRatio="none" aria-hidden="true">
-      <line x1="0" x2="100" y1="0.5" y2="0.5" />
-      <line x1="0" x2="100" y1="19" y2="19" />
-      <line x1="0" x2="100" y1="37.5" y2="37.5" />
-      {row.samples.length > 1 && <polyline className="quota-sparkline-line" points={row.points} style={{ stroke: color }} />}
-      {latestPoint && <circle cx={latestPoint[0]} cy={latestPoint[1]} r="1.8" style={{ fill: color }} />}
-    </svg>
+    <div className={`quota-sparkline-frame ${row.samples.length > 1 ? "has-trend" : "is-collecting"}`} style={latestPosition}>
+      <svg className="quota-sparkline" viewBox="0 0 100 38" preserveAspectRatio="none" aria-hidden="true">
+        <line x1="0" x2="100" y1="0.5" y2="0.5" />
+        <line x1="0" x2="100" y1="19" y2="19" />
+        <line x1="0" x2="100" y1="37.5" y2="37.5" />
+        {row.samples.length > 1 && <polyline className="quota-sparkline-line" points={row.points} style={{ stroke: color }} />}
+      </svg>
+      {latestPosition && <i className="quota-sparkline-latest" aria-hidden="true" />}
+      {row.samples.length === 1 && <span className="quota-sparkline-status">{tr("1 snapshot · collecting")}</span>}
+    </div>
   );
 }
 
@@ -1096,14 +1113,14 @@ function QuotaConsumptionTrendCard({ state }) {
   return (
     <section className="dashboard-panel quota-trend-panel">
       <PanelHeader
-        title="Quota Consumption Trend"
-        subtitle="Primary quota window by app · local snapshots"
-        trailing={<TrendSegmentedControl label="Quota history range" options={TREND_RANGES} value={range} onChange={setRange} />}
+        title={tr("Quota Consumption Trend")}
+        subtitle={tr("Primary quota window by app · local snapshots")}
+        trailing={<TrendSegmentedControl label={tr("Quota history range")} options={TREND_RANGES} value={range} onChange={setRange} />}
       />
       {rows.length ? (
         <div className="quota-trend-table">
           <div className="quota-trend-header" aria-hidden="true">
-            <span>APP</span><span>WINDOW</span><span>USED</span><span>TREND</span>
+            <span>{tr("App")}</span><span>{tr("Window")}</span><span>{tr("Used")}</span><span>{tr("Trend")}</span>
           </div>
           {rows.map((row) => {
             const meta = providerPresentation(row.providerID);
@@ -1111,7 +1128,7 @@ function QuotaConsumptionTrendCard({ state }) {
               <div
                 className="quota-trend-row"
                 key={row.providerID}
-                aria-label={`${meta.name}, ${windowName(row.latest.windowMinutes)} window, ${formatPercent(row.latest.usedPercent)} used`}
+                aria-label={`${meta.name}, ${windowName(row.latest.windowMinutes)} window, ${formatPercent(row.latest.usedPercent)} used, ${row.samples.length > 1 ? `${row.samples.length} snapshots in trend` : "trend history is collecting"}`}
               >
                 <span className="quota-trend-provider"><ProviderMark meta={meta} size={18} /><b>{meta.name}</b></span>
                 <span>{windowName(row.latest.windowMinutes)}</span>
@@ -1124,8 +1141,8 @@ function QuotaConsumptionTrendCard({ state }) {
       ) : (
         <EmptyState
           icon={TrendsIcon}
-          title="Quota trend is accumulating"
-          message="TokenRemain starts recording after a successful quota refresh. Connected apps appear automatically; earlier history cannot be backfilled."
+          title={tr("Quota trend is accumulating")}
+          message={tr("TokenRemain starts recording after a successful quota refresh. Every connected provider will appear automatically; past data cannot be backfilled.")}
         />
       )}
     </section>
@@ -1141,34 +1158,34 @@ function Trends({ state }) {
         <section className="dashboard-panel trend-history-panel">
           <EmptyState
             icon={TrendsIcon}
-            title="Trend data is accumulating day by day"
-            message="The daily usage trend needs at least two recorded days. Built-in ccusage adds this PC automatically; Direct Sync can add your Mac as a second source."
+            title={tr("Trend data is accumulating day by day")}
+            message={tr("The daily usage trend needs at least two days of local history. As you use supported coding apps, built-in ccusage accumulates tokens and cost per day; once there is enough, a real stacked bar trend appears here automatically.")}
           />
         </section>
       )}
       <QuotaConsumptionTrendCard state={state} />
       <div className="trends-summary-grid">
         <div className="settings-card">
-          <PanelHeader title="Today's Snapshot" subtitle={`Where the trend starts · ${state.localUsage?.source || "local ccusage"}`} />
+          <PanelHeader title={tr("Today's Snapshot")} subtitle={`${tr("Where the trend starts")} · ${tr(state.localUsage?.source || "local ccusage")}`} />
           {today?.totalTokens ? (
             <>
-              <InfoRow label="Today's Tokens" value={compactNumber(today.totalTokens)} />
-              <InfoRow label="Today's Est. Cost" value={Number.isFinite(today.totalCost) ? formatMoney(today.totalCost) : "Price unavailable"} />
+              <InfoRow label={tr("Today's Tokens")} value={compactNumber(today.totalTokens)} />
+              <InfoRow label={tr("Today's Est. Cost")} value={Number.isFinite(today.totalCost) ? formatMoney(today.totalCost) : tr("Price unavailable")} />
               <Divider />
               {today.entries.map((entry) => (
                 <InfoRow key={entry.id} label={entry.displayName} value={`${compactNumber(entry.tokens)} · ${entry.cost > 0 ? formatMoney(entry.cost) : "—"}`} />
               ))}
             </>
           ) : (
-            <p className="quiet-note">No supported coding-agent usage recorded today yet.</p>
+            <p className="quiet-note">{tr("No supported coding-agent usage recorded today yet.")}</p>
           )}
         </div>
         <div className="settings-card">
-          <PanelHeader title="History coverage" subtitle="Local aggregate, with optional Mac contribution" />
-          <InfoRow label="Recorded days" value={String(days.length)} />
-          <InfoRow label="Oldest day" value={days[0]?.day || "Waiting"} />
-          <InfoRow label="Latest day" value={days.at(-1)?.day || "Waiting"} />
-          <InfoRow label="Quota history" value={state.quotaUsageHistory?.samples?.length ? `${state.quotaUsageHistory.samples.length} local snapshots` : "Accumulating"} />
+          <PanelHeader title={tr("History coverage")} subtitle={tr("Local aggregate, with optional Mac contribution")} />
+          <InfoRow label={tr("Recorded days")} value={String(days.length)} />
+          <InfoRow label={tr("Oldest day")} value={days[0]?.day || tr("Waiting")} />
+          <InfoRow label={tr("Latest day")} value={days.at(-1)?.day || tr("Waiting")} />
+          <InfoRow label={tr("Quota history")} value={state.quotaUsageHistory?.samples?.length ? tr("%1$d local snapshots", [state.quotaUsageHistory.samples.length]) : tr("Accumulating")} />
         </div>
       </div>
     </section>
@@ -1194,34 +1211,34 @@ function Devices({ state, action }) {
     <section className="content-section devices-section">
       <div className="settings-card">
         <PanelHeader
-          title="This Windows PC"
-          subtitle="The device currently monitored"
-          trailing={<StatusDotLabel tone="success" text="Monitoring" />}
+          title={tr("This Windows PC")}
+          subtitle={tr("The device currently monitored")}
+          trailing={<StatusDotLabel tone="success" text={tr("Monitoring")} />}
         />
-        <InfoRow label="Device name" value={state.deviceName} />
-        <InfoRow label="Active data sources" value={activeSources.length ? activeSources.join(" · ") : "None"} />
-        {state.lastUpdatedAt && <InfoRow label="Last updated" value={formatClock(state.lastUpdatedAt)} />}
-        <InfoRow label="Source ID" value={state.sourceInstanceID.slice(0, 6).toUpperCase()} />
+        <InfoRow label={tr("Device name")} value={state.deviceName} />
+        <InfoRow label={tr("Active data sources")} value={activeSources.length ? activeSources.join(" · ") : tr("None")} />
+        {state.lastUpdatedAt && <InfoRow label={tr("Last updated")} value={formatClock(state.lastUpdatedAt)} />}
+        <InfoRow label={tr("Source ID")} value={state.sourceInstanceID.slice(0, 6).toUpperCase()} />
       </div>
       <div className="settings-card">
         <PanelHeader
-          title="Mac direct sync"
-          subtitle="Quota snapshots and optional daily aggregates; provider credentials never leave either device."
-          trailing={<StatusDotLabel tone={state.sync.paired ? "success" : "muted"} text={state.sync.paired ? "Paired" : "Not paired"} />}
+          title={tr("Mac direct sync")}
+          subtitle={tr("Quota snapshots and optional daily aggregates; provider credentials never leave either device.")}
+          trailing={<StatusDotLabel tone={state.sync.paired ? "success" : "muted"} text={tr(state.sync.paired ? "Paired" : "Not paired")} />}
         />
         {state.sync.paired ? (
           <div className="paired-details">
             <InfoRow label="Mac" value={state.sync.deviceName || "Mac"} />
-            <InfoRow label="Address" value={state.sync.macURL} />
-            <InfoRow label="Encryption" value={state.sync.encryption} />
-            <InfoRow label="Last sync" value={state.sync.lastSyncAt ? timeAgo(state.sync.lastSyncAt) : state.sync.error || "Waiting"} />
-            <button className="secondary danger" onClick={() => action(api.disconnect)}>Disconnect</button>
+            <InfoRow label={tr("Address")} value={state.sync.macURL} />
+            <InfoRow label={tr("Encryption")} value={state.sync.encryption} />
+            <InfoRow label={tr("Last sync")} value={state.sync.lastSyncAt ? timeAgo(state.sync.lastSyncAt) : state.sync.error || tr("Waiting")} />
+            <button className="secondary danger" onClick={() => action(api.disconnect)}>{tr("Disconnect")}</button>
           </div>
         ) : (
           <form className="pair-form" onSubmit={pair}>
-            <label>Mac address<input value={macURL} onChange={(event) => setMacURL(event.target.value)} placeholder="http://mac.local:47831" /></label>
-            <label>One-time pairing code<input type="password" autoComplete="off" value={pairingCode} onChange={(event) => setPairingCode(event.target.value)} placeholder="Shown in TokenRemain on Mac" /></label>
-            <button className="primary" disabled={busy || !pairingCode.trim()}>{busy ? "Pairing…" : "Pair Mac"}</button>
+            <label>{tr("Mac address")}<input value={macURL} onChange={(event) => setMacURL(event.target.value)} placeholder="http://mac.local:47831" /></label>
+            <label>{tr("One-time pairing code")}<input type="password" autoComplete="off" value={pairingCode} onChange={(event) => setPairingCode(event.target.value)} placeholder={tr("Shown in TokenRemain on Mac")} /></label>
+            <button className="primary" disabled={busy || !pairingCode.trim()}>{tr(busy ? "Pairing…" : "Pair Mac")}</button>
           </form>
         )}
       </div>
@@ -1239,9 +1256,9 @@ function DataSources({ state, action }) {
     <section className="content-section data-sources-section">
       <div className="settings-card source-list">
         <PanelHeader
-          title="Windows-local providers"
-          subtitle="Every enabled app is read on this PC first. Mac Direct Sync only fills a missing provider."
-          trailing={<button className="secondary compact-button" onClick={() => action(api.rescanProviders)}><RefreshIcon />Scan apps</button>}
+          title={tr("Windows-local providers")}
+          subtitle={tr("Every enabled app is read on this PC first. Mac Direct Sync only fills a missing provider.")}
+          trailing={<button className="secondary compact-button" onClick={() => action(api.rescanProviders)}><RefreshIcon />{tr("Scan apps")}</button>}
         />
         {enabled.length ? enabled.map((definition) => definition.access === "local-credential" ? (
           <CredentialSourceRow
@@ -1256,53 +1273,53 @@ function DataSources({ state, action }) {
             key={definition.id}
             iconID={definition.id}
             name={providerPresentation(definition.id).name}
-            detail={state.notices[definition.id] || (local.has(definition.id) ? "Read from this app's existing Windows sign-in" : definition.detail)}
+            detail={state.notices[definition.id] || tr(local.has(definition.id) ? "Read from this app's existing Windows sign-in" : definition.detail)}
             healthy={local.has(definition.id) && !state.notices[definition.id]}
             capturedAt={local.get(definition.id)?.capturedAt}
             status={local.has(definition.id) ? "Local" : definition.installed ? "Detected" : "Not found"}
           />
-        )) : <p className="quiet-note">No provider is enabled. Add one from Limits or scan this PC again.</p>}
+        )) : <p className="quiet-note">{tr("No provider is enabled. Add one from Limits or scan this PC again.")}</p>}
       </div>
       <div className="settings-card source-list">
-        <PanelHeader title="Supporting sources" subtitle="Usage history, pricing, feed, and optional cross-device fallback." />
+        <PanelHeader title={tr("Supporting sources")} subtitle={tr("Usage history, pricing, feed, and optional cross-device fallback.")} />
         <SourceHealthRow
-          name="Local ccusage"
-          detail={state.localUsage?.error || "Reads supported coding-agent logs on this PC; no separate ccusage install required"}
+          name={tr("Local ccusage")}
+          detail={state.localUsage?.error || tr("Reads supported coding-agent logs on this PC; no separate ccusage install required")}
           healthy={Boolean(state.localUsage?.hasLocal) && !state.localUsage?.error}
           capturedAt={state.localUsage?.hasLocal ? state.localUsage.capturedAt : undefined}
         />
         <SourceHealthRow
-          name="Public model pricing"
+          name={tr("Public model pricing")}
           detail={state.localUsage?.pricing?.error
             || (state.localUsage?.pricing?.modelCount
-              ? `${state.localUsage.pricing.modelCount} validated model prices · refreshes every ${state.localUsage.pricing.refreshIntervalHours} hours`
-              : "Using ccusage's embedded price table until the first public refresh")}
+              ? tr("%1$d validated model prices · refreshes every %2$d hours", [state.localUsage.pricing.modelCount, state.localUsage.pricing.refreshIntervalHours])
+              : tr("Using ccusage's embedded price table until the first public refresh"))}
           healthy={!state.localUsage?.pricing?.error || Boolean(state.localUsage?.pricing?.modelCount)}
           capturedAt={state.localUsage?.pricing?.capturedAt}
         />
         <SourceHealthRow
           name="Mac Direct Sync"
-          detail={state.sync.error || (state.sync.paired ? `${remoteCount} provider fallback${remoteCount === 1 ? "" : "s"}; Windows-local snapshots always win` : "Optional fallback for providers missing on this PC, plus your Mac daily aggregate")}
+          detail={state.sync.error || (state.sync.paired ? tr("%1$d provider fallbacks; Windows-local snapshots always win", [remoteCount]) : tr("Optional fallback for providers missing on this PC, plus your Mac daily aggregate"))}
           healthy={state.sync.paired && !state.sync.error}
           capturedAt={state.sync.lastSyncAt}
           status={state.sync.paired ? "Fallback" : "Optional"}
         />
         <SourceHealthRow
-          name="Curated AI Feed"
-          detail={state.feedError || "Automatically curates quota, product-launch, and service-status updates in the background"}
+          name={tr("Curated AI Feed")}
+          detail={state.feedError || tr("Automatically curates quota, product-launch, and service-status updates in the background")}
           healthy={!state.feedError && Boolean(state.feedUpdatedAt || state.trending?.length)}
           capturedAt={state.feedUpdatedAt}
         />
       </div>
       <div className="settings-card">
-        <PanelHeader title="Privacy" />
+        <PanelHeader title={tr("Privacy")} />
         <ul className="privacy-list">
-          <li>App sign-ins are read-only. Manually supplied keys and Cookies are encrypted with Windows credential protection; none are synced.</li>
-          <li>Built-in ccusage reads local agent logs offline; raw sessions, prompts, paths, and repository names never leave this PC.</li>
-          <li>Only the complete public LiteLLM price table is downloaded. No observed model name, token count, or usage-derived query is sent.</li>
-          <li>Direct Sync optionally exchanges AES-256-GCM encrypted quota snapshots and daily aggregates with your Mac, but remote quota is fallback-only.</li>
-          <li>The curated AI feed syncs automatically via built-in policies; there are no accounts to pick or sources to manage.</li>
-          <li>No CloudKit and no phone sync in this Windows build.</li>
+          <li>{tr("App sign-ins are read-only. Manually supplied keys and Cookies are encrypted with Windows credential protection; none are synced.")}</li>
+          <li>{tr("Built-in ccusage reads local agent logs offline; raw sessions, prompts, paths, and repository names never leave this PC.")}</li>
+          <li>{tr("Only the complete public LiteLLM price table is downloaded. No observed model name, token count, or usage-derived query is sent.")}</li>
+          <li>{tr("Direct Sync optionally exchanges AES-256-GCM encrypted quota snapshots and daily aggregates with your Mac, but remote quota is fallback-only.")}</li>
+          <li>{tr("The curated AI feed syncs automatically via built-in policies; there are no accounts to pick or sources to manage.")}</li>
+          <li>{tr("No CloudKit and no phone sync in this Windows build.")}</li>
         </ul>
       </div>
     </section>
@@ -1330,16 +1347,16 @@ function CredentialSourceRow({ definition, provider, notice, action }) {
     <div className="source-row credential-source-row">
       <ProviderMark meta={meta} size={20} />
       <div>
-        <strong>{meta.name}<span className="source-mode-pill">{definition.localSessionFirst ? `App session + ${definition.credentialKind}` : `Local ${definition.credentialKind}`}</span></strong>
-        <small>{notice || (provider ? (definition.localSessionFirst ? `Quota is being read from ${definition.product} or its local fallback` : "Quota is being read with the credential protected on this PC") : definition.detail)}</small>
+        <strong>{meta.name}<span className="source-mode-pill">{definition.localSessionFirst ? tr("App session + %1$@", [definition.credentialKind]) : tr("Local %1$@", [definition.credentialKind])}</span></strong>
+        <small>{notice || (provider ? (definition.localSessionFirst ? tr("Quota is being read from %1$@ or its local fallback", [definition.product]) : tr("Quota is being read with the credential protected on this PC")) : tr(definition.detail))}</small>
         <form className="credential-form" onSubmit={save}>
-          <input type="password" autoComplete="off" value={value} onChange={(event) => setValue(event.target.value)} placeholder={definition.configured ? `Replace saved ${definition.credentialKind}` : `Paste ${definition.credentialKind}`} />
-          <button className="secondary" disabled={busy || !value.trim()}>{busy ? "Saving…" : "Save locally"}</button>
-          {definition.configured && <button type="button" className="secondary danger" disabled={busy} onClick={clear}>Clear</button>}
+          <input type="password" autoComplete="off" value={value} onChange={(event) => setValue(event.target.value)} placeholder={definition.configured ? tr("Replace saved %1$@", [definition.credentialKind]) : tr("Paste %1$@", [definition.credentialKind])} />
+          <button className="secondary" disabled={busy || !value.trim()}>{tr(busy ? "Saving…" : "Save locally")}</button>
+          {definition.configured && <button type="button" className="secondary danger" disabled={busy} onClick={clear}>{tr("Clear")}</button>}
         </form>
       </div>
       <div className="source-status">
-        <span className={provider && !notice ? "tone-success" : definition.configured ? "tone-warning" : "tone-muted"}>{provider && !notice ? "Local" : definition.configured ? "Configured" : "Setup"}</span>
+        <span className={provider && !notice ? "tone-success" : definition.configured ? "tone-warning" : "tone-muted"}>{tr(provider && !notice ? "Local" : definition.configured ? "Configured" : "Setup")}</span>
         {provider?.capturedAt && <time>{formatClock(provider.capturedAt)}</time>}
       </div>
     </div>
@@ -1355,7 +1372,7 @@ function SourceHealthRow({ name, detail, healthy, capturedAt, iconID, status }) 
         <small>{detail}</small>
       </div>
       <div className="source-status">
-        <span className={healthy ? "tone-success" : "tone-warning"}>{status || (healthy ? "Healthy" : "Needs attention")}</span>
+        <span className={healthy ? "tone-success" : "tone-warning"}>{tr(status || (healthy ? "Healthy" : "Needs attention"))}</span>
         {capturedAt && <time>{formatClock(capturedAt)}</time>}
       </div>
     </div>
@@ -1375,7 +1392,7 @@ function Settings({ state, action, onSelect }) {
   const selected = SETTINGS_CATEGORIES.find((item) => item.id === category);
   return (
     <section className="content-section settings-section">
-      <div className="settings-tabs" role="tablist" aria-label="Settings categories">
+      <div className="settings-tabs" role="tablist" aria-label={tr("Settings categories")}>
         {SETTINGS_CATEGORIES.map((item) => {
           const Icon = item.icon;
           return (
@@ -1386,12 +1403,12 @@ function Settings({ state, action, onSelect }) {
               className={category === item.id ? "selected" : ""}
               onClick={() => setCategory(item.id)}
             >
-              <Icon />{item.title}
+              <Icon />{tr(item.title)}
             </button>
           );
         })}
       </div>
-      <p className="settings-detail">{selected.detail}</p>
+      <p className="settings-detail">{tr(selected.detail)}</p>
       {category === "general" && <GeneralSettings state={state} action={action} />}
       {category === "refreshSync" && <RefreshSyncSettings state={state} action={action} onSelect={onSelect} />}
       {category === "about" && <AboutSettings state={state} action={action} />}
@@ -1400,35 +1417,51 @@ function Settings({ state, action, onSelect }) {
 }
 
 function GeneralSettings({ state, action }) {
+  const languages = languageOptions(state.systemLocale);
   return (
     <div className="settings-card">
-      <PanelHeader title="General" />
+      <PanelHeader title={tr("General")} />
+      <div className="preference-row language-setting">
+        <label className="preference-label" htmlFor="app-language">
+          <strong>{tr("Language")}</strong>
+          <span>{tr("Follow the Windows display language automatically, or choose a language for TokenRemain.")}</span>
+        </label>
+        <select
+          id="app-language"
+          className="language-select"
+          value={state.languagePreference || SYSTEM_LANGUAGE}
+          onChange={(event) => action(() => api.setLanguage(event.target.value))}
+        >
+          {languages.map((language) => <option key={language.value} value={language.value}>{language.label}</option>)}
+        </select>
+      </div>
+      <Divider />
       <ToggleRow
-        title="Launch at login"
-        detail="Start TokenRemain automatically when you sign in to Windows; it keeps monitoring from the tray."
+        title={tr("Launch at login")}
+        detail={tr("Start TokenRemain automatically when you sign in to Windows; it keeps monitoring from the tray.")}
         isOn={Boolean(state.launchAtLogin)}
         onChange={(value) => action(() => api.setLaunchAtLogin(value))}
       />
       <Divider />
       <ToggleRow
-        title="Floating shortcut"
-        detail="Keep a small quota shortcut above other windows. Drag its grip to move it; click the quota to open Quick View."
+        title={tr("Floating shortcut")}
+        detail={tr("Keep a small quota shortcut above other windows. Drag its grip to move it; click the quota to open Quick View.")}
         isOn={Boolean(state.floatingWidgetEnabled)}
         onChange={(value) => action(() => api.setFloatingWidgetEnabled(value))}
       />
       <Divider />
       <div className="preference-row quick-view-setting">
         <div className="preference-label">
-          <strong>Quick View popup</strong>
-          <span>Open the same compact popup as a tray-icon click. This is separate from the full Dashboard.</span>
+          <strong>{tr("Quick View popup")}</strong>
+          <span>{tr("Open the same compact popup as a tray-icon click. This is separate from the full Dashboard.")}</span>
         </div>
-        <button className="secondary" onClick={() => action(api.openPopup)}><RadioIcon />Open now</button>
+        <button className="secondary" onClick={() => action(api.openPopup)}><RadioIcon />{tr("Open now")}</button>
       </div>
       <Divider />
       <div className="preference-row">
         <div className="preference-label">
-          <strong>Close button</strong>
-          <span>Closing the window keeps TokenRemain running in the tray; quit from the tray menu or Settings › About.</span>
+          <strong>{tr("Close button")}</strong>
+          <span>{tr("Closing the window keeps TokenRemain running in the tray; quit from the tray menu or Settings › About.")}</span>
         </div>
       </div>
     </div>
@@ -1439,24 +1472,24 @@ function RefreshSyncSettings({ state, action, onSelect }) {
   return (
     <>
       <div className="settings-card">
-        <PanelHeader title="Quota refresh interval" />
+        <PanelHeader title={tr("Quota refresh interval")} />
         <div className="preference-row">
           <div className="preference-label">
-            <span>Local CLI quotas, the Mac link, and the curated feed refresh together on a fixed cadence.</span>
+            <span>{tr("Local CLI quotas, the Mac link, and the curated feed refresh together on a fixed cadence.")}</span>
           </div>
-          <strong className="preference-value">Every minute</strong>
+          <strong className="preference-value">{tr("Every minute")}</strong>
         </div>
         <Divider />
         <div className="refresh-now-row">
           <button className="secondary" onClick={() => action(api.refresh)} disabled={state.isRefreshing}>
-            <RefreshIcon spinning={state.isRefreshing} />{state.isRefreshing ? "Refreshing…" : "Refresh now"}
+            <RefreshIcon spinning={state.isRefreshing} />{tr(state.isRefreshing ? "Refreshing…" : "Refresh now")}
           </button>
         </div>
       </div>
       <div className="settings-card direct-sync-panel">
-        <PanelHeader title="Direct Sync" subtitle="Encrypted direct sync between your devices" />
+        <PanelHeader title={tr("Direct Sync")} subtitle={tr("Encrypted direct sync between your devices")} />
         <SyncStrip sync={state.sync} deviceName={state.deviceName} />
-        <button className="manage-devices" onClick={() => onSelect("devices")}><DevicesIcon /><span>Manage devices</span><ChevronRightIcon /></button>
+        <button className="manage-devices" onClick={() => onSelect("devices")}><DevicesIcon /><span>{tr("Manage devices")}</span><ChevronRightIcon /></button>
       </div>
     </>
   );
@@ -1466,16 +1499,16 @@ function AboutSettings({ state, action }) {
   return (
     <>
       <div className="settings-card">
-        <PanelHeader title="About" />
-        <InfoRow label="Version" value={`TokenRemain ${state.appVersion || ""}`.trim()} />
-        <InfoRow label="Data" value="Local-first · encrypted LAN sync with your Mac" />
-        <InfoRow label="Credential access" value="Read-only local CLI files" />
+        <PanelHeader title={tr("About")} />
+        <InfoRow label={tr("Version")} value={`TokenRemain ${state.appVersion || ""}`.trim()} />
+        <InfoRow label={tr("Data")} value={tr("Local-first · encrypted LAN sync with your Mac")} />
+        <InfoRow label={tr("Credential access")} value={tr("Read-only local CLI files")} />
       </div>
       <div className="settings-card">
-        <PanelHeader title="Actions" />
+        <PanelHeader title={tr("Actions")} />
         <div className="actions-row">
-          <button className="secondary" onClick={() => action(api.relaunch)}><RestartIcon />Restart TokenRemain</button>
-          <button className="secondary danger" onClick={() => action(api.quit)}><PowerIcon />Quit</button>
+          <button className="secondary" onClick={() => action(api.relaunch)}><RestartIcon />{tr("Restart TokenRemain")}</button>
+          <button className="secondary danger" onClick={() => action(api.quit)}><PowerIcon />{tr("Quit")}</button>
         </div>
       </div>
     </>
@@ -1505,9 +1538,9 @@ function ToggleRow({ title, detail, isOn, onChange }) {
 function SyncStrip({ sync, deviceName }) {
   return (
     <div className="sync-strip">
-      <div><DevicesIcon /><span><strong>{deviceName}</strong><small>This PC</small></span></div>
-      <div className={sync.paired ? "sync-link connected" : "sync-link"}><span /><LockIcon /><span /><small>{sync.paired ? "Encrypted direct sync" : "Not paired"}</small></div>
-      <div className="mac-end"><span><strong>{sync.deviceName || "Mac"}</strong><small>{sync.lastSyncAt ? `Last sync ${timeAgo(sync.lastSyncAt)}` : sync.error || "Open Devices to pair"}</small></span><DevicesIcon /></div>
+      <div><DevicesIcon /><span><strong>{deviceName}</strong><small>{tr("This PC")}</small></span></div>
+      <div className={sync.paired ? "sync-link connected" : "sync-link"}><span /><LockIcon /><span /><small>{tr(sync.paired ? "Encrypted direct sync" : "Not paired")}</small></div>
+      <div className="mac-end"><span><strong>{sync.deviceName || "Mac"}</strong><small>{sync.lastSyncAt ? tr("Last sync %1$@", [timeAgo(sync.lastSyncAt)]) : sync.error || tr("Open Devices to pair")}</small></span><DevicesIcon /></div>
     </div>
   );
 }
@@ -1516,6 +1549,7 @@ function SyncStrip({ sync, deviceName }) {
 
 function createPreviewAPI() {
   const previewNow = Date.now();
+  const previewParameters = new URLSearchParams(globalThis.location?.search || "");
   const previewDay = new Date(previewNow).toISOString().slice(0, 10);
   const previewHistoryDays = Array.from({ length: 30 }, (_, index) => {
     const day = new Date(previewNow - (29 - index) * 24 * 60 * 60_000).toISOString().slice(0, 10);
@@ -1589,13 +1623,15 @@ function createPreviewAPI() {
   let preview = {
     sourceInstanceID: "8ad9c4b2-5ac9-44d7-b313-ae4f3fc59fb0",
     deviceName: "Windows PC",
-    appVersion: "1.2.6-windows.1",
+    appVersion: "1.2.6-windows.2",
     launchAtLogin: false,
     floatingWidgetEnabled: false,
+    languagePreference: previewParameters.get("lang") || SYSTEM_LANGUAGE,
+    systemLocale: previewParameters.get("systemLocale") || globalThis.navigator?.language || "en",
     lastUpdatedAt: previewNow,
     isRefreshing: false,
     notices: {},
-    onboarding: { completed: new URLSearchParams(globalThis.location?.search || "").get("onboarding") !== "1", detections: previewCatalog.map((provider) => ({ providerID: provider.id, installed: provider.installed, configured: provider.configured, access: provider.access, credentialKind: provider.credentialKind, detail: provider.detail })) },
+    onboarding: { completed: previewParameters.get("onboarding") !== "1", detections: previewCatalog.map((provider) => ({ providerID: provider.id, installed: provider.installed, configured: provider.configured, access: provider.access, credentialKind: provider.credentialKind, detail: provider.detail })) },
     providerCatalog: previewCatalog.map((provider) => ({ ...provider, enabled: ["claude", "codex", "cursor", "openrouter"].includes(provider.id) })),
     enabledProviders: ["claude", "codex", "cursor", "openrouter"],
     localProviders: [...previewLocalProviders, previewCursor, previewOpenRouter],
@@ -1646,6 +1682,7 @@ function createPreviewAPI() {
     openExternal: async () => true,
     setLaunchAtLogin: async (value) => (preview = { ...preview, launchAtLogin: Boolean(value) }),
     setFloatingWidgetEnabled: async (value) => (preview = { ...preview, floatingWidgetEnabled: Boolean(value) }),
+    setLanguage: async (value) => (preview = { ...preview, languagePreference: value }),
     openPopup: async () => preview,
     relaunch: async () => preview,
     quit: async () => preview,

@@ -4,6 +4,8 @@ import { normalizeQuotaUsageHistory, recordQuotaUsageHistory } from "./quota-his
 import { normalizeProviderIDs, PROVIDER_ID_SET } from "./providers/catalog.js";
 import { newSourceID } from "./sync/crypto.js";
 
+const LANGUAGE_PREFERENCES = new Set(["system", "en", "zh-Hans", "zh-Hant", "ja", "ko", "es", "de"]);
+
 export class StateStore {
   constructor({ userDataPath, safeStorage }) {
     this.path = join(userDataPath, "state-v1.json");
@@ -50,8 +52,10 @@ export class StateStore {
     this.state.quotaUsageHistory = normalizeQuotaUsageHistory(this.state.quotaUsageHistory);
     this.state.preferences = {
       floatingWidgetEnabled: false,
+      language: "system",
       ...(this.state.preferences || {}),
     };
+    if (!LANGUAGE_PREFERENCES.has(this.state.preferences.language)) this.state.preferences.language = "system";
     this.state.onboardingCompleted = Boolean(this.state.onboardingCompleted);
     this.state.enabledProviders = normalizeProviderIDs(this.state.enabledProviders);
     this.state.providerSecrets = Object.fromEntries(
@@ -160,6 +164,12 @@ export class StateStore {
       ...(this.state.preferences || {}),
       floatingWidgetEnabled: Boolean(enabled),
     };
+    await this.save();
+  }
+
+  async setLanguage(value) {
+    if (!LANGUAGE_PREFERENCES.has(value)) throw new Error("Unsupported language");
+    this.state.preferences = { ...(this.state.preferences || {}), language: value };
     await this.save();
   }
 

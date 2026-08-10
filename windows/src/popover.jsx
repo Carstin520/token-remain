@@ -13,6 +13,7 @@ import {
   ResetIcon,
 } from "./icons.jsx";
 import { DirectReorderGrid } from "./direct-reorder.jsx";
+import { activateLanguage, SYSTEM_LANGUAGE, tr, trKey } from "./i18n.js";
 import { LIMITS_ORDER_KEY, peekStoredOrder } from "./layout.js";
 import {
   AI_FEED_WIDGET_ID,
@@ -76,6 +77,7 @@ function App() {
   const [expandedIDs, setExpandedIDs] = useState(() => restorablePinnedIDs(readRawLayout(globalThis.localStorage)));
   const [openMenu, setOpenMenu] = useState(null);
   const [copiedID, setCopiedID] = useState(null);
+  activateLanguage(state?.languagePreference || SYSTEM_LANGUAGE, state?.systemLocale);
   const rootRef = useRef(null);
   const headerRef = useRef(null);
   const scrollRef = useRef(null);
@@ -220,10 +222,10 @@ function App() {
 
   const openDashboard = (section) => run(() => api.openDashboard(section));
 
-  if (!model) return <div className="popover-loading">Loading TokenRemain…</div>;
+  if (!model) return <div className="popover-loading">{tr("Loading data…")}</div>;
 
   const visibleIDs = visibleWidgetIDs(layout);
-  const widgetName = (id) => BUILTIN_WIDGET_TITLES[id] || model.quota.find((card) => card.id === id)?.name || id;
+  const widgetName = (id) => tr(BUILTIN_WIDGET_TITLES[id] || model.quota.find((card) => card.id === id)?.name || id);
 
   /// Shared overflow-menu entries for one reorderable widget, in the fixed
   /// Copy / pin / expand / move / hide order.
@@ -233,29 +235,29 @@ function App() {
     const pinned = isWidgetPinned(layout, id);
     const expanded = expandedIDs.includes(id);
     return [
-      { key: "copy", label: "Copy Summary", onSelect: () => copySummary(id, summaryText) },
+      { key: "copy", label: tr("Copy Summary"), onSelect: () => copySummary(id, summaryText) },
       ...(expandable ? [
-        { key: "pin", label: pinned ? "Unpin" : "Pin Expanded", onSelect: () => togglePinned(id) },
-        { key: "expand", label: expanded ? "Collapse" : "Expand", onSelect: () => toggleExpanded(id) },
+        { key: "pin", label: tr(pinned ? "Unpin" : "Pin Expanded"), onSelect: () => togglePinned(id) },
+        { key: "expand", label: tr(expanded ? "Collapse" : "Expand"), onSelect: () => toggleExpanded(id) },
       ] : []),
-      { key: "up", label: "Move Up", disabled: index <= 0, onSelect: () => updateLayout((current) => moveVisibleWidget(current, id, -1)) },
-      { key: "down", label: "Move Down", disabled: index < 0 || index >= visibleIDs.length - 1, onSelect: () => updateLayout((current) => moveVisibleWidget(current, id, +1)) },
-      { key: "hide", label: "Hide", onSelect: () => hideWidget(id) },
+      { key: "up", label: tr("Move Up"), disabled: index <= 0, onSelect: () => updateLayout((current) => moveVisibleWidget(current, id, -1)) },
+      { key: "down", label: tr("Move Down"), disabled: index < 0 || index >= visibleIDs.length - 1, onSelect: () => updateLayout((current) => moveVisibleWidget(current, id, +1)) },
+      { key: "hide", label: tr("Hide"), onSelect: () => hideWidget(id) },
     ];
   }
 
   const addItems = layout.hidden.length
     ? layout.hidden.map((id) => ({
       key: id,
-      label: `Show ${widgetName(id)}`,
+      label: tr("Show %1$@", [widgetName(id)]),
       onSelect: () => updateLayout((current) => setWidgetHidden(current, id, false)),
     }))
-    : [{ key: "none", label: "All widgets are visible", disabled: true }];
+    : [{ key: "none", label: tr("All widgets are visible"), disabled: true }];
 
   const widgetProps = (id, summaryText) => ({
     menu: {
       id,
-      label: `${widgetName(id)} options`,
+      label: tr("%1$@ options", [widgetName(id)]),
       items: widgetMenuItems(id, summaryText),
       open: openMenu === id,
       onOpenChange: (wantOpen) => setOpenMenu(wantOpen ? id : null),
@@ -264,15 +266,15 @@ function App() {
   });
 
   return (
-    <div className={`popover-root ${visible ? "is-visible" : "is-hidden"}`} ref={rootRef} tabIndex={-1} role="dialog" aria-label="TokenRemain quick view">
-      <span className="sr-only" aria-live="polite">{copiedID ? "Summary copied to clipboard" : ""}</span>
+    <div className={`popover-root ${visible ? "is-visible" : "is-hidden"}`} ref={rootRef} tabIndex={-1} role="dialog" aria-label={tr("TokenRemain quick view")}>
+      <span className="sr-only" aria-live="polite">{copiedID ? tr("Summary copied to clipboard") : ""}</span>
       <header className="popover-header" ref={headerRef}>
         <span className="popover-brand">Token<b>Remain</b></span>
         <span className="popover-updated" title={model.updatedLabel}>{model.updatedLabel}</span>
         <Dropdown
           id="add-widget"
-          label="Show a hidden widget"
-          title={layout.hidden.length ? "Show a hidden widget" : "All widgets are visible"}
+          label={tr("Show a hidden widget")}
+          title={tr(layout.hidden.length ? "Show a hidden widget" : "All widgets are visible")}
           icon={<PlusIcon />}
           items={addItems}
           open={openMenu === "add-widget"}
@@ -282,16 +284,16 @@ function App() {
           className="icon-button"
           onClick={() => run(api.refresh)}
           disabled={model.isRefreshing}
-          aria-label={model.isRefreshing ? "Refreshing usage" : "Refresh usage"}
-          title="Refresh quotas, local usage, pricing, and the AI Feed"
+          aria-label={tr(model.isRefreshing ? "Refreshing usage" : "Refresh usage")}
+          title={tr("Refresh quotas, local usage, pricing, and the AI Feed")}
         >
           <RefreshIcon spinning={model.isRefreshing} />
         </button>
         <button
           className="icon-button popover-close"
           onClick={() => api.hidePopover?.()}
-          aria-label="Close Quick View"
-          title="Close Quick View (Esc)"
+          aria-label={tr("Close Quick View")}
+          title={tr("Close Quick View (Esc)")}
         >
           <CloseIcon />
         </button>
@@ -302,11 +304,11 @@ function App() {
           {error && <div className="popover-error" role="alert">{error}</div>}
           <RiskStrip risk={model.risk} />
           {!providerIDs.length && (
-            <section className="popover-card" aria-label="Official quota">
-              <div className="popover-card-head"><h2>Official Quota</h2></div>
+            <section className="popover-card" aria-label={tr("Official quota")}>
+              <div className="popover-card-head"><h2>{tr("Official Quota")}</h2></div>
               <p className="popover-empty">
-                <strong>{model.quotaNotice || "Reading official quota…"}</strong>
-                Claude and Codex snapshots appear here as soon as this PC or your paired Mac reports one.
+                <strong>{tr(model.quotaNotice || "Reading official quota…")}</strong>
+                {tr("Claude and Codex snapshots appear here as soon as this PC or your paired Mac reports one.")}
               </p>
             </section>
           )}
@@ -353,36 +355,36 @@ function App() {
       </div>
 
       <footer className="popover-footer" ref={footerRef}>
-        <button className="footer-dashboard" onClick={() => openDashboard("overview")} title="Open the full TokenRemain dashboard">
-          Open Dashboard
+        <button className="footer-dashboard" onClick={() => openDashboard("overview")} title={tr("Open the full TokenRemain dashboard")}>
+          {tr("Open Dashboard")}
         </button>
         <Dropdown
           id="footer-settings"
-          label="Settings"
-          title="Launch, settings, and restart options"
+          label={tr("Settings")}
+          title={tr("Launch, settings, and restart options")}
           triggerClassName="footer-secondary"
-          icon="Settings"
+          icon={tr("Settings")}
           items={[
             {
               key: "launch",
-              label: "Launch at login",
+              label: tr("Launch at login"),
               checked: Boolean(state.launchAtLogin),
               onSelect: () => run(() => api.setLaunchAtLogin(!state.launchAtLogin)),
             },
             {
               key: "floating",
-              label: "Floating shortcut",
+              label: tr("Floating shortcut"),
               checked: Boolean(state.floatingWidgetEnabled),
               onSelect: () => run(() => api.setFloatingWidgetEnabled(!state.floatingWidgetEnabled)),
             },
-            { key: "open-settings", label: "Open Settings", onSelect: () => openDashboard("settings") },
-            { key: "relaunch", label: "Restart TokenRemain", onSelect: () => run(api.relaunch) },
+            { key: "open-settings", label: tr("Open Settings"), onSelect: () => openDashboard("settings") },
+            { key: "relaunch", label: tr("Restart TokenRemain"), onSelect: () => run(api.relaunch) },
           ]}
           open={openMenu === "footer-settings"}
           onOpenChange={(wantOpen) => setOpenMenu(wantOpen ? "footer-settings" : null)}
         />
         <span className="footer-spacer" />
-        <button className="footer-quit" onClick={() => run(api.quit)} title="Quit TokenRemain">Quit</button>
+        <button className="footer-quit" onClick={() => run(api.quit)} title={tr("Quit TokenRemain")}>{tr("Quit")}</button>
       </footer>
     </div>
   );
@@ -471,13 +473,13 @@ function Dropdown({ id, label, title, icon, items, open, onOpenChange, triggerCl
 function WidgetControls({ menu, copied, expandable, expanded, onToggleExpanded, expandLabel }) {
   return (
     <span className="widget-controls">
-      {copied && <span className="copied-chip" aria-hidden="true">Copied</span>}
+      {copied && <span className="copied-chip" aria-hidden="true">{tr("Copied")}</span>}
       {expandable && (
         <button
           className="icon-button"
           aria-expanded={expanded}
-          aria-label={expanded ? `Collapse ${expandLabel}` : `Expand ${expandLabel}`}
-          title={expanded ? `Collapse ${expandLabel}` : `Expand ${expandLabel}`}
+          aria-label={tr(expanded ? "Collapse %1$@" : "Expand %1$@", [expandLabel])}
+          title={tr(expanded ? "Collapse %1$@" : "Expand %1$@", [expandLabel])}
           onClick={onToggleExpanded}
         >
           <ChevronRightIcon className={expanded ? "chevron is-open" : "chevron"} />
@@ -507,10 +509,10 @@ function widgetContextMenu(menu) {
 function RiskStrip({ risk }) {
   const tone = risk.level || "unknown";
   return (
-    <section className="popover-card popover-risk" aria-label="Quota risk">
+    <section className="popover-card popover-risk" aria-label={tr("Quota risk")}>
       <div className="popover-risk-head">
-        <span className={`badge tone-${tone} ${tone === "high" ? "filled" : ""}`}>{risk.badge}</span>
-        <strong title={risk.headline}>{risk.headline}</strong>
+        <span className={`badge tone-${tone} ${tone === "high" ? "filled" : ""}`}>{tone === "unknown" ? tr("Unknown") : trKey(`risk.badge.${tone}`, [], risk.badge)}</span>
+        <strong title={tr(risk.headline)}>{tr(risk.headline)}</strong>
       </div>
       {risk.detail && (
         <p className={`popover-risk-detail tone-${tone}`}>
@@ -536,9 +538,9 @@ function windowRiskCue(window) {
   const healthy = window.level === "low" && !window.aheadOfPace;
   const tone = window.level === "high" ? "high" : window.level === "medium" || window.aheadOfPace ? "medium" : "low";
   const title = window.aheadOfPace
-    ? "Current usage is ahead of pace"
-    : window.level === "high" ? "Quota is nearly depleted"
-      : window.level === "medium" ? "Watch your usage pace" : "Usage pace is healthy";
+    ? tr("Current usage is ahead of pace")
+    : window.level === "high" ? tr("Quota is nearly depleted")
+      : window.level === "medium" ? tr("Watch your usage pace") : tr("Usage pace is healthy");
   return { healthy, tone, title };
 }
 
@@ -547,13 +549,13 @@ function QuotaWidget({ card, expanded, onToggleExpanded, menu, copied }) {
   const icon = PROVIDER_ICONS[card.iconFile];
   const cue = windowRiskCue(card);
   return (
-    <section className="popover-card popover-widget" aria-label={`${card.name} quota`} onContextMenu={widgetContextMenu(menu)}>
+    <section className="popover-card popover-widget" aria-label={tr("%1$@ quota", [card.name])} onContextMenu={widgetContextMenu(menu)}>
       <div className="widget-head">
         <button
           className="quota-summary-toggle"
           aria-expanded={expanded}
           onClick={onToggleExpanded}
-          title={`${card.name} · ${card.windowTitle} · ${card.remainingText}. ${expanded ? "Collapse" : "Expand"} to ${expanded ? "hide" : "see"} every window.`}
+          title={`${card.name} · ${card.windowTitle} · ${card.remainingText}. ${tr(expanded ? "Collapse" : "Expand")}.`}
         >
           {icon
             ? <img src={icon} alt="" />
@@ -613,7 +615,7 @@ function QuotaWidget({ card, expanded, onToggleExpanded, menu, copied }) {
           {card.capturedText && (
             <span
               className={card.capturedStale ? "quota-captured is-stale" : "quota-captured"}
-              title={card.capturedStale ? "Snapshot is more than 10 minutes old" : card.capturedText}
+              title={card.capturedStale ? tr("Snapshot is more than 10 minutes old") : card.capturedText}
             >
               {card.capturedStale ? <AlertIcon /> : <CheckCircleIcon />}
               <span>{card.capturedText}</span>
@@ -639,8 +641,8 @@ function SegmentBar({ remaining, accent, label }) {
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={Math.round(clamped)}
-      aria-valuetext={`${formatPercent(clamped)} remaining`}
-      aria-label={`${label} quota remaining`}
+      aria-valuetext={tr("%1$@ remaining", [formatPercent(clamped)])}
+      aria-label={tr("%1$@ quota remaining", [label])}
     >
       {Array.from({ length: SEGMENTS }, (_, index) => (
         <i key={index} style={index < filled ? { background: accent } : undefined} />
@@ -655,23 +657,23 @@ function UsageWidget({ usage, empty, onOpen, menu, copied }) {
   const [highlightedUsageID, setHighlightedUsageID] = useState(null);
   if (!usage) {
     return (
-      <section className="popover-card popover-widget" aria-label="Today's local usage" onContextMenu={widgetContextMenu(menu)}>
+      <section className="popover-card popover-widget" aria-label={tr("Today's local usage")} onContextMenu={widgetContextMenu(menu)}>
         <div className="widget-head popover-card-head">
-          <h2>Today's Local Usage</h2>
+          <h2>{tr("Today's Local Usage")}</h2>
           <WidgetControls menu={menu} copied={copied} />
         </div>
-        <p className="popover-empty"><strong>{empty.title}</strong>{empty.message}</p>
+        <p className="popover-empty"><strong>{tr(empty.title)}</strong>{tr(empty.message)}</p>
       </section>
     );
   }
   const peak = Math.max(1, ...usage.trend.map((point) => point.tokens));
   const highlightedEntry = usage.entries.find((entry) => entry.id === highlightedUsageID);
   return (
-    <section className="popover-card popover-widget" aria-label="Today's local usage" onContextMenu={widgetContextMenu(menu)}>
+    <section className="popover-card popover-widget" aria-label={tr("Today's local usage")} onContextMenu={widgetContextMenu(menu)}>
       <div className="widget-head popover-card-head">
-        <h2>Today's Local Usage</h2>
+        <h2>{tr("Today's Local Usage")}</h2>
         <strong title={usage.today.label}>
-          {Number.isFinite(usage.today.cost) ? formatMoney(usage.today.cost) : "Price unavailable"}
+          {Number.isFinite(usage.today.cost) ? formatMoney(usage.today.cost) : tr("Price unavailable")}
         </strong>
         <WidgetControls menu={menu} copied={copied} />
       </div>
@@ -699,7 +701,7 @@ function UsageWidget({ usage, empty, onOpen, menu, copied }) {
             )}
           </span>
         </div>
-        <div className="popover-usage-rows" role="list" aria-label="Provider usage shares">
+        <div className="popover-usage-rows" role="list" aria-label={tr("Provider usage shares")}>
           {usage.entries.map((entry) => (
             <div
               className={`popover-usage-row ${highlightedUsageID === entry.id ? "is-highlighted" : ""}`}
@@ -721,13 +723,13 @@ function UsageWidget({ usage, empty, onOpen, menu, copied }) {
         </div>
       </div>
       <div className="popover-spend">
-        <SpendRow label="Today" bucket={usage.today} />
-        <SpendRow label="Yesterday" bucket={usage.yesterday} />
-        <SpendRow label="Last 30 Days" bucket={usage.last30Days} />
+        <SpendRow label={tr("Today")} bucket={usage.today} />
+        <SpendRow label={tr("Yesterday")} bucket={usage.yesterday} />
+        <SpendRow label={tr("Last 30 Days")} bucket={usage.last30Days} />
       </div>
       {usage.trend.length >= 2 && (
         <div className="popover-trend-row">
-          <span id="popover-trend-label">Usage Trend</span>
+          <span id="popover-trend-label">{tr("Usage Trend")}</span>
           <div className="popover-trend" role="img" aria-labelledby="popover-trend-label">
             {usage.trend.map((point, index) => (
               <i
@@ -738,7 +740,7 @@ function UsageWidget({ usage, empty, onOpen, menu, copied }) {
               />
             ))}
           </div>
-          <button className="link-button" onClick={onOpen} title="Open the full usage trend">View all</button>
+          <button className="link-button" onClick={onOpen} title={tr("Open the full usage trend")}>{tr("View all")}</button>
         </div>
       )}
     </section>
@@ -749,7 +751,7 @@ function SpendRow({ label, bucket }) {
   return (
     <div className="popover-spend-row">
       <span>{label}</span>
-      <strong title={bucket.hasData ? bucket.label : "No recorded data for this period"}>{bucket.label}</strong>
+      <strong title={bucket.hasData ? bucket.label : tr("No recorded data for this period")}>{bucket.label}</strong>
     </div>
   );
 }
@@ -758,18 +760,18 @@ function SpendRow({ label, bucket }) {
 
 function FeedWidget({ feed, expanded, onToggleExpanded, onOpen, onOpenPost, menu, copied }) {
   return (
-    <section className="popover-card popover-widget" aria-label="AI Feed" onContextMenu={widgetContextMenu(menu)}>
+    <section className="popover-card popover-widget" aria-label={tr("AI Feed")} onContextMenu={widgetContextMenu(menu)}>
       <div className="widget-head popover-card-head">
-        <h2>AI Feed · Important updates</h2>
-        {feed.status && <span className={`badge tone-${feed.cached ? "medium" : "cyan"}`} title={feed.error || feed.status}>{feed.status}</span>}
-        <button className="link-button" onClick={onOpen} title="Open the full AI Feed">View all</button>
+        <h2>{tr("AI Feed")} · {tr("Important updates")}</h2>
+        {feed.status && <span className={`badge tone-${feed.cached ? "medium" : "cyan"}`} title={feed.error || tr(feed.status)}>{tr(feed.status)}</span>}
+        <button className="link-button" onClick={onOpen} title={tr("Open the full AI Feed")}>{tr("View all")}</button>
         <WidgetControls
           menu={menu}
           copied={copied}
           expandable
           expanded={expanded}
           onToggleExpanded={onToggleExpanded}
-          expandLabel="AI Feed stories"
+          expandLabel={tr("AI Feed stories")}
         />
       </div>
       {feed.items.length ? (
@@ -780,7 +782,7 @@ function FeedWidget({ feed, expanded, onToggleExpanded, onOpen, onOpenPost, menu
                 <i style={{ background: FEED_ACCENT[item.priority] || "var(--muted)" }} />
                 <b>{item.source}</b>
                 <time>{item.age}</time>
-                {item.priorityLabel && <span className="feed-priority">{item.priorityLabel}</span>}
+                {item.priorityLabel && <span className="feed-priority">{tr(item.priorityLabel)}</span>}
                 <span className="open-arrow"><ArrowUpRightIcon /></span>
               </span>
               <p className={expanded ? "is-expanded" : undefined}>{item.title}</p>
@@ -789,8 +791,8 @@ function FeedWidget({ feed, expanded, onToggleExpanded, onOpen, onOpenPost, menu
         </div>
       ) : (
         <p className="popover-empty">
-          <strong>{feed.error ? "Feed is temporarily unavailable" : "Finding updates worth your attention…"}</strong>
-          {feed.error || "Quota, pricing, and service-status updates appear here automatically."}
+          <strong>{tr(feed.error ? "Feed is temporarily unavailable" : "Finding updates worth your attention…")}</strong>
+          {feed.error || tr("Quota, pricing, and service-status updates appear here automatically.")}
         </p>
       )}
     </section>
@@ -798,4 +800,4 @@ function FeedWidget({ feed, expanded, onToggleExpanded, onOpen, onOpenPost, menu
 }
 
 if (api) createRoot(document.getElementById("root")).render(<React.StrictMode><App /></React.StrictMode>);
-else document.getElementById("root").textContent = "TokenRemain popover requires the desktop app.";
+else document.getElementById("root").textContent = tr("TokenRemain popover requires the desktop app.");

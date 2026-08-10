@@ -116,6 +116,23 @@ test("Floating shortcut preference and last position persist", async () => {
   }
 });
 
+test("Language preference persists and rejects unsupported locales", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "tokenremain-windows-language-"));
+  try {
+    const store = new StateStore({ userDataPath: directory, safeStorage });
+    await store.load();
+    assert.equal(store.state.preferences.language, "system");
+    await store.setLanguage("zh-Hant");
+    await assert.rejects(() => store.setLanguage("fr"), /Unsupported language/);
+
+    const restored = new StateStore({ userDataPath: directory, safeStorage });
+    await restored.load();
+    assert.equal(restored.state.preferences.language, "zh-Hant");
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test("Onboarding selection and Windows-local credentials persist encrypted", async () => {
   const directory = await mkdtemp(join(tmpdir(), "tokenremain-windows-provider-state-"));
   try {
