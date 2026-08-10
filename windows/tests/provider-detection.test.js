@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { join } from "node:path";
 import test from "node:test";
 import { PROVIDER_CATALOG, PROVIDER_IDS } from "../electron/providers/catalog.js";
 import { detectLocalProviders } from "../electron/providers/detection.js";
@@ -13,31 +14,37 @@ test("Every displayed provider has exactly one Windows-local adapter", () => {
 });
 
 test("Windows scan detects installed apps and preconfigured local credentials", () => {
+  const home = join("C:", "Users", "test");
+  const roaming = join("C:", "Windows", "AppData", "Roaming");
+  const local = join("C:", "Windows", "AppData", "Local");
+  const programFiles = join("C:", "Windows", "Program Files");
+  const tools = join("C:", "tools");
+  const system = join("C:", "Windows", "System32");
   const existing = new Set([
-    "/Users/test/.claude",
-    "/Users/test/.codex",
-    "/Windows/AppData/Roaming/Cursor",
-    "/Windows/AppData/Local/Programs/Windsurf",
-    "/tools/grok.exe",
-    "/Windows/Program Files/Antigravity",
-    "/tools/opencode.cmd",
-    "/Windows/AppData/Local/Programs/Kiro",
-    "/Users/test/.zcode",
-    "/Users/test/.kimi-code",
-    "/Windows/AppData/Roaming/Qoder",
+    join(home, ".claude"),
+    join(home, ".codex"),
+    join(roaming, "Cursor"),
+    join(local, "Programs", "Windsurf"),
+    join(tools, "grok.exe"),
+    join(programFiles, "Antigravity"),
+    join(tools, "opencode.cmd"),
+    join(local, "Programs", "Kiro"),
+    join(home, ".zcode"),
+    join(home, ".kimi-code"),
+    join(roaming, "Qoder"),
   ]);
   const detections = detectLocalProviders({
     platform: "win32",
     env: {
-      USERPROFILE: "/Users/test",
-      APPDATA: "/Windows/AppData/Roaming",
-      LOCALAPPDATA: "/Windows/AppData/Local",
-      PROGRAMFILES: "/Windows/Program Files",
-      PATH: "/tools;/Windows/System32",
+      USERPROFILE: home,
+      APPDATA: roaming,
+      LOCALAPPDATA: local,
+      PROGRAMFILES: programFiles,
+      PATH: `${tools};${system}`,
       OPENROUTER_API_KEY: "configured-in-environment",
     },
     exists: (path) => existing.has(path),
-    readDirectory: (path) => path.endsWith("/.vscode/extensions") ? ["github.copilot-1.2.3"] : [],
+    readDirectory: (path) => path.endsWith(join(".vscode", "extensions")) ? ["github.copilot-1.2.3"] : [],
     hasStoredSecret: (providerID) => providerID === "deepseek",
   });
   const byID = new Map(detections.map((provider) => [provider.providerID, provider]));
