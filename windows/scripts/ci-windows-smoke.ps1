@@ -93,10 +93,20 @@ if ($installer.ExitCode -ne 0) {
   throw "NSIS installer failed with exit code $($installer.ExitCode)"
 }
 
-$installedExecutable = Join-Path $installDirectory "TokenRemain.exe"
-if (-not (Test-Path $installedExecutable -PathType Leaf)) {
-  throw "Installed TokenRemain.exe was not found at $installedExecutable"
+$installedExecutableCandidates = @(
+  (Join-Path $installDirectory "TokenRemain.exe"),
+  (Join-Path $env:LOCALAPPDATA "Programs\TokenRemain\TokenRemain.exe"),
+  (Join-Path $env:LOCALAPPDATA "TokenRemain\TokenRemain.exe"),
+  (Join-Path $env:ProgramFiles "TokenRemain\TokenRemain.exe")
+)
+$installedExecutable = $installedExecutableCandidates |
+  Where-Object { Test-Path $_ -PathType Leaf } |
+  Select-Object -First 1
+if (-not $installedExecutable) {
+  throw "Installed TokenRemain.exe was not found at any expected NSIS location: $($installedExecutableCandidates -join ', ')"
 }
+$installDirectory = Split-Path $installedExecutable -Parent
+Write-Host "TokenRemain installed at $installDirectory"
 
 $ccusageArchitecture = switch ($env:RUNNER_ARCH) {
   "X64" { "x64" }
