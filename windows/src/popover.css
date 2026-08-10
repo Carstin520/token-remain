@@ -3,6 +3,7 @@
 /* Tray popover — the Mac menu-bar popover's information hierarchy at Windows
    density. Fixed header and footer, one scroll region between them, so the
    window can be capped to the current monitor's work area without clipping. */
+*, *::before, *::after { box-sizing: border-box; }
 html, body, #root { width: 100%; height: 100%; margin: 0; overflow: hidden; }
 body { background: transparent; }
 
@@ -14,7 +15,13 @@ body { background: transparent; }
   border-radius: 10px;
   background: var(--bg);
   overflow: hidden;
+  opacity: 0;
+  transform: translateY(8px) scale(.985);
+  transform-origin: 50% 100%;
+  pointer-events: none;
+  will-change: transform, opacity;
 }
+.popover-root.is-visible { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
 /* Windows 11 22H2+ only; every other build keeps the opaque surface above. */
 html[data-material="acrylic"] .popover-root { background: rgba(13, 14, 16, .74); }
 
@@ -29,6 +36,7 @@ html[data-material="acrylic"] .popover-root { background: rgba(13, 14, 16, .74);
 .icon-button:hover { border-color: var(--violet-dim); color: var(--violet); }
 .icon-button:disabled { opacity: .55; cursor: default; }
 .icon-button svg { width: 13px; height: 13px; }
+.popover-close:hover { border-color: rgba(226, 112, 112, .42); color: #e7a4a2; background: rgba(132, 47, 51, .16); }
 
 /* Scroll region */
 .popover-scroll { min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 10px 12px 12px; scrollbar-width: thin; scrollbar-color: var(--surface-3) transparent; }
@@ -189,11 +197,18 @@ html[data-material="acrylic"] .popover-root { background: rgba(13, 14, 16, .74);
 button:focus-visible, [tabindex]:focus-visible { outline: 2px solid rgba(155, 138, 251, .85); outline-offset: 2px; }
 
 @media (prefers-reduced-motion: no-preference) {
+  .popover-root {
+    transition: opacity 130ms ease-in, transform 150ms cubic-bezier(.4, 0, 1, 1);
+  }
+  .popover-root.is-visible {
+    transition: opacity 170ms ease-out, transform 190ms cubic-bezier(.2, .8, .2, 1);
+  }
   .popover-feed-row, .icon-button, .menu-item, .popover-footer button {
     transition: color .15s ease, background .15s ease, border-color .15s ease;
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .popover-root { transform: none; will-change: auto; }
   .widget-controls .chevron { transition: none; }
 }
 @media (forced-colors: active) {

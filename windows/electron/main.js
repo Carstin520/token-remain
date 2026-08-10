@@ -9,6 +9,7 @@ import {
   POPOVER_INITIAL_HEIGHT,
   POPOVER_WIDTH,
   prefersAcrylic,
+  resolveFloatingPopoverBounds,
   resolvePopoverBounds,
 } from "./popover-placement.js";
 import { PublicPricingService } from "./pricing.js";
@@ -29,10 +30,14 @@ const TRAY_DOUBLE_CLICK_GRACE_MS = 250;
 /// arrives. Within this window the click counts as the dismissal instead of
 /// immediately reopening what the user just closed.
 const TRAY_REOPEN_GUARD_MS = 320;
+/// Lets the renderer finish the short retract animation before the native
+/// window is hidden. Keeping this below the tray guard makes repeated clicks
+/// feel immediate without flashing the popover back open.
+const POPOVER_EXIT_ANIMATION_MS = 180;
 const DASHBOARD_SECTIONS = new Set(["overview", "limits", "trends", "devices", "dataSources", "settings"]);
 const MAX_POPOVER_CONTENT_HEIGHT = 4_000;
-const FLOATING_WIDGET_WIDTH = 142;
-const FLOATING_WIDGET_HEIGHT = 54;
+const FLOATING_WIDGET_WIDTH = 80;
+const FLOATING_WIDGET_HEIGHT = 80;
 
 let mainWindow;
 let popoverWindow;
@@ -44,8 +49,11 @@ let tray;
 let isQuitting = false;
 let trayToggleTimer;
 let popoverHiddenAt = 0;
+let popoverHideTimer;
+let popoverClosing = false;
 let popoverContentHeight = POPOVER_INITIAL_HEIGHT;
 let popoverAnchorBounds;
+let popoverAnchorKind = "tray";
 let floatingBoundsSaveTimer;
 let pricingService;
 
@@ -85,6 +93,7 @@ app.on("before-quit", () => {
   isQuitting = true;
   clearInterval(refreshTimer);
   clearTimeout(trayToggleTimer);
+  clearTimeout(popoverHideTimer);
   clearTimeout(floatingBoundsSaveTimer);
 });
 
@@ -123,10 +132,9 @@ function createWindow() {
   mainWindow.once("ready-to-show", () => mainWindow.show());
 }
 
-/// A small always-on-top Windows shortcut. The grip is draggable; the quota
-/// button opens the same quick-view popup as the tray icon. It deliberately
-/// stays separate from both the dashboard and the popup so each surface keeps
-/// one job.
+/// The Watch complication's circular remaining-rings surface, adapted as a
+/// small always-on-top Windows shortcut. The renderer is alpha-transparent;
+/// only the circular rings and their subtle glass hit target are painted.
 function createFloatingWidgetWindow() {
   if (floatingWidgetWindow && !floatingWidgetWindow.isDestroyed()) return floatingWidgetWindow;
   floatingWidgetWindow = new BrowserWindow({
@@ -141,7 +149,7 @@ function createFloatingWidgetWindow() {
     fullscreenable: false,
     skipTaskbar: true,
     alwaysOnTop: true,
-    hasShadow: true,
+    hasShadow: false,
     title: "TokenRemain Floating Shortcut",
     icon: iconPath(),
     webPreferences: {
@@ -159,7 +167,7 @@ function createFloatingWidgetWindow() {
   floatingWidgetWindow.webContents.on("will-navigate", (event) => event.preventDefault());
   floatingWidgetWindow.webContents.on("context-menu", () => {
     Menu.buildFromTemplate([
-      { label: "Open Quick View", click: () => openPopover(floatingWidgetWindow?.getBounds()) },
+      { label: "Open Quick View", click: () => openPopover(floatingWidgetWindow?.getBounds(), "floating") },
       { label: "Open Dashboard", click: () => openDashboard("overview") },
       { type: "separator" },
       { label: "Hide Floating Shortcut", click: () => { setFloatingWidgetEnabled(false).catch(() => {}); } },
@@ -238,9 +246,10 @@ function createPopoverWindow() {
     alwaysOnTop: true,
     hasShadow: true,
     acceptFirstMouse: true,
-    // Acrylic is decoration: without Windows 11 22H2 the popover simply keeps
-    // the dashboard's opaque dark surface, and nothing else changes.
-    backgroundColor: acrylic ? "#00000000" : "#0d0e10",
+    transparent: true,
+    // The renderer owns the rounded opaque fallback; the native window stays
+    // transparent so its corners and scale animation never reveal a black box.
+    backgroundColor: "#00000000",
     ...(acrylic ? { backgroundMaterial: "acrylic" } : {}),
     title: "TokenRemain",
     icon: iconPath(),
@@ -271,54 +280,82 @@ function createPopoverWindow() {
   );
 }
 
-function showPopover(trayBounds) {
+function showPopover(anchorBounds, anchorKind = "tray") {
   if (!popoverWindow || popoverWindow.isDestroyed()) createPopoverWindow();
-  popoverAnchorBounds = usableTrayBounds(trayBounds) || usableTrayBounds(tray?.getBounds?.());
+  clearTimeout(popoverHideTimer);
+  popoverHideTimer = undefined;
+  popoverClosing = false;
+  popoverAnchorKind = anchorKind;
+  popoverAnchorBounds = usableTrayBounds(anchorBounds) || usableTrayBounds(tray?.getBounds?.());
   positionPopover();
   popoverWindow.show();
   popoverWindow.setAlwaysOnTop(true, "pop-up-menu");
   popoverWindow.focus();
-  popoverWindow.webContents.send("popover:visibility", true);
+  publishPopoverVisibility(true);
   popoverWindow.webContents.send("popover:shown");
 }
 
-function openPopover(anchorBounds) {
+function openPopover(anchorBounds, anchorKind) {
+  const explicitAnchor = usableTrayBounds(anchorBounds);
+  if (explicitAnchor) {
+    showPopover(explicitAnchor, anchorKind || "tray");
+    return;
+  }
   const floatingAnchor = floatingWidgetWindow?.isVisible()
     ? usableTrayBounds(floatingWidgetWindow.getBounds())
     : undefined;
-  showPopover(anchorBounds || floatingAnchor || usableTrayBounds(tray?.getBounds?.()));
+  if (floatingAnchor) showPopover(floatingAnchor, "floating");
+  else showPopover(usableTrayBounds(tray?.getBounds?.()), "tray");
 }
 
 function hidePopover(options = {}) {
   if (!popoverWindow || popoverWindow.isDestroyed() || !popoverWindow.isVisible()) return;
   if (options.dismissedByClick) popoverHiddenAt = Date.now();
-  popoverWindow.hide();
-  popoverWindow.webContents.send("popover:visibility", false);
+  if (popoverClosing) return;
+  popoverClosing = true;
+  publishPopoverVisibility(false);
+  const finish = () => {
+    popoverHideTimer = undefined;
+    if (popoverWindow && !popoverWindow.isDestroyed()) popoverWindow.hide();
+    popoverClosing = false;
+  };
+  if (options.immediate) finish();
+  else popoverHideTimer = setTimeout(finish, POPOVER_EXIT_ANIMATION_MS);
 }
 
 function togglePopover(trayBounds) {
   const dismissedByThisClick = Date.now() - popoverHiddenAt < TRAY_REOPEN_GUARD_MS;
-  if (dismissedByThisClick || popoverWindow?.isVisible()) hidePopover();
+  if (dismissedByThisClick) return;
+  if (popoverWindow?.isVisible() && !popoverClosing) hidePopover();
   else showPopover(trayBounds);
 }
 
 function togglePopoverFromFloating() {
   const dismissedByThisClick = Date.now() - popoverHiddenAt < TRAY_REOPEN_GUARD_MS;
-  if (dismissedByThisClick || popoverWindow?.isVisible()) hidePopover();
-  else showPopover(usableTrayBounds(floatingWidgetWindow?.getBounds?.()));
+  if (dismissedByThisClick) return;
+  if (popoverWindow?.isVisible() && !popoverClosing) hidePopover();
+  else showPopover(usableTrayBounds(floatingWidgetWindow?.getBounds?.()), "floating");
 }
 
-/// Keeps the popover next to the tray icon and inside the work area of the
-/// display the icon lives on, at whatever height the content currently needs.
+function publishPopoverVisibility(visible) {
+  for (const target of [popoverWindow, floatingWidgetWindow]) {
+    if (target && !target.isDestroyed()) target.webContents.send("popover:visibility", Boolean(visible));
+  }
+}
+
+/// Keeps the popover next to its current tray or floating anchor and inside the
+/// anchor display's work area, at whatever height the content currently needs.
 function positionPopover() {
   if (!popoverWindow || popoverWindow.isDestroyed()) return;
   const display = popoverDisplay();
-  const bounds = resolvePopoverBounds({
-    trayBounds: popoverAnchorBounds,
+  const common = {
     display,
     width: POPOVER_WIDTH,
     height: clampPopoverHeight(popoverContentHeight, display),
-  });
+  };
+  const bounds = popoverAnchorKind === "floating"
+    ? resolveFloatingPopoverBounds({ ...common, anchorBounds: popoverAnchorBounds })
+    : resolvePopoverBounds({ ...common, trayBounds: popoverAnchorBounds });
   const current = popoverWindow.getBounds();
   if (current.x === bounds.x && current.y === bounds.y && current.width === bounds.width && current.height === bounds.height) return;
   popoverWindow.setBounds({ x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height });
@@ -357,7 +394,7 @@ function createTray() {
 function updateTrayContextMenu() {
   if (!tray) return;
   tray.setContextMenu(Menu.buildFromTemplate([
-    { label: "Open Quick View", click: () => openPopover(usableTrayBounds(tray.getBounds())) },
+    { label: "Open Quick View", click: () => openPopover(usableTrayBounds(tray.getBounds()), "tray") },
     { label: "Open Dashboard", click: () => openDashboard("overview") },
     { label: "Show Floating Shortcut", type: "checkbox", checked: Boolean(store.state.preferences?.floatingWidgetEnabled), click: (item) => { setFloatingWidgetEnabled(item.checked).catch(() => {}); } },
     { label: "Refresh now", click: () => { refreshAll().catch(() => {}); } },

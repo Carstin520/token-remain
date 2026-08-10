@@ -6,6 +6,7 @@ import {
   ArrowUpRightIcon,
   CheckCircleIcon,
   ChevronRightIcon,
+  CloseIcon,
   MoreIcon,
   PlusIcon,
   RefreshIcon,
@@ -263,7 +264,7 @@ function App() {
   });
 
   return (
-    <div className="popover-root" ref={rootRef} tabIndex={-1} role="dialog" aria-label="TokenRemain quick view">
+    <div className={`popover-root ${visible ? "is-visible" : "is-hidden"}`} ref={rootRef} tabIndex={-1} role="dialog" aria-label="TokenRemain quick view">
       <span className="sr-only" aria-live="polite">{copiedID ? "Summary copied to clipboard" : ""}</span>
       <header className="popover-header" ref={headerRef}>
         <span className="popover-brand">Token<b>Remain</b></span>
@@ -285,6 +286,14 @@ function App() {
           title="Refresh quotas, local usage, pricing, and the AI Feed"
         >
           <RefreshIcon spinning={model.isRefreshing} />
+        </button>
+        <button
+          className="icon-button popover-close"
+          onClick={() => api.hidePopover?.()}
+          aria-label="Close Quick View"
+          title="Close Quick View (Esc)"
+        >
+          <CloseIcon />
         </button>
       </header>
 

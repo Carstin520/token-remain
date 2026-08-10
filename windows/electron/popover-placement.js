@@ -121,6 +121,68 @@ export function resolvePopoverBounds(input = {}) {
   };
 }
 
+/// Places the quick view beside the freely movable desktop shortcut. Unlike a
+/// tray icon, this anchor can sit anywhere in the work area: prefer the side
+/// with enough room, fall back above/below, and never use taskbar direction to
+/// push the window back across the shortcut.
+export function resolveFloatingPopoverBounds(input = {}) {
+  const {
+    anchorBounds,
+    display,
+    width = POPOVER_WIDTH,
+    height = POPOVER_INITIAL_HEIGHT,
+    gap = TRAY_GAP,
+    margin = SCREEN_MARGIN,
+  } = input;
+  const safeWidth = Math.max(1, Math.round(width));
+  const safeHeight = Math.max(1, Math.round(height));
+  const workArea = isRect(display?.workArea)
+    ? display.workArea
+    : { x: 0, y: 0, width: safeWidth + 2 * margin, height: safeHeight + 2 * margin };
+  if (!isRect(anchorBounds)) {
+    return {
+      x: clampAxis(workArea.x + workArea.width - margin - safeWidth, safeWidth, workArea.x, workArea.width, margin),
+      y: clampAxis(workArea.y + margin, safeHeight, workArea.y, workArea.height, margin),
+      width: safeWidth,
+      height: safeHeight,
+      side: "fallback",
+      anchored: false,
+    };
+  }
+
+  const leftRoom = anchorBounds.x - (workArea.x + margin);
+  const rightRoom = (workArea.x + workArea.width - margin) - (anchorBounds.x + anchorBounds.width);
+  const aboveRoom = anchorBounds.y - (workArea.y + margin);
+  const belowRoom = (workArea.y + workArea.height - margin) - (anchorBounds.y + anchorBounds.height);
+  const centerX = anchorBounds.x + anchorBounds.width / 2;
+  const centerY = anchorBounds.y + anchorBounds.height / 2;
+  let side;
+  let placement;
+
+  if (leftRoom >= safeWidth + gap || rightRoom >= safeWidth + gap) {
+    side = leftRoom >= safeWidth + gap && (rightRoom < safeWidth + gap || leftRoom >= rightRoom) ? "left" : "right";
+    placement = {
+      x: side === "left" ? anchorBounds.x - gap - safeWidth : anchorBounds.x + anchorBounds.width + gap,
+      y: centerY - safeHeight / 2,
+    };
+  } else {
+    side = belowRoom >= safeHeight + gap && (aboveRoom < safeHeight + gap || belowRoom >= aboveRoom) ? "below" : "above";
+    placement = {
+      x: centerX - safeWidth / 2,
+      y: side === "below" ? anchorBounds.y + anchorBounds.height + gap : anchorBounds.y - gap - safeHeight,
+    };
+  }
+
+  return {
+    x: clampAxis(placement.x, safeWidth, workArea.x, workArea.width, margin),
+    y: clampAxis(placement.y, safeHeight, workArea.y, workArea.height, margin),
+    width: safeWidth,
+    height: safeHeight,
+    side,
+    anchored: true,
+  };
+}
+
 function anchorToTray(trayBounds, edge, width, height, gap) {
   const centerX = trayBounds.x + trayBounds.width / 2;
   const centerY = trayBounds.y + trayBounds.height / 2;

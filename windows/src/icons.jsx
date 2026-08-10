@@ -47,3 +47,4 @@ export function InfoIcon() { return <Icon><circle cx="12" cy="12" r="8.5"/><path
 export function RestartIcon() { return <Icon><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 3v4h-4"/></Icon>; }
 export function MoreIcon() { return <Icon><path d="M5 12h.1"/><path d="M12 12h.1"/><path d="M19 12h.1"/></Icon>; }
 export function PowerIcon() { return <Icon><path d="M12 3v8"/><path d="M6.3 6.5a8 8 0 1 0 11.4 0"/></Icon>; }
+export function CloseIcon() { return <Icon><path d="m7 7 10 10"/><path d="M17 7 7 17"/></Icon>; }

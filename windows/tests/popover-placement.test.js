@@ -8,6 +8,7 @@ import {
   POPOVER_MIN_HEIGHT,
   POPOVER_WIDTH,
   prefersAcrylic,
+  resolveFloatingPopoverBounds,
   resolvePopoverBounds,
   taskbarEdge,
 } from "../electron/popover-placement.js";
@@ -77,6 +78,14 @@ test("Right taskbar puts the popover to the left of the taskbar band", () => {
   assert.equal(bounds.x + bounds.width, 1840);
   assert.equal(bounds.y + bounds.height / 2, 512);
   assert.ok(contains(bounds, display.workArea));
+});
+
+test("Desktop shortcut placement keeps the circular shortcut clickable", () => {
+  const shortcut = { x: 1822, y: 72, width: 80, height: 80 };
+  const bounds = resolveFloatingPopoverBounds({ anchorBounds: shortcut, display: FHD, height: 640 });
+  assert.equal(bounds.side, "left");
+  assert.ok(bounds.x + bounds.width <= shortcut.x - 8);
+  assert.ok(contains(bounds, FHD.workArea));
 });
 
 test("A second display keeps the popover on that display's work area", () => {
