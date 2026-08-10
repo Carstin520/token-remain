@@ -27,10 +27,11 @@
   "build": {
     "appId": "com.jamesli.tokenremain.windows",
     "productName": "TokenRemain",
-    "asar": true,
-    "asarUnpack": [
-      "node_modules/@ccusage/**/bin/ccusage*"
-    ],
+    "asar": {
+      "unpack": [
+        "node_modules/@ccusage/**/bin/ccusage*"
+      ]
+    },
     "directories": {
       "output": "release"
     },

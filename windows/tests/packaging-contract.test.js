@@ -62,7 +62,7 @@ test("Windows packages unpack the architecture-specific native ccusage helper", 
   const packageJSON = JSON.parse(await readFile(path.join(projectRoot, "package.json"), "utf8"));
   const lock = JSON.parse(await readFile(path.join(projectRoot, "package-lock.json"), "utf8"));
   assert.equal(packageJSON.dependencies?.ccusage, "20.0.19");
-  assert.ok(packageJSON.build?.asarUnpack?.some((pattern) => pattern.includes("@ccusage") && pattern.includes("ccusage")));
+  assert.ok(packageJSON.build?.asar?.unpack?.some((pattern) => pattern.includes("@ccusage") && pattern.includes("ccusage")));
   assert.ok(lock.packages?.["node_modules/@ccusage/ccusage-win32-x64"]?.optional);
   assert.ok(lock.packages?.["node_modules/@ccusage/ccusage-win32-arm64"]?.optional);
   assert.ok(!packageJSON.scripts?.["dist:win"].includes("--x64"), "native ARM64 CI must not be forced back to x64");
