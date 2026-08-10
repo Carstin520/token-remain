@@ -115,3 +115,29 @@ test("Floating shortcut preference and last position persist", async () => {
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+test("Onboarding selection and Windows-local credentials persist encrypted", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "tokenremain-windows-provider-state-"));
+  try {
+    const store = new StateStore({ userDataPath: directory, safeStorage });
+    await store.load();
+    await store.completeOnboarding(["cursor", "openrouter", "unsupported"]);
+    await store.setProviderSecret("openrouter", "sk-or-sensitive-value");
+
+    const onDisk = await readFile(join(directory, "state-v1.json"), "utf8");
+    assert.doesNotMatch(onDisk, /sk-or-sensitive-value|providerSecrets/);
+    assert.match(onDisk, /protectedProviderSecrets/);
+
+    const restored = new StateStore({ userDataPath: directory, safeStorage });
+    await restored.load();
+    assert.equal(restored.state.onboardingCompleted, true);
+    assert.deepEqual(restored.state.enabledProviders, ["cursor", "openrouter"]);
+    assert.equal(restored.getProviderSecret("openrouter"), "sk-or-sensitive-value");
+
+    await restored.clearProviderSecret("openrouter");
+    assert.equal(restored.hasProviderSecret("openrouter"), false);
+    assert.doesNotMatch(await readFile(join(directory, "state-v1.json"), "utf8"), /protectedProviderSecrets/);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});

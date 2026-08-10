@@ -11,6 +11,39 @@ html, body, #root { width: 100%; height: 100%; margin: 0; overflow: hidden; }
 }
 .app-shell { display: grid; grid-template-columns: 224px 1fr; height: 100%; background: var(--bg); }
 
+/* First launch — same short detected-app decision as the Mac onboarding. */
+.onboarding-frame { background: radial-gradient(circle at 50% 0, rgba(155, 138, 251, .08), transparent 45%), var(--bg); }
+.onboarding { display: grid; min-height: 0; place-items: center; overflow-y: auto; padding: 24px; }
+.onboarding-brand { position: fixed; top: 52px; left: 28px; display: flex; align-items: center; gap: 9px; color: var(--text); font-size: 14px; font-weight: 700; }
+.onboarding-brand img { width: 30px; height: 30px; border-radius: 8px; }
+.onboarding-card { width: min(500px, calc(100vw - 48px)); padding: 26px; border: 1px solid var(--border); border-radius: 18px; background: rgba(18, 19, 23, .96); box-shadow: 0 24px 80px rgba(0, 0, 0, .35); }
+.onboarding-card > header { display: grid; justify-items: center; text-align: center; }
+.onboarding-card > header > img { width: 62px; height: 62px; margin-bottom: 10px; border-radius: 14px; }
+.onboarding-card h1 { margin: 0; font-size: 23px; letter-spacing: -.35px; }
+.onboarding-card header p { max-width: 420px; margin: 8px 0 0; color: var(--secondary); font-size: 12px; line-height: 1.55; }
+.onboarding-list { display: grid; gap: 8px; margin-top: 20px; }
+.onboarding-provider, .onboarding-add-trigger { display: grid; width: 100%; grid-template-columns: 26px minmax(0, 1fr) 20px; align-items: center; gap: 11px; min-height: 58px; padding: 9px 12px; border: 1px solid var(--border); border-radius: 11px; color: var(--text); background: var(--surface); cursor: pointer; text-align: left; }
+.onboarding-provider:hover, .onboarding-add-trigger:hover { border-color: var(--violet-dim); background: var(--surface-2); }
+.onboarding-provider.selected { border-color: rgba(155, 138, 251, .5); background: var(--surface-2); }
+.onboarding-provider > span, .onboarding-add-menu button > span { display: grid; min-width: 0; gap: 3px; }
+.onboarding-provider strong { display: flex; align-items: center; gap: 7px; font-size: 13px; }
+.onboarding-provider strong i { padding: 2px 6px; border: 1px solid rgba(87, 209, 154, .34); border-radius: 99px; color: var(--success); background: rgba(87, 209, 154, .08); font-size: 8px; font-style: normal; text-transform: uppercase; letter-spacing: .45px; }
+.onboarding-provider small, .onboarding-add-menu small { overflow: hidden; color: var(--secondary); font-size: 10.5px; line-height: 1.4; text-overflow: ellipsis; white-space: nowrap; }
+.onboarding-provider > svg { width: 19px; height: 19px; color: var(--muted); }
+.onboarding-provider.selected > svg { color: var(--success); }
+.onboarding-empty { margin: 0; padding: 14px; border: 1px dashed var(--border); border-radius: 11px; color: var(--secondary); font-size: 11px; line-height: 1.55; text-align: center; }
+.onboarding-add { position: relative; }
+.onboarding-add-trigger { border-style: dashed; color: var(--secondary); background: transparent; }
+.onboarding-add-trigger svg { width: 17px; height: 17px; }
+.onboarding-add-trigger svg:last-child { width: 13px; justify-self: end; transform: rotate(90deg); }
+.onboarding-add-menu { position: absolute; z-index: 20; top: calc(100% + 6px); left: 0; right: 0; display: grid; max-height: 250px; overflow-y: auto; padding: 5px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); box-shadow: 0 16px 34px rgba(0, 0, 0, .45); }
+.onboarding-add-menu button { display: grid; grid-template-columns: 20px minmax(0, 1fr) 14px; align-items: center; gap: 9px; min-height: 44px; padding: 6px 8px; border: 0; border-radius: 7px; color: var(--text); background: transparent; cursor: pointer; text-align: left; }
+.onboarding-add-menu button:hover { background: var(--surface-3); }
+.onboarding-add-menu button > svg { width: 13px; height: 13px; color: var(--muted); }
+.onboarding-card > footer { display: grid; grid-template-columns: auto 1fr; gap: 10px; margin-top: 20px; }
+.onboarding-start { justify-content: center; }
+.onboarding-card > footer p { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: 9.5px; text-align: center; }
+
 /* Sidebar — brand mark, MONITOR/SYSTEM nav, and the sync-status footer that
    owns the refresh action, mirroring the Mac sidebar. */
 .sidebar { display: flex; flex-direction: column; min-height: 0; padding: 18px 12px 14px; border-right: 1px solid #26282e; background: #101114; }
@@ -307,7 +340,14 @@ nav svg { width: 16px; height: 16px; }
 .source-status span { font-size: 12px; font-weight: 500; }
 .source-status .tone-success { color: var(--success); }
 .source-status .tone-warning { color: var(--warning); }
+.source-status .tone-muted { color: var(--muted); }
 .source-status time { color: var(--muted); font-family: var(--mono); font-size: 10px; }
+.source-mode-pill { display: inline-flex; margin-left: 8px; padding: 2px 6px; border: 1px solid var(--border); border-radius: 99px; color: var(--muted); font-size: 8px; font-weight: 600; vertical-align: 1px; }
+.credential-form { display: grid; grid-template-columns: minmax(160px, 1fr) auto auto; gap: 7px; margin-top: 7px; }
+.credential-form input { min-width: 0; height: 34px; padding: 0 10px; border: 1px solid var(--border); border-radius: 7px; color: var(--text); background: var(--bg); font-size: 11px; }
+.credential-form input:focus { border-color: var(--violet); outline: none; box-shadow: 0 0 0 2px rgba(155, 138, 251, .12); }
+.credential-form .secondary { min-height: 34px; padding-inline: 10px; font-size: 10px; }
+.compact-button { min-height: 30px; padding-inline: 10px; font-size: 10px; }
 .privacy-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
 .privacy-list li { position: relative; padding-left: 16px; color: var(--secondary); font-size: 12px; line-height: 1.55; }
 .privacy-list li::before { content: ""; position: absolute; left: 0; top: 6px; width: 6px; height: 6px; border-radius: 50%; background: var(--violet); }
@@ -384,6 +424,7 @@ nav svg { width: 16px; height: 16px; }
   .usage-provider-list { width: 100%; }
   .source-row { flex-wrap: wrap; }
   .source-status { justify-items: start; }
+  .credential-form { grid-template-columns: 1fr; width: 100%; }
   .trend-card-controls { align-items: flex-start; flex-direction: column; }
   .trend-control-groups { width: 100%; justify-content: space-between; }
   .quota-trend-header, .quota-trend-row { grid-template-columns: minmax(108px, 1fr) 60px 52px minmax(140px, 2fr); gap: 8px; }

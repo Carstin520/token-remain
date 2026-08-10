@@ -49,15 +49,8 @@ import {
   TrendsIcon,
 } from "./icons.jsx";
 import { LIMITS_ORDER_KEY, normalizeOrder } from "./layout.js";
-import {
-  LIMITS_VISIBILITY_KEY,
-  normalizeLimitsVisibility,
-  readLimitsVisibility,
-  setProviderVisible,
-  writeLimitsVisibility,
-} from "./limits-layout.js";
 import { buildOverviewSummary, buildTodayUsage, rankOfficialQuotaProviders, summaryWindow, usagePace } from "./overview-model.js";
-import { PROVIDER_ORDER, providerMeta } from "./provider-meta.js";
+import { providerMeta } from "./provider-meta.js";
 import { compactAxisValue, linePoints, quotaTrendRows, TREND_RANGES, usageTrendModel } from "./trends-model.js";
 import { usageProviderIDs } from "./usage-history.js";
 import "./styles.css";
@@ -155,6 +148,14 @@ function App() {
   }
 
   if (!state) return <div className="loading">Loading TokenRemain…</div>;
+  if (!state.onboarding?.completed) {
+    return (
+      <div className="window-frame onboarding-frame">
+        <div className="window-drag-strip" aria-hidden="true" />
+        <Onboarding state={state} action={action} error={error} />
+      </div>
+    );
+  }
   return (
     <div className="window-frame">
       <div className="window-drag-strip" aria-hidden="true" />
@@ -175,15 +176,101 @@ function App() {
             />
             {error && <div className="error-banner" role="alert">{error}</div>}
             {section === "overview" && <Overview state={state} onSelect={setSection} onOpen={openExternal} />}
-            {section === "limits" && <Limits state={state} />}
+            {section === "limits" && <Limits state={state} action={action} />}
             {section === "trends" && <Trends state={state} />}
             {section === "devices" && <Devices state={state} action={action} />}
-            {section === "dataSources" && <DataSources state={state} />}
+            {section === "dataSources" && <DataSources state={state} action={action} />}
             {section === "settings" && <Settings state={state} action={action} onSelect={setSection} />}
           </div>
         </main>
       </div>
     </div>
+  );
+}
+
+// MARK: - First launch
+
+function Onboarding({ state, action, error }) {
+  const catalog = state.providerCatalog || [];
+  const detectedIDs = catalog.filter((provider) => provider.installed).map((provider) => provider.id);
+  const detectedSignature = detectedIDs.join("|");
+  const [selection, setSelection] = useState(() => new Set(detectedIDs));
+  const [manuallyAdded, setManuallyAdded] = useState(() => new Set());
+  const [addOpen, setAddOpen] = useState(false);
+  const visible = catalog.filter((provider) => provider.installed || manuallyAdded.has(provider.id));
+  const addable = catalog.filter((provider) => !provider.installed && !manuallyAdded.has(provider.id));
+
+  useEffect(() => {
+    setSelection((current) => new Set([...current, ...detectedIDs]));
+  }, [detectedSignature]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function toggle(id) {
+    setSelection((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function add(id) {
+    setManuallyAdded((current) => new Set([...current, id]));
+    setSelection((current) => new Set([...current, id]));
+    setAddOpen(false);
+  }
+
+  return (
+    <main className="onboarding">
+      <div className="onboarding-brand">
+        <img src={appIcon} alt="" />
+        <span className="wordmark">Token<b>Remain</b></span>
+      </div>
+      <section className="onboarding-card">
+        <header>
+          <img src={appIcon} alt="" />
+          <h1>Welcome to TokenRemain</h1>
+          <p>We scanned this Windows PC. Detected AI tools are already checked; choose what TokenRemain should monitor locally.</p>
+        </header>
+        {error && <div className="error-banner" role="alert">{error}</div>}
+        <div className="onboarding-list">
+          {visible.length ? visible.map((provider) => {
+            const meta = providerPresentation(provider.id);
+            const selected = selection.has(provider.id);
+            return (
+              <button
+                key={provider.id}
+                className={`onboarding-provider ${selected ? "selected" : ""}`}
+                onClick={() => toggle(provider.id)}
+                aria-pressed={selected}
+              >
+                <ProviderMark meta={meta} size={24} />
+                <span><strong>{meta.name}{provider.installed && <i>Detected</i>}</strong><small>{provider.detail}</small></span>
+                <CheckCircleIcon />
+              </button>
+            );
+          }) : <p className="onboarding-empty">No supported app was detected yet. You can add one manually or continue and configure it later.</p>}
+          <div className="onboarding-add">
+            <button className="onboarding-add-trigger" onClick={() => setAddOpen((value) => !value)} aria-expanded={addOpen}>
+              <PlusIcon /><span>Add another supported app</span><ChevronRightIcon />
+            </button>
+            {addOpen && (
+              <div className="onboarding-add-menu" role="menu">
+                {addable.map((provider) => {
+                  const meta = providerPresentation(provider.id);
+                  return <button key={provider.id} role="menuitem" onClick={() => add(provider.id)}><ProviderMark meta={meta} size={18} /><span><strong>{meta.name}</strong><small>{provider.localSessionFirst ? `Local app session · ${provider.credentialKind}` : provider.access === "local-credential" ? `Local ${provider.credentialKind}` : "Local app sign-in"}</small></span><PlusIcon /></button>;
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+        <footer>
+          <button className="secondary" onClick={() => action(api.rescanProviders)}><RefreshIcon />Scan again</button>
+          <button className="primary onboarding-start" onClick={() => action(() => api.completeOnboarding([...selection]))}>
+            {selection.size ? `Monitor ${selection.size} app${selection.size === 1 ? "" : "s"}` : "Continue without apps"}
+          </button>
+          <p>Detection is local and read-only. Credentials stay on this PC and are never sent to your Mac.</p>
+        </footer>
+      </section>
+    </main>
   );
 }
 
@@ -665,36 +752,12 @@ function FeedPostCard({ post, onOpen }) {
 
 // MARK: - Limits
 
-function Limits({ state }) {
-  const discoveredIDs = [
-    "claude",
-    "codex",
-    ...state.providers.map((provider) => provider.providerID),
-  ].filter((id, index, values) => values.indexOf(id) === index);
-  const availableIDs = [
-    ...PROVIDER_ORDER,
-    ...state.providers.map((provider) => provider.providerID).filter((id) => !PROVIDER_ORDER.includes(id)),
-  ];
-  const availableSignature = availableIDs.join("|");
-  const discoveredSignature = discoveredIDs.join("|");
-  const [visibility, setVisibility] = useState(() => readLimitsVisibility(
-    globalThis.localStorage,
-    LIMITS_VISIBILITY_KEY,
-    availableIDs,
-    discoveredIDs,
-  ));
-  useEffect(() => {
-    setVisibility((current) => normalizeLimitsVisibility(current, availableIDs, discoveredIDs));
-  }, [availableSignature, discoveredSignature]);
-  useEffect(() => {
-    writeLimitsVisibility(globalThis.localStorage, LIMITS_VISIBILITY_KEY, visibility);
-  }, [visibility]);
-
-  const providerIDs = visibility.visible;
-  const hiddenIDs = availableIDs.filter((id) => !providerIDs.includes(id));
+function Limits({ state, action }) {
+  const providerIDs = state.enabledProviders || [];
+  const hiddenIDs = (state.providerCatalog || []).map((provider) => provider.id).filter((id) => !providerIDs.includes(id));
   const [order, setOrder] = usePersistentOrder(providerIDs, LIMITS_ORDER_KEY);
-  const showProvider = (id) => setVisibility((current) => setProviderVisible(current, id, true, availableIDs, discoveredIDs));
-  const hideProvider = (id) => setVisibility((current) => setProviderVisible(current, id, false, availableIDs, discoveredIDs));
+  const showProvider = (id) => action(() => api.setProviderEnabled(id, true));
+  const hideProvider = (id) => action(() => api.setProviderEnabled(id, false));
   return (
     <section className="content-section limits-section">
       <div className="limits-toolbar">
@@ -702,6 +765,7 @@ function Limits({ state }) {
         <ProviderAddMenu
           providerIDs={hiddenIDs}
           providers={state.providers}
+          catalog={state.providerCatalog}
           onAdd={showProvider}
         />
       </div>
@@ -714,7 +778,7 @@ function Limits({ state }) {
             provider={state.providers.find((item) => item.providerID === id)}
             notice={state.notices[id]}
             id={id}
-            canRemove={providerIDs.length > 1}
+            canRemove
             onRemove={() => hideProvider(id)}
           />
         )}
@@ -722,7 +786,8 @@ function Limits({ state }) {
       <div className="settings-card about-windows">
         <PanelHeader title="About quota windows" />
         <p>Percentages show the remaining quota within a window; usage-based services show the remaining monetary balance directly. Windows come from each provider's servers: Claude, Codex, and Z.ai usually include a 5-hour session window and a 7-day window; Cursor uses a monthly billing window; Grok uses a weekly pool.</p>
-        <p>Use Add app and the minus control to choose what appears here. New providers reported by this PC or your paired Mac appear automatically; providers you remove stay hidden until you add them again.</p>
+        <p>Use Add app and the minus control to choose which Windows-local adapters TokenRemain monitors. Automatic adapters reuse the app's existing sign-in; credential adapters are configured locally in Data Sources.</p>
+        <p>Mac Direct Sync is fallback-only: it fills a provider only when this PC has no local snapshot, and never replaces a Windows-local reading.</p>
         <p>Drag a full card to reorder it — Alt plus arrow keys also works — and both order and visibility are remembered on this PC.</p>
         <p>Reset times come from official snapshots; when a window has no reset time yet, it shows “Waiting for the official reset time”.</p>
       </div>
@@ -732,7 +797,7 @@ function Limits({ state }) {
 
 /// Full provider quota card matching the Mac's QuotaCard: brand row + plan
 /// pill, then one row per official window with meter, reset, and pace.
-function ProviderAddMenu({ providerIDs, providers, onAdd }) {
+function ProviderAddMenu({ providerIDs, providers, catalog, onAdd }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
   useEffect(() => {
@@ -759,11 +824,11 @@ function ProviderAddMenu({ providerIDs, providers, onAdd }) {
           {providerIDs.map((id) => {
             const meta = providerPresentation(id);
             const available = providers.some((provider) => provider.providerID === id);
-            const local = id === "claude" || id === "codex";
+            const definition = catalog?.find((provider) => provider.id === id);
             return (
               <button key={id} role="menuitem" onClick={() => { onAdd(id); setOpen(false); }}>
                 <ProviderMark meta={meta} size={18} />
-                <span><strong>{meta.name}</strong><small>{available ? "Quota source available" : local ? "Supported local sign-in" : "Available through Mac sync"}</small></span>
+                <span><strong>{meta.name}</strong><small>{available ? "Windows-local quota available" : definition?.localSessionFirst ? `Uses ${definition.product} first; ${definition.credentialKind} is optional` : definition?.access === "local-credential" ? `Configure ${definition.credentialKind} locally` : definition?.installed ? "Detected on this PC" : "Supported Windows-local adapter"}</small></span>
                 <PlusIcon />
               </button>
             );
@@ -813,9 +878,7 @@ function QuotaCard({ provider, notice, id, canRemove, onRemove }) {
       ) : (
         <div className="empty-provider">
           <MoonIcon />
-          <span>{notice || (id === "claude" || id === "codex"
-            ? "Waiting for a local sign-in or the next quota refresh."
-            : `${meta.name} has no snapshot yet. Pair your Mac to sync supported providers.`)}</span>
+          <span>{notice || `${meta.name} is waiting for its Windows-local sign-in or credential.`}</span>
         </div>
       )}
     </article>
@@ -1168,25 +1231,40 @@ function Devices({ state, action }) {
 
 // MARK: - Data Sources
 
-function DataSources({ state }) {
+function DataSources({ state, action }) {
   const local = new Map((state.localProviders || []).map((provider) => [provider.providerID, provider]));
-  const remoteCount = state.sync.paired ? state.providers.filter((provider) => {
-    const localProvider = local.get(provider.providerID);
-    return !localProvider || provider.capturedAt > localProvider.capturedAt;
-  }).length : 0;
+  const enabled = (state.providerCatalog || []).filter((provider) => provider.enabled);
+  const remoteCount = state.sync.paired ? state.providers.filter((provider) => !local.has(provider.providerID)).length : 0;
   return (
     <section className="content-section data-sources-section">
       <div className="settings-card source-list">
-        <PanelHeader title="Data Source Status" subtitle="Only normalized quota and usage values enter the dashboard." />
-        {["claude", "codex"].map((id) => (
-          <SourceHealthRow
-            key={id}
-            name={`${providerPresentation(id).name} CLI`}
-            detail={state.notices[id] || "Read-only local credential and quota check"}
-            healthy={local.has(id) && !state.notices[id]}
-            capturedAt={local.get(id)?.capturedAt}
+        <PanelHeader
+          title="Windows-local providers"
+          subtitle="Every enabled app is read on this PC first. Mac Direct Sync only fills a missing provider."
+          trailing={<button className="secondary compact-button" onClick={() => action(api.rescanProviders)}><RefreshIcon />Scan apps</button>}
+        />
+        {enabled.length ? enabled.map((definition) => definition.access === "local-credential" ? (
+          <CredentialSourceRow
+            key={definition.id}
+            definition={definition}
+            provider={local.get(definition.id)}
+            notice={state.notices[definition.id]}
+            action={action}
           />
-        ))}
+        ) : (
+          <SourceHealthRow
+            key={definition.id}
+            iconID={definition.id}
+            name={providerPresentation(definition.id).name}
+            detail={state.notices[definition.id] || (local.has(definition.id) ? "Read from this app's existing Windows sign-in" : definition.detail)}
+            healthy={local.has(definition.id) && !state.notices[definition.id]}
+            capturedAt={local.get(definition.id)?.capturedAt}
+            status={local.has(definition.id) ? "Local" : definition.installed ? "Detected" : "Not found"}
+          />
+        )) : <p className="quiet-note">No provider is enabled. Add one from Limits or scan this PC again.</p>}
+      </div>
+      <div className="settings-card source-list">
+        <PanelHeader title="Supporting sources" subtitle="Usage history, pricing, feed, and optional cross-device fallback." />
         <SourceHealthRow
           name="Local ccusage"
           detail={state.localUsage?.error || "Reads supported coding-agent logs on this PC; no separate ccusage install required"}
@@ -1204,9 +1282,10 @@ function DataSources({ state }) {
         />
         <SourceHealthRow
           name="Mac Direct Sync"
-          detail={state.sync.error || (state.sync.paired ? `${remoteCount} fresher provider snapshot${remoteCount === 1 ? "" : "s"}` : "Optional: pair a Mac to combine its quota and daily aggregate")}
+          detail={state.sync.error || (state.sync.paired ? `${remoteCount} provider fallback${remoteCount === 1 ? "" : "s"}; Windows-local snapshots always win` : "Optional fallback for providers missing on this PC, plus your Mac daily aggregate")}
           healthy={state.sync.paired && !state.sync.error}
           capturedAt={state.sync.lastSyncAt}
+          status={state.sync.paired ? "Fallback" : "Optional"}
         />
         <SourceHealthRow
           name="Curated AI Feed"
@@ -1218,10 +1297,10 @@ function DataSources({ state }) {
       <div className="settings-card">
         <PanelHeader title="Privacy" />
         <ul className="privacy-list">
-          <li>Provider credentials are read-only local CLI files; tokens are never refreshed, written back, or synced.</li>
+          <li>App sign-ins are read-only. Manually supplied keys and Cookies are encrypted with Windows credential protection; none are synced.</li>
           <li>Built-in ccusage reads local agent logs offline; raw sessions, prompts, paths, and repository names never leave this PC.</li>
           <li>Only the complete public LiteLLM price table is downloaded. No observed model name, token count, or usage-derived query is sent.</li>
-          <li>Direct Sync optionally exchanges AES-256-GCM encrypted quota snapshots and daily aggregates with your Mac.</li>
+          <li>Direct Sync optionally exchanges AES-256-GCM encrypted quota snapshots and daily aggregates with your Mac, but remote quota is fallback-only.</li>
           <li>The curated AI feed syncs automatically via built-in policies; there are no accounts to pick or sources to manage.</li>
           <li>No CloudKit and no phone sync in this Windows build.</li>
         </ul>
@@ -1230,16 +1309,53 @@ function DataSources({ state }) {
   );
 }
 
-function SourceHealthRow({ name, detail, healthy, capturedAt }) {
+function CredentialSourceRow({ definition, provider, notice, action }) {
+  const [value, setValue] = useState("");
+  const [busy, setBusy] = useState(false);
+  const meta = providerPresentation(definition.id);
+  async function save(event) {
+    event.preventDefault();
+    setBusy(true);
+    await action(() => api.setProviderCredential(definition.id, value));
+    setValue("");
+    setBusy(false);
+  }
+  async function clear() {
+    setBusy(true);
+    await action(() => api.clearProviderCredential(definition.id));
+    setValue("");
+    setBusy(false);
+  }
+  return (
+    <div className="source-row credential-source-row">
+      <ProviderMark meta={meta} size={20} />
+      <div>
+        <strong>{meta.name}<span className="source-mode-pill">{definition.localSessionFirst ? `App session + ${definition.credentialKind}` : `Local ${definition.credentialKind}`}</span></strong>
+        <small>{notice || (provider ? (definition.localSessionFirst ? `Quota is being read from ${definition.product} or its local fallback` : "Quota is being read with the credential protected on this PC") : definition.detail)}</small>
+        <form className="credential-form" onSubmit={save}>
+          <input type="password" autoComplete="off" value={value} onChange={(event) => setValue(event.target.value)} placeholder={definition.configured ? `Replace saved ${definition.credentialKind}` : `Paste ${definition.credentialKind}`} />
+          <button className="secondary" disabled={busy || !value.trim()}>{busy ? "Saving…" : "Save locally"}</button>
+          {definition.configured && <button type="button" className="secondary danger" disabled={busy} onClick={clear}>Clear</button>}
+        </form>
+      </div>
+      <div className="source-status">
+        <span className={provider && !notice ? "tone-success" : definition.configured ? "tone-warning" : "tone-muted"}>{provider && !notice ? "Local" : definition.configured ? "Configured" : "Setup"}</span>
+        {provider?.capturedAt && <time>{formatClock(provider.capturedAt)}</time>}
+      </div>
+    </div>
+  );
+}
+
+function SourceHealthRow({ name, detail, healthy, capturedAt, iconID, status }) {
   return (
     <div className="source-row">
-      <span className={`source-dot ${healthy ? "tone-success" : "tone-warning"}`} aria-hidden="true" />
+      {iconID ? <ProviderMark meta={providerPresentation(iconID)} size={20} /> : <span className={`source-dot ${healthy ? "tone-success" : "tone-warning"}`} aria-hidden="true" />}
       <div>
         <strong>{name}</strong>
         <small>{detail}</small>
       </div>
       <div className="source-status">
-        <span className={healthy ? "tone-success" : "tone-warning"}>{healthy ? "Healthy" : "Link broken"}</span>
+        <span className={healthy ? "tone-success" : "tone-warning"}>{status || (healthy ? "Healthy" : "Needs attention")}</span>
         {capturedAt && <time>{formatClock(capturedAt)}</time>}
       </div>
     </div>
@@ -1428,6 +1544,28 @@ function createPreviewAPI() {
     { providerID: "codex", capturedAt: previewNow - 12 * 60_000, planName: "Pro 5x", windows: [{ usedPercent: 63, windowMinutes: 300, resetsAt: previewNow + 9_000_000 }, { usedPercent: 31, windowMinutes: 10_080, resetsAt: previewNow + 331_200_000 }] },
   ];
   const previewCursor = { providerID: "cursor", capturedAt: previewNow - 30_000, planName: "Pro", windows: [{ usedPercent: 6, windowMinutes: 44_640, resetsAt: previewNow + 284_400_000 }] };
+  const previewOpenRouter = { providerID: "openrouter", capturedAt: previewNow - 30_000, planName: "Credits", windows: [{ usedPercent: 12, windowMinutes: 0, remainingBalance: { amount: 42.75, currencyCode: "USD" } }] };
+  const previewCatalog = [
+    { id: "claude", access: "local-session", product: "Claude Desktop / Claude Code", installed: true, configured: true, detail: "Detected Claude Desktop / Claude Code on this PC" },
+    { id: "codex", access: "local-session", product: "ChatGPT / Codex", installed: true, configured: true, detail: "Detected ChatGPT / Codex on this PC" },
+    { id: "cursor", access: "local-session", product: "Cursor", installed: true, configured: true, detail: "Detected Cursor on this PC" },
+    { id: "copilot", access: "local-session", product: "GitHub Copilot", installed: false, configured: false, detail: "Install and sign in to GitHub Copilot" },
+    { id: "devin", access: "local-session", product: "Devin", installed: false, configured: false, detail: "Install and sign in to Devin" },
+    { id: "windsurf", access: "local-session", product: "Windsurf", installed: false, configured: false, detail: "Install and sign in to Windsurf" },
+    { id: "grok", access: "local-session", product: "Grok CLI", installed: false, configured: false, detail: "Install and sign in to Grok CLI" },
+    { id: "openrouter", access: "local-credential", credentialKind: "API key", installed: true, configured: true, detail: "API key is configured locally on this PC" },
+    { id: "antigravity", access: "local-session", product: "Antigravity", installed: false, configured: false, detail: "Install and sign in to Antigravity" },
+    { id: "opencode", access: "local-session", product: "OpenCode", installed: false, configured: false, detail: "Install and sign in to OpenCode" },
+    { id: "zai", access: "local-credential", product: "ZCode", localSessionFirst: true, credentialKind: "API key", installed: false, configured: false, detail: "Install ZCode or add an API key locally in Data Sources" },
+    { id: "deepseek", access: "local-credential", credentialKind: "API key", installed: false, configured: false, detail: "Add an API key locally in Data Sources" },
+    { id: "kimi", access: "local-credential", product: "Kimi Code", localSessionFirst: true, credentialKind: "API key or kimi-auth token", installed: false, configured: false, detail: "Install Kimi Code or add a credential locally in Data Sources" },
+    { id: "minimax", access: "local-credential", credentialKind: "API key", installed: false, configured: false, detail: "Add an API key locally in Data Sources" },
+    { id: "mimo", access: "local-credential", credentialKind: "Cookie", installed: false, configured: false, detail: "Add a Cookie locally in Data Sources" },
+    { id: "qoder", access: "local-credential", product: "Qoder / QoderCN", localSessionFirst: true, credentialKind: "Cookie fallback", installed: false, configured: false, detail: "Open Qoder or add a Cookie fallback locally in Data Sources" },
+    { id: "kiro", access: "local-session", product: "Kiro / kiro-cli", installed: false, configured: false, detail: "Install and sign in to Kiro / kiro-cli" },
+    { id: "volcengine", access: "local-credential", credentialKind: "AccessKeyId:SecretAccessKey", installed: false, configured: false, detail: "Add credentials locally in Data Sources" },
+    { id: "ollama", access: "local-credential", credentialKind: "Ollama Cloud Cookie", installed: false, configured: false, detail: "Add an Ollama Cloud Cookie locally in Data Sources" },
+  ];
   const quotaSamples = [];
   for (let index = 0; index < 60; index += 1) {
     const capturedAt = previewNow - (59 - index) * 12 * 60 * 60_000;
@@ -1457,11 +1595,14 @@ function createPreviewAPI() {
     lastUpdatedAt: previewNow,
     isRefreshing: false,
     notices: {},
-    localProviders: previewLocalProviders,
+    onboarding: { completed: new URLSearchParams(globalThis.location?.search || "").get("onboarding") !== "1", detections: previewCatalog.map((provider) => ({ providerID: provider.id, installed: provider.installed, configured: provider.configured, access: provider.access, credentialKind: provider.credentialKind, detail: provider.detail })) },
+    providerCatalog: previewCatalog.map((provider) => ({ ...provider, enabled: ["claude", "codex", "cursor", "openrouter"].includes(provider.id) })),
+    enabledProviders: ["claude", "codex", "cursor", "openrouter"],
+    localProviders: [...previewLocalProviders, previewCursor, previewOpenRouter],
     providers: [
       ...previewLocalProviders,
       previewCursor,
-      { providerID: "openrouter", capturedAt: previewNow - 30_000, planName: "Credits", windows: [{ usedPercent: 12, windowMinutes: 0, remainingBalance: { amount: 42.75, currencyCode: "USD" } }] },
+      previewOpenRouter,
     ],
     dailyUsageHistory: { sourceDay: previewDay, capturedAt: previewNow, days: previewHistoryDays },
     localUsage: {
@@ -1487,6 +1628,19 @@ function createPreviewAPI() {
   return {
     getState: async () => preview,
     refresh: async () => (preview = { ...preview, lastUpdatedAt: Date.now() }),
+    completeOnboarding: async (providerIDs) => (preview = { ...preview, onboarding: { ...preview.onboarding, completed: true }, enabledProviders: providerIDs, providerCatalog: preview.providerCatalog.map((provider) => ({ ...provider, enabled: providerIDs.includes(provider.id) })) }),
+    rescanProviders: async () => preview,
+    setProviderEnabled: async (providerID, enabled) => {
+      const next = new Set(preview.enabledProviders);
+      if (enabled) next.add(providerID); else next.delete(providerID);
+      const enabledProviders = [...next];
+      return (preview = { ...preview, enabledProviders, providerCatalog: preview.providerCatalog.map((provider) => ({ ...provider, enabled: enabledProviders.includes(provider.id) })) });
+    },
+    setProviderCredential: async (providerID) => {
+      const enabledProviders = [...new Set([...preview.enabledProviders, providerID])];
+      return (preview = { ...preview, enabledProviders, providerCatalog: preview.providerCatalog.map((provider) => provider.id === providerID ? { ...provider, installed: true, configured: true, enabled: true } : provider) });
+    },
+    clearProviderCredential: async (providerID) => (preview = { ...preview, providerCatalog: preview.providerCatalog.map((provider) => provider.id === providerID ? { ...provider, configured: false } : provider) }),
     pair: async () => preview,
     disconnect: async () => (preview = { ...preview, sync: { paired: false } }),
     openExternal: async () => true,

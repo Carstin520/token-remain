@@ -77,3 +77,11 @@ export function mergeProviders(local = [], remote = []) {
     .sort((left, right) => left.providerID.localeCompare(right.providerID));
   return [...known, ...future];
 }
+
+/// Device ownership beats capture time. Direct Sync is a fallback for a
+/// provider that this PC cannot currently supply; it must never replace a
+/// Windows-local snapshot merely because the Mac refreshed a few seconds later.
+export function mergeLocalFirstProviders(local = [], remote = []) {
+  const localIDs = new Set(local.filter((provider) => provider?.providerID).map((provider) => provider.providerID));
+  return mergeProviders(local, remote.filter((provider) => !localIDs.has(provider?.providerID)));
+}

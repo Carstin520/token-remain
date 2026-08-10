@@ -1,6 +1,7 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { normalizeQuotaUsageHistory, recordQuotaUsageHistory } from "./quota-history.js";
+import { normalizeProviderIDs, PROVIDER_ID_SET } from "./providers/catalog.js";
 import { newSourceID } from "./sync/crypto.js";
 
 export class StateStore {
@@ -40,11 +41,24 @@ export class StateStore {
         Buffer.from(this.state.protectedLocalDailyUsageHistory, "base64"),
       ));
     }
+    if (this.state.protectedProviderSecrets) {
+      if (!this.safeStorage.isEncryptionAvailable()) throw new Error("Windows credential protection is unavailable");
+      this.state.providerSecrets = JSON.parse(this.safeStorage.decryptString(
+        Buffer.from(this.state.protectedProviderSecrets, "base64"),
+      ));
+    }
     this.state.quotaUsageHistory = normalizeQuotaUsageHistory(this.state.quotaUsageHistory);
     this.state.preferences = {
       floatingWidgetEnabled: false,
       ...(this.state.preferences || {}),
     };
+    this.state.onboardingCompleted = Boolean(this.state.onboardingCompleted);
+    this.state.enabledProviders = normalizeProviderIDs(this.state.enabledProviders);
+    this.state.providerSecrets = Object.fromEntries(
+      Object.entries(this.state.providerSecrets || {}).filter(([providerID, value]) => (
+        PROVIDER_ID_SET.has(providerID) && typeof value === "string" && value.trim()
+      )),
+    );
     return this.state;
   }
 
@@ -101,6 +115,46 @@ export class StateStore {
     this.state.localDailyUsageHistory = history;
   }
 
+  getProviderSecret(providerID) {
+    if (!PROVIDER_ID_SET.has(providerID)) return undefined;
+    return this.state.providerSecrets?.[providerID];
+  }
+
+  hasProviderSecret(providerID) {
+    return Boolean(this.getProviderSecret(providerID));
+  }
+
+  async setProviderSecret(providerID, value) {
+    if (!PROVIDER_ID_SET.has(providerID)) throw new Error("Unsupported provider");
+    const secret = String(value || "").trim();
+    if (!secret || Buffer.byteLength(secret) > 32 * 1024) throw new Error("Credential is missing or too long");
+    this.state.providerSecrets = { ...(this.state.providerSecrets || {}), [providerID]: secret };
+    await this.save();
+  }
+
+  async clearProviderSecret(providerID) {
+    if (!PROVIDER_ID_SET.has(providerID)) throw new Error("Unsupported provider");
+    const next = { ...(this.state.providerSecrets || {}) };
+    delete next[providerID];
+    this.state.providerSecrets = next;
+    await this.save();
+  }
+
+  async completeOnboarding(providerIDs) {
+    this.state.enabledProviders = normalizeProviderIDs(providerIDs);
+    this.state.onboardingCompleted = true;
+    await this.save();
+  }
+
+  async setProviderEnabled(providerID, enabled) {
+    if (!PROVIDER_ID_SET.has(providerID)) throw new Error("Unsupported provider");
+    const current = new Set(this.state.enabledProviders || []);
+    if (enabled) current.add(providerID);
+    else current.delete(providerID);
+    this.state.enabledProviders = normalizeProviderIDs([...current]);
+    await this.save();
+  }
+
   async setFloatingWidgetEnabled(enabled) {
     this.state.preferences = {
       ...(this.state.preferences || {}),
@@ -142,6 +196,15 @@ export class StateStore {
         .toString("base64");
     }
     delete persisted.localDailyUsageHistory;
+    if (Object.keys(this.state.providerSecrets || {}).length) {
+      if (!this.safeStorage.isEncryptionAvailable()) throw new Error("Windows credential protection is unavailable");
+      persisted.protectedProviderSecrets = this.safeStorage
+        .encryptString(JSON.stringify(this.state.providerSecrets))
+        .toString("base64");
+    } else {
+      delete persisted.protectedProviderSecrets;
+    }
+    delete persisted.providerSecrets;
     await writeFile(temporary, JSON.stringify(persisted, null, 2), { mode: 0o600 });
     await rename(temporary, this.path);
   }

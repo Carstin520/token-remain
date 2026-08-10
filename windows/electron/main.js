@@ -1,8 +1,6 @@
 import { app, BrowserWindow, clipboard, ipcMain, Menu, nativeImage, net, safeStorage, screen, shell, Tray } from "electron";
 import { hostname, release } from "node:os";
 import { join } from "node:path";
-import { collectClaude } from "./collectors/claude.js";
-import { collectCodex } from "./collectors/codex.js";
 import { fetchCuratedFeed, isAllowedPostURL } from "./feed.js";
 import { ccusageBinaryPath, collectLocalUsage, mergeDailyUsageHistories } from "./local-usage.js";
 import {
@@ -14,10 +12,13 @@ import {
   resolvePopoverBounds,
 } from "./popover-placement.js";
 import { PublicPricingService } from "./pricing.js";
+import { MANUAL_PROVIDER_IDS, normalizeProviderIDs, PROVIDER_CATALOG, PROVIDER_ID_SET } from "./providers/catalog.js";
+import { detectLocalProviders } from "./providers/detection.js";
+import { collectEnabledProviders } from "./providers/index.js";
 import { StateStore } from "./state-store.js";
 import { makeSnapshot } from "./sync/crypto.js";
 import { exchangeSnapshot, pairWithMac } from "./sync/client.js";
-import { mergeProviders } from "../src/provider-meta.js";
+import { mergeLocalFirstProviders, mergeProviders } from "../src/provider-meta.js";
 
 const REFRESH_INTERVAL_MS = 60_000;
 /// A tray double-click arrives as click + double-click. Holding the popover
@@ -58,6 +59,7 @@ app.whenReady().then(async () => {
   app.setAppUserModelId("com.jamesli.tokenremain.windows");
   store = new StateStore({ userDataPath: app.getPath("userData"), safeStorage });
   await store.load();
+  scanInstalledProviders();
   pricingService = new PublicPricingService({
     cacheDirectory: join(app.getPath("userData"), "pricing"),
     fetchImpl: (url, options) => net.fetch(url, options),
@@ -400,6 +402,39 @@ function iconPath() {
 function registerIPC() {
   ipcMain.handle("state:get", () => publicState());
   ipcMain.handle("usage:refresh", () => refreshAll());
+  ipcMain.handle("onboarding:complete", async (_event, providerIDs) => {
+    await store.completeOnboarding(normalizeProviderIDs(providerIDs));
+    await refreshAfterMutation();
+    return publicState();
+  });
+  ipcMain.handle("providers:rescan", async () => {
+    scanInstalledProviders();
+    notifyRenderer();
+    return publicState();
+  });
+  ipcMain.handle("providers:set-enabled", async (_event, providerID, enabled) => {
+    assertProviderID(providerID);
+    await store.setProviderEnabled(providerID, Boolean(enabled));
+    await refreshAfterMutation();
+    return publicState();
+  });
+  ipcMain.handle("providers:set-credential", async (_event, providerID, value) => {
+    assertProviderID(providerID);
+    if (!MANUAL_PROVIDER_IDS.has(providerID)) throw new Error("This provider uses its own local sign-in");
+    await store.setProviderSecret(providerID, boundedString(value, 32 * 1024, "Credential"));
+    if (!store.state.enabledProviders.includes(providerID)) await store.setProviderEnabled(providerID, true);
+    scanInstalledProviders();
+    await refreshAfterMutation();
+    return publicState();
+  });
+  ipcMain.handle("providers:clear-credential", async (_event, providerID) => {
+    assertProviderID(providerID);
+    if (!MANUAL_PROVIDER_IDS.has(providerID)) throw new Error("This provider uses its own local sign-in");
+    await store.clearProviderSecret(providerID);
+    scanInstalledProviders();
+    await refreshAfterMutation();
+    return publicState();
+  });
   ipcMain.handle("sync:pair", async (_event, input) => {
     const macURL = boundedString(input?.macURL, 512, "Mac address");
     const pairingCode = boundedString(input?.pairingCode, 128, "Pairing code");
@@ -478,6 +513,15 @@ async function refreshAll() {
   return refreshPromise;
 }
 
+/// A first-launch click can race the refresh started during app boot. Wait for
+/// that read to settle, then run once with the newly selected providers instead
+/// of returning the now-obsolete in-flight result.
+async function refreshAfterMutation() {
+  const inFlight = refreshPromise;
+  if (inFlight) await inFlight;
+  return refreshAll();
+}
+
 async function performRefresh() {
   store.state.isRefreshing = true;
   store.state.feedLoading = !store.state.trending?.length;
@@ -485,25 +529,27 @@ async function performRefresh() {
   // Electron's net stack follows the Windows system proxy. Node's global
   // fetch does not, which made a valid Codex login look like a quota timeout.
   const windowsFetch = (url, options) => net.fetch(url, options);
+  const enabledProviders = store.state.onboardingCompleted ? store.state.enabledProviders : [];
   const results = await Promise.allSettled([
-    collectClaude({ fetchImpl: windowsFetch }),
-    collectCodex({ fetchImpl: windowsFetch }),
+    collectEnabledProviders(enabledProviders, {
+      fetchImpl: windowsFetch,
+      getStoredSecret: (providerID) => store.getProviderSecret(providerID),
+    }),
     fetchCuratedFeed(),
     collectWindowsLocalUsage(),
   ]);
-  const providers = [];
-  const notices = {};
-  for (const [index, result] of results.slice(0, 2).entries()) {
-    const id = index === 0 ? "claude" : "codex";
-    if (result.status === "fulfilled") providers.push(result.value);
-    else notices[id] = publicError(result.reason);
-  }
+  const providerResult = results[0];
+  const providers = providerResult.status === "fulfilled" ? providerResult.value.providers : [];
+  const notices = providerResult.status === "fulfilled"
+    ? Object.fromEntries(Object.entries(providerResult.value.notices).map(([providerID, message]) => [providerID, publicError(message)]))
+    : { local: publicError(providerResult.reason) };
   // A transient network failure must not erase the last successful provider
   // snapshot. Its notice and captured-at age tell the UI that it is stale.
-  if (providers.length) store.state.providers = mergeProviders(providers, store.state.providers || []);
+  const retained = (store.state.providers || []).filter((provider) => enabledProviders.includes(provider.providerID));
+  store.state.providers = mergeProviders(providers, retained);
   store.state.notices = notices;
 
-  const feedResult = results[2];
+  const feedResult = results[1];
   if (feedResult.status === "fulfilled") {
     store.state.trending = feedResult.value;
     store.state.feedUpdatedAt = Date.now();
@@ -513,7 +559,7 @@ async function performRefresh() {
   }
   store.state.feedLoading = false;
 
-  const localUsageResult = results[3];
+  const localUsageResult = results[2];
   if (localUsageResult.status === "fulfilled") {
     store.setLocalDailyUsageHistory(localUsageResult.value);
     store.state.lastLocalUsageAt = Date.now();
@@ -545,7 +591,8 @@ async function performRefresh() {
   } catch (error) {
     store.state.syncError = publicError(error);
   }
-  store.recordQuotaUsage(mergeProviders(store.state.providers || [], store.state.remoteSnapshot?.providers || []));
+  scanInstalledProviders();
+  store.recordQuotaUsage(mergeLocalFirstProviders(store.state.providers || [], store.state.remoteSnapshot?.providers || []));
   store.state.lastUpdatedAt = Date.now();
   store.state.isRefreshing = false;
   await store.save();
@@ -577,13 +624,34 @@ function publicState() {
   const remoteDailyUsageHistory = store?.state?.remoteSnapshot?.dailyUsageHistory;
   const dailyUsageHistory = mergeDailyUsageHistories(localDailyUsageHistory, remoteDailyUsageHistory);
   const pricing = pricingService?.getStatus();
+  const providerDetections = store?.state?.providerDetections || [];
+  const enabledProviders = normalizeProviderIDs(store?.state?.enabledProviders);
   return {
     sourceInstanceID: store?.state?.sourceInstanceID,
     deviceName: hostname(),
     appVersion: app.getVersion(),
     launchAtLogin: Boolean(app.getLoginItemSettings().openAtLogin),
     floatingWidgetEnabled: Boolean(store?.state?.preferences?.floatingWidgetEnabled),
-    providers: mergeProviders(store?.state?.providers || [], store?.state?.remoteSnapshot?.providers || []),
+    onboarding: {
+      completed: Boolean(store?.state?.onboardingCompleted),
+      detections: providerDetections,
+    },
+    providerCatalog: PROVIDER_CATALOG.map((definition) => {
+      const detection = providerDetections.find((item) => item.providerID === definition.id);
+      return {
+        id: definition.id,
+        access: definition.access,
+        product: definition.product,
+        localSessionFirst: Boolean(definition.localSessionFirst),
+        credentialKind: definition.credentialKind,
+        installed: Boolean(detection?.installed),
+        configured: Boolean(detection?.configured),
+        detail: detection?.detail,
+        enabled: enabledProviders.includes(definition.id),
+      };
+    }),
+    enabledProviders,
+    providers: mergeLocalFirstProviders(store?.state?.providers || [], store?.state?.remoteSnapshot?.providers || []),
     localProviders: store?.state?.providers || [],
     notices: store?.state?.notices || {},
     lastUpdatedAt: store?.state?.lastUpdatedAt,
@@ -613,6 +681,17 @@ function publicState() {
       encryption: paired ? "AES-256-GCM" : undefined,
     },
   };
+}
+
+function scanInstalledProviders() {
+  store.state.providerDetections = detectLocalProviders({
+    hasStoredSecret: (providerID) => store.hasProviderSecret(providerID),
+  });
+  return store.state.providerDetections;
+}
+
+function assertProviderID(providerID) {
+  if (!PROVIDER_ID_SET.has(providerID)) throw new Error("Unsupported provider");
 }
 
 async function collectWindowsLocalUsage() {

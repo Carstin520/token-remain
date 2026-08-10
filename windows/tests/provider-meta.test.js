@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mergeProviders, PROVIDER_ORDER, providerMeta } from "../src/provider-meta.js";
+import { mergeLocalFirstProviders, mergeProviders, PROVIDER_ORDER, providerMeta } from "../src/provider-meta.js";
 
 test("All providers published by the Mac have Windows presentation metadata", () => {
   assert.equal(PROVIDER_ORDER.length, 19);
@@ -25,4 +25,15 @@ test("Provider merge keeps every synced provider and prefers the newest capture"
   const merged = mergeProviders(local, remote);
   assert.deepEqual(merged.map((provider) => provider.providerID), ["claude", "codex", "cursor", "future-provider"]);
   assert.equal(merged[0].capturedAt, 40);
+});
+
+test("Windows-local quota wins over a newer Mac Sync snapshot", () => {
+  const local = [{ providerID: "cursor", capturedAt: 10, windows: [{ usedPercent: 12 }] }];
+  const remote = [
+    { providerID: "cursor", capturedAt: 99, windows: [{ usedPercent: 88 }] },
+    { providerID: "grok", capturedAt: 90, windows: [{ usedPercent: 42 }] },
+  ];
+  const merged = mergeLocalFirstProviders(local, remote);
+  assert.deepEqual(merged.map((provider) => provider.providerID), ["cursor", "grok"]);
+  assert.equal(merged[0].windows[0].usedPercent, 12);
 });

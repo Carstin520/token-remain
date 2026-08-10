@@ -9,7 +9,7 @@
     "build": "vite build",
     "start": "npm run build && electron .",
     "test": "node --test tests/*.test.js",
-    "check": "node --check electron/main.js && node --check electron/preload.cjs && node --check electron/feed.js && node --check electron/local-usage.js && node --check electron/pricing.js && node --check electron/popover-placement.js && npm test && npm run build",
+    "check": "node --check electron/main.js && node --check electron/preload.cjs && node --check electron/feed.js && node --check electron/local-usage.js && node --check electron/pricing.js && node --check electron/popover-placement.js && node --check electron/providers/catalog.js && node --check electron/providers/detection.js && node --check electron/providers/index.js && node --check electron/providers/local-session.js && node --check electron/providers/manual.js && node --check electron/providers/shared.js && npm test && npm run build",
     "dist:win": "npm run build && electron-builder --win nsis --publish never",
     "dist:win:x64": "npm run build && electron-builder --x64 --win nsis --publish never"
   },
