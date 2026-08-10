@@ -35,7 +35,7 @@ struct LocalUsageCard: View {
                     if let totalCost = insights.totalCost {
                         Text(L10n.usd(totalCost))
                             .numericFont(15, .bold)
-                            .foregroundStyle(DashboardTheme.text)
+                            .usageDockAdaptiveForeground(.primary)
                             .lineLimit(1)
                             .minimumScaleFactor(0.8)
                             .layoutPriority(1)
@@ -50,7 +50,7 @@ struct LocalUsageCard: View {
                     if entries.isEmpty {
                         Text(L10n.text("usage.provider_breakdown_empty"))
                             .font(.system(size: 11))
-                            .foregroundStyle(DashboardTheme.secondaryText)
+                            .usageDockAdaptiveForeground(.secondary)
                     } else {
                         HStack(alignment: .center, spacing: 14) {
                             RingChart(
@@ -118,7 +118,7 @@ struct LocalUsageCard: View {
                 ProgressView().controlSize(.small)
                 Text(L10n.text("usage.loading_ccusage"))
                     .font(.system(size: 12))
-                    .foregroundStyle(DashboardTheme.secondaryText)
+                    .usageDockAdaptiveForeground(.secondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -127,15 +127,15 @@ struct LocalUsageCard: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(L10n.text("usage.no_local_today_title"))
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(DashboardTheme.text)
+                        .usageDockAdaptiveForeground(.primary)
                     Text(L10n.text("usage.no_local_today_message"))
                         .font(.system(size: 10))
-                        .foregroundStyle(DashboardTheme.secondaryText)
+                        .usageDockAdaptiveForeground(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             } icon: {
                 Image(systemName: "moon.zzz")
-                    .foregroundStyle(DashboardTheme.mutedText)
+                    .usageDockAdaptiveForeground(.muted)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -146,7 +146,7 @@ struct LocalUsageCard: View {
                 VStack(alignment: .leading, spacing: 5) {
                     Text(message)
                         .font(.system(size: 10))
-                        .foregroundStyle(DashboardTheme.secondaryText)
+                        .usageDockAdaptiveForeground(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                     Button(L10n.text("action.refresh")) {
                         onRetry()
@@ -171,11 +171,11 @@ struct LocalUsageCard: View {
                     HStack(alignment: .firstTextBaseline) {
                         Text(L10n.text(tile.labelKey))
                             .font(.system(size: 11, weight: .medium))
-                            .foregroundStyle(DashboardTheme.secondaryText)
+                            .usageDockAdaptiveForeground(.secondary)
                         Spacer(minLength: 8)
                         Text("\(tile.cost.map(UsageFormatting.compactUSD) ?? L10n.text("usage.price_unavailable")) · \(UsageFormatting.compactNumber(tile.tokens)) tokens")
                             .numericFont(11)
-                            .foregroundStyle(DashboardTheme.text)
+                            .usageDockAdaptiveForeground(.primary)
                     }
                     .frame(height: 17)
                     .accessibilityElement(children: .combine)
@@ -185,7 +185,7 @@ struct LocalUsageCard: View {
                     HStack(alignment: .bottom, spacing: 8) {
                         Text(L10n.text("usage.trend"))
                             .font(.system(size: 11, weight: .medium))
-                            .foregroundStyle(DashboardTheme.secondaryText)
+                            .usageDockAdaptiveForeground(.secondary)
                         Spacer(minLength: 8)
                         MiniBarChart(values: trend)
                             .frame(maxWidth: 170)
@@ -221,7 +221,7 @@ struct LocalUsageCard: View {
 
             Text(entry.displayName)
                 .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(DashboardTheme.text)
+                .usageDockAdaptiveForeground(.primary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
                 .layoutPriority(1)
@@ -230,11 +230,14 @@ struct LocalUsageCard: View {
 
             Text(UsageFormatting.compactNumber(entry.tokens))
                 .numericFont(10)
-                .foregroundStyle(DashboardTheme.secondaryText)
+                .usageDockAdaptiveForeground(.secondary)
 
             Text(UsageFormatting.percent(insights.tokenShare(for: entry)))
                 .numericFont(11, .semibold)
-                .foregroundStyle(isHovered ? UsageInsights.color(for: entry.id) : DashboardTheme.text)
+                .usageDockAdaptiveForeground(
+                    .primary,
+                    fixedColor: isHovered ? UsageInsights.color(for: entry.id) : nil
+                )
                 .frame(width: 39, alignment: .trailing)
         }
         .padding(.horizontal, 7)

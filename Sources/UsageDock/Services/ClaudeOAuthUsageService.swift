@@ -49,9 +49,15 @@ struct ClaudeOAuthUsageService {
 
     func fetch(
         now: Date = .now,
-        keychainInteraction: KeychainRead.Interaction = .disallowed
+        keychainInteraction: KeychainRead.Interaction = .disallowed,
+        environment: [String: String] = ProcessInfo.processInfo.environment,
+        isolatedConfiguration: Bool = false
     ) async throws -> ProviderQuota {
-        let result = ClaudeCredentialsReader().read(
+        var reader = ClaudeCredentialsReader()
+        reader.environment = environment
+        reader.fallbackToDefaultDirectory = !isolatedConfiguration
+        reader.allowsKeychain = !isolatedConfiguration
+        let result = reader.read(
             now: now,
             keychainInteraction: keychainInteraction
         )
@@ -273,6 +279,10 @@ struct ClaudeCredentialsReader {
 
     var environment: [String: String] = ProcessInfo.processInfo.environment
     var homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser
+    /// Managed profiles must never fall through to the user's active account.
+    /// The default remains true for the historical system-account reader.
+    var fallbackToDefaultDirectory = true
+    var allowsKeychain = true
     static let keychainService = "Claude Code-credentials"
 
     var keychainPayload: @Sendable (KeychainRead.Interaction) -> KeychainRead.Outcome = { interaction in
@@ -309,6 +319,14 @@ struct ClaudeCredentialsReader {
                 )
             }
             foundExpiredCredentials = true
+        }
+        guard allowsKeychain else {
+            return ReadResult(
+                credentials: nil,
+                source: nil,
+                keychainStatus: nil,
+                hasExpiredCredentials: foundExpiredCredentials
+            )
         }
         // 自动额度刷新永远不应召唤系统密码框。已选择过“始终允许”的钥匙串
         // 项目仍能成功读取；尚未授权时立即静默失败，由调用方降级到 Claude
@@ -371,7 +389,9 @@ struct ClaudeCredentialsReader {
                 : configDir
             directories.append(URL(fileURLWithPath: String(expanded)))
         }
-        directories.append(homeDirectory.appending(path: ".claude"))
+        if fallbackToDefaultDirectory {
+            directories.append(homeDirectory.appending(path: ".claude"))
+        }
         return directories.compactMap { directory in
             try? String(
                 contentsOf: directory.appending(path: ".credentials.json"),

@@ -250,3 +250,29 @@ struct ScopedQuotaWindowSanitationTests {
         #expect(ScopedQuotaWindow.isGeneralWeeklyLabel("ll models"))
     }
 }
+
+@Suite("Claude PTY repaint recovery")
+struct ClaudePTYRepaintRecoveryTests {
+    @Test("An unterminated scoped label cannot absorb progress and reset lines")
+    func dropsUnterminatedScopedLabel() throws {
+        let output = """
+        Current session
+        12% used
+        Resets 9am
+        Current week (all models)
+        22% used
+        Resets Aug 14 at 1pm
+        Current week (Fable)
+        40% used
+        Resets Aug 14 at 1pm
+        Current week (Fable
+        ████████████████████    40%used
+        Resets Aug14 at 12:59pm(Asia/Shanghai)
+        """
+
+        let quota = try ClaudeCLIUsageParser.parse(Data(output.utf8))
+
+        #expect(quota.uniqueScopedWindows.map(\.scopeID) == ["fable"])
+        #expect(quota.uniqueScopedWindows.first?.displayName == "Fable")
+    }
+}

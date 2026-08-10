@@ -16,7 +16,7 @@ struct PopoverFooter: View {
             } label: {
                 Text(L10n.text("action.open_dashboard"))
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(DashboardTheme.text)
+                    .usageDockAdaptiveForeground(.primary)
             }
             .buttonStyle(.plain)
             .help(L10n.text("action.open_dashboard_help"))
@@ -31,22 +31,23 @@ struct PopoverFooter: View {
             } label: {
                 Text(L10n.text("action.settings"))
                     .font(.system(size: 11))
-                    .foregroundStyle(DashboardTheme.secondaryText)
+                    .usageDockAdaptiveForeground(.secondary)
             }
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
             .fixedSize()
+            .usageDockAdaptiveTint(.secondary)
 
             Text("·")
                 .font(.system(size: 11))
-                .foregroundStyle(DashboardTheme.mutedText)
+                .usageDockAdaptiveForeground(.muted)
 
             Button {
                 NSApplication.shared.terminate(nil)
             } label: {
                 Text(L10n.text("action.quit"))
                     .font(.system(size: 11))
-                    .foregroundStyle(DashboardTheme.secondaryText)
+                    .usageDockAdaptiveForeground(.secondary)
             }
             .buttonStyle(.plain)
             .help(L10n.text("action.quit_app"))

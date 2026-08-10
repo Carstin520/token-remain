@@ -59,12 +59,12 @@ struct RingChart: View {
                     VStack(spacing: 0) {
                         Text(centerText)
                             .numericFont(centerTextSize, .semibold)
-                            .foregroundStyle(DashboardTheme.text)
+                            .usageDockAdaptiveForeground(.primary)
 
                         if let centerCaption {
                             Text(centerCaption)
                                 .font(.system(size: 8, weight: .medium))
-                                .foregroundStyle(DashboardTheme.mutedText)
+                                .usageDockAdaptiveForeground(.muted)
                         }
                     }
                     .lineLimit(1)

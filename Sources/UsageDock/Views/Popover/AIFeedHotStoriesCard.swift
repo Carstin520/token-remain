@@ -24,7 +24,7 @@ struct AIFeedHotStoriesCard: View {
                         ? L10n.text("feed.updating")
                         : L10n.format("feed.item_count", min(2, posts.count)))
                         .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(DashboardTheme.secondaryText)
+                        .usageDockAdaptiveForeground(.secondary)
                 }
 
                 HStack {
@@ -32,12 +32,12 @@ struct AIFeedHotStoriesCard: View {
                         ? L10n.text("feed.filtering")
                         : (isExpanded ? L10n.text("feed.full_top_stories") : L10n.text("feed.important_updates")))
                         .font(.system(size: 10))
-                        .foregroundStyle(DashboardTheme.secondaryText)
+                        .usageDockAdaptiveForeground(.secondary)
                     Spacer()
                     Button(L10n.text("feed.view_all"), action: onViewAll)
                         .buttonStyle(.plain)
                         .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(DashboardTheme.secondaryText)
+                        .usageDockAdaptiveForeground(.secondary)
                 }
 
                 if !posts.isEmpty {
@@ -65,17 +65,17 @@ struct AIFeedHotStoriesCard: View {
                     HStack(spacing: 6) {
                         Text(post.displayName)
                             .font(.system(size: 10, weight: .semibold))
-                            .foregroundStyle(DashboardTheme.text)
+                            .usageDockAdaptiveForeground(.primary)
                             .lineLimit(1)
                             .layoutPriority(1)
                         Text(post.createdAt, style: .relative)
                             .numericFont(9)
-                            .foregroundStyle(DashboardTheme.mutedText)
+                            .usageDockAdaptiveForeground(.muted)
                             .lineLimit(1)
                     }
                     Text(showsFullText ? normalizedText(post.text) : shortHeadline(post.text))
                         .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(DashboardTheme.secondaryText)
+                        .usageDockAdaptiveForeground(.secondary)
                         .lineLimit(showsFullText ? nil : 1)
                         .fixedSize(horizontal: false, vertical: showsFullText)
                         .animation(.snappy(duration: 0.22), value: showsFullText)
@@ -85,7 +85,7 @@ struct AIFeedHotStoriesCard: View {
 
                 Image(systemName: "arrow.up.right")
                     .font(.system(size: 9, weight: .semibold))
-                    .foregroundStyle(DashboardTheme.mutedText)
+                    .usageDockAdaptiveForeground(.muted)
             }
             .contentShape(Rectangle())
         }

@@ -41,7 +41,7 @@ struct PopoverWidgetHeader<Summary: View>: View {
                     compactButton(
                         systemImage: isExpanded ? "chevron.down" : "chevron.right",
                         help: isExpanded ? L10n.text("widget.collapse") : L10n.text("widget.expand"),
-                        tint: DashboardTheme.mutedText,
+                        role: .muted,
                         action: onToggleExpanded
                     )
                 }
@@ -56,7 +56,7 @@ struct PopoverWidgetHeader<Summary: View>: View {
                     compactButton(
                         systemImage: isPinned ? "pin.fill" : "pin",
                         help: isPinned ? L10n.text("widget.stop_keep_expanded") : L10n.text("widget.keep_expanded"),
-                        tint: isPinned ? DashboardTheme.text : DashboardTheme.mutedText,
+                        role: isPinned ? .primary : .muted,
                         action: onTogglePinned
                     )
                 }
@@ -71,12 +71,12 @@ struct PopoverWidgetHeader<Summary: View>: View {
     private var widgetIcon: some View {
         if let provider = widget.provider {
             BrandIcon(provider: provider)
-                .foregroundStyle(DashboardTheme.text)
+                .usageDockAdaptiveForeground(.primary)
                 .frame(width: 20, height: 20)
         } else {
             Image(systemName: widget.systemImage)
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(DashboardTheme.secondaryText)
+                .usageDockAdaptiveForeground(.secondary)
                 .frame(width: 20, height: 20)
         }
     }
@@ -92,7 +92,7 @@ struct PopoverWidgetHeader<Summary: View>: View {
             }
             Text(widget.title)
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(DashboardTheme.text)
+                .usageDockAdaptiveForeground(.primary)
                 .lineLimit(2)
                 .minimumScaleFactor(0.82)
                 .fixedSize(horizontal: false, vertical: true)
@@ -104,13 +104,13 @@ struct PopoverWidgetHeader<Summary: View>: View {
     private func compactButton(
         systemImage: String,
         help: String,
-        tint: Color,
+        role: UsageDockForegroundRole,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
             Image(systemName: systemImage)
                 .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(tint)
+                .usageDockAdaptiveForeground(role)
                 .frame(width: 18, height: 20)
                 .contentShape(Rectangle())
         }

@@ -157,7 +157,7 @@ struct PopoverQuotaWidget: View {
                         ProgressView().controlSize(.small)
                         Text(L10n.text("quota.loading_official"))
                             .font(.system(size: 11))
-                            .foregroundStyle(DashboardTheme.secondaryText)
+                            .usageDockAdaptiveForeground(.secondary)
                     }
                 }
             }
@@ -168,7 +168,7 @@ struct PopoverQuotaWidget: View {
     private func noticeRow(_ notice: String) -> some View {
         Label(notice, systemImage: "moon.zzz.fill")
             .font(.system(size: 11))
-            .foregroundStyle(DashboardTheme.secondaryText)
+            .usageDockAdaptiveForeground(.secondary)
             .fixedSize(horizontal: false, vertical: true)
     }
 
@@ -180,7 +180,10 @@ struct PopoverQuotaWidget: View {
                 systemImage: isStale ? "exclamationmark.circle.fill" : "checkmark.circle.fill"
             )
             .numericFont(10)
-            .foregroundStyle(isStale ? DashboardTheme.warning : DashboardTheme.mutedText)
+            .usageDockAdaptiveForeground(
+                .muted,
+                fixedColor: isStale ? DashboardTheme.warning : nil
+            )
         }
     }
 

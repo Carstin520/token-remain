@@ -11,6 +11,10 @@ struct UsageMenuView: View {
     @ObservedObject var launchAtLogin: LaunchAtLoginManager
     @ObservedObject var layout: PopoverLayoutStore
     @ObservedObject var tracked: TrackedProvidersStore = .shared
+    @ObservedObject var preferences: PreferencesStore = .shared
+    /// The floating desktop panel reuses this view but keeps its own fixed
+    /// window treatment; only the menu-bar popup follows this preference.
+    let usesPopoverBackgroundPreference: Bool
     /// Opens (and fronts) the Dashboard window on a given section.
     let onOpenDashboard: (DashboardSection) -> Void
 
@@ -96,7 +100,28 @@ struct UsageMenuView: View {
         .scrollDisabled(reorderInteraction.isActive)
         .frame(width: 380)
         .frame(height: min(measuredHeight, maxHeight))
-        .background { UsageDockCanvasBackground() }
+        .background {
+            UsageDockCanvasBackground(
+                inkOpacity: usesPopoverBackgroundPreference
+                    ? preferences.popoverBackgroundOpacity
+                    : nil,
+                glassStyle: usesPopoverBackgroundPreference
+                    ? preferences.popoverGlassStyle
+                    : nil
+            )
+        }
+        .environment(
+            \.usageDockPopoverBackdropOpacity,
+            usesPopoverBackgroundPreference
+                ? preferences.popoverBackgroundOpacity
+                : nil
+        )
+        .environment(
+            \.usageDockPopoverGlassStyle,
+            usesPopoverBackgroundPreference
+                ? preferences.popoverGlassStyle
+                : nil
+        )
         .preferredColorScheme(.dark)
         .onPreferenceChange(PopoverHeightKey.self) { measuredHeight = $0 }
         .task {
@@ -146,7 +171,7 @@ struct UsageMenuView: View {
                 TimelineView(.periodic(from: .now, by: 60)) { context in
                     Text(updatedSubtitle(at: context.date))
                         .font(.system(size: 10))
-                        .foregroundStyle(DashboardTheme.mutedText)
+                        .usageDockAdaptiveForeground(.muted)
                 }
             }
             Spacer()
@@ -180,7 +205,7 @@ struct UsageMenuView: View {
         } label: {
             Image(systemName: "plus")
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(DashboardTheme.text)
+                .usageDockAdaptiveForeground(.primary)
                 .frame(width: 26, height: 26)
                 .usageDockGlassSurface(
                     cornerRadius: 13,
@@ -197,6 +222,7 @@ struct UsageMenuView: View {
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
         .frame(width: 34, height: 34)
+        .usageDockAdaptiveTint(.primary)
         .help(L10n.text("action.add_widget"))
         .accessibilityLabel(L10n.text("action.add_widget"))
     }
@@ -218,7 +244,7 @@ struct UsageMenuView: View {
             } else {
                 Image(systemName: "arrow.clockwise")
                     .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(DashboardTheme.text)
+                    .usageDockAdaptiveForeground(.primary)
                     .frame(width: 18, height: 18)
             }
         }

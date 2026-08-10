@@ -107,10 +107,58 @@ struct MobileSnapshotRedactorTests {
         let syncedFable = try #require(snapshot.providers.first?.scopedWindows)
 
         #expect(syncedFable.count == 1)
-        #expect(syncedFable.first?.scopeID == "FABLE")
+        #expect(syncedFable.first?.scopeID == "fable")
         #expect(syncedFable.first?.window.usedPercent == 63)
         #expect(SyncContentFingerprint.make(
             quotas: [.claude: duplicated],
+            history: nil,
+            includesUsageHistory: false
+        ) == SyncContentFingerprint.make(
+            quotas: [.claude: canonical],
+            history: nil,
+            includesUsageHistory: false
+        ))
+    }
+
+    @Test("A terminal-damaged scoped label cannot block the complete snapshot")
+    func dropsDamagedScopedWindowBeforeSync() throws {
+        let now = Date(timeIntervalSince1970: 1_784_764_800)
+        let valid = ScopedQuotaWindow(
+            scopeID: "fable",
+            displayName: "Fable",
+            window: QuotaWindow(usedPercent: 40, windowMinutes: 10_080, resetsAt: now + 120)
+        )
+        let damaged = ScopedQuotaWindow(
+            scopeID: "fable_40_used_resets_aug14_at_12",
+            displayName: "Fable\n████████████████████    40%used\nResets Aug14 at 12:59pm(Asia/Shanghai",
+            window: QuotaWindow(usedPercent: 0, windowMinutes: 10_080, resetsAt: now + 120)
+        )
+        func quota(scopedWindows: [ScopedQuotaWindow]) -> ProviderQuota {
+            ProviderQuota(
+                provider: .claude,
+                primary: QuotaWindow(usedPercent: 12, windowMinutes: 300, resetsAt: now + 60),
+                secondary: QuotaWindow(usedPercent: 22, windowMinutes: 10_080, resetsAt: now + 600),
+                planName: nil,
+                capturedAt: now,
+                scopedWindows: scopedWindows
+            )
+        }
+
+        let polluted = quota(scopedWindows: [valid, damaged])
+        let canonical = quota(scopedWindows: [valid])
+        let snapshot = MobileSnapshotRedactor.makeSnapshot(
+            from: [.claude: polluted],
+            sourceInstanceID: UUID(),
+            sequence: 1,
+            generatedAt: now
+        )
+
+        #expect(snapshot.providers.first?.scopedWindows?.map(\.scopeID) == ["fable"])
+        #expect(throws: Never.self) {
+            try snapshot.validatedForTransport(configuration: .current(now: now))
+        }
+        #expect(SyncContentFingerprint.make(
+            quotas: [.claude: polluted],
             history: nil,
             includesUsageHistory: false
         ) == SyncContentFingerprint.make(

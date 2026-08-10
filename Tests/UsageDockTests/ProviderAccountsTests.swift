@@ -1,0 +1,139 @@
+import Foundation
+import Testing
+@testable import UsageDock
+
+@Suite("Provider accounts")
+struct ProviderAccountsTests {
+    @Test("All-accounts summary keeps percentages separate and sums balances by currency")
+    func summaryUsesSafeAggregates() {
+        var first = quota(used: 15, weeklyUsed: 40)
+        first.accountBalance = QuotaBalance(amount: 12.5, currencyCode: " usd ")
+        var second = quota(used: 92, weeklyUsed: 35)
+        second.accountBalance = QuotaBalance(amount: 7.5, currencyCode: "USD")
+        var third = quota(used: 25, weeklyUsed: nil)
+        third.accountBalance = QuotaBalance(amount: 30, currencyCode: "CNY")
+
+        let snapshots = [
+            snapshot(name: "Current", quota: first),
+            snapshot(name: "Work", quota: second),
+            snapshot(name: "Disabled", quota: third, enabled: false),
+            snapshot(name: "Unavailable", quota: nil)
+        ]
+        let summary = ProviderAccountSummary(snapshots: snapshots)
+
+        #expect(summary.accountCount == 3)
+        #expect(summary.availableCount == 2)
+        #expect(summary.lowAccountCount == 1)
+        #expect(summary.lowestRemainingPercent == 8)
+        #expect(summary.balancesByCurrency == ["USD": 20])
+    }
+
+    @Test("Managed profile metadata and selection survive a store reload")
+    @MainActor
+    func profilePersistence() throws {
+        let suite = "TokenRemainProviderAccounts.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defaults.removePersistentDomain(forName: suite)
+        let root = FileManager.default.temporaryDirectory
+            .appending(path: "tokenremain-accounts-\(UUID().uuidString)", directoryHint: .isDirectory)
+        defer {
+            defaults.removePersistentDomain(forName: suite)
+            try? FileManager.default.removeItem(at: root)
+        }
+
+        let store = ProviderAccountsStore(defaults: defaults, rootDirectory: root)
+        let prepared = try store.prepareClaudeProfile(displayName: " Work ")
+        let directory = try #require(prepared.configurationDirectory)
+        let attributes = try FileManager.default.attributesOfItem(atPath: directory)
+        let permissions = try #require(attributes[.posixPermissions] as? NSNumber).intValue
+        #expect(permissions & 0o077 == 0)
+        #expect(prepared.displayName == "Work")
+
+        store.commit(prepared)
+        store.rename(prepared.id, to: "Team")
+        store.setEnabled(false, for: prepared.id)
+        store.setSelection(.account(prepared.id), for: .claude)
+
+        let restored = ProviderAccountsStore(defaults: defaults, rootDirectory: root)
+        #expect(restored.allProfiles.first?.id == .system(.claude))
+        #expect(restored.profiles.count == 1)
+        #expect(restored.profiles.first?.displayName == "Team")
+        #expect(restored.profiles.first?.isEnabled == false)
+        #expect(restored.selection(for: .claude) == .account(prepared.id))
+
+        #expect(restored.remove(prepared.id)?.id == prepared.id)
+        #expect(restored.selection(for: .claude) == .all)
+        #expect(!FileManager.default.fileExists(atPath: directory))
+    }
+
+    @Test("A stale account selection is pruned instead of leaking into the UI")
+    @MainActor
+    func staleSelectionIsPruned() throws {
+        let suite = "TokenRemainProviderAccounts.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defaults.removePersistentDomain(forName: suite)
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        let stale = ProviderAccountSelection.account(
+            .managed(UUID(uuidString: "00000000-0000-4000-8000-000000000099")!)
+        )
+        defaults.set(
+            try JSONEncoder().encode([ProviderQuota.Provider.claude: stale]),
+            forKey: ProviderAccountsStore.selectionsKey
+        )
+
+        let store = ProviderAccountsStore(
+            defaults: defaults,
+            rootDirectory: FileManager.default.temporaryDirectory
+                .appending(path: "tokenremain-unused-\(UUID().uuidString)")
+        )
+        #expect(store.selection(for: .claude) == .all)
+    }
+
+    @Test("Account quota cache round-trips opaque account identifiers")
+    func cacheRoundTrip() {
+        let url = FileManager.default.temporaryDirectory
+            .appending(path: "tokenremain-account-cache-\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let id = ProviderAccountID.managed(
+            UUID(uuidString: "00000000-0000-4000-8000-000000000007")!
+        )
+        let cache = ProviderAccountQuotaCache(url: url)
+
+        cache.save([id: quota(used: 18, weeklyUsed: 36)])
+        let restored = cache.load()
+        #expect(restored[id]?.primary.usedPercent == 18)
+        #expect(restored[id]?.secondary?.usedPercent == 36)
+    }
+
+    private func snapshot(
+        name: String,
+        quota: ProviderQuota?,
+        enabled: Bool = true
+    ) -> ProviderAccountSnapshot {
+        ProviderAccountSnapshot(
+            profile: ProviderAccountProfile(
+                id: .managed(UUID()),
+                provider: .claude,
+                displayName: name,
+                kind: .managed,
+                configurationDirectory: "/tmp/opaque-test-account",
+                isEnabled: enabled,
+                createdAt: .now
+            ),
+            state: ProviderAccountState(quota: quota)
+        )
+    }
+
+    private func quota(used: Double, weeklyUsed: Double?) -> ProviderQuota {
+        ProviderQuota(
+            provider: .claude,
+            primary: QuotaWindow(usedPercent: used, windowMinutes: 300, resetsAt: nil),
+            secondary: weeklyUsed.map {
+                QuotaWindow(usedPercent: $0, windowMinutes: 10_080, resetsAt: nil)
+            },
+            planName: "Max",
+            capturedAt: .now
+        )
+    }
+}

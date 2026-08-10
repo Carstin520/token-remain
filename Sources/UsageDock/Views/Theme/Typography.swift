@@ -63,20 +63,17 @@ struct TokenRemainWordmark: View {
     var weight: Font.Weight = .bold
     var style: TokenRemainWordmarkStyle = .brand
 
-    private var tokenColor: Color {
-        DashboardTheme.brandToken
-    }
-
-    private var remainColor: Color {
-        style == .monochrome ? DashboardTheme.brandToken : DashboardTheme.brandRemain
-    }
-
     var body: some View {
         HStack(spacing: 0) {
             Text("Token")
-                .foregroundStyle(tokenColor)
-            Text("Remain")
-                .foregroundStyle(remainColor)
+                .usageDockAdaptiveForeground(.primary)
+            if case .monochrome = style {
+                Text("Remain")
+                    .usageDockAdaptiveForeground(.primary)
+            } else {
+                Text("Remain")
+                    .foregroundStyle(DashboardTheme.brandRemain)
+            }
         }
         .wordmarkFont(size, weight)
         .lineLimit(1)

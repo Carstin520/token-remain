@@ -95,7 +95,27 @@ enum MobileSnapshotRedactor {
     }
 
     private static func redact(_ quota: ProviderQuota) -> SyncedProviderQuota {
-        SyncedProviderQuota(
+        let scopedWindows = quota.uniqueScopedWindows.compactMap { scoped -> SyncedScopedQuotaWindow? in
+            // Cached PTY output from an older parser can contain a partial
+            // repaint where the model label absorbs progress-bar/reset lines.
+            // The mobile wire label is deliberately stricter than arbitrary
+            // desktop UI text. Drop only that damaged scoped row so one bad
+            // optional model limit cannot reject every provider in the snapshot.
+            guard let scopeID = wireScopeID(for: scoped), isWireSafe(scoped) else { return nil }
+            return SyncedScopedQuotaWindow(
+                scopeID: scopeID,
+                displayName: scoped.displayName,
+                window: SyncedQuotaWindow(
+                    usedPercent: min(max(scoped.window.usedPercent, 0), 100),
+                    windowMinutes: max(0, scoped.window.windowMinutes),
+                    resetsAt: scoped.window.resetsAt,
+                    remainingBalance: scoped.window.remainingBalance.map {
+                        SyncedQuotaBalance(amount: $0.amount, currencyCode: $0.currencyCode)
+                    }
+                )
+            )
+        }
+        return SyncedProviderQuota(
             providerID: stableID(for: quota.provider),
             windows: [quota.primary, quota.secondary]
                 .compactMap { $0 }
@@ -114,21 +134,27 @@ enum MobileSnapshotRedactor {
             capturedAt: quota.capturedAt,
             statusCode: .available,
             planName: SyncedProviderQuota.sanitizedPlanName(quota.planName),
-            scopedWindows: quota.uniqueScopedWindows.isEmpty ? nil : quota.uniqueScopedWindows.map {
-                SyncedScopedQuotaWindow(
-                    scopeID: $0.scopeID,
-                    displayName: $0.displayName,
-                    window: SyncedQuotaWindow(
-                        usedPercent: min(max($0.window.usedPercent, 0), 100),
-                        windowMinutes: max(0, $0.window.windowMinutes),
-                        resetsAt: $0.window.resetsAt,
-                        remainingBalance: $0.window.remainingBalance.map {
-                            SyncedQuotaBalance(amount: $0.amount, currencyCode: $0.currencyCode)
-                        }
-                    )
-                )
-            }
+            scopedWindows: scopedWindows.isEmpty ? nil : scopedWindows
         )
+    }
+
+    static func isWireSafe(_ scoped: ScopedQuotaWindow) -> Bool {
+        guard wireScopeID(for: scoped) != nil else { return false }
+        return SyncedProviderQuota.sanitizedPlanName(scoped.displayName) == scoped.displayName
+    }
+
+    static func wireScopeID(for scoped: ScopedQuotaWindow) -> String? {
+        let normalized = scoped.scopeID.lowercased()
+        let scopeBytes = normalized.utf8
+        guard (1...32).contains(scopeBytes.count),
+              scopeBytes.allSatisfy({ byte in
+                  (byte >= 97 && byte <= 122) ||
+                      (byte >= 48 && byte <= 57) ||
+                      byte == 45 || byte == 95
+              }) else {
+            return nil
+        }
+        return normalized
     }
 
     /// Stable, presentation-independent identifiers. Never derive these from

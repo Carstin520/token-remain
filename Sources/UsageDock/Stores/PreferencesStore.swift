@@ -9,6 +9,13 @@ enum MenuBarDisplayMode: String, CaseIterable, Identifiable, Sendable {
     var id: String { rawValue }
 }
 
+enum PopoverGlassStyle: String, CaseIterable, Identifiable, Sendable {
+    case frosted
+    case clear
+
+    var id: String { rawValue }
+}
+
 /// 显示与刷新的用户偏好(参考 token-monitor 的配置自由度):
 /// 菜单栏显示哪些 provider、显示模式、API 直查频率、桌面浮窗开关。
 /// 全部持久化在 UserDefaults,即改即生效。
@@ -18,12 +25,17 @@ final class PreferencesStore: ObservableObject {
 
     static let menuBarKey = "tokenRemain.menuBarProviders.v1"
     static let menuBarDisplayModeKey = "tokenRemain.menuBarDisplayMode.v1"
+    static let popoverGlassStyleKey = "tokenRemain.popoverGlassStyle.v1"
+    static let popoverBackgroundOpacityKey = "tokenRemain.popoverBackgroundOpacity.v1"
     static let quotaSummaryStrategyKey = "tokenRemain.quotaSummaryStrategy.v1"
     static let menuBarCodexSparkQuotaKey = "tokenRemain.dashboardCodexSparkQuota.v1"
     static let antigravityThirdPartyQuotaKey = "tokenRemain.antigravityThirdPartyQuota.v1"
     static let refreshKey = "tokenRemain.refreshMinutes.v1"
     static let floatingKey = "tokenRemain.floatingWidget.v1"
     static let dockIconHiddenKey = "tokenRemain.dockIconHidden.v1"
+
+    static let defaultPopoverBackgroundOpacity = 0.62
+    static let popoverBackgroundOpacityRange = 0.0...1.0
 
     /// 刷新频率可选档位(分钟);0 = 仅手动刷新。
     static let refreshChoices = [1, 5, 15, 30, 0]
@@ -32,6 +44,10 @@ final class PreferencesStore: ObservableObject {
     @Published private(set) var menuBarProviders: [ProviderQuota.Provider]
     /// 菜单栏所选 provider 的呈现密度。默认完整显示以兼容历史行为。
     @Published private(set) var menuBarDisplayMode: MenuBarDisplayMode
+    /// 菜单栏弹窗使用带雾化采样的毛玻璃，或无雾化层的透明玻璃。
+    @Published private(set) var popoverGlassStyle: PopoverGlassStyle
+    /// 菜单栏弹窗深色底衬的不透明度；卡片与文字不受影响。
+    @Published private(set) var popoverBackgroundOpacity: Double
     /// Which account-level window compact summary surfaces display.
     @Published private(set) var quotaSummaryStrategy: QuotaSummaryStrategy
     /// 菜单栏 Codex 小组件是否显示 GPT-5.3-Codex-Spark 独立额度；默认关闭。
@@ -56,6 +72,12 @@ final class PreferencesStore: ObservableObject {
         }
         menuBarDisplayMode = defaults.string(forKey: Self.menuBarDisplayModeKey)
             .flatMap(MenuBarDisplayMode.init(rawValue:)) ?? .full
+        popoverGlassStyle = defaults.string(forKey: Self.popoverGlassStyleKey)
+            .flatMap(PopoverGlassStyle.init(rawValue:)) ?? .frosted
+        let storedPopoverOpacity = defaults.object(forKey: Self.popoverBackgroundOpacityKey) as? Double
+        popoverBackgroundOpacity = Self.clampedPopoverBackgroundOpacity(
+            storedPopoverOpacity ?? Self.defaultPopoverBackgroundOpacity
+        )
         quotaSummaryStrategy = defaults.string(forKey: Self.quotaSummaryStrategyKey)
             .flatMap(QuotaSummaryStrategy.init(rawValue:)) ?? .shortestWindow
         showCodexSparkQuotaInMenuBarWidget = defaults.bool(forKey: Self.menuBarCodexSparkQuotaKey)
@@ -85,6 +107,17 @@ final class PreferencesStore: ObservableObject {
     func setMenuBarDisplayMode(_ mode: MenuBarDisplayMode) {
         menuBarDisplayMode = mode
         defaults.set(mode.rawValue, forKey: Self.menuBarDisplayModeKey)
+    }
+
+    func setPopoverGlassStyle(_ style: PopoverGlassStyle) {
+        popoverGlassStyle = style
+        defaults.set(style.rawValue, forKey: Self.popoverGlassStyleKey)
+    }
+
+    func setPopoverBackgroundOpacity(_ opacity: Double) {
+        let clamped = Self.clampedPopoverBackgroundOpacity(opacity)
+        popoverBackgroundOpacity = clamped
+        defaults.set(clamped, forKey: Self.popoverBackgroundOpacityKey)
     }
 
     func setQuotaSummaryStrategy(_ strategy: QuotaSummaryStrategy) {
@@ -121,5 +154,11 @@ final class PreferencesStore: ObservableObject {
     /// 自动刷新间隔(秒);仅手动模式返回 nil。
     var refreshInterval: TimeInterval? {
         refreshMinutes > 0 ? TimeInterval(refreshMinutes * 60) : nil
+    }
+
+    private static func clampedPopoverBackgroundOpacity(_ opacity: Double) -> Double {
+        guard opacity.isFinite else { return defaultPopoverBackgroundOpacity }
+        return min(max(opacity, popoverBackgroundOpacityRange.lowerBound),
+                   popoverBackgroundOpacityRange.upperBound)
     }
 }
