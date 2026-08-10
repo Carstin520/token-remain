@@ -66,6 +66,71 @@ struct ProviderAccountsTests {
         #expect(!FileManager.default.fileExists(atPath: directory))
     }
 
+    @Test("Multi-account capability is explicit and keeps active-app-only providers disabled")
+    func capabilityMatrix() {
+        #expect(ProviderQuota.Provider.claude.multiAccountCapability?.credentialKind == .isolatedCLI)
+        #expect(ProviderQuota.Provider.codex.multiAccountCapability?.credentialKind == .isolatedCLI)
+        #expect(ProviderQuota.Provider.codex.multiAccountCapability?.allowsLocalActivation == false)
+        #expect(ProviderQuota.Provider.openrouter.multiAccountCapability?.credentialKind == .keychainSecret)
+        #expect(ProviderQuota.Provider.grok.multiAccountCapability?.credentialKind == .keychainSecret)
+        #expect(ProviderQuota.Provider.antigravity.multiAccountCapability?.credentialKind == .keychainSecret)
+        #expect(ProviderQuota.Provider.opencode.multiAccountCapability == nil)
+        #expect(ProviderQuota.Provider.kiro.multiAccountCapability == nil)
+        #expect(
+            ProviderQuota.Provider.displayOrder.count {
+                $0.multiAccountCapability != nil
+            } == 19
+        )
+    }
+
+    @Test("Secret profiles persist without pretending to own a provider home")
+    @MainActor
+    func secretProfilePersistence() throws {
+        let suite = "TokenRemainSecretAccounts.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defaults.removePersistentDomain(forName: suite)
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        let root = FileManager.default.temporaryDirectory
+            .appending(path: "tokenremain-secret-accounts-\(UUID().uuidString)")
+        let store = ProviderAccountsStore(defaults: defaults, rootDirectory: root)
+        let profile = try store.prepareProfile(provider: .openrouter, displayName: "Work")
+
+        #expect(profile.configurationDirectory == nil)
+        #expect(profile.credentialKind == .keychainSecret)
+        store.commit(profile)
+
+        let restored = ProviderAccountsStore(defaults: defaults, rootDirectory: root)
+        #expect(restored.profiles == [profile])
+        #expect(restored.allProfiles.contains { $0.id == .system(.openrouter) })
+        #expect(restored.allProfiles.contains { $0.id == .system(.codex) })
+    }
+
+    @Test("Codex managed accounts receive a private isolated home")
+    @MainActor
+    func codexProfileIsolation() throws {
+        let suite = "TokenRemainCodexAccounts.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        let root = FileManager.default.temporaryDirectory
+            .appending(path: "tokenremain-codex-accounts-\(UUID().uuidString)")
+        defer {
+            defaults.removePersistentDomain(forName: suite)
+            try? FileManager.default.removeItem(at: root)
+        }
+
+        let store = ProviderAccountsStore(defaults: defaults, rootDirectory: root)
+        let profile = try store.prepareProfile(provider: .codex, displayName: nil)
+        let directory = try #require(profile.configurationDirectory)
+        let attributes = try FileManager.default.attributesOfItem(atPath: directory)
+        let permissions = try #require(attributes[.posixPermissions] as? NSNumber).intValue
+
+        #expect(profile.credentialKind == .isolatedCLI)
+        #expect(profile.displayName == "Codex 2")
+        #expect(permissions & 0o077 == 0)
+        store.discardPreparedProfile(profile)
+        #expect(!FileManager.default.fileExists(atPath: directory))
+    }
+
     @Test("A stale account selection is pruned instead of leaking into the UI")
     @MainActor
     func staleSelectionIsPruned() throws {
@@ -88,6 +153,32 @@ struct ProviderAccountsTests {
                 .appending(path: "tokenremain-unused-\(UUID().uuidString)")
         )
         #expect(store.selection(for: .claude) == .all)
+    }
+
+    @Test("A selection cannot bind one provider card to another provider's account")
+    @MainActor
+    func crossProviderSelectionIsPruned() throws {
+        let suite = "TokenRemainCrossProviderSelection.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defaults.removePersistentDomain(forName: suite)
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let root = FileManager.default.temporaryDirectory
+            .appending(path: "tokenremain-cross-provider-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let first = ProviderAccountsStore(defaults: defaults, rootDirectory: root)
+        let codex = try first.prepareProfile(provider: .codex, displayName: "Work")
+        first.commit(codex)
+        defaults.set(
+            try JSONEncoder().encode([
+                ProviderQuota.Provider.claude: ProviderAccountSelection.account(codex.id)
+            ]),
+            forKey: ProviderAccountsStore.selectionsKey
+        )
+
+        let restored = ProviderAccountsStore(defaults: defaults, rootDirectory: root)
+        #expect(restored.selection(for: .claude) == .all)
+        #expect(restored.allProfiles.contains { $0.provider == .codex && $0.id == codex.id })
     }
 
     @Test("Account quota cache round-trips opaque account identifiers")

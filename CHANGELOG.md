@@ -5,6 +5,14 @@ Versioning for public releases.
 
 ## Unreleased
 
+### Added
+
+- Extend the account switcher and currency-safe summaries from Claude to Codex,
+  Antigravity, Cursor, Grok, Copilot, Z.ai/GLM, Windsurf, Devin, OpenRouter,
+  DeepSeek, Kimi, MiniMax, MiMo, Qoder, Volcengine, Ollama, and configurable
+  third-party APIs. CLI accounts use isolated homes; pasted credentials remain
+  in per-account, device-only Keychain items.
+
 ## 1.3.0 — 2026-08-10
 
 ### Added

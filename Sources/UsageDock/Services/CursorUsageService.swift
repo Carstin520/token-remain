@@ -38,7 +38,22 @@ struct CursorUsageService {
     private static let logger = Logger(subsystem: "com.jamesli.usagedock", category: "CursorUsage")
 
     func fetch(now: Date = .now) async throws -> ProviderQuota {
-        guard let auth = await CursorAuthReader().load() else {
+        try await fetch(accessToken: nil, membershipType: nil, now: now)
+    }
+
+    func fetch(
+        accessToken routedToken: String?,
+        membershipType: String? = nil,
+        now: Date = .now
+    ) async throws -> ProviderQuota {
+        let token = routedToken?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let auth: CursorAuthReader.Auth?
+        if let token, !token.isEmpty {
+            auth = CursorAuthReader.Auth(accessToken: token, membershipType: membershipType)
+        } else {
+            auth = await CursorAuthReader().load()
+        }
+        guard let auth else {
             throw ServiceError.notLoggedIn
         }
         if let expiry = JWT.expiry(auth.accessToken), expiry <= now {

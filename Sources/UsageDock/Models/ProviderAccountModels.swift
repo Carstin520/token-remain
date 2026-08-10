@@ -34,6 +34,10 @@ struct ProviderAccountProfile: Codable, Hashable, Identifiable, Sendable {
 
     var isSystem: Bool { kind == .system }
 
+    var credentialKind: ProviderAccountCredentialKind? {
+        isSystem ? nil : provider.multiAccountCapability?.credentialKind
+    }
+
     static func system(_ provider: ProviderQuota.Provider) -> ProviderAccountProfile {
         ProviderAccountProfile(
             id: .system(provider),
@@ -44,6 +48,49 @@ struct ProviderAccountProfile: Codable, Hashable, Identifiable, Sendable {
             isEnabled: true,
             createdAt: .distantPast
         )
+    }
+}
+
+enum ProviderAccountCredentialKind: String, Codable, Hashable, Sendable {
+    /// The provider's official CLI owns authentication inside an isolated home.
+    case isolatedCLI
+    /// TokenRemain owns one opaque credential in the macOS Keychain.
+    case keychainSecret
+}
+
+struct ProviderMultiAccountCapability: Hashable, Sendable {
+    let credentialKind: ProviderAccountCredentialKind
+    let allowsLocalActivation: Bool
+}
+
+extension ProviderQuota.Provider {
+    /// Multi-account is deliberately opt-in. Providers whose only supported
+    /// reader is the currently running desktop app remain single-account until
+    /// they expose a safe profile or credential boundary.
+    var multiAccountCapability: ProviderMultiAccountCapability? {
+        switch self {
+        case .claude:
+            ProviderMultiAccountCapability(
+                credentialKind: .isolatedCLI,
+                allowsLocalActivation: false
+            )
+        case .codex:
+            ProviderMultiAccountCapability(
+                credentialKind: .isolatedCLI,
+                // Selection changes TokenRemain's displayed account only. We
+                // do not overwrite the user's live ~/.codex/auth.json.
+                allowsLocalActivation: false
+            )
+        case .cursor, .grok, .zai, .zaiTeam, .copilot, .devin, .windsurf,
+             .openrouter, .deepseek, .kimi, .minimax, .mimo, .qoder,
+             .volcengine, .ollama, .thirdParty, .antigravity:
+            ProviderMultiAccountCapability(
+                credentialKind: .keychainSecret,
+                allowsLocalActivation: false
+            )
+        case .opencode, .kiro:
+            nil
+        }
     }
 }
 

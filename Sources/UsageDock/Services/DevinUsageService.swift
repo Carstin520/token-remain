@@ -32,7 +32,26 @@ struct DevinUsageService {
     private static let logger = Logger(subsystem: "com.jamesli.usagedock", category: "DevinUsage")
 
     func fetch(now: Date = .now) async throws -> ProviderQuota {
-        guard let auth = await DevinAuthReader().load() else {
+        try await fetch(apiKey: nil, apiServerURL: nil, now: now)
+    }
+
+    func fetch(
+        apiKey routedKey: String?,
+        apiServerURL: String? = nil,
+        now: Date = .now
+    ) async throws -> ProviderQuota {
+        let cleaned = routedKey?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let auth: DevinAuthReader.Auth?
+        if let cleaned, !cleaned.isEmpty {
+            auth = DevinAuthReader.Auth(
+                apiKey: cleaned,
+                apiServerURL: apiServerURL.flatMap(DevinAuthReader.cleanServerURL)
+                    ?? DevinAuthReader.defaultAPIServerURL
+            )
+        } else {
+            auth = await DevinAuthReader().load()
+        }
+        guard let auth else {
             throw ServiceError.notLoggedIn
         }
 

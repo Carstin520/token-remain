@@ -33,7 +33,12 @@ struct CopilotUsageService {
     private static let logger = Logger(subsystem: "com.jamesli.usagedock", category: "CopilotUsage")
 
     func fetch(now: Date = .now) async throws -> ProviderQuota {
-        guard let token = CopilotTokenReader().load() else {
+        try await fetch(token: nil, now: now)
+    }
+
+    func fetch(token routedToken: String?, now: Date = .now) async throws -> ProviderQuota {
+        let cleaned = routedToken?.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let token = (cleaned?.isEmpty == false ? cleaned : nil) ?? CopilotTokenReader().load() else {
             throw ServiceError.notLoggedIn
         }
 

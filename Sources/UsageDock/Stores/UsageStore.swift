@@ -49,8 +49,19 @@ final class UsageStore: ObservableObject {
     @Published private(set) var providerAccountProfiles: [ProviderAccountProfile] = []
     @Published private(set) var providerAccountStates: [ProviderAccountID: ProviderAccountState] = [:]
     @Published private(set) var providerAccountSelections: [ProviderQuota.Provider: ProviderAccountSelection] = [:]
-    @Published private(set) var isAddingClaudeAccount = false
-    @Published private(set) var accountManagementNotice: String?
+    @Published private(set) var addingProviderAccounts: Set<ProviderQuota.Provider> = []
+    @Published private(set) var accountManagementNotices: [ProviderQuota.Provider: String] = [:]
+
+    var isAddingClaudeAccount: Bool { addingProviderAccounts.contains(.claude) }
+    var accountManagementNotice: String? { accountManagementNotices[.claude] }
+
+    func isAddingProviderAccount(_ provider: ProviderQuota.Provider) -> Bool {
+        addingProviderAccounts.contains(provider)
+    }
+
+    func accountManagementNotice(for provider: ProviderQuota.Provider) -> String? {
+        accountManagementNotices[provider]
+    }
     @Published private(set) var daily: DailyUsage?
     @Published private(set) var history: DailyUsageHistory?
     @Published private(set) var quotaUsageHistory: QuotaUsageHistory = .empty
@@ -166,11 +177,24 @@ final class UsageStore: ObservableObject {
     }
 
     func accountSnapshots(for provider: ProviderQuota.Provider) -> [ProviderAccountSnapshot] {
-        providerAccountProfiles.compactMap { profile in
-            guard profile.provider == provider else { return nil }
+        let providerProfiles = providerAccountProfiles.filter { $0.provider == provider }
+        let hasManagedProfile = providerProfiles.contains { !$0.isSystem }
+        return providerProfiles.compactMap { profile in
+            let state = providerAccountStates[profile.id] ?? ProviderAccountState()
+            // A key/cookie provider has no meaningful "current account" until
+            // its ordinary global credential resolves. Once a managed profile
+            // exists, hide that empty placeholder so the first real account is
+            // not presented as "1 of 2 available". CLI-backed system accounts
+            // remain visible because their local login is independently useful.
+            if profile.isSystem,
+               hasManagedProfile,
+               profile.provider.multiAccountCapability?.credentialKind == .keychainSecret,
+               state.quota == nil {
+                return nil
+            }
             return ProviderAccountSnapshot(
                 profile: profile,
-                state: providerAccountStates[profile.id] ?? ProviderAccountState()
+                state: state
             )
         }
     }
@@ -585,18 +609,42 @@ final class UsageStore: ObservableObject {
                 interval: auxiliaryInterval
             )
         }
-        let dueManagedClaudeProfiles = shouldRefreshClaude
-            ? providerAccountProfiles.filter {
-                $0.provider == .claude && $0.kind == .managed && $0.isEnabled
-            }
-            : []
+        let managedDueProviders = Set(dueAuxProviders)
+            .union(shouldRefreshClaude ? [.claude] : [])
+            .union(codexAPIDue ? [.codex] : [])
+        let dueManagedProfiles = providerAccountProfiles.filter {
+            $0.kind == .managed && $0.isEnabled && managedDueProviders.contains($0.provider)
+        }
 
         if shouldRefreshClaude {
-            for id in [ProviderAccountID.system(.claude)] + dueManagedClaudeProfiles.map(\.id) {
+            for id in [ProviderAccountID.system(.claude)] {
                 var state = providerAccountStates[id] ?? ProviderAccountState()
                 state.isRefreshing = true
                 providerAccountStates[id] = state
             }
+        }
+        for provider in dueAuxProviders {
+            let id = ProviderAccountID.system(provider)
+            guard providerAccountProfiles.contains(where: { $0.id == id }) else { continue }
+            var state = providerAccountStates[id] ?? ProviderAccountState()
+            state.isRefreshing = true
+            providerAccountStates[id] = state
+        }
+        if Self.shouldRefreshCodex(
+            enabled: codexEnabled,
+            routeIsExternal: codexRouteIsExternal,
+            apiDue: codexAPIDue,
+            localSnapshotDue: codexLocalDue
+        ) {
+            let id = ProviderAccountID.system(.codex)
+            var state = providerAccountStates[id] ?? ProviderAccountState()
+            state.isRefreshing = true
+            providerAccountStates[id] = state
+        }
+        for profile in dueManagedProfiles {
+            var state = providerAccountStates[profile.id] ?? ProviderAccountState()
+            state.isRefreshing = true
+            providerAccountStates[profile.id] = state
         }
 
         var errors: [String] = []
@@ -608,19 +656,6 @@ final class UsageStore: ObservableObject {
                             try await hostQuotaRouter.fetchClaude()
                         }
                     )
-                }
-                for profile in dueManagedClaudeProfiles {
-                    group.addTask {
-                        let directory = profile.configurationDirectory.map(URL.init(fileURLWithPath:))
-                        return .providerAccount(
-                            profile,
-                            await result {
-                                try await ClaudeUsageService(
-                                    configurationDirectory: directory
-                                ).fetch()
-                            }
-                        )
-                    }
                 }
             }
             if Self.shouldRefreshCodex(
@@ -641,6 +676,14 @@ final class UsageStore: ObservableObject {
                 guard let fetcher = Self.auxFetcher(for: provider) else { continue }
                 group.addTask {
                     .auxiliary(provider, await result { try await fetcher() })
+                }
+            }
+            for profile in dueManagedProfiles {
+                group.addTask {
+                    .providerAccount(
+                        profile,
+                        await result { try await ProviderAccountFetchService().fetch(profile) }
+                    )
                 }
             }
             if serviceStatusDue {
@@ -749,6 +792,7 @@ final class UsageStore: ObservableObject {
                     errors.append("Codex: \(error.localizedDescription)")
                 }
             }
+            syncSystemAccountNotice(.codex)
 
         case .auxiliary(let provider, let auxResult):
             lastAuxProviderAttempts[provider] = now
@@ -764,6 +808,7 @@ final class UsageStore: ObservableObject {
                 )
             }
             apply(auxResult, to: provider) { self.assign($0, to: provider) }
+            syncSystemAccountNotice(provider)
 
         case .serviceStatuses(let statuses):
             lastServiceStatusAttempt = now
@@ -974,34 +1019,80 @@ final class UsageStore: ObservableObject {
 
     @discardableResult
     func addClaudeAccount(displayName: String? = nil) async -> Bool {
-        guard !isAddingClaudeAccount else { return false }
-        isAddingClaudeAccount = true
-        accountManagementNotice = nil
-        defer { isAddingClaudeAccount = false }
+        await addProviderAccount(provider: .claude, displayName: displayName, credential: nil)
+    }
+
+    /// Adds a managed account without publishing half-configured metadata.
+    /// CLI providers complete official sign-in first; secret providers validate
+    /// a device-only Keychain credential with a real quota request first.
+    @discardableResult
+    func addProviderAccount(
+        provider: ProviderQuota.Provider,
+        displayName: String? = nil,
+        credential: String?
+    ) async -> Bool {
+        guard provider.multiAccountCapability != nil,
+              !addingProviderAccounts.contains(provider) else { return false }
+        addingProviderAccounts.insert(provider)
+        accountManagementNotices[provider] = nil
+        defer { addingProviderAccounts.remove(provider) }
 
         let profile: ProviderAccountProfile
         do {
-            profile = try providerAccountsStore.prepareClaudeProfile(displayName: displayName)
+            profile = try providerAccountsStore.prepareProfile(
+                provider: provider,
+                displayName: displayName
+            )
         } catch {
-            accountManagementNotice = error.localizedDescription
+            accountManagementNotices[provider] = error.localizedDescription
             return false
         }
 
         do {
-            guard let path = profile.configurationDirectory else { return false }
-            try await ClaudeAccountLoginService().login(
-                configurationDirectory: URL(fileURLWithPath: path)
-            )
+            var initialQuota: ProviderQuota?
+            switch profile.credentialKind {
+            case .isolatedCLI:
+                guard let path = profile.configurationDirectory else { return false }
+                let directory = URL(fileURLWithPath: path)
+                if provider == .claude {
+                    try await ClaudeAccountLoginService().login(configurationDirectory: directory)
+                } else if provider == .codex {
+                    try await CodexAccountLoginService().login(configurationDirectory: directory)
+                }
+            case .keychainSecret:
+                guard let credential = credential?.trimmingCharacters(in: .whitespacesAndNewlines),
+                      !credential.isEmpty else {
+                    throw ProviderAccountFetchService.FetchError.missingCredential
+                }
+                try ProviderAccountSecretStore(
+                    provider: provider,
+                    accountID: profile.id
+                ).save(credential)
+                initialQuota = try await ProviderAccountFetchService().fetch(profile)
+            case nil:
+                throw ProviderAccountFetchService.FetchError.unsupportedProvider(provider.displayName)
+            }
             providerAccountsStore.commit(profile)
             providerAccountProfiles = providerAccountsStore.allProfiles
-            providerAccountsStore.setSelection(.account(profile.id), for: .claude)
+            providerAccountsStore.setSelection(.account(profile.id), for: provider)
             providerAccountSelections = providerAccountsStore.selections
-            providerAccountStates[profile.id] = ProviderAccountState(isRefreshing: true)
+            providerAccountStates[profile.id] = ProviderAccountState(
+                quota: initialQuota,
+                isRefreshing: initialQuota == nil
+            )
+            if initialQuota != nil {
+                providerAccountQuotaCache.save(currentProviderAccountQuotas())
+                return true
+            }
             await refreshProviderAccount(profile.id)
             return providerAccountStates[profile.id]?.quota != nil
         } catch {
+            try? ProviderAccountSecretStore(
+                provider: provider,
+                accountID: profile.id
+            ).delete()
             providerAccountsStore.discardPreparedProfile(profile)
-            accountManagementNotice = error.localizedDescription
+            accountManagementNotices[provider] = error.localizedDescription
             return false
         }
     }
@@ -1024,7 +1115,7 @@ final class UsageStore: ObservableObject {
     }
 
     func removeProviderAccount(_ id: ProviderAccountID) {
-        guard id != .system(.claude), providerAccountsStore.remove(id) != nil else { return }
+        guard !id.rawValue.hasPrefix("system."), providerAccountsStore.remove(id) != nil else { return }
         providerAccountProfiles = providerAccountsStore.allProfiles
         providerAccountSelections = providerAccountsStore.selections
         providerAccountStates[id] = nil
@@ -1035,17 +1126,30 @@ final class UsageStore: ObservableObject {
         guard let profile = providerAccountProfiles.first(where: { $0.id == id }),
               profile.isEnabled else { return }
         if profile.isSystem {
-            await refresh(forceCCUsage: false, forceClaude: true)
+            switch profile.provider {
+            case .claude:
+                await refresh(forceCCUsage: false, forceClaude: true)
+            case .codex:
+                let result = await result {
+                    try await self.hostQuotaRouter.fetchCodex(preferAPI: true)
+                }
+                var errors: [String] = []
+                applyQuotaRefreshOutput(
+                    .codex(result),
+                    attemptedAt: .now,
+                    codexAPIDue: true,
+                    errors: &errors
+                )
+            default:
+                await refreshKeyProvider(profile.provider)
+            }
             return
         }
-        guard let path = profile.configurationDirectory else { return }
         var state = providerAccountStates[id] ?? ProviderAccountState()
         state.isRefreshing = true
         providerAccountStates[id] = state
         do {
-            state.quota = try await ClaudeUsageService(
-                configurationDirectory: URL(fileURLWithPath: path)
-            ).fetch(forceScopedUsageProbe: true)
+            state.quota = try await ProviderAccountFetchService().fetch(profile)
             state.notice = nil
         } catch {
             state.notice = error.localizedDescription
@@ -1084,13 +1188,22 @@ final class UsageStore: ObservableObject {
         }
     }
 
+    private func syncSystemAccountNotice(_ provider: ProviderQuota.Provider) {
+        let id = ProviderAccountID.system(provider)
+        guard providerAccountProfiles.contains(where: { $0.id == id }) else { return }
+        var state = providerAccountStates[id] ?? ProviderAccountState()
+        state.notice = providerNotices[provider]
+        state.isRefreshing = false
+        providerAccountStates[id] = state
+    }
+
     private func currentSnapshot() -> QuotaCache.Snapshot {
         .init(byProvider: quotas)
     }
 
     private func currentProviderAccountQuotas() -> [ProviderAccountID: ProviderQuota] {
         Dictionary(uniqueKeysWithValues: providerAccountStates.compactMap { id, state in
-            guard id != .system(.claude), let quota = state.quota else { return nil }
+            guard !id.rawValue.hasPrefix("system."), let quota = state.quota else { return nil }
             return (id, quota)
         })
     }
