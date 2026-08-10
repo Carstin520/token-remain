@@ -97,6 +97,27 @@ $installedExecutable = Join-Path $installDirectory "TokenRemain.exe"
 if (-not (Test-Path $installedExecutable -PathType Leaf)) {
   throw "Installed TokenRemain.exe was not found at $installedExecutable"
 }
+
+$ccusageArchitecture = switch ($env:RUNNER_ARCH) {
+  "X64" { "x64" }
+  "ARM64" { "arm64" }
+  default { throw "Unsupported Windows runner architecture: $env:RUNNER_ARCH" }
+}
+$ccusageExecutable = Join-Path $installDirectory `
+  "resources\app.asar.unpacked\node_modules\@ccusage\ccusage-win32-$ccusageArchitecture\bin\ccusage.exe"
+if (-not (Test-Path $ccusageExecutable -PathType Leaf)) {
+  throw "Bundled ccusage helper was not found at $ccusageExecutable"
+}
+$ccusageCheck = Start-Process -FilePath $ccusageExecutable `
+  -ArgumentList "--version" `
+  -NoNewWindow `
+  -Wait `
+  -PassThru
+if ($ccusageCheck.ExitCode -ne 0) {
+  throw "Bundled ccusage helper failed to start (exit code $($ccusageCheck.ExitCode))"
+}
+Write-Host "Bundled ccusage helper starts on $env:RUNNER_ARCH"
+
 Assert-TokenRemainStarts -Executable $installedExecutable -Label "Installed app"
 Stop-TokenRemain
 
@@ -120,4 +141,4 @@ while ((Test-Path $installedExecutable) -and (Get-Date) -lt $uninstallDeadline) 
 if (Test-Path $installedExecutable) {
   throw "Installed executable remained after uninstall"
 }
-Write-Host "NSIS install, launch, and uninstall smoke test passed"
+Write-Host "NSIS install, ccusage helper, app launch, and uninstall smoke test passed"

@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { collectClaude } from "./collectors/claude.js";
 import { collectCodex } from "./collectors/codex.js";
 import { fetchCuratedFeed, isAllowedPostURL } from "./feed.js";
+import { ccusageBinaryPath, collectLocalUsage, mergeDailyUsageHistories } from "./local-usage.js";
 import {
   clampPopoverHeight,
   isRect,
@@ -12,6 +13,7 @@ import {
   prefersAcrylic,
   resolvePopoverBounds,
 } from "./popover-placement.js";
+import { PublicPricingService } from "./pricing.js";
 import { StateStore } from "./state-store.js";
 import { makeSnapshot } from "./sync/crypto.js";
 import { exchangeSnapshot, pairWithMac } from "./sync/client.js";
@@ -44,6 +46,7 @@ let popoverHiddenAt = 0;
 let popoverContentHeight = POPOVER_INITIAL_HEIGHT;
 let popoverAnchorBounds;
 let floatingBoundsSaveTimer;
+let pricingService;
 
 if (!app.requestSingleInstanceLock()) app.quit();
 
@@ -55,6 +58,10 @@ app.whenReady().then(async () => {
   app.setAppUserModelId("com.jamesli.tokenremain.windows");
   store = new StateStore({ userDataPath: app.getPath("userData"), safeStorage });
   await store.load();
+  pricingService = new PublicPricingService({
+    cacheDirectory: join(app.getPath("userData"), "pricing"),
+    fetchImpl: (url, options) => net.fetch(url, options),
+  });
   registerIPC();
   createWindow();
   createPopoverWindow();
@@ -482,6 +489,7 @@ async function performRefresh() {
     collectClaude({ fetchImpl: windowsFetch }),
     collectCodex({ fetchImpl: windowsFetch }),
     fetchCuratedFeed(),
+    collectWindowsLocalUsage(),
   ]);
   const providers = [];
   const notices = {};
@@ -504,6 +512,15 @@ async function performRefresh() {
     store.state.feedError = publicError(feedResult.reason);
   }
   store.state.feedLoading = false;
+
+  const localUsageResult = results[3];
+  if (localUsageResult.status === "fulfilled") {
+    store.setLocalDailyUsageHistory(localUsageResult.value);
+    store.state.lastLocalUsageAt = Date.now();
+    delete store.state.localUsageError;
+  } else {
+    store.state.localUsageError = publicError(localUsageResult.reason);
+  }
 
   try {
     const paired = store.getPairedMac();
@@ -556,6 +573,10 @@ function updateTrayTooltip() {
 
 function publicState() {
   const paired = store?.state?.pairedMac;
+  const localDailyUsageHistory = store?.state?.localDailyUsageHistory;
+  const remoteDailyUsageHistory = store?.state?.remoteSnapshot?.dailyUsageHistory;
+  const dailyUsageHistory = mergeDailyUsageHistories(localDailyUsageHistory, remoteDailyUsageHistory);
+  const pricing = pricingService?.getStatus();
   return {
     sourceInstanceID: store?.state?.sourceInstanceID,
     deviceName: hostname(),
@@ -567,7 +588,17 @@ function publicState() {
     notices: store?.state?.notices || {},
     lastUpdatedAt: store?.state?.lastUpdatedAt,
     isRefreshing: Boolean(store?.state?.isRefreshing),
-    dailyUsageHistory: store?.state?.remoteSnapshot?.dailyUsageHistory,
+    dailyUsageHistory,
+    localUsage: {
+      hasLocal: Boolean(localDailyUsageHistory),
+      hasRemote: Boolean(remoteDailyUsageHistory),
+      capturedAt: dailyUsageHistory?.capturedAt,
+      source: localDailyUsageHistory && remoteDailyUsageHistory
+        ? "This PC + paired Mac"
+        : localDailyUsageHistory ? "This PC" : remoteDailyUsageHistory ? "Paired Mac" : undefined,
+      error: store?.state?.localUsageError,
+      pricing,
+    },
     quotaUsageHistory: store?.state?.quotaUsageHistory,
     trending: store?.state?.trending || [],
     feedLoading: Boolean(store?.state?.feedLoading),
@@ -582,6 +613,18 @@ function publicState() {
       encryption: paired ? "AES-256-GCM" : undefined,
     },
   };
+}
+
+async function collectWindowsLocalUsage() {
+  const pricingConfigurationPath = await pricingService.configurationPath();
+  return collectLocalUsage({
+    binaryPath: ccusageBinaryPath({
+      packaged: app.isPackaged,
+      appPath: app.getAppPath(),
+      resourcesPath: process.resourcesPath,
+    }),
+    pricingConfigurationPath,
+  });
 }
 
 /// One refresh loop feeds both surfaces: the dashboard and the tray popover

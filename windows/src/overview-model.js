@@ -1,4 +1,5 @@
 import { providerMeta } from "./provider-meta.js";
+import { agentsForUsageDay, usageDayTotals } from "./usage-history.js";
 
 export function buildOverviewSummary(providers = [], now = Date.now()) {
   const risk = buildRiskNotes(providers, now);
@@ -99,14 +100,12 @@ export function buildTodayUsage(history, now = Date.now()) {
   const dayKey = history.sourceDay || utcDayKey(now);
   const day = history.days.find((item) => item.day === dayKey);
   if (!day) return { dayKey, capturedAt: history.capturedAt, entries: [] };
-  const entries = [
-    { id: "claude", displayName: "Claude", tokens: day.claudeTokens, cost: day.claudeCost },
-    { id: "codex", displayName: "Codex", tokens: day.codexTokens, cost: day.codexCost },
-  ].filter((entry) => entry.tokens > 0 || entry.cost > 0).sort((left, right) => right.tokens - left.tokens);
-  const totalTokens = entries.reduce((total, entry) => total + entry.tokens, 0);
-  const rawCost = entries.reduce((total, entry) => total + entry.cost, 0);
-  const hasAmbiguousZeroCost = entries.some((entry) => entry.tokens > 0 && entry.cost === 0);
-  const totalCost = entries.length && !hasAmbiguousZeroCost ? rawCost : undefined;
+  const totals = usageDayTotals(day);
+  const entries = agentsForUsageDay(day)
+    .map((entry) => ({ ...entry, displayName: providerMeta(entry.id).name }))
+    .sort((left, right) => right.tokens - left.tokens);
+  const totalTokens = totals.tokens;
+  const totalCost = entries.length ? totals.cost : undefined;
   return {
     dayKey,
     capturedAt: history.capturedAt,

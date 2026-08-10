@@ -42,11 +42,21 @@ const PROVIDER_META = {
   kiro: { name: "Kiro", icon: "kiro.svg", color: "#A292C7" },
   volcengine: { name: "Volcengine", icon: "volcengine.svg", color: "#6BA3C4" },
   ollama: { name: "Ollama", icon: "ollama.svg", color: "#CBD5E1" },
+  gemini: { name: "Gemini", icon: undefined, color: "#6CA0C8" },
+  amp: { name: "Amp", icon: undefined, color: "#D29B63" },
+  droid: { name: "Droid", icon: undefined, color: "#7FB88B" },
+  codebuff: { name: "Codebuff", icon: undefined, color: "#B28AC4" },
+  hermes: { name: "Hermes", icon: undefined, color: "#C39A6B" },
+  goose: { name: "Goose", icon: undefined, color: "#9EAEBD" },
+  openclaw: { name: "OpenClaw", icon: undefined, color: "#C47B74" },
+  kilo: { name: "Kilo", icon: undefined, color: "#78A99B" },
+  qwen: { name: "Qwen", icon: undefined, color: "#7D8FD0" },
+  pi: { name: "Pi", icon: undefined, color: "#B889A6" },
 };
 
 export function providerMeta(providerID) {
   return PROVIDER_META[providerID] || {
-    name: providerID,
+    name: String(providerID || "Unknown").replace(/(^|[-_.])([a-z])/g, (_, separator, letter) => `${separator ? " " : ""}${letter.toUpperCase()}`),
     icon: undefined,
     color: "var(--violet)",
   };

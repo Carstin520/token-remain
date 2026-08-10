@@ -66,6 +66,38 @@ test("Quota snapshots accumulate locally and remain protected at rest", async ()
   }
 });
 
+test("Local ccusage aggregates remain protected at rest", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "tokenremain-windows-local-usage-"));
+  try {
+    const history = {
+      sourceDay: "2026-08-10",
+      capturedAt: 1_786_000_000_000,
+      days: [{
+        day: "2026-08-10",
+        agents: [{ id: "gemini", tokens: 987_654_321, cost: 3.21, unpricedModels: [] }],
+        claudeTokens: 0,
+        claudeCost: 0,
+        codexTokens: 0,
+        codexCost: 0,
+      }],
+    };
+    const store = new StateStore({ userDataPath: directory, safeStorage });
+    await store.load();
+    store.setLocalDailyUsageHistory(history);
+    await store.save();
+
+    const onDisk = await readFile(join(directory, "state-v1.json"), "utf8");
+    assert.doesNotMatch(onDisk, /987654321|gemini|localDailyUsageHistory/);
+    assert.match(onDisk, /protectedLocalDailyUsageHistory/);
+
+    const restored = new StateStore({ userDataPath: directory, safeStorage });
+    await restored.load();
+    assert.deepEqual(restored.state.localDailyUsageHistory, history);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test("Floating shortcut preference and last position persist", async () => {
   const directory = await mkdtemp(join(tmpdir(), "tokenremain-windows-floating-"));
   try {

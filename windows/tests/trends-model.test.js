@@ -26,6 +26,19 @@ test("daily trend switches range and metric while keeping a single nice axis", (
   assert.equal(cost.days.at(-1).total, 87);
 });
 
+test("daily trend reads dynamic ccusage agents instead of fixed Claude and Codex fields", () => {
+  const history = { days: [{
+    day: "2026-08-10",
+    agents: [
+      { id: "gemini", tokens: 75, cost: 0.25 },
+      { id: "openclaw", tokens: 25, cost: 0.1 },
+    ],
+  }] };
+  const model = usageTrendModel(history, { range: 7, metric: "tokens", providerIDs: ["gemini", "openclaw"] });
+  assert.deepEqual(model.days[0].values, { gemini: 75, openclaw: 25 });
+  assert.equal(model.days[0].total, 100);
+});
+
 test("axis and sparkline helpers follow the compact Mac presentation", () => {
   assert.equal(niceCeiling(438_500_000), 500_000_000);
   assert.equal(compactAxisValue(500_000_000), "500M");

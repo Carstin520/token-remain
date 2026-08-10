@@ -253,8 +253,8 @@ test("Missing days report no data instead of a fabricated zero", () => {
 });
 
 test("Empty local usage explains the actual reason it is empty", () => {
-  assert.match(usageEmptyState({ sync: { paired: false } }).title, /Pair your Mac/);
-  assert.match(usageEmptyState({ sync: { paired: true } }).title, /No usage history from your Mac yet/);
+  assert.match(usageEmptyState({ sync: { paired: false } }).title, /No local usage history yet/);
+  assert.match(usageEmptyState({ localUsage: { error: "Helper missing" } }).title, /could not be read/);
   assert.match(usageEmptyState({ sync: { paired: true }, dailyUsageHistory: history() }).title, /No local usage yet today/);
 });
 
@@ -312,5 +312,5 @@ test("The popover model composes one snapshot of every section", () => {
   assert.equal(cold.updatedLabel, "Loading data…");
   assert.equal(cold.quotaNotice, "Reading official quota…");
   assert.equal(cold.usage, undefined);
-  assert.match(cold.usageEmpty.title, /Pair your Mac/);
+  assert.match(cold.usageEmpty.title, /No local usage history yet/);
 });

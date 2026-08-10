@@ -57,3 +57,13 @@ test("every local Electron runtime import is included in the packaged app", asyn
 
   assert.deepEqual(missing, [], `Runtime imports omitted by build.files:\n${missing.join("\n")}`);
 });
+
+test("Windows packages unpack the architecture-specific native ccusage helper", async () => {
+  const packageJSON = JSON.parse(await readFile(path.join(projectRoot, "package.json"), "utf8"));
+  const lock = JSON.parse(await readFile(path.join(projectRoot, "package-lock.json"), "utf8"));
+  assert.equal(packageJSON.dependencies?.ccusage, "20.0.19");
+  assert.ok(packageJSON.build?.asarUnpack?.some((pattern) => pattern.includes("@ccusage") && pattern.includes("ccusage")));
+  assert.ok(lock.packages?.["node_modules/@ccusage/ccusage-win32-x64"]?.optional);
+  assert.ok(lock.packages?.["node_modules/@ccusage/ccusage-win32-arm64"]?.optional);
+  assert.ok(!packageJSON.scripts?.["dist:win"].includes("--x64"), "native ARM64 CI must not be forced back to x64");
+});

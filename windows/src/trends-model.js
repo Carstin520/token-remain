@@ -15,8 +15,9 @@ export function usageTrendModel(history, { range = 14, metric = "tokens", provid
   const safeMetric = TREND_METRICS.includes(metric) ? metric : "tokens";
   const source = Array.isArray(history?.days) ? history.days : [];
   const days = source.slice(-safeRange).map((day) => {
+    const agents = new Map(agentsForUsageDay(day).map((agent) => [agent.id, agent]));
     const values = Object.fromEntries(providerIDs.map((id) => {
-      const raw = safeMetric === "tokens" ? day?.[`${id}Tokens`] : day?.[`${id}Cost`];
+      const raw = safeMetric === "tokens" ? agents.get(id)?.tokens : agents.get(id)?.cost;
       return [id, Number.isFinite(raw) && raw > 0 ? raw : 0];
     }));
     return {
@@ -77,3 +78,4 @@ export function quotaLinePoints(samples, cutoff, now, width = 100, height = 38) 
     return `${x.toFixed(2)},${y.toFixed(2)}`;
   }).join(" ");
 }
+import { agentsForUsageDay } from "./usage-history.js";

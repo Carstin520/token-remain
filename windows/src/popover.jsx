@@ -282,7 +282,7 @@ function App() {
           onClick={() => run(api.refresh)}
           disabled={model.isRefreshing}
           aria-label={model.isRefreshing ? "Refreshing usage" : "Refresh usage"}
-          title="Refresh quotas, synced usage, and the AI Feed"
+          title="Refresh quotas, local usage, pricing, and the AI Feed"
         >
           <RefreshIcon spinning={model.isRefreshing} />
         </button>
@@ -740,7 +740,7 @@ function SpendRow({ label, bucket }) {
   return (
     <div className="popover-spend-row">
       <span>{label}</span>
-      <strong title={bucket.hasData ? bucket.label : "No synced data for this period"}>{bucket.label}</strong>
+      <strong title={bucket.hasData ? bucket.label : "No recorded data for this period"}>{bucket.label}</strong>
     </div>
   );
 }

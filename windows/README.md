@@ -8,8 +8,18 @@ small Electron shell.
 
 - Reads the existing Claude Code and Codex CLI credential files on the PC.
 - Calls the same official quota endpoints used by the macOS app.
+- Bundles the official native `ccusage` helper for the target Windows
+  architecture and reads supported coding-agent logs locally for daily token
+  and estimated-cost history. No separate Node.js or ccusage install is needed.
+- Runs `ccusage` offline with an app-owned pricing configuration. Every six
+  hours the app conditionally downloads and validates the complete public
+  LiteLLM pricing table; it never sends an observed model name, token count,
+  project, path, prompt, or session to the pricing source.
+- Keeps the last validated public table and falls back to ccusage's embedded
+  price snapshot whenever the network is unavailable.
 - Never refreshes, rewrites, copies, or syncs provider credentials.
-- Exchanges only normalized quota snapshots with a paired Mac on the LAN.
+- Optionally exchanges normalized quota snapshots and daily aggregates with a
+  paired Mac on the LAN. Mac pairing is not required for Windows daily usage.
 - Preserves every provider in the Mac snapshot and exposes Overview, Limits,
   Trends, Devices, Data Sources, and Settings with honest Windows data states.
 - Supports persistent full-card reordering in Limits: direct mouse drag,
@@ -29,10 +39,11 @@ npm test
 npm run start
 ```
 
-Build Windows installers with `npm run dist:win`. A package assembled on macOS
-still requires a real Windows smoke test before it is considered release-ready.
+Build a native-architecture Windows installer with `npm run dist:win`, or force
+x64 with `npm run dist:win:x64`. A package assembled on macOS still requires a
+real Windows smoke test before it is considered release-ready.
 
-## Pairing
+## Optional Mac pairing
 
 1. Open **Devices** in TokenRemain on the Mac and start a one-time pairing
    session.

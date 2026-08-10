@@ -34,6 +34,12 @@ export class StateStore {
         Buffer.from(this.state.protectedQuotaUsageHistory, "base64"),
       ));
     }
+    if (this.state.protectedLocalDailyUsageHistory) {
+      if (!this.safeStorage.isEncryptionAvailable()) throw new Error("Windows credential protection is unavailable");
+      this.state.localDailyUsageHistory = JSON.parse(this.safeStorage.decryptString(
+        Buffer.from(this.state.protectedLocalDailyUsageHistory, "base64"),
+      ));
+    }
     this.state.quotaUsageHistory = normalizeQuotaUsageHistory(this.state.quotaUsageHistory);
     this.state.preferences = {
       floatingWidgetEnabled: false,
@@ -90,6 +96,11 @@ export class StateStore {
     this.state.quotaUsageHistory = recordQuotaUsageHistory(this.state.quotaUsageHistory, providers, now);
   }
 
+  setLocalDailyUsageHistory(history) {
+    if (!this.safeStorage.isEncryptionAvailable()) throw new Error("Windows credential protection is unavailable");
+    this.state.localDailyUsageHistory = history;
+  }
+
   async setFloatingWidgetEnabled(enabled) {
     this.state.preferences = {
       ...(this.state.preferences || {}),
@@ -124,6 +135,13 @@ export class StateStore {
         .toString("base64");
     }
     delete persisted.quotaUsageHistory;
+    if (this.state.localDailyUsageHistory) {
+      if (!this.safeStorage.isEncryptionAvailable()) throw new Error("Windows credential protection is unavailable");
+      persisted.protectedLocalDailyUsageHistory = this.safeStorage
+        .encryptString(JSON.stringify(this.state.localDailyUsageHistory))
+        .toString("base64");
+    }
+    delete persisted.localDailyUsageHistory;
     await writeFile(temporary, JSON.stringify(persisted, null, 2), { mode: 0o600 });
     await rename(temporary, this.path);
   }

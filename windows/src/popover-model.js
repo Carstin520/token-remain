@@ -4,7 +4,7 @@
 // quota, risk, formatting, and feed-curation rules are imported rather than
 // restated here. What this module adds is popover-specific selection: which
 // three provider cards fit, the Today / Yesterday / Last 30 Days digest, and
-// honest empty states when Mac Direct Sync has nothing to show.
+// honest empty states when neither this PC nor Mac Direct Sync has usage.
 
 import { priorityTitle, topStories } from "./feed-model.js";
 import {
@@ -31,6 +31,7 @@ import {
   usagePace,
 } from "./overview-model.js";
 import { providerMeta } from "./provider-meta.js";
+import { usageDayTotals } from "./usage-history.js";
 
 export const POPOVER_QUOTA_CARD_LIMIT = 3;
 export const POPOVER_FEED_LIMIT = 2;
@@ -167,8 +168,8 @@ export function popoverRisk(providers = [], now = Date.now()) {
 }
 
 /// Today / Yesterday / Last 30 Days plus a short trend, built from the daily
-/// aggregate the paired Mac shares. Missing days stay missing: a bucket without
-/// a synced day reports no data instead of a zero.
+/// local/synced aggregate. Missing days stay missing: a bucket without a
+/// recorded day reports no data instead of a zero.
 export function buildUsageDigest(history, now = Date.now()) {
   if (!history || !Array.isArray(history.days)) return undefined;
   const today = buildTodayUsage(history, now);
@@ -198,7 +199,7 @@ function buildTrend(days, dayKey, count = POPOVER_TREND_DAYS) {
   if (!dayKey) return [];
   const tokensByDay = new Map();
   for (const day of days) {
-    const tokens = numeric(day.claudeTokens) + numeric(day.codexTokens);
+    const tokens = usageDayTotals(day).tokens;
     tokensByDay.set(day.day, (tokensByDay.get(day.day) || 0) + tokens);
   }
   return Array.from({ length: count }, (_, index) => {
@@ -209,11 +210,10 @@ function buildTrend(days, dayKey, count = POPOVER_TREND_DAYS) {
 
 function bucketOf(days) {
   if (!days.length) return { hasData: false, tokens: undefined, cost: undefined, label: "—" };
-  const tokens = days.reduce((total, day) => total + numeric(day.claudeTokens) + numeric(day.codexTokens), 0);
-  const rawCost = days.reduce((total, day) => total + numeric(day.claudeCost) + numeric(day.codexCost), 0);
-  // ccusage reports 0 for models it has no price for; claiming "$0.00" there
-  // would be a lie, so an unpriced bucket says so instead.
-  const cost = tokens > 0 && rawCost <= 0 ? undefined : rawCost;
+  const totals = days.map(usageDayTotals);
+  const tokens = totals.reduce((total, day) => total + day.tokens, 0);
+  const rawCost = totals.reduce((total, day) => total + day.knownCost, 0);
+  const cost = totals.some((day) => day.hasUnpricedUsage) ? undefined : rawCost;
   return {
     hasData: true,
     tokens,
@@ -225,21 +225,21 @@ function bucketOf(days) {
 /// The reason the local-usage card is empty, worded the same way the Dashboard
 /// words it so the two surfaces never disagree about why data is missing.
 export function usageEmptyState(state) {
-  if (!state?.sync?.paired) {
+  if (!state?.dailyUsageHistory && state?.localUsage?.error) {
     return {
-      title: "Pair your Mac to see today's usage",
-      message: "Direct sync brings the same daily usage aggregate to this PC.",
+      title: "Local usage could not be read",
+      message: state.localUsage.error,
     };
   }
   if (!state?.dailyUsageHistory) {
     return {
-      title: "No usage history from your Mac yet",
-      message: "Turn on “Share daily usage with paired devices” in TokenRemain › Devices on your Mac.",
+      title: "No local usage history yet",
+      message: "Use a supported coding app on this PC and built-in ccusage will record tokens and estimated API-list-price cost automatically.",
     };
   }
   return {
     title: "No local usage yet today",
-    message: "This fills in after Claude or Codex records usage for the source Mac's current day.",
+    message: "This fills in after Claude Code, Codex, Gemini CLI, Copilot CLI, or another supported local agent records usage today.",
   };
 }
 
@@ -292,8 +292,4 @@ function shiftDay(dayKey, offset) {
   const parsed = Date.parse(`${dayKey}T00:00:00Z`);
   if (!Number.isFinite(parsed)) return dayKey;
   return new Date(parsed + offset * DAY_MS).toISOString().slice(0, 10);
-}
-
-function numeric(value) {
-  return Number.isFinite(value) ? value : 0;
 }

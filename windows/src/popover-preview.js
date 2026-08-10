@@ -70,6 +70,13 @@ export function buildPreviewState(now) {
       },
     ],
     dailyUsageHistory: { sourceDay: dayKey(now), capturedAt: now - 3 * MINUTE_MS, days },
+    localUsage: {
+      hasLocal: true,
+      hasRemote: true,
+      capturedAt: now - 3 * MINUTE_MS,
+      source: "This PC + paired Mac",
+      pricing: { capturedAt: now - HOUR_MS, modelCount: 2_742, refreshIntervalHours: 6 },
+    },
     trending: [
       {
         id: "preview-story-1",

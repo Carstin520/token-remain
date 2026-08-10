@@ -59,17 +59,18 @@ import {
 import { buildOverviewSummary, buildTodayUsage, rankOfficialQuotaProviders, summaryWindow, usagePace } from "./overview-model.js";
 import { PROVIDER_ORDER, providerMeta } from "./provider-meta.js";
 import { compactAxisValue, linePoints, quotaTrendRows, TREND_RANGES, usageTrendModel } from "./trends-model.js";
+import { usageProviderIDs } from "./usage-history.js";
 import "./styles.css";
 
 const PROVIDER_ICON_MODULES = import.meta.glob("../../site/assets/providers/*.{svg,png}", { eager: true, import: "default" });
 const PROVIDER_ICONS = Object.fromEntries(Object.entries(PROVIDER_ICON_MODULES).map(([path, url]) => [path.split("/").pop(), url]));
 
 // Section metadata mirrors the Mac's DashboardSection titles/subtitles, with
-// honest wording where the Windows data source differs (synced vs local).
+// honest wording where the Windows data source differs from the Mac.
 const SECTIONS = {
   overview: { title: "Overview", subtitle: "Quota risk, today's usage, and estimated cost" },
   limits: { title: "Limits", subtitle: "Official quota windows across your AI coding tools" },
-  trends: { title: "Trends", subtitle: "Usage over time · synced from your Mac" },
+  trends: { title: "Trends", subtitle: "Usage over time · local on this PC, optionally synced from Mac" },
   devices: { title: "Devices", subtitle: "This PC and its encrypted Mac link" },
   dataSources: { title: "Data Sources", subtitle: "Data-source status and privacy" },
   settings: { title: "Settings", subtitle: "Quick View, startup, and app controls" },
@@ -345,7 +346,7 @@ function Overview({ state, onSelect, onOpen }) {
         <MetricCard
           label="Today's Tokens"
           value={today?.totalTokens ? compactNumber(today.totalTokens) : "—"}
-          caption={state.dailyUsageHistory ? "Synced from your Mac" : "Daily history not shared"}
+          caption={state.localUsage?.source || "Waiting for local history"}
         />
         <MetricCard
           label="Today's Est. Cost"
@@ -364,7 +365,7 @@ function Overview({ state, onSelect, onOpen }) {
         />
       </div>
       <div className="overview-grid">
-        <UsageCostCard state={state} today={today} onManage={() => onSelect("devices")} />
+        <UsageCostCard state={state} today={today} onManage={() => onSelect("dataSources")} />
         <OfficialQuota state={state} today={today} risk={summary.risk} />
         <TrendingCard state={state} onOpen={onOpen} />
         <RiskNotes risk={risk} />
@@ -387,17 +388,19 @@ function MetricCard({ label, value, caption, valueTone, captionTone }) {
 function UsageCostCard({ state, today, onManage }) {
   const hasEntries = Boolean(today?.entries?.length);
   let rotation = 0;
-  const stops = Number.isFinite(today?.totalCost) && today.totalCost > 0
+  const stops = today?.totalTokens > 0
     ? today.entries.flatMap((entry) => {
       const start = rotation;
-      rotation += entry.costShare;
+      rotation += Number.isFinite(today.totalCost) && today.totalCost > 0
+        ? entry.costShare
+        : entry.tokens / today.totalTokens * 100;
       const color = providerPresentation(entry.id).color;
       return [`${color} ${start}%`, `${color} ${rotation}%`];
     }).join(", ")
     : "var(--track) 0 100%";
   return (
     <section className="dashboard-panel usage-cost-card">
-      <PanelHeader title="Today's Usage & Cost" subtitle="By provider · synced from your Mac" />
+      <PanelHeader title="Today's Usage & Cost" subtitle={`By provider · ${state.localUsage?.source || "local ccusage"}`} />
       {hasEntries ? (
         <>
           <div className="usage-composition">
@@ -418,18 +421,16 @@ function UsageCostCard({ state, today, onManage }) {
               ))}
             </div>
           </div>
-          <p className="panel-source">Snapshot for today; see Trends for multi-day history. Captured {formatClock(today.capturedAt)} on {state.sync?.deviceName || "your Mac"}.</p>
+          <p className="panel-source">Snapshot for today; see Trends for multi-day history. Captured {formatClock(today.capturedAt)} from {state.localUsage?.source || "this PC"}.</p>
         </>
       ) : (
         <EmptyState
           icon={PieIcon}
-          title={!state.sync.paired ? "Pair your Mac to see today's usage" : state.dailyUsageHistory ? "No synced usage today" : "No usage history from your Mac yet"}
-          message={!state.sync.paired
-            ? "Direct sync brings the same daily usage aggregate to this PC."
-            : state.dailyUsageHistory
-              ? "This card fills in after Claude or Codex records usage for the source Mac's current day."
-              : "Turn on “Share daily usage with paired devices” in TokenRemain › Devices on your Mac."}
-          action={!state.sync.paired ? <button className="inline-action" onClick={onManage}>Manage devices</button> : undefined}
+          title={state.localUsage?.error ? "Local usage could not be read" : state.dailyUsageHistory ? "No local usage today" : "No local usage history yet"}
+          message={state.localUsage?.error || (state.dailyUsageHistory
+            ? "This card fills in after a supported coding agent records usage on this PC or a paired Mac."
+            : "Built-in ccusage reads local agent logs automatically; pairing a Mac is optional.")}
+          action={<button className="inline-action" onClick={onManage}>View data sources</button>}
         />
       )}
     </section>
@@ -878,8 +879,6 @@ function CaptureFreshness({ capturedAt }) {
 
 // MARK: - Trends
 
-const USAGE_TREND_PROVIDERS = ["claude", "codex"];
-
 function TrendSegmentedControl({ label, options, value, onChange }) {
   return (
     <div className="trend-segmented" role="group" aria-label={label}>
@@ -913,7 +912,8 @@ function DailyUsageTrendCard({ history }) {
   const [range, setRange] = useState(14);
   const [metric, setMetric] = useState("tokens");
   const [activeIndex, setActiveIndex] = useState();
-  const model = usageTrendModel(history, { range, metric, providerIDs: USAGE_TREND_PROVIDERS });
+  const providerIDs = usageProviderIDs(history);
+  const model = usageTrendModel(history, { range, metric, providerIDs });
   const fresh = history?.capturedAt && Date.now() - history.capturedAt < 30 * 60_000;
   const stride = model.days.length <= 7 ? 1 : model.days.length <= 14 ? 2 : 5;
   const ticks = [1, 0.75, 0.5, 0.25];
@@ -923,12 +923,12 @@ function DailyUsageTrendCard({ history }) {
     <section className="dashboard-panel trend-history-panel">
       <PanelHeader
         title="Daily Usage Trend"
-        subtitle="Selected apps stacked · synced daily aggregate"
+        subtitle="Detected apps stacked · local and synced aggregate"
         trailing={fresh ? <Badge text="LIVE" tone="codex" /> : undefined}
       />
       <div className="trend-card-controls">
         <div className="trend-series-legend" aria-label="Visible providers">
-          {USAGE_TREND_PROVIDERS.map((id) => {
+          {providerIDs.map((id) => {
             const meta = providerPresentation(id);
             return (
               <span key={id}>
@@ -970,7 +970,7 @@ function DailyUsageTrendCard({ history }) {
             {model.days.map((day, index) => {
               const dimmed = activeDay && index !== activeIndex;
               const labelVisible = (model.days.length - 1 - index) % stride === 0;
-              const aria = `${formatDayLabel(day.day)} · ${USAGE_TREND_PROVIDERS.map((id) => `${providerMeta(id).name} ${trendValue(day.values[id], metric)}`).join(" · ")} · Total ${trendValue(day.total, metric)}`;
+              const aria = `${formatDayLabel(day.day)} · ${providerIDs.map((id) => `${providerMeta(id).name} ${trendValue(day.values[id], metric)}`).join(" · ")} · Total ${trendValue(day.total, metric)}`;
               return (
                 <button
                   className={`trend-day-column ${dimmed ? "dimmed" : ""}`}
@@ -981,7 +981,7 @@ function DailyUsageTrendCard({ history }) {
                   onBlur={() => setActiveIndex(undefined)}
                 >
                   <span className="trend-stack">
-                    {USAGE_TREND_PROVIDERS.map((id) => day.values[id] > 0 && (
+                    {providerIDs.map((id) => day.values[id] > 0 && (
                       <i
                         key={id}
                         style={{ height: `${day.values[id] / model.maximum * 100}%`, background: providerMeta(id).color }}
@@ -996,7 +996,7 @@ function DailyUsageTrendCard({ history }) {
           {activeDay && (
             <div className="trend-tooltip" style={{ left: `${Math.min(92, Math.max(8, (activeIndex + 0.5) / model.days.length * 100))}%` }}>
               <strong>{formatDayLabel(activeDay.day)}</strong>
-              {USAGE_TREND_PROVIDERS.map((id) => (
+              {providerIDs.map((id) => (
                 <span key={id}><i style={{ background: providerMeta(id).color }} />{providerMeta(id).name}<b>{trendValue(activeDay.values[id], metric)}</b></span>
               ))}
               <span className="trend-tooltip-total">Total<b>{trendValue(activeDay.total, metric)}</b></span>
@@ -1079,14 +1079,14 @@ function Trends({ state }) {
           <EmptyState
             icon={TrendsIcon}
             title="Trend data is accumulating day by day"
-            message="The daily usage trend needs at least two synced days. Keep Direct Sync enabled and TokenRemain adds each Mac day automatically."
+            message="The daily usage trend needs at least two recorded days. Built-in ccusage adds this PC automatically; Direct Sync can add your Mac as a second source."
           />
         </section>
       )}
       <QuotaConsumptionTrendCard state={state} />
       <div className="trends-summary-grid">
         <div className="settings-card">
-          <PanelHeader title="Today's Snapshot" subtitle="Where the trend starts · synced from your Mac" />
+          <PanelHeader title="Today's Snapshot" subtitle={`Where the trend starts · ${state.localUsage?.source || "local ccusage"}`} />
           {today?.totalTokens ? (
             <>
               <InfoRow label="Today's Tokens" value={compactNumber(today.totalTokens)} />
@@ -1097,12 +1097,12 @@ function Trends({ state }) {
               ))}
             </>
           ) : (
-            <p className="quiet-note">No synced usage recorded for the Mac's current day yet.</p>
+            <p className="quiet-note">No supported coding-agent usage recorded today yet.</p>
           )}
         </div>
         <div className="settings-card">
-          <PanelHeader title="History coverage" subtitle="Privacy-minimized data received from your Mac" />
-          <InfoRow label="Synced days" value={String(days.length)} />
+          <PanelHeader title="History coverage" subtitle="Local aggregate, with optional Mac contribution" />
+          <InfoRow label="Recorded days" value={String(days.length)} />
           <InfoRow label="Oldest day" value={days[0]?.day || "Waiting"} />
           <InfoRow label="Latest day" value={days.at(-1)?.day || "Waiting"} />
           <InfoRow label="Quota history" value={state.quotaUsageHistory?.samples?.length ? `${state.quotaUsageHistory.samples.length} local snapshots` : "Accumulating"} />
@@ -1188,16 +1188,25 @@ function DataSources({ state }) {
           />
         ))}
         <SourceHealthRow
-          name="Mac Direct Sync"
-          detail={state.sync.error || (state.sync.paired ? `${remoteCount} fresher provider snapshot${remoteCount === 1 ? "" : "s"}` : "Open Devices to pair a Mac")}
-          healthy={state.sync.paired && !state.sync.error}
-          capturedAt={state.sync.lastSyncAt}
+          name="Local ccusage"
+          detail={state.localUsage?.error || "Reads supported coding-agent logs on this PC; no separate ccusage install required"}
+          healthy={Boolean(state.localUsage?.hasLocal) && !state.localUsage?.error}
+          capturedAt={state.localUsage?.hasLocal ? state.localUsage.capturedAt : undefined}
         />
         <SourceHealthRow
-          name="Synced daily usage"
-          detail="Claude and Codex daily aggregate; no prompts, paths, or credentials"
-          healthy={Boolean(state.dailyUsageHistory)}
-          capturedAt={state.dailyUsageHistory?.capturedAt}
+          name="Public model pricing"
+          detail={state.localUsage?.pricing?.error
+            || (state.localUsage?.pricing?.modelCount
+              ? `${state.localUsage.pricing.modelCount} validated model prices · refreshes every ${state.localUsage.pricing.refreshIntervalHours} hours`
+              : "Using ccusage's embedded price table until the first public refresh")}
+          healthy={!state.localUsage?.pricing?.error || Boolean(state.localUsage?.pricing?.modelCount)}
+          capturedAt={state.localUsage?.pricing?.capturedAt}
+        />
+        <SourceHealthRow
+          name="Mac Direct Sync"
+          detail={state.sync.error || (state.sync.paired ? `${remoteCount} fresher provider snapshot${remoteCount === 1 ? "" : "s"}` : "Optional: pair a Mac to combine its quota and daily aggregate")}
+          healthy={state.sync.paired && !state.sync.error}
+          capturedAt={state.sync.lastSyncAt}
         />
         <SourceHealthRow
           name="Curated AI Feed"
@@ -1210,8 +1219,9 @@ function DataSources({ state }) {
         <PanelHeader title="Privacy" />
         <ul className="privacy-list">
           <li>Provider credentials are read-only local CLI files; tokens are never refreshed, written back, or synced.</li>
-          <li>Direct Sync exchanges AES-256-GCM encrypted quota snapshots with your Mac on the local network.</li>
-          <li>Shared usage is an optional daily aggregate — no prompts, file paths, or repository names.</li>
+          <li>Built-in ccusage reads local agent logs offline; raw sessions, prompts, paths, and repository names never leave this PC.</li>
+          <li>Only the complete public LiteLLM price table is downloaded. No observed model name, token count, or usage-derived query is sent.</li>
+          <li>Direct Sync optionally exchanges AES-256-GCM encrypted quota snapshots and daily aggregates with your Mac.</li>
           <li>The curated AI feed syncs automatically via built-in policies; there are no accounts to pick or sources to manage.</li>
           <li>No CloudKit and no phone sync in this Windows build.</li>
         </ul>
@@ -1394,12 +1404,23 @@ function createPreviewAPI() {
   const previewHistoryDays = Array.from({ length: 30 }, (_, index) => {
     const day = new Date(previewNow - (29 - index) * 24 * 60 * 60_000).toISOString().slice(0, 10);
     const pulse = [0.72, 0.7, 1.06, 1.03, 1.62, 1.28, 1.21, 0.18, 0.87, 0.46, 0.84, 1.02, 0.72, 0.55, 0.88][index % 15];
+    const claudeTokens = Math.round((13_000_000 + (index % 5) * 6_500_000) * pulse);
+    const claudeCost = Number(((8.9 + (index % 5) * 4.2) * pulse).toFixed(2));
+    const codexTokens = Math.round((92_000_000 + (index % 7) * 18_000_000) * pulse);
+    const codexCost = Number(((64.5 + (index % 7) * 12.6) * pulse).toFixed(2));
+    const geminiTokens = Math.round((4_800_000 + (index % 3) * 1_100_000) * pulse);
+    const geminiCost = Number(((1.2 + (index % 3) * 0.25) * pulse).toFixed(2));
     return {
       day,
-      claudeTokens: Math.round((13_000_000 + (index % 5) * 6_500_000) * pulse),
-      claudeCost: Number(((8.9 + (index % 5) * 4.2) * pulse).toFixed(2)),
-      codexTokens: Math.round((92_000_000 + (index % 7) * 18_000_000) * pulse),
-      codexCost: Number(((64.5 + (index % 7) * 12.6) * pulse).toFixed(2)),
+      agents: [
+        { id: "codex", tokens: codexTokens, cost: codexCost, unpricedModels: [] },
+        { id: "claude", tokens: claudeTokens, cost: claudeCost, unpricedModels: [] },
+        { id: "gemini", tokens: geminiTokens, cost: geminiCost, unpricedModels: [] },
+      ],
+      claudeTokens,
+      claudeCost,
+      codexTokens,
+      codexCost,
     };
   });
   const previewLocalProviders = [
@@ -1443,6 +1464,13 @@ function createPreviewAPI() {
       { providerID: "openrouter", capturedAt: previewNow - 30_000, planName: "Credits", windows: [{ usedPercent: 12, windowMinutes: 0, remainingBalance: { amount: 42.75, currencyCode: "USD" } }] },
     ],
     dailyUsageHistory: { sourceDay: previewDay, capturedAt: previewNow, days: previewHistoryDays },
+    localUsage: {
+      hasLocal: true,
+      hasRemote: true,
+      capturedAt: previewNow,
+      source: "This PC + paired Mac",
+      pricing: { capturedAt: previewNow - 60_000, modelCount: 2_742, refreshIntervalHours: 6, fallback: "cached-public-table" },
+    },
     quotaUsageHistory: { samples: quotaSamples },
     trending: [
       post("1234500000000000001", { priority: "token_reset", text: "Codex usage limits reset schedule is changing this week: weekly quota windows now reset at fixed UTC times for all plans.", publishedAt: previewNow - 2 * 60 * 60_000, metrics: { replies: 919, reposts: 717, likes: 12_300 } }),

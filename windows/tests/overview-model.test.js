@@ -71,7 +71,7 @@ test("Usage pace ports the Swift window projection and keeps the Mac's risk copy
   assert.equal(summary.riskNotes.window.providerID, "claude");
 });
 
-test("Today usage selects the source Mac day and does not claim zero cost as free", () => {
+test("Today usage selects the source day and does not claim zero cost as free", () => {
   const history = {
     sourceDay: "2026-08-03",
     capturedAt: Date.parse("2026-08-04T07:00:00Z"),
@@ -85,6 +85,29 @@ test("Today usage selects the source Mac day and does not claim zero cost as fre
   assert.equal(today.totalTokens, 40);
   assert.equal(today.totalCost, undefined);
   assert.equal(buildTodayUsage({ ...history, sourceDay: "2026-08-02" }).entries.length, 0);
+});
+
+test("Today usage dynamically includes every locally detected ccusage agent", () => {
+  const history = {
+    sourceDay: "2026-08-10",
+    capturedAt: Date.parse("2026-08-10T07:00:00Z"),
+    days: [{
+      day: "2026-08-10",
+      agents: [
+        { id: "gemini", tokens: 250, cost: 0.75, unpricedModels: [] },
+        { id: "copilot", tokens: 150, cost: 0.25, unpricedModels: [] },
+      ],
+      claudeTokens: 0,
+      claudeCost: 0,
+      codexTokens: 0,
+      codexCost: 0,
+    }],
+  };
+  const today = buildTodayUsage(history, Date.parse("2026-08-10T07:00:00Z"));
+  assert.deepEqual(today.entries.map((entry) => entry.id), ["gemini", "copilot"]);
+  assert.deepEqual(today.entries.map((entry) => entry.displayName), ["Gemini", "Copilot"]);
+  assert.equal(today.totalTokens, 400);
+  assert.equal(today.totalCost, 1);
 });
 
 test("Summary window follows the Mac's shortest-window strategy", () => {
