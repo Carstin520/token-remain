@@ -5,6 +5,28 @@ Versioning for public releases.
 
 ## Unreleased
 
+## 1.3.0 — 2026-08-10
+
+### Added
+
+- Add isolated Claude account profiles with official CLI sign-in, per-account
+  refresh, account selection, rename, pause, removal, and currency-safe summary
+  balances without copying credentials into TokenRemain storage.
+- Let users choose frosted or clear Liquid Glass for the menu-bar popup and
+  independently adjust its backdrop opacity.
+
+### Changed
+
+- Keep popup primary, secondary, and muted text on protected light foregrounds
+  for both glass styles, while preserving provider and semantic colors.
+
+### Fixed
+
+- Isolate malformed repaint-damaged model quota rows so one optional scoped
+  limit cannot reject an otherwise valid encrypted mobile snapshot.
+- Keep managed Claude profiles from falling through to the active system
+  account's configuration or Keychain credentials.
+
 ## 1.2.11 — 2026-08-07
 
 ### Added
@@ -543,3 +565,4 @@ Versioning for public releases.
 [1.2.9]: https://github.com/Carstin520/token-remain/releases/tag/v1.2.9
 [1.2.10]: https://github.com/Carstin520/token-remain/releases/tag/v1.2.10
 [1.2.11]: https://github.com/Carstin520/token-remain/releases/tag/v1.2.11%2Bbuild.26
+[1.3.0]: https://github.com/Carstin520/token-remain/releases/tag/v1.3.0

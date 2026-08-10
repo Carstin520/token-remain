@@ -16,7 +16,7 @@ struct RiskStrip: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(insights.decisionHeadline(at: context.date))
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(DashboardTheme.text)
+                        .usageDockAdaptiveForeground(.primary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.88)
 
@@ -27,7 +27,7 @@ struct RiskStrip: View {
                             UsageFormatting.percent(window.remainingPercent)
                         ))
                             .numericFont(10, .medium)
-                            .foregroundStyle(DashboardTheme.secondaryText)
+                            .usageDockAdaptiveForeground(.secondary)
                             .lineLimit(1)
                             .minimumScaleFactor(0.85)
                     }

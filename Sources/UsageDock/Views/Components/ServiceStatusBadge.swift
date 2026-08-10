@@ -92,18 +92,18 @@ private struct ServiceStatusDetails: View {
                     .frame(width: 7, height: 7)
                 Text("\(status.provider.displayName) · \(title)")
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(DashboardTheme.text)
+                    .usageDockAdaptiveForeground(.primary)
             }
 
             Text(explanation)
                 .font(.system(size: 11))
-                .foregroundStyle(DashboardTheme.secondaryText)
+                .usageDockAdaptiveForeground(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
 
             if let componentText {
                 Label(componentText, systemImage: "square.stack.3d.up")
                     .font(.system(size: 10))
-                    .foregroundStyle(DashboardTheme.mutedText)
+                    .usageDockAdaptiveForeground(.muted)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
@@ -121,7 +121,7 @@ private struct ServiceStatusDetails: View {
                     )
                 }
                 .font(.system(size: 10))
-                .foregroundStyle(DashboardTheme.mutedText)
+                .usageDockAdaptiveForeground(.muted)
 
                 Spacer(minLength: 6)
 
@@ -133,7 +133,7 @@ private struct ServiceStatusDetails: View {
                     .font(.system(size: 10, weight: .medium))
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(DashboardTheme.secondaryText)
+                .usageDockAdaptiveForeground(.secondary)
             }
         }
         .padding(14)

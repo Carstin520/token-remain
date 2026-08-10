@@ -10,6 +10,8 @@ struct PreferencesStoreTests {
         let store = PreferencesStore(defaults: testDefaults())
         #expect(store.menuBarProviders == [.claude, .codex])
         #expect(store.menuBarDisplayMode == .full)
+        #expect(store.popoverGlassStyle == .frosted)
+        #expect(store.popoverBackgroundOpacity == PreferencesStore.defaultPopoverBackgroundOpacity)
         #expect(store.quotaSummaryStrategy == .shortestWindow)
         #expect(!store.showCodexSparkQuotaInMenuBarWidget)
         #expect(!store.showAntigravityThirdPartyQuota)
@@ -172,6 +174,40 @@ struct PreferencesStoreTests {
 
         defaults.set("future-mode", forKey: PreferencesStore.menuBarDisplayModeKey)
         #expect(PreferencesStore(defaults: defaults).menuBarDisplayMode == .full)
+    }
+
+    @Test("Popover background opacity persists and stays within the valid range")
+    func popoverBackgroundOpacity() {
+        let defaults = testDefaults()
+        let store = PreferencesStore(defaults: defaults)
+
+        store.setPopoverBackgroundOpacity(0.45)
+        #expect(PreferencesStore(defaults: defaults).popoverBackgroundOpacity == 0.45)
+
+        store.setPopoverBackgroundOpacity(-1)
+        #expect(store.popoverBackgroundOpacity == 0)
+
+        store.setPopoverBackgroundOpacity(2)
+        #expect(store.popoverBackgroundOpacity == 1)
+
+        defaults.set(Double.nan, forKey: PreferencesStore.popoverBackgroundOpacityKey)
+        #expect(
+            PreferencesStore(defaults: defaults).popoverBackgroundOpacity
+                == PreferencesStore.defaultPopoverBackgroundOpacity
+        )
+    }
+
+    @Test("Popover glass style defaults to frosted and persists clear glass")
+    func popoverGlassStyle() {
+        let defaults = testDefaults()
+        let store = PreferencesStore(defaults: defaults)
+        #expect(store.popoverGlassStyle == .frosted)
+
+        store.setPopoverGlassStyle(.clear)
+        #expect(PreferencesStore(defaults: defaults).popoverGlassStyle == .clear)
+
+        defaults.set("future-style", forKey: PreferencesStore.popoverGlassStyleKey)
+        #expect(PreferencesStore(defaults: defaults).popoverGlassStyle == .frosted)
     }
 
     @Test("Menu bar selection keeps display order and persists")

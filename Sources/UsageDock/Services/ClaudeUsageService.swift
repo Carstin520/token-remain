@@ -3,6 +3,12 @@ import Foundation
 import OSLog
 
 struct ClaudeUsageService {
+    let configurationDirectory: URL?
+
+    init(configurationDirectory: URL? = nil) {
+        self.configurationDirectory = configurationDirectory
+    }
+
     enum ServiceError: LocalizedError, Sendable {
         case cliNotFound
         case cliTimedOut
@@ -55,10 +61,16 @@ struct ClaudeUsageService {
     /// 换个马甲重试只会延长限流。
     func fetch(forceScopedUsageProbe: Bool = false) async throws -> ProviderQuota {
         let logger = Logger(subsystem: "com.jamesli.usagedock", category: "ClaudeUsage")
+        let environment = profileEnvironment
         do {
-            let quota = try await ClaudeOAuthUsageService().fetch()
+            let quota = try await ClaudeOAuthUsageService().fetch(
+                environment: environment,
+                isolatedConfiguration: configurationDirectory != nil
+            )
             let supplemented = await ClaudeScopedUsageSupplement.shared.supplement(
                 quota,
+                cacheKey: cacheKey,
+                configurationDirectory: configurationDirectory,
                 forceProbe: forceScopedUsageProbe
             )
             logger.info("Claude quota served by oauth/usage API; Fable available: \(supplemented.fableWindow != nil, privacy: .public)")
@@ -76,7 +88,9 @@ struct ClaudeUsageService {
             // screen until our 30-second deadline. Surface the real recovery
             // action immediately instead of misclassifying it as a timeout.
             if case .credentialsUnavailable = error,
-               await ClaudeCLIUsageProbe.isExplicitlyLoggedOut() {
+               await ClaudeCLIUsageProbe.isExplicitlyLoggedOut(
+                   configurationDirectory: configurationDirectory
+               ) {
                 throw ServiceError.credentialsUnavailable
             }
             logger.info("Claude API path unavailable (\(error.localizedDescription, privacy: .public)); falling back to PTY probe")
@@ -85,8 +99,22 @@ struct ClaudeUsageService {
             guard ClaudeCLIUsageProbe.isAvailable else { throw error }
             logger.info("Claude API path failed (\(error.localizedDescription, privacy: .public)); falling back to PTY probe")
         }
-        let output = try await ClaudeCLIUsageProbe.run()
+        let output = try await ClaudeCLIUsageProbe.run(
+            configurationDirectory: configurationDirectory
+        )
         return try ClaudeCLIUsageParser.parse(output)
+    }
+
+    private var cacheKey: String {
+        configurationDirectory?.standardizedFileURL.path ?? "system"
+    }
+
+    private var profileEnvironment: [String: String] {
+        var environment = ProcessInfo.processInfo.environment
+        if let configurationDirectory {
+            environment["CLAUDE_CONFIG_DIR"] = configurationDirectory.path
+        }
+        return environment
     }
 
     static func noCLIFallbackError(
@@ -122,55 +150,73 @@ private actor ClaudeScopedUsageSupplement {
 
     private let refreshInterval: TimeInterval = 300
     private let staleRetention: TimeInterval = 900
-    private var cachedWindows: [ScopedQuotaWindow] = []
-    private var lastAttempt: Date?
-    private var lastSuccess: Date?
+    private struct Entry {
+        var cachedWindows: [ScopedQuotaWindow] = []
+        var lastAttempt: Date?
+        var lastSuccess: Date?
+    }
+
+    private var entries: [String: Entry] = [:]
 
     func supplement(
         _ quota: ProviderQuota,
+        cacheKey: String,
+        configurationDirectory: URL?,
         now: Date = .now,
         forceProbe: Bool = false
     ) async -> ProviderQuota {
+        var entry = entries[cacheKey] ?? Entry()
         if quota.fableWindow != nil {
-            cachedWindows = quota.uniqueScopedWindows
-            lastSuccess = now
+            entry.cachedWindows = quota.uniqueScopedWindows
+            entry.lastSuccess = now
+            entries[cacheKey] = entry
             return quota
         }
 
         if !forceProbe,
-           let lastAttempt,
+           let lastAttempt = entry.lastAttempt,
            now.timeIntervalSince(lastAttempt) < refreshInterval {
-            return mergingFreshCache(into: quota, now: now)
+            return mergingFreshCache(into: quota, entry: entry, now: now)
         }
-        lastAttempt = now
+        entry.lastAttempt = now
+        entries[cacheKey] = entry
 
         guard ClaudeCLIUsageProbe.isAvailable,
-              !(await ClaudeCLIUsageProbe.isExplicitlyLoggedOut()) else {
-            return mergingFreshCache(into: quota, now: now)
+              !(await ClaudeCLIUsageProbe.isExplicitlyLoggedOut(
+                  configurationDirectory: configurationDirectory
+              )) else {
+            return mergingFreshCache(into: quota, entry: entry, now: now)
         }
 
         do {
-            let output = try await ClaudeCLIUsageProbe.run()
+            let output = try await ClaudeCLIUsageProbe.run(
+                configurationDirectory: configurationDirectory
+            )
             let supplemental = try ClaudeCLIUsageParser.parse(output, now: now)
             guard supplemental.fableWindow != nil else {
-                return mergingFreshCache(into: quota, now: now)
+                return mergingFreshCache(into: quota, entry: entry, now: now)
             }
-            cachedWindows = supplemental.uniqueScopedWindows
-            lastSuccess = now
-            return quota.mergingScopedWindows(cachedWindows)
+            entry.cachedWindows = supplemental.uniqueScopedWindows
+            entry.lastSuccess = now
+            entries[cacheKey] = entry
+            return quota.mergingScopedWindows(entry.cachedWindows)
         } catch {
             Logger(subsystem: "com.jamesli.usagedock", category: "ClaudeUsage")
                 .info("Claude Fable supplement unavailable: \(error.localizedDescription, privacy: .public)")
-            return mergingFreshCache(into: quota, now: now)
+            return mergingFreshCache(into: quota, entry: entry, now: now)
         }
     }
 
-    private func mergingFreshCache(into quota: ProviderQuota, now: Date) -> ProviderQuota {
-        guard let lastSuccess,
+    private func mergingFreshCache(
+        into quota: ProviderQuota,
+        entry: Entry,
+        now: Date
+    ) -> ProviderQuota {
+        guard let lastSuccess = entry.lastSuccess,
               now.timeIntervalSince(lastSuccess) < staleRetention else {
             return quota
         }
-        return quota.mergingScopedWindows(cachedWindows)
+        return quota.mergingScopedWindows(entry.cachedWindows)
     }
 }
 
@@ -436,7 +482,10 @@ private enum ClaudeCLIUsageProbe {
         claudeExecutable() != nil
     }
 
-    static func isExplicitlyLoggedOut(timeout: TimeInterval = 2) async -> Bool {
+    static func isExplicitlyLoggedOut(
+        configurationDirectory: URL? = nil,
+        timeout: TimeInterval = 2
+    ) async -> Bool {
         await Task.detached(priority: .utility) {
             guard let executable = claudeExecutable() else { return false }
 
@@ -447,6 +496,7 @@ private enum ClaudeCLIUsageProbe {
             process.arguments = ["auth", "status", "--json"]
             process.standardOutput = stdout
             process.standardError = stderr
+            process.environment = profileEnvironment(configurationDirectory)
 
             do {
                 try process.run()
@@ -480,7 +530,10 @@ private enum ClaudeCLIUsageProbe {
         }.value
     }
 
-    static func run(timeout: TimeInterval = 30) async throws -> Data {
+    static func run(
+        configurationDirectory: URL? = nil,
+        timeout: TimeInterval = 30
+    ) async throws -> Data {
         try await Task.detached(priority: .utility) {
             guard let executable = claudeExecutable() else {
                 throw ClaudeUsageService.ServiceError.cliNotFound
@@ -502,7 +555,7 @@ private enum ClaudeCLIUsageProbe {
             process.executableURL = executable
             process.arguments = ["--allowed-tools", ""]
             process.currentDirectoryURL = probeDirectory
-            var environment = ProcessInfo.processInfo.environment
+            var environment = profileEnvironment(configurationDirectory)
             environment["TERM"] = "xterm-256color"
             environment["PATH"] = pathWithClaudeHints(environment["PATH"])
             process.environment = environment
@@ -623,6 +676,15 @@ private enum ClaudeCLIUsageProbe {
         ]
         let current = existing?.split(separator: ":").map(String.init) ?? []
         return Array(NSOrderedSet(array: hints + current)).compactMap { $0 as? String }.joined(separator: ":")
+    }
+
+    private static func profileEnvironment(_ configurationDirectory: URL?) -> [String: String] {
+        var environment = ProcessInfo.processInfo.environment
+        if let configurationDirectory {
+            environment["CLAUDE_CONFIG_DIR"] = configurationDirectory.path
+        }
+        environment["PATH"] = pathWithClaudeHints(environment["PATH"])
+        return environment
     }
 
     private static func readAvailable(from descriptor: Int32, into data: inout Data) {

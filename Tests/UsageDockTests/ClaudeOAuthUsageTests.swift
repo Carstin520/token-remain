@@ -249,6 +249,31 @@ struct ClaudeCredentialsReaderTests {
         #expect(reader.load()?.accessToken == "sk-ant-oat01-keychain")
     }
 
+    @Test("An isolated managed account never inherits the system Claude credential")
+    func managedAccountDoesNotFallBack() {
+        let keychainConsulted = ClaudeLockedValue(false)
+        var reader = ClaudeCredentialsReader()
+        reader.environment = [
+            "CLAUDE_CONFIG_DIR": FileManager.default.temporaryDirectory
+                .appendingPathComponent("usagedock-managed-missing-\(UUID().uuidString)")
+                .path
+        ]
+        reader.homeDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("usagedock-system-home-\(UUID().uuidString)")
+        reader.fallbackToDefaultDirectory = false
+        reader.allowsKeychain = false
+        reader.keychainPayload = { _ in
+            keychainConsulted.set(true)
+            return KeychainRead.Outcome(
+                payload: #"{"claudeAiOauth": {"accessToken": "system-token"}}"#,
+                status: errSecSuccess
+            )
+        }
+
+        #expect(reader.load() == nil)
+        #expect(keychainConsulted.get() == false)
+    }
+
     /// 这两个只验证"意图有没有传到 KeychainRead 门口"。禁止交互究竟有没有生效
     /// 是 `KeychainReadTests` 的职责 —— 上一版回归时,恰恰是这一层全绿而那一层
     /// 根本没被测到。

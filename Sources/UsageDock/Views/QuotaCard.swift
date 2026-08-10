@@ -22,6 +22,12 @@ struct QuotaCard: View {
     var store: UsageStore? = nil
     @ObservedObject var preferences: PreferencesStore = .shared
 
+    /// Managed-account alerts are card-local: renaming and removal must not open
+    /// another window or settings route.
+    @State private var pendingRenameID: ProviderAccountID?
+    @State private var pendingRenameText = ""
+    @State private var pendingRemoveID: ProviderAccountID?
+
     static func scopedWindows(
         in quota: ProviderQuota,
         showAntigravityThirdParty: Bool = true
@@ -51,10 +57,75 @@ struct QuotaCard: View {
             .frame(height: Self.dashboardContentHeight, alignment: .top)
         }
         .accessibilityElement(children: .contain)
+        .alert(
+            L10n.text("accounts.rename_title"),
+            isPresented: renameAlertPresented,
+            presenting: pendingRenameID
+        ) { id in
+            TextField(L10n.text("accounts.rename_placeholder"), text: $pendingRenameText)
+            Button(L10n.text("action.cancel"), role: .cancel) { pendingRenameID = nil }
+            Button(L10n.text("action.save")) {
+                store?.renameProviderAccount(id, to: pendingRenameText)
+                pendingRenameID = nil
+            }
+        } message: { _ in
+            Text(L10n.text("accounts.rename_message"))
+        }
+        .alert(
+            L10n.text("accounts.remove_title"),
+            isPresented: removeAlertPresented,
+            presenting: pendingRemoveID
+        ) { id in
+            Button(L10n.text("action.cancel"), role: .cancel) { pendingRemoveID = nil }
+            Button(L10n.text("accounts.remove_confirm"), role: .destructive) {
+                store?.removeProviderAccount(id)
+                pendingRemoveID = nil
+            }
+        } message: { id in
+            Text(L10n.format("accounts.remove_message", accountName(for: id)))
+        }
+    }
+
+    private var renameAlertPresented: Binding<Bool> {
+        Binding(
+            get: { pendingRenameID != nil },
+            set: { if !$0 { pendingRenameID = nil } }
+        )
+    }
+
+    private var removeAlertPresented: Binding<Bool> {
+        Binding(
+            get: { pendingRemoveID != nil },
+            set: { if !$0 { pendingRemoveID = nil } }
+        )
     }
 
     @ViewBuilder
     private var quotaContent: some View {
+        if supportsMultipleAccounts, let store {
+            if store.isAddingClaudeAccount {
+                AccountLoginProgressRow()
+            }
+            if let managementNotice = store.accountManagementNotice, !managementNotice.isEmpty {
+                Text(managementNotice)
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(DashboardTheme.warning)
+                    .lineLimit(3)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .help(managementNotice)
+                    .accessibilityLabel(L10n.format("accounts.management_notice", managementNotice))
+            }
+        }
+
+        if showsAccountOverview {
+            accountOverview
+        } else {
+            singleAccountContent
+        }
+    }
+
+    @ViewBuilder
+    private var singleAccountContent: some View {
         if let quota {
             if provider == .codex, let credits = quota.codexResetCredits {
                 CodexResetCreditsCard(credits: credits)
@@ -167,6 +238,10 @@ struct QuotaCard: View {
             .padding(.top, 3)
             .directReorderHandle()
 
+            // Deliberately outside every `directReorderHandle` region so the
+            // menu and the add button never start a card drag.
+            accountControls
+
             if let notice, credentialConfiguration == nil {
                 QuotaConnectionNotice(message: notice)
                     .layoutPriority(1)
@@ -194,6 +269,403 @@ struct QuotaCard: View {
             alignment: .top
         )
         .contentShape(Rectangle())
+    }
+
+    // MARK: - Multi-account (Claude)
+
+    /// Claude is currently the only provider that can hold several signed-in
+    /// accounts, so all account chrome stays local to its card and every other
+    /// provider keeps exactly its previous header and content.
+    private var supportsMultipleAccounts: Bool {
+        provider == .claude && store != nil
+    }
+
+    /// Includes disabled managed accounts on purpose: a paused account must stay
+    /// discoverable in the menu even though it leaves the all-account summary.
+    private var accountSnapshots: [ProviderAccountSnapshot] {
+        guard supportsMultipleAccounts, let store else { return [] }
+        return store.accountSnapshots(for: provider)
+    }
+
+    private var accountSelection: ProviderAccountSelection {
+        store?.accountSelection(for: provider) ?? .all
+    }
+
+    private var selectedAccount: ProviderAccountSnapshot? {
+        guard case .account(let id) = accountSelection else { return nil }
+        return accountSnapshots.first { $0.id == id }
+    }
+
+    /// A lone system account keeps the original single-account card. The grouped
+    /// summary only earns its space once a second account exists.
+    private var showsAccountOverview: Bool {
+        guard supportsMultipleAccounts, case .all = accountSelection else { return false }
+        return accountSnapshots.count > 1
+    }
+
+    private func accountName(for id: ProviderAccountID) -> String {
+        accountSnapshots.first { $0.id == id }?.profile.accountDisplayName
+            ?? L10n.text("accounts.untitled")
+    }
+
+    @ViewBuilder
+    private var accountControls: some View {
+        if supportsMultipleAccounts, let store {
+            HStack(spacing: 5) {
+                if accountSnapshots.count > 1 {
+                    accountMenu(store: store)
+                }
+                addAccountButton(store: store)
+            }
+            .padding(.top, 2)
+        }
+    }
+
+    private func accountMenu(store: UsageStore) -> some View {
+        let selection = accountSelection
+        let isAll = selection == .all
+        let summary = store.accountSummary(for: provider)
+        let label = isAll
+            ? L10n.format("accounts.chip_all", summary.accountCount)
+            : (selectedAccount?.profile.accountDisplayName ?? L10n.text("accounts.untitled"))
+
+        return Menu {
+            Button {
+                store.setAccountSelection(.all, for: provider)
+            } label: {
+                Label(L10n.text("accounts.all"), systemImage: isAll ? "checkmark" : "person.2")
+            }
+            Divider()
+            ForEach(accountSnapshots) { snapshot in
+                Menu {
+                    accountActions(snapshot, store: store)
+                } label: {
+                    Label(
+                        snapshot.profile.isEnabled
+                            ? snapshot.profile.accountDisplayName
+                            : L10n.format("accounts.entry_disabled", snapshot.profile.accountDisplayName),
+                        systemImage: menuGlyph(for: snapshot, selection: selection)
+                    )
+                }
+            }
+            Divider()
+            Button {
+                addAccount(store: store)
+            } label: {
+                Label(L10n.text("accounts.add"), systemImage: "plus")
+            }
+            .disabled(store.isAddingClaudeAccount)
+        } label: {
+            HStack(spacing: 4) {
+                if selectedAccount?.isRefreshing == true {
+                    ProgressView().controlSize(.mini)
+                } else {
+                    Image(systemName: isAll ? "person.2.fill" : "person.crop.circle.fill")
+                        .font(.system(size: 9))
+                }
+                Text(label)
+                    .font(.system(size: 10, weight: .semibold))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .frame(maxWidth: 78, alignment: .leading)
+            }
+            .foregroundStyle(DashboardTheme.secondaryText)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 3)
+            .background {
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(DashboardTheme.surface2)
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .stroke(DashboardTheme.border, lineWidth: 1)
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .help(L10n.format("accounts.menu_help", provider.displayName))
+        .accessibilityLabel(L10n.format("accounts.menu_accessibility", provider.displayName, label))
+    }
+
+    private func menuGlyph(
+        for snapshot: ProviderAccountSnapshot,
+        selection: ProviderAccountSelection
+    ) -> String {
+        if selection == .account(snapshot.id) { return "checkmark" }
+        if !snapshot.profile.isEnabled { return "person.crop.circle.badge.xmark" }
+        return "person.crop.circle"
+    }
+
+    private func addAccountButton(store: UsageStore) -> some View {
+        Button {
+            addAccount(store: store)
+        } label: {
+            Group {
+                if store.isAddingClaudeAccount {
+                    ProgressView().controlSize(.mini)
+                } else {
+                    Image(systemName: "plus")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(DashboardTheme.secondaryText)
+                }
+            }
+            .frame(width: 20, height: 18)
+            .background {
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(DashboardTheme.surface2)
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .stroke(DashboardTheme.border, lineWidth: 1)
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .disabled(store.isAddingClaudeAccount)
+        .help(
+            store.isAddingClaudeAccount
+                ? L10n.text("accounts.adding")
+                : L10n.format("accounts.add_help", provider.displayName)
+        )
+        .accessibilityLabel(L10n.format("accounts.add_accessibility", provider.displayName))
+    }
+
+    /// The store already guards against a second concurrent login; checking here
+    /// too keeps a double click from queueing a redundant browser sign-in.
+    private func addAccount(store: UsageStore) {
+        guard !store.isAddingClaudeAccount else { return }
+        Task { await store.addClaudeAccount() }
+    }
+
+    @ViewBuilder
+    private var accountOverview: some View {
+        if let store {
+            let summary = store.accountSummary(for: provider)
+            let enabled = accountSnapshots.filter(\.profile.isEnabled)
+
+            HStack(spacing: 8) {
+                Text(L10n.format(
+                    "accounts.summary_available",
+                    summary.availableCount,
+                    summary.accountCount
+                ))
+                .numericFont(10.5, .semibold)
+                .foregroundStyle(DashboardTheme.secondaryText)
+                Spacer(minLength: 6)
+                if summary.lowAccountCount > 0 {
+                    Text(L10n.format("accounts.summary_low", summary.lowAccountCount))
+                        .numericFont(10.5, .semibold)
+                        .foregroundStyle(DashboardTheme.warning)
+                }
+                if let lowest = summary.lowestRemainingPercent {
+                    Text(L10n.format("accounts.summary_lowest", UsageFormatting.percent(lowest)))
+                        .numericFont(10.5, .semibold)
+                        .foregroundStyle(DashboardTheme.text)
+                }
+            }
+
+            ForEach(summary.balancesByCurrency.keys.sorted(), id: \.self) { currency in
+                HStack {
+                    Text(L10n.format("accounts.balance_combined", currency))
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(DashboardTheme.secondaryText)
+                    Spacer()
+                    Text(QuotaBalance(
+                        amount: summary.balancesByCurrency[currency] ?? 0,
+                        currencyCode: currency
+                    ).displayText)
+                    .numericFont(11, .semibold)
+                    .foregroundStyle(DashboardTheme.text)
+                }
+            }
+
+            ForEach(enabled) { snapshot in
+                Divider().overlay(DashboardTheme.border)
+                AccountDigestRow(
+                    snapshot: snapshot,
+                    provider: provider,
+                    select: { store.setAccountSelection(.account(snapshot.id), for: provider) }
+                )
+                .contextMenu { accountActions(snapshot, store: store) }
+            }
+
+            if enabled.isEmpty {
+                Text(L10n.text("accounts.all_disabled"))
+                    .font(.system(size: 11))
+                    .foregroundStyle(DashboardTheme.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func accountActions(
+        _ snapshot: ProviderAccountSnapshot,
+        store: UsageStore
+    ) -> some View {
+        Button {
+            store.setAccountSelection(.account(snapshot.id), for: provider)
+        } label: {
+            Label(L10n.text("accounts.show_only"), systemImage: "person.crop.circle")
+        }
+        Button {
+            Task { await store.refreshProviderAccount(snapshot.id) }
+        } label: {
+            Label(L10n.text("action.refresh"), systemImage: "arrow.clockwise")
+        }
+        .disabled(snapshot.isRefreshing || !snapshot.profile.isEnabled)
+
+        // The system account mirrors the Mac's own Claude login, so TokenRemain
+        // must not rename, pause, or delete it.
+        if !snapshot.profile.isSystem {
+            Divider()
+            Button {
+                pendingRenameText = snapshot.profile.accountDisplayName
+                pendingRenameID = snapshot.id
+            } label: {
+                Label(L10n.text("accounts.rename"), systemImage: "pencil")
+            }
+            Button {
+                setAccountEnabled(!snapshot.profile.isEnabled, snapshot: snapshot, store: store)
+            } label: {
+                Label(
+                    L10n.text(snapshot.profile.isEnabled ? "accounts.disable" : "accounts.enable"),
+                    systemImage: snapshot.profile.isEnabled ? "pause.circle" : "play.circle"
+                )
+            }
+            Divider()
+            Button(role: .destructive) {
+                pendingRemoveID = snapshot.id
+            } label: {
+                Label(L10n.text("accounts.remove"), systemImage: "trash")
+            }
+        }
+    }
+
+    /// Pausing the account the card is currently showing would leave the card on
+    /// a stale reading, so fall back to the all-account view in the same click.
+    private func setAccountEnabled(
+        _ enabled: Bool,
+        snapshot: ProviderAccountSnapshot,
+        store: UsageStore
+    ) {
+        if !enabled, accountSelection == .account(snapshot.id) {
+            store.setAccountSelection(.all, for: provider)
+        }
+        store.setProviderAccountEnabled(enabled, id: snapshot.id)
+    }
+}
+
+private extension ProviderAccountProfile {
+    /// The system account has no stored name and a managed account can only be
+    /// renamed to a non-empty string, so this is the single naming fallback.
+    var accountDisplayName: String {
+        let trimmed = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty { return trimmed }
+        return L10n.text(isSystem ? "accounts.system" : "accounts.untitled")
+    }
+}
+
+/// One enabled account inside the all-account view: its own lowest remaining
+/// window, independent of whether any sibling account failed. Clicking it opens
+/// that account's full quota rows in the same card.
+private struct AccountDigestRow: View {
+    let snapshot: ProviderAccountSnapshot
+    let provider: ProviderQuota.Provider
+    let select: () -> Void
+
+    private var summary: ProviderQuota.GeneralQuotaSummary? {
+        snapshot.quota?.generalQuotaSummary(strategy: .lowestRemaining)
+    }
+
+    private var valueText: String {
+        guard let summary else {
+            return L10n.text(snapshot.isRefreshing ? "accounts.refreshing" : "accounts.unavailable")
+        }
+        return L10n.format(
+            "quota.remaining",
+            QuotaWindowRow.remainingValueText(
+                remainingPercent: summary.remainingPercent,
+                remainingBalance: summary.remainingBalance
+            )
+        )
+    }
+
+    private var valueTint: Color {
+        guard let summary else {
+            return snapshot.isRefreshing ? DashboardTheme.secondaryText : DashboardTheme.warning
+        }
+        return summary.remainingPercent < 10 ? DashboardTheme.danger : DashboardTheme.text
+    }
+
+    private var windowText: String? {
+        summary.map { UsageFormatting.windowName(minutes: $0.window.windowMinutes) }
+    }
+
+    var body: some View {
+        Button(action: select) {
+            HStack(spacing: 6) {
+                Image(systemName: "person.crop.circle")
+                    .font(.system(size: 10))
+                    .foregroundStyle(DashboardTheme.mutedText)
+                Text(snapshot.profile.accountDisplayName)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(DashboardTheme.text)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                if let windowText {
+                    Text(windowText)
+                        .numericFont(10)
+                        .foregroundStyle(DashboardTheme.mutedText)
+                        .lineLimit(1)
+                }
+                if snapshot.isRefreshing {
+                    ProgressView().controlSize(.mini)
+                } else if snapshot.quota == nil, let notice = snapshot.notice, !notice.isEmpty {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 9))
+                        .foregroundStyle(DashboardTheme.warning)
+                        .help(notice)
+                }
+                Spacer(minLength: 8)
+                Text(valueText)
+                    .numericFont(12, .semibold)
+                    .foregroundStyle(valueTint)
+                    .lineLimit(1)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(L10n.text("accounts.row_help"))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            L10n.format(
+                "accounts.row_accessibility",
+                provider.displayName,
+                snapshot.profile.accountDisplayName
+            )
+        )
+        .accessibilityValue(valueText)
+        .accessibilityHint(L10n.text("accounts.row_help"))
+        .accessibilityAddTraits(.isButton)
+    }
+}
+
+/// Official browser sign-in runs outside the app, so the card states plainly
+/// that it is waiting instead of looking frozen.
+private struct AccountLoginProgressRow: View {
+    var body: some View {
+        HStack(spacing: 8) {
+            ProgressView().controlSize(.small)
+            Text(L10n.text("accounts.adding_progress"))
+                .font(.system(size: 11))
+                .foregroundStyle(DashboardTheme.secondaryText)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(L10n.text("accounts.adding_progress"))
     }
 }
 
@@ -328,11 +800,11 @@ struct ExtraUsageRow: View {
         HStack(alignment: .firstTextBaseline) {
             Text(L10n.text("quota.extra_usage"))
                 .font(.system(size: 12))
-                .foregroundStyle(DashboardTheme.secondaryText)
+                .usageDockAdaptiveForeground(.secondary)
             Spacer(minLength: 8)
             Text(valueText)
                 .numericFont(12, .semibold)
-                .foregroundStyle(DashboardTheme.text)
+                .usageDockAdaptiveForeground(.primary)
         }
         .accessibilityElement(children: .combine)
     }
@@ -359,16 +831,16 @@ struct ProviderSpendRow: View {
         VStack(alignment: .leading, spacing: 6) {
             Text(L10n.text("quota.official_spend"))
                 .font(.system(size: 12))
-                .foregroundStyle(DashboardTheme.secondaryText)
+                .usageDockAdaptiveForeground(.secondary)
             ForEach(Array(items.enumerated()), id: \.offset) { _, item in
                 HStack(alignment: .firstTextBaseline) {
                     Text(item.0)
                         .font(.system(size: 10.5))
-                        .foregroundStyle(DashboardTheme.secondaryText)
+                        .usageDockAdaptiveForeground(.secondary)
                     Spacer(minLength: 8)
                     Text(UsageFormatting.compactUSD(item.1))
                         .numericFont(10.5, .semibold)
-                        .foregroundStyle(DashboardTheme.text)
+                        .usageDockAdaptiveForeground(.primary)
                 }
             }
         }
@@ -383,11 +855,11 @@ struct AccountBalanceRow: View {
         HStack(alignment: .firstTextBaseline) {
             Text(L10n.text("quota.account_balance"))
                 .font(.system(size: 12))
-                .foregroundStyle(DashboardTheme.secondaryText)
+                .usageDockAdaptiveForeground(.secondary)
             Spacer(minLength: 8)
             Text(balance.displayText)
                 .numericFont(12, .semibold)
-                .foregroundStyle(DashboardTheme.text)
+                .usageDockAdaptiveForeground(.primary)
         }
         .accessibilityElement(children: .combine)
     }
@@ -417,11 +889,11 @@ struct QuotaWindowRow: View {
                        sourceProvider != provider {
                         BrandIcon(provider: sourceProvider)
                             .frame(width: 12, height: 12)
-                            .foregroundStyle(DashboardTheme.secondaryText)
+                            .usageDockAdaptiveForeground(.secondary)
                     }
                     Text(windowTitle)
                         .font(.system(size: 13))
-                        .foregroundStyle(DashboardTheme.secondaryText)
+                        .usageDockAdaptiveForeground(.secondary)
                     Spacer()
                     if let pace = UsagePace(window: window, now: context.date),
                        pace.showsRemainingWarning {
@@ -433,7 +905,7 @@ struct QuotaWindowRow: View {
                     }
                     Text(remainingText)
                         .numericFont(14, .bold)
-                        .foregroundStyle(DashboardTheme.text)
+                        .usageDockAdaptiveForeground(.primary)
                 }
 
                 SegmentBar(
@@ -455,7 +927,7 @@ struct QuotaWindowRow: View {
                         }
                     }
                     .font(.system(size: 10))
-                    .foregroundStyle(DashboardTheme.secondaryText)
+                    .usageDockAdaptiveForeground(.secondary)
                     .transition(.opacity.combined(with: .move(edge: .top)))
 
                     if let pace = UsagePace(window: window, now: context.date) {
@@ -549,9 +1021,9 @@ private struct QuotaPaceRow: View {
     let pace: UsagePace
     let now: Date
 
-    private var tint: Color {
+    private var fixedTint: Color? {
         switch pace.status {
-        case .onTrack: return DashboardTheme.secondaryText
+        case .onTrack: return nil
         case .reserve: return DashboardTheme.success
         case .deficit: return pace.willLastUntilReset ? DashboardTheme.warning : DashboardTheme.danger
         }
@@ -585,7 +1057,7 @@ private struct QuotaPaceRow: View {
                 .numericFont(10)
         }
         .font(.system(size: 10))
-        .foregroundStyle(tint)
+        .usageDockAdaptiveForeground(.secondary, fixedColor: fixedTint)
         .accessibilityElement(children: .combine)
     }
 }

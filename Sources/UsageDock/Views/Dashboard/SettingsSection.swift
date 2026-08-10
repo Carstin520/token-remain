@@ -332,6 +332,88 @@ struct SettingsSection: View {
 
             DashboardCard {
                 VStack(alignment: .leading, spacing: 12) {
+                    PanelHeader(
+                        title: L10n.text("settings.popover_appearance"),
+                        subtitle: L10n.text("settings.popover_appearance_hint")
+                    )
+
+                    HStack(spacing: 12) {
+                        Image(systemName: "square.stack.3d.up.fill")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundStyle(DashboardTheme.secondaryText)
+                            .accessibilityHidden(true)
+
+                        VStack(alignment: .leading, spacing: 7) {
+                            Text(L10n.text("settings.popover_glass_style"))
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundStyle(DashboardTheme.text)
+
+                            Picker(
+                                L10n.text("settings.popover_glass_style"),
+                                selection: popoverGlassStyleBinding
+                            ) {
+                                Text(L10n.text("settings.popover_glass_frosted"))
+                                    .tag(PopoverGlassStyle.frosted)
+                                Text(L10n.text("settings.popover_glass_clear"))
+                                    .tag(PopoverGlassStyle.clear)
+                            }
+                            .labelsHidden()
+                            .pickerStyle(.segmented)
+                            .accessibilityHint(L10n.text("settings.popover_glass_style_hint"))
+
+                            Text(L10n.text("settings.popover_glass_style_hint"))
+                                .font(.system(size: 10))
+                                .foregroundStyle(DashboardTheme.mutedText)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+
+                    Divider().overlay(DashboardTheme.border)
+
+                    HStack(spacing: 12) {
+                        Image(systemName: "circle.lefthalf.filled")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundStyle(DashboardTheme.secondaryText)
+                            .accessibilityHidden(true)
+
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack {
+                                Text(L10n.text("settings.popover_background_opacity"))
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundStyle(DashboardTheme.text)
+
+                                Spacer()
+
+                                Text(popoverBackgroundOpacityLabel)
+                                    .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                                    .foregroundStyle(DashboardTheme.text)
+                                    .frame(width: 44, alignment: .trailing)
+                            }
+
+                            Slider(
+                                value: popoverBackgroundOpacityBinding,
+                                in: PreferencesStore.popoverBackgroundOpacityRange,
+                                step: 0.02
+                            )
+                            .tint(DashboardTheme.violet)
+                            .accessibilityLabel(L10n.text("settings.popover_background_opacity"))
+                            .accessibilityHint(L10n.text("settings.popover_background_opacity_hint"))
+                            .accessibilityValue(popoverBackgroundOpacityLabel)
+
+                            HStack {
+                                Text(L10n.text("settings.popover_more_transparent"))
+                                Spacer()
+                                Text(L10n.text("settings.popover_more_opaque"))
+                            }
+                            .font(.system(size: 10))
+                            .foregroundStyle(DashboardTheme.mutedText)
+                        }
+                    }
+                }
+            }
+
+            DashboardCard {
+                VStack(alignment: .leading, spacing: 12) {
                     PanelHeader(title: L10n.text("settings.model_quotas"))
 
                     preferenceToggle(
@@ -501,6 +583,24 @@ struct SettingsSection: View {
             get: { preferences.showCodexSparkQuotaInMenuBarWidget },
             set: { preferences.setShowCodexSparkQuotaInMenuBarWidget($0) }
         )
+    }
+
+    private var popoverBackgroundOpacityBinding: Binding<Double> {
+        Binding(
+            get: { preferences.popoverBackgroundOpacity },
+            set: { preferences.setPopoverBackgroundOpacity($0) }
+        )
+    }
+
+    private var popoverGlassStyleBinding: Binding<PopoverGlassStyle> {
+        Binding(
+            get: { preferences.popoverGlassStyle },
+            set: { preferences.setPopoverGlassStyle($0) }
+        )
+    }
+
+    private var popoverBackgroundOpacityLabel: String {
+        "\(Int((preferences.popoverBackgroundOpacity * 100).rounded()))%"
     }
 
     private var antigravityThirdPartyBinding: Binding<Bool> {

@@ -145,6 +145,7 @@ final class StatusBarController: NSObject {
                 feedStore: feedStore,
                 launchAtLogin: launchAtLogin,
                 layout: popoverLayout,
+                usesPopoverBackgroundPreference: true,
                 onOpenDashboard: { [weak self] section in
                     self?.openDashboard(section)
                 }

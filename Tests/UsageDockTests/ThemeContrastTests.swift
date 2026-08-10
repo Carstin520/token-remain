@@ -125,4 +125,76 @@ struct ThemeContrastTests {
         #expect(contrast(DashboardTheme.canvas, DashboardTheme.danger) >= 4.5)
         #expect(contrast(DashboardTheme.canvas, DashboardTheme.warning) >= 4.5)
     }
+
+    @Test("Transparent popup surfaces retain glass and strengthen their edge")
+    func transparentPopupSurfaceMapping() {
+        #expect(UsageDockPopoverAppearance.backdropMaterialOpacity(
+            backdropOpacity: 0
+        ) == UsageDockPopoverAppearance.minimumBackdropMaterialOpacity)
+        #expect(UsageDockPopoverAppearance.backdropMaterialOpacity(
+            backdropOpacity: 0.62
+        ) == 1)
+        #expect(UsageDockPopoverAppearance.surfaceTintOpacity(backdropOpacity: 0) == 0)
+        #expect(UsageDockPopoverAppearance.surfaceTintOpacity(backdropOpacity: 1) == 1)
+        #expect(UsageDockPopoverAppearance.surfaceTintOpacity(backdropOpacity: -1) == 0)
+        #expect(UsageDockPopoverAppearance.surfaceTintOpacity(backdropOpacity: 2) == 1)
+        #expect(UsageDockPopoverAppearance.borderOpacity(backdropOpacity: 0) == 0.85)
+        #expect(
+            abs(UsageDockPopoverAppearance.borderOpacity(backdropOpacity: 1) - 0.45)
+                < 0.000_001
+        )
+    }
+
+    @Test("Both glass styles share high-contrast light roles")
+    func adaptivePopupForegroundMapping() {
+        for role in [
+            UsageDockForegroundRole.primary,
+            UsageDockForegroundRole.secondary,
+            UsageDockForegroundRole.muted
+        ] {
+            #expect(colorsMatch(
+                UsageDockPopoverAppearance.foregroundColor(
+                    role,
+                    glassStyle: .frosted
+                ),
+                UsageDockPopoverAppearance.foregroundColor(
+                    role,
+                    glassStyle: .clear
+                )
+            ))
+        }
+        #expect(
+            UsageDockPopoverAppearance.glassShadowOpacity(
+                .primary,
+                glassStyle: .frosted
+            ) > 0
+        )
+    }
+
+    @Test("Clear glass uses protected light foregrounds on dark desktops")
+    func clearGlassForegroundContrast() {
+        let background = Color(hex: 0x19152D)
+        let primary = UsageDockPopoverAppearance.foregroundColor(
+            .primary,
+            glassStyle: .clear
+        )
+        let secondary = UsageDockPopoverAppearance.foregroundColor(
+            .secondary,
+            glassStyle: .clear
+        )
+        let muted = UsageDockPopoverAppearance.foregroundColor(
+            .muted,
+            glassStyle: .clear
+        )
+
+        #expect(contrast(primary, background) >= 4.5)
+        #expect(contrast(secondary, background) >= 4.5)
+        #expect(contrast(muted, background) >= 4.5)
+        #expect(luminance(primary) > luminance(secondary))
+        #expect(luminance(secondary) > luminance(muted))
+        #expect(
+            UsageDockPopoverAppearance.glassShadowOpacity(.primary, glassStyle: .clear)
+                < UsageDockPopoverAppearance.glassShadowOpacity(.muted, glassStyle: .clear)
+        )
+    }
 }

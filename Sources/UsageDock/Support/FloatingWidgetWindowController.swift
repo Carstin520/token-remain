@@ -27,6 +27,7 @@ final class FloatingWidgetWindowController: NSWindowController, NSWindowDelegate
                 feedStore: feedStore,
                 launchAtLogin: launchAtLogin,
                 layout: layout,
+                usesPopoverBackgroundPreference: false,
                 onOpenDashboard: onOpenDashboard
             )
         )
