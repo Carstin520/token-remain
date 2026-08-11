@@ -27,7 +27,6 @@ final class FloatingWidgetWindowController: NSWindowController, NSWindowDelegate
                 feedStore: feedStore,
                 launchAtLogin: launchAtLogin,
                 layout: layout,
-                usesPopoverBackgroundPreference: false,
                 onOpenDashboard: onOpenDashboard
             )
         )
@@ -49,7 +48,19 @@ final class FloatingWidgetWindowController: NSWindowController, NSWindowDelegate
         panel.isReleasedWhenClosed = false
         panel.hidesOnDeactivate = false
         panel.becomesKeyOnlyIfNeeded = true
-        panel.backgroundColor = NSColor(srgbRed: 0x07 / 255, green: 0x0B / 255, blue: 0x12 / 255, alpha: 1)
+        if #available(macOS 26.0, *) {
+            // The SwiftUI canvas and card glass now own the selected Frosted or
+            // Clear treatment; an opaque AppKit window would erase the change.
+            panel.isOpaque = false
+            panel.backgroundColor = .clear
+        } else {
+            panel.backgroundColor = NSColor(
+                srgbRed: 0x07 / 255,
+                green: 0x0B / 255,
+                blue: 0x12 / 255,
+                alpha: 1
+            )
+        }
         panel.setFrameAutosaveName("TokenRemainFloatingWidget")
 
         super.init(window: panel)

@@ -69,6 +69,8 @@ final class StatusBarController: NSObject {
     private let launchAtLogin: LaunchAtLoginManager
     private let popoverLayout = PopoverLayoutStore()
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+    /// macOS 14/15 fallback. macOS 26 uses a transparent panel so NSPopover's
+    /// fixed vibrant backdrop cannot flatten Frosted and Clear into one look.
     private let popover = NSPopover()
     private var cancellables = Set<AnyCancellable>()
     private lazy var dashboardController = DashboardWindowController(
@@ -104,6 +106,18 @@ final class StatusBarController: NSObject {
     private var lastStatusFingerprint: String?
     private var lastDockIconKey: String?
 
+    private lazy var liquidGlassPopupController = MenuBarPopupWindowController(
+        rootView: UsageMenuView(
+            store: store,
+            feedStore: feedStore,
+            launchAtLogin: launchAtLogin,
+            layout: popoverLayout,
+            onOpenDashboard: { [weak self] section in
+                self?.openDashboard(section)
+            }
+        )
+    )
+
     private func setFloatingWidget(visible: Bool) {
         if visible {
             floatingControllerCreated = true
@@ -114,18 +128,6 @@ final class StatusBarController: NSObject {
             floatingWidgetController.hide()
         }
     }
-#if DEBUG
-    private lazy var popoverPreviewController = PopoverPreviewWindowController(
-        store: store,
-        feedStore: feedStore,
-        launchAtLogin: launchAtLogin,
-        layout: popoverLayout,
-        onOpenDashboard: { [weak self] section in
-            self?.openDashboard(section)
-        }
-    )
-#endif
-
     init(store: UsageStore, feedStore: AIFeedStore, launchAtLogin: LaunchAtLoginManager) {
         self.store = store
         self.feedStore = feedStore
@@ -145,7 +147,6 @@ final class StatusBarController: NSObject {
                 feedStore: feedStore,
                 launchAtLogin: launchAtLogin,
                 layout: popoverLayout,
-                usesPopoverBackgroundPreference: true,
                 onOpenDashboard: { [weak self] section in
                     self?.openDashboard(section)
                 }
@@ -237,11 +238,11 @@ final class StatusBarController: NSObject {
 
     @objc private func togglePopover() {
         guard let button = statusItem.button else { return }
-        if popover.isShown {
-            popover.performClose(nil)
+        if menuBarPopupIsShown {
+            closeMenuBarPopup()
         } else {
             popoverLayout.prepareForPresentation()
-            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+            showMenuBarPopup(relativeTo: button)
             store.refreshLocalUsage()
             refreshVisibleSurface()
         }
@@ -266,7 +267,7 @@ final class StatusBarController: NSObject {
     }
 
     private func openDashboard(_ section: DashboardSection) {
-        popover.performClose(nil)
+        closeMenuBarPopup()
         dashboardCreated = true
         store.refreshLocalUsage()
         dashboardController.show(section: section)
@@ -277,7 +278,7 @@ final class StatusBarController: NSObject {
     /// ccusage 另行保持分钟级);检查必须避开未创建的 lazy 控制器,
     /// 不能为了读可见性把窗口先建出来。
     private var isPrimarySurfaceVisible: Bool {
-        if popover.isShown { return true }
+        if menuBarPopupIsShown { return true }
         if dashboardCreated, Self.windowIsActuallyVisible(dashboardController.window) { return true }
         if floatingControllerCreated,
            Self.windowIsActuallyVisible(floatingWidgetController.window) { return true }
@@ -317,12 +318,38 @@ final class StatusBarController: NSObject {
     func openPopoverForPreview() {
         popoverLayout.prepareForPresentation()
         store.refreshLocalUsage()
-#if DEBUG
-        popoverPreviewController.show()
-#else
-        guard let button = statusItem.button, !popover.isShown else { return }
-        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-#endif
+        guard let button = statusItem.button, !menuBarPopupIsShown else { return }
+        if #available(macOS 26.0, *) {
+            liquidGlassPopupController.show(
+                relativeTo: button,
+                activateForVisualTesting: true
+            )
+        } else {
+            showMenuBarPopup(relativeTo: button)
+        }
+    }
+
+    private var menuBarPopupIsShown: Bool {
+        if #available(macOS 26.0, *) {
+            return liquidGlassPopupController.isShown
+        }
+        return popover.isShown
+    }
+
+    private func showMenuBarPopup(relativeTo button: NSStatusBarButton) {
+        if #available(macOS 26.0, *) {
+            liquidGlassPopupController.show(relativeTo: button)
+        } else {
+            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        }
+    }
+
+    private func closeMenuBarPopup() {
+        if #available(macOS 26.0, *) {
+            liquidGlassPopupController.performClose()
+        } else {
+            popover.performClose(nil)
+        }
     }
 
     private func updateStatusImage() {

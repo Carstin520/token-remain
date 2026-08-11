@@ -126,7 +126,7 @@ struct ThemeContrastTests {
         #expect(contrast(DashboardTheme.canvas, DashboardTheme.warning) >= 4.5)
     }
 
-    @Test("Transparent popup surfaces retain glass and strengthen their edge")
+    @Test("Transparent popup surfaces retain glass instead of a canvas tint")
     func transparentPopupSurfaceMapping() {
         #expect(UsageDockPopoverAppearance.backdropMaterialOpacity(
             backdropOpacity: 0
@@ -138,11 +138,81 @@ struct ThemeContrastTests {
         #expect(UsageDockPopoverAppearance.surfaceTintOpacity(backdropOpacity: 1) == 1)
         #expect(UsageDockPopoverAppearance.surfaceTintOpacity(backdropOpacity: -1) == 0)
         #expect(UsageDockPopoverAppearance.surfaceTintOpacity(backdropOpacity: 2) == 1)
-        #expect(UsageDockPopoverAppearance.borderOpacity(backdropOpacity: 0) == 0.85)
+        #expect(!UsageDockPopoverAppearance.appliesSurfaceTint(backdropOpacity: 0))
+        #expect(UsageDockPopoverAppearance.appliesSurfaceTint(backdropOpacity: 0.01))
+    }
+
+    /// The regression this replaces: edge opacity was derived from the inverse
+    /// of the fill, so the most transparent popup was the most heavily outlined
+    /// one and read as a wireframe. Rim strength must be a property of the glass
+    /// style alone.
+    @Test("Popup rims never strengthen as the popup becomes more transparent")
+    func rimStrengthIsIndependentOfBackdrop() {
+        for style in [PopoverGlassStyle.clear, .frosted] {
+            let highlight = UsageDockPopoverAppearance.shellRimHighlightOpacity(
+                glassStyle: style
+            )
+            let shade = UsageDockPopoverAppearance.shellRimShadeOpacity(glassStyle: style)
+            let surface = UsageDockPopoverAppearance.surfaceRimOpacity(glassStyle: style)
+
+            // Well below the point where a full-perimeter stroke reads as a
+            // drawn outline rather than a lit edge.
+            #expect(highlight > 0 && highlight <= 0.35)
+            #expect(shade > 0 && shade <= 0.30)
+            // Cards sit on the shell, so their edge stays weaker than the
+            // shell's, which has to survive the desktop behind it.
+            #expect(surface > 0 && surface < highlight)
+        }
+
+        // Frosted's material floor already separates it, so it carries less rim.
         #expect(
-            abs(UsageDockPopoverAppearance.borderOpacity(backdropOpacity: 1) - 0.45)
-                < 0.000_001
+            UsageDockPopoverAppearance.shellRimHighlightOpacity(glassStyle: .clear)
+                > UsageDockPopoverAppearance.shellRimHighlightOpacity(glassStyle: .frosted)
         )
+        #expect(
+            UsageDockPopoverAppearance.surfaceRimOpacity(glassStyle: .clear)
+                > UsageDockPopoverAppearance.surfaceRimOpacity(glassStyle: .frosted)
+        )
+    }
+
+    /// A transparent card keeps a white *lift* instead of a canvas tint: tinting
+    /// toward the dark canvas is what previously made Clear cards near-black,
+    /// and no lift at all left the card as an empty outline.
+    @Test("Transparent cards keep a light material floor that hands off to the tint")
+    func surfaceLiftHandsOffToTint() {
+        #expect(
+            UsageDockPopoverAppearance.surfaceLiftOpacity(backdropOpacity: 0)
+                == UsageDockPopoverAppearance.minimumSurfaceLift
+        )
+        #expect(UsageDockPopoverAppearance.minimumSurfaceLift < 0.1)
+        // Fully handed off once the ink tint reaches its reference strength, so
+        // the two never stack into a muddy surface.
+        #expect(
+            UsageDockPopoverAppearance.surfaceLiftOpacity(
+                backdropOpacity: UsageDockPopoverAppearance.referenceBackdropOpacity
+            ) == 0
+        )
+        #expect(UsageDockPopoverAppearance.surfaceLiftOpacity(backdropOpacity: 1) == 0)
+        #expect(UsageDockPopoverAppearance.surfaceLiftOpacity(backdropOpacity: -1)
+            == UsageDockPopoverAppearance.minimumSurfaceLift)
+
+        // Continuous: no step between the transparent end and the reference.
+        var previous = UsageDockPopoverAppearance.surfaceLiftOpacity(backdropOpacity: 0)
+        for step in 1...62 {
+            let lift = UsageDockPopoverAppearance.surfaceLiftOpacity(
+                backdropOpacity: Double(step) / 100
+            )
+            #expect(lift <= previous)
+            #expect(previous - lift < 0.01)
+            previous = lift
+        }
+    }
+
+    @Test("Popover glass choices map to distinct native surface styles")
+    func popoverSurfaceGlassStyleMapping() {
+        #expect(UsageDockPopoverAppearance.surfaceGlassStyle(for: nil) == .regular)
+        #expect(UsageDockPopoverAppearance.surfaceGlassStyle(for: .frosted) == .regular)
+        #expect(UsageDockPopoverAppearance.surfaceGlassStyle(for: .clear) == .clear)
     }
 
     @Test("Both glass styles share high-contrast light roles")

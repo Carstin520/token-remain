@@ -12,9 +12,6 @@ struct UsageMenuView: View {
     @ObservedObject var layout: PopoverLayoutStore
     @ObservedObject var tracked: TrackedProvidersStore = .shared
     @ObservedObject var preferences: PreferencesStore = .shared
-    /// The floating desktop panel reuses this view but keeps its own fixed
-    /// window treatment; only the menu-bar popup follows this preference.
-    let usesPopoverBackgroundPreference: Bool
     /// Opens (and fronts) the Dashboard window on a given section.
     let onOpenDashboard: (DashboardSection) -> Void
 
@@ -81,7 +78,7 @@ struct UsageMenuView: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
 
-                    Divider().overlay(DashboardTheme.border).padding(.top, 1)
+                    Divider().usageDockPopoverSeparator().padding(.top, 1)
 
                     PopoverFooter(launchAtLogin: launchAtLogin, onOpenDashboard: onOpenDashboard)
                 }
@@ -102,25 +99,20 @@ struct UsageMenuView: View {
         .frame(height: min(measuredHeight, maxHeight))
         .background {
             UsageDockCanvasBackground(
-                inkOpacity: usesPopoverBackgroundPreference
-                    ? preferences.popoverBackgroundOpacity
-                    : nil,
-                glassStyle: usesPopoverBackgroundPreference
-                    ? preferences.popoverGlassStyle
-                    : nil
+                inkOpacity: preferences.popoverBackgroundOpacity,
+                glassStyle: preferences.popoverGlassStyle
             )
         }
+        // The shell edge belongs to whatever hosts this stack: the menu-bar
+        // panel draws its own rim because it has no system frame, while the
+        // floating widget and the macOS 14/15 popover already have one.
         .environment(
             \.usageDockPopoverBackdropOpacity,
-            usesPopoverBackgroundPreference
-                ? preferences.popoverBackgroundOpacity
-                : nil
+            preferences.popoverBackgroundOpacity
         )
         .environment(
             \.usageDockPopoverGlassStyle,
-            usesPopoverBackgroundPreference
-                ? preferences.popoverGlassStyle
-                : nil
+            preferences.popoverGlassStyle
         )
         .preferredColorScheme(.dark)
         .onPreferenceChange(PopoverHeightKey.self) { measuredHeight = $0 }
@@ -207,16 +199,14 @@ struct UsageMenuView: View {
                 .font(.system(size: 13, weight: .semibold))
                 .usageDockAdaptiveForeground(.primary)
                 .frame(width: 26, height: 26)
+                // The glass surface supplies its own rim; a second palette-colored
+                // circle on top of it was the button's share of the wireframe.
                 .usageDockGlassSurface(
                     cornerRadius: 13,
                     interactive: true,
                     fallbackBackground: DashboardTheme.surface,
                     fallbackBorder: DashboardTheme.border
                 )
-                .overlay {
-                    Circle()
-                        .strokeBorder(DashboardTheme.border, lineWidth: 1)
-                }
                 .contentShape(Circle())
         }
         .menuStyle(.borderlessButton)
@@ -238,19 +228,29 @@ struct UsageMenuView: View {
         Button {
             Task { await store.refresh(forceCCUsage: true, forceClaude: true) }
         } label: {
-            if store.isRefreshing {
-                ProgressView().controlSize(.small)
-                    .frame(width: 18, height: 18)
-            } else {
-                Image(systemName: "arrow.clockwise")
-                    .font(.system(size: 14, weight: .medium))
-                    .usageDockAdaptiveForeground(.primary)
-                    .frame(width: 18, height: 18)
+            Group {
+                if store.isRefreshing {
+                    ProgressView().controlSize(.small)
+                } else {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 13, weight: .medium))
+                        .usageDockAdaptiveForeground(.primary)
+                }
             }
+            .frame(width: 26, height: 26)
+            // `.buttonStyle(.glass)` would pin this control to regular glass, so
+            // the popup's two header buttons would sit side by side in different
+            // materials and only one would follow the Clear/Frosted preference.
+            .usageDockGlassSurface(
+                cornerRadius: 13,
+                interactive: true,
+                fallbackBackground: DashboardTheme.surface,
+                fallbackBorder: DashboardTheme.border
+            )
+            .contentShape(Circle())
         }
+        .buttonStyle(.plain)
         .frame(width: 34, height: 34)
-        .usageDockRoundControlStyle()
-        .buttonBorderShape(.circle)
         .disabled(store.isRefreshing)
         .help(L10n.text("action.refresh_quota"))
         .accessibilityLabel(L10n.text("action.refresh_usage"))

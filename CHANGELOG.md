@@ -5,6 +5,23 @@ Versioning for public releases.
 
 ## Unreleased
 
+## 1.3.2 — 2026-08-11
+
+### Changed
+
+- Refine the macOS 26 popup into one coherent Liquid Glass object with a
+  restrained top-lit rim, compact interactive footer controls, and matching
+  Clear/Frosted header controls instead of heavy decorative outlines.
+
+### Fixed
+
+- Keep Clear and Frosted visually distinct in both the menu-bar popup and
+  floating desktop widget, including at zero backdrop opacity, without turning
+  transparent cards into near-black surfaces.
+- Restore the popup's menu-bar beak, keep it centered under TokenRemain's own
+  status-item metrics, and constrain the custom transparent panel to the active
+  screen.
+
 ## 1.3.1 — 2026-08-11
 
 ### Added
