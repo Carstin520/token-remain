@@ -19,7 +19,6 @@ final class PopoverPreviewWindowController: NSWindowController {
                 feedStore: feedStore,
                 launchAtLogin: launchAtLogin,
                 layout: layout,
-                usesPopoverBackgroundPreference: true,
                 onOpenDashboard: onOpenDashboard
             )
         )

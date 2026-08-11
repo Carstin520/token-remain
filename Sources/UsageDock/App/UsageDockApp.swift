@@ -118,6 +118,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         _ sender: NSApplication,
         hasVisibleWindows flag: Bool
     ) -> Bool {
+        if ProcessInfo.processInfo.arguments.contains("--open-popover") {
+            statusBarController?.openPopoverForPreview()
+            return true
+        }
         statusBarController?.showDashboard(section: .overview)
         return true
     }
