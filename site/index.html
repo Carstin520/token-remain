@@ -215,6 +215,8 @@ nav .links a:hover{color:var(--text);text-decoration:none}
 .btn:active{transform:translateY(0)}
 .btn-primary{background:var(--cyan);color:var(--ink);border:1px solid var(--cyan)}
 .btn-primary:hover{background:#5CDAE8;box-shadow:0 8px 28px -10px color-mix(in srgb,var(--cyan) 55%,transparent)}
+.btn-testflight{background:color-mix(in srgb,var(--violet-dim) 18%,transparent);color:var(--text);border:1px solid var(--violet-dim)}
+.btn-testflight:hover{background:color-mix(in srgb,var(--violet-dim) 28%,transparent);border-color:var(--violet);color:var(--violet)}
 .btn-ghost{background:transparent;color:var(--text);border:1px solid var(--border)}
 .btn-ghost:hover{border-color:var(--cyan-dim);color:var(--cyan)}
 .btn svg{flex:none}
@@ -228,7 +230,7 @@ nav .links a:hover{color:var(--text);text-decoration:none}
 .releases-hint a{color:var(--cyan-dim)}
 
 /* ============ 3D stage ============ */
-.stage-wrap{perspective:1300px;perspective-origin:60% 40%;min-width:0;display:flex;justify-content:center}
+.stage-wrap{position:relative;perspective:1300px;perspective-origin:60% 40%;min-width:0;display:flex;justify-content:center}
 .stage{
   position:relative;
   transform-style:preserve-3d;
@@ -241,13 +243,159 @@ nav .links a:hover{color:var(--text);text-decoration:none}
 }
 .float{animation:idle-float 7s ease-in-out infinite;transform-style:preserve-3d}
 
-/* ============ real popover screenshot ============ */
-.pop-shot{
-  width:330px;max-width:100%;height:auto;display:block;
-  border-radius:18px;
-  border:1px solid var(--border);
-  box-shadow:0 40px 90px -30px rgba(0,0,0,.85),0 0 0 1px rgba(34,48,68,.4);
+/* ============ live popover · liquid glass ============
+   The hero popover is a real DOM component, not a screenshot. Everything that
+   changes with the page language is either a data-i18n string or a CSS custom
+   property overridden once in the html[lang^="zh"] block further down. */
+
+/* something for the glass to refract: three slow drifting blobs behind .stage */
+/* no overflow clipping here: a hard box edge would cut the blurred blobs and
+   read as a straight seam next to the popover */
+.glow-field{position:absolute;inset:-3% -2%;pointer-events:none;z-index:0}
+.glow-field i{position:absolute;display:block;border-radius:50%;filter:blur(80px)}
+.glow-field .g1{width:250px;height:250px;left:12%;top:4%;background:var(--violet);opacity:.30}
+.glow-field .g2{width:230px;height:230px;right:4%;top:36%;background:var(--cyan);opacity:.26}
+.glow-field .g3{width:210px;height:210px;left:20%;bottom:5%;background:var(--claude-logo);opacity:.22}
+@media (prefers-reduced-motion:no-preference){
+  @keyframes glow-a{0%,100%{transform:translate3d(0,0,0)}50%{transform:translate3d(38px,-30px,0) scale(1.12)}}
+  @keyframes glow-b{0%,100%{transform:translate3d(0,0,0)}50%{transform:translate3d(-34px,26px,0) scale(1.08)}}
+  @keyframes glow-c{0%,100%{transform:translate3d(0,0,0)}50%{transform:translate3d(26px,22px,0) scale(.9)}}
+  .glow-field .g1{animation:glow-a 24s ease-in-out infinite}
+  .glow-field .g2{animation:glow-b 29s ease-in-out infinite}
+  .glow-field .g3{animation:glow-c 21s ease-in-out infinite}
 }
+
+.pop{
+  --pop-c:rgba(217,119,87,.82);          /* Claude identity, desaturated */
+  --pop-x:rgba(110,134,214,.88);         /* Codex identity, desaturated */
+  --pop-track:rgba(200,220,255,.14);
+  /* one rounded capsule + its trailing gap, tiled 14× across the bar */
+  --segmask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22.29 6' preserveAspectRatio='none'%3E%3Crect width='18.29' height='6' rx='3'/%3E%3C/svg%3E");
+  --nc:12;                               /* Claude bar · filled capsules of 14 */
+  --nx:13;                               /* Codex bar  · filled capsules of 14 */
+  --donut:51.5%;                         /* Claude share of the ring */
+  --lg1:var(--pop-c);                    /* legend row 1 dot */
+  --lg2:var(--pop-x);                    /* legend row 2 dot */
+  --feed1:#4FBECD;                       /* first feed item dot */
+  --warn:none;                           /* Codex danger triangle */
+  position:relative;width:330px;max-width:100%;overflow:hidden;
+  border-radius:22px;padding:14px 14px 12px;
+  display:flex;flex-direction:column;gap:8px;
+  background:linear-gradient(165deg,rgba(30,50,85,.66),rgba(10,16,28,.76));
+  border:1px solid rgba(150,185,240,.13);
+  box-shadow:0 40px 90px -30px rgba(0,0,0,.85),inset 0 1px 0 rgba(255,255,255,.08);
+  font-size:12px;line-height:1.4;
+}
+.pop>*{position:relative;z-index:1}
+/* Refraction is painted inside the shell rather than sampled with
+   backdrop-filter: inside #stage's rotated 3D context the browser samples the
+   backdrop from the untransformed axis-aligned bounding box, which leaves a
+   visible rectangular seam around the popover. The blobs behind the shell are
+   already blurred, so a translucent shell plus these soft lobes reads as glass
+   without the artifact. */
+.pop::after{
+  content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(115% 75% at 16% 4%,rgba(143,123,242,.10),transparent 62%),
+    radial-gradient(100% 70% at 94% 40%,rgba(62,207,224,.09),transparent 64%),
+    radial-gradient(95% 60% at 26% 98%,rgba(217,119,87,.07),transparent 62%),
+    linear-gradient(rgba(255,255,255,.035),rgba(255,255,255,0) 55%);
+}
+/* specular sheen along the top edge */
+.pop::before{
+  content:"";position:absolute;left:16%;right:16%;top:0;height:1px;border-radius:1px;z-index:2;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent);
+}
+.pop-card{background:rgba(90,140,210,.10);border:1px solid rgba(140,180,240,.14);border-radius:15px;padding:9px 11px}
+.pop-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+
+/* header */
+.pop-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:2px 2px 2px 0}
+.pop-name{font-family:var(--mono);font-size:19px;font-weight:700;letter-spacing:-.01em;color:var(--text);line-height:1.2}
+.pop-when{font-size:10.5px;color:var(--text-mute);line-height:1.5}
+.pop-acts{display:flex;align-items:center;gap:10px;color:var(--text-dim)}
+.pop-acts .rf{width:27px;height:27px;border-radius:50%;background:rgba(8,13,22,.55);border:1px solid rgba(150,185,240,.16);display:flex;align-items:center;justify-content:center}
+
+/* risk banner */
+.pop-ban{display:flex;align-items:center;gap:12px}
+.pop-sev{
+  font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.14em;
+  color:var(--warning);border:1px solid color-mix(in srgb,var(--warning) 55%,transparent);
+  border-radius:5px;padding:3px 8px;white-space:nowrap;flex:none;
+}
+.pop-ban b{display:block;font-size:12px;line-height:1.35;font-weight:600;color:var(--text)}
+.pop-ban span{display:block;font-family:var(--mono);font-size:10.5px;line-height:1.4;color:var(--text-dim)}
+
+/* provider cards */
+.pop-pn{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:var(--text)}
+.pop-pn img{width:17px;height:17px;flex:none}
+.pop-pn i{font-style:normal;color:var(--text-mute);font-size:13px}
+.pop-pin{color:var(--text-mute);flex:none}
+.pop-meta{margin-top:5px}
+.pop-meta .w{font-size:11.5px;color:var(--text-dim)}
+.pop-meta .r{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text)}
+.pop-warn{display:var(--warn);color:var(--danger);flex:none}
+.pop-seg{position:relative;height:6px;margin-top:7px;background:var(--pop-track);
+  -webkit-mask-image:var(--segmask);mask-image:var(--segmask);
+  -webkit-mask-size:calc((100% + 4px)/14) 100%;mask-size:calc((100% + 4px)/14) 100%;
+  -webkit-mask-repeat:repeat-x;mask-repeat:repeat-x;
+}
+/* stop the fill in the middle of the gap after capsule --n, so the boundary is
+   invisible whatever the bar measures */
+.pop-seg::after{content:"";position:absolute;inset:0 auto 0 0;width:calc(var(--n)*(100% + 4px)/14 - 2px);background:var(--pf)}
+.pop-claude .pop-seg{--n:var(--nc);--pf:var(--pop-c)}
+.pop-codex .pop-seg{--n:var(--nx);--pf:var(--pop-x)}
+
+/* local usage */
+.pop-utitle{font-size:14px;font-weight:600;color:var(--text)}
+.pop-utotal{font-family:var(--mono);font-size:16px;font-weight:700;color:var(--text)}
+.pop-split{display:flex;align-items:center;gap:14px;margin:8px 0 0}
+.pop-donut{width:54px;height:54px;flex:none;border-radius:50%;
+  background:conic-gradient(var(--pop-c) 0 var(--donut),var(--pop-x) var(--donut) 100%);
+  -webkit-mask:radial-gradient(closest-side,transparent 61%,#000 62%);
+  mask:radial-gradient(closest-side,transparent 61%,#000 62%);
+}
+.pop-legs{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.pop-lg{display:flex;align-items:center;gap:8px}
+.pop-lg i{width:7px;height:7px;border-radius:50%;flex:none}
+.pop-lg .n1{background:var(--lg1)}
+.pop-lg .n2{background:var(--lg2)}
+.pop-lg .nm{flex:1;min-width:0;font-size:12px;color:var(--text)}
+.pop-lg .tk{font-family:var(--mono);font-size:10.5px;color:var(--text-dim)}
+.pop-lg .pc{font-family:var(--mono);font-size:11.5px;font-weight:700;color:var(--text);min-width:42px;text-align:right}
+.pop-rule{height:1px;background:rgba(233,237,245,.08);margin:9px 0 7px}
+.pop-stat{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:1px 0}
+.pop-stat .l{font-size:11.5px;color:var(--text-dim)}
+.pop-stat .v{font-family:var(--mono);font-size:11.5px;color:var(--text)}
+.pop-trend{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:6px}
+.pop-trend .l{font-size:11.5px;color:var(--text-dim);flex:none}
+.pop-spark{display:flex;align-items:flex-end;gap:2px;height:18px;flex:1;max-width:180px}
+.pop-spark i{flex:1;border-radius:1px;background:var(--text-mute)}
+.pop-spark i:nth-child(n+16){background:var(--text-dim)}
+.pop-spark i:nth-child(n+18):nth-child(-n+21){background:#A6B1C4}
+
+/* AI feed */
+.pop-fmeta{display:flex;align-items:center;gap:8px;flex:none}
+.pop-count{font-family:var(--mono);font-size:10px;letter-spacing:.04em;color:var(--text-mute)}
+.pop-fsub{margin-top:5px;font-size:11.5px;color:var(--text-dim)}
+.pop-fitem{display:flex;align-items:flex-start;gap:9px;padding:7px 0 6px}
+.pop-fitem+.pop-fitem{border-top:1px solid rgba(233,237,245,.07)}
+.pop-fitem>i{width:6px;height:6px;border-radius:50%;flex:none;margin-top:6px;background:var(--text)}
+.pop-fitem.f1>i{background:var(--feed1)}
+.pop-fitem .b{flex:1;min-width:0}
+.pop-fitem .h{display:flex;align-items:baseline;gap:7px}
+.pop-fitem .s{font-size:11.5px;font-weight:700;color:var(--text)}
+.pop-fitem .t{font-family:var(--mono);font-size:10px;color:var(--text-mute)}
+.pop-fitem .x{font-size:11.5px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pop-fitem .a{color:var(--text-mute);flex:none;margin-top:4px}
+
+/* footer */
+.pop-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 2px 0;border-top:1px solid rgba(233,237,245,.08)}
+.pop-foot .o{font-size:12.5px;font-weight:600;color:var(--text)}
+.pop-foot .q{font-size:11.5px;color:var(--text-dim)}
+
+/* Chinese state: same DOM, different numbers and severity */
+html[lang^="zh"] .pop{--nc:14;--nx:4;--donut:12.7%;--lg1:var(--pop-x);--lg2:var(--pop-c);--warn:block}
 
 /* floating chips at depth */
 .chip{
@@ -260,11 +408,11 @@ nav .links a:hover{color:var(--text);text-decoration:none}
   box-shadow:0 18px 40px -18px rgba(0,0,0,.8);
   white-space:nowrap;
 }
-.chip:not(.mb) .brand-logo{width:15px;height:15px}
+.chip .brand-logo{width:15px;height:15px}
 .chip .v{color:var(--text);font-variant-numeric:tabular-nums}
-.chip.mb{padding:5px 10px;background:rgba(7,11,18,.92)}
-.chip.mb img{height:24px;width:auto;display:block}
-.chip1{top:-30px;right:-6%;transform:translateZ(90px)}
+.chip.mb{padding:9px 12px;gap:7px;background:rgba(7,11,18,.92);letter-spacing:.02em}
+.chip.mb .sep{color:var(--text-mute)}
+.chip1{top:8px;right:-6%;transform:translateZ(90px)}
 .chip2{bottom:-4px;left:-13%;transform:translateZ(140px)}
 .chip3{top:30%;left:-17%;transform:translateZ(55px)}
 .chip4{bottom:-42px;right:-3%;transform:translateZ(110px)}
@@ -836,7 +984,7 @@ footer.site .disclaimer{
       <button class="navBtn" id="navBtn" type="button" aria-expanded="false" aria-controls="navLinks" aria-label="Menu / 菜单">MENU</button>
       <span class="links" id="navLinks">
         <a href="#download" data-i18n="nav-dl">Download</a>
-        <a href="#release-12" data-i18n="nav-new">What's new</a>
+        <a href="#release-13" data-i18n="nav-new">What's new</a>
         <a href="#screens" data-i18n="nav-screens">Screens</a>
         <a href="#providers" data-i18n="nav-providers">Providers</a>
         <a href="#feed" data-i18n="nav-feed">AI Feed</a>
@@ -856,7 +1004,7 @@ footer.site .disclaimer{
   <!-- ================= hero ================= -->
   <header class="hero" id="download">
     <div>
-      <span class="badge" data-i18n="h-badge"><span class="dot"></span>Version 1.2 · Public Mac release</span>
+      <span class="badge" data-i18n="h-badge"><span class="dot"></span>Version 1.3 · Mac release + iPhone beta</span>
       <h1 data-i18n="h-h1">Your AI quotas,<br><span class="accent">right in the menu bar</span>.</h1>
       <p class="sub" data-i18n="h-sub">
         Remaining quota and reset countdowns for <strong>Claude Code, Codex, Cursor, Windsurf, Grok, GLM</strong>
@@ -866,6 +1014,10 @@ footer.site .disclaimer{
       <div class="cta-row">
         <a id="macDownloadButton" class="btn btn-primary" href="https://github.com/Carstin520/token-remain/releases/latest/download/TokenRemain.dmg">
           <span data-i18n="h-dl">Download for Mac</span>
+        </a>
+        <a id="testflightButton" class="btn btn-testflight" href="https://testflight.apple.com/join/DU3DrnhG" target="_blank" rel="noopener">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4.25" y="1.25" width="7.5" height="13.5" rx="1.8"/><path d="M6.5 3h3M7.2 12.8h1.6"/></svg>
+          <span data-i18n="h-ios">Join iPhone TestFlight</span>
         </a>
         <a class="btn btn-ghost" href="https://github.com/Carstin520/token-remain" rel="noopener">
           <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 .2a8 8 0 0 0-2.5 15.6c.4.1.5-.2.5-.4v-1.4c-2.2.5-2.7-1-2.7-1-.4-.9-.9-1.2-.9-1.2-.7-.5.1-.5.1-.5.8.1 1.2.9 1.2.9.7 1.2 1.9.9 2.4.7 0-.5.3-.9.5-1.1-1.8-.2-3.7-.9-3.7-4a3 3 0 0 1 .8-2.1c0-.2-.3-1 .1-2.1 0 0 .7-.2 2.2.8a7.5 7.5 0 0 1 4 0c1.5-1 2.2-.8 2.2-.8.4 1.1.1 1.9.1 2.1a3 3 0 0 1 .8 2.1c0 3.1-1.9 3.8-3.7 4 .3.3.6.8.6 1.5v2.2c0 .2.1.5.5.4A8 8 0 0 0 8 .2z"/></svg>
@@ -877,22 +1029,117 @@ footer.site .disclaimer{
         <span>Universal (Apple Silicon + Intel)</span><span class="sep">·</span>
         <span id="releaseVersion" data-release-version="1.3.0" aria-live="polite">Version 1.3.0 · Universal Mac</span>
       </p>
-      <p class="releases-hint"><span data-i18n="h-hint">Signed with Developer ID and notarized by Apple.</span></p>
+      <p class="releases-hint"><span data-i18n="h-hint">Mac: Developer ID signed and notarized. iPhone beta: iOS 18+, with the Mac companion and the same iCloud account.</span></p>
     </div>
 
-    <!-- ============ 3D stage · real popover screenshot ============ -->
+    <!-- ============ 3D stage · live popover, rendered in the browser ============ -->
     <div class="stage-wrap" aria-hidden="true">
+      <div class="glow-field"><i class="g1"></i><i class="g2"></i><i class="g3"></i></div>
       <div class="stage" id="stage">
         <div class="float">
 
-          <img class="pop-shot" src="assets/popover.png" width="720" height="1419" alt=""
-               data-shot-en="assets/popover.png" data-size-en="720x1419"
-               data-shot-zh="assets/popover-zh.png" data-size-zh="720x1464">
+          <div class="pop">
+            <div class="pop-head">
+              <div>
+                <div class="pop-name">TokenRemain</div>
+                <div class="pop-when" data-i18n="pop-when">Updated just now</div>
+              </div>
+              <div class="pop-acts">
+                <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg>
+                <span class="rf"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 8a5.5 5.5 0 1 1-1.7-3.95"/><path d="M13.2 1.9v2.6h-2.6"/></svg></span>
+              </div>
+            </div>
 
-          <span class="chip chip1 mb"><img src="assets/menubar.png" width="234" height="70"
-               alt="Menu bar showing Claude 89% and Codex 91%"
-               data-shot-en="assets/menubar.png" data-alt-en="Menu bar showing Claude 89% and Codex 91%"
-               data-shot-zh="assets/menubar-zh.png" data-alt-zh="菜单栏显示 Claude 97%、Codex 29%"></span>
+            <div class="pop-card pop-ban">
+              <span class="pop-sev" data-i18n="pop-sev">MEDIUM</span>
+              <div>
+                <b data-i18n="pop-ban1">Current pace may run out early</b>
+                <span data-i18n="pop-ban2">Claude 86% remaining</span>
+              </div>
+            </div>
+
+            <div class="pop-card pop-claude">
+              <div class="pop-row">
+                <span class="pop-pn"><img src="assets/providers/claude-code.svg" alt="">Claude<i>&rsaquo;</i></span>
+                <svg class="pop-pin" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M5 2h6M6.5 2v4.2L4 9.3h8L9.5 6.2V2M8 9.3V14"/></svg>
+              </div>
+              <div class="pop-row pop-meta">
+                <span class="w" data-i18n="pop-cwin">5 hr window</span>
+                <span class="r" data-i18n="pop-crem">89% remaining</span>
+              </div>
+              <div class="pop-seg"></div>
+            </div>
+
+            <div class="pop-card pop-codex">
+              <div class="pop-row">
+                <span class="pop-pn"><img src="assets/providers/codex.svg" alt="">Codex<i>&rsaquo;</i></span>
+                <svg class="pop-pin" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M5 2h6M6.5 2v4.2L4 9.3h8L9.5 6.2V2M8 9.3V14"/></svg>
+              </div>
+              <div class="pop-row pop-meta">
+                <span class="w" data-i18n="pop-xwin">7 d window</span>
+                <span class="r"><svg class="pop-warn" width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.6 15.2 14H.8L8 1.6Zm0 3.7a.8.8 0 0 0-.8.85l.25 3.3a.55.55 0 0 0 1.1 0l.25-3.3A.8.8 0 0 0 8 5.3Zm0 5.4a.85.85 0 1 0 0 1.7.85.85 0 0 0 0-1.7Z"/></svg><span data-i18n="pop-xrem">91% remaining</span></span>
+              </div>
+              <div class="pop-seg"></div>
+            </div>
+
+            <div class="pop-card">
+              <div class="pop-row">
+                <span class="pop-utitle" data-i18n="pop-usage">Today's Local Usage</span>
+                <span class="pop-utotal" data-i18n="pop-total">$52.15</span>
+              </div>
+              <div class="pop-split">
+                <div class="pop-donut"></div>
+                <div class="pop-legs">
+                  <div class="pop-lg"><i class="n1"></i><span class="nm" data-i18n="pop-l1n">Claude</span><span class="tk" data-i18n="pop-l1t">77.25M</span><span class="pc" data-i18n="pop-l1p">51.5%</span></div>
+                  <div class="pop-lg"><i class="n2"></i><span class="nm" data-i18n="pop-l2n">Codex</span><span class="tk" data-i18n="pop-l2t">72.78M</span><span class="pc" data-i18n="pop-l2p">48.5%</span></div>
+                </div>
+              </div>
+              <div class="pop-rule"></div>
+              <div class="pop-stat"><span class="l" data-i18n="pop-s1l">Today</span><span class="v" data-i18n="pop-s1v">$52.15 · 150.04M tokens</span></div>
+              <div class="pop-stat"><span class="l" data-i18n="pop-s2l">Yesterday</span><span class="v" data-i18n="pop-s2v">$201.55 · 488.02M tokens</span></div>
+              <div class="pop-stat"><span class="l" data-i18n="pop-s3l">Last 30 Days</span><span class="v" data-i18n="pop-s3v">$6.3K · 7.45B tokens</span></div>
+              <div class="pop-trend">
+                <span class="l" data-i18n="pop-trend">Usage Trend</span>
+                <span class="pop-spark"><i style="height:2px"></i><i style="height:2px"></i><i style="height:3px"></i><i style="height:2px"></i><i style="height:2px"></i><i style="height:3px"></i><i style="height:2px"></i><i style="height:2px"></i><i style="height:2px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:4px"></i><i style="height:3px"></i><i style="height:3px"></i><i style="height:7px"></i><i style="height:6px"></i><i style="height:10px"></i><i style="height:14px"></i><i style="height:20px"></i><i style="height:16px"></i><i style="height:12px"></i><i style="height:8px"></i><i style="height:5px"></i><i style="height:7px"></i><i style="height:5px"></i><i style="height:4px"></i><i style="height:6px"></i><i style="height:2px"></i></span>
+              </div>
+            </div>
+
+            <div class="pop-card">
+              <div class="pop-row">
+                <span class="pop-pn"><svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><rect x="1.6" y="3" width="10.8" height="10" rx="1.4"/><path d="M12.4 5.6h2v6.1a1.3 1.3 0 0 1-2.6 0"/><path d="M4 5.6h2.2v2.2H4zM8 5.6h2.4M8 7.8h2.4M4 10.2h6.4"/></svg><span data-i18n="pop-feed">AI Feed</span><i>&rsaquo;</i></span>
+                <span class="pop-fmeta">
+                  <span class="pop-count" data-i18n="pop-fcount">2 items</span>
+                  <svg class="pop-pin" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M5 2h6M6.5 2v4.2L4 9.3h8L9.5 6.2V2M8 9.3V14"/></svg>
+                </span>
+              </div>
+              <div class="pop-row pop-fsub">
+                <span data-i18n="pop-fsub">Important updates</span><span data-i18n="pop-fall">View all</span>
+              </div>
+              <div class="pop-fitem f1">
+                <i></i>
+                <div class="b">
+                  <div class="h"><span class="s" data-i18n="pop-f1s">Tibo</span><span class="t" data-i18n="pop-f1t">12 hr, 51 min</span></div>
+                  <div class="x" data-i18n="pop-f1x">We have reset usage limits fo…</div>
+                </div>
+                <svg class="a" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 11.5 11.5 4.5M5.6 4.5h5.9v5.9"/></svg>
+              </div>
+              <div class="pop-fitem f2">
+                <i></i>
+                <div class="b">
+                  <div class="h"><span class="s" data-i18n="pop-f2s">Claude</span><span class="t" data-i18n="pop-f2t">1 day, 15 hr</span></div>
+                  <div class="x" data-i18n="pop-f2x">Introducing Claude Opus 5. It…</div>
+                </div>
+                <svg class="a" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 11.5 11.5 4.5M5.6 4.5h5.9v5.9"/></svg>
+              </div>
+            </div>
+
+            <div class="pop-foot">
+              <span class="o" data-i18n="pop-open">Open Dashboard</span>
+              <span class="q" data-i18n="pop-quit">Settings · Quit</span>
+            </div>
+          </div>
+
+          <span class="chip chip1 mb"><img class="brand-logo mono" src="assets/providers/claude-code.svg" alt=""><span class="v" data-i18n="pop-mb1">89%</span><span class="sep">·</span><img class="brand-logo" src="assets/providers/codex.svg" alt=""><span class="v" data-i18n="pop-mb2">91%</span></span>
           <span class="chip chip2"><img class="brand-logo mono" src="assets/providers/grok.svg" alt=""><span data-i18n="chip-grok">Grok weekly</span> <span class="v">58%</span></span>
           <span class="chip chip3"><img class="brand-logo mono" src="assets/providers/zai.svg" alt="">GLM <span class="v">77%</span></span>
           <span class="chip chip4"><img class="brand-logo" src="assets/providers/copilot.svg" alt="">Copilot <span class="v">91%</span></span>
@@ -901,31 +1148,31 @@ footer.site .disclaimer{
     </div>
   </header>
 
-  <!-- ================= 1.2 release ================= -->
-  <section id="release-12">
-    <p class="eyebrow" data-num="1.2">Latest Release</p>
-    <h2 data-i18n="n-h2">One private view across every Mac</h2>
-    <p class="lede" data-i18n="n-lede">Version 1.2 expands TokenRemain from a single-Mac quota viewer into a resilient multi-source companion, while keeping credentials and raw usage on the Mac where they belong.</p>
+  <!-- ================= 1.3 release ================= -->
+  <section id="release-13">
+    <p class="eyebrow" data-num="1.3">Latest Release</p>
+    <h2 data-i18n="n-h2">Multiple Claude accounts, one popover</h2>
+    <p class="lede" data-i18n="n-lede">Version 1.3 adds isolated Claude account profiles and puts the popover's Liquid Glass under your control — while credentials keep living where they always have: in each tool's own storage.</p>
     <div class="feat-sub">
       <div class="feat ticked lift">
-        <div class="glyph">MAC × 16</div>
-        <h3 data-i18n="n1t">Encrypted multi-Mac aggregation</h3>
-        <p data-i18n="n1d">Authenticate and combine up to 16 independent Mac snapshots. A stale or damaged source cannot roll back healthy data, and each Mac can be inspected or removed separately.</p>
+        <div class="glyph">ACCOUNTS</div>
+        <h3 data-i18n="n1t">Isolated Claude account profiles</h3>
+        <p data-i18n="n1d">Sign in through the official Claude CLI and keep each account separate: refresh, rename, pause or remove any profile on its own, with currency-safe balance summaries. Credentials are never copied into TokenRemain storage.</p>
       </div>
       <div class="feat ticked lift">
-        <div class="glyph">LOCAL+</div>
-        <h3 data-i18n="n2t">More local usage sources</h3>
-        <p data-i18n="n2d">Dynamic ccusage discovery, privacy-minimized Trae trajectories, and an independent Windsurf quota source — all with per-source controls.</p>
+        <div class="glyph">GLASS</div>
+        <h3 data-i18n="n2t">Liquid Glass, your way</h3>
+        <p data-i18n="n2d">Choose frosted or clear Liquid Glass for the menu-bar popover and tune its backdrop opacity independently — the same live glass you see at the top of this page.</p>
       </div>
       <div class="feat ticked lift">
-        <div class="glyph">CONSENT</div>
-        <h3 data-i18n="n3t">Keychain access on your terms</h3>
-        <p data-i18n="n3d">Claude and Codex read-only authorization starts only when you ask. Background refreshes stay silent and never trigger a surprise system prompt.</p>
+        <div class="glyph">CONTRAST</div>
+        <h3 data-i18n="n3t">Readable on any glass</h3>
+        <p data-i18n="n3d">Primary, secondary and muted text stay on protected light foregrounds in both glass styles, while provider identity and semantic warning colors come through untouched.</p>
       </div>
       <div class="feat ticked lift">
-        <div class="glyph">LATEST</div>
-        <h3 data-i18n="n4t">Updates jump to the latest release</h3>
-        <p data-i18n="n4d">Adaptive signed-feed probes stay lightweight. When you choose to update, TokenRemain checks again and installs the newest version available — even if several releases were skipped.</p>
+        <div class="glyph">SYNC-SAFE</div>
+        <h3 data-i18n="n4t">Sturdier snapshots and profiles</h3>
+        <p data-i18n="n4d">A malformed scoped-limit row can no longer reject an otherwise valid encrypted mobile snapshot, and managed Claude profiles never fall back to the system account's credentials.</p>
       </div>
     </div>
   </section>
@@ -934,7 +1181,7 @@ footer.site .disclaimer{
   <section id="screens">
     <p class="eyebrow" data-num="01">Real UI</p>
     <h2 data-i18n="s-h2">Mac, iPhone, wrist — one design language</h2>
-    <p class="lede" data-i18n="s-lede">You've met the menu bar popover above — everything below is a <strong style="color:var(--text)">live screenshot of the latest build</strong>: the desktop Dashboard, the redesigned iPhone app and the Apple Watch glances. Numbers are SF Mono on every surface; decoration is gone, hierarchy comes from type. The iPhone and watch shots run the built-in demo scenario, so they carry its DEMO mark.</p>
+    <p class="lede" data-i18n="s-lede">You've met the menu bar popover above — rendered live in your browser, not a screenshot — everything below is a <strong style="color:var(--text)">live screenshot of the latest build</strong>: the desktop Dashboard, the redesigned iPhone app and the Apple Watch glances. Numbers are SF Mono on every surface; decoration is gone, hierarchy comes from type. The iPhone and watch shots run the built-in demo scenario, so they carry its DEMO mark.</p>
     <div class="shot-grid">
       <div class="pin-track" id="dashTrack">
         <div class="pin-stage">
@@ -1376,21 +1623,37 @@ footer.site .disclaimer{
 <script>
 /* ---------- i18n: English inline (default), Chinese dictionary ---------- */
 var ZH={
-  "nav-dl":"下载","nav-new":"1.2 新功能","nav-screens":"界面","nav-providers":"支持的服务","nav-feed":"AI 动态","nav-privacy":"隐私","nav-brand":"品牌","nav-policy":"隐私政策","nav-support":"支持","nav-limits":"限制",
-  "h-badge":"<span class=\"dot\"></span>1.2 正式版 · Mac 公开发布",
+  "nav-dl":"下载","nav-new":"1.3 新功能","nav-screens":"界面","nav-providers":"支持的服务","nav-feed":"AI 动态","nav-privacy":"隐私","nav-brand":"品牌","nav-policy":"隐私政策","nav-support":"支持","nav-limits":"限制",
+  "h-badge":"<span class=\"dot\"></span>1.3 正式版 · Mac 发布 + iPhone 测试",
   "h-h1":"你的 AI 额度，<br><span class=\"accent\">常驻菜单栏</span>。",
   "h-sub":"一处看全 <strong>Claude Code、Codex、Cursor、Windsurf、Grok、GLM</strong> 等 <strong>21+ 服务</strong>的剩余额度与重置倒计时。Provider 凭证始终留在 Mac；启用 Apple 设备同步后，只有经过白名单过滤并使用 AES-256-GCM 加密的额度快照会通过你自己的 iCloud 账户传输。",
-  "h-dl":"下载 Mac 版","h-gh":"GitHub 仓库",
-  "h-hint":"使用 Developer ID 签名并通过 Apple 公证。",
+  "h-dl":"下载 Mac 版","h-ios":"加入 iPhone TestFlight","h-gh":"GitHub 仓库",
+  "h-hint":"Mac 版已签名并通过 Apple 公证；iPhone 测试版需 iOS 18+、Mac 伴侣 App 与同一 iCloud 账号。",
   "chip-grok":"Grok 周池",
-  "n-h2":"再多台 Mac，也只看一处",
-  "n-lede":"1.2 让 TokenRemain 不再局限于单台 Mac：多台设备的额度聚合到同一处查看，而凭证和原始用量数据，依旧只留在各自的 Mac 本地。",
-  "n1t":"多 Mac 加密聚合","n1d":"最多聚合 16 台 Mac 的加密快照，逐台认证。某台来源过期或损坏，不会波及其他设备的健康数据；每台 Mac 都能单独查看、单独移除。",
-  "n2t":"更多本地用量来源","n2d":"自动发现 ccusage 数据源，按最小范围读取 Trae 轨迹，并新增独立的 Windsurf 额度来源；每个来源都可以单独开关。",
-  "n3t":"钥匙串访问由你决定","n3d":"Claude 与 Codex 的只读授权，只在你主动发起时才开始；后台刷新全程静默，不会突然弹出系统授权窗。",
-  "n4t":"跨版本直达最新版","n4d":"日常的更新检查轻量而安静；点击更新时会重新查询并直接安装当下的最新版本——即使中间隔了好几个发布，也一步到位。",
+  "pop-when":"4 分钟前更新",
+  "pop-sev":"中","pop-ban1":"当前节奏可能提前用尽","pop-ban2":"Codex 剩余 29%",
+  "pop-cwin":"5 小时窗口","pop-crem":"剩余 97%",
+  "pop-xwin":"7 天窗口","pop-xrem":"剩余 29%",
+  "pop-usage":"今日本地统计","pop-total":"$189.11",
+  "pop-l1n":"Codex","pop-l1t":"176.50M","pop-l1p":"87.3%",
+  "pop-l2n":"Claude","pop-l2t":"25.66M","pop-l2p":"12.7%",
+  "pop-s1l":"今日","pop-s1v":"$189.11 · 202.16M tokens",
+  "pop-s2l":"昨日","pop-s2v":"$259.53 · 311.26M tokens",
+  "pop-s3l":"近 30 天","pop-s3v":"$5.7K · 6.48B tokens",
+  "pop-trend":"用量趋势",
+  "pop-mb1":"97%","pop-mb2":"29%",
+  "pop-feed":"AI 动态","pop-fcount":"2 条","pop-fsub":"精选重要动态","pop-fall":"查看全部",
+  "pop-f1s":"Claude","pop-f1t":"13 小时 18 分钟","pop-f1x":"The Claude Security plugin fo…",
+  "pop-f2s":"Simon Willison","pop-f2t":"7 小时 27 分钟","pop-f2x":"I wrote about the completely …",
+  "pop-open":"打开 Dashboard","pop-quit":"设置 · 退出",
+  "n-h2":"多个 Claude 账号，同一个弹窗",
+  "n-lede":"1.3 带来相互隔离的 Claude 多账号档案，并把弹窗的 Liquid Glass 交给你调节——凭证依旧留在各工具自己的存储里，TokenRemain 绝不复制一份。",
+  "n1t":"Claude 多账号隔离档案","n1d":"通过官方 Claude CLI 登录，每个账号独立管理：单独刷新、重命名、暂停或移除，汇总余额按币种安全展示。凭证绝不会被复制进 TokenRemain 的存储。",
+  "n2t":"Liquid Glass 由你定","n2d":"菜单栏弹窗可选磨砂或透明两种 Liquid Glass 风格，背景不透明度独立可调——就是你在本页顶部看到的那块实时玻璃。",
+  "n3t":"任何玻璃上都清晰可读","n3d":"两种玻璃风格下，主文字、次要文字与弱化文字都保持受保护的浅色前景；provider 身份色与语义警示色原样呈现。",
+  "n4t":"快照与档案更稳固","n4d":"个别损坏的模型限额行不再让整份有效的加密移动快照被拒收；受管理的 Claude 档案也绝不会回落到系统账号的凭证与配置。",
   "s-h2":"Mac、iPhone、手腕，同一套设计语言",
-  "s-lede":"菜单栏弹窗在上方已经见过——下面全部是<strong style=\"color:var(--text)\">正在运行的最新版实机截图</strong>：桌面 Dashboard、重新设计的 iPhone 版与 Apple Watch 速览。所有屏幕的数字统一使用 SF Mono；装饰全部退场，层级只来自字号与留白。iPhone 与手表截图跑的是内置演示场景，所以带着 DEMO 标记。",
+  "s-lede":"菜单栏弹窗在上方已经见过——那是浏览器实时渲染的真实组件，不是截图；下面全部是<strong style=\"color:var(--text)\">正在运行的最新版实机截图</strong>：桌面 Dashboard、重新设计的 iPhone 版与 Apple Watch 速览。所有屏幕的数字统一使用 SF Mono；装饰全部退场，层级只来自字号与留白。iPhone 与手表截图跑的是内置演示场景，所以带着 DEMO 标记。",
   "cap-dash-t":"Dashboard · 概览","cap-dash-c":"真实本地用量：今日 Token 与估算成本按服务商拆分，旁边是官方额度实时进度与风险提示。",
   "cap-dash2-t":"Dashboard · 额度","cap-dash2-c":"额度页：每个服务商的官方窗口——5 小时 / 7 天进度、重置倒计时，以及用量超前时的节奏预警。",
   "cap-dash3-t":"Dashboard · 趋势","cap-dash3-c":"趋势页：按服务商堆叠的每日 Token 柱状图与额度消耗曲线，一眼看出每周节奏与用量高峰。点击任意一天可展开按模型的输入 / 输出 / 缓存明细。",
