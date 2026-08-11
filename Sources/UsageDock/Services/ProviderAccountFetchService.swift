@@ -1,5 +1,45 @@
 import Foundation
 
+enum ProviderAccountProcessEnvironment {
+    private static let claudeRoutingOverrideKeys = [
+        "ANTHROPIC_BASE_URL",
+        "ANTHROPIC_API_KEY",
+        "ANTHROPIC_AUTH_TOKEN",
+        "ANTHROPIC_BEDROCK_BASE_URL",
+        "ANTHROPIC_VERTEX_BASE_URL",
+        "ANTHROPIC_FOUNDRY_BASE_URL",
+        "CLAUDE_CODE_USE_BEDROCK",
+        "CLAUDE_CODE_USE_VERTEX",
+        "CLAUDE_CODE_USE_FOUNDRY"
+    ]
+    private static let codexRoutingOverrideKeys = [
+        "OPENAI_BASE_URL",
+        "OPENAI_API_BASE",
+        "OPENAI_API_KEY"
+    ]
+
+    static func claude(
+        base: [String: String],
+        configurationDirectory: URL?
+    ) -> [String: String] {
+        guard let configurationDirectory else { return base }
+        var environment = base
+        claudeRoutingOverrideKeys.forEach { environment.removeValue(forKey: $0) }
+        environment["CLAUDE_CONFIG_DIR"] = configurationDirectory.path
+        return environment
+    }
+
+    static func codex(
+        base: [String: String],
+        configurationDirectory: URL
+    ) -> [String: String] {
+        var environment = base
+        codexRoutingOverrideKeys.forEach { environment.removeValue(forKey: $0) }
+        environment["CODEX_HOME"] = configurationDirectory.path
+        return environment
+    }
+}
+
 /// One routing point for managed provider accounts. Provider-specific clients
 /// receive an explicit credential and therefore cannot accidentally fall back
 /// to another account's global environment, config file, IPC session or keychain.

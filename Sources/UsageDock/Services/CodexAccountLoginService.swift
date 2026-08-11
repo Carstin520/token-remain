@@ -47,8 +47,10 @@ struct CodexAccountLoginService: Sendable {
             let output = Pipe()
             process.executableURL = executable
             process.arguments = arguments
-            var environment = ProcessInfo.processInfo.environment
-            environment["CODEX_HOME"] = configurationDirectory.path
+            var environment = ProviderAccountProcessEnvironment.codex(
+                base: ProcessInfo.processInfo.environment,
+                configurationDirectory: configurationDirectory
+            )
             environment["PATH"] = Self.pathWithHints(environment["PATH"])
             process.environment = environment
             if capturesOutput {

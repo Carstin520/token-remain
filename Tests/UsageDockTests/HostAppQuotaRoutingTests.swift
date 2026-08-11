@@ -32,6 +32,36 @@ struct HostAppQuotaRoutingTests {
         #expect(detector.route(for: .claude).source == nil)
     }
 
+    @Test("Claude API key without a Base URL uses Anthropic API quota routing")
+    func claudeAPIKeyRouteWithoutBaseURL() {
+        let route = HostAppQuotaRouteDetector(
+            homeDirectory: URL(fileURLWithPath: "/tmp/unused-home"),
+            environment: ["ANTHROPIC_API_KEY": "api-key"]
+        ).route(for: .claude)
+
+        #expect(route.isExternal)
+        #expect(route.source?.provider == .thirdParty)
+        #expect(route.source?.displayName == "Anthropic API")
+        #expect(route.baseURL?.host == "api.anthropic.com")
+        #expect(route.credential == "api-key")
+    }
+
+    @Test("Claude auth token on the official endpoint uses API quota routing")
+    func claudeAuthTokenRouteOnOfficialEndpoint() {
+        let route = HostAppQuotaRouteDetector(
+            homeDirectory: URL(fileURLWithPath: "/tmp/unused-home"),
+            environment: [
+                "ANTHROPIC_BASE_URL": "https://api.anthropic.com/v1",
+                "ANTHROPIC_AUTH_TOKEN": "auth-token"
+            ]
+        ).route(for: .claude)
+
+        #expect(route.isExternal)
+        #expect(route.source?.displayName == "Anthropic API")
+        #expect(route.baseURL?.path == "/v1")
+        #expect(route.credential == "auth-token")
+    }
+
     @Test("Claude Code settings env supplies the routed API credential")
     func claudeSettingsRoute() throws {
         let temporary = FileManager.default.temporaryDirectory
@@ -95,6 +125,9 @@ struct HostAppQuotaRoutingTests {
             name = "DeepSeek"
             base_url = "https://api.deepseek.com/v1"
             env_key = "DEEPSEEK_API_KEY"
+
+            [model_providers.openai_http]
+            requires_openai_auth = true
             """
         )
 
@@ -102,6 +135,91 @@ struct HostAppQuotaRoutingTests {
         #expect(parsed.preferredAuthMethod == "apikey")
         #expect(parsed.providers["deepseek"]?.baseURL == "https://api.deepseek.com/v1")
         #expect(parsed.providers["deepseek"]?.environmentKey == "DEEPSEEK_API_KEY")
+        #expect(parsed.providers["openai_http"]?.requiresOpenAIAuth == true)
+    }
+
+    @Test("Codex Desktop openai_http keeps the official quota route")
+    func codexOpenAIHTTPRoute() throws {
+        let route = try codexRoute(
+            config: """
+            model_provider = "openai_http"
+            [model_providers.openai_http]
+            base_url = "https://api.openai.com/v1"
+            requires_openai_auth = true
+            """,
+            auth: #"{"tokens":{"access_token":"chatgpt-token"}}"#
+        )
+
+        #expect(!route.isExternal)
+        #expect(route.source == nil)
+        #expect(route.credential == nil)
+    }
+
+    @Test("Codex Desktop chatgpt_http keeps the official quota route")
+    func codexChatGPTHTTPRoute() throws {
+        let route = try codexRoute(
+            config: """
+            model_provider = "chatgpt_http"
+            [model_providers.chatgpt_http]
+            base_url = "https://chatgpt.com/backend-api/codex"
+            requires_openai_auth = true
+            """,
+            auth: #"{"tokens":{"access_token":"chatgpt-token"}}"#
+        )
+
+        #expect(!route.isExternal)
+        #expect(route.source == nil)
+    }
+
+    @Test("OpenAI-auth provider without a Base URL keeps the official quota route")
+    func codexOpenAIAuthWithoutBaseURL() throws {
+        let route = try codexRoute(
+            config: """
+            model_provider = "desktop_default"
+            [model_providers.desktop_default]
+            requires_openai_auth = true
+            """,
+            auth: #"{"tokens":{"access_token":"chatgpt-token"}}"#
+        )
+
+        #expect(!route.isExternal)
+    }
+
+    @Test("Explicit API-key auth overrides requires_openai_auth")
+    func codexOpenAIAuthAPIKeyRoute() throws {
+        let route = try codexRoute(
+            config: """
+            model_provider = "openai_http"
+            preferred_auth_method = "apikey"
+            [model_providers.openai_http]
+            base_url = "https://api.openai.com/v1"
+            requires_openai_auth = true
+            """,
+            auth: #"{"OPENAI_API_KEY":"sk-api-only"}"#
+        )
+
+        #expect(route.isExternal)
+        #expect(route.source?.provider == .thirdParty)
+        #expect(route.source?.displayName == "OpenAI API")
+        #expect(route.credential == "sk-api-only")
+    }
+
+    @Test("OpenAI-auth provider on a nonofficial domain remains external")
+    func codexOpenAIAuthRelayRoute() throws {
+        let route = try codexRoute(
+            config: """
+            model_provider = "chatgpt_http"
+            [model_providers.chatgpt_http]
+            base_url = "https://chatgpt.com.evil.example/v1"
+            requires_openai_auth = true
+            """,
+            auth: #"{"tokens":{"access_token":"chatgpt-token"}}"#
+        )
+
+        #expect(route.isExternal)
+        #expect(route.source?.provider == .thirdParty)
+        #expect(route.source?.displayName == "chatgpt.com.evil.example")
+        #expect(route.credential == nil)
     }
 
     @Test("Codex custom provider resolves its billing API and env credential")
@@ -337,6 +455,45 @@ struct HostAppQuotaRoutingTests {
         #expect(baseURL?.host == "relay.example.com")
     }
 
+    @Test("OpenCode Go without a Base URL keeps its local subscription route")
+    func openCodeGoDefaultRoute() throws {
+        #expect(try openCodeGoRoute(baseURL: nil) == nil)
+    }
+
+    @Test("OpenCode Go accepts only the official domain as its local subscription route")
+    func openCodeGoOfficialRoute() throws {
+        #expect(try openCodeGoRoute(baseURL: "https://opencode.ai/zen/go") == nil)
+
+        let deceptiveRoute = try openCodeGoRoute(
+            baseURL: "https://opencode.ai.evil.example/v1"
+        )
+        let deceptive = try #require(deceptiveRoute)
+        #expect(deceptive.isExternal)
+        #expect(deceptive.source?.displayName == "opencode.ai.evil.example")
+    }
+
+    @Test("OpenCode Go custom Base URL uses external quota routing")
+    func openCodeGoCustomRoute() throws {
+        let detectedRoute = try openCodeGoRoute(
+            baseURL: "https://relay.example.com/v1"
+        )
+        let route = try #require(detectedRoute)
+
+        #expect(route.isExternal)
+        #expect(route.baseURL?.host == "relay.example.com")
+        #expect(route.source?.displayName == "relay.example.com")
+    }
+
+    @Test("OpenCode Go malformed Base URL cannot fall back to local subscription quota")
+    func openCodeGoMalformedRoute() throws {
+        let detectedRoute = try openCodeGoRoute(baseURL: "relay.example.com/v1")
+        let route = try #require(detectedRoute)
+
+        #expect(route.isExternal)
+        #expect(route.baseURL == nil)
+        #expect(route.source?.displayName == "configured-relay API")
+    }
+
     @Test("Generic relay quota configuration must match the routed host")
     func genericRelayConfigurationMatching() throws {
         let configuration = try #require(ThirdPartyConfiguration.parse(
@@ -385,5 +542,64 @@ struct HostAppQuotaRoutingTests {
 
         #expect(visible.count == 1)
         #expect(visible.first?.attribution?.provider == .deepseek)
+    }
+
+    private func codexRoute(
+        config: String,
+        auth: String? = nil,
+        environment: [String: String] = [:]
+    ) throws -> HostAppQuotaRoute {
+        let temporary = FileManager.default.temporaryDirectory
+            .appending(path: UUID().uuidString, directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: temporary) }
+        let codexHome = temporary.appending(path: ".codex", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: codexHome, withIntermediateDirectories: true)
+        try config.write(
+            to: codexHome.appending(path: "config.toml"),
+            atomically: true,
+            encoding: .utf8
+        )
+        if let auth {
+            try auth.write(
+                to: codexHome.appending(path: "auth.json"),
+                atomically: true,
+                encoding: .utf8
+            )
+        }
+        return HostAppQuotaRouteDetector(
+            homeDirectory: temporary,
+            environment: environment
+        ).route(for: .codex)
+    }
+
+    private func openCodeGoRoute(baseURL: String?) throws -> HostAppQuotaRoute? {
+        let temporary = FileManager.default.temporaryDirectory
+            .appending(path: UUID().uuidString, directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: temporary) }
+        let configurationDirectory = temporary.appending(path: "config", directoryHint: .isDirectory)
+        let dataDirectory = temporary.appending(path: "data", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(
+            at: configurationDirectory,
+            withIntermediateDirectories: true
+        )
+        try FileManager.default.createDirectory(at: dataDirectory, withIntermediateDirectories: true)
+        if let baseURL {
+            try """
+            {
+              "provider": {
+                "opencode-go": { "options": { "baseURL": "\(baseURL)" } }
+              }
+            }
+            """.write(
+                to: configurationDirectory.appending(path: "opencode.json"),
+                atomically: true,
+                encoding: .utf8
+            )
+        }
+        return OpenCodeUsageService.externalRoute(
+            providerID: "opencode-go",
+            configurationDirectory: configurationDirectory,
+            dataDirectory: dataDirectory
+        )
     }
 }

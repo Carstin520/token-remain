@@ -53,8 +53,10 @@ struct ClaudeAccountLoginService: Sendable {
             let output = Pipe()
             process.executableURL = executable
             process.arguments = arguments
-            var environment = ProcessInfo.processInfo.environment
-            environment["CLAUDE_CONFIG_DIR"] = configurationDirectory.path
+            var environment = ProviderAccountProcessEnvironment.claude(
+                base: ProcessInfo.processInfo.environment,
+                configurationDirectory: configurationDirectory
+            )
             environment["PATH"] = Self.pathWithClaudeHints(environment["PATH"])
             process.environment = environment
             if capturesOutput {

@@ -131,6 +131,67 @@ struct ProviderAccountsTests {
         #expect(!FileManager.default.fileExists(atPath: directory))
     }
 
+    @Test("Managed Claude environments remove inherited routing and API credentials")
+    func managedClaudeEnvironmentIsolation() {
+        let directory = URL(fileURLWithPath: "/tmp/tokenremain-claude-account")
+        let base = [
+            "ANTHROPIC_BASE_URL": "https://relay.example.com",
+            "ANTHROPIC_API_KEY": "api-key",
+            "ANTHROPIC_AUTH_TOKEN": "auth-token",
+            "ANTHROPIC_BEDROCK_BASE_URL": "https://bedrock.example.com",
+            "ANTHROPIC_VERTEX_BASE_URL": "https://vertex.example.com",
+            "ANTHROPIC_FOUNDRY_BASE_URL": "https://foundry.example.com",
+            "CLAUDE_CODE_USE_BEDROCK": "1",
+            "CLAUDE_CODE_USE_VERTEX": "1",
+            "CLAUDE_CODE_USE_FOUNDRY": "1",
+            "PATH": "/usr/bin"
+        ]
+
+        let environment = ProviderAccountProcessEnvironment.claude(
+            base: base,
+            configurationDirectory: directory
+        )
+
+        #expect(environment["CLAUDE_CONFIG_DIR"] == directory.path)
+        #expect(environment["PATH"] == "/usr/bin")
+        for key in base.keys where key != "PATH" {
+            #expect(environment[key] == nil)
+        }
+    }
+
+    @Test("System Claude environment preserves the user's routing overrides")
+    func systemClaudeEnvironmentPreservesOverrides() {
+        let base = [
+            "ANTHROPIC_BASE_URL": "https://relay.example.com",
+            "ANTHROPIC_API_KEY": "api-key"
+        ]
+
+        #expect(ProviderAccountProcessEnvironment.claude(
+            base: base,
+            configurationDirectory: nil
+        ) == base)
+    }
+
+    @Test("Managed Codex environments remove inherited routing and API credentials")
+    func managedCodexEnvironmentIsolation() {
+        let directory = URL(fileURLWithPath: "/tmp/tokenremain-codex-account")
+        let environment = ProviderAccountProcessEnvironment.codex(
+            base: [
+                "OPENAI_BASE_URL": "https://relay.example.com",
+                "OPENAI_API_BASE": "https://legacy-relay.example.com",
+                "OPENAI_API_KEY": "api-key",
+                "PATH": "/usr/bin"
+            ],
+            configurationDirectory: directory
+        )
+
+        #expect(environment["CODEX_HOME"] == directory.path)
+        #expect(environment["PATH"] == "/usr/bin")
+        #expect(environment["OPENAI_BASE_URL"] == nil)
+        #expect(environment["OPENAI_API_BASE"] == nil)
+        #expect(environment["OPENAI_API_KEY"] == nil)
+    }
+
     @Test("A stale account selection is pruned instead of leaking into the UI")
     @MainActor
     func staleSelectionIsPruned() throws {
