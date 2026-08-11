@@ -52,7 +52,12 @@ struct ZAITeamUsageService {
     )!
 
     func fetch(now: Date = .now) async throws -> ProviderQuota {
-        guard let configuration = ZAITeamConfiguration.load() else {
+        try await fetch(configuration: nil, now: now)
+    }
+
+    func fetch(configuration routedValue: String?, now: Date = .now) async throws -> ProviderQuota {
+        guard let configuration = routedValue.flatMap(ZAITeamConfiguration.parse)
+            ?? ZAITeamConfiguration.load() else {
             throw ExtendedProviderError.invalidSecret(
                 .zaiTeam,
                 detail: L10n.text("service.zai_team.config_incomplete")
@@ -249,7 +254,12 @@ struct ThirdPartyUsageService {
     static let defaultQuotaPerUnit: Double = 500_000
 
     func fetch(now: Date = .now) async throws -> ProviderQuota {
-        guard let configuration = ThirdPartyConfiguration.load() else {
+        try await fetch(configuration: nil, now: now)
+    }
+
+    func fetch(configuration routedValue: String?, now: Date = .now) async throws -> ProviderQuota {
+        guard let configuration = routedValue.flatMap(ThirdPartyConfiguration.parse)
+            ?? ThirdPartyConfiguration.load() else {
             throw ExtendedProviderError.invalidSecret(
                 .thirdParty,
                 detail: L10n.text("service.third_party.config_incomplete")

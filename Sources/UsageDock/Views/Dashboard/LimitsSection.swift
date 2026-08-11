@@ -15,16 +15,15 @@ struct LimitsSection: View {
     @ObservedObject var tracked: TrackedProvidersStore = .shared
     let reorderInteraction: DirectReorderInteraction<ProviderQuota.Provider>
 
-    /// Claude is the only multi-account provider, so it reads the store's
-    /// selection-aware projection; every other provider keeps using the exact
-    /// `UsageInsights` snapshot and notice map it used before.
+    /// Multi-account providers read the store's selection-aware projection;
+    /// single-account providers keep using the original insights snapshot.
     private func quota(for provider: ProviderQuota.Provider) -> ProviderQuota? {
-        guard provider == .claude else { return insights.quota(for: provider) }
+        guard provider.multiAccountCapability != nil else { return insights.quota(for: provider) }
         return store.displayedQuota(for: provider)
     }
 
     private func notice(for provider: ProviderQuota.Provider) -> String? {
-        guard provider == .claude else { return notices[provider] }
+        guard provider.multiAccountCapability != nil else { return notices[provider] }
         return store.displayedNotice(for: provider) ?? notices[provider]
     }
 

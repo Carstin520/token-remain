@@ -64,6 +64,14 @@ struct HostAppQuotaRouteDetector: Sendable {
             ?? normalized(settings["ANTHROPIC_AUTH_TOKEN"])
             ?? normalized(settings["ANTHROPIC_API_KEY"])
         guard let baseText else {
+            if let credential {
+                return Self.externalRoute(
+                    hostProvider: .claude,
+                    providerID: "anthropic-api",
+                    baseURL: URL(string: "https://api.anthropic.com"),
+                    credential: credential
+                )
+            }
             return HostAppQuotaRoute(
                 hostProvider: .claude,
                 source: nil,
@@ -80,6 +88,14 @@ struct HostAppQuotaRouteDetector: Sendable {
             )
         }
         guard !Self.isOfficialClaudeURL(baseURL) else {
+            if let credential {
+                return Self.externalRoute(
+                    hostProvider: .claude,
+                    providerID: "anthropic-api",
+                    baseURL: baseURL,
+                    credential: credential
+                )
+            }
             return HostAppQuotaRoute(
                 hostProvider: .claude,
                 source: nil,
@@ -107,19 +123,22 @@ struct HostAppQuotaRouteDetector: Sendable {
             ?? normalized(configuration.openAIBaseURL)
             ?? normalized(provider?.baseURL)
         let baseURL = baseText.flatMap(Self.normalizedBaseURL)
-        let credential = provider?.environmentKey.flatMap { normalized(environment[$0]) }
-            ?? (providerID.caseInsensitiveCompare("openai") == .orderedSame
+        let isOpenAIProvider = providerID.caseInsensitiveCompare("openai") == .orderedSame
+        let usesOpenAIAuth = isOpenAIProvider || provider?.requiresOpenAIAuth == true
+        let providerEnvironmentKey = normalized(provider?.environmentKey)
+        let credential = providerEnvironmentKey.flatMap { normalized(environment[$0]) }
+            ?? (usesOpenAIAuth
                 ? normalized(environment["OPENAI_API_KEY"]) ?? auth.apiKey
                 : nil)
-        let isOpenAIProvider = providerID.caseInsensitiveCompare("openai") == .orderedSame
-        let prefersAPIKey = isOpenAIProvider && (
-            configuration.preferredAuthMethod?.caseInsensitiveCompare("apikey") == .orderedSame
+        let prefersAPIKey = usesOpenAIAuth && (
+            providerEnvironmentKey != nil
+                || configuration.preferredAuthMethod?.caseInsensitiveCompare("apikey") == .orderedSame
                 || (credential != nil && !auth.hasChatGPTAccessToken)
         )
 
         let hasOfficialOrUnsetBaseURL = baseText == nil
             || baseURL.map(Self.isOfficialCodexURL) == true
-        if isOpenAIProvider,
+        if usesOpenAIAuth,
            !prefersAPIKey,
            hasOfficialOrUnsetBaseURL {
             return HostAppQuotaRoute(
@@ -178,6 +197,7 @@ struct HostAppQuotaRouteDetector: Sendable {
     struct CodexProviderConfiguration: Sendable, Equatable {
         var baseURL: String?
         var environmentKey: String?
+        var requiresOpenAIAuth = false
     }
 
     struct CodexConfiguration: Sendable, Equatable {
@@ -188,8 +208,8 @@ struct HostAppQuotaRouteDetector: Sendable {
     }
 
     /// Narrow TOML reader for the documented Codex routing keys. Keeping this
-    /// parser scoped avoids adding a dependency just to read three strings, but
-    /// still handles quoted values, comments, and provider sections.
+    /// parser scoped avoids adding a dependency for a small set of values, but
+    /// still handles quoted values, booleans, comments, and provider sections.
     static func parseCodexConfiguration(_ text: String) -> CodexConfiguration {
         var result = CodexConfiguration()
         var providerSection: String?
@@ -210,13 +230,24 @@ struct HostAppQuotaRouteDetector: Sendable {
             let key = line[..<equals].trimmingCharacters(in: .whitespacesAndNewlines)
             let rawValue = line[line.index(after: equals)...]
                 .trimmingCharacters(in: .whitespacesAndNewlines)
-            guard let value = tomlString(rawValue) else { continue }
             if let providerSection {
                 var provider = result.providers[providerSection] ?? CodexProviderConfiguration()
-                if key == "base_url" { provider.baseURL = value }
-                if key == "env_key" { provider.environmentKey = value }
+                switch key {
+                case "base_url":
+                    guard let value = tomlString(rawValue) else { continue }
+                    provider.baseURL = value
+                case "env_key":
+                    guard let value = tomlString(rawValue) else { continue }
+                    provider.environmentKey = value
+                case "requires_openai_auth":
+                    guard let value = tomlBoolean(rawValue) else { continue }
+                    provider.requiresOpenAIAuth = value
+                default:
+                    continue
+                }
                 result.providers[providerSection] = provider
             } else {
+                guard let value = tomlString(rawValue) else { continue }
                 if key == "model_provider" { result.modelProvider = value }
                 if key == "openai_base_url" { result.openAIBaseURL = value }
                 if key == "preferred_auth_method" { result.preferredAuthMethod = value }
@@ -279,6 +310,14 @@ struct HostAppQuotaRouteDetector: Sendable {
             .replacingOccurrences(of: "\\\\", with: "\\")
     }
 
+    private static func tomlBoolean(_ value: String) -> Bool? {
+        switch value.trimmingCharacters(in: .whitespacesAndNewlines) {
+        case "true": true
+        case "false": false
+        default: nil
+        }
+    }
+
     static func externalRoute(
         hostProvider: ProviderQuota.Provider,
         providerID: String?,
@@ -327,6 +366,10 @@ struct HostAppQuotaRouteDetector: Sendable {
             if (host == "api.openai.com" || host.hasSuffix(".openai.com")),
                id.contains("openai") {
                 return (.thirdParty, "OpenAI API")
+            }
+            if (host == "api.anthropic.com" || host.hasSuffix(".anthropic.com")),
+               id.contains("anthropic") {
+                return (.thirdParty, "Anthropic API")
             }
             for (provider, _, domains) in known where domains.contains(where: {
                 host == $0 || host.hasSuffix(".\($0)")

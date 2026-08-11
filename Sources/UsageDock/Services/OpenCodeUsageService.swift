@@ -70,21 +70,11 @@ struct OpenCodeUsageService {
         }
 
         if let providerID = await Self.latestProviderID(in: databases),
-           providerID.caseInsensitiveCompare("opencode-go") != .orderedSame {
-            let baseURL = Self.providerBaseURL(
+           let route = Self.externalRoute(
                 providerID: providerID,
-                configurationDirectory: configurationDirectory
-            )
-            let credential = Self.providerCredential(
-                providerID: providerID,
+                configurationDirectory: configurationDirectory,
                 dataDirectory: dataDirectory
-            )
-            let route = HostAppQuotaRouteDetector.externalRoute(
-                hostProvider: .opencode,
-                providerID: providerID,
-                baseURL: baseURL,
-                credential: credential
-            )
+           ) {
             return try await HostAppQuotaRoutingService().fetchExternal(route)
         }
 
@@ -196,6 +186,22 @@ struct OpenCodeUsageService {
         providerID: String,
         configurationDirectory: URL
     ) -> URL? {
+        providerRouteConfiguration(
+            providerID: providerID,
+            configurationDirectory: configurationDirectory
+        ).baseURL
+    }
+
+    struct ProviderRouteConfiguration: Equatable, Sendable {
+        let baseURL: URL?
+        let hasBaseURLOverride: Bool
+    }
+
+    static func providerRouteConfiguration(
+        providerID: String,
+        configurationDirectory: URL
+    ) -> ProviderRouteConfiguration {
+        var hasBaseURLOverride = false
         for name in ["opencode.json", "opencode.jsonc"] {
             let url = configurationDirectory.appending(path: name)
             guard let text = try? String(contentsOf: url, encoding: .utf8),
@@ -204,15 +210,58 @@ struct OpenCodeUsageService {
                   let providers = root["provider"] as? [String: Any],
                   let provider = providers[providerID] as? [String: Any] else { continue }
             let options = provider["options"] as? [String: Any]
+            let optionHasOverride = options?.keys.contains("baseURL") == true
+                || options?.keys.contains("baseUrl") == true
+            let providerHasOverride = provider.keys.contains("baseURL")
+                || provider.keys.contains("baseUrl")
+            guard optionHasOverride || providerHasOverride else { continue }
+            hasBaseURLOverride = true
             let raw = (options?["baseURL"] as? String)
                 ?? (options?["baseUrl"] as? String)
                 ?? (provider["baseURL"] as? String)
                 ?? (provider["baseUrl"] as? String)
-            if let raw, let url = HostAppQuotaRouteDetector.normalizedBaseURL(raw) {
-                return url
+            if let raw,
+               let baseURL = HostAppQuotaRouteDetector.normalizedBaseURL(raw) {
+                return ProviderRouteConfiguration(
+                    baseURL: baseURL,
+                    hasBaseURLOverride: true
+                )
             }
         }
-        return nil
+        return ProviderRouteConfiguration(
+            baseURL: nil,
+            hasBaseURLOverride: hasBaseURLOverride
+        )
+    }
+
+    static func externalRoute(
+        providerID: String,
+        configurationDirectory: URL,
+        dataDirectory: URL
+    ) -> HostAppQuotaRoute? {
+        let configuration = providerRouteConfiguration(
+            providerID: providerID,
+            configurationDirectory: configurationDirectory
+        )
+        let isOpenCodeGo = providerID.caseInsensitiveCompare("opencode-go") == .orderedSame
+        if isOpenCodeGo,
+           (!configuration.hasBaseURLOverride
+                || configuration.baseURL.map(isOfficialOpenCodeURL) == true) {
+            return nil
+        }
+        return HostAppQuotaRouteDetector.externalRoute(
+            hostProvider: .opencode,
+            providerID: configuration.hasBaseURLOverride && configuration.baseURL == nil
+                ? "configured-relay"
+                : providerID,
+            baseURL: configuration.baseURL,
+            credential: providerCredential(providerID: providerID, dataDirectory: dataDirectory)
+        )
+    }
+
+    static func isOfficialOpenCodeURL(_ url: URL) -> Bool {
+        guard let host = url.host?.lowercased() else { return false }
+        return host == "opencode.ai" || host.hasSuffix(".opencode.ai")
     }
 
     static func providerCredential(providerID: String, dataDirectory: URL) -> String? {

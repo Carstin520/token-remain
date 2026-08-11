@@ -31,7 +31,18 @@ struct GrokUsageService {
     private static let logger = Logger(subsystem: "com.jamesli.usagedock", category: "GrokUsage")
 
     func fetch(now: Date = .now) async throws -> ProviderQuota {
-        guard let auth = GrokAuthReader().load() else {
+        try await fetch(token: nil, now: now)
+    }
+
+    func fetch(token routedToken: String?, now: Date = .now) async throws -> ProviderQuota {
+        let cleaned = routedToken?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let auth: GrokAuthReader.Auth?
+        if let cleaned, !cleaned.isEmpty {
+            auth = GrokAuthReader.Auth(token: cleaned, expiry: JWT.expiry(cleaned))
+        } else {
+            auth = GrokAuthReader().load()
+        }
+        guard let auth else {
             throw ServiceError.notLoggedIn
         }
         if let expiry = auth.expiry, expiry <= now {

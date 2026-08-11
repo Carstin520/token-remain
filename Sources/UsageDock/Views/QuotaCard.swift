@@ -27,6 +27,9 @@ struct QuotaCard: View {
     @State private var pendingRenameID: ProviderAccountID?
     @State private var pendingRenameText = ""
     @State private var pendingRemoveID: ProviderAccountID?
+    /// Keychain-backed providers collect their credential in a card-local
+    /// popover instead of the official CLI's browser login.
+    @State private var isPresentingCredentialEntry = false
 
     static func scopedWindows(
         in quota: ProviderQuota,
@@ -82,8 +85,17 @@ struct QuotaCard: View {
                 pendingRemoveID = nil
             }
         } message: { id in
-            Text(L10n.format("accounts.remove_message", accountName(for: id)))
+            Text(L10n.format(removeMessageKey(for: id), accountName(for: id)))
         }
+    }
+
+    /// An isolated CLI account owns a local login folder; a keychain account
+    /// owns one Keychain item. Say which one removal actually deletes.
+    private func removeMessageKey(for id: ProviderAccountID) -> String {
+        let kind = accountSnapshots.first { $0.id == id }?.profile.credentialKind
+        return kind == .keychainSecret
+            ? "accounts.remove_message_credential"
+            : "accounts.remove_message"
     }
 
     private var renameAlertPresented: Binding<Bool> {
@@ -103,10 +115,11 @@ struct QuotaCard: View {
     @ViewBuilder
     private var quotaContent: some View {
         if supportsMultipleAccounts, let store {
-            if store.isAddingClaudeAccount {
-                AccountLoginProgressRow()
+            if store.isAddingProviderAccount(provider) {
+                AccountAddProgressRow(credentialKind: multiAccountCapability?.credentialKind)
             }
-            if let managementNotice = store.accountManagementNotice, !managementNotice.isEmpty {
+            if let managementNotice = store.accountManagementNotice(for: provider),
+               !managementNotice.isEmpty {
                 Text(managementNotice)
                     .font(.system(size: 10.5))
                     .foregroundStyle(DashboardTheme.warning)
@@ -271,13 +284,24 @@ struct QuotaCard: View {
         .contentShape(Rectangle())
     }
 
-    // MARK: - Multi-account (Claude)
+    // MARK: - Multi-account
 
-    /// Claude is currently the only provider that can hold several signed-in
-    /// accounts, so all account chrome stays local to its card and every other
-    /// provider keeps exactly its previous header and content.
+    /// The backend decides which providers expose a safe credential boundary.
+    /// Providers without one (currently OpenCode and Kiro) keep exactly their
+    /// previous header and content, including the absence of an Add button.
+    private var multiAccountCapability: ProviderMultiAccountCapability? {
+        store == nil ? nil : provider.multiAccountCapability
+    }
+
     private var supportsMultipleAccounts: Bool {
-        provider == .claude && store != nil
+        multiAccountCapability != nil
+    }
+
+    /// Non-nil only for providers whose second account is one opaque secret;
+    /// isolated-CLI providers sign in through their own official browser flow.
+    private var credentialHint: ProviderAccountCredentialHint? {
+        guard multiAccountCapability?.credentialKind == .keychainSecret else { return nil }
+        return ProviderAccountCredentialHint.resolve(for: provider)
     }
 
     /// Includes disabled managed accounts on purpose: a paused account must stay
@@ -318,6 +342,18 @@ struct QuotaCard: View {
                 addAccountButton(store: store)
             }
             .padding(.top, 2)
+            // Anchored to the row rather than the button so the form stays put
+            // while the button itself is disabled during verification.
+            .popover(isPresented: $isPresentingCredentialEntry, arrowEdge: .bottom) {
+                if let hint = credentialHint {
+                    AddProviderAccountSheet(
+                        store: store,
+                        provider: provider,
+                        hint: hint,
+                        isPresented: $isPresentingCredentialEntry
+                    )
+                }
+            }
         }
     }
 
@@ -354,7 +390,7 @@ struct QuotaCard: View {
             } label: {
                 Label(L10n.text("accounts.add"), systemImage: "plus")
             }
-            .disabled(store.isAddingClaudeAccount)
+            .disabled(store.isAddingProviderAccount(provider))
         } label: {
             HStack(spacing: 4) {
                 if selectedAccount?.isRefreshing == true {
@@ -403,7 +439,7 @@ struct QuotaCard: View {
             addAccount(store: store)
         } label: {
             Group {
-                if store.isAddingClaudeAccount {
+                if store.isAddingProviderAccount(provider) {
                     ProgressView().controlSize(.mini)
                 } else {
                     Image(systemName: "plus")
@@ -423,20 +459,47 @@ struct QuotaCard: View {
             .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
         }
         .buttonStyle(.plain)
-        .disabled(store.isAddingClaudeAccount)
+        .disabled(store.isAddingProviderAccount(provider))
         .help(
-            store.isAddingClaudeAccount
-                ? L10n.text("accounts.adding")
-                : L10n.format("accounts.add_help", provider.displayName)
+            store.isAddingProviderAccount(provider)
+                ? L10n.text(addingLabelKey)
+                : L10n.format(addHelpKey, provider.displayName)
         )
         .accessibilityLabel(L10n.format("accounts.add_accessibility", provider.displayName))
     }
 
-    /// The store already guards against a second concurrent login; checking here
-    /// too keeps a double click from queueing a redundant browser sign-in.
+    private var addHelpKey: String {
+        multiAccountCapability?.credentialKind == .keychainSecret
+            ? "accounts.add_help_credential"
+            : "accounts.add_help"
+    }
+
+    private var addingLabelKey: String {
+        multiAccountCapability?.credentialKind == .keychainSecret
+            ? "accounts.adding_credential"
+            : "accounts.adding"
+    }
+
+    /// The store already guards against a second concurrent add; checking here
+    /// too keeps a double click from queueing a redundant sign-in. Isolated-CLI
+    /// providers hand off to their own official browser login immediately;
+    /// keychain providers first need the credential this app will store.
     private func addAccount(store: UsageStore) {
-        guard !store.isAddingClaudeAccount else { return }
-        Task { await store.addClaudeAccount() }
+        guard !store.isAddingProviderAccount(provider) else { return }
+        switch multiAccountCapability?.credentialKind {
+        case .isolatedCLI:
+            Task {
+                await store.addProviderAccount(
+                    provider: provider,
+                    displayName: nil,
+                    credential: nil
+                )
+            }
+        case .keychainSecret:
+            isPresentingCredentialEntry = true
+        case nil:
+            break
+        }
     }
 
     @ViewBuilder
@@ -517,8 +580,8 @@ struct QuotaCard: View {
         }
         .disabled(snapshot.isRefreshing || !snapshot.profile.isEnabled)
 
-        // The system account mirrors the Mac's own Claude login, so TokenRemain
-        // must not rename, pause, or delete it.
+        // The system account mirrors this Mac's own login for the provider, so
+        // TokenRemain must not rename, pause, or delete it.
         if !snapshot.profile.isSystem {
             Divider()
             Button {
@@ -653,19 +716,28 @@ private struct AccountDigestRow: View {
     }
 }
 
-/// Official browser sign-in runs outside the app, so the card states plainly
-/// that it is waiting instead of looking frozen.
-private struct AccountLoginProgressRow: View {
+/// Official browser sign-in runs outside the app and credential checks run
+/// against the provider, so the card states plainly which one it is waiting on
+/// instead of looking frozen.
+private struct AccountAddProgressRow: View {
+    let credentialKind: ProviderAccountCredentialKind?
+
+    private var messageKey: String {
+        credentialKind == .keychainSecret
+            ? "accounts.adding_progress_credential"
+            : "accounts.adding_progress"
+    }
+
     var body: some View {
         HStack(spacing: 8) {
             ProgressView().controlSize(.small)
-            Text(L10n.text("accounts.adding_progress"))
+            Text(L10n.text(messageKey))
                 .font(.system(size: 11))
                 .foregroundStyle(DashboardTheme.secondaryText)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(L10n.text("accounts.adding_progress"))
+        .accessibilityLabel(L10n.text(messageKey))
     }
 }
 

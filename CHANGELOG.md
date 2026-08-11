@@ -5,6 +5,26 @@ Versioning for public releases.
 
 ## Unreleased
 
+## 1.3.1 — 2026-08-11
+
+### Added
+
+- Extend the account switcher and currency-safe summaries from Claude to Codex,
+  Antigravity, Cursor, Grok, Copilot, Z.ai/GLM, Windsurf, Devin, OpenRouter,
+  DeepSeek, Kimi, MiniMax, MiMo, Qoder, Volcengine, Ollama, and configurable
+  third-party APIs. CLI accounts use isolated homes; pasted credentials remain
+  in per-account, device-only Keychain items.
+
+### Fixed
+
+- Recognize Codex Desktop's `openai_http` and `chatgpt_http` providers as the
+  official ChatGPT quota route when they require OpenAI authentication and use
+  an official or unset Base URL.
+- Keep explicit Claude API credentials and custom OpenCode Go Base URLs out of
+  their host application's official subscription quota path.
+- Prevent managed Claude and Codex account processes from inheriting global API
+  keys, Base URLs, or cloud routing overrides from the system account.
+
 ## 1.3.0 — 2026-08-10
 
 ### Added
@@ -566,3 +586,4 @@ Versioning for public releases.
 [1.2.10]: https://github.com/Carstin520/token-remain/releases/tag/v1.2.10
 [1.2.11]: https://github.com/Carstin520/token-remain/releases/tag/v1.2.11%2Bbuild.26
 [1.3.0]: https://github.com/Carstin520/token-remain/releases/tag/v1.3.0
+[1.3.1]: https://github.com/Carstin520/token-remain/releases/tag/v1.3.1

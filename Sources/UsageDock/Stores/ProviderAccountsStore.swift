@@ -1,10 +1,16 @@
 import Foundation
 
-/// Persists non-secret account metadata. Managed credentials stay inside each
-/// provider's isolated app-owned configuration directory and are maintained by
-/// the provider's own CLI.
+/// Persists non-secret account metadata. Managed credentials stay either in an
+/// isolated provider-owned CLI home or in a device-only Keychain item.
 @MainActor
 final class ProviderAccountsStore {
+    enum StoreError: LocalizedError {
+        case unsupportedProvider
+
+        var errorDescription: String? {
+            "This provider does not expose a safe multi-account sign-in method."
+        }
+    }
     static let profilesKey = "tokenRemain.providerAccounts.v1"
     static let selectionsKey = "tokenRemain.providerAccountSelections.v1"
 
@@ -22,7 +28,7 @@ final class ProviderAccountsStore {
 
         if let data = defaults.data(forKey: Self.profilesKey),
            let decoded = try? JSONDecoder().decode([ProviderAccountProfile].self, from: data) {
-            profiles = decoded.filter { $0.kind == .managed && $0.configurationDirectory != nil }
+            profiles = decoded.filter(Self.isValidManagedProfile)
         } else {
             profiles = []
         }
@@ -40,7 +46,10 @@ final class ProviderAccountsStore {
     }
 
     var allProfiles: [ProviderAccountProfile] {
-        [ProviderAccountProfile.system(.claude)] + profiles
+        let systemProfiles = ProviderQuota.Provider.displayOrder.compactMap { provider in
+            provider.multiAccountCapability == nil ? nil : ProviderAccountProfile.system(provider)
+        }
+        return systemProfiles + profiles
     }
 
     func selection(for provider: ProviderQuota.Provider) -> ProviderAccountSelection {
@@ -63,23 +72,41 @@ final class ProviderAccountsStore {
     /// Creates an isolated Claude home but does not publish it to the account
     /// list until official CLI login succeeds.
     func prepareClaudeProfile(displayName: String?) throws -> ProviderAccountProfile {
+        try prepareProfile(provider: .claude, displayName: displayName)
+    }
+
+    /// Creates unpublished account metadata. Isolated CLI homes are created
+    /// with owner-only permissions; secret profiles receive no filesystem home.
+    func prepareProfile(
+        provider: ProviderQuota.Provider,
+        displayName: String?
+    ) throws -> ProviderAccountProfile {
+        guard let capability = provider.multiAccountCapability else {
+            throw StoreError.unsupportedProvider
+        }
         let uuid = UUID()
         let id = ProviderAccountID.managed(uuid)
-        let directory = rootDirectory
-            .appending(path: "claude", directoryHint: .isDirectory)
-            .appending(path: uuid.uuidString.lowercased(), directoryHint: .isDirectory)
-        try FileManager.default.createDirectory(
-            at: directory,
-            withIntermediateDirectories: true,
-            attributes: [.posixPermissions: 0o700]
-        )
+        let directory: URL?
+        if capability.credentialKind == .isolatedCLI {
+            let candidate = rootDirectory
+                .appending(path: provider.directorySlug, directoryHint: .isDirectory)
+                .appending(path: uuid.uuidString.lowercased(), directoryHint: .isDirectory)
+            try FileManager.default.createDirectory(
+                at: candidate,
+                withIntermediateDirectories: true,
+                attributes: [.posixPermissions: 0o700]
+            )
+            directory = candidate
+        } else {
+            directory = nil
+        }
         let normalized = displayName?.trimmingCharacters(in: .whitespacesAndNewlines)
         return ProviderAccountProfile(
             id: id,
-            provider: .claude,
-            displayName: normalized?.isEmpty == false ? normalized! : defaultClaudeName(),
+            provider: provider,
+            displayName: normalized?.isEmpty == false ? normalized! : defaultName(for: provider),
             kind: .managed,
-            configurationDirectory: directory.path,
+            configurationDirectory: directory?.path,
             isEnabled: true,
             createdAt: .now
         )
@@ -87,7 +114,7 @@ final class ProviderAccountsStore {
 
     func commit(_ profile: ProviderAccountProfile) {
         guard profile.kind == .managed,
-              profile.configurationDirectory != nil,
+              Self.isValidManagedProfile(profile),
               !profiles.contains(where: { $0.id == profile.id }) else { return }
         profiles.append(profile)
         persistProfiles()
@@ -121,6 +148,10 @@ final class ProviderAccountsStore {
         if let path = removed.configurationDirectory {
             removeManagedDirectoryIfSafe(URL(fileURLWithPath: path))
         }
+        try? ProviderAccountSecretStore(
+            provider: removed.provider,
+            accountID: removed.id
+        ).delete()
         for provider in ProviderQuota.Provider.displayOrder {
             if selections[provider] == .account(id) {
                 selections[provider] = .all
@@ -131,14 +162,14 @@ final class ProviderAccountsStore {
         return removed
     }
 
-    private func defaultClaudeName() -> String {
-        "Claude \(profiles.filter { $0.provider == .claude }.count + 2)"
+    private func defaultName(for provider: ProviderQuota.Provider) -> String {
+        "\(provider.displayName) \(profiles.filter { $0.provider == provider }.count + 2)"
     }
 
     private func pruneInvalidSelections() {
-        let valid = Set(allProfiles.map(\.id))
         for (provider, selection) in selections {
-            if case .account(let id) = selection, !valid.contains(id) {
+            if case .account(let id) = selection,
+               !allProfiles.contains(where: { $0.provider == provider && $0.id == id }) {
                 selections[provider] = .all
             }
         }
@@ -168,5 +199,26 @@ final class ProviderAccountsStore {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
             .appending(path: "com.jamesli.usagedock", directoryHint: .isDirectory)
             .appending(path: "provider-accounts", directoryHint: .isDirectory)
+    }
+
+    private static func isValidManagedProfile(_ profile: ProviderAccountProfile) -> Bool {
+        guard profile.kind == .managed,
+              let kind = profile.provider.multiAccountCapability?.credentialKind else {
+            return false
+        }
+        switch kind {
+        case .isolatedCLI:
+            return profile.configurationDirectory != nil
+        case .keychainSecret:
+            return profile.configurationDirectory == nil
+        }
+    }
+}
+
+private extension ProviderQuota.Provider {
+    var directorySlug: String {
+        rawValue.lowercased()
+            .replacingOccurrences(of: " ", with: "-")
+            .replacingOccurrences(of: ".", with: "-")
     }
 }

@@ -48,6 +48,24 @@ struct AntigravityUsageService {
         guard let token = AntigravityTokenReader().load() else {
             throw ServiceError.notLoggedIn
         }
+        return try await fetch(token: token, now: now)
+    }
+
+    /// Managed profiles use an explicitly supplied short-lived access token.
+    /// They never probe the running app or inherit its single Keychain account.
+    func fetch(accessToken: String, now: Date = .now) async throws -> ProviderQuota {
+        let cleaned = accessToken.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleaned.isEmpty else { throw ServiceError.notLoggedIn }
+        return try await fetch(
+            token: AntigravityTokenReader.Token(
+                accessToken: cleaned,
+                expiry: JWT.expiry(cleaned)
+            ),
+            now: now
+        )
+    }
+
+    private func fetch(token: AntigravityTokenReader.Token, now: Date) async throws -> ProviderQuota {
         if let expiry = token.expiry ?? JWT.expiry(token.accessToken), expiry <= now {
             throw ServiceError.staleLogin
         }

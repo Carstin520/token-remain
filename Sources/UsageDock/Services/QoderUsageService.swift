@@ -247,8 +247,12 @@ struct QoderUsageService {
     }
 
     func fetch(now: Date = .now) async throws -> ProviderQuota {
-        if let quota = await localQuota(now: now) { return quota }
-        guard let raw = loadCookie(),
+        try await fetch(cookie: nil, now: now)
+    }
+
+    func fetch(cookie routedCookie: String?, now: Date = .now) async throws -> ProviderQuota {
+        if routedCookie == nil, let quota = await localQuota(now: now) { return quota }
+        guard let raw = routedCookie ?? loadCookie(),
               let credentials = Self.cookieCredentials(raw, environment: environment) else {
             throw ExtendedProviderError.notConfigured(.qoder)
         }

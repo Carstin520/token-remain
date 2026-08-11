@@ -110,11 +110,10 @@ struct ClaudeUsageService {
     }
 
     private var profileEnvironment: [String: String] {
-        var environment = ProcessInfo.processInfo.environment
-        if let configurationDirectory {
-            environment["CLAUDE_CONFIG_DIR"] = configurationDirectory.path
-        }
-        return environment
+        ProviderAccountProcessEnvironment.claude(
+            base: ProcessInfo.processInfo.environment,
+            configurationDirectory: configurationDirectory
+        )
     }
 
     static func noCLIFallbackError(
@@ -679,10 +678,10 @@ private enum ClaudeCLIUsageProbe {
     }
 
     private static func profileEnvironment(_ configurationDirectory: URL?) -> [String: String] {
-        var environment = ProcessInfo.processInfo.environment
-        if let configurationDirectory {
-            environment["CLAUDE_CONFIG_DIR"] = configurationDirectory.path
-        }
+        var environment = ProviderAccountProcessEnvironment.claude(
+            base: ProcessInfo.processInfo.environment,
+            configurationDirectory: configurationDirectory
+        )
         environment["PATH"] = pathWithClaudeHints(environment["PATH"])
         return environment
     }

@@ -458,7 +458,11 @@ struct MiniMaxUsageService {
 /// 接口短暂波动时把仍然有效的钱包余额一起丢掉。
 struct MiMoUsageService {
     func fetch(now: Date = .now) async throws -> ProviderQuota {
-        guard let rawCookie = ProviderSecretStore(provider: .mimo).load() else {
+        try await fetch(cookie: nil, now: now)
+    }
+
+    func fetch(cookie routedCookie: String?, now: Date = .now) async throws -> ProviderQuota {
+        guard let rawCookie = routedCookie ?? ProviderSecretStore(provider: .mimo).load() else {
             throw ExtendedProviderError.notConfigured(.mimo)
         }
         guard let cookie = Self.normalizedCookie(rawCookie) else {
@@ -825,7 +829,11 @@ struct KiroUsageService {
 /// 火山 HMAC-SHA256 签名(service=ark)。响应 `Result` 内取 Percent。
 struct VolcengineUsageService {
     func fetch(now: Date = .now) async throws -> ProviderQuota {
-        guard let combined = ProviderSecretStore(provider: .volcengine).load() else {
+        try await fetch(credentials: nil, now: now)
+    }
+
+    func fetch(credentials routedCredentials: String?, now: Date = .now) async throws -> ProviderQuota {
+        guard let combined = routedCredentials ?? ProviderSecretStore(provider: .volcengine).load() else {
             throw ExtendedProviderError.notConfigured(.volcengine)
         }
         let parts = combined.split(separator: ":", maxSplits: 1).map(String.init)
@@ -954,7 +962,11 @@ struct VolcengineUsageService {
 /// 解析 "Session/Hourly/Weekly usage … N% used"。签出状态如实提示。
 struct OllamaUsageService {
     func fetch(now: Date = .now) async throws -> ProviderQuota {
-        guard let cookie = ProviderSecretStore(provider: .ollama).load() else {
+        try await fetch(cookie: nil, now: now)
+    }
+
+    func fetch(cookie routedCookie: String?, now: Date = .now) async throws -> ProviderQuota {
+        guard let cookie = routedCookie ?? ProviderSecretStore(provider: .ollama).load() else {
             throw ExtendedProviderError.notConfigured(.ollama)
         }
         let data = try await ExtendedHTTP.request(

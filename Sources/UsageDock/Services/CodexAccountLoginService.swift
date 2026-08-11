@@ -1,6 +1,8 @@
 import Foundation
 
-struct ClaudeAccountLoginService: Sendable {
+/// Runs the official Codex login flow inside an app-owned CODEX_HOME. The
+/// resulting OAuth material remains owned by Codex; TokenRemain only reads it.
+struct CodexAccountLoginService: Sendable {
     enum LoginError: LocalizedError {
         case cliNotFound
         case loginFailed(Int32)
@@ -9,34 +11,26 @@ struct ClaudeAccountLoginService: Sendable {
         var errorDescription: String? {
             switch self {
             case .cliNotFound:
-                L10n.text("service.claude.cli_not_found")
+                "Codex CLI was not found. Install Codex, then try again."
             case .loginFailed:
-                L10n.text("service.claude.account_login_failed")
+                "Codex account sign-in did not complete."
             case .loginDidNotCreateSession:
-                L10n.text("service.claude.account_session_missing")
+                "Codex finished without creating a signed-in profile."
             }
         }
     }
 
     func login(configurationDirectory: URL) async throws {
-        try await run(
-            arguments: ["auth", "login", "--claudeai"],
-            configurationDirectory: configurationDirectory
-        )
-        let status = try await status(configurationDirectory: configurationDirectory)
-        guard status else { throw LoginError.loginDidNotCreateSession }
-    }
-
-    private func status(configurationDirectory: URL) async throws -> Bool {
+        try await run(arguments: ["login"], configurationDirectory: configurationDirectory)
         let data = try await run(
-            arguments: ["auth", "status", "--json"],
+            arguments: ["login", "status"],
             configurationDirectory: configurationDirectory,
             capturesOutput: true
         )
-        guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            return false
+        let text = String(data: data, encoding: .utf8)?.lowercased() ?? ""
+        guard text.contains("logged in") else {
+            throw LoginError.loginDidNotCreateSession
         }
-        return object["loggedIn"] as? Bool == true
     }
 
     @discardableResult
@@ -46,25 +40,23 @@ struct ClaudeAccountLoginService: Sendable {
         capturesOutput: Bool = false
     ) async throws -> Data {
         try await Task.detached(priority: .userInitiated) {
-            guard let executable = Self.claudeExecutable() else {
+            guard let executable = Self.executable() else {
                 throw LoginError.cliNotFound
             }
             let process = Process()
             let output = Pipe()
             process.executableURL = executable
             process.arguments = arguments
-            var environment = ProviderAccountProcessEnvironment.claude(
+            var environment = ProviderAccountProcessEnvironment.codex(
                 base: ProcessInfo.processInfo.environment,
                 configurationDirectory: configurationDirectory
             )
-            environment["PATH"] = Self.pathWithClaudeHints(environment["PATH"])
+            environment["PATH"] = Self.pathWithHints(environment["PATH"])
             process.environment = environment
             if capturesOutput {
                 process.standardOutput = output
-                process.standardError = FileHandle.nullDevice
+                process.standardError = output
             } else {
-                // Claude opens the OAuth page itself. Keep terminal chatter out of
-                // the GUI process while the browser completes the official flow.
                 process.standardOutput = FileHandle.nullDevice
                 process.standardError = FileHandle.nullDevice
             }
@@ -77,23 +69,23 @@ struct ClaudeAccountLoginService: Sendable {
         }.value
     }
 
-    private static func claudeExecutable() -> URL? {
+    private static func executable() -> URL? {
         let fileManager = FileManager.default
         let home = fileManager.homeDirectoryForCurrentUser.path
         var candidates = [
-            "\(home)/.local/bin/claude",
-            "\(home)/.npm-global/bin/claude",
-            "/opt/homebrew/bin/claude",
-            "/usr/local/bin/claude"
+            "\(home)/.local/bin/codex",
+            "\(home)/.npm-global/bin/codex",
+            "/opt/homebrew/bin/codex",
+            "/usr/local/bin/codex"
         ]
         if let path = ProcessInfo.processInfo.environment["PATH"] {
-            candidates += path.split(separator: ":").map { "\($0)/claude" }
+            candidates += path.split(separator: ":").map { "\($0)/codex" }
         }
         return candidates.first(where: fileManager.isExecutableFile(atPath:))
             .map(URL.init(fileURLWithPath:))
     }
 
-    private static func pathWithClaudeHints(_ existing: String?) -> String {
+    private static func pathWithHints(_ existing: String?) -> String {
         let home = FileManager.default.homeDirectoryForCurrentUser.path
         let hints = [
             "\(home)/.local/bin", "\(home)/.npm-global/bin",

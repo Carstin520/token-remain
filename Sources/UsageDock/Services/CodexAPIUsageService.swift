@@ -43,9 +43,14 @@ struct CodexAPIUsageService {
 
     func fetch(
         now: Date = .now,
-        keychainInteraction: KeychainRead.Interaction = .disallowed
+        keychainInteraction: KeychainRead.Interaction = .disallowed,
+        configurationDirectory: URL? = nil
     ) async throws -> ProviderQuota {
-        let result = CodexAuthReader().read(
+        var reader = CodexAuthReader()
+        if let configurationDirectory {
+            reader.environment["CODEX_HOME"] = configurationDirectory.path
+        }
+        let result = reader.read(
             now: now,
             keychainInteraction: keychainInteraction
         )

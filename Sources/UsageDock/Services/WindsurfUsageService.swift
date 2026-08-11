@@ -32,7 +32,26 @@ struct WindsurfUsageService {
     )
 
     func fetch(now: Date = .now) async throws -> ProviderQuota {
-        guard let auth = await WindsurfAuthReader().load() else {
+        try await fetch(apiKey: nil, apiServerURL: nil, now: now)
+    }
+
+    func fetch(
+        apiKey routedKey: String?,
+        apiServerURL: String? = nil,
+        now: Date = .now
+    ) async throws -> ProviderQuota {
+        let cleaned = routedKey?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let auth: WindsurfAuthReader.Auth?
+        if let cleaned, !cleaned.isEmpty {
+            auth = WindsurfAuthReader.Auth(
+                apiKey: cleaned,
+                apiServerURL: apiServerURL.flatMap(DevinAuthReader.cleanServerURL)
+                    ?? WindsurfAuthReader.defaultAPIServerURL
+            )
+        } else {
+            auth = await WindsurfAuthReader().load()
+        }
+        guard let auth else {
             throw ServiceError.notLoggedIn
         }
         guard let url = URL(
