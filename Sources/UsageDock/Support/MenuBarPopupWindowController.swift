@@ -136,10 +136,14 @@ final class MenuBarPopupWindowController: NSWindowController {
         }
         if activateForVisualTesting {
             NSApp.activate(ignoringOtherApps: true)
-            window.makeKeyAndOrderFront(nil)
-        } else {
-            window.orderFrontRegardless()
         }
+        // Always open as the key window, not merely front. macOS renders
+        // Liquid Glass and materials in a flat, opaque fallback inside windows
+        // it considers inactive — `orderFrontRegardless()` left the panel in
+        // that state on every real status-item click, so the popup only ever
+        // showed its glass in activated test runs. A nonactivating panel can
+        // take key status without stealing the app-level focus.
+        window.makeKeyAndOrderFront(nil)
         installEventMonitors()
 
         // SwiftUI reports its measured scroll height on the next update pass.
@@ -238,110 +242,140 @@ final class MenuBarPopupWindowController: NSWindowController {
 /// bezel: the beak, the shell clip and the shell rim. Keeping all three here
 /// means the rim is scoped to the one surface that lacks a system frame — the
 /// floating widget and the macOS 14/15 popover keep theirs.
+///
+/// All three are now described by a single closed path
+/// (`MenuBarPopupShellShape`): backdrop, clip and rim cannot drift apart, and
+/// the beak reads as part of the shell rather than a triangle stacked on top.
 private struct MenuBarPopupChrome<Content: View>: View {
-    static var shellCornerRadius: CGFloat { 14 }
-
     @ObservedObject var model: MenuBarPopupChromeModel
     @ObservedObject private var preferences: PreferencesStore = .shared
     @ViewBuilder let content: () -> Content
 
     var body: some View {
-        VStack(spacing: 0) {
-            GeometryReader { proxy in
-                MenuBarPopupArrow(
-                    backdropOpacity: preferences.popoverBackgroundOpacity,
-                    glassStyle: preferences.popoverGlassStyle
-                )
-                .frame(width: 24, height: 12)
-                .position(
-                    x: min(max(model.arrowCenterX, 12), proxy.size.width - 12),
-                    y: 6
-                )
-            }
-            .frame(height: 11)
-            // The beak overhangs the shell by 1pt. Drawing it above the body
-            // lets the two merge into one silhouette instead of stacking two
-            // outlined shapes.
-            .zIndex(1)
-
-            content()
-                .clipShape(
-                    RoundedRectangle(
-                        cornerRadius: Self.shellCornerRadius,
-                        style: .continuous
-                    )
-                )
-                .usageDockPopoverShell(
-                    cornerRadius: Self.shellCornerRadius,
-                    glassStyle: preferences.popoverGlassStyle
-                )
-        }
+        let shape = MenuBarPopupShellShape(beakCenterX: model.arrowCenterX)
+        content()
+            // The shell silhouette knows about the beak; the content does not.
+            // Let the chrome own the whole backdrop so the glass covers both.
+            .environment(\.usageDockPopoverShellProvidesBackdrop, true)
+            // The beak overhangs the shell body by 1pt, so the reserved band
+            // above the content stays 11pt exactly as before.
+            .padding(.top, MenuBarPopupShellShape.beakOverhang)
+            .usageDockPopoverShellBackdrop(
+                shape: shape,
+                backdropOpacity: preferences.popoverBackgroundOpacity,
+                glassStyle: preferences.popoverGlassStyle
+            )
+            .clipShape(shape)
+            .usageDockPopoverShell(
+                shape: shape,
+                glassStyle: preferences.popoverGlassStyle
+            )
     }
 }
 
-private struct MenuBarPopupArrow: View {
-    let backdropOpacity: Double
-    let glassStyle: PopoverGlassStyle
+/// The popup's whole silhouette — shell body plus beak — as one closed path.
+///
+/// The beak is not a triangle sitting on the shell: its apex is rounded and
+/// each side meets the shell's top edge through a tangent fillet, so the
+/// outline swells out of the top edge the way a native popover's does. One
+/// path serves `glassEffect(in:)`, `clipShape` and the rim `strokeBorder`,
+/// which is what removes the seam and the double edge of the old two-layer
+/// construction.
+struct MenuBarPopupShellShape: InsettableShape {
+    /// Unchanged from the two-layer chrome: shell 14 → card 13 → control 9.
+    static let cornerRadius: CGFloat = 14
+    static let beakWidth: CGFloat = 24
+    static let beakHeight: CGFloat = 12
+    /// Height of the band the beak occupies above the shell body. The beak
+    /// overhangs the body by 1pt so the two overlap instead of abutting.
+    static let beakOverhang: CGFloat = beakHeight - 1
+    /// Flattens the apex without turning it into a dome.
+    static let apexCornerRadius: CGFloat = 3.5
+    /// Tangent fillet where each beak side meets the shell's top edge.
+    static let junctionCornerRadius: CGFloat = 6
+    /// How far the beak's footprint reaches into the shell body. Only ever
+    /// consumed by the union below, never visible.
+    private static let beakRootDepth: CGFloat = 8
 
-    @Environment(\.accessibilityReduceMotion)
-    private var reduceMotion
+    var beakCenterX: CGFloat
+    var inset: CGFloat = 0
 
-    var body: some View {
-        ZStack {
-            MenuBarPopupArrowShape()
-                .fill(.ultraThinMaterial)
-                .opacity(
-                    glassStyle == .clear
-                        ? 0
-                        : UsageDockPopoverAppearance.backdropMaterialOpacity(
-                            backdropOpacity: backdropOpacity
-                        )
-                )
-            MenuBarPopupArrowShape()
-                .fill(DashboardTheme.canvas.opacity(backdropOpacity))
-            // The beak sits at the top of the object, where the shell rim is at
-            // its specular end. Matching that single value keeps body and beak
-            // reading as one continuous edge; the previous black+white pair made
-            // the beak a separately drawn triangle.
-            MenuBarPopupArrowOutline()
-                .stroke(
-                    Color.white.opacity(
-                        UsageDockPopoverAppearance.shellRimHighlightOpacity(
-                            glassStyle: glassStyle
-                        )
-                    ),
-                    style: StrokeStyle(lineWidth: 1, lineCap: .round, lineJoin: .round)
-                )
-        }
-        .accessibilityHidden(true)
-        .animation(
-            reduceMotion
-                ? nil
-                : .easeInOut(
-                    duration: UsageDockPopoverAppearance.materialTransitionDuration
-                ),
-            value: glassStyle
+    func inset(by amount: CGFloat) -> MenuBarPopupShellShape {
+        var copy = self
+        copy.inset += amount
+        return copy
+    }
+
+    func path(in rect: CGRect) -> Path {
+        let shellRect = CGRect(
+            x: rect.minX + inset,
+            y: rect.minY + Self.beakOverhang + inset,
+            width: rect.width - (inset * 2),
+            height: rect.height - Self.beakOverhang - (inset * 2)
         )
+        let radius = max(Self.cornerRadius - inset, 0)
+        let body = Path(
+            roundedRect: shellRect,
+            cornerSize: CGSize(width: radius, height: radius),
+            style: .continuous
+        )
+        guard
+            shellRect.width > (Self.cornerRadius * 2),
+            shellRect.height > Self.beakRootDepth,
+            let beak = beakPath(in: rect, shellRect: shellRect)
+        else { return body }
+        return body.union(beak)
     }
-}
 
-private struct MenuBarPopupArrowShape: Shape {
-    func path(in rect: CGRect) -> Path {
+    /// A closed region containing the beak plus a shallow root inside the shell
+    /// body, so the union with the body leaves only the beak's outer contour.
+    private func beakPath(in rect: CGRect, shellRect: CGRect) -> Path? {
+        let topEdgeY = shellRect.minY
+        // 24 × 12 puts both sides at 45°, so the beak's half-width at any
+        // height is that height times this slope.
+        let slope = (Self.beakWidth / 2) / Self.beakHeight
+        // Insetting a corner moves its apex along the bisector by
+        // inset / sin(half-angle).
+        let apexY = rect.minY + (inset * sqrt(1 + (slope * slope)) / slope)
+        let halfSpanAtTopEdge = (topEdgeY - apexY) * slope
+        guard halfSpanAtTopEdge > 0 else { return nil }
+
+        let junctionRadius = Self.junctionCornerRadius + inset
+        let apexRadius = max(Self.apexCornerRadius - inset, 0)
+        // Where the beak's footprint on the top edge ends. Generous: the run
+        // beyond the fillet's tangent point is collinear with the shell's own
+        // top edge, so the union discards it.
+        let halfFootprint = halfSpanAtTopEdge + junctionRadius
+
+        // `MenuBarPopupPlacement` still decides where the beak points; this only
+        // keeps its footprint off the shell's rounded corners, where a merged
+        // silhouette would grow a bump on the side instead of a crest on top.
+        // It engages nowhere a real status item can sit — a 380pt-wide popup
+        // would have to be clamped against a screen edge with the status item
+        // within 31pt of it — and only at positions where the old sharp
+        // triangle was already being drawn across a corner.
+        let clearance = Self.cornerRadius + halfFootprint
+        let centerX = min(
+            max(beakCenterX, shellRect.minX + clearance),
+            shellRect.maxX - clearance
+        )
+
+        let apex = CGPoint(x: centerX, y: apexY)
+        let leftJunction = CGPoint(x: centerX - halfSpanAtTopEdge, y: topEdgeY)
+        let rightJunction = CGPoint(x: centerX + halfSpanAtTopEdge, y: topEdgeY)
+        let rootLeft = CGPoint(x: centerX - halfFootprint, y: topEdgeY)
+        let rootRight = CGPoint(x: centerX + halfFootprint, y: topEdgeY)
+        let rootY = topEdgeY + Self.beakRootDepth
+
         var path = Path()
-        path.move(to: CGPoint(x: rect.midX, y: rect.minY))
-        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
-        path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+        path.move(to: rootLeft)
+        path.addArc(tangent1End: leftJunction, tangent2End: apex, radius: junctionRadius)
+        path.addArc(tangent1End: apex, tangent2End: rightJunction, radius: apexRadius)
+        path.addArc(tangent1End: rightJunction, tangent2End: rootRight, radius: junctionRadius)
+        path.addLine(to: rootRight)
+        path.addLine(to: CGPoint(x: rootRight.x, y: rootY))
+        path.addLine(to: CGPoint(x: rootLeft.x, y: rootY))
         path.closeSubpath()
-        return path
-    }
-}
-
-private struct MenuBarPopupArrowOutline: Shape {
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        path.move(to: CGPoint(x: rect.minX, y: rect.maxY))
-        path.addLine(to: CGPoint(x: rect.midX, y: rect.minY))
-        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
         return path
     }
 }

@@ -72,7 +72,7 @@ struct PopoverQuotaWidget: View {
     }
 
     var body: some View {
-        DashboardCard(padding: 13, cornerRadius: 13) {
+        DashboardCard(padding: 13, cornerRadius: 13, interactive: true) {
             VStack(alignment: .leading, spacing: isExpanded ? 11 : 8) {
                 PopoverWidgetHeader(
                     widget: widget,

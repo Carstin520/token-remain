@@ -8,7 +8,7 @@ struct AIFeedHotStoriesCard: View {
     let onViewAll: () -> Void
 
     var body: some View {
-        DashboardCard(padding: 13, cornerRadius: 13) {
+        DashboardCard(padding: 13, cornerRadius: 13, interactive: true) {
             VStack(alignment: .leading, spacing: 10) {
                 PopoverWidgetHeader(
                     widget: .aiFeed,
