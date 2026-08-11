@@ -215,6 +215,8 @@ nav .links a:hover{color:var(--text);text-decoration:none}
 .btn:active{transform:translateY(0)}
 .btn-primary{background:var(--cyan);color:var(--ink);border:1px solid var(--cyan)}
 .btn-primary:hover{background:#5CDAE8;box-shadow:0 8px 28px -10px color-mix(in srgb,var(--cyan) 55%,transparent)}
+.btn-testflight{background:color-mix(in srgb,var(--violet-dim) 18%,transparent);color:var(--text);border:1px solid var(--violet-dim)}
+.btn-testflight:hover{background:color-mix(in srgb,var(--violet-dim) 28%,transparent);border-color:var(--violet);color:var(--violet)}
 .btn-ghost{background:transparent;color:var(--text);border:1px solid var(--border)}
 .btn-ghost:hover{border-color:var(--cyan-dim);color:var(--cyan)}
 .btn svg{flex:none}
@@ -1002,7 +1004,7 @@ footer.site .disclaimer{
   <!-- ================= hero ================= -->
   <header class="hero" id="download">
     <div>
-      <span class="badge" data-i18n="h-badge"><span class="dot"></span>Version 1.3 · Public Mac release</span>
+      <span class="badge" data-i18n="h-badge"><span class="dot"></span>Version 1.3 · Mac release + iPhone beta</span>
       <h1 data-i18n="h-h1">Your AI quotas,<br><span class="accent">right in the menu bar</span>.</h1>
       <p class="sub" data-i18n="h-sub">
         Remaining quota and reset countdowns for <strong>Claude Code, Codex, Cursor, Windsurf, Grok, GLM</strong>
@@ -1012,6 +1014,10 @@ footer.site .disclaimer{
       <div class="cta-row">
         <a id="macDownloadButton" class="btn btn-primary" href="https://github.com/Carstin520/token-remain/releases/latest/download/TokenRemain.dmg">
           <span data-i18n="h-dl">Download for Mac</span>
+        </a>
+        <a id="testflightButton" class="btn btn-testflight" href="https://testflight.apple.com/join/DU3DrnhG" target="_blank" rel="noopener">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4.25" y="1.25" width="7.5" height="13.5" rx="1.8"/><path d="M6.5 3h3M7.2 12.8h1.6"/></svg>
+          <span data-i18n="h-ios">Join iPhone TestFlight</span>
         </a>
         <a class="btn btn-ghost" href="https://github.com/Carstin520/token-remain" rel="noopener">
           <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 .2a8 8 0 0 0-2.5 15.6c.4.1.5-.2.5-.4v-1.4c-2.2.5-2.7-1-2.7-1-.4-.9-.9-1.2-.9-1.2-.7-.5.1-.5.1-.5.8.1 1.2.9 1.2.9.7 1.2 1.9.9 2.4.7 0-.5.3-.9.5-1.1-1.8-.2-3.7-.9-3.7-4a3 3 0 0 1 .8-2.1c0-.2-.3-1 .1-2.1 0 0 .7-.2 2.2.8a7.5 7.5 0 0 1 4 0c1.5-1 2.2-.8 2.2-.8.4 1.1.1 1.9.1 2.1a3 3 0 0 1 .8 2.1c0 3.1-1.9 3.8-3.7 4 .3.3.6.8.6 1.5v2.2c0 .2.1.5.5.4A8 8 0 0 0 8 .2z"/></svg>
@@ -1023,7 +1029,7 @@ footer.site .disclaimer{
         <span>Universal (Apple Silicon + Intel)</span><span class="sep">·</span>
         <span id="releaseVersion" data-release-version="1.3.0" aria-live="polite">Version 1.3.0 · Universal Mac</span>
       </p>
-      <p class="releases-hint"><span data-i18n="h-hint">Signed with Developer ID and notarized by Apple.</span></p>
+      <p class="releases-hint"><span data-i18n="h-hint">Mac: Developer ID signed and notarized. iPhone beta: iOS 18+, with the Mac companion and the same iCloud account.</span></p>
     </div>
 
     <!-- ============ 3D stage · live popover, rendered in the browser ============ -->
@@ -1618,11 +1624,11 @@ footer.site .disclaimer{
 /* ---------- i18n: English inline (default), Chinese dictionary ---------- */
 var ZH={
   "nav-dl":"下载","nav-new":"1.3 新功能","nav-screens":"界面","nav-providers":"支持的服务","nav-feed":"AI 动态","nav-privacy":"隐私","nav-brand":"品牌","nav-policy":"隐私政策","nav-support":"支持","nav-limits":"限制",
-  "h-badge":"<span class=\"dot\"></span>1.3 正式版 · Mac 公开发布",
+  "h-badge":"<span class=\"dot\"></span>1.3 正式版 · Mac 发布 + iPhone 测试",
   "h-h1":"你的 AI 额度，<br><span class=\"accent\">常驻菜单栏</span>。",
   "h-sub":"一处看全 <strong>Claude Code、Codex、Cursor、Windsurf、Grok、GLM</strong> 等 <strong>21+ 服务</strong>的剩余额度与重置倒计时。Provider 凭证始终留在 Mac；启用 Apple 设备同步后，只有经过白名单过滤并使用 AES-256-GCM 加密的额度快照会通过你自己的 iCloud 账户传输。",
-  "h-dl":"下载 Mac 版","h-gh":"GitHub 仓库",
-  "h-hint":"使用 Developer ID 签名并通过 Apple 公证。",
+  "h-dl":"下载 Mac 版","h-ios":"加入 iPhone TestFlight","h-gh":"GitHub 仓库",
+  "h-hint":"Mac 版已签名并通过 Apple 公证；iPhone 测试版需 iOS 18+、Mac 伴侣 App 与同一 iCloud 账号。",
   "chip-grok":"Grok 周池",
   "pop-when":"4 分钟前更新",
   "pop-sev":"中","pop-ban1":"当前节奏可能提前用尽","pop-ban2":"Codex 剩余 29%",
