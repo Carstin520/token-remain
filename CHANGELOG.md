@@ -5,6 +5,23 @@ Versioning for public releases.
 
 ## Unreleased
 
+## 1.3.3 — 2026-08-12
+
+### Changed
+
+- Rebuild the macOS 26 menu-bar popup as one continuous Clear/Frosted Liquid
+  Glass silhouette, with a rounded beak, a readable opacity-controlled scrim,
+  and visible pointer feedback on popup cards.
+
+### Fixed
+
+- Keep the transparent popup interactive at every opacity so clicks and hover
+  states no longer pass through to the desktop or dismiss the popup.
+- Preserve the selected Clear or Frosted appearance when the popup is opened
+  from the real menu-bar item instead of a visual-test launch path.
+- Separate material choice from backdrop opacity so Frosted remains visibly
+  diffused and Clear remains crisply refractive across the slider range.
+
 ## 1.3.2 — 2026-08-11
 
 ### Changed
