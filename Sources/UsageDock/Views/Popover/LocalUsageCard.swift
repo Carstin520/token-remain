@@ -20,7 +20,7 @@ struct LocalUsageCard: View {
     }
 
     var body: some View {
-        DashboardCard(padding: 11, cornerRadius: 13) {
+        DashboardCard(padding: 11, cornerRadius: 13, interactive: true) {
             VStack(alignment: .leading, spacing: 7) {
                 PopoverWidgetHeader(
                     widget: .localUsage,

@@ -128,18 +128,140 @@ struct ThemeContrastTests {
 
     @Test("Transparent popup surfaces retain glass instead of a canvas tint")
     func transparentPopupSurfaceMapping() {
-        #expect(UsageDockPopoverAppearance.backdropMaterialOpacity(
-            backdropOpacity: 0
-        ) == UsageDockPopoverAppearance.minimumBackdropMaterialOpacity)
-        #expect(UsageDockPopoverAppearance.backdropMaterialOpacity(
-            backdropOpacity: 0.62
-        ) == 1)
         #expect(UsageDockPopoverAppearance.surfaceTintOpacity(backdropOpacity: 0) == 0)
         #expect(UsageDockPopoverAppearance.surfaceTintOpacity(backdropOpacity: 1) == 1)
         #expect(UsageDockPopoverAppearance.surfaceTintOpacity(backdropOpacity: -1) == 0)
         #expect(UsageDockPopoverAppearance.surfaceTintOpacity(backdropOpacity: 2) == 1)
-        #expect(!UsageDockPopoverAppearance.appliesSurfaceTint(backdropOpacity: 0))
-        #expect(UsageDockPopoverAppearance.appliesSurfaceTint(backdropOpacity: 0.01))
+    }
+
+    /// The popup's ink is a flat scrim, not a glass tint, and it never fully
+    /// clears. macOS hit-tests borderless transparent windows per pixel, and
+    /// `glassEffect` refraction lands outside the window's own backing store —
+    /// a shell with no scrim had alpha ≈ 0, so clicks fell through to the
+    /// desktop and the popup's outside-click monitor closed it on the user.
+    @Test("The popup scrim never falls below the click-through threshold")
+    func scrimFloorKeepsThePanelHittable() {
+        // The measured pass-through threshold is ≈0.05; the floor keeps clear
+        // margin over it for edge antialiasing and colour rounding.
+        #expect(UsageDockPopoverAppearance.minimumScrimOpacity >= 0.10)
+        for step in 0...100 {
+            let scrim = UsageDockPopoverAppearance.scrimOpacity(
+                backdropOpacity: Double(step) / 100
+            )
+            #expect(scrim >= UsageDockPopoverAppearance.minimumScrimOpacity)
+        }
+        // Out-of-range values are clamped, not passed through.
+        #expect(
+            UsageDockPopoverAppearance.scrimOpacity(backdropOpacity: -1)
+                == UsageDockPopoverAppearance.minimumScrimOpacity
+        )
+        #expect(UsageDockPopoverAppearance.scrimOpacity(backdropOpacity: 2) == 1)
+    }
+
+    /// The slider has to *look* like it does something. Spent as a tint on
+    /// `Glass.clear` it saturated — 66% and 30% were indistinguishable on
+    /// screen. A flat colour layer scales linearly, so above the floor the
+    /// scrim tracks the slider one-to-one.
+    @Test("The popup opacity slider maps linearly onto the scrim above its floor")
+    func scrimFollowsTheSliderLinearly() {
+        let floor = UsageDockPopoverAppearance.minimumScrimOpacity
+        for step in 0...100 {
+            let value = Double(step) / 100
+            guard value >= floor else { continue }
+            #expect(
+                abs(UsageDockPopoverAppearance.scrimOpacity(backdropOpacity: value) - value)
+                    < 0.0001
+            )
+        }
+        // Monotonic across the whole travel, and the shipped test positions are
+        // far enough apart to read as three different popups.
+        var previous = 0.0
+        for step in 0...100 {
+            let scrim = UsageDockPopoverAppearance.scrimOpacity(
+                backdropOpacity: Double(step) / 100
+            )
+            #expect(scrim >= previous)
+            previous = scrim
+        }
+        #expect(
+            UsageDockPopoverAppearance.scrimOpacity(backdropOpacity: 0.5)
+                - UsageDockPopoverAppearance.scrimOpacity(backdropOpacity: 0.1) >= 0.3
+        )
+        #expect(
+            UsageDockPopoverAppearance.scrimOpacity(backdropOpacity: 0.9)
+                - UsageDockPopoverAppearance.scrimOpacity(backdropOpacity: 0.5) >= 0.3
+        )
+    }
+
+    /// The two popup controls own two different parts of the popup: the Glass
+    /// style switch owns the material of the UI — card density included — and
+    /// the opacity slider owns only the shell scrim. Card tint is therefore a
+    /// per-style constant with no slider input at all.
+    @Test("Card density belongs to the glass style, not the slider")
+    func cardTintBelongsToTheStyle() {
+        // Inside the band the redesign spec allows: light enough to see the
+        // desktop through, heavy enough that the card is still a surface.
+        #expect(UsageDockPopoverAppearance.clearSurfaceTintCoefficient >= 0.35)
+        #expect(UsageDockPopoverAppearance.clearSurfaceTintCoefficient <= 0.5)
+
+        // Clear cards are a fixed fraction of the frosted reference density.
+        let frosted = UsageDockPopoverAppearance.cardTintOpacity(glassStyle: .frosted)
+        let clear = UsageDockPopoverAppearance.cardTintOpacity(glassStyle: .clear)
+        #expect(frosted == UsageDockPopoverAppearance.referenceBackdropOpacity)
+        #expect(
+            abs(
+                clear - frosted * UsageDockPopoverAppearance.clearSurfaceTintCoefficient
+            ) < 0.0001
+        )
+        #expect(clear < frosted)
+        // The Dashboard (nil style) keeps the frosted reference density.
+        #expect(UsageDockPopoverAppearance.cardTintOpacity(glassStyle: nil) == frosted)
+        // Both are real surfaces: never fully transparent, never opaque.
+        #expect(clear > 0.1)
+        #expect(frosted < 1)
+    }
+
+    /// Popup cards have to answer the pointer. `Glass.interactive()` is applied
+    /// as well, but its response is defined against the untinted native
+    /// material, so the explicit lift is what guarantees the state change is
+    /// visible in both glass styles.
+    @Test("Popup cards carry a visible but non-selecting pointer highlight")
+    func surfaceHighlightLift() {
+        // Both styles must answer the pointer; nil (the Dashboard window) never
+        // reaches this — its cards are not interactive.
+        for style in [PopoverGlassStyle.clear, .frosted] {
+            let lift = UsageDockPopoverAppearance.surfaceHighlightLift(glassStyle: style)
+            #expect(lift > 0)
+            // Far below an opaque wash in either style. Clear composites the
+            // overlay at its stated value, so its ceiling is the tight one.
+            #expect(lift < 0.5)
+        }
+        // Clear stays inside the design band directly; Frosted's glass transmits
+        // roughly an eighth of an overlay above it, so its nominal value has to
+        // be the larger of the two to render as the same lift.
+        #expect(UsageDockPopoverAppearance.clearSurfaceHighlightLift >= 0.04)
+        #expect(UsageDockPopoverAppearance.clearSurfaceHighlightLift <= 0.06)
+        #expect(
+            UsageDockPopoverAppearance.frostedSurfaceHighlightLift
+                > UsageDockPopoverAppearance.clearSurfaceHighlightLift
+        )
+        // A hover must not out-weigh the card's own resting presence, or the
+        // highlight reads as a selected state rather than a pointer response.
+        #expect(
+            UsageDockPopoverAppearance.clearSurfaceHighlightLift
+                < UsageDockPopoverAppearance.cardTintOpacity(glassStyle: .clear)
+        )
+        // Fast enough to feel attached to the pointer.
+        #expect(UsageDockPopoverAppearance.surfaceHighlightTransitionDuration <= 0.2)
+        #expect(UsageDockPopoverAppearance.surfaceHighlightTransitionDuration > 0)
+    }
+
+    @Test("Frosted retains its pre-redesign border curve")
+    func frostedBorderCurve() {
+        #expect(UsageDockPopoverAppearance.borderOpacity(backdropOpacity: -1) == 0.85)
+        #expect(UsageDockPopoverAppearance.borderOpacity(backdropOpacity: 0) == 0.85)
+        #expect(abs(UsageDockPopoverAppearance.borderOpacity(backdropOpacity: 1) - 0.45) < 0.0001)
+        #expect(abs(UsageDockPopoverAppearance.borderOpacity(backdropOpacity: 2) - 0.45) < 0.0001)
     }
 
     /// The regression this replaces: edge opacity was derived from the inverse
@@ -173,39 +295,6 @@ struct ThemeContrastTests {
             UsageDockPopoverAppearance.surfaceRimOpacity(glassStyle: .clear)
                 > UsageDockPopoverAppearance.surfaceRimOpacity(glassStyle: .frosted)
         )
-    }
-
-    /// A transparent card keeps a white *lift* instead of a canvas tint: tinting
-    /// toward the dark canvas is what previously made Clear cards near-black,
-    /// and no lift at all left the card as an empty outline.
-    @Test("Transparent cards keep a light material floor that hands off to the tint")
-    func surfaceLiftHandsOffToTint() {
-        #expect(
-            UsageDockPopoverAppearance.surfaceLiftOpacity(backdropOpacity: 0)
-                == UsageDockPopoverAppearance.minimumSurfaceLift
-        )
-        #expect(UsageDockPopoverAppearance.minimumSurfaceLift < 0.1)
-        // Fully handed off once the ink tint reaches its reference strength, so
-        // the two never stack into a muddy surface.
-        #expect(
-            UsageDockPopoverAppearance.surfaceLiftOpacity(
-                backdropOpacity: UsageDockPopoverAppearance.referenceBackdropOpacity
-            ) == 0
-        )
-        #expect(UsageDockPopoverAppearance.surfaceLiftOpacity(backdropOpacity: 1) == 0)
-        #expect(UsageDockPopoverAppearance.surfaceLiftOpacity(backdropOpacity: -1)
-            == UsageDockPopoverAppearance.minimumSurfaceLift)
-
-        // Continuous: no step between the transparent end and the reference.
-        var previous = UsageDockPopoverAppearance.surfaceLiftOpacity(backdropOpacity: 0)
-        for step in 1...62 {
-            let lift = UsageDockPopoverAppearance.surfaceLiftOpacity(
-                backdropOpacity: Double(step) / 100
-            )
-            #expect(lift <= previous)
-            #expect(previous - lift < 0.01)
-            previous = lift
-        }
     }
 
     @Test("Popover glass choices map to distinct native surface styles")

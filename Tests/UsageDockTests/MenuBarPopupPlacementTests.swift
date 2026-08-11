@@ -49,3 +49,73 @@ struct MenuBarPopupPlacementTests {
         #expect(rightPlacement.arrowCenterX == 364)
     }
 }
+
+/// The shell and the beak are one closed path, which is what lets the backdrop
+/// glass, the clip and the rim describe exactly the same edge. These guard the
+/// properties that a second, separately drawn triangle used to violate.
+@Suite("Menu bar popup shell shape")
+struct MenuBarPopupShellShapeTests {
+    private let bounds = CGRect(x: 0, y: 0, width: 380, height: 700)
+
+    private func shape(beakCenterX: CGFloat = 190) -> MenuBarPopupShellShape {
+        MenuBarPopupShellShape(beakCenterX: beakCenterX)
+    }
+
+    @Test("The silhouette is one path spanning shell and beak")
+    func unifiedSilhouette() {
+        let path = shape().path(in: bounds)
+        let box = path.boundingRect
+
+        #expect(!path.isEmpty)
+        #expect(abs(box.maxY - bounds.maxY) < 0.001)
+        // The beak rises above the shell's top edge…
+        #expect(box.minY < MenuBarPopupShellShape.beakOverhang)
+        // …but its apex is filleted, so it is a rounded crest, not a spike.
+        #expect(box.minY > bounds.minY)
+        #expect(box.minY < 2)
+    }
+
+    @Test("Only the beak occupies the band above the shell body")
+    func beakBandIsOtherwiseEmpty() {
+        let path = shape().path(in: bounds)
+        let aboveEdge = MenuBarPopupShellShape.beakOverhang - 3
+
+        #expect(path.contains(CGPoint(x: 190, y: aboveEdge)))
+        #expect(!path.contains(CGPoint(x: 60, y: aboveEdge)))
+        #expect(!path.contains(CGPoint(x: 320, y: aboveEdge)))
+        // Body corners stay rounded at the unchanged 14pt radius.
+        #expect(!path.contains(CGPoint(x: 1, y: MenuBarPopupShellShape.beakOverhang + 1)))
+        #expect(path.contains(CGPoint(x: 190, y: MenuBarPopupShellShape.beakOverhang + 1)))
+    }
+
+    @Test("The beak tracks its center and stays clear of the shell corners")
+    func beakTracksCenter() {
+        for centerX in stride(from: CGFloat(40), through: 340, by: 20) {
+            let path = shape(beakCenterX: centerX).path(in: bounds)
+            let aboveEdge = MenuBarPopupShellShape.beakOverhang - 3
+            #expect(path.contains(CGPoint(x: centerX, y: aboveEdge)))
+        }
+
+        // Beyond the corners the beak is held back rather than drawn over the
+        // rounded corner, so the silhouette never grows a bump on its side.
+        for centerX in [CGFloat(-40), 0, 380, 420] {
+            let path = shape(beakCenterX: centerX).path(in: bounds)
+            #expect(path.boundingRect.minX >= bounds.minX)
+            #expect(path.boundingRect.maxX <= bounds.maxX)
+            #expect(path.boundingRect.minY < MenuBarPopupShellShape.beakOverhang)
+        }
+    }
+
+    @Test("Insetting keeps the rim inside the silhouette it strokes")
+    func insetStaysInside() {
+        let outer = shape().path(in: bounds)
+        let inner = shape().inset(by: 0.5).path(in: bounds)
+
+        #expect(inner.boundingRect.minX > outer.boundingRect.minX)
+        #expect(inner.boundingRect.maxX < outer.boundingRect.maxX)
+        #expect(inner.boundingRect.minY > outer.boundingRect.minY)
+        #expect(inner.boundingRect.maxY < outer.boundingRect.maxY)
+        // Still one continuous silhouette, beak included.
+        #expect(inner.contains(CGPoint(x: 190, y: MenuBarPopupShellShape.beakOverhang - 3)))
+    }
+}

@@ -6,17 +6,80 @@ struct DashboardCard<Content: View>: View {
     var padding: CGFloat = 14
     var cornerRadius: CGFloat = 15
     var background: Color = DashboardTheme.surface
+    /// Menu-bar popup cards only. The Dashboard window is a dense grid of
+    /// panels where a per-panel pointer response would be constant noise; the
+    /// popup's cards are few, large and sit on glass, where the same response
+    /// reads as the surface picking up the pointer.
+    var interactive: Bool = false
     @ViewBuilder var content: () -> Content
 
+    @Environment(\.accessibilityReduceMotion)
+    private var reduceMotion
+    @Environment(\.usageDockPopoverGlassStyle)
+    private var popoverGlassStyle
+    @State private var isPointerInside = false
+
     var body: some View {
-        content()
-            .padding(padding)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .usageDockGlassSurface(
-                cornerRadius: cornerRadius,
-                fallbackBackground: background
-            )
-            .pixelTicks(cornerRadius: cornerRadius)
+        pointerResponse(
+            content()
+                .padding(padding)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .usageDockGlassSurface(
+                    cornerRadius: cornerRadius,
+                    interactive: interactive,
+                    fallbackBackground: background
+                )
+        )
+        .pixelTicks(cornerRadius: cornerRadius)
+    }
+
+    /// `Glass.interactive()` is applied to the surface as well, but its
+    /// response is defined against the native untinted material and the popup's
+    /// cards carry a dark ink tint on top of it — measured on both styles, the
+    /// effect does not survive that. This lift is the guaranteed half of the
+    /// pair: a plain brighten, unmistakable in both glass styles and on the
+    /// pre-26 fallback surface. A press happens with the pointer already
+    /// inside, so one highlighted state covers hover and press alike.
+    @ViewBuilder
+    private func pointerResponse(_ card: some View) -> some View {
+        if interactive {
+            let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            card
+                .overlay {
+                    // macOS 26 only: pre-26 cards are a flat dark surface with
+                    // no glass to compose against, and their fallback path is
+                    // deliberately left as it shipped.
+                    if #available(macOS 26.0, *) {
+                        shape
+                            .fill(
+                                Color.white.opacity(
+                                    isPointerInside
+                                        ? UsageDockPopoverAppearance.surfaceHighlightLift(
+                                            glassStyle: popoverGlassStyle
+                                        )
+                                        : 0
+                                )
+                            )
+                            .allowsHitTesting(false)
+                    }
+                }
+                .animation(
+                    reduceMotion
+                        ? nil
+                        : .easeInOut(
+                            duration: UsageDockPopoverAppearance
+                                .surfaceHighlightTransitionDuration
+                        ),
+                    value: isPointerInside
+                )
+                // A card is mostly empty space between its labels, and hover
+                // tracking follows the hit-test shape, not the drawn frame —
+                // without this the highlight only appeared over the text.
+                .contentShape(shape)
+                .onHover { isPointerInside = $0 }
+        } else {
+            card
+        }
     }
 }
 
