@@ -51,7 +51,13 @@ struct CodexAccountLoginService: Sendable {
                 base: ProcessInfo.processInfo.environment,
                 configurationDirectory: configurationDirectory
             )
-            environment["PATH"] = Self.pathWithHints(environment["PATH"])
+            // GUI apps do not inherit the user's interactive shell PATH. Keep
+            // the resolved CLI's directory first so Node-based Codex installs
+            // (for example NVM) can also resolve their `node` interpreter.
+            environment["PATH"] = ProviderCLIExecutableResolver.launchPath(
+                existing: environment["PATH"],
+                executable: executable
+            )
             process.environment = environment
             if capturesOutput {
                 process.standardOutput = output
@@ -69,31 +75,15 @@ struct CodexAccountLoginService: Sendable {
         }.value
     }
 
-    private static func executable() -> URL? {
-        let fileManager = FileManager.default
-        let home = fileManager.homeDirectoryForCurrentUser.path
-        var candidates = [
-            "\(home)/.local/bin/codex",
-            "\(home)/.npm-global/bin/codex",
-            "/opt/homebrew/bin/codex",
-            "/usr/local/bin/codex"
-        ]
-        if let path = ProcessInfo.processInfo.environment["PATH"] {
-            candidates += path.split(separator: ":").map { "\($0)/codex" }
-        }
-        return candidates.first(where: fileManager.isExecutableFile(atPath:))
-            .map(URL.init(fileURLWithPath:))
-    }
-
-    private static func pathWithHints(_ existing: String?) -> String {
-        let home = FileManager.default.homeDirectoryForCurrentUser.path
-        let hints = [
-            "\(home)/.local/bin", "\(home)/.npm-global/bin",
-            "/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin"
-        ]
-        let current = existing?.split(separator: ":").map(String.init) ?? []
-        return Array(NSOrderedSet(array: hints + current))
-            .compactMap { $0 as? String }
-            .joined(separator: ":")
+    static func executable(
+        homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser,
+        environment: [String: String] = ProcessInfo.processInfo.environment
+    ) -> URL? {
+        ProviderCLIExecutableResolver.resolve(
+            named: "codex",
+            appBundleName: "Codex",
+            homeDirectory: homeDirectory,
+            environment: environment
+        )
     }
 }

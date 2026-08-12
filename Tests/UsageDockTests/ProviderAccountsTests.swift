@@ -131,6 +131,69 @@ struct ProviderAccountsTests {
         #expect(!FileManager.default.fileExists(atPath: directory))
     }
 
+    @Test("Codex CLI discovery supports NVM installs outside a GUI app PATH")
+    func codexCLIResolutionFindsNVMInstall() throws {
+        let home = FileManager.default.temporaryDirectory
+            .appending(path: "tokenremain-codex-cli-\(UUID().uuidString)", directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: home) }
+        let bin = home
+            .appending(path: ".nvm/versions/node/v24.11.0/bin", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: bin, withIntermediateDirectories: true)
+        let codex = bin.appending(path: "codex", directoryHint: .notDirectory)
+        try Data("#!/usr/bin/env node\n".utf8).write(to: codex)
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0o755],
+            ofItemAtPath: codex.path
+        )
+
+        let resolved = try #require(CodexAccountLoginService.executable(
+            homeDirectory: home,
+            environment: ["PATH": "/usr/bin:/bin"]
+        ))
+
+        #expect(
+            resolved.resolvingSymlinksInPath().path
+                == codex.resolvingSymlinksInPath().path
+        )
+        let launchPath = ProviderCLIExecutableResolver.launchPath(
+            existing: "/usr/bin:/bin",
+            executable: resolved,
+            homeDirectory: home
+        )
+        let firstLaunchDirectory = try #require(
+            launchPath.split(separator: ":").first.map(String.init)
+        )
+        #expect(
+            URL(fileURLWithPath: firstLaunchDirectory).resolvingSymlinksInPath().path
+                == bin.resolvingSymlinksInPath().path
+        )
+    }
+
+    @Test("Claude CLI discovery supports NVM installs outside a GUI app PATH")
+    func claudeCLIResolutionFindsNVMInstall() throws {
+        let home = FileManager.default.temporaryDirectory
+            .appending(path: "tokenremain-claude-cli-\(UUID().uuidString)", directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: home) }
+        let bin = home
+            .appending(path: ".nvm/versions/node/v22.20.0/bin", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: bin, withIntermediateDirectories: true)
+        let claude = bin.appending(path: "claude", directoryHint: .notDirectory)
+        try Data("#!/usr/bin/env node\n".utf8).write(to: claude)
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0o755],
+            ofItemAtPath: claude.path
+        )
+
+        let resolved = try #require(ClaudeAccountLoginService.claudeExecutable(
+            homeDirectory: home,
+            environment: ["PATH": "/usr/bin:/bin"]
+        ))
+        #expect(
+            resolved.resolvingSymlinksInPath().path
+                == claude.resolvingSymlinksInPath().path
+        )
+    }
+
     @Test("Managed Claude environments remove inherited routing and API credentials")
     func managedClaudeEnvironmentIsolation() {
         let directory = URL(fileURLWithPath: "/tmp/tokenremain-claude-account")

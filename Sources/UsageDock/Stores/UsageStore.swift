@@ -62,6 +62,10 @@ final class UsageStore: ObservableObject {
     func accountManagementNotice(for provider: ProviderQuota.Provider) -> String? {
         accountManagementNotices[provider]
     }
+
+    func clearAccountManagementNotice(for provider: ProviderQuota.Provider) {
+        accountManagementNotices[provider] = nil
+    }
     @Published private(set) var daily: DailyUsage?
     @Published private(set) var history: DailyUsageHistory?
     @Published private(set) var quotaUsageHistory: QuotaUsageHistory = .empty
@@ -1100,6 +1104,47 @@ final class UsageStore: ObservableObject {
     func renameProviderAccount(_ id: ProviderAccountID, to displayName: String) {
         providerAccountsStore.rename(id, to: displayName)
         providerAccountProfiles = providerAccountsStore.allProfiles
+    }
+
+    /// Replaces a managed account credential only after the provider accepts
+    /// it. The previous Keychain item remains untouched when validation fails.
+    @discardableResult
+    func updateProviderAccountCredential(
+        _ id: ProviderAccountID,
+        credential: String
+    ) async -> Bool {
+        guard let profile = providerAccountProfiles.first(where: { $0.id == id }),
+              profile.kind == .managed,
+              profile.credentialKind == .keychainSecret else { return false }
+        let normalized = credential.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalized.isEmpty else { return false }
+
+        accountManagementNotices[profile.provider] = nil
+        var state = providerAccountStates[id] ?? ProviderAccountState()
+        state.isRefreshing = true
+        providerAccountStates[id] = state
+        do {
+            let quota = try await ProviderAccountFetchService().fetch(
+                profile,
+                credentialOverride: normalized
+            )
+            try ProviderAccountSecretStore(
+                provider: profile.provider,
+                accountID: profile.id
+            ).save(normalized)
+            state.quota = quota
+            state.notice = nil
+            state.isRefreshing = false
+            providerAccountStates[id] = state
+            providerAccountQuotaCache.save(currentProviderAccountQuotas())
+            return true
+        } catch {
+            state.isRefreshing = false
+            state.notice = error.localizedDescription
+            providerAccountStates[id] = state
+            accountManagementNotices[profile.provider] = error.localizedDescription
+            return false
+        }
     }
 
     func setProviderAccountEnabled(_ enabled: Bool, id: ProviderAccountID) {
