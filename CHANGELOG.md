@@ -5,6 +5,23 @@ Versioning for public releases.
 
 ## Unreleased
 
+## 1.3.4 — 2026-08-12
+
+### Changed
+
+- Move popup appearance controls into an inline editor inside the live menu-bar
+  popup, so Clear/Frosted glass and backdrop opacity can be judged against the
+  content and desktop they affect.
+- Keep launch-at-login, Dashboard settings, restart and quit actions directly
+  reachable from the popup while removing the duplicate appearance card from
+  Dashboard settings.
+
+### Fixed
+
+- Present the inline settings editor as a stable overlay outside the live
+  Liquid Glass container, avoiding the macOS 26 recursive glass-transition
+  crash while the popup is open.
+
 ## 1.3.3 — 2026-08-12
 
 ### Changed

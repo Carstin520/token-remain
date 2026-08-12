@@ -1,10 +1,9 @@
 import AppKit
 import SwiftUI
 
-/// Popover footer: primary "Open Dashboard" link plus a compact settings menu
-/// and Quit. The menu keeps every legacy action reachable from the menu bar —
-/// launch-at-login, restart and Dashboard settings — matching the V2 layout
-/// without crowding the popover.
+/// Popover footer: primary "Open Dashboard" link, inline popup settings and
+/// Quit. The expandable panel keeps launch-at-login, restart and Dashboard
+/// settings reachable while appearance changes remain visible in context.
 ///
 /// The three actions are seated on their own compact glass surfaces rather than
 /// left as bare labels. At low popup opacity bare labels read as text lying on
@@ -13,63 +12,69 @@ import SwiftUI
 /// while staying far lighter than a full-width card would be.
 struct PopoverFooter: View {
     @ObservedObject var launchAtLogin: LaunchAtLoginManager
+    @ObservedObject var preferences: PreferencesStore = .shared
     let onOpenDashboard: (DashboardSection) -> Void
+    /// Owned by the popup root: the editor floats above the whole glass
+    /// container, so presentation cannot live inside this footer.
+    @Binding var isSettingsPresented: Bool
 
     var body: some View {
-        UsageDockGlassGroup(spacing: 6) {
-            HStack(spacing: 6) {
-                Button {
-                    onOpenDashboard(.overview)
-                } label: {
-                    Text(L10n.text("action.open_dashboard"))
-                        .font(.system(size: 12, weight: .semibold))
-                        .usageDockAdaptiveForeground(.primary)
-                        .commandLabelPadding()
-                }
-                .buttonStyle(.plain)
-                .commandSurface()
-                .help(L10n.text("action.open_dashboard_help"))
+        VStack(spacing: 10) {
+            UsageDockGlassGroup(spacing: 6) {
+                HStack(spacing: 6) {
+                    Button {
+                        onOpenDashboard(.overview)
+                    } label: {
+                        Text(L10n.text("action.open_dashboard"))
+                            .font(.system(size: 12, weight: .semibold))
+                            .usageDockAdaptiveForeground(.primary)
+                            .commandLabelPadding()
+                    }
+                    .buttonStyle(.plain)
+                    .commandSurface()
+                    .help(L10n.text("action.open_dashboard_help"))
 
-                Spacer(minLength: 8)
+                    Spacer(minLength: 8)
 
-                Menu {
-                    Toggle(L10n.text("action.launch_at_login"), isOn: launchAtLoginBinding)
-                    Divider()
-                    Button(L10n.text("action.open_dashboard_settings")) { onOpenDashboard(.settings) }
-                    Button(L10n.text("action.restart_app")) { launchAtLogin.restart() }
-                } label: {
-                    Text(L10n.text("action.settings"))
-                        .font(.system(size: 11))
-                        .usageDockAdaptiveForeground(.secondary)
-                        .commandLabelPadding()
-                }
-                .menuStyle(.borderlessButton)
-                .menuIndicator(.hidden)
-                .fixedSize()
-                .usageDockAdaptiveTint(.secondary)
-                .commandSurface()
-                .accessibilityLabel(L10n.text("action.settings"))
+                    Button {
+                        isSettingsPresented.toggle()
+                    } label: {
+                        Text(L10n.text("action.settings"))
+                            .font(.system(size: 11))
+                            .usageDockAdaptiveForeground(.secondary)
+                            .commandLabelPadding()
+                    }
+                    .buttonStyle(.plain)
+                    .fixedSize()
+                    .commandSurface()
+                    .accessibilityLabel(L10n.text("action.settings"))
+                    .accessibilityAddTraits(isSettingsPresented ? .isSelected : [])
 
-                Button {
-                    NSApplication.shared.terminate(nil)
-                } label: {
-                    Text(L10n.text("action.quit"))
-                        .font(.system(size: 11))
-                        .usageDockAdaptiveForeground(.secondary)
-                        .commandLabelPadding()
+                    Button {
+                        NSApplication.shared.terminate(nil)
+                    } label: {
+                        Text(L10n.text("action.quit"))
+                            .font(.system(size: 11))
+                            .usageDockAdaptiveForeground(.secondary)
+                            .commandLabelPadding()
+                    }
+                    .buttonStyle(.plain)
+                    .commandSurface()
+                    .help(L10n.text("action.quit_app"))
                 }
-                .buttonStyle(.plain)
-                .commandSurface()
-                .help(L10n.text("action.quit_app"))
             }
         }
-    }
-
-    private var launchAtLoginBinding: Binding<Bool> {
-        Binding(
-            get: { launchAtLogin.isEnabled },
-            set: { launchAtLogin.setEnabled($0) }
-        )
+        .onAppear {
+#if DEBUG
+            // Visual-QA companion to the app's existing `--open-popover`
+            // launch hook. It avoids UI automation having to activate this
+            // intentionally nonactivating panel before it can inspect the
+            // live editor.
+            if ProcessInfo.processInfo.arguments.contains("--open-popup-settings") {
+                isSettingsPresented = true
+            }
+#endif
+        }
     }
 }
 

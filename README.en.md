@@ -11,12 +11,12 @@ Remaining quota, reset countdowns and today's cost for Claude Code, Codex, Curso
 ![macOS](https://img.shields.io/badge/macOS-14%2B_Sonoma-000?logo=apple&logoColor=white)
 ![Universal](https://img.shields.io/badge/Universal-Apple_Silicon_%2B_Intel-7C5CFF)
 ![Notarized](https://img.shields.io/badge/Apple-Notarized-34C759?logo=apple&logoColor=white)
-![Latest](https://img.shields.io/badge/latest-v1.3.3-22D3EE)
+![Latest](https://img.shields.io/badge/latest-v1.3.4-22D3EE)
 ![License](https://img.shields.io/badge/license-Apache--2.0-8A94A6)
 
 ### [⬇️ Download TokenRemain.dmg](https://tokenremain.com)
 
-<sub>`v1.3.3` · build 30 · Universal (Apple Silicon + Intel) · macOS 14+</sub>
+<sub>`v1.3.4` · build 31 · Universal (Apple Silicon + Intel) · macOS 14+</sub>
 
 [Website](https://tokenremain.com) · [Privacy Policy](https://tokenremain.com/privacy) · [Support](https://tokenremain.com/support) · [Report an issue](https://github.com/Carstin520/token-remain/issues) · [Changelog](CHANGELOG.md)
 

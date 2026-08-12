@@ -17,6 +17,8 @@ struct UsageMenuView: View {
 
     @State private var measuredHeight: CGFloat = 700
     @State private var reorderInteraction = DirectReorderInteraction<PopoverWidget>()
+    @State private var isSettingsPresented = false
+    @State private var footerHeight: CGFloat = 0
 
     private var insights: UsageInsights {
         UsageInsights(
@@ -80,7 +82,16 @@ struct UsageMenuView: View {
 
                     Divider().usageDockPopoverSeparator().padding(.top, 1)
 
-                    PopoverFooter(launchAtLogin: launchAtLogin, onOpenDashboard: onOpenDashboard)
+                    PopoverFooter(
+                        launchAtLogin: launchAtLogin,
+                        onOpenDashboard: onOpenDashboard,
+                        isSettingsPresented: $isSettingsPresented
+                    )
+                    .onGeometryChange(for: CGFloat.self) { proxy in
+                        proxy.size.height
+                    } action: { height in
+                        footerHeight = height
+                    }
                 }
                 .padding(16)
                 .background(
@@ -97,6 +108,29 @@ struct UsageMenuView: View {
         .scrollDisabled(reorderInteraction.isActive)
         .frame(width: 380)
         .frame(height: min(measuredHeight, maxHeight))
+        // The settings editor floats over the whole popup, OUTSIDE the
+        // GlassEffectContainer. Two reasons this is not laid out in flow:
+        // inserting it resized the popup and re-laying the live glass
+        // container recursed inside the system's glass transition machinery
+        // until the stack guard killed the process (EXC_BAD_ACCESS in
+        // DesignLibrary / glassTransitionState); and inside the container the
+        // glass card surfaces composite above flat siblings, drawing over the
+        // panel. Anchored to the popup's bottom, seated 10pt above the
+        // footer's command row.
+        .overlay(alignment: .bottom) {
+            if isSettingsPresented {
+                PopoverSettingsPanel(
+                    launchAtLogin: launchAtLogin,
+                    preferences: preferences,
+                    onOpenDashboard: onOpenDashboard,
+                    onClose: { isSettingsPresented = false }
+                )
+                .padding(.horizontal, 16)
+                .padding(.bottom, footerHeight + 16 + 10)
+                .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.16), value: isSettingsPresented)
         .background {
             UsageDockCanvasBackground(
                 inkOpacity: preferences.popoverBackgroundOpacity,
