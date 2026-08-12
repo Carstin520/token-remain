@@ -5,6 +5,22 @@ Versioning for public releases.
 
 ## Unreleased
 
+## 1.3.5 — 2026-08-12
+
+### Added
+
+- Guide users through adding isolated Codex and Claude accounts with CLI
+  readiness checks, official installation help, and explicit browser sign-in.
+- Add reusable credential setup and update guidance for Keychain-managed
+  provider accounts, including short-lived Antigravity credentials.
+
+### Fixed
+
+- Discover Codex and Claude CLIs installed through NVM and other common Node
+  version managers when TokenRemain starts from the macOS GUI environment.
+- Keep the default provider account available when an optional CLI is missing,
+  and validate replacement credentials before changing the saved Keychain item.
+
 ## 1.3.4 — 2026-08-12
 
 ### Changed
