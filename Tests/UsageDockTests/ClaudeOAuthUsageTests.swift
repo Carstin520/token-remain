@@ -49,6 +49,35 @@ struct ClaudeOAuthUsageParserTests {
         #expect(fable.window.windowMinutes == 10_080)
     }
 
+    @Test("Parses Fable from the structured limits schema when the legacy key is absent")
+    func parsesStructuredLimitsFableWindow() throws {
+        let payload = """
+        {
+          "limits": [
+            {"kind":"session","group":"session","percent":7,"resets_at":"2026-08-13T04:00:00Z"},
+            {"kind":"weekly_all","group":"weekly","percent":57,"resets_at":"2026-08-14T05:00:00Z"},
+            {"kind":"weekly_notice","group":"weekly","percent":100,"label":"Learn more about usage limits"},
+            {
+              "kind":"weekly_scoped",
+              "group":"weekly",
+              "percent":98,
+              "resets_at":"2026-08-14T05:00:00Z",
+              "scope":{"model":{"id":null,"display_name":"Fable"},"surface":null}
+            }
+          ]
+        }
+        """
+
+        let quota = try ClaudeOAuthUsageParser.parse(Data(payload.utf8))
+        let fable = try #require(quota.fableWindow)
+
+        #expect(quota.primary.usedPercent == 7)
+        #expect(quota.secondary?.usedPercent == 57)
+        #expect(quota.uniqueScopedWindows.map(\.scopeID) == ["fable"])
+        #expect(fable.window.usedPercent == 98)
+        #expect(fable.window.resetsAt == quota.secondary?.resetsAt)
+    }
+
     @Test("CLI scoped quota supplements API values without replacing them")
     func mergesCLIScopedQuotaIntoAPIQuota() throws {
         let api = try ClaudeOAuthUsageParser.parse(
@@ -120,6 +149,37 @@ struct ClaudeOAuthUsageParserTests {
                         usedPercent: 67,
                         windowMinutes: 10_080,
                         resetsAt: now.addingTimeInterval(-1)
+                    )
+                )
+            ]
+        )
+
+        let retained = api.retainingActiveScopedWindows(from: previous, now: now)
+
+        #expect(retained.fableWindow == nil)
+    }
+
+    @Test("A stale Fable snapshot is dropped even when its reset remains in the future")
+    func dropsStaleFableWithFutureReset() throws {
+        let now = Date(timeIntervalSince1970: 1_784_000_000)
+        let api = try ClaudeOAuthUsageParser.parse(
+            Data(#"{"five_hour":{"utilization":12},"seven_day":{"utilization":34}}"#.utf8),
+            now: now
+        )
+        let previous = ProviderQuota(
+            provider: .claude,
+            primary: api.primary,
+            secondary: api.secondary,
+            planName: api.planName,
+            capturedAt: now.addingTimeInterval(-901),
+            scopedWindows: [
+                ScopedQuotaWindow(
+                    scopeID: "fable",
+                    displayName: "Fable",
+                    window: QuotaWindow(
+                        usedPercent: 0,
+                        windowMinutes: 10_080,
+                        resetsAt: now.addingTimeInterval(8 * 3_600 + 31 * 60)
                     )
                 )
             ]

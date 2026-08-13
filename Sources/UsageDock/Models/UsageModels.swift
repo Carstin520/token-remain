@@ -286,18 +286,23 @@ struct ProviderQuota: Sendable, Codable {
 
     /// A general account refresh can succeed while the secondary `/usage`
     /// probe temporarily omits model-scoped rows. Preserve the previous
-    /// window only while it still belongs to the current quota cycle; a newer
-    /// scoped value from this snapshot always wins in `mergingScopedWindows`.
+    /// window only while the source snapshot is younger than fifteen minutes
+    /// and still belongs to the current quota cycle. Per-window stale metadata
+    /// does not exist, so dropping an older value is safer than presenting it
+    /// as authoritative. A current scoped value still wins when merging.
     func retainingActiveScopedWindows(
         from previous: ProviderQuota,
         now: Date,
-        undatedRetention: TimeInterval = 86_400
+        staleRetention: TimeInterval = 900
     ) -> ProviderQuota {
+        guard now.timeIntervalSince(previous.capturedAt) < staleRetention else {
+            return self
+        }
         let active = previous.uniqueScopedWindows.filter { scoped in
             if let resetsAt = scoped.window.resetsAt {
                 return resetsAt > now
             }
-            return now.timeIntervalSince(previous.capturedAt) < undatedRetention
+            return true
         }
         return mergingScopedWindows(active)
     }

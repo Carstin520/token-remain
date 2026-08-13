@@ -1,0 +1,13 @@
+# Sanitized regression reconstruction of the reported `Weekly limits` screen,
+# using cursor/CR paint sequences observed in the live PTY capture.
+<ESC>[?25l<ESC>[H<CR><ESC>[3C<ESC>[2BPlan usage limits<ESC>[31GMax (5x)<CR>
+<ESC>[3C<ESC>[2BCurrent<ESC>[12Gsession<CR>
+<ESC>[3C<ESC>[1BResets in 3 hr 56 min<ESC>[55G7%<ESC>[58Gused<CR>
+<ESC>[3C<ESC>[2BWeekly<ESC>[11Glimits<CR>
+<ESC>[3C<ESC>[2B(i) Fable 5 is still included with your Max plan.<CR>
+<ESC>[3C<ESC>[1BIf you see a prompt to set up usage credits for it, restart Claude Code.<CR>
+<ESC>[3C<ESC>[1BLearn more about usage limits<CR>
+<ESC>[3C<ESC>[2BAll<ESC>[7Gmodels<CR>
+<ESC>[3C<ESC>[1BResets in 21 hr 26 min<ESC>[55G57%<ESC>[59Gused<CR>
+<ESC>[3C<ESC>[2BFable<CR>
+<ESC>[3C<ESC>[1BResets in 21 hr 26 min<ESC>[55G98%<ESC>[59Gused<CR>

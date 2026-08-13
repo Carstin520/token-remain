@@ -32,7 +32,8 @@ let package = Package(
         ),
         .testTarget(
             name: "UsageDockTests",
-            dependencies: ["UsageDock"]
+            dependencies: ["UsageDock"],
+            resources: [.copy("Fixtures")]
         )
     ]
 )
