@@ -23,6 +23,15 @@ cd "$ROOT_DIR"
 /usr/bin/grep -Fq 'SIGNING_COMMON_NAME="$(resolve_signing_common_name "$SIGNING_IDENTITY")"' script/build_and_run.sh
 /usr/bin/grep -Fq 'signing_options+=(--options runtime --timestamp)' script/build_and_run.sh
 /usr/bin/grep -Fq 'sign_outer_bundle' script/build_and_run.sh
+# Size contract: the shipped executable is stripped, its DWARF is archived
+# beside the bundle first, and the two are UUID-matched before the strip runs.
+/usr/bin/grep -Fq '/usr/bin/strip -S -x "$APP_BINARY"' script/build_and_run.sh
+/usr/bin/grep -Fq '/usr/bin/ditto "$BUILD_DIR/$PRODUCT_NAME.dSYM" "$APP_DSYM"' script/build_and_run.sh
+/usr/bin/grep -Fq 'refusing to strip' script/build_and_run.sh
+# `-e` is required: grep would otherwise parse the leading `--exclude=` as its
+# own option instead of as the pattern to search for.
+/usr/bin/grep -Fq -e "--exclude='*.svg'" script/build_and_run.sh
+/usr/bin/grep -Fq 'hdiutil convert "$rw_dmg" -format ULMO' script/package_developer_id_release.sh
 /usr/bin/grep -Fq 'STAMP="${APP}.launch-stability-source"' script/verify_launch_stability.sh
 /usr/bin/grep -Fq 'TokenRemain-$VERSION-$BUILD.dmg' script/package_developer_id_release.sh
 /usr/bin/grep -Fq '/usr/bin/cmp -s "$DMG" "$VERSIONED_DMG"' script/package_developer_id_release.sh
