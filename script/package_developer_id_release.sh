@@ -144,7 +144,11 @@ generate_update_feed() {
     echo "Sparkle generate_appcast tool is unavailable." >&2
     exit 1
   }
-  rm -f "$APPCAST"
+  # A rerun may inherit the stable and versioned DMGs from an older candidate.
+  # Sparkle treats those byte-identical archives as duplicate updates and
+  # refuses to generate the feed. They cannot describe the newly built ZIP, so
+  # remove them before scanning and recreate both from the current app below.
+  rm -f "$APPCAST" "$DMG" "$VERSIONED_DMG"
   "$tool" \
     --download-url-prefix "https://github.com/Carstin520/token-remain/releases/download/$RELEASE_TAG/" \
     --link "https://tokenremain.com" \
