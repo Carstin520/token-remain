@@ -13,6 +13,9 @@ Versioning for public releases.
   readiness checks, official installation help, and explicit browser sign-in.
 - Add reusable credential setup and update guidance for Keychain-managed
   provider accounts, including short-lived Antigravity credentials.
+- Add a setting for whether the menu-bar popup shows Claude's Fable weekly
+  quota. It is on by default, because Fable often runs out well before the
+  all-models cap does.
 
 ### Fixed
 
@@ -25,6 +28,12 @@ Versioning for public releases.
 - Add an escape hatch for future glass problems: writing
   `tokenRemain.forceLegacyPopover.v1` returns the menu-bar popup to the
   pre-macOS 26 presentation without downgrading the app.
+- Read Claude's Fable weekly quota again. Anthropic moved it into a new field
+  in the usage response, so TokenRemain had stopped seeing it and kept showing
+  the last value it had.
+- Stop showing a second, wrong Fable row. A reading captured by an older
+  version could survive every refresh and appear as `100% remaining` next to
+  the real quota; it is now discarded on sight, with no need to reinstall.
 - Discover Codex and Claude CLIs installed through NVM and other common Node
   version managers when TokenRemain starts from the macOS GUI environment.
 - Keep the default provider account available when an optional CLI is missing,
