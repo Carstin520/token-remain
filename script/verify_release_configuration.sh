@@ -17,8 +17,13 @@ cd "$ROOT_DIR"
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :com.apple.developer.icloud-container-identifiers:0' Resources/UsageDockSync.entitlements)" == "iCloud.com.jamesli.tokenremain" ]]
 
 /bin/bash -n script/build_and_run.sh
+/bin/bash -n script/verify_launch_stability.sh
 /bin/bash -n script/package_developer_id_release.sh
 /usr/bin/grep -Fq 'SWIFT_BUILD_ARGS+=(--configuration release)' script/build_and_run.sh
+/usr/bin/grep -Fq 'SIGNING_COMMON_NAME="$(resolve_signing_common_name "$SIGNING_IDENTITY")"' script/build_and_run.sh
+/usr/bin/grep -Fq 'signing_options+=(--options runtime --timestamp)' script/build_and_run.sh
+/usr/bin/grep -Fq 'sign_outer_bundle' script/build_and_run.sh
+/usr/bin/grep -Fq 'STAMP="${APP}.launch-stability-source"' script/verify_launch_stability.sh
 /usr/bin/grep -Fq 'TokenRemain-$VERSION-$BUILD.dmg' script/package_developer_id_release.sh
 /usr/bin/grep -Fq '/usr/bin/cmp -s "$DMG" "$VERSIONED_DMG"' script/package_developer_id_release.sh
 SYNC_SUCCESS_MARKER='Private sync source upload succeeded'

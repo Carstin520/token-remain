@@ -66,7 +66,10 @@ report_snapshot() {
 # 安装目录是固定路径,`--skip-build` 会盲信"上一次装进去的是什么"。实测可以
 # 从一份被故意改坏的源码树跑这个脚本、却让它去测另一份修好的安装包,然后报
 # PASS。所以构建时按源码内容盖一个指纹,跳过构建时校验指纹是否还对得上。
-STAMP="$APP/Contents/Resources/.launch-stability-source"
+# Keep the source stamp beside the app. Writing it into Contents/Resources after
+# codesigning would invalidate the sealed bundle and make this runtime check
+# exercise a different artifact from the one that will be packaged.
+STAMP="${APP}.launch-stability-source"
 source_fingerprint() {
   find Sources Package.swift -type f \( -name "*.swift" -o -name "Package.swift" \) \
     -exec shasum -a 256 {} + | sort | shasum -a 256 | cut -d' ' -f1
