@@ -26,6 +26,9 @@ final class PreferencesStore: ObservableObject {
     static let menuBarKey = "tokenRemain.menuBarProviders.v1"
     static let menuBarDisplayModeKey = "tokenRemain.menuBarDisplayMode.v1"
     static let popoverGlassStyleKey = "tokenRemain.popoverGlassStyle.v1"
+    /// 逃生阀:在 macOS 26 上强制退回 legacy NSPopover。没有对应的设置项,
+    /// 只在系统侧玻璃回归时给用户一条不必整版降级的自救路径。
+    static let forceLegacyPopoverKey = "tokenRemain.forceLegacyPopover.v1"
     static let popoverBackgroundOpacityKey = "tokenRemain.popoverBackgroundOpacity.v1"
     static let quotaSummaryStrategyKey = "tokenRemain.quotaSummaryStrategy.v1"
     static let menuBarCodexSparkQuotaKey = "tokenRemain.dashboardCodexSparkQuota.v1"

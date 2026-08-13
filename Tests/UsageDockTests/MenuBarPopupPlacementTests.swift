@@ -1,4 +1,5 @@
 import AppKit
+import SwiftUI
 import Testing
 @testable import UsageDock
 
@@ -47,6 +48,51 @@ struct MenuBarPopupPlacementTests {
         #expect(leftPlacement.arrowCenterX == 16)
         #expect(rightPlacement.origin == NSPoint(x: 720, y: 40))
         #expect(rightPlacement.arrowCenterX == 364)
+    }
+}
+
+@Suite("Menu bar popup sizing")
+struct MenuBarPopupSizingTests {
+    @Test("Resolved menu height includes the popup beak exactly once")
+    func includesChromeHeight() {
+        let size = MenuBarPopupSizing.contentSize(forMenuHeight: 700)
+
+        #expect(size == NSSize(width: 380, height: 711))
+    }
+
+    @Test("Invalid measurements cannot resize the AppKit window")
+    func rejectsInvalidMeasurements() {
+        #expect(MenuBarPopupSizing.contentSize(forMenuHeight: 0) == nil)
+        #expect(MenuBarPopupSizing.contentSize(forMenuHeight: -.infinity) == nil)
+        #expect(MenuBarPopupSizing.contentSize(forMenuHeight: .nan) == nil)
+    }
+
+    @Test("Subpixel measurement noise does not trigger another window layout")
+    func resizeIsIdempotent() {
+        let current = NSSize(width: 380, height: 711)
+
+        #expect(!MenuBarPopupSizing.requiresResize(from: current, to: current))
+        #expect(!MenuBarPopupSizing.requiresResize(
+            from: current,
+            to: NSSize(width: 380.25, height: 710.75)
+        ))
+        #expect(MenuBarPopupSizing.requiresResize(
+            from: current,
+            to: NSSize(width: 380, height: 712)
+        ))
+    }
+}
+
+@Suite("Fixed AppKit hosting window sizing")
+@MainActor
+struct FixedHostingWindowSizingTests {
+    @Test("SwiftUI cannot feed content-derived constraints back into the window")
+    func disablesAutomaticSizing() {
+        let hosting = NSHostingController(rootView: Text("TokenRemain"))
+
+        FixedHostingWindowSizing.configure(hosting)
+
+        #expect(hosting.sizingOptions.isEmpty)
     }
 }
 

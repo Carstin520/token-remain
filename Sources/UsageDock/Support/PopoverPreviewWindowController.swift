@@ -22,6 +22,7 @@ final class PopoverPreviewWindowController: NSWindowController {
                 onOpenDashboard: onOpenDashboard
             )
         )
+        FixedHostingWindowSizing.configure(hosting)
 
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 380, height: 720),

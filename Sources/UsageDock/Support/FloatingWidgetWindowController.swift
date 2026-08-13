@@ -30,6 +30,7 @@ final class FloatingWidgetWindowController: NSWindowController, NSWindowDelegate
                 onOpenDashboard: onOpenDashboard
             )
         )
+        FixedHostingWindowSizing.configure(hosting)
 
         let panel = NSPanel(
             contentRect: NSRect(x: 0, y: 0, width: 380, height: 640),

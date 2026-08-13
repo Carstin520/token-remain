@@ -16,6 +16,15 @@ Versioning for public releases.
 
 ### Fixed
 
+- Fix the crash that made TokenRemain quit a few seconds after launch on
+  macOS 26, with no user interaction, on 1.3.0 through 1.3.4. Background
+  refresh checked whether the menu-bar popup was visible, which built the
+  hidden popup window; that window then resized itself during its own layout
+  pass until the main thread ran out of stack. Both glass styles were
+  affected, because the material was never the cause.
+- Add an escape hatch for future glass problems: writing
+  `tokenRemain.forceLegacyPopover.v1` returns the menu-bar popup to the
+  pre-macOS 26 presentation without downgrading the app.
 - Discover Codex and Claude CLIs installed through NVM and other common Node
   version managers when TokenRemain starts from the macOS GUI environment.
 - Keep the default provider account available when an optional CLI is missing,
