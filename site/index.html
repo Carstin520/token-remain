@@ -42,6 +42,7 @@
   "applicationCategory": "DeveloperApplication",
   "operatingSystem": "macOS 14+, iOS, watchOS",
   "url": "https://tokenremain.com/",
+  "downloadUrl": "https://tokenremain.com/#download",
   "screenshot": "https://tokenremain.com/assets/dashboard.jpg",
   "description": "A private macOS, iPhone and Apple Watch companion for 21+ AI coding tools, with encrypted multi-Mac quota aggregation, a token-first mobile dashboard, a curated AI Feed, and latest-release updates. Credentials stay on your Mac.",
   "author": { "@type": "Person", "name": "Dongheng Li" },
@@ -214,11 +215,6 @@ nav .links a:hover{color:var(--text);text-decoration:none}
 .btn:active{transform:translateY(0)}
 .btn-primary{background:var(--cyan);color:var(--ink);border:1px solid var(--cyan)}
 .btn-primary:hover{background:#5CDAE8;box-shadow:0 8px 28px -10px color-mix(in srgb,var(--cyan) 55%,transparent)}
-.btn-primary:disabled{
-  cursor:not-allowed;color:var(--text-dim);background:var(--surface2);border-color:var(--border);
-  box-shadow:none;opacity:.82;
-}
-.btn-primary:disabled:hover{transform:none;background:var(--surface2);box-shadow:none}
 .btn-testflight{background:color-mix(in srgb,var(--violet-dim) 18%,transparent);color:var(--text);border:1px solid var(--violet-dim)}
 .btn-testflight:hover{background:color-mix(in srgb,var(--violet-dim) 28%,transparent);border-color:var(--violet);color:var(--violet)}
 .btn-ghost{background:transparent;color:var(--text);border:1px solid var(--border)}
@@ -232,12 +228,6 @@ nav .links a:hover{color:var(--text);text-decoration:none}
 .req-line .sep{color:var(--text-mute)}
 .releases-hint{font-size:13px;color:var(--text-mute);margin-top:10px}
 .releases-hint a{color:var(--cyan-dim)}
-.download-pause{
-  max-width:48em;margin-top:14px;padding:12px 14px;border-left:3px solid var(--warning);
-  border-radius:0 8px 8px 0;background:color-mix(in srgb,var(--warning) 8%,transparent);
-  color:var(--text-dim);font-size:14px;
-}
-.download-pause strong{color:var(--warning);font-weight:700}
 
 /* ============ 3D stage ============ */
 .stage-wrap{position:relative;perspective:1300px;perspective-origin:60% 40%;min-width:0;display:flex;justify-content:center}
@@ -1022,9 +1012,9 @@ footer.site .disclaimer{
         Provider credentials stay on your Mac. If you enable Apple-device sync, only an allowlisted AES-256-GCM encrypted quota snapshot moves through your own iCloud account.
       </p>
       <div class="cta-row">
-        <button id="macDownloadButton" class="btn btn-primary" type="button" disabled aria-describedby="downloadPauseNotice">
-          <span data-i18n="h-dl">Download temporarily unavailable</span>
-        </button>
+        <a id="macDownloadButton" class="btn btn-primary" href="https://github.com/Carstin520/token-remain/releases/latest/download/TokenRemain.dmg">
+          <span data-i18n="h-dl">Download for Mac</span>
+        </a>
         <a id="testflightButton" class="btn btn-testflight" href="https://testflight.apple.com/join/DU3DrnhG" target="_blank" rel="noopener">
           <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4.25" y="1.25" width="7.5" height="13.5" rx="1.8"/><path d="M6.5 3h3M7.2 12.8h1.6"/></svg>
           <span data-i18n="h-ios">Join iPhone TestFlight</span>
@@ -1034,7 +1024,6 @@ footer.site .disclaimer{
           <span data-i18n="h-gh">GitHub Repo</span>
         </a>
       </div>
-      <p id="downloadPauseNotice" class="download-pause" role="status" data-i18n="h-pause"><strong>We’re sorry.</strong> Downloads are temporarily paused because we found an issue in version 1.3.4. We’re working on a fix and will restore downloads as soon as it is verified stable.</p>
       <p class="req-line">
         <span>macOS 14+</span><span class="sep">·</span>
         <span>Universal (Apple Silicon + Intel)</span><span class="sep">·</span>
@@ -1537,7 +1526,7 @@ footer.site .disclaimer{
     <div>
     <p class="eyebrow" data-num="06">Current Release</p>
     <h2 data-i18n="lm-h2">Known limits of the Mac release</h2>
-    <p class="lede" data-i18n="lm-lede">Mac downloads are temporarily paused because of a known issue in version 1.3.4. These limits are deliberate trade-offs — data safety always outranks feature coverage.</p>
+    <p class="lede" data-i18n="lm-lede">The notarized Mac release is available now. These limits are deliberate trade-offs — data safety always outranks feature coverage.</p>
     </div>
     <div class="limit-card ticked">
       <div class="head"><span class="sym">!</span><span data-i18n="lm-head">Known limitations</span></div>
@@ -1586,8 +1575,8 @@ footer.site .disclaimer{
     <h2 data-i18n="in-h2">Download and install</h2>
     <div class="steps">
       <div class="step lift">
-        <h3 data-i18n="st1t">Download temporarily unavailable</h3>
-        <p data-i18n="st1d">Downloads are temporarily paused while we fix a known issue in version 1.3.4.</p>
+        <h3 data-i18n="st1t">Download the notarized DMG</h3>
+        <p data-i18n="st1d">Use the official button above. The download is signed with Developer ID and notarized by Apple.</p>
       </div>
       <div class="step lift">
         <h3 data-i18n="st2t">Move TokenRemain to Applications</h3>
@@ -1638,8 +1627,7 @@ var ZH={
   "h-badge":"<span class=\"dot\"></span>1.3 正式版 · Mac 发布 + iPhone 测试",
   "h-h1":"你的 AI 额度，<br><span class=\"accent\">常驻菜单栏</span>。",
   "h-sub":"一处看全 <strong>Claude Code、Codex、Cursor、Windsurf、Grok、GLM</strong> 等 <strong>21+ 服务</strong>的剩余额度与重置倒计时。Provider 凭证始终留在 Mac；启用 Apple 设备同步后，只有经过白名单过滤并使用 AES-256-GCM 加密的额度快照会通过你自己的 iCloud 账户传输。",
-  "h-dl":"下载暂时关闭","h-ios":"加入 iPhone TestFlight","h-gh":"GitHub 仓库",
-  "h-pause":"<strong>很抱歉。</strong>由于 1.3.4 版本发现问题，下载已暂时关闭。我们正在修复，确认稳定后会尽快恢复下载。",
+  "h-dl":"下载 Mac 版","h-ios":"加入 iPhone TestFlight","h-gh":"GitHub 仓库",
   "h-hint":"Mac 版已签名并通过 Apple 公证；iPhone 测试版需 iOS 18+、Mac 伴侣 App 与同一 iCloud 账号。",
   "chip-grok":"Grok 周池",
   "pop-when":"4 分钟前更新",
@@ -1739,7 +1727,7 @@ var ZH={
   "ty1":"应用图标","ty1s":"macOS · iOS · watchOS","ty3":"菜单栏","ty4":"矢量标 · 深浅通用","ty5":"字标","ty6":"动态吉祥物",
   "br-note":"以上所有标识均按生产比例展示——不裁切、不拉伸、不改色。Provider 形象（Claude 星芒、Codex 花瓣）遵循各家官方识别，绝不与 TokenRemain 自己的紫罗兰 / 青混用。",
   "lm-h2":"Mac 正式版的已知限制",
-  "lm-lede":"Mac 版下载因 1.3.4 的已知问题暂时关闭。以下限制是刻意的取舍——数据安全永远排在功能覆盖前面。",
+  "lm-lede":"已公证的 Mac 版本现已开放下载。以下限制是刻意的取舍——数据安全永远排在功能覆盖前面。",
   "lm-head":"已知限制",
   "lmk1":"芯片","lm1":"<strong>Universal Mac 构建</strong>，同时支持 Apple Silicon（arm64）与 Intel（x86_64）。",
   "lmk2":"系统","lm2":"需要 <strong>macOS 14 Sonoma 或更高</strong>；macOS 26 可启用原生 Liquid Glass 样式，14/15 自动回退深色卡片。",
@@ -1752,7 +1740,7 @@ var ZH={
   "ft3t":"今日成本估算","ft3d":"ccusage 统计今日 token 与估算 API 成本，按服务商拆分，全部本地计算。",
   "ft4t":"AI 动态聚合","ft4d":"额度重置、速率限制变化与重大模型更新自动置顶并触发 macOS 本地通知。 <a href=\"#feed\">→</a>",
   "in-h2":"下载与安装",
-  "st1t":"下载暂时关闭","st1d":"我们正在修复 1.3.4 版本的已知问题，下载将在确认稳定后恢复。",
+  "st1t":"下载已公证 DMG","st1d":"使用页面顶部的官方下载按钮。安装包已使用 Developer ID 签名并通过 Apple 公证。",
   "st2t":"拖入“应用程序”","st2d":"打开 DMG，把 TokenRemain 拖到“应用程序”快捷方式。",
   "st3t":"打开并选择 Provider","st3d":"从“应用程序”启动 TokenRemain，选择你使用的本地工具，并按需启用 Apple 设备同步与每日 AI 动态通知。",
   "rp-h2":"源码全部公开",
