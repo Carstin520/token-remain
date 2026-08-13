@@ -142,28 +142,81 @@ struct PreferencesStoreTests {
             ]
         )
 
+        // Fable 和 Spark 一样由设置控制,都关掉时收起态不显示任何模型额度。
         #expect(
             PopoverQuotaWidget.scopedWindows(
                 in: quota,
                 isExpanded: false,
-                showCodexSpark: false
+                showCodexSpark: false,
+                showFable: false
             ).isEmpty
         )
         #expect(
             PopoverQuotaWidget.scopedWindows(
                 in: quota,
                 isExpanded: false,
-                showCodexSpark: true
+                showCodexSpark: true,
+                showFable: false
             ).map(\.scopeID) == ["codex_bengalfox"]
         )
         #expect(
             PopoverQuotaWidget.scopedWindows(
                 in: quota,
                 isExpanded: true,
-                showCodexSpark: false
+                showCodexSpark: false,
+                showFable: false
             )
                 .map(\.scopeID) == ["future_model"]
         )
+    }
+
+    @Test("Fable follows its own setting and stays visible when collapsed")
+    func fableQuotaVisibility() {
+        let quota = ProviderQuota(
+            provider: .claude,
+            primary: QuotaWindow(usedPercent: 10, windowMinutes: 300, resetsAt: nil),
+            secondary: nil,
+            planName: nil,
+            capturedAt: .now,
+            scopedWindows: [
+                ScopedQuotaWindow(
+                    scopeID: "fable",
+                    displayName: "Fable",
+                    window: QuotaWindow(usedPercent: 98, windowMinutes: 10_080, resetsAt: nil)
+                )
+            ]
+        )
+
+        // Fable 会先于 all-models 额度耗尽,所以收起态也要看得见。
+        #expect(
+            PopoverQuotaWidget.scopedWindows(
+                in: quota,
+                isExpanded: false,
+                showCodexSpark: false,
+                showFable: true
+            ).map(\.scopeID) == ["fable"]
+        )
+        #expect(
+            PopoverQuotaWidget.scopedWindows(
+                in: quota,
+                isExpanded: false,
+                showCodexSpark: false,
+                showFable: false
+            ).isEmpty
+        )
+    }
+
+    @Test("Fable defaults to visible and persists an explicit opt-out")
+    func fableQuotaPreferenceDefaultsOn() {
+        let defaults = testDefaults()
+        // 默认开启:升级上来的用户没存过这个键,不能因此看不到 Fable。
+        #expect(PreferencesStore(defaults: defaults).showFableQuotaInMenuBarWidget)
+
+        PreferencesStore(defaults: defaults).setShowFableQuotaInMenuBarWidget(false)
+        #expect(!PreferencesStore(defaults: defaults).showFableQuotaInMenuBarWidget)
+
+        PreferencesStore(defaults: defaults).setShowFableQuotaInMenuBarWidget(true)
+        #expect(PreferencesStore(defaults: defaults).showFableQuotaInMenuBarWidget)
     }
 
     @Test("Menu bar display mode persists and rejects unknown stored values")

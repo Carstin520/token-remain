@@ -335,6 +335,13 @@ struct SettingsSection: View {
                     PanelHeader(title: L10n.text("settings.model_quotas"))
 
                     preferenceToggle(
+                        title: L10n.text("settings.menubar_fable"),
+                        detail: L10n.text("settings.menubar_fable_hint"),
+                        isOn: menuBarFableBinding
+                    )
+                    .disabled(!tracked.isEnabled(.claude))
+
+                    preferenceToggle(
                         title: L10n.text("settings.menubar_codex_spark"),
                         detail: L10n.text("settings.menubar_codex_spark_hint"),
                         isOn: menuBarCodexSparkBinding
@@ -500,6 +507,13 @@ struct SettingsSection: View {
         Binding(
             get: { preferences.showCodexSparkQuotaInMenuBarWidget },
             set: { preferences.setShowCodexSparkQuotaInMenuBarWidget($0) }
+        )
+    }
+
+    private var menuBarFableBinding: Binding<Bool> {
+        Binding(
+            get: { preferences.showFableQuotaInMenuBarWidget },
+            set: { preferences.setShowFableQuotaInMenuBarWidget($0) }
         )
     }
 
