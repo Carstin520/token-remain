@@ -14,4 +14,3 @@ enum FixedHostingWindowSizing {
         hosting.sizingOptions = []
     }
 }
-
