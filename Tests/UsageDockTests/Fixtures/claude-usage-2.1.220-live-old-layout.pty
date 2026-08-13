@@ -1,0 +1,15 @@
+# Sanitized from the live 2026-08-13 `script -q` capture. Personal account,
+# organization, and checkout text were removed; PTY paint controls are escaped.
+<ESC>[?25l<ESC>[H<CR><ESC>[3C<ESC>[2BCurrent<ESC>[12Gsession<CR>
+<ESC>[3C<ESC>[1B████<ESC>[55G8%<ESC>[58Gused<CR>
+<ESC>[3C<ESC>[1BResets<ESC>[11G7:30pm<ESC>[18G(Asia/Shanghai)<CR>
+<ESC>[3C<ESC>[2BCurrent<ESC>[12Gweek<ESC>[17G(all<ESC>[22Gmodels)<CR>
+<ESC>[3C<ESC>[1B████████████████████████████▍<ESC>[55G56%<ESC>[59Gused<CR>
+<ESC>[1B   Resets Aug 14 at 1pm (Asia/Shanghai)<ESC>[K<CR>
+<ESC>[1B  <ESC>[4G+50%<ESC>[9Gweekly<ESC>[16Glimits<ESC>[23Gpromo<ESC>[29Gthrough<ESC>[37GAug<ESC>[41G19<CR>
+<ESC>[3C<ESC>[5B████   <ESC>[55G8%<ESC>[58Gused<CR>
+<ESC>[3C<ESC>[1BResets<ESC>[11G7:30pm<ESC>[18G(Asia/Shanghai)<CR>
+<ESC>[3C<ESC>[1B<ESC>[K<CR>
+<ESC>[3C<ESC>[1BCurrent week (all models)<CR>
+<ESC>[3C<ESC>[1B████████████████████████████▍<ESC>[55G56%<ESC>[59Gused<CR>
+<ESC>[3C<ESC>[1BResets Aug<ESC>[15G14 at 1pm<ESC>[25G(Asia/Shanghai)<ESC>[K<CR>

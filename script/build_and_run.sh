@@ -33,7 +33,7 @@ SYNC_EXPECTED_TEAM_IDENTIFIER=""
 SYNC_EXPECTED_ICLOUD_ENVIRONMENT=""
 SYNC_EXPECTED_APNS_ENVIRONMENT=""
 SYNC_EXPECTED_GET_TASK_ALLOW="false"
-SYNC_SIGNING_COMMON_NAME=""
+SIGNING_COMMON_NAME=""
 ARCHIVE_DIR="${USAGEDOCK_ARCHIVE_DIR:-$ROOT_DIR/dist-release}"
 
 # A non-sync development build must never replace or stop the production sync
@@ -138,8 +138,8 @@ prepare_sync_signing() {
     echo "USAGEDOCK_SYNC_SIGNING_IDENTITY is required when USAGEDOCK_SYNC_RELEASE=1." >&2
     exit 1
   fi
-  SYNC_SIGNING_COMMON_NAME="$(resolve_signing_common_name "$SYNC_SIGNING_IDENTITY")"
-  if [[ -z "$SYNC_SIGNING_COMMON_NAME" ]]; then
+  SIGNING_COMMON_NAME="$(resolve_signing_common_name "$SYNC_SIGNING_IDENTITY")"
+  if [[ -z "$SIGNING_COMMON_NAME" ]]; then
     echo "Could not resolve the requested signing identity." >&2
     exit 1
   fi
@@ -248,13 +248,13 @@ prepare_sync_signing() {
   SYNC_EXPECTED_GET_TASK_ALLOW="false"
   if [[ "$SYNC_EXPECTED_ICLOUD_ENVIRONMENT" == "Development" ]]; then
     SYNC_EXPECTED_GET_TASK_ALLOW="true"
-    if [[ "$SYNC_SIGNING_COMMON_NAME" != "Apple Development:"* ]]; then
+    if [[ "$SIGNING_COMMON_NAME" != "Apple Development:"* ]]; then
       echo "CloudKit Development builds require an Apple Development identity." >&2
       exit 1
     fi
   fi
   if [[ "$SYNC_EXPECTED_ICLOUD_ENVIRONMENT" == "Production" \
-    && "$SYNC_SIGNING_COMMON_NAME" != "Developer ID Application:"*"(84397AQ22Y)" ]]; then
+    && "$SIGNING_COMMON_NAME" != "Developer ID Application:"*"(84397AQ22Y)" ]]; then
     echo "Production website distribution requires a Developer ID Application identity." >&2
     exit 1
   fi
@@ -356,8 +356,7 @@ sign_embedded_sparkle() {
     echo "The packaged application is missing Sparkle.framework." >&2
     exit 1
   }
-  if [[ "$SYNC_SIGNING_COMMON_NAME" == "Developer ID Application:"* \
-    || "$SIGNING_IDENTITY" == "Developer ID Application:"* ]]; then
+  if [[ "$SIGNING_COMMON_NAME" == "Developer ID Application:"* ]]; then
     timestamp_option="--timestamp"
   fi
 
@@ -384,12 +383,29 @@ sign_embedded_ccusage() {
     echo "The packaged application is missing its bundled ccusage helper." >&2
     exit 1
   }
-  if [[ "$SYNC_SIGNING_COMMON_NAME" == "Developer ID Application:"* \
-    || "$SIGNING_IDENTITY" == "Developer ID Application:"* ]]; then
+  if [[ "$SIGNING_COMMON_NAME" == "Developer ID Application:"* ]]; then
     timestamp_option="--timestamp"
   fi
   /usr/bin/codesign --force --sign "$SIGNING_IDENTITY" --options runtime "$timestamp_option" \
     "$CCUSAGE_HELPER"
+}
+
+sign_outer_bundle() {
+  local entitlements_path="${1:-}"
+  local signing_options=(--force --sign "$SIGNING_IDENTITY")
+
+  # Developer ID distribution requires both Hardened Runtime and a secure
+  # timestamp. Decide from the resolved certificate common name so an explicit
+  # SHA-1 selector cannot silently fall back to development signing behavior.
+  if [[ "$SIGNING_COMMON_NAME" == "Developer ID Application:"* ]]; then
+    signing_options+=(--options runtime --timestamp)
+  else
+    signing_options+=(--timestamp=none)
+  fi
+  if [[ -n "$entitlements_path" ]]; then
+    signing_options+=(--entitlements "$entitlements_path")
+  fi
+  /usr/bin/codesign "${signing_options[@]}" "$APP_BUNDLE"
 }
 
 verify_embedded_sparkle() {
@@ -548,6 +564,11 @@ else
     echo "TokenRemain needs an Apple Development signing identity to preserve Keychain approval." >&2
     exit 1
   fi
+  SIGNING_COMMON_NAME="$(resolve_signing_common_name "$SIGNING_IDENTITY")"
+  if [[ -z "$SIGNING_COMMON_NAME" ]]; then
+    echo "Could not resolve the requested signing identity." >&2
+    exit 1
+  fi
 fi
 # Finder/File Provider metadata can be copied onto a local bundle and invalidate
 # its resource seal. These are metadata only; the signed app never relies on them.
@@ -562,17 +583,11 @@ if [[ "$SYNC_RELEASE_MODE" == "1" ]]; then
   /usr/bin/xattr -c "$APP_CONTENTS/embedded.provisionprofile" 2>/dev/null || true
   sign_embedded_ccusage
   sign_embedded_sparkle
-  if [[ "$SYNC_SIGNING_COMMON_NAME" == "Developer ID Application:"* ]]; then
-    /usr/bin/codesign --force --sign "$SIGNING_IDENTITY" --options runtime --timestamp \
-      --entitlements "$SYNC_RESOLVED_ENTITLEMENTS" "$APP_BUNDLE"
-  else
-    /usr/bin/codesign --force --sign "$SIGNING_IDENTITY" --timestamp=none \
-      --entitlements "$SYNC_RESOLVED_ENTITLEMENTS" "$APP_BUNDLE"
-  fi
+  sign_outer_bundle "$SYNC_RESOLVED_ENTITLEMENTS"
 else
   sign_embedded_ccusage
   sign_embedded_sparkle
-  /usr/bin/codesign --force --sign "$SIGNING_IDENTITY" --timestamp=none "$APP_BUNDLE"
+  sign_outer_bundle
 fi
 # On File Provider-backed workspaces, codesign itself can cause provenance
 # metadata to be re-applied to newly written signature files. Removing it after

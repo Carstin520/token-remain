@@ -57,7 +57,10 @@ struct ClaudeAccountLoginService: Sendable {
                 base: ProcessInfo.processInfo.environment,
                 configurationDirectory: configurationDirectory
             )
-            environment["PATH"] = Self.pathWithClaudeHints(environment["PATH"])
+            environment["PATH"] = ProviderCLIExecutableResolver.launchPath(
+                existing: environment["PATH"],
+                executable: executable
+            )
             process.environment = environment
             if capturesOutput {
                 process.standardOutput = output
@@ -77,31 +80,14 @@ struct ClaudeAccountLoginService: Sendable {
         }.value
     }
 
-    private static func claudeExecutable() -> URL? {
-        let fileManager = FileManager.default
-        let home = fileManager.homeDirectoryForCurrentUser.path
-        var candidates = [
-            "\(home)/.local/bin/claude",
-            "\(home)/.npm-global/bin/claude",
-            "/opt/homebrew/bin/claude",
-            "/usr/local/bin/claude"
-        ]
-        if let path = ProcessInfo.processInfo.environment["PATH"] {
-            candidates += path.split(separator: ":").map { "\($0)/claude" }
-        }
-        return candidates.first(where: fileManager.isExecutableFile(atPath:))
-            .map(URL.init(fileURLWithPath:))
-    }
-
-    private static func pathWithClaudeHints(_ existing: String?) -> String {
-        let home = FileManager.default.homeDirectoryForCurrentUser.path
-        let hints = [
-            "\(home)/.local/bin", "\(home)/.npm-global/bin",
-            "/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin"
-        ]
-        let current = existing?.split(separator: ":").map(String.init) ?? []
-        return Array(NSOrderedSet(array: hints + current))
-            .compactMap { $0 as? String }
-            .joined(separator: ":")
+    static func claudeExecutable(
+        homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser,
+        environment: [String: String] = ProcessInfo.processInfo.environment
+    ) -> URL? {
+        ProviderCLIExecutableResolver.resolve(
+            named: "claude",
+            homeDirectory: homeDirectory,
+            environment: environment
+        )
     }
 }

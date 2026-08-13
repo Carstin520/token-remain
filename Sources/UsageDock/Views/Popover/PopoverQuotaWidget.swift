@@ -59,10 +59,13 @@ struct PopoverQuotaWidget: View {
         in quota: ProviderQuota,
         isExpanded: Bool,
         showCodexSpark: Bool,
+        showFable: Bool = true,
         showAntigravityThirdParty: Bool = false
     ) -> [ScopedQuotaWindow] {
         quota.uniqueScopedWindows.filter { scoped in
-            if scoped.isFable { return false }
+            // Fable 与 Spark 一样受设置控制。它不跟随 isExpanded:Fable 往往
+            // 先于 all-models 额度耗尽,收起态藏掉它就等于藏掉真正的瓶颈。
+            if scoped.isFable { return showFable }
             if scoped.isCodexSpark { return showCodexSpark }
             if scoped.isAntigravityThirdParty {
                 return isExpanded && showAntigravityThirdParty
@@ -118,6 +121,7 @@ struct PopoverQuotaWidget: View {
                             in: quota,
                             isExpanded: isExpanded,
                             showCodexSpark: preferences.showCodexSparkQuotaInMenuBarWidget,
+                            showFable: preferences.showFableQuotaInMenuBarWidget,
                             showAntigravityThirdParty: preferences.showAntigravityThirdPartyQuota
                         ),
                         id: \.scopeID

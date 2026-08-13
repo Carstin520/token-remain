@@ -121,9 +121,9 @@ struct ClaudeOAuthUsageService {
     }
 }
 
-/// oauth/usage 响应 → ProviderQuota。窗口字段:`five_hour` / `seven_day`,
-/// 以及可选的 `seven_day_<scope>`(例如 `seven_day_fable`),
-/// 每个含 `utilization`(0–100 已用百分比)与 `resets_at`(ISO8601 或 epoch)。
+/// oauth/usage 响应 → ProviderQuota。兼容旧的 `five_hour` / `seven_day` /
+/// `seven_day_<scope>` 字段和新的结构化 `limits` 数组。旧窗口使用
+/// `utilization`,新窗口使用 `percent`;两者都是 0–100 已用百分比。
 enum ClaudeOAuthUsageParser {
     static func parse(
         _ data: Data,
@@ -134,13 +134,17 @@ enum ClaudeOAuthUsageParser {
         guard let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
             throw ClaudeOAuthUsageService.APIError.invalidResponse
         }
-        // 5 小时窗口是订阅账户恒有的字段;缺失说明凭证不带订阅用量权限
-        // (例如 setup-token 生成的 inference-only token),交给 PTY 降级。
-        guard let primary = window(object["five_hour"], windowMinutes: 300, now: now) else {
+        let structured = structuredLimits(object["limits"], now: now)
+        // Some accounts have moved these values into `limits`; require a real
+        // session row from either schema so inference-only tokens still fall
+        // through to the PTY instead of inventing subscription quota.
+        guard let primary = window(object["five_hour"], windowMinutes: 300, now: now)
+            ?? structured.primary else {
             throw ClaudeOAuthUsageService.APIError.invalidResponse
         }
         let secondary = window(object["seven_day"], windowMinutes: 10_080, now: now)
-        let scopedWindows = object.keys.sorted().compactMap { key -> ScopedQuotaWindow? in
+            ?? structured.secondary
+        let legacyScopedWindows = object.keys.sorted().compactMap { key -> ScopedQuotaWindow? in
             let prefix = "seven_day_"
             guard key.hasPrefix(prefix), key.count > prefix.count,
                   let value = window(object[key], windowMinutes: 10_080, now: now) else {
@@ -150,9 +154,11 @@ enum ClaudeOAuthUsageParser {
             return ScopedQuotaWindow(
                 scopeID: scopeID,
                 displayName: displayName(forScopeID: scopeID),
-                window: value
+                window: value,
+                observedAt: now
             )
         }
+        let scopedWindows = uniqueScopedWindows(legacyScopedWindows + structured.scopedWindows)
         return ProviderQuota(
             provider: .claude,
             primary: primary,
@@ -168,6 +174,91 @@ enum ClaudeOAuthUsageParser {
         scopeID.split(separator: "_")
             .map { $0.prefix(1).uppercased() + $0.dropFirst().lowercased() }
             .joined(separator: " ")
+    }
+
+    private struct StructuredLimits {
+        var primary: QuotaWindow?
+        var secondary: QuotaWindow?
+        var scopedWindows: [ScopedQuotaWindow] = []
+    }
+
+    /// The current API represents Fable as a `weekly_scoped` row whose model
+    /// ID may be null. Derive a stable ID from the display name in that case;
+    /// banners and help links are not rows in this schema and are ignored.
+    private static func structuredLimits(_ value: Any?, now: Date) -> StructuredLimits {
+        guard let rows = value as? [[String: Any]] else { return StructuredLimits() }
+        var result = StructuredLimits()
+        for row in rows {
+            switch (row["kind"] as? String)?.lowercased() {
+            case "session":
+                if let window = limitWindow(row, windowMinutes: 300) {
+                    result.primary = window
+                }
+            case "weekly_all":
+                if let window = limitWindow(row, windowMinutes: 10_080) {
+                    result.secondary = window
+                }
+            case "weekly_scoped":
+                guard let window = limitWindow(row, windowMinutes: 10_080),
+                      let scope = row["scope"] as? [String: Any],
+                      let model = scope["model"] as? [String: Any] else {
+                    continue
+                }
+                let rawID = (model["id"] as? String)?
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                let rawName = (model["display_name"] as? String)?
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                let resolvedDisplayName = rawName.flatMap { $0.isEmpty ? nil : $0 }
+                    ?? rawID.flatMap { $0.isEmpty ? nil : Self.displayName(forScopeID: $0) }
+                guard let resolvedDisplayName,
+                      !ScopedQuotaWindow.isGeneralWeeklyLabel(resolvedDisplayName),
+                      let scopeID = normalizedScopeID(
+                          rawID.flatMap { $0.isEmpty ? nil : $0 } ?? resolvedDisplayName
+                      ) else {
+                    continue
+                }
+                result.scopedWindows.append(
+                    ScopedQuotaWindow(
+                        scopeID: scopeID,
+                        displayName: resolvedDisplayName,
+                        window: window,
+                        observedAt: now
+                    )
+                )
+            default:
+                continue
+            }
+        }
+        return result
+    }
+
+    private static func limitWindow(_ object: [String: Any], windowMinutes: Int) -> QuotaWindow? {
+        guard let used = number(object["percent"]) ?? number(object["utilization"]) else {
+            return nil
+        }
+        return QuotaWindow(
+            usedPercent: min(100, max(0, used)),
+            windowMinutes: windowMinutes,
+            resetsAt: resetDate(object["resets_at"])
+        )
+    }
+
+    private static func normalizedScopeID(_ value: String) -> String? {
+        let normalized = value.lowercased()
+            .replacingOccurrences(of: #"[^a-z0-9]+"#, with: "_", options: .regularExpression)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "_"))
+        return normalized.isEmpty ? nil : String(normalized.prefix(32))
+    }
+
+    private static func uniqueScopedWindows(_ windows: [ScopedQuotaWindow]) -> [ScopedQuotaWindow] {
+        var order: [String] = []
+        var latestByID: [String: ScopedQuotaWindow] = [:]
+        for window in windows {
+            let key = window.scopeID.lowercased()
+            if latestByID[key] == nil { order.append(key) }
+            latestByID[key] = window
+        }
+        return order.compactMap { latestByID[$0] }
     }
 
     /// `extra_usage {is_enabled, used_credits, monthly_limit}`(美分)→ 附加

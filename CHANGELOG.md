@@ -5,6 +5,40 @@ Versioning for public releases.
 
 ## Unreleased
 
+## 1.3.5 — 2026-08-13
+
+### Added
+
+- Guide users through adding isolated Codex and Claude accounts with CLI
+  readiness checks, official installation help, and explicit browser sign-in.
+- Add reusable credential setup and update guidance for Keychain-managed
+  provider accounts, including short-lived Antigravity credentials.
+- Add a setting for whether the menu-bar popup shows Claude's Fable weekly
+  quota. It is on by default, because Fable often runs out well before the
+  all-models cap does.
+
+### Fixed
+
+- Fix the crash that made TokenRemain quit a few seconds after launch on
+  macOS 26, with no user interaction, on 1.3.0 through 1.3.4. Background
+  refresh checked whether the menu-bar popup was visible, which built the
+  hidden popup window; that window then resized itself during its own layout
+  pass until the main thread ran out of stack. Both glass styles were
+  affected, because the material was never the cause.
+- Add an escape hatch for future glass problems: writing
+  `tokenRemain.forceLegacyPopover.v1` returns the menu-bar popup to the
+  pre-macOS 26 presentation without downgrading the app.
+- Read Claude's Fable weekly quota again. Anthropic moved it into a new field
+  in the usage response, so TokenRemain had stopped seeing it and kept showing
+  the last value it had.
+- Stop showing a second, wrong Fable row. A reading captured by an older
+  version could survive every refresh and appear as `100% remaining` next to
+  the real quota; it is now discarded on sight, with no need to reinstall.
+- Discover Codex and Claude CLIs installed through NVM and other common Node
+  version managers when TokenRemain starts from the macOS GUI environment.
+- Keep the default provider account available when an optional CLI is missing,
+  and validate replacement credentials before changing the saved Keychain item.
+
 ## 1.3.4 — 2026-08-12
 
 ### Changed

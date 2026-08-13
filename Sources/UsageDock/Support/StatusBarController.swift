@@ -106,17 +106,31 @@ final class StatusBarController: NSObject {
     private var lastStatusFingerprint: String?
     private var lastDockIconKey: String?
 
-    private lazy var liquidGlassPopupController = MenuBarPopupWindowController(
-        rootView: UsageMenuView(
-            store: store,
-            feedStore: feedStore,
-            launchAtLogin: launchAtLogin,
-            layout: popoverLayout,
-            onOpenDashboard: { [weak self] section in
-                self?.openDashboard(section)
-            }
-        )
-    )
+    private var liquidGlassPopupController: MenuBarPopupWindowController?
+
+    private func makeLiquidGlassPopupController() -> MenuBarPopupWindowController {
+        if let liquidGlassPopupController {
+            return liquidGlassPopupController
+        }
+        let store = self.store
+        let feedStore = self.feedStore
+        let launchAtLogin = self.launchAtLogin
+        let popoverLayout = self.popoverLayout
+        let controller = MenuBarPopupWindowController { onResolvedHeightChange in
+            UsageMenuView(
+                store: store,
+                feedStore: feedStore,
+                launchAtLogin: launchAtLogin,
+                layout: popoverLayout,
+                onOpenDashboard: { [weak self] section in
+                    self?.openDashboard(section)
+                },
+                onResolvedHeightChange: onResolvedHeightChange
+            )
+        }
+        liquidGlassPopupController = controller
+        return controller
+    }
 
     private func setFloatingWidget(visible: Bool) {
         if visible {
@@ -275,24 +289,20 @@ final class StatusBarController: NSObject {
 
     /// 本地用量与 AI Feed 是否正被某个界面展示。仅在这些界面可见时,
     /// 才值得维持分钟级 ccusage 扫描与 Feed 轮询(Apple 设备同步开启时
-    /// ccusage 另行保持分钟级);检查必须避开未创建的 lazy 控制器,
-    /// 不能为了读可见性把窗口先建出来。
+    /// ccusage 另行保持分钟级)。
+    ///
+    /// 每个 surface 都必须先经过 `SurfaceState`,把"还没建出来"显式说出口。
+    /// 这不是绕弯:1.3.0-1.3.4 正是在这里读了一次 lazy 控制器的 isShown,
+    /// 就把 Liquid Glass 面板建了出来,启动后无人操作即崩(issue #34)。
     private var isPrimarySurfaceVisible: Bool {
-        if menuBarPopupIsShown { return true }
-        if dashboardCreated, Self.windowIsActuallyVisible(dashboardController.window) { return true }
-        if floatingControllerCreated,
-           Self.windowIsActuallyVisible(floatingWidgetController.window) { return true }
-        return false
-    }
-
-    /// `NSWindow.isVisible` stays true while another app fully covers the
-    /// window. Occlusion is the useful energy signal: a covered/minimized
-    /// surface cannot benefit from minute-level background work.
-    private static func windowIsActuallyVisible(_ window: NSWindow?) -> Bool {
-        guard let window else { return false }
-        return window.isVisible
-            && !window.isMiniaturized
-            && window.occlusionState.contains(.visible)
+        PrimarySurfaceVisibility.isVisible(
+            popup: menuBarPopupState,
+            dashboard: .forWindow(dashboardController.window, created: dashboardCreated),
+            floatingWidget: .forWindow(
+                floatingWidgetController.window,
+                created: floatingControllerCreated
+            )
+        )
     }
 
     /// Opens the primary desktop window from app launch, Dock reopen, or menu UI.
@@ -319,8 +329,8 @@ final class StatusBarController: NSObject {
         popoverLayout.prepareForPresentation()
         store.refreshLocalUsage()
         guard let button = statusItem.button, !menuBarPopupIsShown else { return }
-        if #available(macOS 26.0, *) {
-            liquidGlassPopupController.show(
+        if usesLiquidGlassPopup {
+            makeLiquidGlassPopupController().show(
                 relativeTo: button,
                 activateForVisualTesting: true
             )
@@ -329,24 +339,46 @@ final class StatusBarController: NSObject {
         }
     }
 
-    private var menuBarPopupIsShown: Bool {
-        if #available(macOS 26.0, *) {
-            return liquidGlassPopupController.isShown
+    /// 弹窗是否走 macOS 26 的 Liquid Glass 面板。
+    ///
+    /// 隐藏开关是给"新系统上玻璃又出问题"留的安全阀,用户不必整版回退:
+    ///   defaults write com.jamesli.usagedock \
+    ///     tokenRemain.forceLegacyPopover.v1 -bool YES
+    /// 这是一条逃生通道,不是外观偏好,所以不进设置面板。
+    private var usesLiquidGlassPopup: Bool {
+        var systemSupportsLiquidGlass = false
+        if #available(macOS 26.0, *) { systemSupportsLiquidGlass = true }
+        return LiquidGlassPopupAvailability.usesLiquidGlass(
+            systemSupportsLiquidGlass: systemSupportsLiquidGlass,
+            forceLegacyPopover: LiquidGlassPopupAvailability.forceLegacyPopover()
+        )
+    }
+
+    /// 读弹窗状态绝不允许把弹窗建出来。Liquid Glass 面板是懒建的,没建就是
+    /// `.notCreated`;legacy NSPopover 在 setup() 里就已存在,读它是安全的。
+    private var menuBarPopupState: SurfaceState {
+        guard usesLiquidGlassPopup else {
+            return .created(visible: popover.isShown)
         }
-        return popover.isShown
+        guard let liquidGlassPopupController else { return .notCreated }
+        return .created(visible: liquidGlassPopupController.isShown)
+    }
+
+    private var menuBarPopupIsShown: Bool {
+        menuBarPopupState.countsAsVisible
     }
 
     private func showMenuBarPopup(relativeTo button: NSStatusBarButton) {
-        if #available(macOS 26.0, *) {
-            liquidGlassPopupController.show(relativeTo: button)
+        if usesLiquidGlassPopup {
+            makeLiquidGlassPopupController().show(relativeTo: button)
         } else {
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
         }
     }
 
     private func closeMenuBarPopup() {
-        if #available(macOS 26.0, *) {
-            liquidGlassPopupController.performClose()
+        if usesLiquidGlassPopup {
+            liquidGlassPopupController?.performClose()
         } else {
             popover.performClose(nil)
         }

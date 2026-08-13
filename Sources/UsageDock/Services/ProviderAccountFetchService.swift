@@ -61,7 +61,11 @@ struct ProviderAccountFetchService: Sendable {
         }
     }
 
-    func fetch(_ profile: ProviderAccountProfile, now: Date = .now) async throws -> ProviderQuota {
+    func fetch(
+        _ profile: ProviderAccountProfile,
+        now: Date = .now,
+        credentialOverride: String? = nil
+    ) async throws -> ProviderQuota {
         guard !profile.isSystem else {
             throw FetchError.unsupportedProvider(profile.provider.displayName)
         }
@@ -77,16 +81,19 @@ struct ProviderAccountFetchService: Sendable {
                 configurationDirectory: try configurationDirectory(profile)
             )
         case .cursor:
-            let credential = try secret(profile)
+            let credential = try secret(profile, override: credentialOverride)
             return try await CursorUsageService().fetch(
                 accessToken: credential.value,
                 membershipType: credential.field("membershipType"),
                 now: now
             )
         case .grok:
-            return try await GrokUsageService().fetch(token: try secret(profile).value, now: now)
+            return try await GrokUsageService().fetch(
+                token: try secret(profile, override: credentialOverride).value,
+                now: now
+            )
         case .zai:
-            let credential = try secret(profile)
+            let credential = try secret(profile, override: credentialOverride)
             let region = credential.field("region").flatMap(ZAIAPIRegion.parse)
                 ?? ZAIRegionStore().load()
             return try await ZAIUsageService().fetch(
@@ -96,52 +103,76 @@ struct ProviderAccountFetchService: Sendable {
             )
         case .zaiTeam:
             return try await ZAITeamUsageService().fetch(
-                configuration: try secret(profile).raw,
+                configuration: try secret(profile, override: credentialOverride).raw,
                 now: now
             )
         case .copilot:
-            return try await CopilotUsageService().fetch(token: try secret(profile).value, now: now)
+            return try await CopilotUsageService().fetch(
+                token: try secret(profile, override: credentialOverride).value,
+                now: now
+            )
         case .devin:
-            let credential = try secret(profile)
+            let credential = try secret(profile, override: credentialOverride)
             return try await DevinUsageService().fetch(
                 apiKey: credential.value,
                 apiServerURL: credential.field("apiServerURL"),
                 now: now
             )
         case .windsurf:
-            let credential = try secret(profile)
+            let credential = try secret(profile, override: credentialOverride)
             return try await WindsurfUsageService().fetch(
                 apiKey: credential.value,
                 apiServerURL: credential.field("apiServerURL"),
                 now: now
             )
         case .openrouter:
-            return try await OpenRouterUsageService().fetch(apiKey: try secret(profile).value, now: now)
+            return try await OpenRouterUsageService().fetch(
+                apiKey: try secret(profile, override: credentialOverride).value,
+                now: now
+            )
         case .antigravity:
             return try await AntigravityUsageService().fetch(
-                accessToken: try secret(profile).value,
+                accessToken: try secret(profile, override: credentialOverride).value,
                 now: now
             )
         case .deepseek:
-            return try await DeepSeekUsageService().fetch(apiKey: try secret(profile).value, now: now)
+            return try await DeepSeekUsageService().fetch(
+                apiKey: try secret(profile, override: credentialOverride).value,
+                now: now
+            )
         case .kimi:
-            return try await KimiUsageService().fetch(secret: try secret(profile).value, now: now)
+            return try await KimiUsageService().fetch(
+                secret: try secret(profile, override: credentialOverride).value,
+                now: now
+            )
         case .minimax:
-            return try await MiniMaxUsageService().fetch(apiKey: try secret(profile).value, now: now)
+            return try await MiniMaxUsageService().fetch(
+                apiKey: try secret(profile, override: credentialOverride).value,
+                now: now
+            )
         case .mimo:
-            return try await MiMoUsageService().fetch(cookie: try secret(profile).value, now: now)
+            return try await MiMoUsageService().fetch(
+                cookie: try secret(profile, override: credentialOverride).value,
+                now: now
+            )
         case .qoder:
-            return try await QoderUsageService().fetch(cookie: try secret(profile).value, now: now)
+            return try await QoderUsageService().fetch(
+                cookie: try secret(profile, override: credentialOverride).value,
+                now: now
+            )
         case .volcengine:
             return try await VolcengineUsageService().fetch(
-                credentials: try secret(profile).value,
+                credentials: try secret(profile, override: credentialOverride).value,
                 now: now
             )
         case .ollama:
-            return try await OllamaUsageService().fetch(cookie: try secret(profile).value, now: now)
+            return try await OllamaUsageService().fetch(
+                cookie: try secret(profile, override: credentialOverride).value,
+                now: now
+            )
         case .thirdParty:
             return try await ThirdPartyUsageService().fetch(
-                configuration: try secret(profile).raw,
+                configuration: try secret(profile, override: credentialOverride).raw,
                 now: now
             )
         case .opencode, .kiro:
@@ -156,7 +187,15 @@ struct ProviderAccountFetchService: Sendable {
         return URL(fileURLWithPath: path)
     }
 
-    private func secret(_ profile: ProviderAccountProfile) throws -> Credential {
+    private func secret(
+        _ profile: ProviderAccountProfile,
+        override: String?
+    ) throws -> Credential {
+        if let override {
+            let normalized = override.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !normalized.isEmpty else { throw FetchError.missingCredential }
+            return Credential(raw: normalized)
+        }
         guard let raw = ProviderAccountSecretStore(
             provider: profile.provider,
             accountID: profile.id

@@ -26,9 +26,18 @@ final class PreferencesStore: ObservableObject {
     static let menuBarKey = "tokenRemain.menuBarProviders.v1"
     static let menuBarDisplayModeKey = "tokenRemain.menuBarDisplayMode.v1"
     static let popoverGlassStyleKey = "tokenRemain.popoverGlassStyle.v1"
+    /// 逃生阀:在 macOS 26 上强制退回 legacy NSPopover。没有对应的设置项,
+    /// 只在系统侧玻璃回归时给用户一条不必整版降级的自救路径。
+    ///
+    /// `nonisolated`:这是个不可变字符串常量,不需要 MainActor 保护,而
+    /// `LiquidGlassPopupAvailability` 要从非隔离上下文读它。
+    nonisolated static let forceLegacyPopoverKey = "tokenRemain.forceLegacyPopover.v1"
     static let popoverBackgroundOpacityKey = "tokenRemain.popoverBackgroundOpacity.v1"
     static let quotaSummaryStrategyKey = "tokenRemain.quotaSummaryStrategy.v1"
     static let menuBarCodexSparkQuotaKey = "tokenRemain.dashboardCodexSparkQuota.v1"
+    /// Claude 的 Fable 周额度是否出现在弹窗 Claude 组件里。默认开启:
+    /// Fable 会先于 all-models 额度耗尽,看不见它就等于看不见真正的瓶颈。
+    static let menuBarFableQuotaKey = "tokenRemain.menuBarFableQuota.v1"
     static let antigravityThirdPartyQuotaKey = "tokenRemain.antigravityThirdPartyQuota.v1"
     static let refreshKey = "tokenRemain.refreshMinutes.v1"
     static let floatingKey = "tokenRemain.floatingWidget.v1"
@@ -52,6 +61,8 @@ final class PreferencesStore: ObservableObject {
     @Published private(set) var quotaSummaryStrategy: QuotaSummaryStrategy
     /// 菜单栏 Codex 小组件是否显示 GPT-5.3-Codex-Spark 独立额度；默认关闭。
     @Published private(set) var showCodexSparkQuotaInMenuBarWidget: Bool
+    /// 菜单栏 Claude 小组件是否显示 Fable 周额度；默认开启。
+    @Published private(set) var showFableQuotaInMenuBarWidget: Bool
     /// Dashboard/popover 是否显示 Antigravity 的 Claude/第三方共享额度池。
     @Published private(set) var showAntigravityThirdPartyQuota: Bool
     /// Claude 与各直查 provider 的自动刷新间隔(分钟);0 = 仅手动。
@@ -81,6 +92,10 @@ final class PreferencesStore: ObservableObject {
         quotaSummaryStrategy = defaults.string(forKey: Self.quotaSummaryStrategyKey)
             .flatMap(QuotaSummaryStrategy.init(rawValue:)) ?? .shortestWindow
         showCodexSparkQuotaInMenuBarWidget = defaults.bool(forKey: Self.menuBarCodexSparkQuotaKey)
+        // 默认开启,所以不能用 defaults.bool —— 它把"没存过"和"存了 false"
+        // 混为一谈,升级上来的用户会看不到 Fable。
+        showFableQuotaInMenuBarWidget =
+            (defaults.object(forKey: Self.menuBarFableQuotaKey) as? Bool) ?? true
         showAntigravityThirdPartyQuota = defaults.bool(forKey: Self.antigravityThirdPartyQuotaKey)
         let storedMinutes = defaults.object(forKey: Self.refreshKey) as? Int
         refreshMinutes = storedMinutes.map { Self.refreshChoices.contains($0) ? $0 : 5 } ?? 5
@@ -128,6 +143,11 @@ final class PreferencesStore: ObservableObject {
     func setShowCodexSparkQuotaInMenuBarWidget(_ enabled: Bool) {
         showCodexSparkQuotaInMenuBarWidget = enabled
         defaults.set(enabled, forKey: Self.menuBarCodexSparkQuotaKey)
+    }
+
+    func setShowFableQuotaInMenuBarWidget(_ enabled: Bool) {
+        showFableQuotaInMenuBarWidget = enabled
+        defaults.set(enabled, forKey: Self.menuBarFableQuotaKey)
     }
 
     func setShowAntigravityThirdPartyQuota(_ enabled: Bool) {

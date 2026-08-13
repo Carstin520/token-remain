@@ -27,9 +27,10 @@ struct QuotaCard: View {
     @State private var pendingRenameID: ProviderAccountID?
     @State private var pendingRenameText = ""
     @State private var pendingRemoveID: ProviderAccountID?
-    /// Keychain-backed providers collect their credential in a card-local
-    /// popover instead of the official CLI's browser login.
-    @State private var isPresentingCredentialEntry = false
+    /// Every provider presents its setup requirements before starting login or
+    /// accepting a secret, so the compact plus button never triggers a surprise.
+    @State private var isPresentingAccountSetup = false
+    @State private var pendingCredentialUpdateID: ProviderAccountID?
 
     static func scopedWindows(
         in quota: ProviderQuota,
@@ -114,20 +115,9 @@ struct QuotaCard: View {
 
     @ViewBuilder
     private var quotaContent: some View {
-        if supportsMultipleAccounts, let store {
-            if store.isAddingProviderAccount(provider) {
-                AccountAddProgressRow(credentialKind: multiAccountCapability?.credentialKind)
-            }
-            if let managementNotice = store.accountManagementNotice(for: provider),
-               !managementNotice.isEmpty {
-                Text(managementNotice)
-                    .font(.system(size: 10.5))
-                    .foregroundStyle(DashboardTheme.warning)
-                    .lineLimit(3)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .help(managementNotice)
-                    .accessibilityLabel(L10n.format("accounts.management_notice", managementNotice))
-            }
+        if supportsMultipleAccounts, let store,
+           store.isAddingProviderAccount(provider) {
+            AccountAddProgressRow(credentialKind: multiAccountCapability?.credentialKind)
         }
 
         if showsAccountOverview {
@@ -344,14 +334,29 @@ struct QuotaCard: View {
             .padding(.top, 2)
             // Anchored to the row rather than the button so the form stays put
             // while the button itself is disabled during verification.
-            .popover(isPresented: $isPresentingCredentialEntry, arrowEdge: .bottom) {
-                if let hint = credentialHint {
+            .popover(isPresented: $isPresentingAccountSetup, arrowEdge: .bottom) {
+                if multiAccountCapability?.credentialKind == .isolatedCLI {
+                    AddCLIProviderAccountSheet(
+                        store: store,
+                        provider: provider,
+                        isPresented: $isPresentingAccountSetup
+                    )
+                } else if let hint = credentialHint {
                     AddProviderAccountSheet(
                         store: store,
                         provider: provider,
                         hint: hint,
-                        isPresented: $isPresentingCredentialEntry
+                        editingProfile: pendingCredentialUpdateID.flatMap { id in
+                            accountSnapshots.first { $0.id == id }?.profile
+                        },
+                        isPresented: $isPresentingAccountSetup
                     )
+                }
+            }
+            .onChange(of: isPresentingAccountSetup) { _, isPresented in
+                if !isPresented {
+                    pendingCredentialUpdateID = nil
+                    store.clearAccountManagementNotice(for: provider)
                 }
             }
         }
@@ -482,24 +487,14 @@ struct QuotaCard: View {
 
     /// The store already guards against a second concurrent add; checking here
     /// too keeps a double click from queueing a redundant sign-in. Isolated-CLI
-    /// providers hand off to their own official browser login immediately;
-    /// keychain providers first need the credential this app will store.
+    /// providers now explain the isolated browser login before it starts;
+    /// keychain providers explain exactly which credential will be stored.
     private func addAccount(store: UsageStore) {
         guard !store.isAddingProviderAccount(provider) else { return }
-        switch multiAccountCapability?.credentialKind {
-        case .isolatedCLI:
-            Task {
-                await store.addProviderAccount(
-                    provider: provider,
-                    displayName: nil,
-                    credential: nil
-                )
-            }
-        case .keychainSecret:
-            isPresentingCredentialEntry = true
-        case nil:
-            break
-        }
+        guard multiAccountCapability != nil else { return }
+        pendingCredentialUpdateID = nil
+        store.clearAccountManagementNotice(for: provider)
+        isPresentingAccountSetup = true
     }
 
     @ViewBuilder
@@ -584,6 +579,15 @@ struct QuotaCard: View {
         // TokenRemain must not rename, pause, or delete it.
         if !snapshot.profile.isSystem {
             Divider()
+            if snapshot.profile.credentialKind == .keychainSecret {
+                Button {
+                    pendingCredentialUpdateID = snapshot.id
+                    store.clearAccountManagementNotice(for: provider)
+                    isPresentingAccountSetup = true
+                } label: {
+                    Label(L10n.text("accounts.update_credential"), systemImage: "key.fill")
+                }
+            }
             Button {
                 pendingRenameText = snapshot.profile.accountDisplayName
                 pendingRenameID = snapshot.id

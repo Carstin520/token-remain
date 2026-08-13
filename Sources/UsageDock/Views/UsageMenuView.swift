@@ -14,6 +14,9 @@ struct UsageMenuView: View {
     @ObservedObject var preferences: PreferencesStore = .shared
     /// Opens (and fronts) the Dashboard window on a given section.
     let onOpenDashboard: (DashboardSection) -> Void
+    /// The macOS 26 menu-bar panel owns its AppKit window size explicitly.
+    /// Other hosts keep this nil and retain their fixed window/popover size.
+    var onResolvedHeightChange: ((CGFloat) -> Void)? = nil
 
     @State private var measuredHeight: CGFloat = 700
     @State private var reorderInteraction = DirectReorderInteraction<PopoverWidget>()
@@ -108,6 +111,11 @@ struct UsageMenuView: View {
         .scrollDisabled(reorderInteraction.isActive)
         .frame(width: 380)
         .frame(height: min(measuredHeight, maxHeight))
+        .onGeometryChange(for: CGFloat.self) { proxy in
+            proxy.size.height
+        } action: { height in
+            onResolvedHeightChange?(height)
+        }
         // The settings editor floats over the whole popup, OUTSIDE the
         // GlassEffectContainer. Two reasons this is not laid out in flow:
         // inserting it resized the popup and re-laying the live glass

@@ -54,6 +54,54 @@ struct ClaudeNoCLIFallbackTests {
 
 @Suite("Claude CLI usage parser")
 struct ClaudeCLIUsageParserTests {
+    private func fixture(_ name: String) throws -> Data {
+        let url = try #require(
+            Bundle.module.url(forResource: name, withExtension: "pty", subdirectory: "Fixtures")
+        )
+        let escaped = try String(contentsOf: url, encoding: .utf8)
+        let raw = escaped
+            .replacingOccurrences(of: "<ESC>", with: "\u{001B}")
+            .replacingOccurrences(of: "<CR>", with: "\r")
+        return Data(raw.utf8)
+    }
+
+    @Test("Parses the sanitized live PTY capture without inventing Fable")
+    func parsesSanitizedLiveCapture() throws {
+        let now = try #require(ISO8601DateFormatter().date(from: "2026-08-13T08:00:00Z"))
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = try #require(TimeZone(identifier: "Asia/Shanghai"))
+
+        let quota = try ClaudeCLIUsageParser.parse(
+            fixture("claude-usage-2.1.220-live-old-layout"),
+            now: now,
+            calendar: calendar
+        )
+
+        #expect(quota.primary.usedPercent == 8)
+        #expect(quota.secondary?.usedPercent == 56)
+        #expect(quota.primary.resetsAt == ISO8601DateFormatter().date(from: "2026-08-13T11:30:00Z"))
+        #expect(quota.secondary?.resetsAt == ISO8601DateFormatter().date(from: "2026-08-14T05:00:00Z"))
+        #expect(quota.fableWindow == nil)
+    }
+
+    @Test("Parses Weekly limits rows and ignores banner and help copy")
+    func parsesNewWeeklyLimitsLayout() throws {
+        let now = try #require(ISO8601DateFormatter().date(from: "2026-08-13T00:00:00Z"))
+        let data = try fixture("claude-usage-new-weekly-limits")
+
+        let quota = try ClaudeCLIUsageParser.parse(data, now: now)
+
+        #expect(ClaudeCLIUsageParser.hasCompleteUsage(in: data))
+        #expect(quota.primary.usedPercent == 7)
+        #expect(quota.secondary?.usedPercent == 57)
+        #expect(quota.primary.resetsAt == now.addingTimeInterval(3 * 3_600 + 56 * 60))
+        #expect(quota.secondary?.resetsAt == now.addingTimeInterval(21 * 3_600 + 26 * 60))
+        let fable = try #require(quota.fableWindow)
+        #expect(quota.uniqueScopedWindows.map(\.scopeID) == ["fable"])
+        #expect(fable.window.usedPercent == 98)
+        #expect(fable.window.resetsAt == quota.secondary?.resetsAt)
+    }
+
     @Test("Parses the current Claude usage screen in reading order")
     func parsesCurrentClaudeUsageScreenByReadingOrder() throws {
         let output = """

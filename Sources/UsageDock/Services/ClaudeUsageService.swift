@@ -234,29 +234,33 @@ enum ClaudeCLIUsageParser {
         let usedPercent: Double
     }
 
+    private struct UsageReading {
+        let usedPercent: Double
+        let resetDescription: String?
+    }
+
     static func parse(_ data: Data, now: Date = .now, calendar: Calendar = .current) throws -> ProviderQuota {
         guard let raw = String(data: data, encoding: .utf8) else {
             throw ClaudeUsageService.ServiceError.invalidUsageOutput
         }
         let text = cleanedTerminalText(raw)
-        let readings = percentReadings(in: text)
-        guard readings.count >= 2 else {
+        let sessionReading = sessionReadings(in: text).last
+        let weeklyReadings = weeklyReadings(in: text)
+        let generalWeeklyReading = weeklyReadings.last(where: \.isGeneral)
+        guard let sessionReading, let generalWeeklyReading else {
             throw ClaudeUsageService.ServiceError.invalidUsageOutput
         }
 
-        let resetDescriptions = resetDescriptions(in: text)
-        // Terminal repainting can reorder or omit rows. Match reset values by
-        // shape instead of array position: session resets are time-only, while
-        // weekly resets include a month and day.
-        let primaryReset = resetDescriptions
-            .first(where: { !containsMonth($0) })
+        // Associate each reset with its labeled row. Both current layouts can
+        // express session and weekly resets as relative durations, so the old
+        // month-vs-time heuristic cannot distinguish them.
+        let primaryReset = sessionReading.resetDescription
             .flatMap { parseResetDate($0, now: now, calendar: calendar) }
-        let secondaryReset = resetDescriptions
-            .first(where: containsMonth)
+        let secondaryReset = generalWeeklyReading.resetDescription
             .flatMap { parseResetDate($0, now: now, calendar: calendar) }
         var scopedOrder: [String] = []
         var scopedByID: [String: ScopedQuotaWindow] = [:]
-        for reading in namedWeeklyReadings(in: text) {
+        for reading in weeklyReadings where !reading.isGeneral {
             guard let scopeID = scopeID(for: reading.name) else { continue }
             if scopedByID[scopeID] == nil {
                 scopedOrder.append(scopeID)
@@ -272,19 +276,20 @@ enum ClaudeCLIUsageParser {
                     resetsAt: reading.resetDescription.flatMap {
                         parseResetDate($0, now: now, calendar: calendar)
                     } ?? secondaryReset
-                )
+                ),
+                observedAt: now
             )
         }
         let scopedWindows = scopedOrder.compactMap { scopedByID[$0] }
         return ProviderQuota(
             provider: .claude,
             primary: QuotaWindow(
-                usedPercent: readings[0].usedPercent,
+                usedPercent: sessionReading.usedPercent,
                 windowMinutes: 300,
                 resetsAt: primaryReset
             ),
             secondary: QuotaWindow(
-                usedPercent: readings[1].usedPercent,
+                usedPercent: generalWeeklyReading.usedPercent,
                 windowMinutes: 10_080,
                 resetsAt: secondaryReset
             ),
@@ -297,7 +302,11 @@ enum ClaudeCLIUsageParser {
     static func hasCompleteUsage(in data: Data) -> Bool {
         guard let raw = String(data: data, encoding: .utf8) else { return false }
         let text = cleanedTerminalText(raw)
-        return percentReadings(in: text).count >= 2 && resetDescriptions(in: text).count >= 2
+        guard let session = sessionReadings(in: text).last,
+              let weekly = weeklyReadings(in: text).last(where: \.isGeneral) else {
+            return false
+        }
+        return session.resetDescription != nil && weekly.resetDescription != nil
     }
 
     private static func cleanedTerminalText(_ raw: String) -> String {
@@ -313,8 +322,15 @@ enum ClaudeCLIUsageParser {
             with: "",
             options: .regularExpression
         )
+        text = text.replacingOccurrences(
+            of: "\(escape)[()][A-Za-z0-9]",
+            with: "",
+            options: .regularExpression
+        )
         text = text.replacingOccurrences(of: "\r", with: "\n")
         text = text.replacingOccurrences(of: "\u{0008}", with: "")
+        text = text.replacingOccurrences(of: "\u{000E}", with: "")
+        text = text.replacingOccurrences(of: "\u{000F}", with: "")
         return text
     }
 
@@ -340,6 +356,10 @@ enum ClaudeCLIUsageParser {
         let name: String
         let usedPercent: Double
         let resetDescription: String?
+
+        var isGeneral: Bool {
+            ScopedQuotaWindow.isGeneralWeeklyLabel(name)
+        }
     }
 
     private static func scopeID(for name: String) -> String? {
@@ -349,35 +369,165 @@ enum ClaudeCLIUsageParser {
         return value.isEmpty ? nil : String(value.prefix(32))
     }
 
-    /// Claude renders model-specific weekly caps as additional sections such as
-    /// `Current week (Fable)`. Keep them separate from the all-model weekly cap.
-    private static func namedWeeklyReadings(in text: String) -> [NamedWeeklyReading] {
+    private static func usageReading(in body: String) -> UsageReading? {
+        guard let percent = percentReadings(in: body).first else { return nil }
+        return UsageReading(
+            usedPercent: percent.usedPercent,
+            resetDescription: resetDescriptions(in: body).first
+        )
+    }
+
+    private static func sessionReadings(in text: String) -> [UsageReading] {
+        let pattern = #"(?is)Current[ \t]*session(.*?)(?=Current[ \t]*(?:week|session)|Weekly[ \t]*limits|\z)"#
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return [] }
+        let fullRange = NSRange(text.startIndex..., in: text)
+        return regex.matches(in: text, range: fullRange).compactMap { match in
+            guard let bodyRange = Range(match.range(at: 1), in: text) else { return nil }
+            return usageReading(in: String(text[bodyRange]))
+        }
+    }
+
+    private static func weeklyReadings(in text: String) -> [NamedWeeklyReading] {
+        legacyWeeklyReadings(in: text) + modernWeeklyReadings(in: text)
+    }
+
+    /// Older Claude builds render weekly caps as `Current week (Fable)`.
+    /// Preserve the general row too so percentages and resets are associated
+    /// with their labels instead of inferred from global reading order.
+    private static func legacyWeeklyReadings(in text: String) -> [NamedWeeklyReading] {
         // A PTY repaint can leave an opening parenthesis without its matching
         // close on that line. Do not let the model name cross a line boundary:
         // otherwise the progress bar and reset text become a bogus scoped
         // label that later fails the encrypted mobile snapshot allowlist.
-        let pattern = #"(?is)Current\s+week\s*\(([^\r\n)]+)\)(.*?)(?=Current\s+(?:week|session)|\z)"#
+        let pattern = #"(?is)Current[ \t]*week([^\r\n]*)(.*?)(?=Current[ \t]*(?:week|session)|Weekly[ \t]*limits|\z)"#
         guard let regex = try? NSRegularExpression(pattern: pattern) else { return [] }
         let fullRange = NSRange(text.startIndex..., in: text)
         return regex.matches(in: text, range: fullRange).compactMap { match in
-            guard let nameRange = Range(match.range(at: 1), in: text),
+            guard let headerRange = Range(match.range(at: 1), in: text),
                   let bodyRange = Range(match.range(at: 2), in: text) else { return nil }
-            let name = text[nameRange].trimmingCharacters(in: .whitespacesAndNewlines)
+            let header = text[headerRange].trimmingCharacters(in: .whitespacesAndNewlines)
+            let name: String
+            if header.isEmpty {
+                name = "all models"
+            } else {
+                guard let opening = header.firstIndex(of: "("),
+                      let closing = header[header.index(after: opening)...].firstIndex(of: ")") else {
+                    return nil
+                }
+                name = String(header[header.index(after: opening)..<closing])
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+            }
             // Terminal repainting can drop glyphs anywhere in the label and
             // turn `all models` into `all odels`, `ll models`, or a copy caught
             // before the trailing `s` painted. Every one of those is still the
             // general weekly row, not a model-scoped quota.
-            guard !ScopedQuotaWindow.isGeneralWeeklyLabel(name) else {
-                return nil
-            }
             let body = String(text[bodyRange])
-            guard let reading = percentReadings(in: body).first else { return nil }
+            guard let reading = usageReading(in: body) else { return nil }
             return NamedWeeklyReading(
                 name: name,
                 usedPercent: reading.usedPercent,
-                resetDescription: resetDescriptions(in: body).first
+                resetDescription: reading.resetDescription
             )
         }
+    }
+
+    /// New Claude builds group plain labels (`All models`, `Fable`) under a
+    /// `Weekly limits` heading. A label becomes a quota row only when its next
+    /// few painted lines contain both a usage percentage and a reset; this
+    /// keeps the Fable information banner and help link out of scoped windows.
+    private static func modernWeeklyReadings(in text: String) -> [NamedWeeklyReading] {
+        let lines = text.components(separatedBy: .newlines)
+        var isInsideWeeklyLimits = false
+        var result: [NamedWeeklyReading] = []
+
+        for index in lines.indices {
+            let line = compactLine(lines[index])
+            let canonical = canonicalLine(line)
+            if canonical == "weeklylimits" {
+                isInsideWeeklyLimits = true
+                continue
+            }
+            if canonical == "currentsession" || canonical.hasPrefix("currentweek") {
+                isInsideWeeklyLimits = false
+                continue
+            }
+            guard isInsideWeeklyLimits, let name = weeklyLabelCandidate(line) else {
+                continue
+            }
+
+            var bodyLines: [String] = []
+            let upperBound = min(lines.count, index + 7)
+            guard index + 1 < upperBound else { continue }
+            for bodyIndex in (index + 1)..<upperBound {
+                let bodyLine = compactLine(lines[bodyIndex])
+                let bodyCanonical = canonicalLine(bodyLine)
+                if bodyCanonical == "weeklylimits"
+                    || bodyCanonical == "currentsession"
+                    || bodyCanonical.hasPrefix("currentweek") {
+                    break
+                }
+                // A new label before both metrics means the candidate was
+                // banner/help copy, not a quota row.
+                if weeklyLabelCandidate(bodyLine) != nil {
+                    break
+                }
+                bodyLines.append(bodyLine)
+                let body = bodyLines.joined(separator: "\n")
+                if let reading = usageReading(in: body), reading.resetDescription != nil {
+                    result.append(
+                        NamedWeeklyReading(
+                            name: name,
+                            usedPercent: reading.usedPercent,
+                            resetDescription: reading.resetDescription
+                        )
+                    )
+                    break
+                }
+            }
+        }
+        return result
+    }
+
+    private static func compactLine(_ value: String) -> String {
+        value.replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private static func canonicalLine(_ value: String) -> String {
+        value.lowercased().filter { $0.isASCII && ($0.isLetter || $0.isNumber) }
+    }
+
+    private static func weeklyLabelCandidate(_ line: String) -> String? {
+        let compact = compactLine(line)
+        let canonical = canonicalLine(compact)
+        guard !compact.isEmpty, compact.count <= 48,
+              !compact.contains("%"), !canonical.hasPrefix("resets"),
+              canonical != "weeklylimits", canonical != "currentsession",
+              !canonical.hasPrefix("currentweek") else {
+            return nil
+        }
+        if ScopedQuotaWindow.isGeneralWeeklyLabel(compact) {
+            return compact
+        }
+
+        let lowercased = compact.lowercased()
+        guard !lowercased.contains("learn more"),
+              !lowercased.contains("usage limits"),
+              !lowercased.contains("included"),
+              !lowercased.contains("restart claude"),
+              !lowercased.contains("://"),
+              compact.split(whereSeparator: \.isWhitespace).count <= 5 else {
+            return nil
+        }
+        let punctuation = CharacterSet(charactersIn: "-._/+")
+        guard compact.unicodeScalars.allSatisfy({ scalar in
+            CharacterSet.alphanumerics.contains(scalar)
+                || CharacterSet.whitespaces.contains(scalar)
+                || punctuation.contains(scalar)
+        }) else {
+            return nil
+        }
+        return compact
     }
 
     private static func resetDescriptions(in text: String) -> [String] {
@@ -400,6 +550,23 @@ enum ClaudeCLIUsageParser {
         let compact = description
             .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
             .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if let inRange = compact.range(of: #"\bin\b"#, options: [.regularExpression, .caseInsensitive]) {
+            let relative = String(compact[inRange.upperBound...])
+            let days = firstMatch(#"\b(\d+)\s*(?:days?|d)"#, in: relative)
+                .flatMap { capture(1, from: $0, in: relative) }
+                .flatMap(Int.init) ?? 0
+            let hours = firstMatch(#"\b(\d+)\s*(?:hours?|hrs?|h)"#, in: relative)
+                .flatMap { capture(1, from: $0, in: relative) }
+                .flatMap(Int.init) ?? 0
+            let minutes = firstMatch(#"\b(\d+)\s*(?:minutes?|mins?|m)"#, in: relative)
+                .flatMap { capture(1, from: $0, in: relative) }
+                .flatMap(Int.init) ?? 0
+            let seconds = days * 86_400 + hours * 3_600 + minutes * 60
+            if seconds > 0 {
+                return calendar.date(byAdding: .second, value: seconds, to: now)
+            }
+        }
 
         // Parse the more specific month/day form first. A value such as
         // "Jul 24 at 1pm" also contains a valid time-only substring; matching
@@ -470,10 +637,6 @@ enum ClaudeCLIUsageParser {
         ][String(prefix)]
     }
 
-    private static func containsMonth(_ text: String) -> Bool {
-        let pattern = #"\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[A-Za-z]*\b"#
-        return text.range(of: pattern, options: [.regularExpression, .caseInsensitive]) != nil
-    }
 }
 
 private enum ClaudeCLIUsageProbe {

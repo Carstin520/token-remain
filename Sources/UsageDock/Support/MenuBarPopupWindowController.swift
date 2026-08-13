@@ -34,9 +34,39 @@ enum MenuBarPopupPlacement {
     }
 }
 
+enum MenuBarPopupSizing {
+    static let menuWidth: CGFloat = 380
+    static let resizeTolerance: CGFloat = 0.5
+
+    static func contentSize(forMenuHeight menuHeight: CGFloat) -> NSSize? {
+        guard menuHeight > 0, menuHeight.isFinite else { return nil }
+        return NSSize(
+            width: menuWidth,
+            height: menuHeight + MenuBarPopupShellShape.beakOverhang
+        )
+    }
+
+    static func requiresResize(from current: NSSize, to target: NSSize) -> Bool {
+        abs(current.width - target.width) >= resizeTolerance
+            || abs(current.height - target.height) >= resizeTolerance
+    }
+}
+
 @MainActor
 private final class MenuBarPopupChromeModel: ObservableObject {
     @Published var arrowCenterX: CGFloat = 190
+}
+
+@MainActor
+private final class MenuBarPopupSizeRelay {
+    var onSizeChange: ((NSSize) -> Void)?
+
+    func report(menuHeight: CGFloat) {
+        guard let size = MenuBarPopupSizing.contentSize(forMenuHeight: menuHeight) else {
+            return
+        }
+        onSizeChange?(size)
+    }
 }
 
 /// macOS 26's standard NSPopover always contributes its own vibrant backdrop.
@@ -45,28 +75,39 @@ private final class MenuBarPopupChromeModel: ObservableObject {
 @MainActor
 final class MenuBarPopupWindowController: NSWindowController {
     private let chromeModel: MenuBarPopupChromeModel
+    private let sizeRelay: MenuBarPopupSizeRelay
     private weak var anchorButton: NSStatusBarButton?
     private var localEventMonitor: Any?
     private var globalEventMonitor: Any?
-    private var preferredSizeObservation: NSKeyValueObservation?
+    private var pendingContentSize: NSSize?
+    private var contentSizeUpdateScheduled = false
 
     var isShown: Bool {
         window?.isVisible == true
     }
 
-    init<Content: View>(rootView: Content) {
+    init<Content: View>(
+        @ViewBuilder rootView: @escaping (@escaping (CGFloat) -> Void) -> Content
+    ) {
         let chromeModel = MenuBarPopupChromeModel()
+        let sizeRelay = MenuBarPopupSizeRelay()
         self.chromeModel = chromeModel
+        self.sizeRelay = sizeRelay
         let hosting = NSHostingController(
             rootView: MenuBarPopupChrome(model: chromeModel) {
-                rootView
+                rootView { [weak sizeRelay] height in
+                    sizeRelay?.report(menuHeight: height)
+                }
             }
         )
-        hosting.sizingOptions = [.preferredContentSize]
+        FixedHostingWindowSizing.configure(hosting)
         hosting.safeAreaRegions = []
 
+        let initialSize = MenuBarPopupSizing.contentSize(forMenuHeight: 700)
+            ?? NSSize(width: MenuBarPopupSizing.menuWidth, height: 711)
+
         let panel = MenuBarPopupPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 380, height: 700),
+            contentRect: NSRect(origin: .zero, size: initialSize),
             styleMask: [.borderless, .fullSizeContentView, .nonactivatingPanel],
             backing: .buffered,
             defer: false
@@ -87,14 +128,8 @@ final class MenuBarPopupWindowController: NSWindowController {
 
         super.init(window: panel)
 
-        preferredSizeObservation = hosting.observe(
-            \.preferredContentSize,
-            options: [.initial, .new]
-        ) { [weak self] hosting, _ in
-            DispatchQueue.main.async { [weak self, weak hosting] in
-                guard let self, let hosting else { return }
-                self.applyPreferredContentSize(hosting.preferredContentSize)
-            }
+        sizeRelay.onSizeChange = { [weak self] size in
+            self?.scheduleContentSizeUpdate(size)
         }
     }
 
@@ -159,11 +194,30 @@ final class MenuBarPopupWindowController: NSWindowController {
         window?.orderOut(nil)
     }
 
-    private func applyPreferredContentSize(_ size: NSSize) {
-        guard size.width > 0, size.height > 0, size.width.isFinite, size.height.isFinite else {
+    private func scheduleContentSizeUpdate(_ size: NSSize) {
+        pendingContentSize = size
+        guard !contentSizeUpdateScheduled else { return }
+        contentSizeUpdateScheduled = true
+
+        // Geometry changes are reported during SwiftUI layout. Move the AppKit
+        // resize to the next run-loop turn so it can never synchronously re-enter
+        // the layout pass that produced the measurement.
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.contentSizeUpdateScheduled = false
+            guard let size = self.pendingContentSize else { return }
+            self.pendingContentSize = nil
+            self.applyContentSize(size)
+        }
+    }
+
+    private func applyContentSize(_ size: NSSize) {
+        guard let window else { return }
+        let currentSize = window.contentView?.bounds.size ?? window.frame.size
+        guard MenuBarPopupSizing.requiresResize(from: currentSize, to: size) else {
             return
         }
-        window?.setContentSize(size)
+        window.setContentSize(size)
         if isShown {
             _ = positionWindow()
         }
