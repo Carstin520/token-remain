@@ -63,12 +63,28 @@ report_snapshot() {
   ls "$REPORT_DIR" 2>/dev/null | grep "^${EXECUTABLE}-" || true
 }
 
+# 安装目录是固定路径,`--skip-build` 会盲信"上一次装进去的是什么"。实测可以
+# 从一份被故意改坏的源码树跑这个脚本、却让它去测另一份修好的安装包,然后报
+# PASS。所以构建时按源码内容盖一个指纹,跳过构建时校验指纹是否还对得上。
+STAMP="$APP/Contents/Resources/.launch-stability-source"
+source_fingerprint() {
+  find Sources Package.swift -type f \( -name "*.swift" -o -name "Package.swift" \) \
+    -exec shasum -a 256 {} + | sort | shasum -a 256 | cut -d' ' -f1
+}
+
 if (( SKIP_BUILD == 0 )); then
   echo "==> building and installing $APP"
   stop_app
   bash script/build_and_run.sh run >/dev/null
+  source_fingerprint > "$STAMP" || fail "could not stamp the installed app"
 fi
 [[ -d "$APP" ]] || fail "$APP is not installed; run without --skip-build"
+if (( SKIP_BUILD == 1 )); then
+  [[ -f "$STAMP" ]] \
+    || fail "$APP carries no source stamp; rebuild instead of --skip-build"
+  [[ "$(cat "$STAMP")" == "$(source_fingerprint)" ]] \
+    || fail "installed app was not built from this checkout; drop --skip-build"
+fi
 stop_app
 
 FAILURES=0
@@ -78,7 +94,10 @@ for STYLE in frosted clear; do
   for (( ROUND = 1; ROUND <= ROUNDS; ROUND++ )); do
     BEFORE="$(report_snapshot)"
 
-    /usr/bin/open "$APP"
+    # `--menu-bar-only`:普通启动会顺手打开 Dashboard(UsageDockApp.swift 的
+    # else 分支),那样测的就不再是"隐藏的菜单栏弹窗自己把自己搞崩"这条路径,
+    # 归因不干净。这个开关让 app 只起菜单栏这一套。
+    /usr/bin/open -a "$APP" --args --menu-bar-only
     # 给 LaunchServices 一点时间把进程真正拉起来,拉不起来本身就是失败。
     LAUNCHED=0
     for _ in {1..20}; do
