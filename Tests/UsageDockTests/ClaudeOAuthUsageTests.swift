@@ -119,7 +119,8 @@ struct ClaudeOAuthUsageParserTests {
                         usedPercent: 67,
                         windowMinutes: 10_080,
                         resetsAt: now.addingTimeInterval(3_600)
-                    )
+                    ),
+                    observedAt: now.addingTimeInterval(-300)
                 )
             ]
         )
@@ -127,6 +128,105 @@ struct ClaudeOAuthUsageParserTests {
         let retained = api.retainingActiveScopedWindows(from: previous, now: now)
 
         #expect(retained.fableWindow?.window.usedPercent == 67)
+    }
+
+    @Test("A scoped window from an older build is dropped rather than kept forever")
+    func dropsScopedWindowWithoutObservationTimestamp() throws {
+        let now = Date(timeIntervalSince1970: 1_784_000_000)
+        let api = try ClaudeOAuthUsageParser.parse(
+            Data(#"{"five_hour":{"utilization":12},"seven_day":{"utilization":34}}"#.utf8)
+        )
+        let previous = ProviderQuota(
+            provider: .claude,
+            primary: api.primary,
+            secondary: api.secondary,
+            planName: api.planName,
+            capturedAt: now.addingTimeInterval(-300),
+            // 旧版本写下的快照没有 observedAt。此前它靠 previous.capturedAt 判新鲜,
+            // 而那个时间戳每轮刷新都会被重写,于是这种窗口永远不过期。
+            scopedWindows: [
+                ScopedQuotaWindow(
+                    scopeID: "fable",
+                    displayName: "Fable",
+                    window: QuotaWindow(
+                        usedPercent: 67,
+                        windowMinutes: 10_080,
+                        resetsAt: now.addingTimeInterval(3_600)
+                    )
+                )
+            ]
+        )
+
+        #expect(api.retainingActiveScopedWindows(from: previous, now: now).fableWindow == nil)
+    }
+
+    @Test("A snapshot that reports its own scoped windows never resurrects older ones")
+    func doesNotResurrectWhenCurrentSnapshotHasScopedWindows() throws {
+        let now = Date(timeIntervalSince1970: 1_784_000_000)
+        let api = try ClaudeOAuthUsageParser.parse(
+            Data(#"""
+            {"five_hour":{"utilization":12},"seven_day":{"utilization":34},
+             "seven_day_fable":{"utilization":98}}
+            """#.utf8),
+            now: now
+        )
+        let previous = ProviderQuota(
+            provider: .claude,
+            primary: api.primary,
+            secondary: api.secondary,
+            planName: api.planName,
+            capturedAt: now.addingTimeInterval(-60),
+            scopedWindows: [
+                ScopedQuotaWindow(
+                    scopeID: "fable_stale_copy",
+                    displayName: "Fable",
+                    window: QuotaWindow(
+                        usedPercent: 0,
+                        windowMinutes: 10_080,
+                        resetsAt: now.addingTimeInterval(8 * 3_600)
+                    ),
+                    observedAt: now.addingTimeInterval(-60)
+                )
+            ]
+        )
+
+        let retained = api.retainingActiveScopedWindows(from: previous, now: now)
+
+        // 本轮已经报了自己的 scoped 集合,缺席的就是真的没了,不该被复活成
+        // 第二张"100% remaining"的 Fable 卡片。
+        #expect(retained.uniqueScopedWindows.map(\.scopeID) == ["fable"])
+        #expect(retained.fableWindow?.window.usedPercent == 98)
+    }
+
+    @Test("A screen fragment mistaken for a model name is rejected")
+    func rejectsCorruptScopedWindowFromOlderParser() {
+        // 真实缓存里捞到的化石:旧解析器把进度条和重置行吞进了 displayName,
+        // usedPercent 为 0,于是弹窗在真实 Fable(98% used)旁边多画了一张
+        // "100% remaining" 的卡片。修好解析器救不了已经存了这条记录的用户。
+        let fossil = ScopedQuotaWindow(
+            scopeID: "fable_40_used_resets_aug14_at_12",
+            displayName: "Fable\n████████████████████    40%used\nResets Aug14 at 12:59pm(Asia/Shanghai",
+            window: QuotaWindow(usedPercent: 0, windowMinutes: 10_080, resetsAt: nil)
+        )
+        let healthy = ScopedQuotaWindow(
+            scopeID: "fable",
+            displayName: "Fable",
+            window: QuotaWindow(usedPercent: 98, windowMinutes: 10_080, resetsAt: nil)
+        )
+
+        #expect(!fossil.isPlausibleModelScope)
+        #expect(healthy.isPlausibleModelScope)
+
+        let quota = ProviderQuota(
+            provider: .claude,
+            primary: QuotaWindow(usedPercent: 11, windowMinutes: 300, resetsAt: nil),
+            secondary: nil,
+            planName: nil,
+            capturedAt: .now,
+            scopedWindows: [healthy, fossil]
+        )
+
+        #expect(quota.uniqueScopedWindows.map(\.scopeID) == ["fable"])
     }
 
     @Test("An expired Fable quota is not retained")
@@ -180,7 +280,8 @@ struct ClaudeOAuthUsageParserTests {
                         usedPercent: 0,
                         windowMinutes: 10_080,
                         resetsAt: now.addingTimeInterval(8 * 3_600 + 31 * 60)
-                    )
+                    ),
+                    observedAt: now.addingTimeInterval(-901)
                 )
             ]
         )

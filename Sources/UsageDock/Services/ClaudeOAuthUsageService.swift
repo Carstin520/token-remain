@@ -134,7 +134,7 @@ enum ClaudeOAuthUsageParser {
         guard let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
             throw ClaudeOAuthUsageService.APIError.invalidResponse
         }
-        let structured = structuredLimits(object["limits"])
+        let structured = structuredLimits(object["limits"], now: now)
         // Some accounts have moved these values into `limits`; require a real
         // session row from either schema so inference-only tokens still fall
         // through to the PTY instead of inventing subscription quota.
@@ -154,7 +154,8 @@ enum ClaudeOAuthUsageParser {
             return ScopedQuotaWindow(
                 scopeID: scopeID,
                 displayName: displayName(forScopeID: scopeID),
-                window: value
+                window: value,
+                observedAt: now
             )
         }
         let scopedWindows = uniqueScopedWindows(legacyScopedWindows + structured.scopedWindows)
@@ -184,7 +185,7 @@ enum ClaudeOAuthUsageParser {
     /// The current API represents Fable as a `weekly_scoped` row whose model
     /// ID may be null. Derive a stable ID from the display name in that case;
     /// banners and help links are not rows in this schema and are ignored.
-    private static func structuredLimits(_ value: Any?) -> StructuredLimits {
+    private static func structuredLimits(_ value: Any?, now: Date) -> StructuredLimits {
         guard let rows = value as? [[String: Any]] else { return StructuredLimits() }
         var result = StructuredLimits()
         for row in rows {
@@ -220,7 +221,8 @@ enum ClaudeOAuthUsageParser {
                     ScopedQuotaWindow(
                         scopeID: scopeID,
                         displayName: resolvedDisplayName,
-                        window: window
+                        window: window,
+                        observedAt: now
                     )
                 )
             default:

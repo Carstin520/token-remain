@@ -276,7 +276,8 @@ enum ClaudeCLIUsageParser {
                     resetsAt: reading.resetDescription.flatMap {
                         parseResetDate($0, now: now, calendar: calendar)
                     } ?? secondaryReset
-                )
+                ),
+                observedAt: now
             )
         }
         let scopedWindows = scopedOrder.compactMap { scopedByID[$0] }

@@ -37,6 +37,10 @@ struct ScopedQuotaWindow: Sendable, Codable {
     let scopeID: String
     let displayName: String
     let window: QuotaWindow
+    /// When a live source last reported this window. Optional so snapshots
+    /// written by older builds still decode — they decode as `nil`, which
+    /// `retainingActiveScopedWindows` treats as expired rather than immortal.
+    var observedAt: Date? = nil
 
     var isFable: Bool {
         scopeID.lowercased().hasPrefix("fable")
@@ -50,6 +54,32 @@ struct ScopedQuotaWindow: Sendable, Codable {
 
     var isAntigravityThirdParty: Bool {
         scopeID.lowercased().hasPrefix("antigravity_3p_")
+    }
+
+    /// Is this a model name, or a chunk of screen the parser mistook for one?
+    ///
+    /// A real fossil found in a live cache had this as its `displayName`:
+    ///
+    ///     Fable
+    ///     ████████████████████    40%used
+    ///     Resets Aug14 at 12:59pm(Asia/Shanghai
+    ///
+    /// with `usedPercent: 0`, so the popup rendered that blob as a row title
+    /// reading `100% remaining` next to the real `Fable` at 98% used. An older
+    /// parser swallowed the progress bar and reset line into the label, and the
+    /// entry then survived every refresh (see `retainingActiveScopedWindows`).
+    /// Fixing the parser does not help anyone who already has one cached, so
+    /// the corrupt shape is rejected wherever a scoped window enters the app.
+    var isPlausibleModelScope: Bool {
+        guard !scopeID.isEmpty, !displayName.isEmpty else { return false }
+        // No real model name spans lines or carries drawing glyphs.
+        guard !displayName.contains(where: { $0.isNewline }) else { return false }
+        guard displayName.unicodeScalars.allSatisfy({ scalar in
+            !CharacterSet.controlCharacters.contains(scalar)
+                && !("\u{2500}"..."\u{259F}").contains(scalar)
+        }) else { return false }
+        // `Fable`, `GPT-5.3-Codex-Spark`. Screen fragments blow past this.
+        return displayName.count <= 48 && scopeID.count <= 32
     }
 
     /// Claude Code names the general weekly cap `Current week (all models)`.
@@ -215,7 +245,10 @@ struct ProviderQuota: Sendable, Codable {
     var uniqueScopedWindows: [ScopedQuotaWindow] {
         var order: [String] = []
         var latestByScope: [String: ScopedQuotaWindow] = [:]
-        for scoped in scopedWindows ?? [] where !scoped.isGeneralWeeklyLabel {
+        // Every consumer reads scoped windows through here, so this is the one
+        // place that can also clean a cache written by an older, buggier parse.
+        for scoped in scopedWindows ?? []
+        where !scoped.isGeneralWeeklyLabel && scoped.isPlausibleModelScope {
             let key = scoped.scopeID.lowercased()
             if latestByScope[key] == nil {
                 order.append(key)
@@ -295,10 +328,25 @@ struct ProviderQuota: Sendable, Codable {
         now: Date,
         staleRetention: TimeInterval = 900
     ) -> ProviderQuota {
-        guard now.timeIntervalSince(previous.capturedAt) < staleRetention else {
-            return self
-        }
+        // Retention exists for one narrow case: the account refresh succeeded
+        // but the secondary `/usage` probe happened to omit model-scoped rows
+        // this round. If THIS snapshot already carries scoped windows, the
+        // source did report its set, and anything missing from it is genuinely
+        // gone — resurrecting the previous set would only keep dead rows alive.
+        guard uniqueScopedWindows.isEmpty else { return self }
+
+        // `previous.capturedAt` cannot anchor staleness: every refresh re-saves
+        // the merged snapshot with a fresh timestamp, so a carried-forward
+        // window kept resetting its own clock and lived forever. A live cache
+        // held a corrupt Fable row this way for an entire quota cycle, shown as
+        // `100% remaining` beside the real one at 98% used. Anchor on when the
+        // window was actually observed instead, and treat a window from an
+        // older build (no timestamp) as expired rather than immortal.
         let active = previous.uniqueScopedWindows.filter { scoped in
+            guard let observedAt = scoped.observedAt,
+                  now.timeIntervalSince(observedAt) < staleRetention else {
+                return false
+            }
             if let resetsAt = scoped.window.resetsAt {
                 return resetsAt > now
             }
