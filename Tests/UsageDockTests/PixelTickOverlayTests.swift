@@ -29,10 +29,14 @@ struct PixelTickOverlayTests {
         #expect(isInsideContinuousCorner(inset: inset, cornerRadius: 13))
     }
 
-    @Test("Derived inset keeps the L inside a 15pt dashboard-card corner")
-    func dashboardCardInsetClearsContinuousCurve() {
-        let inset = PixelTickOverlay.inset(cornerRadius: 15)
-        #expect(isInsideContinuousCorner(inset: inset, cornerRadius: 15))
+    @Test("Derived inset keeps the L inside every production card radius")
+    func productionCardRadiiClearContinuousCurve() {
+        // AIFeedPostCard / RiskStrip = 13, MetricCard = 14, DashboardCard = 15.
+        for radius in [13, 14, 15] as [CGFloat] {
+            let inset = PixelTickOverlay.inset(cornerRadius: radius)
+            #expect(inset > 5)
+            #expect(isInsideContinuousCorner(inset: inset, cornerRadius: radius))
+        }
     }
 
     @Test("Inset grows with corner radius and never drops below 5pt")
