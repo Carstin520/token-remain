@@ -6,10 +6,34 @@ import SwiftUI
 /// `PixelCard` fallback) to carry the mobile TokenRemain identity onto desktop.
 struct PixelTickOverlay: View {
     var color: Color = DashboardTheme.border
-    /// Distance of the tick corner from the card edge.
-    var inset: CGFloat = 5
+    /// Card corner the ticks must sit inside. Continuous rounded rects cut
+    /// deeper than circular ones of the same token, so the inset is derived
+    /// from this rather than a fixed 5pt that gets clipped into a nub.
+    var cornerRadius: CGFloat = 8
     /// Length of each L-mark arm.
     var armLength: CGFloat = 3
+
+    var inset: CGFloat {
+        Self.inset(cornerRadius: cornerRadius, armLength: armLength)
+    }
+
+    /// Distance from the card edge so the L's outer vertex stays inside a
+    /// continuous rounded corner plus the card stroke.
+    static func inset(
+        cornerRadius: CGFloat,
+        armLength: CGFloat = 3,
+        strokeWidth: CGFloat = 1.5
+    ) -> CGFloat {
+        let radius = max(0, cornerRadius)
+        let arm = max(0, armLength)
+        let stroke = max(0, strokeWidth)
+        // Continuous corners reach farther inward than circular. Treat the
+        // curve as ~1.5× the circular diagonal inset, then add the stroke
+        // and 1pt of air so the full L is visible inside the rim.
+        let continuousCurveInset = radius * (1 - 1 / CGFloat(2).squareRoot()) * 1.5
+        let minimum = max(5, arm + 2)
+        return max(minimum, (continuousCurveInset + stroke + 1).rounded(.up))
+    }
 
     var body: some View {
         Canvas { context, size in
@@ -34,9 +58,11 @@ struct PixelTickOverlay: View {
             drawL(i, size.height - i, 1, -1)                    // bottom-left
             drawL(size.width - i, size.height - i, -1, -1)      // bottom-right
 
-            // 2×2 dot cluster tucked inside the bottom-right corner tick.
-            let bx = size.width - i - 8
-            let by = size.height - i - 8
+            // 2×2 cluster just inside the L. A short gap keeps a larger
+            // corner-safe inset from walking the dots into card content.
+            let clusterGap: CGFloat = 4
+            let bx = size.width - i - clusterGap
+            let by = size.height - i - clusterGap
             for row in 0..<2 {
                 for col in 0..<2 {
                     context.fill(
@@ -72,11 +98,16 @@ struct PixelCard<Content: View>: View {
 }
 
 extension View {
-    /// Applies the pixel-tech tick ornament clipped to the card's rounded rect.
+    /// Pixel-tech tick ornament. The L sits inside the continuous corner; the
+    /// clip is only an overflow fence along the inner face of the stroke, so
+    /// it cannot turn a correctly placed tick into a nub on the rim.
     func pixelTicks(cornerRadius: CGFloat, color: Color = DashboardTheme.border) -> some View {
         overlay(
-            PixelTickOverlay(color: color)
-                .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            PixelTickOverlay(color: color, cornerRadius: cornerRadius)
+                .clipShape(
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .inset(by: 0.5)
+                )
         )
     }
 }
