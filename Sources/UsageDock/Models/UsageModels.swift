@@ -348,7 +348,13 @@ struct ProviderQuota: Sendable, Codable {
                 return false
             }
             if let resetsAt = scoped.window.resetsAt {
-                return resetsAt > now
+                // `> now` alone kept a corrupt reset alive forever: a damaged
+                // `/usage` line once parsed into the same date a year out, and
+                // a year-out timestamp satisfies that test for the whole cycle.
+                // A reset can never sit further out than its own window is long.
+                let interval = resetsAt.timeIntervalSince(now)
+                let window = TimeInterval(max(0, scoped.window.windowMinutes)) * 60
+                return interval > 0 && (window == 0 || interval <= window + 300)
             }
             return true
         }

@@ -57,7 +57,7 @@ struct ClaudeOAuthUsageService {
         reader.environment = environment
         reader.fallbackToDefaultDirectory = !isolatedConfiguration
         reader.allowsKeychain = !isolatedConfiguration
-        let result = reader.read(
+        let result = await reader.readAllowingAppleTool(
             now: now,
             keychainInteraction: keychainInteraction
         )
@@ -328,8 +328,13 @@ enum ClaudeOAuthUsageParser {
 /// 只读发现 Claude Code 的 OAuth 凭证。查找顺序:
 /// 1. `$CLAUDE_CONFIG_DIR/.credentials.json` 或 `~/.claude/.credentials.json`(无需授权提示)
 /// 2. 钥匙串 `Claude Code-credentials`。自动刷新走 `.disallowed`:已在 ACL 里
-///    授权过的条目照常读到,未授权则立即失败(绝不弹框、绝不阻塞),由调用方
-///    降级到 PTY `/usage` 探针。构建脚本的稳定签名让"始终允许"跨重建生效。
+///    授权过的条目照常读到,未授权则立即失败(绝不弹框、绝不阻塞)。构建脚本
+///    的稳定签名让"始终允许"跨重建生效。
+/// 3. 同一条目改由 `/usr/bin/security` 代读(`readAllowingAppleTool`)。第 2 步
+///    在实机上恒定失败:该条目的 partition list 只有 `apple-tool:`,分区检查先于
+///    信任应用检查,于是"始终允许"点多少次都不生效。见
+///    `KeychainRead.genericPasswordViaAppleTool`。
+/// 三步都拿不到才由调用方降级到 PTY `/usage` 探针。
 /// 已过期(或即将过期)的 token 直接跳过,继续尝试下一个来源;绝不续期。
 struct ClaudeCredentialsReader {
     enum Source: Equatable, Sendable {
@@ -383,6 +388,10 @@ struct ClaudeCredentialsReader {
         )
     }
 
+    var appleToolPayload: @Sendable (String) async -> KeychainRead.Outcome = { service in
+        await KeychainRead.genericPasswordViaAppleTool(service: service)
+    }
+
     /// token 剩余寿命低于该值时视同过期:一次刷新周期内的边界 token
     /// 会在请求途中失效,不如直接走降级路径。
     static let expiryMargin: TimeInterval = 120
@@ -434,6 +443,43 @@ struct ClaudeCredentialsReader {
             source: credentials == nil ? nil : .keychain,
             keychainStatus: outcome.status,
             hasExpiredCredentials: foundExpiredCredentials
+        )
+    }
+
+    /// The direct read is cheaper and wins whenever this app really is inside the
+    /// item's partition. When it is not — the normal state for a credential a CLI
+    /// wrote, see `KeychainRead.genericPasswordViaAppleTool` — retry through
+    /// `/usr/bin/security` rather than degrading to the PTY probe. Managed
+    /// profiles never take this path: their credentials live in their own
+    /// configuration directory, while the shared keychain item belongs to
+    /// whichever account Claude Code is currently signed into.
+    func readAllowingAppleTool(
+        now: Date = .now,
+        keychainInteraction: KeychainRead.Interaction = .disallowed
+    ) async -> ReadResult {
+        let direct = read(now: now, keychainInteraction: keychainInteraction)
+        guard allowsKeychain, direct.credentials == nil, direct.needsAuthorization else {
+            return direct
+        }
+        let outcome = await appleToolPayload(Self.keychainService)
+        guard let payload = outcome.payload, let parsed = Self.decode(payload) else {
+            // Keep the direct result: it already describes why the item is out
+            // of reach, and the delegate adds no new recovery action.
+            return direct
+        }
+        guard Self.isUsable(parsed, now: now) else {
+            return ReadResult(
+                credentials: nil,
+                source: nil,
+                keychainStatus: outcome.status,
+                hasExpiredCredentials: true
+            )
+        }
+        return ReadResult(
+            credentials: parsed.credentials,
+            source: .keychain,
+            keychainStatus: outcome.status,
+            hasExpiredCredentials: false
         )
     }
 

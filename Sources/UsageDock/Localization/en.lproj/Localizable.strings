@@ -323,6 +323,8 @@
 "service.claude.api_rate_limited_minutes" = "Claude usage API is rate limited; retry in about %1$d min";
 "service.claude.authorization_required" = "Allow TokenRemain read-only access to your Claude login credentials";
 "service.claude.cli_not_found" = "The optional Claude CLI fallback is unavailable; sign in or renew from Code in the Claude app";
+"alert.provider_signed_out.title" = "%@ is signed out";
+"alert.provider_signed_out.body" = "TokenRemain can no longer read your usage — the cards are showing the last good snapshot. Sign in to %@ again to restore it.";
 "service.claude.cli_timeout" = "Claude Code usage read timed out; showing the latest cached data";
 "service.claude.credentials_unavailable" = "No usable Claude login credentials found; sign in from Code in the Claude app";
 "service.claude.invalid_stored_credentials" = "Claude login credentials are not recognized; sign in again in the Claude app";

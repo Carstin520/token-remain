@@ -326,6 +326,8 @@
 "service.claude.api_rate_limited" = "La API de uso de Claude está limitada; reintenta más tarde";
 "service.claude.api_rate_limited_minutes" = "La API de uso de Claude está limitada; reintenta en unos %1$d min";
 "service.claude.cli_not_found" = "La alternativa opcional de Claude CLI no está disponible; inicia sesión o renueva desde Code en la app Claude";
+"alert.provider_signed_out.title" = "Se cerró la sesión de %@";
+"alert.provider_signed_out.body" = "TokenRemain ya no puede leer tu uso: las tarjetas muestran la última instantánea correcta. Vuelve a iniciar sesión en %@ para restaurarlo.";
 "service.claude.cli_timeout" = "La lectura de uso de Claude Code superó el tiempo de espera; se muestra la última caché";
 "service.claude.credentials_unavailable" = "No se encontraron credenciales de Claude utilizables; abre Code en la app Claude e inicia sesión";
 "service.claude.invalid_usage_output" = "Claude Code no devolvió un uso reconocible de 5 horas / 7 días";

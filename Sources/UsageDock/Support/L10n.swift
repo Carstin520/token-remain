@@ -360,6 +360,8 @@ enum L10n {
         "service.claude.api_rate_limited_minutes": "Claude 用量接口限流,约 %1$d 分钟后重试",
         "service.claude.authorization_required": "需要允许 TokenRemain 只读访问 Claude 登录凭证",
         "service.claude.cli_not_found": "选用的 Claude CLI 兜底不可用；请打开 Claude 应用的 Code 页面登录或续期",
+        "alert.provider_signed_out.title": "%@ 已登出",
+        "alert.provider_signed_out.body": "TokenRemain 已读不到用量，卡片显示的是最后一次成功的快照。重新登录 %@ 后自动恢复。",
         "service.claude.cli_timeout": "Claude Code 用量读取超时，正在显示最近缓存",
         "service.claude.credentials_unavailable": "未找到可用的 Claude 登录凭证；请打开 Claude 应用的 Code 页面登录",
         "service.claude.invalid_stored_credentials": "Claude 登录凭证格式无法识别；请打开 Claude 应用重新登录",

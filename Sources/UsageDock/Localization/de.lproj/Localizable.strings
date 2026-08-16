@@ -326,6 +326,8 @@
 "service.claude.api_rate_limited" = "Claude-Nutzungs-API gedrosselt; später erneut versuchen";
 "service.claude.api_rate_limited_minutes" = "Claude-Nutzungs-API gedrosselt; in ca. %1$d Min erneut versuchen";
 "service.claude.cli_not_found" = "Der optionale Claude-CLI-Fallback ist nicht verfügbar; bitte Code in der Claude-App öffnen und anmelden oder erneuern";
+"alert.provider_signed_out.title" = "%@ ist abgemeldet";
+"alert.provider_signed_out.body" = "TokenRemain kann deine Nutzung nicht mehr lesen – die Karten zeigen den letzten gültigen Stand. Melde dich wieder bei %@ an, um sie wiederherzustellen.";
 "service.claude.cli_timeout" = "Zeitüberschreitung beim Lesen der Claude-Code-Nutzung; letzter Cache wird angezeigt";
 "service.claude.credentials_unavailable" = "Keine nutzbaren Claude-Anmeldedaten gefunden; bitte Code in der Claude-App öffnen und anmelden";
 "service.claude.invalid_usage_output" = "Claude Code lieferte keine erkennbare 5-Stunden-/7-Tage-Nutzung";

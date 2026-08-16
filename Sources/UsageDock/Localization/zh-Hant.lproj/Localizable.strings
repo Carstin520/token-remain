@@ -327,6 +327,8 @@
 "service.claude.api_rate_limited" = "Claude 用量 API 受速率限制，請稍後重試";
 "service.claude.api_rate_limited_minutes" = "Claude 用量 API 受速率限制，約 %1$d 分鐘後重試";
 "service.claude.cli_not_found" = "選用的 Claude CLI 備援不可用；請在 Claude App 的 Code 頁面登入或續期";
+"alert.provider_signed_out.title" = "%@ 已登出";
+"alert.provider_signed_out.body" = "TokenRemain 已讀不到用量，卡片顯示的是最後一次成功的快照。重新登入 %@ 後自動恢復。";
 "service.claude.cli_timeout" = "Claude Code 用量讀取逾時，正在顯示最近的快取資料";
 "service.claude.credentials_unavailable" = "找不到可用的 Claude 登入憑證；請開啟 Claude App 的 Code 頁面登入";
 "service.claude.invalid_usage_output" = "Claude Code 未回傳可識別的 5 小時 / 7 天用量";

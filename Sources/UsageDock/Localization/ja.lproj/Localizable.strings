@@ -326,6 +326,8 @@
 "service.claude.api_rate_limited" = "Claude 使用量 API がレート制限中です。しばらくしてから再試行してください";
 "service.claude.api_rate_limited_minutes" = "Claude 使用量 API がレート制限中です。約%1$d分後に再試行してください";
 "service.claude.cli_not_found" = "オプションの Claude CLI フォールバックは利用できません。Claude アプリの Code でログインまたは更新してください";
+"alert.provider_signed_out.title" = "%@ からログアウトされています";
+"alert.provider_signed_out.body" = "TokenRemain は使用量を読み取れなくなりました。カードは最後に取得できた値を表示しています。%@ に再度ログインすると復旧します。";
 "service.claude.cli_timeout" = "Claude Code の使用量読み取りがタイムアウトしました。最新のキャッシュを表示しています";
 "service.claude.credentials_unavailable" = "利用可能な Claude 認証情報が見つかりません。Claude アプリで Code を開いてログインしてください";
 "service.claude.invalid_usage_output" = "Claude Code が認識可能な 5 時間 / 7 日の使用量を返しませんでした";
