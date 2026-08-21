@@ -5,6 +5,47 @@ Versioning for public releases.
 
 ## Unreleased
 
+## 1.3.6 — 2026-08-21
+
+### Changed
+
+- Cut the download from 19.7 MB to 11.8 MB and the installed app from 40 MB
+  to 23 MB. The release executable is now stripped (its debug symbols were
+  larger than its code; the DWARF is archived beside each release so crash
+  reports still symbolicate), the mascot artwork ships at the 256px its
+  largest consumer actually draws (which also quarters its decoded memory),
+  the SVG icon regeneration sources stay in the repository instead of the
+  bundle, and the DMG is LZMA-compressed. The build now fails on any
+  regression of these, because a size regression is invisible in QA.
+- Keep the release pipeline on the verified bundled ccusage when the
+  official package publishes a defective build, instead of failing the
+  release: upstream 20.0.19 remains bundled while 20.0.20 is rejected for
+  shipping without its license file.
+
+### Fixed
+
+- Stop the Claude quota card from inventing reset times. A repaint-damaged
+  `/usage` readout could turn "Aug 14 at 3pm" into a bare "Aug 14", which
+  read as already past and rolled the reset a full year forward; a reset is
+  now rejected unless it carries a complete time and fits the window it was
+  read from.
+- Make "Always Allow" stick for Claude credential reads. The Claude Code
+  keychain item's own protections rejected every silent read no matter how
+  often access was granted; TokenRemain now delegates the read to the one
+  tool the item already trusts, and only after metadata that cannot raise a
+  dialog proves it safe.
+- Report a signed-out Claude account as exactly that, immediately — once
+  per sign-out with a daily reminder while it lasts — instead of blaming a
+  timeout after thirty seconds of probing a login screen.
+- Answer the Claude CLI's "Do you trust this folder?" prompt during quota
+  probes. The probe used to type `/usage` into the dialog itself, so first
+  runs in a new folder silently fell back to stale snapshots until the
+  timeout.
+- Tell a running Antigravity with no quota data apart from a missing one.
+  Both cases used to claim "not logged in; install Antigravity"; now a
+  running app is asked to update, and an absent one to be opened, since the
+  local quota service needs a running app rather than credentials.
+
 ## 1.3.5 — 2026-08-13
 
 ### Added
