@@ -189,19 +189,35 @@ fi
 
 ARM_DOWNLOAD_DIR="$WORK_DIR/arm64"
 X64_DOWNLOAD_DIR="$WORK_DIR/x86_64"
-download_and_validate "$ARM_METADATA" "$ARM_PACKAGE" "ccusage-darwin-arm64" arm64 arm64 "$ARM_DOWNLOAD_DIR"
-download_and_validate "$X64_METADATA" "$X64_PACKAGE" "ccusage-darwin-x64" x64 x86_64 "$X64_DOWNLOAD_DIR"
 ARM_BINARY="$ARM_DOWNLOAD_DIR/package/bin/ccusage"
 X64_BINARY="$X64_DOWNLOAD_DIR/package/bin/ccusage"
-/usr/bin/cmp -s "$ARM_DOWNLOAD_DIR/package/LICENSE" "$X64_DOWNLOAD_DIR/package/LICENSE" \
-  || fail "official arm64 and x86_64 packages contain different licenses"
 UNIVERSAL_BINARY="$WORK_DIR/ccusage-universal"
-/usr/bin/lipo -create "$ARM_BINARY" "$X64_BINARY" -output "$UNIVERSAL_BINARY"
-/bin/chmod +x "$UNIVERSAL_BINARY"
-/usr/bin/lipo "$UNIVERSAL_BINARY" -verify_arch arm64 x86_64 \
-  || fail "failed to create a Universal ccusage helper"
-[[ "$("$UNIVERSAL_BINARY" --version)" == "ccusage $LATEST_VERSION" ]] \
-  || fail "Universal helper version mismatch"
+
+# Every judgement about the *candidate* release lives here, and the caller
+# runs it in a subshell so its `fail` ends the candidate, not the run. An
+# upstream packaging mistake must not block a release while the vendored
+# helper still verifies — 20.0.20 shipped without package/LICENSE, and the
+# only alternatives were shipping an unlicensed binary or shipping nothing.
+validate_and_assemble_candidate() {
+  download_and_validate "$ARM_METADATA" "$ARM_PACKAGE" "ccusage-darwin-arm64" arm64 arm64 "$ARM_DOWNLOAD_DIR"
+  download_and_validate "$X64_METADATA" "$X64_PACKAGE" "ccusage-darwin-x64" x64 x86_64 "$X64_DOWNLOAD_DIR"
+  /usr/bin/cmp -s "$ARM_DOWNLOAD_DIR/package/LICENSE" "$X64_DOWNLOAD_DIR/package/LICENSE" \
+    || fail "official arm64 and x86_64 packages contain different licenses"
+  /usr/bin/lipo -create "$ARM_BINARY" "$X64_BINARY" -output "$UNIVERSAL_BINARY" \
+    || fail "failed to assemble a Universal ccusage helper"
+  /bin/chmod +x "$UNIVERSAL_BINARY"
+  /usr/bin/lipo "$UNIVERSAL_BINARY" -verify_arch arm64 x86_64 \
+    || fail "failed to create a Universal ccusage helper"
+  [[ "$("$UNIVERSAL_BINARY" --version)" == "ccusage $LATEST_VERSION" ]] \
+    || fail "Universal helper version mismatch"
+}
+
+if ! ( validate_and_assemble_candidate ); then
+  echo "official $LATEST_VERSION was rejected; keeping the verified vendored helper" >&2
+  verify_local_contract
+  echo "ccusage Universal helper kept at $INSTALLED_VERSION: official $LATEST_VERSION failed validation"
+  exit 0
+fi
 
 NEW_ARM_SHA256="$(/usr/bin/shasum -a 256 "$ARM_BINARY" | /usr/bin/awk '{print $1}')"
 NEW_X64_SHA256="$(/usr/bin/shasum -a 256 "$X64_BINARY" | /usr/bin/awk '{print $1}')"
