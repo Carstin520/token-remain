@@ -323,6 +323,8 @@
 "service.antigravity.invalid_response" = "La API de cuota de Antigravity devolvió una respuesta no reconocible";
 "service.antigravity.no_quota_data" = "Esta cuenta de Antigravity no proporciona datos del fondo de cuota";
 "service.antigravity.request_failed" = "Falló la solicitud a la API de cuota de Antigravity (HTTP %1$d)";
+"service.antigravity.running_no_quota" = "Antigravity está en ejecución, pero su servicio local de cuota no devolvió datos; actualiza Antigravity a la última versión y vuelve a intentarlo";
+"service.antigravity.not_logged_in" = "No se detectó Antigravity; abre Antigravity y mantenlo en ejecución para que TokenRemain pueda leer su servicio local de cuota";
 "service.claude.api_rate_limited" = "La API de uso de Claude está limitada; reintenta más tarde";
 "service.claude.api_rate_limited_minutes" = "La API de uso de Claude está limitada; reintenta en unos %1$d min";
 "service.claude.cli_not_found" = "La alternativa opcional de Claude CLI no está disponible; inicia sesión o renueva desde Code en la app Claude";

@@ -117,6 +117,8 @@
 "secret.placeholder.third_party" = "الصق إعداد JSON لحساب New API أو رصيد مخصص";
 "service.zai_team.config_incomplete" = "يتطلب GLM Team قيم apiKey و organization و project.";
 "service.third_party.config_incomplete" = "يلزم إعداد JSON صالح لحساب واحد.";
+"service.antigravity.running_no_quota" = "Antigravity قيد التشغيل، لكن خدمة الحصة المحلية لم تُرجع أي بيانات؛ حدّث Antigravity إلى أحدث إصدار ثم حاول مرة أخرى";
+"service.antigravity.not_logged_in" = "لم يتم اكتشاف Antigravity؛ افتح Antigravity وأبقِه قيد التشغيل حتى يتمكن TokenRemain من قراءة خدمة الحصة المحلية";
 "datasource.name_third_party" = "API خارجي";
 "datasource.detail.zai_team" = "API لخطة الفريق في الصين";
 "datasource.detail.third_party" = "نقطة نهاية متوافقة مع New API أو رصيد مخصص";

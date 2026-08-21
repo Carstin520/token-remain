@@ -319,6 +319,8 @@
 "service.antigravity.invalid_response" = "Antigravity 配额接口返回了无法识别的内容";
 "service.antigravity.no_quota_data" = "当前 Antigravity 账户未提供配额池数据";
 "service.antigravity.request_failed" = "Antigravity 配额接口请求失败（HTTP %1$d）";
+"service.antigravity.running_no_quota" = "Antigravity 正在运行,但本地配额服务未返回数据;请升级 Antigravity 到最新版后重试";
+"service.antigravity.not_logged_in" = "未检测到 Antigravity;请打开并保持 Antigravity 运行,TokenRemain 会自动读取其本地配额服务";
 "service.claude.api_rate_limited" = "Claude 用量接口限流,稍后重试";
 "service.claude.api_rate_limited_minutes" = "Claude 用量接口限流,约 %1$d 分钟后重试";
 "service.claude.authorization_required" = "需要允许 TokenRemain 只读访问 Claude 登录凭证";

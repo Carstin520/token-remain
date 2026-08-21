@@ -247,6 +247,54 @@ struct AntigravityUsageParserTests {
         """
         #expect(AntigravityLocalUsageProbe.parseListeningPorts(listing) == [60734, 60735])
     }
+
+    @Test("Probe failures preserve whether Antigravity is running")
+    func probeFailureDisposition() {
+        #expect(
+            AntigravityUsageService.fallbackDisposition(
+                for: AntigravityLocalUsageProbe.ProbeError.processUnavailable
+            ) == .notDetected
+        )
+        #expect(
+            AntigravityUsageService.fallbackDisposition(
+                for: AntigravityLocalUsageProbe.ProbeError.portUnavailable
+            ) == .runningButQuotaUnavailable
+        )
+        #expect(
+            AntigravityUsageService.fallbackDisposition(
+                for: AntigravityLocalUsageProbe.ProbeError.quotaUnavailable
+            ) == .runningButQuotaUnavailable
+        )
+        #expect(
+            AntigravityUsageService.fallbackDisposition(for: CancellationError()) == .notDetected
+        )
+    }
+
+    @Test("Antigravity service errors use provider-specific recovery guidance")
+    func providerSpecificErrorDescriptions() throws {
+        let sourceRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let englishBundle = try #require(
+            Bundle(
+                path: sourceRoot
+                    .appendingPathComponent("Sources/UsageDock/Localization/en.lproj")
+                    .path
+            )
+        )
+
+        #expect(
+            AntigravityUsageService.ServiceError.runningButQuotaUnavailable
+                .description(bundle: englishBundle)
+                == "Antigravity is running but its local quota service returned no data; update Antigravity to the latest version and try again"
+        )
+        #expect(
+            AntigravityUsageService.ServiceError.notLoggedIn
+                .description(bundle: englishBundle)
+                == "Antigravity not detected; open Antigravity and keep it running so TokenRemain can read its local quota service"
+        )
+    }
 }
 
 @Suite("OpenCode usage math")

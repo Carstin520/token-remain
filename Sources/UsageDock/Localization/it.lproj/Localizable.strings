@@ -117,6 +117,8 @@
 "secret.placeholder.third_party" = "Incolla la configurazione JSON di un account New API o personalizzato";
 "service.zai_team.config_incomplete" = "GLM Team richiede apiKey, organization e project.";
 "service.third_party.config_incomplete" = "Serve una configurazione JSON valida per un singolo account.";
+"service.antigravity.running_no_quota" = "Antigravity è in esecuzione, ma il servizio quote locale non ha restituito dati; aggiorna Antigravity all’ultima versione e riprova";
+"service.antigravity.not_logged_in" = "Antigravity non è stato rilevato; apri Antigravity e lascialo in esecuzione affinché TokenRemain possa leggere il servizio quote locale";
 "datasource.name_third_party" = "API di terze parti";
 "datasource.detail.zai_team" = "API Team Plan Cina (configurazione nel portachiavi locale)";
 "datasource.detail.third_party" = "Endpoint compatibile New API o saldo personalizzato";

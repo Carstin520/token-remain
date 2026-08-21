@@ -7,23 +7,48 @@ import OSLog
 struct AntigravityUsageService {
     enum ServiceError: LocalizedError, Sendable {
         case notLoggedIn
+        case runningButQuotaUnavailable
         case staleLogin
         case requestFailed(Int)
         case invalidResponse
         case quotaUnavailable
 
         var errorDescription: String? {
+            description(bundle: AppResourceBundle.bundle)
+        }
+
+        func description(bundle: Bundle) -> String? {
             switch self {
             case .notLoggedIn:
-                return L10n.format("service.common.not_logged_in_install", "Antigravity")
+                return L10n.text("service.antigravity.not_logged_in", bundle: bundle)
+            case .runningButQuotaUnavailable:
+                return L10n.text("service.antigravity.running_no_quota", bundle: bundle)
             case .staleLogin:
-                return L10n.format("service.common.stale_login_reopen", "Antigravity")
+                return L10n.format(
+                    "service.common.stale_login_reopen",
+                    "Antigravity",
+                    bundle: bundle
+                )
             case .requestFailed(let status):
-                return L10n.format("service.antigravity.request_failed", status)
+                return L10n.format("service.antigravity.request_failed", status, bundle: bundle)
             case .invalidResponse:
-                return L10n.text("service.antigravity.invalid_response")
+                return L10n.text("service.antigravity.invalid_response", bundle: bundle)
             case .quotaUnavailable:
-                return L10n.text("service.antigravity.no_quota_data")
+                return L10n.text("service.antigravity.no_quota_data", bundle: bundle)
+            }
+        }
+    }
+
+    enum ProbeFallbackDisposition: Equatable {
+        case notDetected
+        case runningButQuotaUnavailable
+
+        var failure: ServiceError {
+            switch self {
+            case .notDetected:
+                return .notLoggedIn
+            case .runningButQuotaUnavailable:
+                return .runningButQuotaUnavailable
             }
         }
     }
@@ -37,18 +62,41 @@ struct AntigravityUsageService {
     func fetch(now: Date = .now) async throws -> ProviderQuota {
         // Prefer Antigravity's loopback quota service. It uses the already-running
         // app session and never touches the cross-app `gemini` Keychain item.
-        if let localQuota = try? await AntigravityLocalUsageProbe().fetch(now: now) {
+        let fallbackDisposition: ProbeFallbackDisposition
+        do {
+            let localQuota = try await AntigravityLocalUsageProbe().fetch(now: now)
             Self.logger.info("Antigravity quota served by local language server")
             return localQuota
+        } catch {
+            fallbackDisposition = Self.fallbackDisposition(for: error)
         }
 
         // Retain the old remote path only as a non-interactive fallback. If the
         // user previously granted this signed app access it continues to work;
         // otherwise Keychain returns immediately instead of showing a prompt.
         guard let token = AntigravityTokenReader().load() else {
-            throw ServiceError.notLoggedIn
+            throw fallbackDisposition.failure
         }
-        return try await fetch(token: token, now: now)
+        do {
+            return try await fetch(token: token, now: now)
+        } catch {
+            guard fallbackDisposition == .runningButQuotaUnavailable else {
+                throw error
+            }
+            throw ServiceError.runningButQuotaUnavailable
+        }
+    }
+
+    static func fallbackDisposition(for error: Error) -> ProbeFallbackDisposition {
+        guard let probeError = error as? AntigravityLocalUsageProbe.ProbeError else {
+            return .notDetected
+        }
+        switch probeError {
+        case .processUnavailable:
+            return .notDetected
+        case .portUnavailable, .quotaUnavailable:
+            return .runningButQuotaUnavailable
+        }
     }
 
     /// Managed profiles use an explicitly supplied short-lived access token.

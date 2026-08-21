@@ -323,6 +323,8 @@
 "service.antigravity.invalid_response" = "Antigravity クォータ API が認識できない応答を返しました";
 "service.antigravity.no_quota_data" = "この Antigravity アカウントはクォータプールのデータを提供していません";
 "service.antigravity.request_failed" = "Antigravity クォータ API のリクエストに失敗しました(HTTP %1$d)";
+"service.antigravity.running_no_quota" = "Antigravity は実行中ですが、ローカルのクォータサービスからデータが返されませんでした。Antigravity を最新バージョンに更新して、もう一度お試しください";
+"service.antigravity.not_logged_in" = "Antigravity が検出されません。TokenRemain がローカルのクォータサービスを読み取れるよう、Antigravity を開いたまま実行してください";
 "service.claude.api_rate_limited" = "Claude 使用量 API がレート制限中です。しばらくしてから再試行してください";
 "service.claude.api_rate_limited_minutes" = "Claude 使用量 API がレート制限中です。約%1$d分後に再試行してください";
 "service.claude.cli_not_found" = "オプションの Claude CLI フォールバックは利用できません。Claude アプリの Code でログインまたは更新してください";

@@ -319,6 +319,8 @@
 "service.antigravity.invalid_response" = "Antigravity quota API returned an unrecognized response";
 "service.antigravity.no_quota_data" = "This Antigravity account does not report quota pool data";
 "service.antigravity.request_failed" = "Antigravity quota API request failed (HTTP %1$d)";
+"service.antigravity.running_no_quota" = "Antigravity is running but its local quota service returned no data; update Antigravity to the latest version and try again";
+"service.antigravity.not_logged_in" = "Antigravity not detected; open Antigravity and keep it running so TokenRemain can read its local quota service";
 "service.claude.api_rate_limited" = "Claude usage API is rate limited; retry later";
 "service.claude.api_rate_limited_minutes" = "Claude usage API is rate limited; retry in about %1$d min";
 "service.claude.authorization_required" = "Allow TokenRemain read-only access to your Claude login credentials";

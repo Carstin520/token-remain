@@ -324,6 +324,8 @@
 "service.antigravity.invalid_response" = "Antigravity 配額 API 回傳了無法識別的內容";
 "service.antigravity.no_quota_data" = "目前的 Antigravity 帳號未提供配額池資料";
 "service.antigravity.request_failed" = "Antigravity 配額 API 請求失敗（HTTP %1$d）";
+"service.antigravity.running_no_quota" = "Antigravity 正在執行，但本機配額服務未回傳資料；請將 Antigravity 更新至最新版本後再試";
+"service.antigravity.not_logged_in" = "未偵測到 Antigravity；請開啟並保持 Antigravity 執行，TokenRemain 會自動讀取其本機配額服務";
 "service.claude.api_rate_limited" = "Claude 用量 API 受速率限制，請稍後重試";
 "service.claude.api_rate_limited_minutes" = "Claude 用量 API 受速率限制，約 %1$d 分鐘後重試";
 "service.claude.cli_not_found" = "選用的 Claude CLI 備援不可用；請在 Claude App 的 Code 頁面登入或續期";

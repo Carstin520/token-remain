@@ -323,6 +323,8 @@
 "service.antigravity.invalid_response" = "Antigravity-Kontingent-API lieferte eine unlesbare Antwort";
 "service.antigravity.no_quota_data" = "Dieses Antigravity-Konto liefert keine Kontingentpool-Daten";
 "service.antigravity.request_failed" = "Anfrage an die Antigravity-Kontingent-API fehlgeschlagen (HTTP %1$d)";
+"service.antigravity.running_no_quota" = "Antigravity läuft, aber der lokale Kontingentdienst hat keine Daten zurückgegeben; aktualisiere Antigravity auf die neueste Version und versuche es erneut";
+"service.antigravity.not_logged_in" = "Antigravity wurde nicht erkannt; öffne Antigravity und lasse es laufen, damit TokenRemain den lokalen Kontingentdienst lesen kann";
 "service.claude.api_rate_limited" = "Claude-Nutzungs-API gedrosselt; später erneut versuchen";
 "service.claude.api_rate_limited_minutes" = "Claude-Nutzungs-API gedrosselt; in ca. %1$d Min erneut versuchen";
 "service.claude.cli_not_found" = "Der optionale Claude-CLI-Fallback ist nicht verfügbar; bitte Code in der Claude-App öffnen und anmelden oder erneuern";
