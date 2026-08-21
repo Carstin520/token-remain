@@ -286,6 +286,75 @@ struct ClaudeCLIUsageParserTests {
     }
 }
 
+@Suite("Claude CLI usage probe decisions")
+struct ClaudeCLIUsageProbeDecisionTests {
+    private let startedAt = Date(timeIntervalSince1970: 1_000)
+
+    @Test("Detects the ANSI-painted folder trust prompt without spaces")
+    func detectsTrustPrompt() {
+        let output = """
+        \u{001B}[1mQuicksafetycheck:\u{001B}[0mIsthisaprojectyoucreatedoroneyoutrust
+        \u{001B}[36m1.Yes,Itrustthisfolder\u{001B}[0m
+        """
+
+        #expect(ClaudeCLIUsageParser.containsTrustPrompt(in: Data(output.utf8)))
+    }
+
+    @Test("Does not mistake a normal usage screen for the trust prompt")
+    func ignoresUsageScreenForTrustPrompt() {
+        let output = """
+        Current session
+        8% used
+        Resets 11:40am
+        Current week (all models)
+        60% used
+        """
+
+        #expect(!ClaudeCLIUsageParser.containsTrustPrompt(in: Data(output.utf8)))
+    }
+
+    @Test("Sends the initial usage command after the startup interval")
+    func sendsInitialUsageCommand() {
+        #expect(
+            ClaudeCLIUsageParser.shouldSendUsageCommand(
+                in: Data(),
+                startedAt: startedAt,
+                lastSentAt: nil,
+                now: startedAt.addingTimeInterval(5)
+            )
+        )
+    }
+
+    @Test("Re-sends the usage command after five seconds without a session section")
+    func resendsUsageCommand() {
+        let lastSentAt = startedAt.addingTimeInterval(5)
+
+        #expect(
+            ClaudeCLIUsageParser.shouldSendUsageCommand(
+                in: Data("Claude Code is starting".utf8),
+                startedAt: startedAt,
+                lastSentAt: lastSentAt,
+                now: lastSentAt.addingTimeInterval(5)
+            )
+        )
+    }
+
+    @Test("Stops sending once the current session section appears")
+    func stopsSendingUsageCommand() {
+        let lastSentAt = startedAt.addingTimeInterval(5)
+        let output = Data("\u{001B}[1mCurrent session\u{001B}[0m\n8% used".utf8)
+
+        #expect(
+            !ClaudeCLIUsageParser.shouldSendUsageCommand(
+                in: output,
+                startedAt: startedAt,
+                lastSentAt: lastSentAt,
+                now: lastSentAt.addingTimeInterval(5)
+            )
+        )
+    }
+}
+
 @Suite("Scoped quota window sanitation")
 struct ScopedQuotaWindowSanitationTests {
     private func scoped(_ scopeID: String, _ displayName: String) -> ScopedQuotaWindow {

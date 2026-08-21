@@ -357,6 +357,32 @@ enum ClaudeCLIUsageParser {
         return session.resetDescription != nil && weekly.resetDescription != nil
     }
 
+    static func containsTrustPrompt(in data: Data) -> Bool {
+        guard let raw = String(data: data, encoding: .utf8) else { return false }
+        return whitespaceCollapsedTerminalText(raw).contains("trustthisfolder")
+    }
+
+    static func shouldSendUsageCommand(
+        in data: Data,
+        startedAt: Date,
+        lastSentAt: Date?,
+        now: Date,
+        retryInterval: TimeInterval = 5
+    ) -> Bool {
+        guard let raw = String(data: data, encoding: .utf8),
+              !whitespaceCollapsedTerminalText(raw).contains("currentsession") else {
+            return false
+        }
+        return now.timeIntervalSince(lastSentAt ?? startedAt) >= retryInterval
+    }
+
+    private static func whitespaceCollapsedTerminalText(_ raw: String) -> String {
+        cleanedTerminalText(raw)
+            .components(separatedBy: .whitespacesAndNewlines)
+            .joined()
+            .lowercased()
+    }
+
     private static func cleanedTerminalText(_ raw: String) -> String {
         let escape = "\u{001B}"
         var text = raw
@@ -870,25 +896,37 @@ private enum ClaudeCLIUsageProbe {
 
             var output = Data()
             let startedAt = Date()
-            var sentUsage = false
+            var lastUsageSentAt: Date?
             var lastInputAt = Date.distantPast
+            var handledTrustPrompt = false
             var completedAt: Date?
 
             while process.isRunning && Date().timeIntervalSince(startedAt) < timeout {
                 readAvailable(from: master, into: &output)
                 let now = Date()
-                let elapsed = now.timeIntervalSince(startedAt)
 
-                if !sentUsage && elapsed >= 5 {
+                if !handledTrustPrompt && ClaudeCLIUsageParser.containsTrustPrompt(in: output) {
+                    write("\r", to: master)
+                    handledTrustPrompt = true
+                    // If `/usage` was typed before the trust dialog appeared,
+                    // schedule it again after accepting the default option.
+                    lastUsageSentAt = nil
+                    lastInputAt = now
+                } else if ClaudeCLIUsageParser.shouldSendUsageCommand(
+                    in: output,
+                    startedAt: startedAt,
+                    lastSentAt: lastUsageSentAt,
+                    now: now
+                ) {
                     write("/usage\r", to: master)
-                    sentUsage = true
+                    lastUsageSentAt = now
                     lastInputAt = now
                 } else if now.timeIntervalSince(lastInputAt) >= 0.8 {
                     write("\r", to: master)
                     lastInputAt = now
                 }
 
-                if sentUsage && ClaudeCLIUsageParser.hasCompleteUsage(in: output) {
+                if ClaudeCLIUsageParser.hasCompleteUsage(in: output) {
                     if completedAt == nil { completedAt = now }
                     // The two general rows arrive first; give the terminal one
                     // more paint cycle for a trailing `Current week (Fable)`
