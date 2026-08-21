@@ -130,6 +130,37 @@ struct ClaudeOAuthUsageParserTests {
         #expect(retained.fableWindow?.window.usedPercent == 67)
     }
 
+    @Test("A reset further out than its own window cannot keep a window alive")
+    func dropsScopedWindowWithImplausibleReset() throws {
+        let now = Date(timeIntervalSince1970: 1_784_000_000)
+        let api = try ClaudeOAuthUsageParser.parse(
+            Data(#"{"five_hour":{"utilization":12},"seven_day":{"utilization":34}}"#.utf8)
+        )
+        let previous = ProviderQuota(
+            provider: .claude,
+            primary: api.primary,
+            secondary: api.secondary,
+            planName: api.planName,
+            capturedAt: now.addingTimeInterval(-300),
+            // 一次残缺的 /usage 重绘会把 Fable 的重置解析成一年之后。旧的
+            // `resetsAt > now` 判据对这种值永远成立,坏卡片能活满整个周期。
+            scopedWindows: [
+                ScopedQuotaWindow(
+                    scopeID: "fable",
+                    displayName: "Fable",
+                    window: QuotaWindow(
+                        usedPercent: 98,
+                        windowMinutes: 10_080,
+                        resetsAt: now.addingTimeInterval(364 * 86_400)
+                    ),
+                    observedAt: now.addingTimeInterval(-300)
+                )
+            ]
+        )
+
+        #expect(api.retainingActiveScopedWindows(from: previous, now: now).fableWindow == nil)
+    }
+
     @Test("A scoped window from an older build is dropped rather than kept forever")
     func dropsScopedWindowWithoutObservationTimestamp() throws {
         let now = Date(timeIntervalSince1970: 1_784_000_000)
@@ -537,6 +568,123 @@ struct ClaudeCredentialsReaderTests {
         #expect(result.credentials == nil)
         #expect(result.hasExpiredCredentials)
         #expect(!result.hasInvalidKeychainPayload)
+    }
+}
+
+/// Claude Code 的钥匙串条目 partition list 只有 `apple-tool:`,所以本应用无论被
+/// 授权多少次都读不到它 —— 实测那条条目已经信任了四代本应用,依旧每次拒绝。
+/// 这条委托路径决定了限额走 API 直查还是 20 秒的 PTY 抓屏,它的边界必须钉住:
+/// 直查已经成功、条目根本不存在、以及托管账户,三种情况都不该动用委托。
+@Suite("Claude credentials Apple tool delegate")
+struct ClaudeAppleToolDelegateTests {
+    private static let usablePayload = """
+    {"claudeAiOauth": {"accessToken": "sk-ant-oat01-delegated", \
+    "subscriptionType": "max", "rateLimitTier": "default_claude_max_5x"}}
+    """
+
+    private func reader(
+        keychain: KeychainRead.Outcome,
+        delegate: KeychainRead.Outcome,
+        delegateConsulted: ClaudeLockedValue<Bool>
+    ) -> ClaudeCredentialsReader {
+        var reader = ClaudeCredentialsReader()
+        reader.environment = [:]
+        reader.homeDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("usagedock-missing-\(UUID().uuidString)", isDirectory: true)
+        reader.keychainPayload = { _ in keychain }
+        reader.appleToolPayload = { _ in
+            delegateConsulted.set(true)
+            return delegate
+        }
+        return reader
+    }
+
+    @Test("A partition refusal is retried through the Apple tool instead of degrading")
+    func delegatesWhenThePartitionLocksTheAppOut() async {
+        let consulted = ClaudeLockedValue(false)
+        let reader = reader(
+            keychain: KeychainRead.Outcome(payload: nil, status: errSecAuthFailed),
+            delegate: KeychainRead.Outcome(payload: Self.usablePayload, status: errSecSuccess),
+            delegateConsulted: consulted
+        )
+
+        let result = await reader.readAllowingAppleTool()
+
+        #expect(consulted.get())
+        #expect(result.credentials?.accessToken == "sk-ant-oat01-delegated")
+        // 计划名只有直查路径会写出来,它是"没走抓屏"的凭据。
+        #expect(result.credentials?.subscriptionType == "max")
+        #expect(result.credentials?.rateLimitTier == "default_claude_max_5x")
+        #expect(result.source == .keychain)
+    }
+
+    @Test("A direct read that already works never spawns the Apple tool")
+    func skipsDelegateWhenDirectReadSucceeds() async {
+        let consulted = ClaudeLockedValue(false)
+        let reader = reader(
+            keychain: KeychainRead.Outcome(payload: Self.usablePayload, status: errSecSuccess),
+            delegate: KeychainRead.Outcome(payload: nil, status: errSecItemNotFound),
+            delegateConsulted: consulted
+        )
+
+        let result = await reader.readAllowingAppleTool()
+
+        #expect(result.credentials != nil)
+        #expect(consulted.get() == false)
+    }
+
+    @Test("A missing item is not an authorization problem and needs no delegate")
+    func skipsDelegateWhenTheItemIsAbsent() async {
+        let consulted = ClaudeLockedValue(false)
+        let reader = reader(
+            keychain: KeychainRead.Outcome(payload: nil, status: errSecItemNotFound),
+            delegate: KeychainRead.Outcome(payload: Self.usablePayload, status: errSecSuccess),
+            delegateConsulted: consulted
+        )
+
+        let result = await reader.readAllowingAppleTool()
+
+        #expect(result.credentials == nil)
+        #expect(consulted.get() == false)
+    }
+
+    /// 委托读的是全局钥匙串条目,也就是 Claude Code 当前登录的那个账户。托管
+    /// 账户一旦走这条路,拿到的就是**别人的**额度,比读不到严重得多。
+    @Test("An isolated managed account never delegates to the shared keychain item")
+    func skipsDelegateForManagedProfiles() async {
+        let consulted = ClaudeLockedValue(false)
+        var reader = reader(
+            keychain: KeychainRead.Outcome(payload: nil, status: errSecAuthFailed),
+            delegate: KeychainRead.Outcome(payload: Self.usablePayload, status: errSecSuccess),
+            delegateConsulted: consulted
+        )
+        reader.fallbackToDefaultDirectory = false
+        reader.allowsKeychain = false
+
+        let result = await reader.readAllowingAppleTool()
+
+        #expect(result.credentials == nil)
+        #expect(consulted.get() == false)
+    }
+
+    @Test("An expired delegated token is reported as expired, not as usable")
+    func reportsExpiredDelegatedToken() async {
+        let expired = Date().addingTimeInterval(-3_600).timeIntervalSince1970 * 1000
+        let payload = """
+        {"claudeAiOauth": {"accessToken": "sk-ant-oat01-stale", "expiresAt": \(Int(expired))}}
+        """
+        let consulted = ClaudeLockedValue(false)
+        let reader = reader(
+            keychain: KeychainRead.Outcome(payload: nil, status: errSecAuthFailed),
+            delegate: KeychainRead.Outcome(payload: payload, status: errSecSuccess),
+            delegateConsulted: consulted
+        )
+
+        let result = await reader.readAllowingAppleTool()
+
+        #expect(consulted.get())
+        #expect(result.credentials == nil)
+        #expect(result.hasExpiredCredentials)
     }
 }
 

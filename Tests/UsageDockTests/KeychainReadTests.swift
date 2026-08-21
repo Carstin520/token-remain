@@ -165,6 +165,106 @@ struct KeychainReadTests {
 /// 列表里,所以**正确行为是立刻读不到**;一旦禁止交互失效,这次读取会阻塞到
 /// 用户点击授权框,断言就会因为超时而失败。
 ///
+/// `/usr/bin/security` 委托读取的**判据解析**。判据本身(条目 ACL 允许该工具
+/// 解密、partition list 收录 `apple-tool:`、钥匙串未锁)决定了委托路径永远不会
+/// 弹框;真机那一半由下面的 opt-in 探针覆盖,这里锁住的是解析。
+@Suite("Keychain Apple tool gate parsing")
+struct KeychainAppleToolGateTests {
+    private func partitionDescription(
+        _ partitions: [String],
+        hexEncoded: Bool
+    ) throws -> String {
+        let data = try PropertyListSerialization.data(
+            fromPropertyList: ["Partitions": partitions],
+            format: .xml,
+            options: 0
+        )
+        guard hexEncoded else {
+            return try #require(String(data: data, encoding: .utf8))
+        }
+        return data.map { String(format: "%02x", $0) }.joined()
+    }
+
+    @Test("Reads the partition list macOS keeps hex-encoded in the ACL description")
+    func readsHexEncodedPartitions() throws {
+        let description = try partitionDescription(["apple-tool:"], hexEncoded: true)
+        #expect(KeychainRead.partitions(inACLDescription: description) == ["apple-tool:"])
+    }
+
+    /// 只认十六进制形态就把判据绑在一个未公开的编码细节上;两种都接受,哪天
+    /// macOS 换回明文也不会让委托路径整体失效、静默退回抓屏。
+    @Test("Accepts a plain plist description as well")
+    func readsPlainPartitions() throws {
+        let description = try partitionDescription(
+            ["apple-tool:", "teamid:ABCDE12345"],
+            hexEncoded: false
+        )
+        #expect(
+            KeychainRead.partitions(inACLDescription: description)
+                == ["apple-tool:", "teamid:ABCDE12345"]
+        )
+    }
+
+    @Test("A description that is not a partition plist yields nil")
+    func rejectsUnrelatedDescription() {
+        #expect(KeychainRead.partitions(inACLDescription: "Claude Code-credentials") == nil)
+        #expect(KeychainRead.partitions(inACLDescription: "") == nil)
+        #expect(KeychainRead.partitions(inACLDescription: nil) == nil)
+    }
+
+    /// 信任列表里的条目是路径 blob。把这里放宽会让"某个别的应用被信任"误判成
+    /// "Apple 工具被信任",而后者才是不弹框的前提。
+    @Test("Only the Apple tool's own path counts as the delegate")
+    func matchesAppleToolPath() {
+        #expect(KeychainRead.isAppleTool(trustedApplicationData: Data("/usr/bin/security\0".utf8)))
+        #expect(
+            !KeychainRead.isAppleTool(
+                trustedApplicationData: Data("/Users/me/Applications/TokenRemain.app\0".utf8)
+            )
+        )
+        #expect(!KeychainRead.isAppleTool(trustedApplicationData: Data()))
+    }
+}
+
+/// 真机探针:证明委托路径确实能静默读到这台机器上 GUI 应用读不到的条目。
+/// 默认跳过(依赖本机存在 Claude Code 的钥匙串条目)。本机执行:
+///
+///     USAGEDOCK_KEYCHAIN_ACL_PROBE=1 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
+///         swift test --filter KeychainAppleToolProbeTests
+@Suite("Keychain Apple tool delegate probe (opt-in)")
+struct KeychainAppleToolProbeTests {
+    private static var enabled: Bool {
+        ProcessInfo.processInfo.environment["USAGEDOCK_KEYCHAIN_ACL_PROBE"] == "1"
+    }
+
+    @Test("The Apple tool reaches the item this process is locked out of",
+          .enabled(if: KeychainAppleToolProbeTests.enabled))
+    func delegateReadsWhatTheProcessCannot() async {
+        let service = ClaudeCredentialsReader.keychainService
+        let direct = KeychainRead.genericPassword(service: service, interaction: .disallowed)
+        #expect(
+            direct.needsAuthorization,
+            """
+            expected the direct read to be refused, got OSStatus \(direct.status). \
+            If this is errSecItemNotFound (-25300) the probe proved nothing; if the \
+            read succeeded, this machine is already inside the item's partition.
+            """
+        )
+        #expect(KeychainRead.appleToolMayDecrypt(service: service))
+
+        let started = Date()
+        let delegated = await KeychainRead.genericPasswordViaAppleTool(service: service)
+        let elapsed = Date().timeIntervalSince(started)
+
+        // 延迟断言是这条探针的重点:委托读取只该花毫秒级,秒级说明有人在等一次
+        // 点击 —— 那正是自动刷新绝不允许出现的东西。
+        #expect(elapsed < 5, "delegated read took \(elapsed)s — a dialog may have appeared")
+        #expect(delegated.status == errSecSuccess)
+        // 只断言形状,绝不记录内容。
+        #expect(delegated.payload?.hasPrefix("{") == true)
+    }
+}
+
 /// 默认跳过:它依赖本机真实存在该钥匙串条目,而且回归时会弹出系统授权框
 /// (那正是它在报警)。本机执行:
 ///

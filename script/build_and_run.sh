@@ -64,6 +64,10 @@ APP_RESOURCES="$APP_CONTENTS/Resources"
 APP_FRAMEWORKS="$APP_CONTENTS/Frameworks"
 APP_HELPERS="$APP_CONTENTS/Helpers"
 APP_BINARY="$APP_MACOS/$EXECUTABLE_NAME"
+# The shipped executable is stripped, so the only way to symbolicate a crash
+# report is the archived companion dSYM. It sits beside the bundle rather than
+# inside it: shipping 47 MB of DWARF to every user would defeat the strip.
+APP_DSYM="$DIST_DIR/$APP_NAME.app.dSYM"
 CCUSAGE_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :TokenRemainBundledCCUsageVersion' "$ROOT_DIR/Resources/Info.plist")"
 CCUSAGE_RELATIVE_PATH="$CCUSAGE_VERSION/darwin-universal/ccusage"
 CCUSAGE_SOURCE="$ROOT_DIR/Vendor/ccusage/$CCUSAGE_RELATIVE_PATH"
@@ -464,12 +468,45 @@ verify_embedded_ccusage() {
   }
 }
 
+# Guards the download-size contract. A regression here is invisible in QA —
+# the app behaves identically, it is just megabytes larger — so assert it.
+verify_bundle_payload() {
+  local signed_app="$1"
+  local stray_svg
+  stray_svg="$(/usr/bin/find "$signed_app/Contents/Resources" -name '*.svg' -print -quit)"
+  [[ -z "$stray_svg" ]] || {
+    echo "Bundle ships SVG regeneration sources that nothing loads: $stray_svg" >&2
+    exit 1
+  }
+  for artwork in "$signed_app/Contents/Resources/TokenRemainHeadStates"/*.png \
+    "$signed_app/Contents/Resources/TokenRemainFullBodyStates"/*.png; do
+    local width
+    width="$(/usr/bin/sips -g pixelWidth "$artwork" | /usr/bin/awk '/pixelWidth/ { print $2 }')"
+    (( width <= 256 )) || {
+      echo "Mascot artwork exceeds its 256px maximum consumer: $artwork is ${width}px." >&2
+      exit 1
+    }
+  done
+  if [[ "$SYNC_RELEASE_MODE" == "1" ]]; then
+    # `strip -S` removes the debug stabs; their presence means the strip was
+    # skipped and the executable carries ~7 MB of DWARF per architecture.
+    local stabs
+    stabs="$(/usr/bin/nm -arch arm64 -a "$signed_app/Contents/MacOS/$EXECUTABLE_NAME" 2>/dev/null \
+      | /usr/bin/grep -c ' OSO ' || true)"
+    (( stabs == 0 )) || {
+      echo "Release executable still carries $stabs debug symbol entries; the strip did not run." >&2
+      exit 1
+    }
+  fi
+}
+
 verify_bundle_for_mode() {
   local signed_app="$1"
   /usr/bin/lipo "$signed_app/Contents/MacOS/$EXECUTABLE_NAME" -verify_arch arm64 x86_64 || {
     echo "Signed application executable is not universal." >&2
     exit 1
   }
+  verify_bundle_payload "$signed_app"
   verify_embedded_sparkle "$signed_app"
   verify_embedded_ccusage "$signed_app"
   if [[ "$SYNC_RELEASE_MODE" == "1" ]]; then
@@ -502,6 +539,31 @@ BUILD_SPARKLE_FRAMEWORK="$BUILD_DIR/Sparkle.framework"
 rm -rf "$APP_BUNDLE"
 mkdir -p "$APP_MACOS" "$APP_RESOURCES" "$APP_FRAMEWORKS" "$APP_HELPERS"
 cp "$BUILD_BINARY" "$APP_BINARY"
+# A release executable carries ~7 MB of symbol table per architecture, which is
+# larger than its own __TEXT. Archive the DWARF first, verify it describes the
+# binary we are about to ship, then strip. Development builds keep their
+# symbols so lldb still works against a locally built app.
+if [[ "$SYNC_RELEASE_MODE" == "1" ]]; then
+  [[ -d "$BUILD_DIR/$PRODUCT_NAME.dSYM" ]] || {
+    echo "Release build produced no $PRODUCT_NAME.dSYM; refusing to ship an unsymbolicatable binary." >&2
+    exit 1
+  }
+  rm -rf "$APP_DSYM"
+  /usr/bin/ditto "$BUILD_DIR/$PRODUCT_NAME.dSYM" "$APP_DSYM"
+  # A stale dSYM symbolicates to the wrong source lines, which is worse than no
+  # dSYM at all. Match the Mach-O UUIDs before trusting the archive.
+  binary_uuids="$(/usr/bin/dwarfdump --uuid "$APP_BINARY" | /usr/bin/awk '{ print $2 }' | /usr/bin/sort)"
+  dsym_uuids="$(/usr/bin/dwarfdump --uuid "$APP_DSYM" | /usr/bin/awk '{ print $2 }' | /usr/bin/sort)"
+  [[ "$binary_uuids" == "$dsym_uuids" ]] || {
+    echo "Archived dSYM does not match the built executable; refusing to strip." >&2
+    exit 1
+  }
+  /usr/bin/strip -S -x "$APP_BINARY"
+  /usr/bin/lipo "$APP_BINARY" -verify_arch arm64 x86_64 || {
+    echo "Stripping produced a non-universal executable." >&2
+    exit 1
+  }
+fi
 /usr/bin/ditto "$BUILD_SPARKLE_FRAMEWORK" "$APP_FRAMEWORKS/Sparkle.framework"
 cp "$ROOT_DIR/Resources/Info.plist" "$APP_CONTENTS/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleExecutable $EXECUTABLE_NAME" "$APP_CONTENTS/Info.plist"
@@ -519,7 +581,15 @@ if [[ -n "$BROADCAST_BASE_URL" ]]; then
     "$APP_CONTENTS/Info.plist"
 fi
 cp "$ROOT_DIR/Sources/UsageDock/Resources/claude.png" "$APP_RESOURCES/claude.png"
-cp -R "$ROOT_DIR/Sources/UsageDock/Resources/ProviderIcons" "$APP_RESOURCES/"
+# BrandIcon only ever resolves `withExtension: "png"`. The SVGs beside them are
+# the regeneration sources described in ProviderIcons/README.md and stay in the
+# repository, but shipping them to users is dead weight.
+# `--delete-excluded` rather than plain `--delete`: rsync treats an excluded
+# file as protected on the receiver, so `--delete` alone would leave stale SVGs
+# behind in any destination that already had them.
+mkdir -p "$APP_RESOURCES/ProviderIcons"
+/usr/bin/rsync -a --delete --delete-excluded --exclude='*.svg' --exclude='README.md' \
+  "$ROOT_DIR/Sources/UsageDock/Resources/ProviderIcons/" "$APP_RESOURCES/ProviderIcons/"
 cp "$ROOT_DIR/Sources/UsageDock/Resources/TokenRemain.icns" "$APP_RESOURCES/TokenRemain.icns"
 cp -R "$ROOT_DIR/Sources/UsageDock/Resources/TokenRemainHeadStates" "$APP_RESOURCES/"
 cp -R "$ROOT_DIR/Sources/UsageDock/Resources/TokenRemainFullBodyStates" "$APP_RESOURCES/"
@@ -603,6 +673,12 @@ if [[ "$MODE" == "--archive" || "$MODE" == "archive" ]]; then
   /usr/bin/ditto "$APP_BUNDLE" "$ARCHIVED_APP"
   /usr/bin/codesign --verify --deep --strict "$ARCHIVED_APP"
   verify_sync_signature "$ARCHIVED_APP"
+  # Keep the DWARF with the release it describes. Crash reports arrive months
+  # later and the build tree is long gone by then.
+  if [[ -d "$APP_DSYM" ]]; then
+    rm -rf "$ARCHIVE_DIR/$APP_NAME.app.dSYM"
+    /usr/bin/ditto "$APP_DSYM" "$ARCHIVE_DIR/$APP_NAME.app.dSYM"
+  fi
   printf '%s\n' "$ARCHIVED_APP"
   exit 0
 fi

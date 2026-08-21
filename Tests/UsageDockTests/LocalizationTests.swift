@@ -61,6 +61,8 @@ struct LocalizationTests {
         "usage.spend_last30",
         "usage.trend",
         "quota.loading_official",
+        "service.antigravity.running_no_quota",
+        "service.antigravity.not_logged_in",
         "feed.updating",
         "feed.item_count",
         "feed.filtering",

@@ -117,6 +117,8 @@
 "secret.placeholder.third_party" = "Tempel konfigurasi JSON satu akun New API atau saldo kustom";
 "service.zai_team.config_incomplete" = "GLM Team memerlukan apiKey, organization, dan project.";
 "service.third_party.config_incomplete" = "Diperlukan konfigurasi JSON satu akun yang valid.";
+"service.antigravity.running_no_quota" = "Antigravity sedang berjalan tetapi layanan kuota lokalnya tidak mengembalikan data; perbarui Antigravity ke versi terbaru lalu coba lagi";
+"service.antigravity.not_logged_in" = "Antigravity tidak terdeteksi; buka Antigravity dan biarkan tetap berjalan agar TokenRemain dapat membaca layanan kuota lokalnya";
 "datasource.name_third_party" = "API pihak ketiga";
 "datasource.detail.zai_team" = "API Team Plan wilayah Tiongkok";
 "datasource.detail.third_party" = "Endpoint kompatibel New API atau saldo kustom";

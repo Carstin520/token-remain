@@ -117,6 +117,8 @@
 "secret.placeholder.third_party" = "एकल खाते का New API या कस्टम बैलेंस JSON पेस्ट करें";
 "service.zai_team.config_incomplete" = "GLM Team के लिए apiKey, organization और project चाहिए।";
 "service.third_party.config_incomplete" = "मान्य एकल-खाता JSON कॉन्फ़िगरेशन चाहिए।";
+"service.antigravity.running_no_quota" = "Antigravity चल रहा है, लेकिन उसकी स्थानीय कोटा सेवा ने कोई डेटा नहीं लौटाया; Antigravity को नवीनतम संस्करण में अपडेट करके फिर से प्रयास करें";
+"service.antigravity.not_logged_in" = "Antigravity नहीं मिला; Antigravity खोलें और उसे चालू रखें, ताकि TokenRemain उसकी स्थानीय कोटा सेवा पढ़ सके";
 "datasource.name_third_party" = "तृतीय-पक्ष API";
 "datasource.detail.zai_team" = "चीन क्षेत्र Team Plan API";
 "datasource.detail.third_party" = "New API संगत या कस्टम बैलेंस एंडपॉइंट";

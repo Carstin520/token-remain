@@ -212,7 +212,11 @@ build_notarized_dmg() {
   /bin/sync
   /usr/bin/hdiutil detach "$device"
 
-  /usr/bin/hdiutil convert "$rw_dmg" -format UDZO -imagekey zlib-level=9 -o "$DMG"
+  # ULMO (LZMA) compresses the bundle roughly 16% smaller than zlib-level=9.
+  # It needs macOS 10.15 to mount, well below the app's own macOS 14 floor.
+  # Sparkle installs from the ZIP, so the DMG format only affects first-run
+  # downloads from the website.
+  /usr/bin/hdiutil convert "$rw_dmg" -format ULMO -o "$DMG"
   rm -rf "$work_dir"
 
   /usr/bin/codesign --force --sign "$IDENTITY" --timestamp "$DMG"

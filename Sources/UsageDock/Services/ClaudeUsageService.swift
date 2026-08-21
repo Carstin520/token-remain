@@ -87,7 +87,7 @@ struct ClaudeUsageService {
             // it is logged out, however, the PTY can only sit on the login
             // screen until our 30-second deadline. Surface the real recovery
             // action immediately instead of misclassifying it as a timeout.
-            if case .credentialsUnavailable = error,
+            if Self.mayReflectSignedOutClaude(error),
                await ClaudeCLIUsageProbe.isExplicitlyLoggedOut(
                    configurationDirectory: configurationDirectory
                ) {
@@ -114,6 +114,27 @@ struct ClaudeUsageService {
             base: ProcessInfo.processInfo.environment,
             configurationDirectory: configurationDirectory
         )
+    }
+
+    /// Which API failures a signed-out Claude Code would equally well explain.
+    /// Narrowing this to "no credential found" was wrong: a keychain that
+    /// answers `errSecAuthFailed` looks nothing like a missing item, yet it
+    /// leaves Claude Code just as signed out — and the probe then spent thirty
+    /// seconds on a login screen every refresh round before reporting a timeout
+    /// for an account that simply needed signing in again. Each of these is
+    /// worth one cheap `auth status` question first.
+    static func mayReflectSignedOutClaude(
+        _ error: ClaudeOAuthUsageService.APIError
+    ) -> Bool {
+        switch error {
+        case .credentialsUnavailable, .credentialsAuthorizationRequired,
+             .credentialsExpired, .invalidStoredCredentials, .tokenRejected:
+            return true
+        // A transport or protocol failure says nothing about the session, and
+        // rate limiting never reaches here.
+        case .rateLimited, .requestFailed, .invalidResponse:
+            return false
+        }
     }
 
     static func noCLIFallbackError(
@@ -244,43 +265,70 @@ enum ClaudeCLIUsageParser {
             throw ClaudeUsageService.ServiceError.invalidUsageOutput
         }
         let text = cleanedTerminalText(raw)
-        let sessionReading = sessionReadings(in: text).last
+        let sessionReadings = sessionReadings(in: text)
         let weeklyReadings = weeklyReadings(in: text)
-        let generalWeeklyReading = weeklyReadings.last(where: \.isGeneral)
-        guard let sessionReading, let generalWeeklyReading else {
+        let generalWeeklyReadings = weeklyReadings.filter(\.isGeneral)
+        guard let sessionReading = sessionReadings.last,
+              let generalWeeklyReading = generalWeeklyReadings.last else {
             throw ClaudeUsageService.ServiceError.invalidUsageOutput
         }
 
         // Associate each reset with its labeled row. Both current layouts can
         // express session and weekly resets as relative durations, so the old
         // month-vs-time heuristic cannot distinguish them.
-        let primaryReset = sessionReading.resetDescription
-            .flatMap { parseResetDate($0, now: now, calendar: calendar) }
-        let secondaryReset = generalWeeklyReading.resetDescription
-            .flatMap { parseResetDate($0, now: now, calendar: calendar) }
+        //
+        // A percentage only ever moves forward, so the freshest paint wins for
+        // it. A reset does not: any single paint can lose glyphs, and a damaged
+        // one still parses into a confident, wrong date. Resolve resets from
+        // every copy of their row instead — see `resolveReset`.
+        let primaryReset = resolveReset(
+            in: sessionReadings.compactMap(\.resetDescription),
+            windowMinutes: 300,
+            now: now,
+            calendar: calendar
+        )
+        let secondaryReset = resolveReset(
+            in: generalWeeklyReadings.compactMap(\.resetDescription),
+            windowMinutes: 10_080,
+            now: now,
+            calendar: calendar
+        )
         var scopedOrder: [String] = []
-        var scopedByID: [String: ScopedQuotaWindow] = [:]
+        var latestByScope: [String: NamedWeeklyReading] = [:]
+        var descriptionsByScope: [String: [String]] = [:]
         for reading in weeklyReadings where !reading.isGeneral {
             guard let scopeID = scopeID(for: reading.name) else { continue }
-            if scopedByID[scopeID] == nil {
+            if latestByScope[scopeID] == nil {
                 scopedOrder.append(scopeID)
             }
             // PTY capture can contain several repainted copies of the same
             // section. The final copy is the freshest complete reading.
-            scopedByID[scopeID] = ScopedQuotaWindow(
+            latestByScope[scopeID] = reading
+            if let description = reading.resetDescription {
+                descriptionsByScope[scopeID, default: []].append(description)
+            }
+        }
+        let scopedWindows = scopedOrder.compactMap { scopeID -> ScopedQuotaWindow? in
+            guard let reading = latestByScope[scopeID] else { return nil }
+            return ScopedQuotaWindow(
                 scopeID: scopeID,
                 displayName: reading.name,
                 window: QuotaWindow(
                     usedPercent: reading.usedPercent,
                     windowMinutes: 10_080,
-                    resetsAt: reading.resetDescription.flatMap {
-                        parseResetDate($0, now: now, calendar: calendar)
-                    } ?? secondaryReset
+                    // Every weekly row shares one window, so the corroborated
+                    // general reset is the right stand-in when this row's own
+                    // copies were all unreadable.
+                    resetsAt: resolveReset(
+                        in: descriptionsByScope[scopeID] ?? [],
+                        windowMinutes: 10_080,
+                        now: now,
+                        calendar: calendar
+                    ) ?? secondaryReset
                 ),
                 observedAt: now
             )
         }
-        let scopedWindows = scopedOrder.compactMap { scopedByID[$0] }
         return ProviderQuota(
             provider: .claude,
             primary: QuotaWindow(
@@ -307,6 +355,32 @@ enum ClaudeCLIUsageParser {
             return false
         }
         return session.resetDescription != nil && weekly.resetDescription != nil
+    }
+
+    static func containsTrustPrompt(in data: Data) -> Bool {
+        guard let raw = String(data: data, encoding: .utf8) else { return false }
+        return whitespaceCollapsedTerminalText(raw).contains("trustthisfolder")
+    }
+
+    static func shouldSendUsageCommand(
+        in data: Data,
+        startedAt: Date,
+        lastSentAt: Date?,
+        now: Date,
+        retryInterval: TimeInterval = 5
+    ) -> Bool {
+        guard let raw = String(data: data, encoding: .utf8),
+              !whitespaceCollapsedTerminalText(raw).contains("currentsession") else {
+            return false
+        }
+        return now.timeIntervalSince(lastSentAt ?? startedAt) >= retryInterval
+    }
+
+    private static func whitespaceCollapsedTerminalText(_ raw: String) -> String {
+        cleanedTerminalText(raw)
+            .components(separatedBy: .whitespacesAndNewlines)
+            .joined()
+            .lowercased()
     }
 
     private static func cleanedTerminalText(_ raw: String) -> String {
@@ -545,13 +619,73 @@ enum ClaudeCLIUsageParser {
         }
     }
 
-    private static func parseResetDate(_ description: String, now: Date, calendar sourceCalendar: Calendar) -> Date? {
+    /// One capture holds several repainted copies of the same row, and a single
+    /// damaged copy still parses into a confident, wrong date — a dropped `at`
+    /// once turned `Aug 14 at 1pm` into the same day a year out. Trust the value
+    /// the copies agree on instead of the freshest one.
+    private static func resolveReset(
+        in descriptions: [String],
+        windowMinutes: Int,
+        now: Date,
+        calendar: Calendar
+    ) -> Date? {
+        var order: [Date] = []
+        var counts: [Date: Int] = [:]
+        for description in descriptions {
+            guard let date = parseResetDate(
+                description,
+                now: now,
+                calendar: calendar,
+                windowMinutes: windowMinutes
+            ) else {
+                continue
+            }
+            if counts[date] == nil { order.append(date) }
+            counts[date, default: 0] += 1
+        }
+        guard let best = counts.values.max() else { return nil }
+        // Every rule that recovers from a damaged reading pushes the result
+        // further out (midnight rolls to next year, a passed time rolls to
+        // tomorrow), so among equally corroborated values the earliest is the
+        // one least likely to be an artifact.
+        return order.filter { counts[$0] == best }.min()
+    }
+
+    /// A window's reset can never sit further out than the window is long. The
+    /// slack only absorbs the minute-level rounding in Claude Code's own label.
+    private static func plausibleReset(
+        _ date: Date?,
+        now: Date,
+        windowMinutes: Int
+    ) -> Date? {
+        guard let date else { return nil }
+        let interval = date.timeIntervalSince(now)
+        guard interval > 0 else { return nil }
+        guard windowMinutes > 0 else { return date }
+        return interval <= Double(windowMinutes) * 60 + 300 ? date : nil
+    }
+
+    /// A reset survives only when the text still carries a complete time, the
+    /// form suits the window it was read from, and the result lands inside that
+    /// window. Anything else returns nil: a missing reset renders honestly, an
+    /// invented one silently misinforms.
+    private static func parseResetDate(
+        _ description: String,
+        now: Date,
+        calendar sourceCalendar: Calendar,
+        windowMinutes: Int
+    ) -> Date? {
         let calendar = sourceCalendar
         let compact = description
             .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
             .trimmingCharacters(in: .whitespacesAndNewlines)
 
-        if let inRange = compact.range(of: #"\bin\b"#, options: [.regularExpression, .caseInsensitive]) {
+        // `(?=\d)` also accepts `in2days`: a repaint that swallows spaces still
+        // carries every digit the duration needs.
+        if let inRange = compact.range(
+            of: #"\bin(?:\b|(?=\d))"#,
+            options: [.regularExpression, .caseInsensitive]
+        ) {
             let relative = String(compact[inRange.upperBound...])
             let days = firstMatch(#"\b(\d+)\s*(?:days?|d)"#, in: relative)
                 .flatMap { capture(1, from: $0, in: relative) }
@@ -564,38 +698,60 @@ enum ClaudeCLIUsageParser {
                 .flatMap(Int.init) ?? 0
             let seconds = days * 86_400 + hours * 3_600 + minutes * 60
             if seconds > 0 {
-                return calendar.date(byAdding: .second, value: seconds, to: now)
+                return plausibleReset(
+                    calendar.date(byAdding: .second, value: seconds, to: now),
+                    now: now,
+                    windowMinutes: windowMinutes
+                )
             }
         }
 
         // Parse the more specific month/day form first. A value such as
         // "Jul 24 at 1pm" also contains a valid time-only substring; matching
         // that first would silently turn the weekly reset into tomorrow at 1pm.
+        //
+        // The time of day is mandatory here. The optional group this pattern
+        // used to carry meant a repaint that dropped `at`, `1pm`, or a single
+        // glyph of either (`Aug 14 a 1pm`) still matched `Aug 14`, defaulted to
+        // midnight, found it already past, and rolled it a full year forward.
+        // `\s*` keeps the same text readable once a repaint swallows its
+        // spaces (`Aug14at1pm`).
         if let match = firstMatch(
-            #"\b([A-Za-z]{3,9})\s+(\d{1,2})(?:\s+at\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?)?\b"#,
+            #"\b([A-Za-z]{3,9})\s*(\d{1,2})\s*at\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b"#,
             in: compact
         ), let monthText = capture(1, from: match, in: compact),
            let dayText = capture(2, from: match, in: compact),
+           let hourText = capture(3, from: match, in: compact),
            let month = monthNumber(monthText) {
+            let minuteText = capture(4, from: match, in: compact)
+            let meridiem = capture(5, from: match, in: compact)?.lowercased()
+            // A lone hour is ambiguous between a real 24-hour label and the
+            // wreckage of one, so require either explicit minutes or a meridiem.
+            guard minuteText != nil || meridiem != nil else { return nil }
+
             var components = calendar.dateComponents([.year], from: now)
             components.month = month
             components.day = Int(dayText)
-            components.minute = capture(4, from: match, in: compact).flatMap(Int.init) ?? 0
+            components.minute = minuteText.flatMap(Int.init) ?? 0
             components.second = 0
 
-            var hour = capture(3, from: match, in: compact).flatMap(Int.init) ?? 0
-            let meridiem = capture(5, from: match, in: compact)?.lowercased()
+            var hour = Int(hourText) ?? 0
             if meridiem == "pm", hour < 12 { hour += 12 }
             if meridiem == "am", hour == 12 { hour = 0 }
             components.hour = hour
 
             guard var date = calendar.date(from: components) else { return nil }
+            // Only a genuine year boundary reaches this now: a reset printed as
+            // `Jan 2 at 1pm` in late December really is next year's date.
             if date <= now {
                 date = calendar.date(byAdding: .year, value: 1, to: date) ?? date
             }
-            return date
+            return plausibleReset(date, now: now, windowMinutes: windowMinutes)
         }
 
+        // A bare clock time cannot express a reset more than a day out, so a
+        // longer window reading one has lost its date to a repaint.
+        guard windowMinutes <= 1_440 else { return nil }
         if let match = firstMatch(#"\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b"#, in: compact),
            let hourText = capture(1, from: match, in: compact) {
             var hour = Int(hourText) ?? 0
@@ -612,7 +768,7 @@ enum ClaudeCLIUsageParser {
             if date <= now {
                 date = calendar.date(byAdding: .day, value: 1, to: date) ?? date
             }
-            return date
+            return plausibleReset(date, now: now, windowMinutes: windowMinutes)
         }
         return nil
     }
@@ -740,25 +896,37 @@ private enum ClaudeCLIUsageProbe {
 
             var output = Data()
             let startedAt = Date()
-            var sentUsage = false
+            var lastUsageSentAt: Date?
             var lastInputAt = Date.distantPast
+            var handledTrustPrompt = false
             var completedAt: Date?
 
             while process.isRunning && Date().timeIntervalSince(startedAt) < timeout {
                 readAvailable(from: master, into: &output)
                 let now = Date()
-                let elapsed = now.timeIntervalSince(startedAt)
 
-                if !sentUsage && elapsed >= 5 {
+                if !handledTrustPrompt && ClaudeCLIUsageParser.containsTrustPrompt(in: output) {
+                    write("\r", to: master)
+                    handledTrustPrompt = true
+                    // If `/usage` was typed before the trust dialog appeared,
+                    // schedule it again after accepting the default option.
+                    lastUsageSentAt = nil
+                    lastInputAt = now
+                } else if ClaudeCLIUsageParser.shouldSendUsageCommand(
+                    in: output,
+                    startedAt: startedAt,
+                    lastSentAt: lastUsageSentAt,
+                    now: now
+                ) {
                     write("/usage\r", to: master)
-                    sentUsage = true
+                    lastUsageSentAt = now
                     lastInputAt = now
                 } else if now.timeIntervalSince(lastInputAt) >= 0.8 {
                     write("\r", to: master)
                     lastInputAt = now
                 }
 
-                if sentUsage && ClaudeCLIUsageParser.hasCompleteUsage(in: output) {
+                if ClaudeCLIUsageParser.hasCompleteUsage(in: output) {
                     if completedAt == nil { completedAt = now }
                     // The two general rows arrive first; give the terminal one
                     // more paint cycle for a trailing `Current week (Fable)`

@@ -12,7 +12,7 @@ final class AIFeedStore: ObservableObject {
     @Published private(set) var notificationsEnabled: Bool
 
     private let cache = AIFeedCache()
-    private let notificationService = FeedNotificationService()
+    private let notificationService = UserNotificationService.shared
     private let pushRegistration = BroadcastPushRegistrationService()
     private let defaults = UserDefaults.standard
     private let notificationsKey = "aiFeedNotificationsEnabled"

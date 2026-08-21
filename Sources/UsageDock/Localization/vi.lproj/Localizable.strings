@@ -117,6 +117,8 @@
 "secret.placeholder.third_party" = "Dán cấu hình JSON một tài khoản New API hoặc số dư tùy chỉnh";
 "service.zai_team.config_incomplete" = "GLM Team cần apiKey, organization và project.";
 "service.third_party.config_incomplete" = "Cần cấu hình JSON một tài khoản hợp lệ.";
+"service.antigravity.running_no_quota" = "Antigravity đang chạy nhưng dịch vụ hạn mức cục bộ không trả về dữ liệu; hãy cập nhật Antigravity lên phiên bản mới nhất rồi thử lại";
+"service.antigravity.not_logged_in" = "Không phát hiện Antigravity; hãy mở và giữ Antigravity chạy để TokenRemain có thể đọc dịch vụ hạn mức cục bộ";
 "datasource.name_third_party" = "API bên thứ ba";
 "datasource.detail.zai_team" = "API Team Plan khu vực Trung Quốc";
 "datasource.detail.third_party" = "Endpoint tương thích New API hoặc số dư tùy chỉnh";

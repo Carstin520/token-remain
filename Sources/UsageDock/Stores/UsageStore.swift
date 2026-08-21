@@ -105,6 +105,7 @@ final class UsageStore: ObservableObject {
     /// 浮窗)时返回 true。后台 ccusage 扫描据此决定是否维持分钟级节奏。
     var localUsageUIVisibilityProvider: (() -> Bool)?
     private let quotaCache = QuotaCache()
+    private let sessionAlerts = ProviderSessionAlertCenter.shared
     private let providerAccountQuotaCache = ProviderAccountQuotaCache()
     private let historyCache = DailyHistoryCache()
     private let quotaUsageHistoryCache = QuotaUsageHistoryCache()
@@ -741,6 +742,7 @@ final class UsageStore: ObservableObject {
                 assign(value, to: .claude)
                 providerNotices[.claude] = nil
                 claudeRetryAfter = nil
+                sessionAlerts.reportHealthy(.claude)
                 UserDefaults.standard.removeObject(forKey: claudeRetryAfterKey)
                 logger.info("Claude quota refreshed; primary usage: \(value.primary.usedPercent, privacy: .public)%, reset time available: \(value.primary.resetsAt != nil, privacy: .public)")
             case .failure(let error):
@@ -748,6 +750,9 @@ final class UsageStore: ObservableObject {
                     assign(nil, to: .claude)
                 }
                 providerNotices[.claude] = error.localizedDescription
+                // 卡片会继续渲染上一份成功的快照,看起来一切正常,所以登出这类
+                // 只有用户能修的失败必须主动出声,不能只写在弹窗里等人来看。
+                sessionAlerts.report(error: error, for: .claude, now: now)
                 if let serviceError = error as? ClaudeUsageService.ServiceError {
                     let retryAfter = now.addingTimeInterval(serviceError.retryDelay)
                     claudeRetryAfter = retryAfter
@@ -782,6 +787,7 @@ final class UsageStore: ObservableObject {
             switch codexResult {
             case .success(let value):
                 providerNotices[.codex] = nil
+                sessionAlerts.reportHealthy(.codex)
                 if codex.map({
                     !Self.quotaRoutesMatch(value, $0) || value.capturedAt > $0.capturedAt
                 }) ?? true {
@@ -793,6 +799,7 @@ final class UsageStore: ObservableObject {
                 }
                 if codexAPIDue || codex == nil {
                     providerNotices[.codex] = error.localizedDescription
+                    sessionAlerts.report(error: error, for: .codex, now: now)
                     errors.append("Codex: \(error.localizedDescription)")
                 }
             }
