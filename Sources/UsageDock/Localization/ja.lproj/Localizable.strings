@@ -689,3 +689,14 @@
 "accounts.setup.failed" = "ログインが完了しませんでした。CLI を確認して再試行してください。";
 "service.claude.account_login_failed" = "Claude のサインインが完了しませんでした。";
 "service.claude.account_session_missing" = "Claude のサインインは終了しましたが、分離されたアカウントセッションが作成されませんでした。";
+
+"settings.pool_mimo_daily" = "MiMo の日次プールを表示";
+"settings.pool_mimo_daily_hint" = "MiMo のアカウントウィンドウと並べて日次トークンプールを表示します。使用量が発生するとデフォルトで表示されます。";
+"settings.pool_ollama_hourly" = "Ollama の時間別プールを表示";
+"settings.pool_ollama_hourly_hint" = "セッション・週間ウィンドウと並べて時間別の上限を表示します。使用量が発生するとデフォルトで表示されます。";
+"settings.pool_deepseek_currencies" = "DeepSeek の他通貨残高を表示";
+"settings.pool_deepseek_currencies_hint" = "主要通貨以外の残高行を表示します。使用量が発生するとデフォルトで表示されます。";
+"settings.pool_openrouter_credits" = "OpenRouter のクレジットプールを表示";
+"settings.pool_openrouter_credits_hint" = "キーに周期的な上限がない場合、プリペイドクレジットを進捗行として表示します。クレジットを消費するとデフォルトで表示されます。";
+"settings.model_quotas_hint" = "アプリごとにまとめた追加プール。スイッチはポップアップ・メニューバー・カードの表示だけを変更します。";
+"settings.model_quotas_footer" = "接続してクォータを取得できたアプリがここに表示されます。";

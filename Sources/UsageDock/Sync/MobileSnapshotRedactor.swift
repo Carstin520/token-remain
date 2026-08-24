@@ -95,6 +95,23 @@ enum MobileSnapshotRedactor {
     }
 
     private static func redact(_ quota: ProviderQuota) -> SyncedProviderQuota {
+        let windows = [quota.primary, quota.secondary]
+            .compactMap { $0 }
+            .enumerated()
+            .map { index, window in
+                let balance = window.remainingBalance ?? (index == 0 ? quota.remainingBalance : nil)
+                return SyncedQuotaWindow(
+                    usedPercent: min(max(window.usedPercent, 0), 100),
+                    windowMinutes: max(0, window.windowMinutes),
+                    resetsAt: window.resetsAt,
+                    remainingBalance: balance.map {
+                        SyncedQuotaBalance(amount: $0.amount, currencyCode: $0.currencyCode)
+                    },
+                    // A pool label that fails wire sanitization is dropped, not
+                    // rejected: the window's numbers are still correct without it.
+                    poolName: SyncedQuotaWindow.sanitizedPoolName(window.poolName)
+                )
+            }
         let scopedWindows = quota.uniqueScopedWindows.compactMap { scoped -> SyncedScopedQuotaWindow? in
             // Cached PTY output from an older parser can contain a partial
             // repaint where the model label absorbs progress-bar/reset lines.
@@ -111,31 +128,36 @@ enum MobileSnapshotRedactor {
                     resetsAt: scoped.window.resetsAt,
                     remainingBalance: scoped.window.remainingBalance.map {
                         SyncedQuotaBalance(amount: $0.amount, currencyCode: $0.currencyCode)
-                    }
+                    },
+                    poolName: SyncedQuotaWindow.sanitizedPoolName(scoped.window.poolName)
                 )
             )
         }
+        // Transport validation enforces windows.count + scopedWindows.count <=
+        // maximumWindowsPerProvider and rejects the whole snapshot on overflow.
+        // A provider with several model pools (Codex now emits a session+weekly
+        // pair per pool) can legitimately exceed that, so truncate the scoped
+        // tail deterministically — the list is already in the service's semantic
+        // order, so the rows that survive are stable across refreshes. Better to
+        // drop trailing optional model rows than to let one busy provider get
+        // every provider's snapshot rejected.
+        let scopedCapacity = max(0, maximumSyncedWindowsPerProvider - windows.count)
+        let cappedScopedWindows = Array(scopedWindows.prefix(scopedCapacity))
         return SyncedProviderQuota(
             providerID: stableID(for: quota.provider),
-            windows: [quota.primary, quota.secondary]
-                .compactMap { $0 }
-                .enumerated()
-                .map { index, window in
-                    let balance = window.remainingBalance ?? (index == 0 ? quota.remainingBalance : nil)
-                    return SyncedQuotaWindow(
-                        usedPercent: min(max(window.usedPercent, 0), 100),
-                        windowMinutes: max(0, window.windowMinutes),
-                        resetsAt: window.resetsAt,
-                        remainingBalance: balance.map {
-                            SyncedQuotaBalance(amount: $0.amount, currencyCode: $0.currencyCode)
-                        }
-                    )
-                },
+            windows: windows,
             capturedAt: quota.capturedAt,
             statusCode: .available,
             planName: SyncedProviderQuota.sanitizedPlanName(quota.planName),
-            scopedWindows: scopedWindows.isEmpty ? nil : scopedWindows
+            scopedWindows: cappedScopedWindows.isEmpty ? nil : cappedScopedWindows
         )
+    }
+
+    /// The transport-validation window budget shared by `windows` and
+    /// `scopedWindows`. Read from the default configuration so the redactor can
+    /// never disagree with what `validatedForTransport` will enforce.
+    static var maximumSyncedWindowsPerProvider: Int {
+        SyncValidationConfiguration.current().maximumWindowsPerProvider
     }
 
     static func isWireSafe(_ scoped: ScopedQuotaWindow) -> Bool {

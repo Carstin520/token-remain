@@ -36,8 +36,10 @@ struct CodexUsageServiceTests {
         #expect(quota.primary.windowMinutes == 10_080)
         #expect(quota.secondary == nil)
         #expect(quota.planName == "prolite")
+        // 单窗模型快照只生成一条 scoped,周窗归入 `_weekly` 后缀。
         let spark = try #require(quota.uniqueScopedWindows.first)
-        #expect(spark.scopeID == "codex_bengalfox")
+        #expect(quota.uniqueScopedWindows.count == 1)
+        #expect(spark.scopeID == "codex_bengalfox_weekly")
         #expect(spark.displayName == "GPT-5.3-Codex-Spark")
         #expect(spark.window.usedPercent == 0)
         #expect(spark.window.windowMinutes == 10_080)
@@ -190,12 +192,194 @@ struct CodexUsageServiceTests {
         ], to: root.appendingPathComponent("mixed.jsonl"))
 
         let quota = try await CodexUsageService.fetch(from: [root])
-        let spark = try #require(quota.uniqueScopedWindows.first)
+        let scoped = quota.uniqueScopedWindows
 
         #expect(quota.primary.usedPercent == 31)
         #expect(quota.secondary?.usedPercent == 22)
-        #expect(spark.window.usedPercent == 44)
-        #expect(spark.window.windowMinutes == 10_080)
+        // 同一模型的两个窗都取最新快照的读数,成对存活、短窗在前。
+        #expect(scoped.map(\.scopeID) == ["codex_bengalfox_session", "codex_bengalfox_weekly"])
+        #expect(scoped.first?.window.usedPercent == 10)
+        #expect(scoped.first?.window.windowMinutes == 300)
+        #expect(scoped.last?.window.usedPercent == 44)
+        #expect(scoped.last?.window.windowMinutes == 10_080)
+    }
+
+    @Test("A model pool's 5h and 7d windows both survive as a scoped pair")
+    func modelPoolWindowsSurviveAsPair() async throws {
+        let root = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        try writeJSONL([
+            tokenCount(
+                timestamp: "2026-07-17T11:35:06.513Z",
+                limitID: "codex",
+                limitName: nil,
+                planType: "prolite",
+                usedPercent: 31,
+                windowMinutes: 300,
+                secondary: (22, 10_080)
+            ),
+            // 模型池 5h 已逼近打满、7d 才用了 44%:两个维度都必须可见,
+            // 否则 5h 耗尽时用户看不到任何提示(审计红项)。
+            tokenCount(
+                timestamp: "2026-07-17T11:35:24.973Z",
+                limitID: "codex_bengalfox",
+                limitName: "GPT-5.3-Codex-Spark",
+                planType: nil,
+                usedPercent: 95,
+                windowMinutes: 300,
+                secondary: (44, 10_080)
+            )
+        ], to: root.appendingPathComponent("mixed.jsonl"))
+
+        let quota = try await CodexUsageService.fetch(from: [root])
+        let scoped = quota.uniqueScopedWindows
+
+        #expect(scoped.map(\.scopeID) == ["codex_bengalfox_session", "codex_bengalfox_weekly"])
+        #expect(scoped.map(\.displayName) == ["GPT-5.3-Codex-Spark", "GPT-5.3-Codex-Spark"])
+        #expect(scoped.first?.window.usedPercent == 95)
+        #expect(scoped.first?.window.windowMinutes == 300)
+        #expect(scoped.last?.window.usedPercent == 44)
+        #expect(scoped.last?.window.windowMinutes == 10_080)
+        // Spark 显示开关依赖 isCodexSpark,两条后缀窗口都必须命中。
+        #expect(scoped.allSatisfy { $0.isCodexSpark })
+        // 账户级主卡不受模型池影响。
+        #expect(quota.primary.usedPercent == 31)
+        #expect(quota.secondary?.usedPercent == 22)
+    }
+
+    @Test("A snapshot without resets_at is kept instead of being dropped")
+    func missingResetsAtDoesNotDropSnapshot() async throws {
+        let root = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        try writeJSONL([
+            // 账户级快照缺 resets_at:QuotaWindow.resetsAt 本是 Optional,
+            // 解析器不应因此丢掉整条快照。
+            tokenCount(
+                timestamp: "2026-07-17T11:35:06.513Z",
+                limitID: "codex",
+                limitName: nil,
+                planType: "prolite",
+                usedPercent: 31,
+                windowMinutes: 300,
+                secondary: (22, 10_080),
+                resetsAt: nil
+            ),
+            tokenCount(
+                timestamp: "2026-07-17T11:35:24.973Z",
+                limitID: "codex_bengalfox",
+                limitName: "GPT-5.3-Codex-Spark",
+                planType: nil,
+                usedPercent: 9,
+                windowMinutes: 300,
+                secondary: (40, 10_080),
+                resetsAt: nil
+            )
+        ], to: root.appendingPathComponent("no-resets.jsonl"))
+
+        let quota = try await CodexUsageService.fetch(from: [root])
+
+        #expect(quota.primary.usedPercent == 31)
+        #expect(quota.primary.resetsAt == nil)
+        #expect(quota.secondary?.usedPercent == 22)
+        #expect(
+            quota.uniqueScopedWindows.map(\.scopeID)
+                == ["codex_bengalfox_session", "codex_bengalfox_weekly"]
+        )
+    }
+
+    @Test("isCodexSpark still matches the suffixed model-pool scope IDs")
+    func sparkDetectionSurvivesScopeSuffixes() {
+        let window = QuotaWindow(usedPercent: 10, windowMinutes: 300, resetsAt: nil)
+        func scoped(_ scopeID: String, _ displayName: String) -> ScopedQuotaWindow {
+            ScopedQuotaWindow(scopeID: scopeID, displayName: displayName, window: window)
+        }
+
+        // 精确 ID、带后缀的成对 ID 与 displayName 三条路径都要命中。
+        #expect(scoped("codex_bengalfox", "GPT-5.3-Codex-Spark").isCodexSpark)
+        #expect(scoped("codex_bengalfox_session", "GPT-5.3-Codex-Spark").isCodexSpark)
+        #expect(scoped("codex_bengalfox_weekly", "GPT-5.3-Codex-Spark").isCodexSpark)
+        #expect(scoped("codex_bengalfox_weekly", "Other").isCodexSpark)
+        #expect(!scoped("fable", "Fable").isCodexSpark)
+        #expect(!scoped("codex_other_model", "GPT-5.3-Codex-Mini").isCodexSpark)
+    }
+
+    @Test("Long limit_ids with a shared 24-char prefix keep distinct, stable scope IDs")
+    func longLimitIDsDoNotCollideAfterTruncation() {
+        let alpha = "codex_bengalfox_pro_extended_alpha"
+        let beta = "codex_bengalfox_pro_extended_beta"
+        #expect(String(alpha.prefix(24)) == String(beta.prefix(24)))
+
+        let alphaBase = CodexUsageService.wireScopeBase(for: alpha)
+        let betaBase = CodexUsageService.wireScopeBase(for: beta)
+
+        // 旧实现截前 24 字符会碰撞;新基底必须可区分。
+        #expect(alphaBase != betaBase)
+        // 确定性:FNV-1a 自实现,跨调用/跨进程稳定到具体字面值。
+        #expect(alphaBase == "codex_bengalfox_071fde96")
+        #expect(betaBase == "codex_bengalfox_563343ac")
+        #expect(alphaBase == CodexUsageService.wireScopeBase(for: alpha))
+        // 基底 ≤24,拼上最长的 `_session` 后缀仍在 32 字符 scopeID 上限内。
+        #expect(alphaBase.count == 24)
+        #expect((alphaBase + "_session").count <= 32)
+        // 15 字符前缀保住 hasPrefix("codex_bengalfox") 的 Spark 判定。
+        #expect(alphaBase.hasPrefix("codex_bengalfox"))
+        // ≤24 字节的 id 原样使用,现有 scopeID 不因此改变。
+        #expect(CodexUsageService.wireScopeBase(for: "codex_bengalfox") == "codex_bengalfox")
+    }
+
+    @Test("Two long-id model pools stay separate scoped windows end to end")
+    func longIDModelPoolsSurviveAsSeparatePools() async throws {
+        let root = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        try writeJSONL([
+            tokenCount(
+                timestamp: "2026-07-17T11:35:06.513Z",
+                limitID: "codex",
+                limitName: nil,
+                planType: "prolite",
+                usedPercent: 31,
+                windowMinutes: 300,
+                secondary: (22, 10_080)
+            ),
+            tokenCount(
+                timestamp: "2026-07-17T11:35:12.000Z",
+                limitID: "codex_bengalfox_pro_extended_alpha",
+                limitName: "GPT-5.3-Codex-Spark-Alpha",
+                planType: nil,
+                usedPercent: 9,
+                windowMinutes: 300,
+                secondary: (40, 10_080)
+            ),
+            tokenCount(
+                timestamp: "2026-07-17T11:35:24.973Z",
+                limitID: "codex_bengalfox_pro_extended_beta",
+                limitName: "GPT-5.3-Codex-Spark-Beta",
+                planType: nil,
+                usedPercent: 77,
+                windowMinutes: 300,
+                secondary: (58, 10_080)
+            )
+        ], to: root.appendingPathComponent("long-ids.jsonl"))
+
+        let quota = try await CodexUsageService.fetch(from: [root])
+        let scoped = quota.uniqueScopedWindows
+
+        // 前 24 字符相同的两个模型池不允许被折叠成一个:各自的
+        // session/weekly 成对存活,读数互不覆盖。
+        #expect(scoped.count == 4)
+        #expect(Set(scoped.map(\.scopeID)).count == 4)
+        #expect(scoped.map(\.scopeID) == [
+            "codex_bengalfox_071fde96_session",
+            "codex_bengalfox_071fde96_weekly",
+            "codex_bengalfox_563343ac_session",
+            "codex_bengalfox_563343ac_weekly"
+        ])
+        #expect(scoped.allSatisfy { $0.scopeID.count <= 32 })
+        #expect(scoped.first { $0.scopeID.hasSuffix("071fde96_session") }?.window.usedPercent == 9)
+        #expect(scoped.first { $0.scopeID.hasSuffix("563343ac_session") }?.window.usedPercent == 77)
     }
 
     @Test("A rewritten session file (new mtime) invalidates the parse cache")
@@ -347,10 +531,15 @@ struct CodexUsageServiceTests {
         planType: String?,
         usedPercent: Double,
         windowMinutes: Int,
-        secondary: (usedPercent: Double, windowMinutes: Int)? = nil
+        secondary: (usedPercent: Double, windowMinutes: Int)? = nil,
+        resetsAt: Double? = 1_784_780_221
     ) -> [String: Any] {
         var limits: [String: Any] = [
-            "primary": window(usedPercent: usedPercent, windowMinutes: windowMinutes)
+            "primary": window(
+                usedPercent: usedPercent,
+                windowMinutes: windowMinutes,
+                resetsAt: resetsAt
+            )
         ]
         if let limitID { limits["limit_id"] = limitID }
         if let limitName { limits["limit_name"] = limitName }
@@ -358,7 +547,8 @@ struct CodexUsageServiceTests {
         if let secondary {
             limits["secondary"] = window(
                 usedPercent: secondary.usedPercent,
-                windowMinutes: secondary.windowMinutes
+                windowMinutes: secondary.windowMinutes,
+                resetsAt: resetsAt
             )
         }
         return [
@@ -370,11 +560,16 @@ struct CodexUsageServiceTests {
         ]
     }
 
-    private func window(usedPercent: Double, windowMinutes: Int) -> [String: Any] {
-        [
+    private func window(
+        usedPercent: Double,
+        windowMinutes: Int,
+        resetsAt: Double? = 1_784_780_221
+    ) -> [String: Any] {
+        var value: [String: Any] = [
             "used_percent": usedPercent,
-            "window_minutes": windowMinutes,
-            "resets_at": 1_784_780_221
+            "window_minutes": windowMinutes
         ]
+        if let resetsAt { value["resets_at"] = resetsAt }
+        return value
     }
 }

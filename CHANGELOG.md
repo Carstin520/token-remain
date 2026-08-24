@@ -5,6 +5,52 @@ Versioning for public releases.
 
 ## Unreleased
 
+### Changed
+
+- Show Cursor's two usage pools as separate bars, matching Cursor's own
+  dashboard. The blended `totalPercentUsed` hid the real bottleneck: a
+  spend-weighted 13% could mask "Other Models" at 91% used. The busier pool
+  now drives the primary bar (and the menu-bar summary), while the other
+  pool renders as a named "Cursor Models" / "Other Models" row alongside it.
+  Accounts whose response lacks the per-pool fields keep the single bar.
+- Apply the same busier-pool-first convention everywhere an upstream splits
+  one billing cycle into pools: Copilot's free-tier Chat/Completions
+  counters, Qoder's Personal/Shared credits (previously summed together, so
+  an exhausted personal pool could read as "91% left"), and Z.ai ZCode's
+  per-model pools (now named by model, with cycle length derived from the
+  real period end).
+- Stop dropping quota dimensions that lost a slot race: Kimi keeps every
+  window the API reports (shortest → longest, middle tiers as named rows),
+  Ollama shows Session, Hourly, and Weekly instead of whichever two rendered
+  first, Codex model pools keep both their 5-hour and weekly windows, MiMo
+  surfaces its daily token pool, and Z.ai time-based limits use their real
+  duration and name instead of a hardcoded "MCP · 30 d".
+- Named pool rows (Fable, Codex-Spark, Antigravity third-party, MiMo daily,
+  Ollama hourly, DeepSeek extra currencies, OpenRouter credits) now share
+  one visibility store with a smart default: a pool the account actually
+  uses shows up on its own; an idle one stays hidden until switched on.
+  Existing Fable/Spark/third-party choices migrate as-is.
+- OpenRouter prepaid credits keep their percentage bar even when the API key
+  has no periodic limit, and Copilot paid plans estimate overage spend
+  ($0.04 per extra premium request) in the extra-usage row.
+
+### Fixed
+
+- A Copilot free plan or a multi-pool Z.ai ZCode plan no longer breaks
+  mobile sync for every provider: same-length sibling pools now travel as
+  named rows instead of two identical account windows, which the sync
+  schema rejects wholesale.
+- MiMo's empty pay-as-you-go wallet no longer pins the menu bar at "0%
+  remaining" under the lowest-remaining strategy; the wallet is shown as a
+  balance line instead of a second quota window.
+- Volcengine no longer picks a random usage percentage when the response
+  holds several: the parser prefers the documented path and traverses
+  deterministically.
+- Claude's terminal-based fallback no longer lets a model-scoped
+  "Current session (…)" line overwrite the account-wide 5-hour reading.
+- Antigravity third-party rows no longer vanish for a refresh cycle when
+  only the Gemini buckets report.
+
 ## 1.3.6 — 2026-08-21
 
 ### Changed

@@ -689,3 +689,14 @@
 "accounts.setup.failed" = "Die Anmeldung wurde nicht abgeschlossen. Prüfen Sie die CLI und versuchen Sie es erneut.";
 "service.claude.account_login_failed" = "Die Claude-Anmeldung wurde nicht abgeschlossen.";
 "service.claude.account_session_missing" = "Die Claude-Anmeldung wurde beendet, ohne eine isolierte Kontositzung zu erstellen.";
+
+"settings.pool_mimo_daily" = "MiMo-Tagespool anzeigen";
+"settings.pool_mimo_daily_hint" = "Zeigt den täglichen Token-Pool neben MiMos Kontofenstern; wird standardmäßig angezeigt, sobald er Nutzung aufweist.";
+"settings.pool_ollama_hourly" = "Ollama-Stundenpool anzeigen";
+"settings.pool_ollama_hourly_hint" = "Zeigt das Stundenlimit neben Sitzungs- und Wochenfenster; wird standardmäßig angezeigt, sobald es Nutzung aufweist.";
+"settings.pool_deepseek_currencies" = "Weitere DeepSeek-Währungsguthaben anzeigen";
+"settings.pool_deepseek_currencies_hint" = "Zeigt Guthabenzeilen für Währungen jenseits der primären; werden standardmäßig angezeigt, sobald sie Nutzung aufweisen.";
+"settings.pool_openrouter_credits" = "OpenRouter-Guthabenpool anzeigen";
+"settings.pool_openrouter_credits_hint" = "Zeigt Prepaid-Guthaben als Fortschrittszeile, wenn der Schlüssel kein periodisches Limit hat; wird standardmäßig angezeigt, sobald Guthaben verbraucht wird.";
+"settings.model_quotas_hint" = "Optionale Kontingente, nach App gruppiert. Jeder Schalter ändert nur, was Popup, Menüleiste und Karten anzeigen.";
+"settings.model_quotas_footer" = "Apps erscheinen hier, sobald sie verbunden sind und Kontingente melden.";

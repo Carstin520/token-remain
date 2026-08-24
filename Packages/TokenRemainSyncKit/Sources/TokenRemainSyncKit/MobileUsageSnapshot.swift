@@ -83,22 +83,49 @@ public struct SyncedQuotaBalance: Codable, Sendable, Equatable {
 }
 
 public struct SyncedQuotaWindow: Codable, Sendable, Equatable {
+    public static let maximumPoolNameUTF8Bytes = 48
+
     public let usedPercent: Double
     /// `0` represents a non-periodic pool; otherwise this is a positive window.
     public let windowMinutes: Int
     public let resetsAt: Date?
     public let remainingBalance: SyncedQuotaBalance?
+    /// Some providers split one billing cycle into named pools that share a
+    /// duration (Cursor's "Cursor Models" / "Other Models"). When the primary
+    /// window is one such pool rather than the whole account, this names it so
+    /// the phone can tell two same-duration values apart. Optional on the wire:
+    /// synthesized Codable decodes a missing key as nil (the same
+    /// `decodeIfPresent` behavior `remainingBalance` relies on), so payloads
+    /// from older Macs keep decoding and `schemaVersion` stays at 1. A nil
+    /// value is also omitted when encoding, so replay/payload digests of
+    /// pool-less snapshots are byte-identical to pre-poolName builds.
+    public let poolName: String?
 
     public init(
         usedPercent: Double,
         windowMinutes: Int,
         resetsAt: Date?,
-        remainingBalance: SyncedQuotaBalance? = nil
+        remainingBalance: SyncedQuotaBalance? = nil,
+        poolName: String? = nil
     ) {
         self.usedPercent = usedPercent
         self.windowMinutes = windowMinutes
         self.resetsAt = resetsAt
         self.remainingBalance = remainingBalance
+        self.poolName = poolName
+    }
+
+    /// Same character policy as `SyncedProviderQuota.sanitizedPlanName` — the
+    /// pool label crosses the encrypted device boundary, so account-like,
+    /// path-like and control-character values never do — plus a tighter
+    /// 48-byte cap matching the desktop model-scope display-name limit.
+    /// Returns nil (drop the label, keep the window) rather than failing.
+    public static func sanitizedPoolName(_ value: String?) -> String? {
+        guard let sanitized = SyncedProviderQuota.sanitizedPlanName(value),
+              sanitized.utf8.count <= maximumPoolNameUTF8Bytes else {
+            return nil
+        }
+        return sanitized
     }
 }
 
@@ -392,7 +419,8 @@ public struct MobileUsageSnapshot: Codable, Sendable, Equatable {
                             usedPercent: $0.usedPercent,
                             windowMinutes: $0.windowMinutes,
                             resetsAt: try $0.resetsAt.map(SyncTimestamp.normalized),
-                            remainingBalance: $0.remainingBalance
+                            remainingBalance: $0.remainingBalance,
+                            poolName: $0.poolName
                         )
                     },
                     capturedAt: try SyncTimestamp.normalized(provider.capturedAt),
@@ -406,7 +434,8 @@ public struct MobileUsageSnapshot: Codable, Sendable, Equatable {
                                 usedPercent: scoped.window.usedPercent,
                                 windowMinutes: scoped.window.windowMinutes,
                                 resetsAt: try scoped.window.resetsAt.map(SyncTimestamp.normalized),
-                                remainingBalance: scoped.window.remainingBalance
+                                remainingBalance: scoped.window.remainingBalance,
+                                poolName: scoped.window.poolName
                             )
                         )
                     }
@@ -520,6 +549,7 @@ public struct MobileUsageSnapshot: Codable, Sendable, Equatable {
                 try SyncTimestamp.validate(resetsAt, field: .resetsAt)
             }
             try validate(balance: window.remainingBalance, providerID: provider.providerID)
+            try validate(poolName: window.poolName, providerID: provider.providerID)
         }
         var scopeIDs = Set<String>()
         for scoped in provider.scopedWindows ?? [] {
@@ -539,6 +569,18 @@ public struct MobileUsageSnapshot: Codable, Sendable, Equatable {
                 try SyncTimestamp.validate(resetsAt, field: .resetsAt)
             }
             try validate(balance: window.remainingBalance, providerID: provider.providerID)
+            try validate(poolName: window.poolName, providerID: provider.providerID)
+        }
+    }
+
+    /// Nil is always valid (most windows are the whole account); a non-nil pool
+    /// label must already be in sanitized form so nothing account- or path-like
+    /// crosses the boundary. Senders sanitize-or-drop before packaging, so a
+    /// failure here only rejects payloads that bypassed the redactor.
+    private func validate(poolName: String?, providerID: String) throws {
+        guard let poolName else { return }
+        guard SyncedQuotaWindow.sanitizedPoolName(poolName) == poolName else {
+            throw SyncValidationError.invalidPoolName(providerID)
         }
     }
 
@@ -777,6 +819,7 @@ public enum SyncValidationError: Error, Sendable, Equatable {
     case invalidPercent(String)
     case invalidWindowMinutes(String)
     case invalidBalance(String)
+    case invalidPoolName(String)
     case invalidAggregateUsage
     case invalidDailyUsageHistory
     case invalidCuratedFeed

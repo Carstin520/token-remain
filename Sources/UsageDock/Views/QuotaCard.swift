@@ -32,12 +32,31 @@ struct QuotaCard: View {
     @State private var isPresentingAccountSetup = false
     @State private var pendingCredentialUpdateID: ProviderAccountID?
 
+    /// Dashboard 卡片:目录内的池由通用池开关 + 智能默认决定显隐;
+    /// 目录外的池(账户级兄弟池)维持既有行为——恒显。
+    @MainActor
     static func scopedWindows(
         in quota: ProviderQuota,
-        showAntigravityThirdParty: Bool = true
+        preferences: PreferencesStore
     ) -> [ScopedQuotaWindow] {
-        quota.uniqueScopedWindows.filter {
-            showAntigravityThirdParty || !$0.isAntigravityThirdParty
+        quota.uniqueScopedWindows.filter { scoped in
+            guard let entry = ScopedPoolToggleCatalog.entry(
+                for: scoped,
+                provider: quota.provider
+            ) else {
+                return true
+            }
+            // 活跃度按整个池组判定(见 ScopedPoolToggleCatalog.poolIsActive),
+            // 同组多行(如 Spark 的 _session/_weekly)显隐一致,且与设置页
+            // 开关读到的智能默认相同。
+            return preferences.resolvedScopedPoolVisibility(
+                provider: entry.provider,
+                poolKey: entry.poolKey,
+                poolIsActive: ScopedPoolToggleCatalog.poolIsActive(
+                    entry: entry,
+                    in: quota
+                )
+            )
         }
     }
 
@@ -149,10 +168,7 @@ struct QuotaCard: View {
                 )
             }
             ForEach(
-                Self.scopedWindows(
-                    in: quota,
-                    showAntigravityThirdParty: preferences.showAntigravityThirdPartyQuota
-                ),
+                Self.scopedWindows(in: quota, preferences: preferences),
                 id: \.scopeID
             ) { scoped in
                 Divider().overlay(DashboardTheme.border)
@@ -950,6 +966,12 @@ struct QuotaWindowRow: View {
     var scopeName: String?
     var remainingBalance: QuotaBalance? = nil
 
+    /// Scoped rows are named by their call site; a general window can also
+    /// name itself when it represents one pool of a split cycle (Cursor).
+    private var effectiveScopeName: String? {
+        scopeName ?? window.poolName
+    }
+
     private var remainingPercent: Double {
         min(100, max(0, 100 - window.usedPercent))
     }
@@ -1045,7 +1067,7 @@ struct QuotaWindowRow: View {
     private var windowTitle: String {
         Self.displayTitle(
             windowMinutes: window.windowMinutes,
-            scopeName: scopeName,
+            scopeName: effectiveScopeName,
             attribution: attribution
         )
     }
@@ -1063,7 +1085,7 @@ struct QuotaWindowRow: View {
 
     private var windowAccessibilityDescriptor: String {
         let duration = UsageFormatting.windowName(minutes: window.windowMinutes)
-        return scopeName.map { "\($0) · \(duration)" } ?? duration
+        return effectiveScopeName.map { "\($0) · \(duration)" } ?? duration
     }
 
     private var accessibilityProviderName: String {

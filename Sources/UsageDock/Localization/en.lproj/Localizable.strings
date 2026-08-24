@@ -583,6 +583,16 @@
 "settings.quota_summary_tightest" = "Lowest remaining quota";
 "settings.antigravity_3p" = "Show Antigravity third-party pools";
 "settings.antigravity_3p_hint" = "Show the optional Claude/third-party 5-hour and weekly pools; hidden by default.";
+"settings.pool_mimo_daily" = "Show the MiMo daily pool";
+"settings.pool_mimo_daily_hint" = "Show the daily token pool alongside MiMo's account windows; shown by default once it has usage.";
+"settings.pool_ollama_hourly" = "Show the Ollama hourly pool";
+"settings.pool_ollama_hourly_hint" = "Show the hourly limit alongside the session and weekly windows; shown by default once it has usage.";
+"settings.pool_deepseek_currencies" = "Show other DeepSeek currency balances";
+"settings.pool_deepseek_currencies_hint" = "Show balance rows for currencies beyond the primary one; shown by default once they carry usage.";
+"settings.pool_openrouter_credits" = "Show the OpenRouter credits pool";
+"settings.pool_openrouter_credits_hint" = "Show prepaid credits as a progress row when the key has no periodic limit; shown by default once credits are consumed.";
+"settings.model_quotas_hint" = "Optional pools, grouped by app. Each switch only changes what the popup, menu bar, and cards show.";
+"settings.model_quotas_footer" = "Apps show up here once they are connected and reporting quota.";
 "trends.model_other_format" = "Other (%1$d models)";
 "trends.model_detail_tag" = "MODEL DETAIL";
 "trends.model_detail_accumulating" = "Model detail accumulates from this version onward; older cached days cannot be backfilled.";

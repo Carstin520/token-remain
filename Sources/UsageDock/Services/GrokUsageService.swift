@@ -112,6 +112,8 @@ enum GrokUsageParser {
             usedPercent = 0
         }
 
+        // 按量付费(on-demand)只有上限没有已花费字段(取证见
+        // onDemandCapCredits 的注释),extraUsage 保持 nil,不臆造 0。
         return ProviderQuota(
             provider: .grok,
             primary: QuotaWindow(
@@ -123,6 +125,27 @@ enum GrokUsageParser {
             planName: planName,
             capturedAt: now
         )
+    }
+
+    /// 按量付费上限 `config.onDemandCap`,proto-JSON 形如 `{"val": 2500}`
+    /// (停用/为 0 时整个字段缺席),单位是积分而非美元。
+    ///
+    /// 取证结论(2026-08-24,对照 OpenUsage 对同一 `billing?format=credits`
+    /// 接口的解码器):响应里只有这个上限,没有任何 on-demand "已花费"
+    /// 字段——OpenUsage 也只把它渲染成启用/停用徽章,而不是金额。
+    /// ExtraUsage 需要真实的 spentUSD:臆造 0 会把"未开按量"与"按量已
+    /// 花 $0"混为一谈,在主池打满、正在按量扣费时尤其误导。因此这里只
+    /// 解析并验证 cap 的形状,等拿到带真实已花费字段的响应样本后,再把
+    /// (已花费, cap)一起落到 ExtraUsage(spentUSD:monthlyLimitUSD:)。
+    static func onDemandCapCredits(_ data: Data) -> Double? {
+        guard let root = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+              let config = root["config"] as? [String: Any] else {
+            return nil
+        }
+        let raw = config["onDemandCap"]
+        let value = ((raw as? [String: Any])?["val"]).flatMap(number) ?? number(raw)
+        guard let value, value.isFinite, value > 0 else { return nil }
+        return value
     }
 
     /// `/v1/settings` 的 `subscription_tier_display`,如 "SuperGrok"。

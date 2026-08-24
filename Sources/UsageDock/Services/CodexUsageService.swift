@@ -149,8 +149,14 @@ struct CodexUsageService {
                 throw ProcessRunner.Failure(message: L10n.text("service.codex.snapshot_missing"))
             }
             let scopedWindows = newestScopedByID.values
-                .compactMap { scopedWindow(from: $0, relativeTo: base.capturedAt) }
-                .sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
+                .flatMap { Self.scopedWindows(from: $0, relativeTo: base.capturedAt) }
+                .sorted { lhs, rhs in
+                    // 同一模型的 session/weekly 成对相邻,短窗在前,与主卡
+                    // 5h+7d 的顺序一致。
+                    let names = lhs.displayName.localizedCaseInsensitiveCompare(rhs.displayName)
+                    guard names == .orderedSame else { return names == .orderedAscending }
+                    return lhs.window.windowMinutes < rhs.window.windowMinutes
+                }
             return base.quota.mergingScopedWindows(scopedWindows)
         }.value
     }
@@ -307,10 +313,16 @@ struct CodexUsageService {
 
     private static func parseWindow(_ value: Any?, fallbackMinutes: Int) -> QuotaWindow? {
         guard let object = value as? [String: Any],
-              let percent = (object["used_percent"] as? NSNumber)?.doubleValue,
-              let reset = (object["resets_at"] as? NSNumber)?.doubleValue else { return nil }
+              let percent = (object["used_percent"] as? NSNumber)?.doubleValue else { return nil }
         let minutes = (object["window_minutes"] as? NSNumber)?.intValue ?? fallbackMinutes
-        return QuotaWindow(usedPercent: percent, windowMinutes: minutes, resetsAt: Date(timeIntervalSince1970: reset))
+        // `resets_at` 缺失或为 null 时不再丢弃整个窗口:QuotaWindow.resetsAt
+        // 本身就是 Optional,解析器不应比模型更严格。
+        let reset = (object["resets_at"] as? NSNumber)?.doubleValue
+        return QuotaWindow(
+            usedPercent: percent,
+            windowMinutes: minutes,
+            resetsAt: reset.map(Date.init(timeIntervalSince1970:))
+        )
     }
 
     private static func normalizedString(_ value: Any?) -> String? {
@@ -330,22 +342,63 @@ struct CodexUsageService {
         return normalized.isEmpty ? nil : normalized
     }
 
-    private static func scopedWindow(
+    /// 模型级快照(如 `codex_bengalfox`)的 5h 与 7d 两窗都保留,成对生成
+    /// scoped 行:scopeID 加 `_session` / `_weekly` 后缀,displayName 一律用
+    /// 模型名。UI 会按各自窗口时长渲染成 "GPT-5.3-Codex-Spark · 5 hr" 与
+    /// "· 7 d",与主卡 5h+7d 的堆叠习惯一致;只有一个窗的快照生成一条,
+    /// 按时长归入对应后缀(历史上模型池的周窗也会单独出现在 primary 槽)。
+    private static func scopedWindows(
         from snapshot: Snapshot,
         relativeTo baseCapturedAt: Date
-    ) -> ScopedQuotaWindow? {
-        guard let scopeID = scopedID(for: snapshot),
-              let displayName = snapshot.limitName else { return nil }
-        let windows = [snapshot.quota.primary, snapshot.quota.secondary].compactMap { $0 }
-        guard let window = windows.first(where: { $0.windowMinutes == 10_080 })
-            ?? windows.max(by: { $0.windowMinutes < $1.windowMinutes }) else { return nil }
-        // A model limit can linger in an old session forever. Do not attach it
-        // to a fresh account snapshot after its last reported reset has passed.
-        guard window.resetsAt.map({ $0 > baseCapturedAt }) ?? true else { return nil }
-        return ScopedQuotaWindow(
-            scopeID: scopeID,
-            displayName: displayName,
-            window: window
-        )
+    ) -> [ScopedQuotaWindow] {
+        guard let baseScopeID = scopedID(for: snapshot),
+              let displayName = snapshot.limitName else { return [] }
+        let scopePrefix = wireScopeBase(for: baseScopeID)
+        let pairs: [(suffix: String, window: QuotaWindow)]
+        if let secondary = snapshot.quota.secondary {
+            pairs = [
+                ("_session", snapshot.quota.primary),
+                ("_weekly", secondary)
+            ]
+        } else {
+            let primary = snapshot.quota.primary
+            pairs = [(primary.windowMinutes >= 10_080 ? "_weekly" : "_session", primary)]
+        }
+        return pairs.compactMap { suffix, window in
+            // A model limit can linger in an old session forever. Do not attach
+            // it to a fresh account snapshot after its last reported reset has
+            // passed.
+            guard window.resetsAt.map({ $0 > baseCapturedAt }) ?? true else { return nil }
+            return ScopedQuotaWindow(
+                scopeID: scopePrefix + suffix,
+                displayName: displayName,
+                window: window,
+                observedAt: snapshot.capturedAt
+            )
+        }
+    }
+
+    /// scopeID 上限 32 字符([a-z0-9_-]{1,32}),给最长的 `_session` 后缀
+    /// 预留 8 个字符,基底必须 ≤24。历史实现直接截前 24 字符:两个前
+    /// 24 字符相同的长 limit_id 会得到同一个 scopeID,uniqueScopedWindows
+    /// 随即把不同模型池折叠成一个。改为 前 15 字符 + "_" + FNV-1a 32 位
+    /// 哈希(8 位十六进制),哈希覆盖完整 id,总长恰 24;15 字符前缀恰
+    /// 好保住 `isCodexSpark` 的 hasPrefix("codex_bengalfox") 判定
+    /// ("codex_bengalfox" 正是 15 字符)。≤24 字节的 id 原样使用,现有
+    /// scopeID 不受影响。
+    static func wireScopeBase(for baseScopeID: String) -> String {
+        guard baseScopeID.utf8.count > 24 else { return baseScopeID }
+        return String(baseScopeID.prefix(15)) + "_" + fnv1a32Hex(baseScopeID)
+    }
+
+    /// FNV-1a 32 位哈希。必须自实现:Swift 的 `Hasher` 每次进程启动随机
+    /// 化种子,而 scopeID 会进缓存并跨设备同步,要求跨进程、跨版本稳定。
+    private static func fnv1a32Hex(_ value: String) -> String {
+        var hash: UInt32 = 2_166_136_261
+        for byte in value.utf8 {
+            hash ^= UInt32(byte)
+            hash = hash &* 16_777_619
+        }
+        return String(format: "%08x", hash)
     }
 }

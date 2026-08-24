@@ -583,6 +583,16 @@
 "settings.quota_summary_tightest" = "剩余额度最低";
 "settings.antigravity_3p" = "显示 Antigravity 第三方额度池";
 "settings.antigravity_3p_hint" = "显示可选的 Claude/第三方 5 小时与周额度；默认隐藏。";
+"settings.pool_mimo_daily" = "显示 MiMo 日额度池";
+"settings.pool_mimo_daily_hint" = "在 MiMo 账户窗口之外显示每日 Token 池；有用量后默认显示。";
+"settings.pool_ollama_hourly" = "显示 Ollama 小时池";
+"settings.pool_ollama_hourly_hint" = "在会话与周窗口之外显示每小时额度；有用量后默认显示。";
+"settings.pool_deepseek_currencies" = "显示 DeepSeek 其他币种余额";
+"settings.pool_deepseek_currencies_hint" = "在主余额之外显示其余币种的余额行；有用量后默认显示。";
+"settings.pool_openrouter_credits" = "显示 OpenRouter 积分池";
+"settings.pool_openrouter_credits_hint" = "Key 无周期限额时以进度行显示预充积分；有消耗后默认显示。";
+"settings.model_quotas_hint" = "按应用分组的附加额度池;开关只影响弹窗、菜单栏和卡片显示什么。";
+"settings.model_quotas_footer" = "应用接入并报告额度后会出现在这里。";
 "trends.model_other_format" = "其他（%1$d 个模型）";
 "trends.model_detail_tag" = "模型明细";
 "trends.model_detail_accumulating" = "模型明细从本版本开始累积；旧缓存日期没有可回填的按模型数据。";

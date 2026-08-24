@@ -286,15 +286,6 @@ struct SettingsSection: View {
                         .accessibilityLabel(L10n.text("settings.quota_summary_title"))
                         .accessibilityHint(L10n.text("settings.quota_summary_hint"))
                     }
-
-                    Divider().overlay(DashboardTheme.border)
-
-                    preferenceToggle(
-                        title: L10n.text("settings.antigravity_3p"),
-                        detail: L10n.text("settings.antigravity_3p_hint"),
-                        isOn: antigravityThirdPartyBinding
-                    )
-                    .disabled(!tracked.isEnabled(.antigravity))
                 }
             }
         }
@@ -330,24 +321,55 @@ struct SettingsSection: View {
                 }
             }
 
-            DashboardCard {
-                VStack(alignment: .leading, spacing: 12) {
-                    PanelHeader(title: L10n.text("settings.model_quotas"))
+            modelQuotaSettings
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
 
-                    preferenceToggle(
-                        title: L10n.text("settings.menubar_fable"),
-                        detail: L10n.text("settings.menubar_fable_hint"),
-                        isOn: menuBarFableBinding
-                    )
-                    .disabled(!tracked.isEnabled(.claude))
+    /// 每个应用一节:池的语义各不相同,平铺列表放不下 7 类开关。
+    /// 只渲染"已接入"的应用,尾部一行 muted 说明兜底空态。
+    private var modelQuotaSettings: some View {
+        DashboardCard {
+            VStack(alignment: .leading, spacing: 12) {
+                PanelHeader(
+                    title: L10n.text("settings.model_quotas"),
+                    subtitle: L10n.text("settings.model_quotas_hint")
+                )
 
-                    preferenceToggle(
-                        title: L10n.text("settings.menubar_codex_spark"),
-                        detail: L10n.text("settings.menubar_codex_spark_hint"),
-                        isOn: menuBarCodexSparkBinding
-                    )
-                    .disabled(!tracked.isEnabled(.codex))
+                ForEach(Array(scopedPoolGroups.enumerated()), id: \.element.id) { index, group in
+                    if index > 0 {
+                        Divider().overlay(DashboardTheme.border)
+                    }
+                    scopedPoolGroup(group)
                 }
+
+                Text(L10n.text("settings.model_quotas_footer"))
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(DashboardTheme.mutedText)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+
+    private func scopedPoolGroup(_ group: ScopedPoolToggleCatalog.ProviderGroup) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 7) {
+                BrandIcon(provider: group.provider)
+                    .frame(width: 14, height: 14)
+                Text(group.provider.displayName)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(DashboardTheme.text)
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(group.provider.displayName)
+
+            ForEach(group.entries) { entry in
+                preferenceToggle(
+                    title: L10n.text(entry.titleKey),
+                    detail: L10n.text(entry.detailKey),
+                    isOn: scopedPoolBinding(for: entry)
+                )
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -503,25 +525,54 @@ struct SettingsSection: View {
         )
     }
 
-    private var menuBarCodexSparkBinding: Binding<Bool> {
-        Binding(
-            get: { preferences.showCodexSparkQuotaInMenuBarWidget },
-            set: { preferences.setShowCodexSparkQuotaInMenuBarWidget($0) }
+    /// 目录里有条目、且当前有额度数据的应用才成节——没接入的整节不渲染。
+    private var scopedPoolGroups: [ScopedPoolToggleCatalog.ProviderGroup] {
+        ScopedPoolToggleCatalog.settingsGroups(
+            order: tracked.enabledOrdered,
+            isConnected: { store.quotaValue(for: $0) != nil }
         )
     }
 
-    private var menuBarFableBinding: Binding<Bool> {
-        Binding(
-            get: { preferences.showFableQuotaInMenuBarWidget },
-            set: { preferences.setShowFableQuotaInMenuBarWidget($0) }
+    /// 池开关是 tri-state 存储:没存过时开关显示的就是挂件/卡片实际用的
+    /// 智能默认(该池当前有没有用量),存过就永远听用户的。set 一律写显式值。
+    private func scopedPoolBinding(
+        for entry: ScopedPoolToggleCatalog.Entry
+    ) -> Binding<Bool> {
+        let isActive = poolIsActive(entry)
+        return Binding(
+            get: {
+                preferences.resolvedScopedPoolVisibility(
+                    provider: entry.provider,
+                    poolKey: entry.poolKey,
+                    poolIsActive: isActive
+                )
+            },
+            set: {
+                preferences.setScopedPoolVisibility(
+                    $0,
+                    provider: entry.provider,
+                    poolKey: entry.poolKey
+                )
+            }
         )
     }
 
-    private var antigravityThirdPartyBinding: Binding<Bool> {
-        Binding(
-            get: { preferences.showAntigravityThirdPartyQuota },
-            set: { preferences.setShowAntigravityThirdPartyQuota($0) }
-        )
+    /// 该池当前是否在用。拿不到对应窗口(应用接入了但这个池没出现)时退回
+    /// 目录里的保守默认,而不是一律当成"没在用"。有窗口时走与挂件/卡片
+    /// 过滤共享的整组判定(ScopedPoolToggleCatalog.poolIsActive):组内任一
+    /// 行有用量或正余额即活跃,开关读数与行显隐永远一致。
+    private func poolIsActive(_ entry: ScopedPoolToggleCatalog.Entry) -> Bool {
+        guard let quota = store.quotaValue(for: entry.provider) else {
+            return entry.visibilityFallbackWithoutData
+        }
+        let poolHasWindows = quota.uniqueScopedWindows.contains { scoped in
+            ScopedPoolToggleCatalog.entry(
+                for: scoped,
+                provider: quota.provider
+            )?.id == entry.id
+        }
+        guard poolHasWindows else { return entry.visibilityFallbackWithoutData }
+        return ScopedPoolToggleCatalog.poolIsActive(entry: entry, in: quota)
     }
 
     private var quotaSummaryStrategyBinding: Binding<QuotaSummaryStrategy> {

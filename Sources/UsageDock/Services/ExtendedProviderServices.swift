@@ -135,11 +135,46 @@ struct DeepSeekUsageService {
             throw ExtendedProviderError.invalidResponse(.deepseek)
         }
         let available = body["is_available"] as? Bool ?? !infos.isEmpty
-        // 优先取有余额的一行(通常是 CNY / USD 各一行)。
-        let row = infos.first { (ExtendedHTTP.number($0["total_balance"]) ?? 0) > 0 } ?? infos.first
+        // 优先取有余额的一行(通常是 CNY / USD 各一行)做主行。
+        let rowIndex = infos.firstIndex { (ExtendedHTTP.number($0["total_balance"]) ?? 0) > 0 }
+            ?? infos.indices.first
+        let row = rowIndex.map { infos[$0] }
         let rawAmount = row.flatMap { ExtendedHTTP.number($0["total_balance"]) } ?? 0
         let amount = rawAmount.isFinite ? max(0, rawAmount) : 0
         let currency = (row?["currency"] as? String) ?? ""
+
+        // 其余仍有余额的币种各成一条 scoped 余额行:主行只承载首个币种,
+        // 另一币种也充了值时不再被静默吞掉。0.00 的占位行(几乎每个账户都
+        // 带一条未充值币种)不出行,避免常驻一条"已用尽"噪音。
+        // granted/topped_up 子池暂不拆(见修复方案 §11)。
+        var scoped: [ScopedQuotaWindow] = []
+        var seenScopeIDs: Set<String> = []
+        for (index, info) in infos.enumerated() where index != rowIndex {
+            let extraRaw = ExtendedHTTP.number(info["total_balance"]) ?? 0
+            guard extraRaw.isFinite, extraRaw > 0 else { continue }
+            let extraCurrency = ((info["currency"] as? String) ?? "")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .uppercased()
+            let slug = extraCurrency.lowercased()
+                .filter { $0.isASCII && ($0.isLetter || $0.isNumber) }
+            guard !slug.isEmpty else { continue }
+            let scopeID = "deepseek_\(String(slug.prefix(23)))"
+            guard seenScopeIDs.insert(scopeID).inserted else { continue }
+            scoped.append(
+                ScopedQuotaWindow(
+                    scopeID: scopeID,
+                    displayName: extraCurrency,
+                    window: QuotaWindow(
+                        // 与主行同口径:有可用余额即 0%,不可用即 100%。
+                        usedPercent: available ? 0 : 100,
+                        windowMinutes: 0,
+                        resetsAt: nil,
+                        remainingBalance: QuotaBalance(amount: extraRaw, currencyCode: extraCurrency)
+                    ),
+                    observedAt: now
+                )
+            )
+        }
         return ProviderQuota(
             provider: .deepseek,
             primary: QuotaWindow(
@@ -157,6 +192,7 @@ struct DeepSeekUsageService {
                 String(format: "%.2f", amount)
             ),
             capturedAt: now,
+            scopedWindows: scoped.isEmpty ? nil : scoped,
             remainingBalance: QuotaBalance(amount: amount, currencyCode: currency)
         )
     }
@@ -170,7 +206,8 @@ struct DeepSeekUsageService {
 /// 双口径:Key 形态走 `GET api.kimi.com/coding/v1/usages`(Bearer);
 /// JWT 形态按 kimi-auth 走 `POST www.kimi.com/apiv2 …BillingService/GetUsages`。
 /// 响应 `limits[]` 每项:detail{used/limit/remaining/percent} +
-/// window{duration,timeUnit},按窗口时长分会话/周。
+/// window{duration,timeUnit},按窗口时长升序铺开:最短做 primary,
+/// 时长不同的最长做 secondary,其余进 scoped,任何窗口不丢。
 struct KimiUsageService {
     /// 测试注入:本地 CLI 凭证发现。
     var loadLocalCredential: (Date) -> KimiLocalCredential? = {
@@ -264,35 +301,124 @@ struct KimiUsageService {
             ?? ((body["data"] as? [String: Any])?["limits"] as? [[String: Any]])
             ?? []
 
-        var session: QuotaWindow?
-        var weekly: QuotaWindow?
+        // limits[] 是开放数组,窗口数不定。全部解析后按时长升序稳定排序:
+        // 最短档 → primary、与之时长不同的最长档 → secondary(时长必不同,
+        // 手机同步安全),档内取最忙的池;其余(中间档、同时长兄弟)→
+        // scoped,任何窗口不丢。
+        var parsed: [(window: QuotaWindow, name: String?)] = []
         for entry in entries {
             let detail = (entry["detail"] as? [String: Any]) ?? entry
             guard let percent = usedPercent(detail) else { continue }
             let window = entry["window"] as? [String: Any]
             let minutes = windowMinutes(window) ?? 300
             let resetsAt = resetDate(detail["resetTime"] ?? detail["reset_time"] ?? window?["resetTime"])
-            let quotaWindow = QuotaWindow(
-                usedPercent: ExtendedHTTP.clamp(percent),
-                windowMinutes: minutes,
-                resetsAt: resetsAt
-            )
-            if minutes < 1_440 {
-                if session == nil { session = quotaWindow }
-            } else if weekly == nil {
-                weekly = quotaWindow
-            }
+            parsed.append((
+                window: QuotaWindow(
+                    usedPercent: ExtendedHTTP.clamp(percent),
+                    windowMinutes: minutes,
+                    resetsAt: resetsAt
+                ),
+                name: entryName(entry)
+            ))
         }
-        guard let primary = session ?? weekly else {
+        guard !parsed.isEmpty else {
             throw ExtendedProviderError.invalidResponse(.kimi)
+        }
+        let ordered = parsed.enumerated()
+            .sorted { ($0.element.window.windowMinutes, $0.offset) < ($1.element.window.windowMinutes, $1.offset) }
+            .map(\.element)
+        // 被选中的时长档内取最忙的池(usedPercent 最高)——它才是瓶颈;
+        // 响应顺序只做平手裁决(ordered 档内保持响应序,严格大于即先到先得)。
+        func busiestIndex(minutes: Int) -> Int {
+            var best = ordered.firstIndex { $0.window.windowMinutes == minutes }!
+            for index in ordered.indices
+            where ordered[index].window.windowMinutes == minutes
+                && ordered[index].window.usedPercent > ordered[best].window.usedPercent {
+                best = index
+            }
+            return best
+        }
+        func siblingCount(minutes: Int) -> Int {
+            ordered.count { $0.window.windowMinutes == minutes }
+        }
+        let shortestMinutes = ordered.first!.window.windowMinutes
+        let longestMinutes = ordered.last!.window.windowMinutes
+        let primaryIndex = busiestIndex(minutes: shortestMinutes)
+        let secondaryIndex: Int? =
+            longestMinutes == shortestMinutes ? nil : busiestIndex(minutes: longestMinutes)
+        // 时长档里有兄弟池时,被选中的窗口是命名池而非整账户,带上池名
+        // (名字来源与 scoped 相同)与 scoped 兄弟行区分开。
+        var primary = ordered[primaryIndex].window
+        if siblingCount(minutes: shortestMinutes) > 1 {
+            primary.poolName = ordered[primaryIndex].name
+                ?? durationLabel(minutes: shortestMinutes)
+        }
+        var secondary = secondaryIndex.map { ordered[$0].window }
+        if let secondaryIndex, siblingCount(minutes: longestMinutes) > 1 {
+            secondary?.poolName = ordered[secondaryIndex].name
+                ?? durationLabel(minutes: longestMinutes)
+        }
+        var scoped: [ScopedQuotaWindow] = []
+        var seenScopeIDs: Set<String> = []
+        for (index, item) in ordered.enumerated() where index != primaryIndex && index != secondaryIndex {
+            let name = item.name ?? durationLabel(minutes: item.window.windowMinutes)
+            var scopeID = "kimi_\(slug(name, maxLength: 25))"
+            var deduplicate = 2
+            while !seenScopeIDs.insert(scopeID).inserted {
+                scopeID = "kimi_\(slug(name, maxLength: 25))_\(deduplicate)"
+                deduplicate += 1
+            }
+            scoped.append(
+                ScopedQuotaWindow(
+                    scopeID: scopeID,
+                    displayName: name,
+                    window: item.window,
+                    observedAt: now
+                )
+            )
         }
         return ProviderQuota(
             provider: .kimi,
             primary: primary,
-            secondary: session == nil ? nil : weekly,
+            secondary: secondary,
             planName: nil,
-            capturedAt: now
+            capturedAt: now,
+            scopedWindows: scoped.isEmpty ? nil : scoped
         )
+    }
+
+    /// 条目自带的展示名;上游没给时由 `durationLabel` 按时长补一个语义词。
+    private static func entryName(_ entry: [String: Any]) -> String? {
+        let detail = (entry["detail"] as? [String: Any]) ?? [:]
+        for source in [entry, detail] {
+            for key in ["name", "title", "label", "displayName", "display_name"] {
+                if let value = (source[key] as? String)?
+                    .trimmingCharacters(in: .whitespacesAndNewlines),
+                    !value.isEmpty {
+                    return value
+                }
+            }
+        }
+        return nil
+    }
+
+    private static func durationLabel(minutes: Int) -> String {
+        switch minutes {
+        case 60: return "Hourly"
+        case 300: return "Session"
+        case 1_440: return "Daily"
+        case 10_080: return "Weekly"
+        case 43_200: return "Monthly"
+        default: return "\(minutes) min"
+        }
+    }
+
+    /// scopeID 需满足同步侧 `[a-z0-9_-]{1,32}` 的约束。
+    private static func slug(_ name: String, maxLength: Int) -> String {
+        let slug = name.lowercased()
+            .replacingOccurrences(of: #"[^a-z0-9]+"#, with: "_", options: .regularExpression)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "_"))
+        return String((slug.isEmpty ? "window" : slug).prefix(maxLength))
     }
 
     private static func usedPercent(_ detail: [String: Any]) -> Double? {
@@ -455,7 +581,9 @@ struct MiniMaxUsageService {
 
 /// MiMo 控制台把钱包和 Token Plan 拆在不同接口。余额是必须成功的
 /// 基线；用户资料、套餐详情和套餐用量均为尽力读取，避免其中一个可选
-/// 接口短暂波动时把仍然有效的钱包余额一起丢掉。
+/// 接口短暂波动时把仍然有效的钱包余额一起丢掉。钱包一律挂
+/// `accountBalance`,不再充当 secondary 窗口;套餐的日维度 day_token
+/// 以 scoped "Daily" 行展示。
 struct MiMoUsageService {
     func fetch(now: Date = .now) async throws -> ProviderQuota {
         try await fetch(cookie: nil, now: now)
@@ -563,7 +691,8 @@ struct MiMoUsageService {
             ),
             secondary: nil,
             planName: nil,
-            capturedAt: now
+            capturedAt: now,
+            scopedWindows: dayScopedWindows(in: body, now: now)
         )
     }
 
@@ -578,33 +707,42 @@ struct MiMoUsageService {
             throw ExtendedProviderError.invalidResponse(.mimo)
         }
         let detail = detailData.flatMap(ExtendedHTTP.json).map { planDetail(in: $0, now: now) }
-        let usage = usageData.flatMap(ExtendedHTTP.json).flatMap(planUsage)
+        let usageBody = usageData.flatMap(ExtendedHTTP.json)
+        let usage = usageBody.flatMap(planUsage)
         let hasPlan = detail?.isActive == true
             && (usage?.limit ?? 0) > 0
             && usage?.usedPercent != nil
 
+        let walletBalance = QuotaBalance(
+            amount: wallet.amount,
+            currencyCode: wallet.currency
+        )
+        // 无套餐时钱包仍需一个占位主窗口(有/无余额的可用性),但有套餐时
+        // 钱包只挂 accountBalance,不再做 secondary——0 分钟的空钱包窗口会在
+        // lowestRemaining 策略下劫持菜单栏显示 0%。
         let walletWindow = QuotaWindow(
             usedPercent: wallet.amount > 0 ? 0 : 100,
             windowMinutes: 0,
             resetsAt: nil,
-            remainingBalance: QuotaBalance(
-                amount: wallet.amount,
-                currencyCode: wallet.currency
-            )
+            remainingBalance: walletBalance
         )
         let planWindow = hasPlan ? QuotaWindow(
             usedPercent: usage?.usedPercent ?? 0,
             windowMinutes: 43_200,
             resetsAt: detail?.resetsAt
         ) : nil
+        // day_token 是套餐的日维度,只有套餐在用时才有意义。
+        let dayScoped = hasPlan ? usageBody.flatMap { dayScopedWindows(in: $0, now: now) } : nil
 
         return ProviderQuota(
             provider: .mimo,
             primary: planWindow ?? walletWindow,
-            secondary: planWindow == nil ? nil : walletWindow,
+            secondary: nil,
             planName: detail?.label.isEmpty == false ? detail?.label : nil,
             capturedAt: now,
-            remainingBalance: planWindow == nil ? walletWindow.remainingBalance : nil
+            accountBalance: walletBalance,
+            scopedWindows: dayScoped,
+            remainingBalance: planWindow == nil ? walletBalance : nil
         )
     }
 
@@ -672,10 +810,7 @@ struct MiMoUsageService {
     }
 
     private static func planUsage(in body: [String: Any]) -> PlanUsage? {
-        let payload = unwrapped(body)
-        let month = (payload["monthUsage"] as? [String: Any])
-            ?? (payload["month_usage"] as? [String: Any])
-            ?? payload
+        let month = usageContainer(in: body)
         let item: [String: Any]
         if let items = month["items"] as? [[String: Any]], !items.isEmpty {
             guard let total = items.first(where: {
@@ -685,8 +820,49 @@ struct MiMoUsageService {
             }
             item = total
         } else {
-            item = findMonthTotal(in: month) ?? month
+            item = findItem(named: "month_total_token", in: month) ?? month
         }
+        return usageMetric(from: item)
+    }
+
+    /// monthUsage.items[] 里的 `day_token` 是套餐的日维度:当天耗尽时月度
+    /// 百分比可能还很低,不端出来会误导。做成 scoped "Daily" 行,重置时间
+    /// 优先上游字段,否则按北京时区(MiMo 是国内平台)当日边界推算。
+    private static func dayScopedWindows(in body: [String: Any], now: Date) -> [ScopedQuotaWindow]? {
+        let container = usageContainer(in: body)
+        let item: [String: Any]?
+        if let items = container["items"] as? [[String: Any]], !items.isEmpty {
+            item = items.first { ($0["name"] as? String)?.lowercased() == "day_token" }
+        } else {
+            item = findItem(named: "day_token", in: container)
+        }
+        guard let item,
+              let usage = usageMetric(from: item),
+              let percent = usage.usedPercent else {
+            return nil
+        }
+        return [
+            ScopedQuotaWindow(
+                scopeID: "mimo_daily",
+                displayName: "Daily",
+                window: QuotaWindow(
+                    usedPercent: percent,
+                    windowMinutes: 1_440,
+                    resetsAt: dayResetDate(item: item, now: now)
+                ),
+                observedAt: now
+            )
+        ]
+    }
+
+    private static func usageContainer(in body: [String: Any]) -> [String: Any] {
+        let payload = unwrapped(body)
+        return (payload["monthUsage"] as? [String: Any])
+            ?? (payload["month_usage"] as? [String: Any])
+            ?? payload
+    }
+
+    private static func usageMetric(from item: [String: Any]) -> PlanUsage? {
         let used = ExtendedHTTP.number(item["used"])
         let limit = ExtendedHTTP.number(item["limit"])
             ?? ExtendedHTTP.number(item["total"])
@@ -702,6 +878,21 @@ struct MiMoUsageService {
         }
         guard used != nil || limit != nil || percent != nil else { return nil }
         return PlanUsage(used: used, limit: limit, usedPercent: percent)
+    }
+
+    private static func dayResetDate(item: [String: Any], now: Date) -> Date? {
+        for key in ["resetTime", "reset_time", "resetAt", "reset_at", "endTime", "end_time"] {
+            if let epoch = ExtendedHTTP.number(item[key]), epoch > 0 {
+                return Date(timeIntervalSince1970: epoch > 1e10 ? epoch / 1000 : epoch)
+            }
+            if let text = item[key] as? String, let date = parseDate(text) {
+                return date
+            }
+        }
+        guard let timeZone = TimeZone(identifier: "Asia/Shanghai") else { return nil }
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        return calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now))
     }
 
     private static func firstText(_ body: [String: Any], keys: [String]) -> String {
@@ -726,17 +917,18 @@ struct MiMoUsageService {
             ?? ISO8601DateFormatter().date(from: "\(normalized)Z")
     }
 
-    /// 容器结构历史上变过,递归找 `name == month_total_token` 的对象。
-    private static func findMonthTotal(in value: Any) -> [String: Any]? {
+    /// 容器结构历史上变过,递归找 `name == <目标>` 的对象
+    /// (month_total_token / day_token 共用)。
+    private static func findItem(named target: String, in value: Any) -> [String: Any]? {
         if let object = value as? [String: Any] {
-            if (object["name"] as? String)?.lowercased() == "month_total_token" { return object }
+            if (object["name"] as? String)?.lowercased() == target { return object }
             for child in object.values {
-                if let found = findMonthTotal(in: child) { return found }
+                if let found = findItem(named: target, in: child) { return found }
             }
         }
         if let array = value as? [Any] {
             for child in array {
-                if let found = findMonthTotal(in: child) { return found }
+                if let found = findItem(named: target, in: child) { return found }
             }
         }
         return nil
@@ -871,19 +1063,44 @@ struct VolcengineUsageService {
         )
     }
 
-    private static func findPercent(in value: Any) -> Double? {
+    private static let logger = Logger(subsystem: "com.jamesli.usagedock", category: "VolcengineUsage")
+
+    /// Percent 的定位必须确定:优先官方形状 `Result.user_limit.Percent`;
+    /// 显式路径缺席才退化为递归查找,且遍历按 key 排序——Dictionary 的
+    /// 原生遍历顺序跨启动随机,多池响应会今天显示 A 明天显示 B。
+    /// 同时发现多个 Percent 时记 info 日志留证,取排序后的第一个。
+    private static func findPercent(in result: [String: Any]) -> Double? {
+        for key in ["user_limit", "UserLimit", "userLimit"] {
+            if let limit = result[key] as? [String: Any],
+               let percent = ExtendedHTTP.number(limit["Percent"] ?? limit["percent"]) {
+                return percent
+            }
+        }
+        let matches = percentMatches(in: result, path: "Result")
+        if matches.count > 1 {
+            let paths = matches.map(\.path).joined(separator: ", ")
+            logger.info("Volcengine response carries \(matches.count) Percent fields (\(paths, privacy: .public)); using \(matches[0].path, privacy: .public)")
+        }
+        return matches.first?.percent
+    }
+
+    /// 深度优先收集所有 Percent,子键按字典序遍历保证结果确定。
+    /// 对象自身带 Percent 时即为该子树的答案,不再继续下钻。
+    private static func percentMatches(in value: Any, path: String) -> [(path: String, percent: Double)] {
         if let object = value as? [String: Any] {
-            if let percent = ExtendedHTTP.number(object["Percent"] ?? object["percent"]) { return percent }
-            for child in object.values {
-                if let found = findPercent(in: child) { return found }
+            if let percent = ExtendedHTTP.number(object["Percent"] ?? object["percent"]) {
+                return [(path, percent)]
+            }
+            return object.keys.sorted().flatMap { key in
+                percentMatches(in: object[key]!, path: "\(path).\(key)")
             }
         }
         if let array = value as? [Any] {
-            for child in array {
-                if let found = findPercent(in: child) { return found }
+            return array.enumerated().flatMap { index, child in
+                percentMatches(in: child, path: "\(path)[\(index)]")
             }
         }
-        return nil
+        return []
     }
 
     /// 火山引擎 V4 式签名(HMAC-SHA256,service=ark,region=cn-beijing)。
@@ -986,7 +1203,11 @@ struct OllamaUsageService {
             throw ExtendedProviderError.secretRejected(.ollama, 401)
         }
 
+        // 三个标签各归各槽,HTML 顺序不影响结果:Session(300)→ primary、
+        // Weekly(10080)→ secondary、Hourly(60)→ scoped(不再与 Session
+        // 抢主槽)。命名与 ollama.com 设置页的三个标签逐字一致。
         var session: QuotaWindow?
+        var hourly: QuotaWindow?
         var weekly: QuotaWindow?
         let pattern = #"(Session usage|Hourly usage|Weekly usage)[\s\S]{0,400}?([0-9]+(?:\.[0-9]+)?)\s*%\s*used"#
         guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else {
@@ -1004,19 +1225,34 @@ struct OllamaUsageService {
             )
             if label.hasPrefix("weekly") {
                 if weekly == nil { weekly = window }
+            } else if label.hasPrefix("hourly") {
+                if hourly == nil { hourly = window }
             } else if session == nil {
                 session = window
             }
         }
-        guard let primary = session ?? weekly else {
+        // Session/Weekly 双缺时 Hourly 顶上主槽,保住"有数据不报错"。
+        guard let primary = session ?? weekly ?? hourly else {
             throw ExtendedProviderError.invalidResponse(.ollama)
+        }
+        let hourlyIsPrimary = session == nil && weekly == nil
+        let scoped: [ScopedQuotaWindow]? = hourly.flatMap { window in
+            hourlyIsPrimary ? nil : [
+                ScopedQuotaWindow(
+                    scopeID: "ollama_hourly",
+                    displayName: "Hourly",
+                    window: window,
+                    observedAt: now
+                )
+            ]
         }
         return ProviderQuota(
             provider: .ollama,
             primary: primary,
             secondary: session == nil ? nil : weekly,
             planName: nil,
-            capturedAt: now
+            capturedAt: now,
+            scopedWindows: scoped
         )
     }
 }

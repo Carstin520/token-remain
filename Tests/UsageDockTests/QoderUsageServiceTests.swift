@@ -460,6 +460,73 @@ struct QoderUsageServiceTests {
         }
     }
 
+    // MARK: HTTP 双池解析(个人 totalQuota / 团队 sharedQuota)
+
+    @Test("HTTP single personal pool keeps the historical one-window shape")
+    func httpSinglePool() throws {
+        let quota = try QoderUsageService.parse(Data(Self.httpUsageJSON.utf8))
+        #expect(quota.primary.usedPercent == 40)
+        #expect(quota.primary.poolName == nil)
+        #expect(quota.primary.windowMinutes == 43_200)
+        #expect(quota.secondary == nil)
+        #expect(quota.uniqueScopedWindows.isEmpty)
+    }
+
+    @Test("HTTP dual pools never merge: the busier pool leads with its name")
+    func httpDualPoolBusierShared() throws {
+        // 共享池更忙时它才是瓶颈,必须做 primary;个人池以命名 scoped 展示。
+        let payload = """
+        {"totalQuota": {"quotaSummary": {"usedValue": 10, "limitValue": 100}},
+         "sharedQuota": {"quotaSummary": {"usedValue": 900, "limitValue": 1000}}}
+        """
+        let quota = try QoderUsageService.parse(Data(payload.utf8))
+        #expect(quota.primary.usedPercent == 90)
+        #expect(quota.primary.poolName == "Shared")
+        #expect(quota.secondary == nil)
+        let personal = try #require(quota.uniqueScopedWindows.first)
+        #expect(personal.scopeID == "qoder_personal")
+        #expect(personal.displayName == "Personal")
+        #expect(personal.window.usedPercent == 10)
+        #expect(personal.window.windowMinutes == 43_200)
+        #expect(personal.observedAt != nil)
+    }
+
+    @Test("HTTP equally-busy pools keep the personal pool as primary")
+    func httpDualPoolTie() throws {
+        let payload = """
+        {"totalQuota": {"quotaSummary": {"usedValue": 50, "limitValue": 100}},
+         "sharedQuota": {"quotaSummary": {"usedValue": 500, "limitValue": 1000}}}
+        """
+        let quota = try QoderUsageService.parse(Data(payload.utf8))
+        #expect(quota.primary.poolName == "Personal")
+        #expect(quota.uniqueScopedWindows.first?.scopeID == "qoder_shared")
+    }
+
+    @Test("HTTP zero-limit shared pool degrades to the single personal pool")
+    func httpZeroLimitShared() throws {
+        // 免费/无团队账号常见 0/0 占位共享池:维持单池、无 poolName。
+        let payload = """
+        {"totalQuota": {"quotaSummary": {"usedValue": 40, "limitValue": 100}},
+         "sharedQuota": {"quotaSummary": {"usedValue": 0, "limitValue": 0}}}
+        """
+        let quota = try QoderUsageService.parse(Data(payload.utf8))
+        #expect(quota.primary.usedPercent == 40)
+        #expect(quota.primary.poolName == nil)
+        #expect(quota.uniqueScopedWindows.isEmpty)
+    }
+
+    @Test("HTTP zero-limit personal pool falls back to the shared pool alone")
+    func httpZeroLimitPersonal() throws {
+        let payload = """
+        {"totalQuota": {"quotaSummary": {"usedValue": 0, "limitValue": 0}},
+         "sharedQuota": {"quotaSummary": {"usedValue": 250, "limitValue": 1000}}}
+        """
+        let quota = try QoderUsageService.parse(Data(payload.utf8))
+        #expect(quota.primary.usedPercent == 25)
+        #expect(quota.primary.poolName == nil)
+        #expect(quota.uniqueScopedWindows.isEmpty)
+    }
+
     @Test("HTTP zero-credit and malformed payloads are rejected")
     func httpMalformed() {
         #expect(throws: ExtendedProviderError.self) {

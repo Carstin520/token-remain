@@ -689,3 +689,14 @@
 "accounts.setup.failed" = "로그인이 완료되지 않았습니다. CLI를 확인하고 다시 시도하세요.";
 "service.claude.account_login_failed" = "Claude 로그인이 완료되지 않았습니다.";
 "service.claude.account_session_missing" = "Claude 로그인이 끝났지만 격리된 계정 세션이 생성되지 않았습니다.";
+
+"settings.pool_mimo_daily" = "MiMo 일일 풀 표시";
+"settings.pool_mimo_daily_hint" = "MiMo 계정 창과 함께 일일 토큰 풀을 표시합니다. 사용량이 발생하면 기본으로 표시됩니다.";
+"settings.pool_ollama_hourly" = "Ollama 시간별 풀 표시";
+"settings.pool_ollama_hourly_hint" = "세션·주간 창과 함께 시간별 한도를 표시합니다. 사용량이 발생하면 기본으로 표시됩니다.";
+"settings.pool_deepseek_currencies" = "DeepSeek 기타 통화 잔액 표시";
+"settings.pool_deepseek_currencies_hint" = "기본 통화 외 통화의 잔액 행을 표시합니다. 사용량이 발생하면 기본으로 표시됩니다.";
+"settings.pool_openrouter_credits" = "OpenRouter 크레딧 풀 표시";
+"settings.pool_openrouter_credits_hint" = "키에 주기적 한도가 없을 때 선불 크레딧을 진행 행으로 표시합니다. 크레딧을 사용하면 기본으로 표시됩니다.";
+"settings.model_quotas_hint" = "앱별로 묶은 추가 풀입니다. 스위치는 팝업, 메뉴 막대, 카드에 무엇을 표시할지만 바꿉니다.";
+"settings.model_quotas_footer" = "연결되어 할당량을 보고하는 앱이 여기에 표시됩니다.";

@@ -333,9 +333,16 @@ enum ZCodeQuotaContract {
 
     // MARK: start-plan 余额响应
 
-    /// `data.balances[]`(total_units/used_units/period_end…)→ ProviderQuota。
-    /// 各额度桶按 total 降序,最大者为主窗口、次大者为副窗口;时间戳为
-    /// epoch 秒。balances 为空或业务码非 0 视为该候选不可用。
+    /// `data.balances[]`(show_name/total_units/used_units/period_end…)→
+    /// ProviderQuota。balances 是模型级命名池(show_name 如 "GLM-5.2"):
+    /// 最忙(已用百分比最高)的池做主窗口并带 poolName,其余池全部以命名
+    /// scoped 窗口保留——绝不走 secondary,手机同步拒绝同 provider 两个
+    /// 同时长的账户级窗口,scoped 则允许同时长,第 3+ 池也不再丢弃。
+    /// 上游只给周期终点(period_end)没有起点,`period_end - server_time`
+    /// 是"剩余时间"而非窗口时长,拿它当时长会逐次刷新缩水,污染时长标签
+    /// 与配速计算——窗口时长固定按月度套餐节奏取 43_200 分钟,resetsAt
+    /// 仍用真实 period_end;计划名取主窗口所属池的 plan_id;时间戳
+    /// 为 epoch 秒。balances 为空或业务码非 0 视为该候选不可用。
     static func parseBilling(_ data: Data, now: Date = .now) throws -> ProviderQuota {
         guard let body = ExtendedHTTP.json(data) else {
             throw ZAIUsageService.ServiceError.invalidResponse
@@ -350,8 +357,11 @@ enum ZCodeQuotaContract {
         }
 
         struct Bucket {
-            let total: Double
-            let window: QuotaWindow
+            let showName: String?
+            let planID: String?
+            let usedPercent: Double
+            let windowMinutes: Int
+            let resetsAt: Date?
         }
         var buckets: [Bucket] = []
         for balance in balances {
@@ -365,26 +375,58 @@ enum ZCodeQuotaContract {
                 guard epoch > 0 else { return nil }
                 return Date(timeIntervalSince1970: epoch > 1e11 ? epoch / 1000 : epoch)
             }
+            // 上游只给周期终点,无起点,固定月度时长避免逐刷缩水。
+            let windowMinutes = 43_200
+            let showName = (balance["show_name"] as? String)?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
             buckets.append(Bucket(
-                total: total,
-                window: QuotaWindow(
-                    usedPercent: ExtendedHTTP.clamp(used / total * 100),
-                    windowMinutes: 43_200,
-                    resetsAt: resetsAt
-                )
+                showName: showName?.isEmpty == false ? showName : nil,
+                planID: balance["plan_id"] as? String,
+                usedPercent: ExtendedHTTP.clamp(used / total * 100),
+                windowMinutes: windowMinutes,
+                resetsAt: resetsAt
             ))
         }
-        buckets.sort { $0.total > $1.total }
-        guard let primary = buckets.first?.window else {
+        // 最忙的池才是真正的瓶颈;同用量按响应顺序稳定排序。
+        let ordered = buckets.enumerated().sorted { lhs, rhs in
+            lhs.element.usedPercent == rhs.element.usedPercent
+                ? lhs.offset < rhs.offset
+                : lhs.element.usedPercent > rhs.element.usedPercent
+        }.map(\.element)
+        guard let busiest = ordered.first else {
             throw ZAIUsageService.ServiceError.invalidResponse
         }
-        let planID = balances.first?["plan_id"] as? String
+        var seenScopeIDs = Set<String>()
+        var scopedWindows: [ScopedQuotaWindow] = []
+        for (index, bucket) in ordered.dropFirst().enumerated() {
+            scopedWindows.append(ScopedQuotaWindow(
+                scopeID: ZAIUsageParser.scopeID(
+                    prefix: "zcode_",
+                    name: bucket.showName,
+                    fallback: "pool_\(index + 2)",
+                    seen: &seenScopeIDs
+                ),
+                displayName: bucket.showName ?? "Pool \(index + 2)",
+                window: QuotaWindow(
+                    usedPercent: bucket.usedPercent,
+                    windowMinutes: bucket.windowMinutes,
+                    resetsAt: bucket.resetsAt
+                ),
+                observedAt: now
+            ))
+        }
         return ProviderQuota(
             provider: .zai,
-            primary: primary,
-            secondary: buckets.count > 1 ? buckets[1].window : nil,
-            planName: planLabel(fromPlanID: planID).map { "ZCode \($0)" } ?? "ZCode",
-            capturedAt: now
+            primary: QuotaWindow(
+                usedPercent: busiest.usedPercent,
+                windowMinutes: busiest.windowMinutes,
+                resetsAt: busiest.resetsAt,
+                poolName: busiest.showName
+            ),
+            secondary: nil,
+            planName: planLabel(fromPlanID: busiest.planID).map { "ZCode \($0)" } ?? "ZCode",
+            capturedAt: now,
+            scopedWindows: scopedWindows.isEmpty ? nil : scopedWindows
         )
     }
 

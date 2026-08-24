@@ -188,10 +188,18 @@ struct ZAIUsageService {
 }
 
 /// `/api/monitor/usage/quota/limit` 响应 → ProviderQuota。`data.limits` 数组里
-/// `TOKENS_LIMIT` 条目的窗口由 `(unit, number)` 编码(unit 5=分钟、3=小时、
-/// 1/4=天、6=周):亚天级窗口作 5 小时式会话主窗口,多天窗口作周级副窗口;
-/// `percentage` 为已用百分比,`nextResetTime` 为 epoch 毫秒。
+/// 每个条目的窗口都由自身 `(unit, number)` 编码(unit 5=分钟、3=小时、
+/// 1/4=天、6=周),`percentage` 为已用百分比,`nextResetTime` 为 epoch 毫秒。
+/// `TOKENS_LIMIT` 按时长升序:最短档做主窗口、最长档做副窗口(时长不同,
+/// 手机同步才不会拒收同 provider 两个同时长的账户级窗口),其余窗
+/// (同时长兄弟池、中间档)全部以命名 scoped 窗口保留;`TIME_LIMIT`
+/// 逐条成 scoped 窗口,
+/// 名字用上游 `name`(缺失才退 "MCP");只有 TIME_LIMIT 时首条提升为主
+/// 窗口并移出 scoped,同一池不会渲染两次;未知 type 记日志不渲染,等拿到
+/// 真实样本再定语义。GLM Team 复用本解析器,行为自动继承。
 enum ZAIUsageParser {
+    private static let logger = Logger(subsystem: "com.jamesli.usagedock", category: "ZAIUsageParser")
+
     static func parse(
         _ data: Data,
         planName: String? = nil,
@@ -206,8 +214,13 @@ enum ZAIUsageParser {
             throw ZAIUsageService.ServiceError.invalidResponse
         }
 
-        var tokenWindows: [QuotaWindow] = []
+        struct TokenEntry {
+            let name: String?
+            let window: QuotaWindow
+        }
+        var tokenEntries: [TokenEntry] = []
         var scopedWindows: [ScopedQuotaWindow] = []
+        var seenScopeIDs = Set<String>()
         for entry in limits {
             let type = (
                 (entry["type"] as? String)
@@ -216,53 +229,163 @@ enum ZAIUsageParser {
                     ?? ""
             )
                 .uppercased()
-            if type == "TOKENS_LIMIT",
-               let minutes = windowMinutes(entry),
-               let quotaWindow = window(entry, minutes: minutes) {
-                tokenWindows.append(quotaWindow)
-            } else if type == "TIME_LIMIT",
-                      let quotaWindow = window(
-                          entry,
-                          minutes: 43_200,
-                          fallbackResetAt: subscriptionResetAt
-                      ) {
+            switch type {
+            case "TOKENS_LIMIT":
+                if let minutes = windowMinutes(entry),
+                   let quotaWindow = window(entry, minutes: minutes) {
+                    tokenEntries.append(TokenEntry(name: entryName(entry), window: quotaWindow))
+                }
+            case "TIME_LIMIT":
+                // 时长按条目自身 (unit, number) 换算(fixture 里实际出现过
+                // 1 分钟窗),编码缺失才退月窗兜底,不再一律硬编码 30 天。
+                let minutes = windowMinutes(entry) ?? 43_200
+                if let quotaWindow = window(
+                    entry,
+                    minutes: minutes,
+                    fallbackResetAt: subscriptionResetAt
+                ) {
+                    let name = entryName(entry)
+                    scopedWindows.append(
+                        ScopedQuotaWindow(
+                            scopeID: scopeID(
+                                prefix: "zai_",
+                                name: name,
+                                fallback: "mcp_\(minutes)m",
+                                seen: &seenScopeIDs
+                            ),
+                            displayName: name ?? "MCP",
+                            window: quotaWindow,
+                            observedAt: now
+                        )
+                    )
+                }
+            default:
+                logger.info(
+                    "Z.ai limits entry with unrecognized type \(type.isEmpty ? "<empty>" : type, privacy: .public) skipped"
+                )
+            }
+        }
+
+        // 时长升序;同时长里最忙的在前(它才是瓶颈),再按响应顺序稳定。
+        let orderedTokens = tokenEntries.enumerated().sorted { lhs, rhs in
+            if lhs.element.window.windowMinutes != rhs.element.window.windowMinutes {
+                return lhs.element.window.windowMinutes < rhs.element.window.windowMinutes
+            }
+            if lhs.element.window.usedPercent != rhs.element.window.usedPercent {
+                return lhs.element.window.usedPercent > rhs.element.window.usedPercent
+            }
+            return lhs.offset < rhs.offset
+        }.map(\.element)
+
+        // 最短档做主窗口、最长档做副窗口(时长不同,同步安全;沿用会话+
+        // 周窗的既有形态);同档取最忙的一个(排序已保证忙者在前)。
+        var secondaryIndex: Int?
+        if let shortest = orderedTokens.first?.window.windowMinutes,
+           let longest = orderedTokens.last?.window.windowMinutes,
+           longest != shortest {
+            secondaryIndex = orderedTokens.firstIndex { $0.window.windowMinutes == longest }
+        }
+        var primaryWindow: QuotaWindow?
+        var secondaryWindow: QuotaWindow?
+        for (index, token) in orderedTokens.enumerated() {
+            if index == 0 {
+                var window = token.window
+                // 存在同时长兄弟池时主窗口是命名池而非整账户,标上池名
+                // 让它与 scoped 兄弟行区分开(Cursor 约定)。
+                let siblingCount = orderedTokens.count {
+                    $0.window.windowMinutes == token.window.windowMinutes
+                }
+                window.poolName = siblingCount > 1 ? token.name : nil
+                primaryWindow = window
+            } else if index == secondaryIndex {
+                var window = token.window
+                // 最长档也可能有同时长兄弟:兄弟保名进 scoped,更忙的
+                // secondary 不能反而匿名——同样带上池名。
+                let siblingCount = orderedTokens.count {
+                    $0.window.windowMinutes == token.window.windowMinutes
+                }
+                window.poolName = siblingCount > 1 ? token.name : nil
+                secondaryWindow = window
+            } else {
+                // 同时长兄弟池与中间档一律保留成命名 scoped 窗口,不再
+                // 去重丢弃。
                 scopedWindows.append(
                     ScopedQuotaWindow(
-                        scopeID: "zai_mcp_monthly",
-                        displayName: "MCP",
-                        window: quotaWindow
+                        scopeID: scopeID(
+                            prefix: "zai_",
+                            name: token.name,
+                            fallback: "tokens_\(token.window.windowMinutes)m",
+                            seen: &seenScopeIDs
+                        ),
+                        displayName: token.name
+                            ?? UsageFormatting.windowName(minutes: token.window.windowMinutes),
+                        window: token.window,
+                        observedAt: now
                     )
                 )
             }
         }
 
-        tokenWindows.sort { $0.windowMinutes < $1.windowMinutes }
-        var seenWindowMinutes = Set<Int>()
-        tokenWindows = tokenWindows.filter { seenWindowMinutes.insert($0.windowMinutes).inserted }
-        let session: QuotaWindow?
-        let weekly: QuotaWindow?
-        if tokenWindows.count >= 2 {
-            session = tokenWindows.first
-            weekly = tokenWindows.last
-        } else if let only = tokenWindows.first, only.windowMinutes <= 6 * 60 {
-            session = only
-            weekly = nil
-        } else {
-            session = nil
-            weekly = tokenWindows.first
+        if primaryWindow == nil, !scopedWindows.isEmpty {
+            // 只有 TIME_LIMIT 没有 TOKENS_LIMIT 时提升首个 scoped 做主窗口;
+            // 必须同时从 scoped 集合移除,否则桌面和手机会看到同一池两次。
+            // 池名沿用该条展示名,保住命名池语义。
+            let promoted = scopedWindows.removeFirst()
+            var window = promoted.window
+            window.poolName = promoted.displayName
+            primaryWindow = window
         }
-
-        guard let primary = session ?? weekly ?? scopedWindows.first?.window else {
+        guard let primary = primaryWindow else {
             throw ZAIUsageService.ServiceError.invalidResponse
         }
         return ProviderQuota(
             provider: .zai,
             primary: primary,
-            secondary: session == nil ? nil : weekly,
+            secondary: secondaryWindow,
             planName: planName,
             capturedAt: now,
             scopedWindows: scopedWindows.isEmpty ? nil : scopedWindows
         )
+    }
+
+    /// 条目自带的展示名。上游有时把 `name` 当类型字段用("TOKENS_LIMIT"),
+    /// 这类类型 token 不是人话名字——逐个候选字段扫描,跳过空值与类型
+    /// token,取第一个有效者,而不是碰到类型 token 就整体放弃。
+    private static func entryName(_ entry: [String: Any]) -> String? {
+        for key in ["name", "display_name", "displayName", "show_name"] {
+            guard let raw = (entry[key] as? String)?
+                .trimmingCharacters(in: .whitespacesAndNewlines),
+                !raw.isEmpty else {
+                continue
+            }
+            let upper = raw.uppercased()
+            guard upper != "TOKENS_LIMIT", upper != "TIME_LIMIT" else { continue }
+            return raw
+        }
+        return nil
+    }
+
+    /// 上游名字 → 手机同步允许的 scopeID(`[a-z0-9_-]{1,32}`):小写、
+    /// 非字母数字折叠成下划线,拼前缀后截到 32 字节;slug 不出来用兜底段。
+    /// 重名池追加序号,绝不让两个池共用一个 scopeID 互相顶掉。
+    static func scopeID(
+        prefix: String,
+        name: String?,
+        fallback: String,
+        seen: inout Set<String>
+    ) -> String {
+        let slug = (name ?? "").lowercased()
+            .replacingOccurrences(of: #"[^a-z0-9]+"#, with: "_", options: .regularExpression)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "_"))
+        let base = String((prefix + (slug.isEmpty ? fallback : slug)).prefix(32))
+        var candidate = base
+        var ordinal = 2
+        while !seen.insert(candidate).inserted {
+            let suffix = "_\(ordinal)"
+            candidate = String(base.prefix(32 - suffix.count)) + suffix
+            ordinal += 1
+        }
+        return candidate
     }
 
     /// 有效 Key 但没有 Coding Plan 时,Z.ai 返回 2xx 的
