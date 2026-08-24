@@ -1,0 +1,74 @@
+{
+  "name": "tokenremain-windows",
+  "version": "1.3.6-windows.1",
+  "private": true,
+  "description": "TokenRemain for Windows with local usage and encrypted direct Mac sync",
+  "main": "electron/main.js",
+  "type": "module",
+  "scripts": {
+    "icon:generate": "node scripts/generate-ico.mjs",
+    "locales:generate": "node scripts/generate-locales.mjs",
+    "build": "vite build",
+    "start": "npm run build && electron .",
+    "test": "node --test tests/*.test.js",
+    "check": "node --check electron/main.js && node --check electron/preload.cjs && node --check electron/tray-icon.js && node --check electron/feed.js && node --check electron/floating-drag.js && node --check electron/local-usage.js && node --check electron/notification-policy.js && node --check electron/pricing.js && node --check electron/service-status.js && node --check electron/popover-placement.js && node --check electron/refresh-policy.js && node --check electron/system-motion.js && node --check electron/update-check.js && node --check electron/windows-chrome.js && node --check electron/providers/catalog.js && node --check electron/providers/detection.js && node --check electron/providers/index.js && node --check electron/providers/local-session.js && node --check electron/providers/manual.js && node --check electron/providers/shared.js && npm test && npm run build",
+    "dist:win": "npm run build && electron-builder --win nsis --publish never",
+    "dist:win:x64": "npm run build && electron-builder --x64 --win nsis --publish never"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "4.7.0",
+    "electron": "43.2.0",
+    "electron-builder": "27.0.0-alpha.6",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "vite": "6.4.3"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "build": {
+    "appId": "com.jamesli.tokenremain.windows",
+    "productName": "TokenRemain",
+    "asar": {
+      "unpack": [
+        "node_modules/@ccusage/**/bin/ccusage*",
+        "node_modules/koffi/**/*",
+        "node_modules/@koromix/**/*"
+      ]
+    },
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "src/i18n.js",
+      "src/locales.generated.js",
+      "src/provider-meta.js",
+      "src/usage-history.js",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../site/assets/brand/appicon-mac.png",
+        "to": "appicon.png"
+      }
+    ],
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "deleteAppDataOnUninstall": false
+    }
+  },
+  "dependencies": {
+    "ccusage": "20.0.19",
+    "koffi": "^3.1.4",
+    "liquid-glass-react": "1.1.1"
+  }
+}

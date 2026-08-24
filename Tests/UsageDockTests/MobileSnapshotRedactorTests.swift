@@ -250,6 +250,7 @@ struct MobileSnapshotRedactorTests {
         #expect(synced.days.count == 2)
         #expect(synced.days.last?.claudeTokens == 14_000_000)
         #expect(synced.days.last?.codexCost == 10.75)
+        #expect(synced.sourceDay != nil)
 
         let payload = try on.encodedPayload()
         let text = try #require(String(data: payload, encoding: .utf8))
@@ -297,10 +298,12 @@ struct MobileSnapshotRedactorTests {
             generatedAt: now
         )
 
-        #expect(try #require(snapshot.dailyUsageHistory).days.map(\.day) == [
+        let synced = try #require(snapshot.dailyUsageHistory)
+        #expect(synced.days.map(\.day) == [
             "2026-07-22",
             "2026-07-23"
         ])
+        #expect(synced.sourceDay.map { key in synced.days.contains { $0.day == key } } == true)
     }
 
     @Test("Every macOS provider has a well-formed stable wire identifier")

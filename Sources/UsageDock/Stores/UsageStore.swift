@@ -1,6 +1,7 @@
 import Combine
 import Foundation
 import OSLog
+import TokenRemainSyncKit
 
 @MainActor
 final class UsageStore: ObservableObject {
@@ -25,9 +26,13 @@ final class UsageStore: ObservableObject {
         let windowMinutes: Int
     }
 
-    /// 各 provider 当前快照的唯一存储。逐 provider 的具名访问器保留在下方,
-    /// 视图无需感知字典结构。
+    /// 各 provider 当前展示快照的合并视图。逐 provider 的具名访问器保留在下方,
+    /// 视图无需感知本机与 Direct Sync 快照的分层。
     @Published private(set) var quotas: [ProviderQuota.Provider: ProviderQuota] = [:]
+    /// Device-local readings remain separate from direct-sync readings so a
+    /// Windows snapshot is never cached or echoed back as if this Mac produced it.
+    private var localQuotas: [ProviderQuota.Provider: ProviderQuota] = [:]
+    private var directSyncSnapshots: [UUID: MobileUsageSnapshot] = [:]
 
     var claude: ProviderQuota? { quotas[.claude] }
     var codex: ProviderQuota? { quotas[.codex] }
@@ -44,8 +49,8 @@ final class UsageStore: ObservableObject {
     /// 刻意不进全局错误条:"未接入某工具"是卡片语境的信息,
     /// 不该像故障一样反复告警。
     @Published private(set) var providerNotices: [ProviderQuota.Provider: String] = [:]
-    /// Additive multi-account state. The provider-keyed `quotas` above remains
-    /// the system-account compatibility projection for existing sync/history.
+    /// Additive multi-account state. The provider-keyed `localQuotas` remains
+    /// the system-account compatibility projection for persistence/sync/history.
     @Published private(set) var providerAccountProfiles: [ProviderAccountProfile] = []
     @Published private(set) var providerAccountStates: [ProviderAccountID: ProviderAccountState] = [:]
     @Published private(set) var providerAccountSelections: [ProviderQuota.Provider: ProviderAccountSelection] = [:]
@@ -276,7 +281,7 @@ final class UsageStore: ObservableObject {
 
     private func assign(_ value: ProviderQuota?, to provider: ProviderQuota.Provider) {
         let resolvedValue: ProviderQuota?
-        if let value, let previous = quotas[provider],
+        if let value, let previous = localQuotas[provider],
            Self.quotaRoutesMatch(value, previous) {
             resolvedValue = value.retainingActiveScopedWindows(
                 from: previous,
@@ -289,7 +294,8 @@ final class UsageStore: ObservableObject {
         if resolvedValue != nil {
             tracked.markConnected(provider)
         }
-        quotas[provider] = resolvedValue
+        localQuotas[provider] = resolvedValue
+        recomputeEffectiveQuotas()
         let systemID = ProviderAccountID.system(provider)
         if providerAccountProfiles.contains(where: { $0.id == systemID }) {
             var state = providerAccountStates[systemID] ?? ProviderAccountState()
@@ -414,31 +420,32 @@ final class UsageStore: ObservableObject {
         )
         traeAgentDirectories = traeAgentTrajectoryStore.availableDirectories
         if let cached = quotaCache.load() {
-            quotas = cached.byProvider
+            localQuotas = cached.byProvider
             for hostProvider in [ProviderQuota.Provider.claude, .codex] {
                 let currentRoute = hostQuotaRouter.route(for: hostProvider)
-                let cachedRouteID = quotas[hostProvider]?.attribution?.routeIdentifier
+                let cachedRouteID = localQuotas[hostProvider]?.attribution?.routeIdentifier
                 let currentRouteID = currentRoute.source?.routeIdentifier
                 if cachedRouteID != currentRouteID {
-                    quotas[hostProvider] = nil
+                    localQuotas[hostProvider] = nil
                 }
             }
             // OpenCode's active provider is resolved asynchronously from its
             // message database. Do not flash any cached route at launch; the
             // initial auxiliary refresh immediately repopulates the right one.
-            quotas[.opencode] = nil
+            localQuotas[.opencode] = nil
+            recomputeEffectiveQuotas()
             // 升级兼容：旧版没有独立连接历史，已有成功快照就是最可靠的
             // “曾连接”证据。
-            for provider in quotas.keys {
+            for provider in localQuotas.keys {
                 tracked.markConnected(provider)
             }
-            lastClaudeAttempt = quotas[.claude]?.capturedAt
+            lastClaudeAttempt = localQuotas[.claude]?.capturedAt
         }
         providerAccountProfiles = self.providerAccountsStore.allProfiles
         providerAccountSelections = self.providerAccountsStore.selections
         let cachedAccountQuotas = providerAccountQuotaCache.load()
         providerAccountStates = Dictionary(uniqueKeysWithValues: providerAccountProfiles.compactMap { profile in
-            let cached = profile.isSystem ? quotas[profile.provider] : cachedAccountQuotas[profile.id]
+            let cached = profile.isSystem ? localQuotas[profile.provider] : cachedAccountQuotas[profile.id]
             guard let cached else { return nil }
             return (profile.id, ProviderAccountState(quota: cached))
         })
@@ -788,7 +795,7 @@ final class UsageStore: ObservableObject {
             case .success(let value):
                 providerNotices[.codex] = nil
                 sessionAlerts.reportHealthy(.codex)
-                if codex.map({
+                if localQuotas[.codex].map({
                     !Self.quotaRoutesMatch(value, $0) || value.capturedAt > $0.capturedAt
                 }) ?? true {
                     assign(value, to: .codex)
@@ -1250,7 +1257,36 @@ final class UsageStore: ObservableObject {
     }
 
     private func currentSnapshot() -> QuotaCache.Snapshot {
-        .init(byProvider: quotas)
+        .init(byProvider: localQuotas)
+    }
+
+    /// Applies an already authenticated and replay-checked direct-sync value.
+    /// The freshest reading wins independently per provider; local cache and
+    /// outbound Mac snapshots continue to contain only Mac-produced readings.
+    func applyDirectSyncSnapshot(_ snapshot: MobileUsageSnapshot) {
+        directSyncSnapshots[snapshot.sourceInstanceID] = snapshot
+        for provider in DirectSyncSnapshotAdapter.quotas(from: snapshot).keys {
+            tracked.markConnected(provider)
+        }
+        recomputeEffectiveQuotas()
+    }
+
+    var localQuotasForDirectSync: [ProviderQuota.Provider: ProviderQuota] {
+        localQuotas
+    }
+
+    private func recomputeEffectiveQuotas(now: Date = Date()) {
+        directSyncSnapshots = directSyncSnapshots.filter { $0.value.expiresAt >= now }
+        var merged = localQuotas.filter { tracked.isEnabled($0.key) }
+        for snapshot in directSyncSnapshots.values {
+            for (provider, quota) in DirectSyncSnapshotAdapter.quotas(from: snapshot)
+            where tracked.isEnabled(provider) {
+                if merged[provider].map({ quota.capturedAt > $0.capturedAt }) ?? true {
+                    merged[provider] = quota
+                }
+            }
+        }
+        quotas = merged
     }
 
     private func currentProviderAccountQuotas() -> [ProviderAccountID: ProviderQuota] {

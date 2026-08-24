@@ -1,0 +1,132 @@
+@import "./theme.css";
+
+/* `:root`, not `html`: theme.css paints the shared charcoal canvas on `:root`,
+   which outranks a bare `html` selector, so this window kept an opaque
+   #0d0e10 square behind its button no matter what the button did. Matching the
+   specificity and winning on order is what actually makes the window
+   alpha-transparent. The root element's background propagates to the canvas,
+   so nothing below can recover it. */
+:root, body, #root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: transparent;
+}
+
+body { user-select: none; }
+
+.floating-shell {
+  position: relative;
+  display: grid;
+  width: 80px;
+  height: 80px;
+  place-items: center;
+  background: transparent;
+  -webkit-app-region: no-drag;
+}
+
+/* The body is a GlassSurface at the control step of the ladder, in the plain
+   `backdrop="none"` mode: the tint, the specular highlight and the inner rim
+   are painted by .glass-layer out of the same tokens, so this rule owns only
+   the shape, the density and the states. Nothing in this file may introduce a
+   backdrop-filter or a filter:url() — the window is transparent with no system
+   backdrop, and either one makes Chromium paint the backdrop root opaque black.
+
+   --glass-plain-tint-opacity sits well under the popover's card tint (0.62).
+   This window is transparent to the desktop rather than backed by a scrim, so a
+   card-density pane here would read as a solid dark coin and bury the rings,
+   which are the point of the widget. */
+.floating-open {
+  position: relative;
+  display: grid;
+  width: 72px;
+  height: 72px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(225, 231, 244, .2);
+  border-radius: 50%;
+  color: #f3f5f9;
+  background: transparent;
+  box-shadow: 0 5px 16px rgba(0, 0, 0, .2);
+  cursor: pointer;
+  --glass-plain-tint-opacity: .34;
+  -webkit-app-region: no-drag;
+}
+
+.floating-open::after {
+  position: absolute;
+  inset: 5px;
+  border: 1px solid rgba(255, 255, 255, .06);
+  border-radius: 50%;
+  content: "";
+  pointer-events: none;
+}
+
+.activity-rings { width: 64px; height: 64px; overflow: visible; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .34)); }
+.activity-track, .activity-value { fill: none; }
+.activity-track { opacity: .22; }
+.activity-value {
+  stroke-linecap: round;
+  transform: rotate(-90deg);
+  transform-origin: 36px 36px;
+}
+.activity-label {
+  fill: currentColor;
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: -.45px;
+  paint-order: stroke;
+  stroke: rgba(7, 10, 16, .52);
+  stroke-width: 1.5px;
+}
+
+/* A narrow, deliberately separate drag target keeps the circular meter itself
+   a reliable one-click open/close control. The dots recede until hover. */
+.floating-drag-handle {
+  position: absolute;
+  z-index: 2;
+  top: 2px;
+  left: 25px;
+  display: flex;
+  width: 30px;
+  height: 12px;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border-radius: 8px;
+  cursor: grab;
+  opacity: .32;
+  touch-action: none;
+  user-select: none;
+}
+.floating-drag-handle:active { cursor: grabbing; }
+.floating-drag-handle i { width: 2px; height: 2px; border-radius: 50%; background: rgba(240, 244, 252, .86); }
+
+.floating-open:hover {
+  border-color: rgba(225, 231, 244, .34);
+  box-shadow: 0 7px 20px rgba(0, 0, 0, .24);
+  --glass-plain-tint-opacity: .42;
+}
+.floating-open:focus-visible { outline: 2px solid rgba(155, 138, 251, .9); outline-offset: 1px; }
+.floating-shell.is-open .floating-open {
+  border-color: rgba(155, 138, 251, .48);
+  box-shadow: 0 0 0 3px rgba(155, 138, 251, .1), 0 7px 22px rgba(0, 0, 0, .26);
+  transform: scale(.94);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* The fill lives on .glass-layer now and cross-fades on the shared glass
+     clock, so only the button's own properties are listed here. */
+  :root:not([data-reduced-motion="true"]) .floating-open { transition: transform 180ms cubic-bezier(.2, .8, .2, 1), border-color 180ms ease, box-shadow 180ms ease; }
+  :root:not([data-reduced-motion="true"]) .activity-value { transition: stroke-dasharray 420ms cubic-bezier(.2, .8, .2, 1); }
+  :root:not([data-reduced-motion="true"]) .floating-drag-handle { transition: opacity 160ms ease; }
+  :root:not([data-reduced-motion="true"]) .floating-shell:hover .floating-drag-handle { opacity: .72; }
+}
+
+@media (forced-colors: active) {
+  .floating-open { border: 2px solid ButtonText; background: Canvas; color: CanvasText; forced-color-adjust: none; }
+  .activity-track { opacity: .45; }
+  .floating-drag-handle i { background: CanvasText; }
+}

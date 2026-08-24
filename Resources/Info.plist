@@ -49,6 +49,8 @@
   <false/>
   <key>NSPrincipalClass</key>
   <string>NSApplication</string>
+  <key>NSLocalNetworkUsageDescription</key>
+  <string>TokenRemain exchanges encrypted quota snapshots with Windows devices you explicitly pair on your local network.</string>
   <key>SUFeedURL</key>
   <string>https://github.com/Carstin520/token-remain/releases/latest/download/appcast.xml</string>
   <key>SUPublicEDKey</key>
