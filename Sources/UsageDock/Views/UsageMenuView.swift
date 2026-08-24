@@ -51,7 +51,7 @@ struct UsageMenuView: View {
     }
 
     var body: some View {
-        ScrollView {
+        LiquidGlassScrollView {
             UsageDockGlassGroup(spacing: 12) {
                 VStack(alignment: .leading, spacing: 12) {
                     header
