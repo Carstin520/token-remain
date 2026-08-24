@@ -93,7 +93,7 @@ struct KeychainReadTests {
 
     /// 刷新是并发的:Claude / Cursor / Copilot / Antigravity 会同时读钥匙串。
     /// 它们之间的锁竞争是良性的(一次读取毫秒级),**必须**互相等一下;早期实现
-    /// 用 `NSLock.try()` 直接失败,会让其中一个白白降级到 30 秒的 PTY 探针。
+    /// 用 `NSLock.try()` 直接失败,会让其中一个白白降级到 45 秒的 PTY 探针。
     @Test("Concurrent silent reads all succeed instead of losing a race for the switch")
     func concurrentSilentReadsAllSucceed() async {
         let gate = NSLock()

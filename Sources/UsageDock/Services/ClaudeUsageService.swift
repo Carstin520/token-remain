@@ -79,13 +79,13 @@ struct ClaudeUsageService {
             if case .rateLimited(let seconds) = error {
                 throw ServiceError.rateLimited(retryAfterSeconds: seconds)
             }
-            guard ClaudeCLIUsageProbe.isAvailable else {
+            guard Self.probeCanRecover(from: error), ClaudeCLIUsageProbe.isAvailable else {
                 throw Self.noCLIFallbackError(for: error)
             }
             // Missing/expired credentials normally fall through to the PTY so
             // Claude Code can refresh them. When Claude itself explicitly says
             // it is logged out, however, the PTY can only sit on the login
-            // screen until our 30-second deadline. Surface the real recovery
+            // screen until our 45-second deadline. Surface the real recovery
             // action immediately instead of misclassifying it as a timeout.
             if Self.mayReflectSignedOutClaude(error),
                await ClaudeCLIUsageProbe.isExplicitlyLoggedOut(
@@ -93,11 +93,15 @@ struct ClaudeUsageService {
                ) {
                 throw ServiceError.credentialsUnavailable
             }
-            logger.info("Claude API path unavailable (\(error.localizedDescription, privacy: .public)); falling back to PTY probe")
+            // .notice 起才会持久化到 unified log。降级原因必须留痕:出现
+            // "读取超时"时,事后唯一能区分"凭证过期"和"网络故障"的就是这条。
+            logger.notice("Claude API path unavailable (\(error.localizedDescription, privacy: .public)); falling back to PTY probe")
         } catch {
-            // 网络层错误(离线、超时)同样交给 PTY 兜底。
-            guard ClaudeCLIUsageProbe.isAvailable else { throw error }
-            logger.info("Claude API path failed (\(error.localizedDescription, privacy: .public)); falling back to PTY probe")
+            // 传输层错误(离线、请求超时)不降级:PTY 里的 /usage 读的是
+            // 同一个接口,网络不通时探针只会再白等 45 秒,然后把一个普通的
+            // 网络问题误报成"读取超时"。保留缓存快照,下一轮直查即可。
+            logger.notice("Claude API transport failure (\(error.localizedDescription, privacy: .public)); keeping cached snapshot instead of probing")
+            throw error
         }
         let output = try await ClaudeCLIUsageProbe.run(
             configurationDirectory: configurationDirectory
@@ -133,6 +137,24 @@ struct ClaudeUsageService {
         // A transport or protocol failure says nothing about the session, and
         // rate limiting never reaches here.
         case .rateLimited, .requestFailed, .invalidResponse:
+            return false
+        }
+    }
+
+    /// PTY 降级一次要付出最多 45 秒的进程成本,只在探针可能修复问题时
+    /// 才值得:凭证类失败让 Claude Code 自己续期,`invalidResponse` 覆盖
+    /// API 不返回订阅会话行的账户(此时 /usage 画面是唯一数据源)。
+    /// 服务端明确拒绝(429/5xx)时换个入口没有意义——探针读的是同一个
+    /// 接口,只会把服务端故障拖成一条"读取超时"。
+    static func probeCanRecover(
+        from error: ClaudeOAuthUsageService.APIError
+    ) -> Bool {
+        switch error {
+        case .credentialsUnavailable, .credentialsAuthorizationRequired,
+             .credentialsExpired, .invalidStoredCredentials, .tokenRejected,
+             .invalidResponse:
+            return true
+        case .rateLimited, .requestFailed:
             return false
         }
     }
@@ -222,7 +244,7 @@ private actor ClaudeScopedUsageSupplement {
             return quota.mergingScopedWindows(entry.cachedWindows)
         } catch {
             Logger(subsystem: "com.jamesli.usagedock", category: "ClaudeUsage")
-                .info("Claude Fable supplement unavailable: \(error.localizedDescription, privacy: .public)")
+                .notice("Claude Fable supplement unavailable: \(error.localizedDescription, privacy: .public)")
             return mergingFreshCache(into: quota, entry: entry, now: now)
         }
     }
@@ -848,9 +870,14 @@ private enum ClaudeCLIUsageProbe {
         }.value
     }
 
+    /// 45 秒预算:冷启动的 Claude Code(自动更新检查、MCP 加载)可能
+    /// 前 10–20 秒都没进主界面,再算上 /usage 渲染和 5 秒的 Fable 段
+    /// 收尾,30 秒经常差一口气。探针有了失败退避后只会低频运行,一次
+    /// 成功探针能让 token 续期、换来之后数小时的秒级 API 直查,比多次
+    /// 失败的 30 秒便宜;45 也仍在 60 秒的活跃刷新节奏之内。
     static func run(
         configurationDirectory: URL? = nil,
-        timeout: TimeInterval = 30
+        timeout: TimeInterval = 45
     ) async throws -> Data {
         try await Task.detached(priority: .utility) {
             guard let executable = claudeExecutable() else {

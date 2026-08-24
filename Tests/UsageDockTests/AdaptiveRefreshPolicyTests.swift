@@ -98,6 +98,17 @@ struct AdaptiveRefreshPolicyTests {
         #expect(AdaptiveRefreshPolicy.retryDelay(after: 9) == 300)
     }
 
+    @Test("Claude fallback failures double from their base delay and cap at thirty minutes")
+    func escalatedBackoff() {
+        #expect(AdaptiveRefreshPolicy.escalatedRetryDelay(base: 300, consecutiveFailures: 1) == 300)
+        #expect(AdaptiveRefreshPolicy.escalatedRetryDelay(base: 300, consecutiveFailures: 2) == 600)
+        #expect(AdaptiveRefreshPolicy.escalatedRetryDelay(base: 300, consecutiveFailures: 3) == 1200)
+        #expect(AdaptiveRefreshPolicy.escalatedRetryDelay(base: 300, consecutiveFailures: 4) == 1800)
+        #expect(AdaptiveRefreshPolicy.escalatedRetryDelay(base: 300, consecutiveFailures: 9) == 1800)
+        // 服务端 Retry-After 直接作为首次底数时同样不被放大到第一档以下。
+        #expect(AdaptiveRefreshPolicy.escalatedRetryDelay(base: 60, consecutiveFailures: 1) == 60)
+    }
+
     @Test("Local usage keeps minute cadence only for visible UI or Apple sync")
     func localUsageInterval() {
         // 同步或任一本地用量界面可见 → 分钟级。

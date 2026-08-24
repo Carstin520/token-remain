@@ -18,7 +18,7 @@ struct ClaudeCLIAuthStatusParserTests {
 }
 
 /// 决定"要不要先问一句 Claude Code 是否已登出"的判据。判错的代价不对称:
-/// 漏判会让探针在登录界面上空转满 30 秒,然后把"账号登出了"报成"读取超时",
+/// 漏判会让探针在登录界面上空转满 45 秒,然后把"账号登出了"报成"读取超时",
 /// 用户照着错误提示怎么修都修不好。
 @Suite("Claude signed-out detection")
 struct ClaudeSignedOutDetectionTests {
@@ -33,12 +33,41 @@ struct ClaudeSignedOutDetectionTests {
         #expect(ClaudeUsageService.mayReflectSignedOutClaude(.tokenRejected(401)))
     }
 
-    @Test("Transport and protocol failures keep the PTY fallback")
-    func transportFailuresStillFallBack() {
-        // 这些和会话无关,探针仍然是有意义的兜底,不该被短路掉。
+    @Test("Transport and protocol failures do not imply a signed-out session")
+    func transportFailuresSkipTheAuthCheck() {
+        // 这些和会话状态无关,不值得为它们先花一次 `auth status` 询问。
         #expect(!ClaudeUsageService.mayReflectSignedOutClaude(.requestFailed(500)))
         #expect(!ClaudeUsageService.mayReflectSignedOutClaude(.invalidResponse))
         #expect(!ClaudeUsageService.mayReflectSignedOutClaude(.rateLimited(retryAfterSeconds: 60)))
+    }
+}
+
+/// PTY 降级一次要付出最多 45 秒的进程成本,只有探针可能修复的失败才值得:
+/// 凭证类失败靠探针里的 Claude Code 自行续期,`invalidResponse` 靠 /usage
+/// 画面兜底。网络或服务端故障时探针读的是同一个接口,降级只会把一个普通
+/// 故障拖成一条误导性的"读取超时"。
+@Suite("Claude PTY fallback gating")
+struct ClaudePTYFallbackGatingTests {
+    @Test("Credential-shaped failures are worth a probe")
+    func credentialFailuresProbe() {
+        #expect(ClaudeUsageService.probeCanRecover(from: .credentialsUnavailable))
+        #expect(ClaudeUsageService.probeCanRecover(from: .credentialsAuthorizationRequired))
+        #expect(ClaudeUsageService.probeCanRecover(from: .credentialsExpired))
+        #expect(ClaudeUsageService.probeCanRecover(from: .invalidStoredCredentials))
+        #expect(ClaudeUsageService.probeCanRecover(from: .tokenRejected(401)))
+    }
+
+    @Test("An API response without a subscription session row still probes")
+    func inferenceOnlyAccountsProbe() {
+        // 部分账户的 oauth/usage 不含订阅会话行,/usage 画面是唯一数据源。
+        #expect(ClaudeUsageService.probeCanRecover(from: .invalidResponse))
+    }
+
+    @Test("Server-side failures never probe")
+    func serverFailuresDoNotProbe() {
+        #expect(!ClaudeUsageService.probeCanRecover(from: .requestFailed(500)))
+        #expect(!ClaudeUsageService.probeCanRecover(from: .rateLimited(retryAfterSeconds: 60)))
+        #expect(!ClaudeUsageService.probeCanRecover(from: .rateLimited(retryAfterSeconds: nil)))
     }
 }
 
