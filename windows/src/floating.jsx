@@ -1,5 +1,6 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
+import { backgroundDepthCSSPercentage, normalizeBackgroundDepth } from "../electron/background-depth.js";
 import { GlassCircle } from "./glass/GlassSurface.jsx";
 import { activateLanguage, SYSTEM_LANGUAGE, tr, trKey } from "./i18n.js";
 import {
@@ -31,6 +32,7 @@ function buildPreviewState(name = "two", now = Date.now()) {
   const day = new Date(now).toISOString().slice(0, 10);
   return {
     reducedMotion: false,
+    backgroundDepth: normalizeBackgroundDepth(Number.parseFloat(previewParameters.get("depth"))),
     summaryStrategy: "shortestWindow",
     enabledProviders: entries.map(([providerID]) => providerID),
     providers: entries.map(([providerID, value]) => ({
@@ -120,6 +122,9 @@ function App() {
   useLayoutEffect(() => {
     document.documentElement.dataset.reducedMotion = state?.reducedMotion ? "true" : "false";
   }, [state?.reducedMotion]);
+  useLayoutEffect(() => {
+    document.documentElement.style.setProperty("--background-depth", backgroundDepthCSSPercentage(state?.backgroundDepth));
+  }, [state?.backgroundDepth]);
   useEffect(() => () => {
     cancelAnimationFrame(dragFrameRef.current);
     if (dragRef.current) api?.endFloatingDrag?.();

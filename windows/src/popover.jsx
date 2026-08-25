@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
+import { backgroundDepthCSSPercentage } from "../electron/background-depth.js";
 import { compactNumber, formatMoney, formatPercent } from "./format.js";
 import {
   AlertIcon,
@@ -72,7 +73,9 @@ const api = globalThis.tokenRemain ?? (import.meta.env.DEV ? createPopoverPrevie
 
 // Main only asks for acrylic on Windows 11 22H2+; everywhere else the surface
 // stays opaque, so the popover reads the same on every supported build.
-const hasAcrylic = new URLSearchParams(globalThis.location?.search || "").get("material") === "acrylic";
+const popoverParameters = new URLSearchParams(globalThis.location?.search || "");
+const hasAcrylic = popoverParameters.get("material") === "acrylic";
+const openAppearanceOnFirstShow = popoverParameters.get("appearance") === "1";
 if (hasAcrylic) {
   document.documentElement.dataset.material = "acrylic";
   // In Vite dev there is no DWM behind the tab, so the acrylic layers would
@@ -112,7 +115,7 @@ function App() {
   const [expandedIDs, setExpandedIDs] = useState(() => restorablePinnedIDs(readRawLayout(globalThis.localStorage)));
   const [openMenu, setOpenMenu] = useState(null);
   const [copiedID, setCopiedID] = useState(null);
-  const [appearanceOpen, setAppearanceOpen] = useState(false);
+  const [appearanceOpen, setAppearanceOpen] = useState(openAppearanceOnFirstShow);
   activateLanguage(state?.languagePreference || SYSTEM_LANGUAGE, state?.systemLocale);
   const rootRef = useRef(null);
   const headerRef = useRef(null);
@@ -130,6 +133,7 @@ function App() {
   openMenuRef.current = openMenu;
   const appearanceOpenRef = useRef(false);
   appearanceOpenRef.current = appearanceOpen;
+  const initialAppearanceRequestRef = useRef(openAppearanceOnFirstShow);
   const glassStyle = normalizeGlassStyle(state?.popoverGlassStyle);
   const backdropOpacity = normalizeBackdropOpacity(state?.popoverBackdropOpacity);
   // Without acrylic there is no desktop behind the text to compete with it, so
@@ -149,6 +153,9 @@ function App() {
   useLayoutEffect(() => {
     document.documentElement.dataset.reducedMotion = state?.reducedMotion ? "true" : "false";
   }, [state?.reducedMotion]);
+  useLayoutEffect(() => {
+    document.documentElement.style.setProperty("--background-depth", backgroundDepthCSSPercentage(state?.backgroundDepth));
+  }, [state?.backgroundDepth]);
 
   // Hidden popovers keep receiving state so the next open paints cached data
   // immediately, but they stop re-rendering relative timestamps every minute.
@@ -162,11 +169,12 @@ function App() {
 
   // Each open starts from the persisted pins: session-only expansions collapse
   // back, pinned widgets come back expanded.
-  useEffect(() => api.onPopoverShown?.(() => {
+  useEffect(() => api.onPopoverShown?.((options) => {
     setVisible(true);
     setError(undefined);
     setOpenMenu(null);
-    setAppearanceOpen(false);
+    setAppearanceOpen(options?.appearanceOpen === true || initialAppearanceRequestRef.current);
+    initialAppearanceRequestRef.current = false;
     setExpandedIDs(restorablePinnedIDs(savedLayoutRef.current));
     scrollRef.current?.scrollTo({ top: 0 });
     rootRef.current?.focus({ preventScroll: true });
@@ -472,6 +480,7 @@ function App() {
                 serviceStatus={state.serviceStatus?.[card.id]}
                 expanded={expandedIDs.includes(id)}
                 onToggleExpanded={() => toggleExpanded(id)}
+                onOpenCodexUsage={(url) => run(() => api.openCodexUsage(url))}
                 {...widgetProps(id, providerSummaryText(card))}
               />
             );
@@ -857,7 +866,7 @@ function QuotaWindowRow({ title, remaining, remainingText, resetText, accent, la
   );
 }
 
-function QuotaWidget({ card, serviceStatus, expanded, onToggleExpanded, menu, copied, pin }) {
+function QuotaWidget({ card, serviceStatus, expanded, onToggleExpanded, onOpenCodexUsage, menu, copied, pin }) {
   const accent = card.remaining < 10 ? "var(--danger)" : card.color;
   const icon = PROVIDER_ICONS[card.iconFile];
   const cue = windowRiskCue(card);
@@ -909,9 +918,18 @@ function QuotaWidget({ card, serviceStatus, expanded, onToggleExpanded, menu, co
             );
           })}
           {(card.detailRows || []).map((row) => (
-            <div className="popover-spend-row" key={row.key}>
-              <span>{row.label}</span>
-              <strong>{row.value}</strong>
+            <div className={`popover-spend-row ${row.note ? "is-note" : ""}`} key={row.key}>
+              <span>{row.note || row.label}</span>
+              {!row.note && (
+                <span className="popover-spend-trailing">
+                  <strong>{row.value}</strong>
+                  {row.action && (
+                    <button onClick={() => onOpenCodexUsage(row.action.url)}>
+                      {row.action.label}<ArrowUpRightIcon />
+                    </button>
+                  )}
+                </span>
+              )}
             </div>
           ))}
           {card.capturedText && (

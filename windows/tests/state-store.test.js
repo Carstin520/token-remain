@@ -116,6 +116,46 @@ test("Floating shortcut preference and last position persist", async () => {
   }
 });
 
+test("S-batch preferences default, persist, validate, and reset onboarding only", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "tokenremain-windows-s-batch-preferences-"));
+  try {
+    const store = new StateStore({ userDataPath: directory, safeStorage });
+    await store.load();
+    assert.equal(store.state.preferences.backgroundDepth, 0);
+    assert.equal(store.state.preferences.taskbarIconHidden, false);
+    assert.equal(store.state.preferences.zaiRegion, "global");
+
+    await store.completeOnboarding(["zai"]);
+    await store.setBackgroundDepth(0.431);
+    await store.setTaskbarIconHidden(true);
+    await store.setZAIRegion("china");
+    await assert.rejects(() => store.setBackgroundDepth("deep"), /Unsupported background depth/);
+    await assert.rejects(() => store.setZAIRegion("auto"), /Unsupported Z\.ai API region/);
+    await store.resetOnboarding();
+
+    const restored = new StateStore({ userDataPath: directory, safeStorage });
+    await restored.load();
+    assert.equal(restored.state.onboardingCompleted, false);
+    assert.deepEqual(restored.state.enabledProviders, ["zai"]);
+    assert.equal(restored.state.preferences.backgroundDepth, 0.44);
+    assert.equal(restored.state.preferences.taskbarIconHidden, true);
+    assert.equal(restored.state.preferences.zaiRegion, "china");
+
+    const persisted = JSON.parse(await readFile(join(directory, "state-v1.json"), "utf8"));
+    persisted.preferences.backgroundDepth = "bright";
+    persisted.preferences.taskbarIconHidden = "yes";
+    persisted.preferences.zaiRegion = "mars";
+    await writeFile(join(directory, "state-v1.json"), JSON.stringify(persisted));
+    const validated = new StateStore({ userDataPath: directory, safeStorage });
+    await validated.load();
+    assert.equal(validated.state.preferences.backgroundDepth, 0);
+    assert.equal(validated.state.preferences.taskbarIconHidden, false);
+    assert.equal(validated.state.preferences.zaiRegion, "global");
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test("Scoped quota preferences default, persist, and reject non-boolean stored values", async () => {
   const directory = await mkdtemp(join(tmpdir(), "tokenremain-windows-quota-preferences-"));
   try {

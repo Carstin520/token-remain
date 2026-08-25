@@ -90,6 +90,7 @@ export function buildPreviewState(now) {
     launchAtLogin: false,
     reducedMotion: false,
     floatingWidgetEnabled: false,
+    backgroundDepth: 0,
     showFableQuota: true,
     showCodexSparkQuota: false,
     showAntigravityThirdPartyQuota: false,
@@ -192,6 +193,9 @@ export function createPopoverPreviewAPI({ now = Date.now(), globalObject = globa
   const opacity = Number.parseFloat(parameters.get("opacity"));
   state = {
     ...state,
+    backgroundDepth: Number.isFinite(Number.parseFloat(parameters.get("depth")))
+      ? Math.min(1, Math.max(0, Number.parseFloat(parameters.get("depth"))))
+      : state.backgroundDepth,
     languagePreference: language || "system",
     systemLocale: parameters.get("systemLocale") || globalObject.navigator?.language || "en",
     popoverGlassStyle: parameters.get("glass") === "clear" ? "clear" : state.popoverGlassStyle,
@@ -265,6 +269,7 @@ export function createPopoverPreviewAPI({ now = Date.now(), globalObject = globa
     quit: async () => record("quit"),
     openDashboard: async (section) => record("openDashboard", section),
     openExternal: async (url) => record("openExternal", String(url)),
+    openCodexUsage: async (url) => record("openCodexUsage", String(url)),
     hidePopover: () => record("hidePopover"),
     resizePopover: (height) => {
       debug.requestedHeight = height;

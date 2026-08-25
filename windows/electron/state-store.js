@@ -1,5 +1,6 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import { DEFAULT_BACKGROUND_DEPTH, normalizeBackgroundDepth } from "./background-depth.js";
 import { normalizeNotificationBookkeeping } from "./notification-policy.js";
 import { normalizeQuotaUsageHistory, recordQuotaUsageHistory } from "./quota-history.js";
 import { normalizeProviderIDs, PROVIDER_ID_SET } from "./providers/catalog.js";
@@ -12,6 +13,7 @@ const TRAY_DISPLAY_MODES = new Set(["full", "compact", "minimal"]);
 const SUMMARY_STRATEGIES = new Set(["shortestWindow", "lowestRemaining"]);
 const DEFAULT_TRAY_PROVIDERS = Object.freeze(["claude", "codex"]);
 const POPOVER_GLASS_STYLES = new Set(["frosted", "clear"]);
+const ZAI_REGIONS = new Set(["global", "china"]);
 const DEFAULT_POPOVER_GLASS_STYLE = "frosted";
 /// Mirrors the macOS reference backdrop opacity and its 2% storage grid; see
 /// src/glass/glass-model.js for the renderer half of the same contract.
@@ -73,6 +75,7 @@ export class StateStore {
     this.state.notificationBookkeeping = normalizeNotificationBookkeeping(this.state.notificationBookkeeping);
     this.state.updateCheck = normalizeUpdateCheckState(this.state.updateCheck);
     this.state.preferences = {
+      backgroundDepth: DEFAULT_BACKGROUND_DEPTH,
       feedNotificationsEnabled: false,
       floatingWidgetEnabled: false,
       language: "system",
@@ -83,18 +86,23 @@ export class StateStore {
       showCodexSparkQuota: false,
       showFableQuota: true,
       summaryStrategy: "shortestWindow",
+      taskbarIconHidden: false,
       trayDisplayMode: "full",
       trayProviders: [...DEFAULT_TRAY_PROVIDERS],
+      zaiRegion: "global",
       ...(this.state.preferences || {}),
     };
     if (!LANGUAGE_PREFERENCES.has(this.state.preferences.language)) this.state.preferences.language = "system";
     if (!isRefreshMinutes(this.state.preferences.refreshMinutes)) this.state.preferences.refreshMinutes = DEFAULT_REFRESH_MINUTES;
     this.state.preferences.feedNotificationsEnabled = this.state.preferences.feedNotificationsEnabled === true;
+    this.state.preferences.backgroundDepth = normalizeBackgroundDepth(this.state.preferences.backgroundDepth);
     this.state.preferences.showFableQuota = typeof this.state.preferences.showFableQuota === "boolean"
       ? this.state.preferences.showFableQuota
       : true;
     this.state.preferences.showCodexSparkQuota = this.state.preferences.showCodexSparkQuota === true;
     this.state.preferences.showAntigravityThirdPartyQuota = this.state.preferences.showAntigravityThirdPartyQuota === true;
+    this.state.preferences.taskbarIconHidden = this.state.preferences.taskbarIconHidden === true;
+    if (!ZAI_REGIONS.has(this.state.preferences.zaiRegion)) this.state.preferences.zaiRegion = "global";
     if (!SUMMARY_STRATEGIES.has(this.state.preferences.summaryStrategy)) this.state.preferences.summaryStrategy = "shortestWindow";
     if (!POPOVER_GLASS_STYLES.has(this.state.preferences.popoverGlassStyle)) this.state.preferences.popoverGlassStyle = DEFAULT_POPOVER_GLASS_STYLE;
     this.state.preferences.popoverBackdropOpacity = clampPopoverBackdropOpacity(this.state.preferences.popoverBackdropOpacity);
@@ -196,6 +204,11 @@ export class StateStore {
     await this.save();
   }
 
+  async resetOnboarding() {
+    this.state.onboardingCompleted = false;
+    await this.save();
+  }
+
   async setProviderEnabled(providerID, enabled) {
     if (!PROVIDER_ID_SET.has(providerID)) throw new Error("Unsupported provider");
     const current = new Set(this.state.enabledProviders || []);
@@ -210,6 +223,26 @@ export class StateStore {
       ...(this.state.preferences || {}),
       floatingWidgetEnabled: Boolean(enabled),
     };
+    await this.save();
+  }
+
+  async setBackgroundDepth(value) {
+    if (typeof value !== "number" || !Number.isFinite(value)) throw new Error("Unsupported background depth");
+    this.state.preferences = {
+      ...(this.state.preferences || {}),
+      backgroundDepth: normalizeBackgroundDepth(value),
+    };
+    await this.save();
+  }
+
+  async setTaskbarIconHidden(hidden) {
+    this.state.preferences = { ...(this.state.preferences || {}), taskbarIconHidden: hidden === true };
+    await this.save();
+  }
+
+  async setZAIRegion(value) {
+    if (!ZAI_REGIONS.has(value)) throw new Error("Unsupported Z.ai API region");
+    this.state.preferences = { ...(this.state.preferences || {}), zaiRegion: value };
     await this.save();
   }
 

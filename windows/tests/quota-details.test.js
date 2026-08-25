@@ -37,6 +37,10 @@ test("Extra usage and reset-credit rows format valid values and omit absent data
     key: "codex-reset-credits",
     label: "Rate-limit reset cards",
     value: "0 available",
+    action: { label: "View", url: "https://chatgpt.com/codex/settings/usage" },
+  }, {
+    key: "codex-reset-credits-expiration",
+    note: "Use from Codex Usage; valid for 30 days after grant",
   }]);
   assert.deepEqual(providerQuotaDetailRows({ accountBalance: { amount: 0, currencyCode: "CNY" } }), [{
     key: "account-balance",
