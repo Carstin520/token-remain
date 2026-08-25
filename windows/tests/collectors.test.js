@@ -4,7 +4,14 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { parseClaudeUsage } from "../electron/collectors/claude.js";
-import { collectCodex, parseCodexUsage, resolveCodexHome } from "../electron/collectors/codex.js";
+import {
+  codexModelScopedWindows,
+  codexWireScopeBase,
+  collectCodex,
+  parseCodexSessionSnapshots,
+  parseCodexUsage,
+  resolveCodexHome,
+} from "../electron/collectors/codex.js";
 
 const now = Date.UTC(2026, 7, 2, 10, 0, 0);
 
@@ -61,6 +68,54 @@ test("Codex parser keeps the authoritative banked reset-credit count", () => {
   }, now);
   assert.deepEqual(quota.codexResetCredits, { availableCount: 3 });
   assert.equal(parseCodexUsage({ rate_limit: { primary_window: { used_percent: 12 } } }, now).codexResetCredits, undefined);
+});
+
+test("Codex local model pools retain both session and weekly windows", () => {
+  const resetsAt = now / 1000 + 86_400;
+  const text = [
+    {
+      timestamp: "2026-08-02T09:55:00.000Z",
+      payload: { type: "token_count", rate_limits: {
+        limit_id: "codex",
+        plan_type: "prolite",
+        primary: { used_percent: 31, window_minutes: 300, resets_at: resetsAt },
+        secondary: { used_percent: 22, window_minutes: 10_080, resets_at: resetsAt },
+      } },
+    },
+    {
+      timestamp: "2026-08-02T09:56:00.000Z",
+      payload: { type: "token_count", rate_limits: {
+        limit_id: "codex_bengalfox",
+        limit_name: "GPT-5.3-Codex-Spark",
+        primary: { used_percent: 95, window_minutes: 300, resets_at: resetsAt },
+        secondary: { used_percent: 44, window_minutes: 10_080, resets_at: resetsAt },
+      } },
+    },
+  ].map(JSON.stringify).join("\n");
+  const scoped = codexModelScopedWindows(parseCodexSessionSnapshots(text), now);
+  assert.deepEqual(scoped.map((scope) => scope.scopeID), ["codex_bengalfox_session", "codex_bengalfox_weekly"]);
+  assert.deepEqual(scoped.map((scope) => scope.displayName), ["GPT-5.3-Codex-Spark", "GPT-5.3-Codex-Spark"]);
+  assert.deepEqual(scoped.map((scope) => scope.window.usedPercent), [95, 44]);
+  assert.deepEqual(scoped.map((scope) => scope.window.windowMinutes), [300, 10_080]);
+});
+
+test("Codex model snapshots survive missing resets and long IDs remain distinct", () => {
+  const text = [
+    { timestamp: "2026-08-02T09:55:00.000Z", payload: { type: "token_count", rate_limits: { limit_id: "codex", primary: { used_percent: 31, window_minutes: 300 } } } },
+    { timestamp: "2026-08-02T09:56:00.000Z", payload: { type: "token_count", rate_limits: { limit_id: "codex_bengalfox_pro_extended_alpha", limit_name: "GPT-5.3-Codex-Spark-Alpha", primary: { used_percent: 9, window_minutes: 300 }, secondary: { used_percent: 40, window_minutes: 10_080 } } } },
+    { timestamp: "2026-08-02T09:57:00.000Z", payload: { type: "token_count", rate_limits: { limit_id: "codex_bengalfox_pro_extended_beta", limit_name: "GPT-5.3-Codex-Spark-Beta", primary: { used_percent: 77, window_minutes: 300 }, secondary: { used_percent: 58, window_minutes: 10_080 } } } },
+  ].map(JSON.stringify).join("\n");
+  const scoped = codexModelScopedWindows(parseCodexSessionSnapshots(text), now);
+  assert.equal(scoped.length, 4);
+  assert.deepEqual(scoped.map((scope) => scope.scopeID), [
+    "codex_bengalfox_071fde96_session",
+    "codex_bengalfox_071fde96_weekly",
+    "codex_bengalfox_563343ac_session",
+    "codex_bengalfox_563343ac_weekly",
+  ]);
+  assert.equal(codexWireScopeBase("codex_bengalfox_pro_extended_alpha"), "codex_bengalfox_071fde96");
+  assert.equal(codexWireScopeBase("codex_bengalfox_pro_extended_beta"), "codex_bengalfox_563343ac");
+  assert.ok(scoped.every((scope) => scope.window.resetsAt === undefined));
 });
 
 test("Provider percentages are bounded at the privacy boundary", () => {

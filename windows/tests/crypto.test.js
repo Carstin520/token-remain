@@ -152,6 +152,97 @@ test("Synced provider balances use the same bounded wire shape as macOS", () => 
   assert.throws(() => openEnvelope(invalidEnvelope, { key, expectedKeyID: keyID }), /balance/i);
 });
 
+test("Named primary pools and same-duration scoped siblings round trip on schema v1", () => {
+  const now = Date.now();
+  const snapshot = makeSnapshot({
+    sourceInstanceID,
+    sequence: 17,
+    now,
+    providers: [{
+      providerID: "cursor",
+      capturedAt: now,
+      windows: [{ usedPercent: 91, windowMinutes: 43_200, poolName: "Other Models" }],
+      scopedWindows: [{
+        scopeID: "cursor_auto",
+        displayName: "Cursor Models",
+        window: { usedPercent: 2, windowMinutes: 43_200 },
+        observedAt: now,
+      }],
+    }],
+  });
+  assert.equal(snapshot.schemaVersion, 1);
+  assert.equal(snapshot.providers[0].windows[0].poolName, "Other Models");
+  assert.equal(snapshot.providers[0].scopedWindows[0].observedAt, undefined);
+  const envelope = sealSnapshot(snapshot, { key, keyID, nonce: Buffer.alloc(12, 0xf5) });
+  const decoded = openEnvelope(envelope, { key, expectedKeyID: keyID });
+  assert.equal(decoded.providers[0].windows[0].poolName, "Other Models");
+  assert.equal(decoded.providers[0].scopedWindows[0].window.windowMinutes, 43_200);
+});
+
+test("Pool names sanitize on send and validate on receive", () => {
+  const now = Date.now();
+  const sanitized = makeSnapshot({
+    sourceInstanceID,
+    sequence: 18,
+    now,
+    providers: [{ providerID: "cursor", capturedAt: now, windows: [{ usedPercent: 40, windowMinutes: 43_200, poolName: "user@example.com" }] }],
+  });
+  assert.equal(sanitized.providers[0].windows[0].poolName, undefined);
+
+  const invalid = {
+    ...sanitized,
+    sequence: 19,
+    providers: [{ ...sanitized.providers[0], windows: [{ ...sanitized.providers[0].windows[0], poolName: "user@example.com" }] }],
+  };
+  const invalidEnvelope = sealSnapshot(invalid, { key, keyID, nonce: Buffer.alloc(12, 0xa6) });
+  assert.throws(() => openEnvelope(invalidEnvelope, { key, expectedKeyID: keyID }), /pool name/i);
+});
+
+test("General windows still reject duplicate durations while scoped siblings remain compatible", () => {
+  const now = Date.now();
+  const base = makeSnapshot({ sourceInstanceID, sequence: 20, providers: [], now });
+  const invalid = {
+    ...base,
+    providers: [{
+      providerID: "copilot",
+      capturedAt: now,
+      windows: [
+        { usedPercent: 80, windowMinutes: 43_200, poolName: "Chat" },
+        { usedPercent: 25, windowMinutes: 43_200, poolName: "Completions" },
+      ],
+    }],
+  };
+  const envelope = sealSnapshot(invalid, { key, keyID, nonce: Buffer.alloc(12, 0xb6) });
+  assert.throws(() => openEnvelope(envelope, { key, expectedKeyID: keyID }), /duplicate/i);
+});
+
+test("Direct Sync applies macOS's shared eight-window transport budget", () => {
+  const now = Date.now();
+  const snapshot = makeSnapshot({
+    sourceInstanceID,
+    sequence: 21,
+    now,
+    providers: [{
+      providerID: "codex",
+      capturedAt: now,
+      windows: [
+        { usedPercent: 10, windowMinutes: 300 },
+        { usedPercent: 20, windowMinutes: 10_080 },
+      ],
+      scopedWindows: Array.from({ length: 8 }, (_, index) => ({
+        scopeID: `model_${index}`,
+        displayName: `Model ${index}`,
+        window: { usedPercent: index, windowMinutes: index % 2 ? 10_080 : 300 },
+        observedAt: now,
+      })),
+    }],
+  });
+  assert.equal(snapshot.providers[0].windows.length, 2);
+  assert.equal(snapshot.providers[0].scopedWindows.length, 6);
+  const envelope = sealSnapshot(snapshot, { key, keyID, nonce: Buffer.alloc(12, 0xc6) });
+  assert.equal(openEnvelope(envelope, { key, expectedKeyID: keyID }).providers[0].scopedWindows.length, 6);
+});
+
 test("History validation rejects duplicate days and more than thirty entries", () => {
   const now = Date.now();
   const day = new Date(now).toISOString().slice(0, 10);

@@ -1,5 +1,5 @@
 import { formatBalance } from "./format.js";
-import { trKey } from "./i18n.js";
+import { tr, trKey } from "./i18n.js";
 
 export function visibleScopedWindows(provider, preferences = {}) {
   const order = [];
@@ -33,10 +33,19 @@ export function formatCodexResetCredits(credits) {
 export function providerQuotaDetailRows(provider) {
   const resetCredits = formatCodexResetCredits(provider?.codexResetCredits);
   const extraUsage = formatExtraUsage(provider?.extraUsage);
+  const accountBalance = provider?.accountBalance;
+  const balance = Number.isFinite(accountBalance?.amount) && accountBalance.amount >= 0 && accountBalance.currencyCode
+    ? formatBalance(accountBalance)
+    : undefined;
   return [
     ...(resetCredits ? [{ key: "codex-reset-credits", label: trKey("codex.reset_credits.title"), value: resetCredits }] : []),
     ...(extraUsage ? [{ key: "extra-usage", label: trKey("quota.extra_usage"), value: extraUsage }] : []),
+    ...(balance ? [{ key: "account-balance", label: trKey("quota.account_balance"), value: balance }] : []),
   ];
+}
+
+export function poolDisplayName(value) {
+  return typeof value === "string" && value ? tr(value) : value;
 }
 
 function isFableScope(scope) {
@@ -44,7 +53,7 @@ function isFableScope(scope) {
 }
 
 function isCodexSparkScope(scope) {
-  return scope.scopeID.toLowerCase() === "codex_bengalfox" || /codex-spark/i.test(scope.displayName || "");
+  return scope.scopeID.toLowerCase().startsWith("codex_bengalfox") || /codex-spark/i.test(scope.displayName || "");
 }
 
 function isAntigravityThirdPartyScope(scope) {

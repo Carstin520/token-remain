@@ -147,14 +147,23 @@ export function makeSnapshot({ sourceInstanceID, sequence, providers, now = Date
     dailyUsageHistory: undefined,
     expiresAt: now + 24 * 60 * 60 * 1000,
     generatedAt: now,
-    providers: providers.map((provider) => ({
-      capturedAt: provider.capturedAt,
-      planName: sanitizePlanName(provider.planName),
-      providerID: provider.providerID,
-      scopedWindows: provider.scopedWindows?.length ? provider.scopedWindows : undefined,
-      statusCode: "available",
-      windows: provider.windows,
-    })),
+    providers: providers.map((provider) => {
+      const windows = provider.windows.map(windowForWire);
+      const scopedCapacity = Math.max(0, 8 - windows.length);
+      const scopedWindows = provider.scopedWindows?.flatMap((scoped) => {
+        const scopeID = typeof scoped.scopeID === "string" ? scoped.scopeID.toLowerCase() : "";
+        if (!/^[a-z0-9][a-z0-9_-]{0,31}$/.test(scopeID) || sanitizePlanName(scoped.displayName) !== scoped.displayName) return [];
+        return [{ scopeID, displayName: scoped.displayName, window: windowForWire(scoped.window) }];
+      }).slice(0, scopedCapacity);
+      return {
+        capturedAt: provider.capturedAt,
+        planName: sanitizePlanName(provider.planName),
+        providerID: provider.providerID,
+        scopedWindows: scopedWindows?.length ? scopedWindows : undefined,
+        statusCode: "available",
+        windows,
+      };
+    }),
     schemaVersion: 1,
     sequence,
     sourceInstanceID,
@@ -242,8 +251,17 @@ function normalizeDeviceName(value) {
 function sanitizePlanName(value) {
   if (typeof value !== "string") return undefined;
   const trimmed = value.trim();
-  if (!trimmed || Buffer.byteLength(trimmed) > 64 || /[@/\\:]/.test(trimmed)) return undefined;
+  if (!trimmed || Buffer.byteLength(trimmed) > 64 || /[@/\\:\x00-\x1f\x7f]/.test(trimmed)) return undefined;
   return trimmed;
+}
+
+function sanitizePoolName(value) {
+  const sanitized = sanitizePlanName(value);
+  return sanitized && Buffer.byteLength(sanitized) <= 48 ? sanitized : undefined;
+}
+
+function windowForWire(window) {
+  return { ...window, poolName: sanitizePoolName(window?.poolName) };
 }
 
 function validateEnvelope(envelope, expectedKeyID) {
@@ -268,13 +286,22 @@ function validateConsumedSnapshot(snapshot) {
   for (const provider of snapshot.providers) {
     if (!/^[a-z0-9][a-z0-9._-]{0,63}$/.test(provider.providerID || "")) throw new Error("Invalid provider ID");
     if (!Number.isFinite(provider.capturedAt) || provider.capturedAt > now + 5 * 60 * 1000) throw new Error("Invalid provider date");
-    if (!Array.isArray(provider.windows) || provider.windows.length > 8) throw new Error("Invalid quota windows");
-    for (const window of provider.windows) validateWindow(window, now);
+    if (!Array.isArray(provider.windows)) throw new Error("Invalid quota windows");
+    const scopedCount = provider.scopedWindows === undefined ? 0 : Array.isArray(provider.scopedWindows) ? provider.scopedWindows.length : Infinity;
+    if (provider.windows.length + scopedCount > 8) throw new Error("Invalid quota windows");
+    const windowMinutes = new Set();
+    for (const window of provider.windows) {
+      validateWindow(window, now);
+      if (windowMinutes.has(window.windowMinutes)) throw new Error("Duplicate quota window");
+      windowMinutes.add(window.windowMinutes);
+    }
     if (provider.scopedWindows !== undefined) {
-      if (!Array.isArray(provider.scopedWindows) || provider.scopedWindows.length > 16) throw new Error("Invalid scoped quota windows");
+      if (!Array.isArray(provider.scopedWindows)) throw new Error("Invalid scoped quota windows");
+      const scopeIDs = new Set();
       for (const scoped of provider.scopedWindows) {
-        if (!/^[a-z0-9][a-z0-9_-]{0,31}$/.test(scoped?.scopeID || "")) throw new Error("Invalid quota scope");
-        if (typeof scoped.displayName !== "string" || Buffer.byteLength(scoped.displayName) > 64) throw new Error("Invalid quota scope name");
+        if (!/^[a-z0-9][a-z0-9_-]{0,31}$/.test(scoped?.scopeID || "") || scopeIDs.has(scoped.scopeID)) throw new Error("Invalid quota scope");
+        scopeIDs.add(scoped.scopeID);
+        if (sanitizePlanName(scoped.displayName) !== scoped.displayName) throw new Error("Invalid quota scope name");
         validateWindow(scoped.window, now);
       }
     }
@@ -295,6 +322,9 @@ function validateWindow(window, now) {
     if (!Number.isFinite(amount) || amount < 0 || typeof currencyCode !== "string" || !/^[A-Za-z0-9]{1,12}$/.test(currencyCode)) {
       throw new Error("Invalid quota balance");
     }
+  }
+  if (window.poolName !== undefined && sanitizePoolName(window.poolName) !== window.poolName) {
+    throw new Error("Invalid quota pool name");
   }
 }
 

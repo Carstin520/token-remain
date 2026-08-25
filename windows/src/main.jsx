@@ -53,7 +53,7 @@ import { LIMITS_ORDER_KEY, normalizeOrder } from "./layout.js";
 import { activateLanguage, languageOptions, SYSTEM_LANGUAGE, tr, trKey } from "./i18n.js";
 import { buildOverviewSummary, buildTodayUsage, rankOfficialQuotaProviders, summaryWindow, usagePace } from "./overview-model.js";
 import { providerMeta } from "./provider-meta.js";
-import { providerQuotaDetailRows, visibleScopedWindows } from "./quota-details.js";
+import { poolDisplayName, providerQuotaDetailRows, visibleScopedWindows } from "./quota-details.js";
 import { compactAxisValue, linePoints, quotaTrendRows, TREND_RANGES, usageTrendModel } from "./trends-model.js";
 import { usageProviderIDs } from "./usage-history.js";
 import "./styles.css";
@@ -953,13 +953,13 @@ function QuotaCard({ provider, notice, noticeDetail, id, preferences, canRemove,
           {windows.map((window, index) => (
             <React.Fragment key={`${window.windowMinutes}-${index}`}>
               {index > 0 && <Divider />}
-              <QuotaWindowRow window={window} color={meta.color} />
+              <QuotaWindowRow window={window} color={meta.color} scopeName={poolDisplayName(window.poolName)} />
             </React.Fragment>
           ))}
           {scopedWindows.map((scope) => (
             <React.Fragment key={scope.scopeID}>
               <Divider />
-              <QuotaWindowRow window={scope.window} color={meta.color} scopeName={scope.displayName} />
+              <QuotaWindowRow window={scope.window} color={meta.color} scopeName={poolDisplayName(scope.displayName)} />
             </React.Fragment>
           ))}
           {detailRows.map((row) => (
