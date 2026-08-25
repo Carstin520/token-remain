@@ -5,10 +5,14 @@ import {
   ccusageArguments,
   ccusageBinaryPath,
   collectLocalUsage,
+  aggregateLocalUsageHistories,
   mergeDailyUsageHistories,
   parseCCUsageSnapshot,
 } from "../electron/local-usage.js";
 import { usageDayTotals, usageProviderIDs } from "../src/usage-history.js";
+import { buildTodayUsage } from "../src/overview-model.js";
+import { buildUsageDigest } from "../src/popover-model.js";
+import { usageTrendModel } from "../src/trends-model.js";
 
 const NOW = new Date(2026, 7, 10, 12, 0, 0).getTime();
 
@@ -44,9 +48,45 @@ test("Windows ccusage parser keeps every local agent and marks missing prices", 
   assert.equal(history.days[0].claudeTokens, 300);
   assert.equal(history.days[0].codexTokens, 100);
   assert.deepEqual(history.days[0].agents.find((agent) => agent.id === "openclaw").unpricedModels, ["new-model"]);
+  assert.deepEqual(history.days[0].agents.find((agent) => agent.id === "openclaw").models, [{
+    id: "new-model",
+    inputTokens: 25,
+    outputTokens: 25,
+    cacheTokens: 0,
+    cost: 0,
+    constituentCount: 1,
+  }]);
   assert.equal(usageDayTotals(history.days[0]).tokens, 490);
   assert.equal(usageDayTotals(history.days[0]).cost, undefined);
   assert.deepEqual(usageProviderIDs(history), ["claude", "codex", "openclaw", "gemini"]);
+});
+
+test("retained model history is capped at seven named rows plus one other rollup", () => {
+  const models = Array.from({ length: 10 }, (_, index) => ({
+    modelName: `model-${index + 1}`,
+    cost: index + 1,
+    inputTokens: (10 - index) * 100,
+    outputTokens: (10 - index) * 10,
+    cacheCreationTokens: index,
+    cacheReadTokens: index * 2,
+  }));
+  const history = parseCCUsageSnapshot(JSON.stringify({ daily: [{
+    period: "2026-08-10",
+    agents: [{ agent: "codex", totalTokens: 6_160, totalCost: 55, modelBreakdowns: models }],
+  }] }), NOW);
+  const retained = history.days[0].agents[0].models;
+  assert.equal(retained.length, 8);
+  assert.deepEqual(retained.slice(0, 7).map((model) => model.id), [
+    "model-1", "model-2", "model-3", "model-4", "model-5", "model-6", "model-7",
+  ]);
+  assert.deepEqual(retained[7], {
+    id: "other",
+    inputTokens: 600,
+    outputTokens: 60,
+    cacheTokens: 72,
+    cost: 27,
+    constituentCount: 3,
+  });
 });
 
 test("Local ccusage invocation is offline and receives the app-owned price table", async () => {
@@ -98,4 +138,36 @@ test("This PC and paired Mac histories merge without dropping future agent IDs",
   assert.equal(byID.get("gemini").tokens, 40);
   assert.equal(merged.days[0].claudeTokens, 320);
   assert.equal(merged.days[0].codexTokens, 180);
+});
+
+test("disabled sources disappear from today, digests, trends, and the merged Mac-sync aggregate", () => {
+  const local = {
+    sourceDay: "2026-08-10",
+    capturedAt: NOW,
+    days: [{ day: "2026-08-10", agents: [
+      { id: "claude", tokens: 300, cost: 1.5, unpricedModels: [] },
+      { id: "codex", tokens: 100, cost: 0.5, unpricedModels: [] },
+    ] }],
+  };
+  const remote = {
+    sourceDay: "2026-08-10",
+    capturedAt: NOW - 1_000,
+    days: [{ day: "2026-08-10", claudeTokens: 20, claudeCost: 0.2, codexTokens: 80, codexCost: 0.8 }],
+  };
+  const visible = aggregateLocalUsageHistories(local, remote, ["codex"]);
+  assert.deepEqual(visible.days[0].agents.map((agent) => agent.id), ["claude"]);
+  assert.equal(visible.days[0].codexTokens, 0);
+  assert.deepEqual(local.days[0].agents.map((agent) => agent.id), ["claude", "codex"]);
+
+  const today = buildTodayUsage(visible, NOW);
+  assert.equal(today.totalTokens, 320);
+  assert.deepEqual(today.entries.map((entry) => entry.id), ["claude"]);
+
+  const digest = buildUsageDigest(visible, NOW);
+  assert.equal(digest.today.tokens, 320);
+  assert.deepEqual(digest.entries.map((entry) => entry.id), ["claude"]);
+
+  const trend = usageTrendModel(visible, { range: 7, metric: "tokens", providerIDs: usageProviderIDs(visible) });
+  assert.deepEqual(trend.providerIDs, ["claude"]);
+  assert.equal(trend.days[0].total, 320);
 });

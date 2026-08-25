@@ -1,8 +1,16 @@
 import { execFile } from "node:child_process";
 import { join } from "node:path";
-import { withLegacyFields } from "../src/usage-history.js";
+import {
+  boundedUsageModels,
+  mergeDailyUsageHistories,
+  withLegacyFields,
+} from "../src/usage-history.js";
 
 export { mergeDailyUsageHistories } from "../src/usage-history.js";
+
+export function aggregateLocalUsageHistories(localHistory, remoteHistory, disabledSourceIDs = []) {
+  return mergeDailyUsageHistories(localHistory, remoteHistory, disabledSourceIDs);
+}
 
 const MAXIMUM_OUTPUT_BYTES = 8 * 1024 * 1024;
 const MAXIMUM_DAYS = 30;
@@ -80,7 +88,24 @@ function normalizeAgent(agent) {
   if (!unpricedModels.length && tokens > 0 && cost === 0 && !modelRows.length && Array.isArray(agent.modelsUsed)) {
     unpricedModels = agent.modelsUsed.filter(validModelName);
   }
-  return [{ id, tokens, cost, unpricedModels: [...new Set(unpricedModels)].sort() }];
+  const models = boundedUsageModels(modelRows.map((row) => ({
+    id: row?.modelName,
+    inputTokens: boundedInteger(row?.inputTokens, MAXIMUM_TOKENS),
+    outputTokens: boundedInteger(row?.outputTokens, MAXIMUM_TOKENS),
+    cacheTokens: Math.min(
+      MAXIMUM_TOKENS,
+      boundedInteger(row?.cacheCreationTokens, MAXIMUM_TOKENS)
+        + boundedInteger(row?.cacheReadTokens, MAXIMUM_TOKENS),
+    ),
+    cost: boundedNumber(row?.cost, MAXIMUM_COST),
+  })));
+  return [{
+    id,
+    tokens,
+    cost,
+    unpricedModels: [...new Set(unpricedModels)].sort(),
+    ...(models.length ? { models } : {}),
+  }];
 }
 
 function normalizeStoredAgent(agent) {
@@ -89,7 +114,8 @@ function normalizeStoredAgent(agent) {
   const cost = boundedNumber(agent?.cost, MAXIMUM_COST);
   if (!id || (tokens === 0 && cost === 0)) return [];
   const unpricedModels = Array.isArray(agent.unpricedModels) ? agent.unpricedModels.filter(validModelName).slice(0, 32) : [];
-  return [{ id, tokens, cost, unpricedModels }];
+  const models = boundedUsageModels(agent?.models);
+  return [{ id, tokens, cost, unpricedModels, ...(models.length ? { models } : {}) }];
 }
 
 function makeDay(day, agents) {

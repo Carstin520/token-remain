@@ -25,6 +25,7 @@ import {
   ArrowUpRightIcon,
   BoltIcon,
   CheckCircleIcon,
+  CloseIcon,
   ChevronRightIcon,
   DataSourcesIcon,
   DevicesIcon,
@@ -52,12 +53,23 @@ import {
 import { GlassProvider, GlassSurface } from "./glass/GlassSurface.jsx";
 import { LIMITS_ORDER_KEY, normalizeOrder } from "./layout.js";
 import { activateLanguage, languageOptions, SYSTEM_LANGUAGE, tr, trKey } from "./i18n.js";
+import { localSourceDisplayName } from "./local-sources.js";
 import { buildOverviewSummary, buildTodayUsage, rankOfficialQuotaProviders, summaryWindow, usagePace } from "./overview-model.js";
 import { providerMeta } from "./provider-meta.js";
 import { poolDisplayName, providerQuotaDetailRows, visibleScopedWindows } from "./quota-details.js";
 import { scopedPoolSettingsGroups } from "./scoped-pools.js";
-import { compactAxisValue, linePoints, quotaTrendRows, TREND_RANGES, usageTrendModel } from "./trends-model.js";
-import { usageProviderIDs } from "./usage-history.js";
+import {
+  compactAxisValue,
+  linePoints,
+  quotaTrendRows,
+  stepPinnedDay,
+  togglePinnedDay,
+  TREND_RANGES,
+  trendDayModelBreakdown,
+  unpinDay,
+  usageTrendModel,
+} from "./trends-model.js";
+import { filterDailyUsageHistory, usageProviderIDs } from "./usage-history.js";
 import "./styles.css";
 
 const PROVIDER_ICON_MODULES = import.meta.glob("../../site/assets/providers/*.{svg,png}", { eager: true, import: "default" });
@@ -1155,12 +1167,41 @@ function DailyUsageTrendCard({ history }) {
   const [range, setRange] = useState(14);
   const [metric, setMetric] = useState("tokens");
   const [activeIndex, setActiveIndex] = useState();
+  const [pinnedDayID, setPinnedDayID] = useState();
   const providerIDs = usageProviderIDs(history);
   const model = usageTrendModel(history, { range, metric, providerIDs });
   const fresh = history?.capturedAt && Date.now() - history.capturedAt < 30 * 60_000;
   const stride = model.days.length <= 7 ? 1 : model.days.length <= 14 ? 2 : 5;
   const ticks = [1, 0.75, 0.5, 0.25];
   const activeDay = Number.isInteger(activeIndex) ? model.days[activeIndex] : undefined;
+  const pinnedIndex = model.days.findIndex((day) => day.day === pinnedDayID);
+  const pinnedDay = pinnedIndex >= 0 ? history.days.find((day) => day.day === pinnedDayID) : undefined;
+  const breakdown = pinnedDay ? trendDayModelBreakdown(pinnedDay, providerIDs, metric) : undefined;
+
+  useEffect(() => {
+    if (!pinnedDayID) return undefined;
+    const handleEscape = (event) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setPinnedDayID(unpinDay());
+    };
+    globalThis.addEventListener("keydown", handleEscape);
+    return () => globalThis.removeEventListener("keydown", handleEscape);
+  }, [pinnedDayID]);
+
+  function selectRange(nextRange) {
+    setRange(nextRange);
+    setActiveIndex(undefined);
+    setPinnedDayID(unpinDay());
+  }
+
+  function handleChartKeyDown(event) {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    event.preventDefault();
+    const next = stepPinnedDay(model.days.map((day) => day.day), pinnedDayID, event.key === "ArrowLeft" ? "left" : "right");
+    setPinnedDayID(next);
+    setActiveIndex(model.days.findIndex((day) => day.day === next));
+  }
 
   return (
     <section className="dashboard-panel trend-history-panel">
@@ -1183,7 +1224,7 @@ function DailyUsageTrendCard({ history }) {
           })}
         </div>
         <div className="trend-control-groups">
-          <TrendSegmentedControl label={tr("History range")} options={TREND_RANGES} value={range} onChange={setRange} />
+          <TrendSegmentedControl label={tr("History range")} options={TREND_RANGES} value={range} onChange={selectRange} />
           <TrendSegmentedControl
             label={tr("Metric")}
             options={[{ value: "tokens", label: tr("Tokens") }, { value: "cost", label: tr("Cost") }]}
@@ -1200,7 +1241,14 @@ function DailyUsageTrendCard({ history }) {
         </svg>
       </div>
 
-      <div className="trend-chart-detailed" onMouseLeave={() => setActiveIndex(undefined)}>
+      <div
+        className="trend-chart-detailed"
+        onMouseLeave={() => setActiveIndex(undefined)}
+        onKeyDown={handleChartKeyDown}
+        role="group"
+        tabIndex={0}
+        aria-label={trKey("trends.chart_accessibility")}
+      >
         <div className="trend-y-axis" aria-hidden="true">
           {ticks.map((fraction) => (
             <span key={fraction} style={{ bottom: `${fraction * 100}%` }}>{compactAxisValue(model.maximum * fraction, metric)}</span>
@@ -1211,17 +1259,19 @@ function DailyUsageTrendCard({ history }) {
           <i className="trend-baseline" />
           <div className={`trend-columns range-${range}`} style={{ gridTemplateColumns: `repeat(${Math.max(1, model.days.length)}, minmax(0, 1fr))` }}>
             {model.days.map((day, index) => {
-              const dimmed = activeDay && index !== activeIndex;
+              const dimmed = pinnedDayID ? day.day !== pinnedDayID : activeDay && index !== activeIndex;
               const labelVisible = (model.days.length - 1 - index) % stride === 0;
               const aria = `${formatDayLabel(day.day)} · ${providerIDs.map((id) => `${providerMeta(id).name} ${trendValue(day.values[id], metric)}`).join(" · ")} · Total ${trendValue(day.total, metric)}`;
               return (
                 <button
-                  className={`trend-day-column ${dimmed ? "dimmed" : ""}`}
+                  className={`trend-day-column ${dimmed ? "dimmed" : ""} ${day.day === pinnedDayID ? "pinned" : ""}`}
                   key={day.day}
                   aria-label={aria}
+                  aria-pressed={day.day === pinnedDayID}
                   onMouseEnter={() => setActiveIndex(index)}
                   onFocus={() => setActiveIndex(index)}
                   onBlur={() => setActiveIndex(undefined)}
+                  onClick={() => setPinnedDayID((current) => togglePinnedDay(current, day.day))}
                 >
                   <span className="trend-stack">
                     {providerIDs.map((id) => day.values[id] > 0 && (
@@ -1243,11 +1293,62 @@ function DailyUsageTrendCard({ history }) {
                 <span key={id}><i style={{ background: providerMeta(id).color }} />{providerMeta(id).name}<b>{trendValue(activeDay.values[id], metric)}</b></span>
               ))}
               <span className="trend-tooltip-total">{tr("Total")}<b>{trendValue(activeDay.total, metric)}</b></span>
+              <span className="trend-tooltip-hint">{trKey("trends.tooltip_click_hint")}</span>
             </div>
           )}
         </div>
       </div>
+      {breakdown && (
+        <TrendModelBreakdownPanel
+          breakdown={breakdown}
+          metric={metric}
+          onClose={() => setPinnedDayID(unpinDay())}
+        />
+      )}
     </section>
+  );
+}
+
+function TrendModelBreakdownPanel({ breakdown, metric, onClose }) {
+  return (
+    <div className="trend-model-panel">
+      <div className="trend-model-heading">
+        <strong>{formatDayLabel(breakdown.day)}</strong>
+        <Badge text={trKey("trends.model_detail_tag")} tone="violet" />
+        <button className="trend-model-close" onClick={onClose} aria-label={trKey("action.close")} title={trKey("action.close")}>
+          <CloseIcon />
+        </button>
+      </div>
+      {breakdown.groups.length ? (
+        <div className="trend-model-groups">
+          {breakdown.groups.map((group) => {
+            const color = providerMeta(group.id).color;
+            return (
+              <div className="trend-model-group" key={group.id}>
+                <div className="trend-model-agent"><i style={{ background: color }} /><strong>{group.displayName}</strong></div>
+                {group.rows.map((row) => {
+                  const displayName = typeof row.displayName === "object"
+                    ? trKey(row.displayName.key, [row.displayName.count])
+                    : row.displayName;
+                  const primary = metric === "tokens"
+                    ? compactNumber(row.totalTokens)
+                    : `${formatMoney(row.cost)}${row.isUnpriced ? "*" : ""}`;
+                  return (
+                    <div className="trend-model-row" key={row.id} title={row.isUnpriced ? trKey("usage.price_unavailable") : row.id}>
+                      <i className="trend-model-accent" style={{ background: color }} />
+                      <strong>{displayName}</strong>
+                      <b>{primary}</b>
+                      <span>{formatPercent(row.share * 100)}</span>
+                      <small>{trKey("trends.model_io_format", [compactNumber(row.inputTokens), compactNumber(row.outputTokens), compactNumber(row.cacheTokens)])}</small>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      ) : <p className="trend-model-empty">{trKey("trends.model_detail_accumulating")}</p>}
+    </div>
   );
 }
 
@@ -1425,6 +1526,8 @@ function DataSources({ state, action, runtimeError }) {
   const local = new Map((state.localProviders || []).map((provider) => [provider.providerID, provider]));
   const enabled = (state.providerCatalog || []).filter((provider) => provider.enabled);
   const remoteCount = state.sync.paired ? state.providers.filter((provider) => !local.has(provider.providerID)).length : 0;
+  const disabledLocalUsageSources = new Set(state.disabledLocalUsageSources || []);
+  const localUsageSources = state.localUsage?.sources || [];
   const diagnostics = dataSourceDiagnostics(state, runtimeError);
   return (
     <section className="content-section data-sources-section">
@@ -1463,12 +1566,14 @@ function DataSources({ state, action, runtimeError }) {
       </div>
       <div className="settings-card source-list">
         <PanelHeader title={tr("Supporting sources")} subtitle={tr("Usage history, pricing, feed, and optional cross-device fallback.")} />
-        <SourceHealthRow
-          name={tr("Local ccusage")}
-          detail={state.localUsage?.error || tr("Reads supported coding-agent logs on this PC; no separate ccusage install required")}
-          healthy={Boolean(state.localUsage?.hasLocal) && !state.localUsage?.error}
-          capturedAt={state.localUsage?.hasLocal ? state.localUsage.capturedAt : undefined}
-        />
+        {localUsageSources.map((source) => (
+          <LocalUsageSourceRow
+            key={source.id}
+            source={source}
+            enabled={!disabledLocalUsageSources.has(source.id)}
+            action={action}
+          />
+        ))}
         <SourceHealthRow
           name={tr("Public model pricing")}
           detail={state.localUsage?.pricing?.error
@@ -1588,6 +1693,31 @@ function SourceHealthRow({ name, detail, detailTitle, healthy, capturedAt, iconI
         <span className={healthy ? "tone-success" : "tone-warning"}>{tr(status || (healthy ? "Healthy" : "Needs attention"))}</span>
         {capturedAt && <time>{formatClock(capturedAt)}</time>}
         {action && <button className="secondary source-open-app" onClick={action.onSelect}>{action.label}</button>}
+      </div>
+    </div>
+  );
+}
+
+function LocalUsageSourceRow({ source, enabled, action }) {
+  const name = localSourceDisplayName(source.id);
+  return (
+    <div className="source-row local-usage-source-row">
+      <span className={`source-dot ${enabled ? "tone-success" : "tone-muted"}`} aria-hidden="true" />
+      <div>
+        <strong>{name}</strong>
+        <small>{trKey("datasource.local_agent_detail")}</small>
+      </div>
+      <div className="source-status">
+        <button
+          className={`switch ${enabled ? "on" : ""}`}
+          role="switch"
+          aria-checked={enabled}
+          aria-label={trKey("datasource.local_agent_toggle", [name])}
+          onClick={() => action(() => api.setLocalUsageSourceEnabled(source.id, !enabled))}
+        >
+          <span className="knob" />
+        </button>
+        {source.capturedAt && <time>{formatClock(source.capturedAt)}</time>}
       </div>
     </div>
   );
@@ -1932,6 +2062,20 @@ function createPreviewAPI() {
   const previewNow = Date.now();
   const previewParameters = new URLSearchParams(globalThis.location?.search || "");
   const previewDay = new Date(previewNow).toISOString().slice(0, 10);
+  const previewModels = (ids, tokens, cost) => ids.map((id, index) => {
+    const fraction = index === 0 ? 0.56 : index === 1 ? 0.29 : 0.15;
+    const modelTokens = Math.round(tokens * fraction);
+    const inputTokens = Math.round(modelTokens * 0.44);
+    const outputTokens = Math.round(modelTokens * 0.21);
+    return {
+      id,
+      inputTokens,
+      outputTokens,
+      cacheTokens: Math.max(0, modelTokens - inputTokens - outputTokens),
+      cost: Number((cost * fraction).toFixed(2)),
+      constituentCount: 1,
+    };
+  });
   const previewHistoryDays = Array.from({ length: 30 }, (_, index) => {
     const day = new Date(previewNow - (29 - index) * 24 * 60 * 60_000).toISOString().slice(0, 10);
     const pulse = [0.72, 0.7, 1.06, 1.03, 1.62, 1.28, 1.21, 0.18, 0.87, 0.46, 0.84, 1.02, 0.72, 0.55, 0.88][index % 15];
@@ -1944,9 +2088,9 @@ function createPreviewAPI() {
     return {
       day,
       agents: [
-        { id: "codex", tokens: codexTokens, cost: codexCost, unpricedModels: [] },
-        { id: "claude", tokens: claudeTokens, cost: claudeCost, unpricedModels: [] },
-        { id: "gemini", tokens: geminiTokens, cost: geminiCost, unpricedModels: [] },
+        { id: "codex", tokens: codexTokens, cost: codexCost, unpricedModels: [], models: previewModels(["gpt-5.3-codex", "gpt-5.2-codex", "gpt-5.1-codex-mini"], codexTokens, codexCost) },
+        { id: "claude", tokens: claudeTokens, cost: claudeCost, unpricedModels: [], models: previewModels(["claude-opus-4-1", "claude-sonnet-4-5", "claude-haiku-4-5"], claudeTokens, claudeCost) },
+        { id: "gemini", tokens: geminiTokens, cost: geminiCost, unpricedModels: [], models: previewModels(["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash"], geminiTokens, geminiCost) },
       ],
       claudeTokens,
       claudeCost,
@@ -1954,6 +2098,7 @@ function createPreviewAPI() {
       codexCost,
     };
   });
+  const previewUsageHistory = { sourceDay: previewDay, capturedAt: previewNow, days: previewHistoryDays };
   const previewLocalProviders = [
     {
       providerID: "claude",
@@ -2025,6 +2170,7 @@ function createPreviewAPI() {
     launchAtLogin: false,
     reducedMotion: false,
     feedNotificationsEnabled: false,
+    disabledLocalUsageSources: [],
     floatingWidgetEnabled: false,
     backgroundDepth: normalizeBackgroundDepth(Number.parseFloat(previewParameters.get("depth"))),
     taskbarIconHidden: false,
@@ -2057,11 +2203,12 @@ function createPreviewAPI() {
       previewCursor,
       previewOpenRouter,
     ],
-    dailyUsageHistory: { sourceDay: previewDay, capturedAt: previewNow, days: previewHistoryDays },
+    dailyUsageHistory: previewUsageHistory,
     localUsage: {
       hasLocal: true,
       hasRemote: true,
       capturedAt: previewNow,
+      sources: ["claude", "codex", "gemini"].map((id) => ({ id, capturedAt: previewNow })),
       source: "This PC + paired Mac",
       pricing: { capturedAt: previewNow - 60_000, modelCount: 2_742, refreshIntervalHours: 6, fallback: "cached-public-table" },
     },
@@ -2115,6 +2262,16 @@ function createPreviewAPI() {
     openUpdate: async () => true,
     setLaunchAtLogin: async (value) => (preview = { ...preview, launchAtLogin: Boolean(value) }),
     setFeedNotificationsEnabled: async (value) => (preview = { ...preview, feedNotificationsEnabled: Boolean(value) }),
+    setLocalUsageSourceEnabled: async (id, enabled) => {
+      const disabled = new Set(preview.disabledLocalUsageSources || []);
+      if (enabled) disabled.delete(id); else disabled.add(id);
+      const disabledLocalUsageSources = [...disabled].sort();
+      return (preview = {
+        ...preview,
+        disabledLocalUsageSources,
+        dailyUsageHistory: filterDailyUsageHistory(previewUsageHistory, disabledLocalUsageSources),
+      });
+    },
     setFloatingWidgetEnabled: async (value) => (preview = { ...preview, floatingWidgetEnabled: Boolean(value) }),
     setBackgroundDepth: async (value) => (preview = { ...preview, backgroundDepth: normalizeBackgroundDepth(value) }),
     setTaskbarIconHidden: async (value) => (preview = { ...preview, taskbarIconHidden: Boolean(value) }),

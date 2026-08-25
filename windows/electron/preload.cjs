@@ -31,6 +31,7 @@ contextBridge.exposeInMainWorld("tokenRemain", {
   setTaskbarIconHidden: (value) => ipcRenderer.invoke("settings:set-taskbar-icon-hidden", value),
   setZAIRegion: (value) => ipcRenderer.invoke("settings:set-zai-region", value),
   setFeedNotificationsEnabled: (value) => ipcRenderer.invoke("settings:set-feed-notifications", value),
+  setLocalUsageSourceEnabled: (id, enabled) => ipcRenderer.invoke("settings:set-local-usage-source-enabled", id, enabled),
   setScopedPoolVisibility: (key, value) => ipcRenderer.invoke("settings:set-scoped-pool-visibility", key, value),
   setTrayDisplayMode: (value) => ipcRenderer.invoke("settings:set-tray-display-mode", value),
   setTrayProviders: (value) => ipcRenderer.invoke("settings:set-tray-providers", value),

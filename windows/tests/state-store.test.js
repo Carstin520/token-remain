@@ -93,6 +93,68 @@ test("Local ccusage aggregates remain protected at rest", async () => {
     const restored = new StateStore({ userDataPath: directory, safeStorage });
     await restored.load();
     assert.deepEqual(restored.state.localDailyUsageHistory, history);
+    assert.equal(restored.state.localDailyUsageHistory.days[0].agents[0].models, undefined);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("Retained per-model usage stays inside the encrypted local history", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "tokenremain-windows-local-model-usage-"));
+  try {
+    const store = new StateStore({ userDataPath: directory, safeStorage });
+    await store.load();
+    store.setLocalDailyUsageHistory({
+      sourceDay: "2026-08-25",
+      capturedAt: 1_787_625_600_000,
+      days: [{ day: "2026-08-25", agents: [{
+        id: "codex",
+        tokens: 100,
+        cost: 0.5,
+        unpricedModels: [],
+        models: [{ id: "gpt-5.3-codex", inputTokens: 40, outputTokens: 20, cacheTokens: 40, cost: 0.5 }],
+      }] }],
+    });
+    await store.save();
+
+    const onDisk = await readFile(join(directory, "state-v1.json"), "utf8");
+    assert.doesNotMatch(onDisk, /gpt-5\.3-codex|inputTokens|localDailyUsageHistory/);
+    const restored = new StateStore({ userDataPath: directory, safeStorage });
+    await restored.load();
+    assert.deepEqual(restored.state.localDailyUsageHistory.days[0].agents[0].models, [{
+      id: "gpt-5.3-codex",
+      inputTokens: 40,
+      outputTokens: 20,
+      cacheTokens: 40,
+      cost: 0.5,
+      constituentCount: 1,
+    }]);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("disabled local usage sources default, validate, persist, and restore", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "tokenremain-windows-local-source-preference-"));
+  try {
+    const store = new StateStore({ userDataPath: directory, safeStorage });
+    await store.load();
+    assert.deepEqual(store.state.preferences.disabledLocalUsageSources, []);
+    await store.setLocalUsageSourceEnabled(" Codex ", false);
+    await store.setLocalUsageSourceEnabled("future_agent", false);
+    await store.setLocalUsageSourceEnabled("codex", true);
+    await assert.rejects(() => store.setLocalUsageSourceEnabled("bad source", false), /Unsupported local usage source/);
+
+    const restored = new StateStore({ userDataPath: directory, safeStorage });
+    await restored.load();
+    assert.deepEqual(restored.state.preferences.disabledLocalUsageSources, ["future_agent"]);
+
+    const persisted = JSON.parse(await readFile(join(directory, "state-v1.json"), "utf8"));
+    persisted.preferences.disabledLocalUsageSources = [" Gemini ", "gemini", 42, "bad source", "-invalid"];
+    await writeFile(join(directory, "state-v1.json"), JSON.stringify(persisted));
+    const validated = new StateStore({ userDataPath: directory, safeStorage });
+    await validated.load();
+    assert.deepEqual(validated.state.preferences.disabledLocalUsageSources, ["gemini"]);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

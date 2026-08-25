@@ -5,7 +5,7 @@ import { fetchCuratedFeed, isAllowedPostURL } from "./feed.js";
 import { isAllowedCodexUsageURL } from "./codex-usage.js";
 import { applyDragDelta } from "./floating-drag.js";
 import { DASHBOARD_SECTIONS, parseLaunchArgs } from "./launch-args.js";
-import { ccusageBinaryPath, collectLocalUsage, mergeDailyUsageHistories } from "./local-usage.js";
+import { aggregateLocalUsageHistories, ccusageBinaryPath, collectLocalUsage, mergeDailyUsageHistories } from "./local-usage.js";
 import { decideProviderNotifications, noticeFromError, selectFeedNotifications, truncateNotificationBody } from "./notification-policy.js";
 import {
   clampPopoverHeight,
@@ -31,6 +31,7 @@ import { exchangeSnapshot, pairWithMac } from "./sync/client.js";
 import { compareVersionCores, fetchLatestRelease, isAllowedReleaseURL, isDue } from "./update-check.js";
 import { mergeLocalFirstProviders, mergeProviders, providerMeta } from "../src/provider-meta.js";
 import { activateLanguage, tr, trKey } from "../src/i18n.js";
+import { detectedLocalUsageSources } from "../src/local-sources.js";
 
 /// A tray double-click arrives as click + double-click. Holding the popover
 /// toggle for this long lets the second click cancel it, so opening the
@@ -648,6 +649,11 @@ function registerIPC() {
     notifyRenderer();
     return publicState();
   });
+  ipcMain.handle("settings:set-local-usage-source-enabled", async (_event, id, enabled) => {
+    await store.setLocalUsageSourceEnabled(id, enabled === true);
+    notifyRenderer();
+    return publicState();
+  });
   ipcMain.handle("settings:set-scoped-pool-visibility", async (_event, key, value) => {
     await store.setScopedPoolVisibility(key, value);
     notifyRenderer();
@@ -1113,7 +1119,13 @@ function publicState() {
   const paired = store?.state?.pairedMac;
   const localDailyUsageHistory = store?.state?.localDailyUsageHistory;
   const remoteDailyUsageHistory = store?.state?.remoteSnapshot?.dailyUsageHistory;
-  const dailyUsageHistory = mergeDailyUsageHistories(localDailyUsageHistory, remoteDailyUsageHistory);
+  const rawDailyUsageHistory = mergeDailyUsageHistories(localDailyUsageHistory, remoteDailyUsageHistory);
+  const disabledLocalUsageSources = store?.state?.preferences?.disabledLocalUsageSources || [];
+  const dailyUsageHistory = aggregateLocalUsageHistories(
+    localDailyUsageHistory,
+    remoteDailyUsageHistory,
+    disabledLocalUsageSources,
+  );
   const pricing = pricingService?.getStatus();
   const providerDetections = store?.state?.providerDetections || [];
   const enabledProviders = normalizeProviderIDs(store?.state?.enabledProviders);
@@ -1139,6 +1151,7 @@ function publicState() {
     // Raw detector values let on-device QA distinguish authoritative SPI from Electron's fallback.
     reducedMotionSources,
     feedNotificationsEnabled: Boolean(store?.state?.preferences?.feedNotificationsEnabled),
+    disabledLocalUsageSources,
     floatingWidgetEnabled: Boolean(store?.state?.preferences?.floatingWidgetEnabled),
     backgroundDepth: store?.state?.preferences?.backgroundDepth ?? 0,
     taskbarIconHidden: Boolean(store?.state?.preferences?.taskbarIconHidden),
@@ -1189,7 +1202,8 @@ function publicState() {
     localUsage: {
       hasLocal: Boolean(localDailyUsageHistory),
       hasRemote: Boolean(remoteDailyUsageHistory),
-      capturedAt: dailyUsageHistory?.capturedAt,
+      capturedAt: rawDailyUsageHistory?.capturedAt,
+      sources: detectedLocalUsageSources(rawDailyUsageHistory),
       source: localDailyUsageHistory && remoteDailyUsageHistory
         ? "This PC + paired Mac"
         : localDailyUsageHistory ? "This PC" : remoteDailyUsageHistory ? "Paired Mac" : undefined,

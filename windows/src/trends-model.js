@@ -1,3 +1,6 @@
+import { localSourceDisplayName } from "./local-sources.js";
+import { agentsForUsageDay, boundedUsageModels } from "./usage-history.js";
+
 export const TREND_RANGES = [7, 14, 30];
 export const TREND_METRICS = ["tokens", "cost"];
 
@@ -10,12 +13,17 @@ export function niceCeiling(value) {
   return niceFraction * base;
 }
 
-export function usageTrendModel(history, { range = 14, metric = "tokens", providerIDs = ["claude", "codex"] } = {}) {
+export function usageTrendModel(history, {
+  range = 14,
+  metric = "tokens",
+  providerIDs = ["claude", "codex"],
+  disabledSourceIDs = [],
+} = {}) {
   const safeRange = TREND_RANGES.includes(range) ? range : 14;
   const safeMetric = TREND_METRICS.includes(metric) ? metric : "tokens";
   const source = Array.isArray(history?.days) ? history.days : [];
   const days = source.slice(-safeRange).map((day) => {
-    const agents = new Map(agentsForUsageDay(day).map((agent) => [agent.id, agent]));
+    const agents = new Map(agentsForUsageDay(day, disabledSourceIDs).map((agent) => [agent.id, agent]));
     const values = Object.fromEntries(providerIDs.map((id) => {
       const raw = safeMetric === "tokens" ? agents.get(id)?.tokens : agents.get(id)?.cost;
       return [id, Number.isFinite(raw) && raw > 0 ? raw : 0];
@@ -28,6 +36,84 @@ export function usageTrendModel(history, { range = 14, metric = "tokens", provid
   });
   const maximum = niceCeiling(Math.max(0, ...days.map((day) => day.total)));
   return { days, maximum, metric: safeMetric, range: safeRange, providerIDs };
+}
+
+export function togglePinnedDay(currentDayID, selectedDayID) {
+  return currentDayID === selectedDayID ? undefined : selectedDayID;
+}
+
+export function stepPinnedDay(dayIDs, currentDayID, direction) {
+  const days = Array.isArray(dayIDs) ? dayIDs.filter((day) => typeof day === "string") : [];
+  if (!days.length) return undefined;
+  const currentIndex = days.indexOf(currentDayID);
+  const resolvedIndex = currentIndex >= 0 ? currentIndex : days.length - 1;
+  if (direction === "left" || direction === -1) return days[Math.max(0, resolvedIndex - 1)];
+  if (direction === "right" || direction === 1) return days[Math.min(days.length - 1, resolvedIndex + 1)];
+  return days[resolvedIndex];
+}
+
+export function unpinDay() {
+  return undefined;
+}
+
+/// Projects one retained day into the compact panel shown below the chart.
+/// Retention is capped separately at eight rows; this presentation keeps the
+/// five leading named models and rolls the remaining visible rows into Other.
+export function trendDayModelBreakdown(day, agentIDs, metric = "tokens", namedLimit = 5) {
+  const safeMetric = TREND_METRICS.includes(metric) ? metric : "tokens";
+  const byID = new Map(agentsForUsageDay(day).map((agent) => [agent.id, agent]));
+  const groups = (Array.isArray(agentIDs) ? agentIDs : []).flatMap((requestedID) => {
+    const agentID = String(requestedID || "").toLowerCase();
+    const agent = byID.get(agentID);
+    const models = boundedUsageModels(agent?.models);
+    if (!agent || !models.length) return [];
+    const unpriced = new Set((agent.unpricedModels || []).map((id) => String(id).toLowerCase()));
+    const namedIDs = new Set(models.filter((model) => model.id !== "other").map((model) => model.id.toLowerCase()));
+    const isUnpriced = (model) => unpriced.has(model.id.toLowerCase())
+      || (model.id === "other" && [...unpriced].some((id) => !namedIDs.has(id)));
+    const named = models.filter((model) => model.id !== "other").sort((left, right) => {
+      if (safeMetric === "cost") {
+        const pricingOrder = Number(isUnpriced(left)) - Number(isUnpriced(right));
+        if (pricingOrder) return pricingOrder;
+        if (left.cost !== right.cost) return right.cost - left.cost;
+      } else {
+        const tokenOrder = modelTotalTokens(right) - modelTotalTokens(left);
+        if (tokenOrder) return tokenOrder;
+      }
+      return left.id.localeCompare(right.id);
+    });
+    const limit = Math.max(0, Number.isInteger(namedLimit) ? namedLimit : 5);
+    const kept = named.slice(0, limit);
+    const tail = [...named.slice(limit), ...models.filter((model) => model.id === "other")];
+    const otherIsUnpriced = tail.some(isUnpriced);
+    const displayed = tail.length ? [...kept, combineDisplayedOther(tail)] : kept;
+    const metricTotal = displayed.reduce((total, model) => (
+      total + (safeMetric === "tokens" ? modelTotalTokens(model) : model.cost)
+    ), 0);
+    return [{
+      id: agentID,
+      displayName: localSourceDisplayName(agentID),
+      rows: displayed.map((model) => {
+        const totalTokens = modelTotalTokens(model);
+        const metricValue = safeMetric === "tokens" ? totalTokens : model.cost;
+        return {
+          ...model,
+          displayName: trendModelDisplayName(model),
+          totalTokens,
+          share: metricTotal > 0 ? metricValue / metricTotal : 0,
+          isUnpriced: model.id === "other" ? otherIsUnpriced : isUnpriced(model),
+        };
+      }),
+    }];
+  });
+  return { day: day?.day, groups };
+}
+
+export function trendModelDisplayName(model) {
+  if (model?.id === "other") return { key: "trends.model_other_format", count: model.constituentCount };
+  const raw = String(model?.id || "");
+  const withoutClaude = raw.startsWith("claude-") ? raw.slice("claude-".length) : raw;
+  return withoutClaude.length > 28 ? `${withoutClaude.slice(0, 27)}…` : withoutClaude;
 }
 
 export function compactAxisValue(value, metric = "tokens") {
@@ -78,4 +164,18 @@ export function quotaLinePoints(samples, cutoff, now, width = 100, height = 38) 
     return `${x.toFixed(2)},${y.toFixed(2)}`;
   }).join(" ");
 }
-import { agentsForUsageDay } from "./usage-history.js";
+
+function modelTotalTokens(model) {
+  return model.inputTokens + model.outputTokens + model.cacheTokens;
+}
+
+function combineDisplayedOther(rows) {
+  return rows.reduce((other, row) => ({
+    id: "other",
+    inputTokens: other.inputTokens + row.inputTokens,
+    outputTokens: other.outputTokens + row.outputTokens,
+    cacheTokens: other.cacheTokens + row.cacheTokens,
+    cost: other.cost + row.cost,
+    constituentCount: other.constituentCount + row.constituentCount,
+  }), { id: "other", inputTokens: 0, outputTokens: 0, cacheTokens: 0, cost: 0, constituentCount: 0 });
+}
