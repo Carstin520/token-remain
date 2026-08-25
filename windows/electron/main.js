@@ -18,6 +18,7 @@ import {
 } from "./popover-placement.js";
 import { PublicPricingService } from "./pricing.js";
 import { ServiceStatusService } from "./service-status.js";
+import { LocalAISessionActivityMonitor } from "./session-activity.js";
 import { readWindowsReducedMotion, resolveReducedMotion } from "./system-motion.js";
 import { MANUAL_PROVIDER_IDS, normalizeProviderIDs, PROVIDER_CATALOG, PROVIDER_ID_SET } from "./providers/catalog.js";
 import { DESKTOP_APP_PROVIDER_IDS, detectLocalProviders, resolveProviderDesktopAppPath } from "./providers/detection.js";
@@ -77,6 +78,7 @@ let installationDetectionTimer;
 let installationDetectionPromise;
 let pricingService;
 let serviceStatusService;
+let sessionActivityMonitor;
 let pendingSecondInstanceLaunchArguments;
 const initialLaunchArguments = parseLaunchArgs(process.argv);
 
@@ -92,6 +94,10 @@ app.whenReady().then(async () => {
   app.setAppUserModelId("com.jamesli.tokenremain.windows");
   store = new StateStore({ userDataPath: app.getPath("userData"), safeStorage });
   await store.load();
+  sessionActivityMonitor = new LocalAISessionActivityMonitor({
+    onActivity: () => scheduleAutomaticRefresh(),
+  });
+  await sessionActivityMonitor.start();
   if (initialLaunchArguments.resetOnboarding) await store.resetOnboarding();
   const initialMotion = readReducedMotionPreference();
   reducedMotion = initialMotion.value;
@@ -156,6 +162,7 @@ app.on("before-quit", () => {
   clearTimeout(floatingBoundsSaveTimer);
   clearTimeout(reducedMotionTimer);
   clearTimeout(installationDetectionTimer);
+  sessionActivityMonitor?.stop();
 });
 
 function createWindow({ showOnReady = false, initialSection } = {}) {
@@ -856,6 +863,7 @@ function refreshPolicyInput(providerFailureCounts = {}) {
   return {
     userIntervalMinutes: store?.state?.preferences?.refreshMinutes,
     anyWindowVisible: anyAppWindowVisible(),
+    localSessionActive: sessionActivityMonitor?.hasRecentSessionActivity() || false,
     systemIdleSeconds,
     providerFailureCounts,
   };
@@ -955,7 +963,16 @@ async function performRefresh({ providerIDs, includeSharedSources = true } = {})
   }
   // A transient network failure must not erase the last successful provider
   // snapshot. Its notice and captured-at age tell the UI that it is stale.
-  const retained = (store.state.providers || []).filter((provider) => enabledProviders.includes(provider.providerID));
+  // A host's billing route is a stronger identity boundary than capture time:
+  // once Claude/Codex changes route, do not let a newer stale reading from the
+  // previous account hide the freshly attributed result.
+  const refreshedByProvider = new Map(providers.map((provider) => [provider.providerID, provider]));
+  const retained = (store.state.providers || []).filter((provider) => {
+    if (!enabledProviders.includes(provider.providerID)) return false;
+    const refreshed = refreshedByProvider.get(provider.providerID);
+    return !refreshed
+      || refreshed.attribution?.routeIdentifier === provider.attribution?.routeIdentifier;
+  });
   store.state.providers = mergeProviders(providers, retained);
   const notices = Object.fromEntries(Object.entries(store.state.notices || {}).filter(([providerID]) => enabledProviders.includes(providerID)));
   const noticeDetails = Object.fromEntries(Object.entries(store.state.noticeDetails || {}).filter(([providerID]) => enabledProviders.includes(providerID)));

@@ -18,7 +18,6 @@ import {
   relativeAge,
   resetDescription,
   windowName,
-  windowTitle,
 } from "./format.js";
 import { normalizeOrder } from "./layout.js";
 import { tr, trKey } from "./i18n.js";
@@ -32,7 +31,7 @@ import {
   usagePace,
 } from "./overview-model.js";
 import { providerMeta } from "./provider-meta.js";
-import { poolDisplayName, providerQuotaDetailRows, visibleScopedWindows } from "./quota-details.js";
+import { attributedQuotaWindowTitle, poolDisplayName, providerQuotaDetailRows, visibleScopedWindows } from "./quota-details.js";
 import { scopedPoolEntryForWindow } from "./scoped-pools.js";
 import { usageDayTotals } from "./usage-history.js";
 
@@ -71,7 +70,7 @@ export function popoverQuotaCards(state, today, options = {}) {
 function quotaCard(provider, notice, preferences, now) {
   const meta = providerMeta(provider.providerID);
   const summary = summaryWindow(provider, preferences?.summaryStrategy);
-  const summaryDetail = windowDetail(summary, now);
+  const summaryDetail = windowDetail(summary, now, { attribution: provider.attribution });
   // Keys come from the snapshot position, never the display title, so two
   // windows sharing a duration or title can never collide or swap rows.
   const indexed = (provider.windows || [])
@@ -93,7 +92,7 @@ function quotaCard(provider, notice, preferences, now) {
     windows: [
       ...indexed.filter(({ window }) => window === summary),
       ...indexed.filter(({ window }) => window !== summary),
-    ].map(({ window, index }) => ({ key: `window-${index}`, ...windowDetail(window, now) })),
+    ].map(({ window, index }) => ({ key: `window-${index}`, ...windowDetail(window, now, { attribution: provider.attribution }) })),
     scopedWindows: scopedWindowDetails(provider, preferences, now),
     detailRows: providerQuotaDetailRows(provider),
     ...(Number.isFinite(provider.capturedAt)
@@ -113,14 +112,17 @@ function quotaCard(provider, notice, preferences, now) {
 function scopedWindowDetails(provider, preferences, now) {
   return visibleScopedWindows(provider, preferences).flatMap((scope) => {
     if (!isQuotaWindow(scope.window)) return [];
-    const detail = windowDetail(scope.window, now);
+    const detail = windowDetail(scope.window, now, {
+      scopeName: scope.displayName || scope.scopeID,
+      attribution: provider.attribution,
+    });
     const scopeName = poolDisplayName(scope.displayName || scope.scopeID);
     const catalogEntry = scopedPoolEntryForWindow(scope, provider?.providerID);
     return [{
       ...detail,
       key: `scope-${scope.scopeID.toLowerCase()}`,
       scopeName,
-      title: `${scopeName} · ${detail.title}`,
+      title: detail.title,
       followsExpansion: catalogEntry?.followsExpansion ?? true,
     }];
   });
@@ -128,11 +130,11 @@ function scopedWindowDetails(provider, preferences, now) {
 
 /// One window's presentation-ready read, shared by the card summary and the
 /// expanded per-window list so both quote identical remaining/reset/risk copy.
-function windowDetail(window, now) {
+function windowDetail(window, now, { scopeName = window.poolName, attribution } = {}) {
   const remaining = Math.min(100, Math.max(0, 100 - window.usedPercent));
   const pace = usagePace(window, now);
   return {
-    title: window.poolName ? `${poolDisplayName(window.poolName)} · ${windowTitle(window.windowMinutes)}` : windowTitle(window.windowMinutes),
+    title: attributedQuotaWindowTitle(window, { scopeName, attribution }),
     name: windowName(window.windowMinutes),
     remaining,
     remainingText: window.remainingBalance

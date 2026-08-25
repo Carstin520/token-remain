@@ -822,26 +822,33 @@ const COLLECTORS = {
   ollama: collectOllama,
 };
 
-export async function collectManualProvider(providerID, { env = process.env, storedSecret, now = Date.now(), fetchImpl = fetch, qoderExchange, zaiRegion } = {}) {
+export async function collectManualProvider(providerID, options = {}) {
+  const { env = process.env, storedSecret, now = Date.now(), fetchImpl = fetch, qoderExchange, zaiRegion } = options;
+  const routedCredential = Object.hasOwn(options, "routeCredential");
+  const resolveSecret = () => routedCredential
+    ? clean(options.routeCredential)
+    : resolveManualSecret(providerID, { env, storedSecret });
   if (providerID === "qoder") {
-    const secret = await resolveManualSecret(providerID, { env, storedSecret });
+    const secret = await resolveSecret();
     return collectQoder(secret, { env, now, fetchImpl, qoderExchange });
   }
-  if (providerID === "kimi") {
+  if (providerID === "kimi" && !routedCredential) {
     const local = await kimiLocalCredential(env, now);
     if (local) return collectKimiLocal(local, { fetchImpl, now });
   }
   if (providerID === "zai") {
     let localError;
-    for (const candidate of await zcodeCandidates(env)) {
-      try { return await collectZCodeCandidate(candidate, { fetchImpl, now, env }); }
-      catch (error) { localError ||= error; }
+    if (!routedCredential) {
+      for (const candidate of await zcodeCandidates(env)) {
+        try { return await collectZCodeCandidate(candidate, { fetchImpl, now, env }); }
+        catch (error) { localError ||= error; }
+      }
     }
-    const secret = await resolveManualSecret(providerID, { env, storedSecret });
+    const secret = await resolveSecret();
     if (secret) return collectZAI(secret, { now, fetchImpl, zaiRegion });
     if (localError) throw localError;
   }
-  const secret = await resolveManualSecret(providerID, { env, storedSecret });
+  const secret = await resolveSecret();
   if (!secret) throw new Error(`${providerDefinition(providerID)?.credentialKind || "Credential"} is not configured on this PC`);
   const collector = COLLECTORS[providerID];
   if (!collector) throw new Error("Unsupported local credential provider");

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { activateLanguage } from "../src/i18n.js";
-import { formatCodexResetCredits, formatExtraUsage, poolDisplayName, providerQuotaDetailRows, visibleScopedWindows } from "../src/quota-details.js";
+import { attributedQuotaWindowTitle, formatCodexResetCredits, formatExtraUsage, poolDisplayName, providerQuotaDetailRows, visibleScopedWindows } from "../src/quota-details.js";
 
 const window = { usedPercent: 25, windowMinutes: 10_080 };
 const provider = {
@@ -55,4 +55,15 @@ test("Extra usage and reset-credit rows format valid values and omit absent data
   assert.equal(poolDisplayName("Cursor Models"), "Cursor 模型");
   assert.equal(poolDisplayName("Other Models"), "其他模型");
   activateLanguage("en");
+});
+
+test("Attributed quota titles keep host identity in the card while naming the billing source on each window", () => {
+  assert.equal(attributedQuotaWindowTitle({ windowMinutes: 300 }), "5 hr window");
+  assert.equal(attributedQuotaWindowTitle({ windowMinutes: 300 }, {
+    attribution: { displayName: "DeepSeek API", routeIdentifier: "claude|deepseek|api.deepseek.com" },
+  }), "DeepSeek API · 5 hr window");
+  assert.equal(attributedQuotaWindowTitle({ windowMinutes: 10_080 }, {
+    scopeName: "Fable",
+    attribution: { displayName: "OpenRouter API", routeIdentifier: "claude|openrouter|openrouter.ai" },
+  }), "OpenRouter API · Fable · 7 d window");
 });

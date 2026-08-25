@@ -56,7 +56,7 @@ import { activateLanguage, languageOptions, SYSTEM_LANGUAGE, tr, trKey } from ".
 import { localSourceDisplayName } from "./local-sources.js";
 import { buildOverviewSummary, buildTodayUsage, rankOfficialQuotaProviders, summaryWindow, usagePace } from "./overview-model.js";
 import { providerMeta } from "./provider-meta.js";
-import { poolDisplayName, providerQuotaDetailRows, visibleScopedWindows } from "./quota-details.js";
+import { attributedQuotaWindowTitle, providerQuotaDetailRows, visibleScopedWindows } from "./quota-details.js";
 import { scopedPoolSettingsGroups } from "./scoped-pools.js";
 import {
   compactAxisValue,
@@ -1024,13 +1024,13 @@ function QuotaCard({ provider, notice, noticeDetail, noticeKind, id, preferences
           {windows.map((window, index) => (
             <React.Fragment key={`${window.windowMinutes}-${index}`}>
               {index > 0 && <Divider />}
-              <QuotaWindowRow window={window} color={meta.color} scopeName={poolDisplayName(window.poolName)} />
+              <QuotaWindowRow window={window} color={meta.color} scopeName={window.poolName} attribution={provider.attribution} />
             </React.Fragment>
           ))}
           {scopedWindows.map((scope) => (
             <React.Fragment key={scope.scopeID}>
               <Divider />
-              <QuotaWindowRow window={scope.window} color={meta.color} scopeName={poolDisplayName(scope.displayName)} />
+              <QuotaWindowRow window={scope.window} color={meta.color} scopeName={scope.displayName} attribution={provider.attribution} />
             </React.Fragment>
           ))}
           {detailRows.map((row) => (
@@ -1077,10 +1077,10 @@ function ServiceStatusBadge({ status }) {
   );
 }
 
-function QuotaWindowRow({ window, color, scopeName }) {
+function QuotaWindowRow({ window, color, scopeName, attribution }) {
   const remaining = Math.min(100, Math.max(0, 100 - window.usedPercent));
   const pace = usagePace(window);
-  const title = scopeName ? `${scopeName} · ${windowTitle(window.windowMinutes)}` : windowTitle(window.windowMinutes);
+  const title = attributedQuotaWindowTitle(window, { scopeName, attribution });
   const remainingText = window.remainingBalance
     ? tr("%1$@ remaining", [formatBalance(window.remainingBalance)])
     : tr("%1$@ remaining", [formatPercent(remaining)]);
