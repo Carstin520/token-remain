@@ -48,6 +48,7 @@ const MAX_POPOVER_CONTENT_HEIGHT = 4_000;
 const FLOATING_WIDGET_WIDTH = 80;
 const FLOATING_WIDGET_HEIGHT = 80;
 const REDUCED_MOTION_POLL_MS = 60_000;
+const INSTALLATION_DETECTION_POLL_MS = 5 * 60_000;
 
 let mainWindow;
 let popoverWindow;
@@ -71,6 +72,8 @@ let floatingDragSession;
 let reducedMotion = false;
 let reducedMotionSources = { spi: undefined, electron: undefined };
 let reducedMotionTimer;
+let installationDetectionTimer;
+let installationDetectionPromise;
 let pricingService;
 let serviceStatusService;
 let pendingSecondInstanceLaunchArguments;
@@ -112,6 +115,7 @@ app.whenReady().then(async () => {
   });
   createTray();
   if (initialDetectionSuggestions.length) openDashboard("limits");
+  scheduleInstallationDetection();
   if (initialLaunchArguments.target === "popover") {
     showPopoverWhenReady({ appearanceOpen: initialLaunchArguments.openPopupSettings });
   }
@@ -127,6 +131,7 @@ app.whenReady().then(async () => {
   powerMonitor.on("user-did-become-active", () => {
     scheduleAutomaticRefresh();
     refreshReducedMotionPreference();
+    scanInstalledProviders().catch(() => {}).finally(scheduleInstallationDetection);
   });
   app.on("accessibility-support-changed", refreshReducedMotionPreference);
   if (store.state.preferences?.refreshMinutes !== 0) await refreshAll();
@@ -149,6 +154,7 @@ app.on("before-quit", () => {
   clearTimeout(popoverHideTimer);
   clearTimeout(floatingBoundsSaveTimer);
   clearTimeout(reducedMotionTimer);
+  clearTimeout(installationDetectionTimer);
 });
 
 function createWindow({ showOnReady = false, initialSection } = {}) {
@@ -1243,16 +1249,34 @@ async function checkForAvailableUpdate(fetchImpl, now = Date.now()) {
 }
 
 async function scanInstalledProviders({ announce = true } = {}) {
-  const detections = detectLocalProviders({
-    hasStoredSecret: (providerID) => store.hasProviderSecret(providerID),
-  });
-  store.state.providerDetections = detections;
-  const suggestions = await store.applyProviderDetections(detections);
-  if (announce && suggestions.length) {
-    notifyRenderer();
-    openDashboard("limits");
+  if (installationDetectionPromise) return installationDetectionPromise;
+  installationDetectionPromise = (async () => {
+    const detections = detectLocalProviders({
+      hasStoredSecret: (providerID) => store.hasProviderSecret(providerID),
+    });
+    store.state.providerDetections = detections;
+    const suggestions = await store.applyProviderDetections(detections);
+    if (announce && suggestions.length) {
+      notifyRenderer();
+      openDashboard("limits");
+    }
+    return suggestions;
+  })();
+  try {
+    return await installationDetectionPromise;
+  } finally {
+    installationDetectionPromise = undefined;
   }
-  return suggestions;
+}
+
+function scheduleInstallationDetection() {
+  clearTimeout(installationDetectionTimer);
+  installationDetectionTimer = undefined;
+  if (isQuitting || !store) return;
+  installationDetectionTimer = setTimeout(() => {
+    installationDetectionTimer = undefined;
+    scanInstalledProviders().catch(() => {}).finally(scheduleInstallationDetection);
+  }, INSTALLATION_DETECTION_POLL_MS);
 }
 
 function assertProviderID(providerID) {
