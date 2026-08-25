@@ -5,6 +5,8 @@ Versioning for public releases.
 
 ## Unreleased
 
+## 1.3.7 — 2026-08-25
+
 ### Changed
 
 - Show Cursor's two usage pools as separate bars, matching Cursor's own
@@ -787,3 +789,4 @@ Versioning for public releases.
 [1.2.11]: https://github.com/Carstin520/token-remain/releases/tag/v1.2.11%2Bbuild.26
 [1.3.0]: https://github.com/Carstin520/token-remain/releases/tag/v1.3.0
 [1.3.1]: https://github.com/Carstin520/token-remain/releases/tag/v1.3.1
+[1.3.7]: https://github.com/Carstin520/token-remain/releases/tag/v1.3.7
