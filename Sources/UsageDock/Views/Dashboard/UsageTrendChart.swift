@@ -239,12 +239,16 @@ struct UsageTrendChart: View {
                         dimmed: dimmed
                     )
                     .frame(width: columnW, height: plotH)
-                    .position(x: centerX, y: plotH / 2)
-                    .accessibilityLabel(accessibilityLabel(for: day))
+                    // 命中区必须在 `.position` 之前定形:`.position` 会把视图包进
+                    // 撑满整个 ZStack 的弹性 frame,若在其后再 `.contentShape`,
+                    // 每根柱的点击热区都是整张图,最顶层(最近一天)吃掉所有
+                    // 点击——模型明细永远打开最后一天(#42)。
                     .contentShape(Rectangle())
                     .onTapGesture {
                         pinnedDayID = pinnedDayID == day.id ? nil : day.id
                     }
+                    .position(x: centerX, y: plotH / 2)
+                    .accessibilityLabel(accessibilityLabel(for: day))
 
                     xLabel(index: index, day: day, centerX: centerX, y: plotH)
 

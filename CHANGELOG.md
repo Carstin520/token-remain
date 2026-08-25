@@ -36,6 +36,21 @@ Versioning for public releases.
 
 ### Fixed
 
+- Clicking a bar in the Daily Usage Trend now opens that day's model
+  detail instead of always the most recent day's (#42). Every bar's tap
+  target was silently inflated to the whole chart — the hit shape was
+  declared after `.position`, which wraps the bar in a chart-sized frame —
+  so the topmost (latest) column swallowed every click while the hover
+  tooltip, computed from the pointer location, kept looking correct.
+- Qoder now trusts a saved dashboard cookie over the auto-discovered
+  local session, and computes usage from the concrete used/total counters
+  instead of the IPC's `totalUsagePercentage` (#18). On paid accounts the
+  local `credit/usage` probe reports a different pool than the Credits
+  dashboard (a real account read 99.9% remaining while the dashboard
+  showed 89.9%), so the pasted cookie — which matches the billing page —
+  wins whenever present, with the local probe kept as the no-cookie
+  fallback. An account-routed cookie still never substitutes the local
+  reading on failure.
 - A Copilot free plan or a multi-pool Z.ai ZCode plan no longer breaks
   mobile sync for every provider: same-length sibling pools now travel as
   named rows instead of two identical account windows, which the sync

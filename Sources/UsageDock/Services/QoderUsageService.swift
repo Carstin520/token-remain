@@ -228,9 +228,12 @@ enum QoderLocalIPC {
 
 // MARK: - Qoder(本地 IPC 优先,Cookie 兜底)
 
-/// 取数顺序:① 本地 IPC 自动发现(Qoder → QoderCN,`credit/usage`);
-/// ② 手动 Cookie 走 `GET {site}/api/v2/me/usages/big_model_credits`,
-/// 按 Cookie 来源路由国际/国内站并带齐浏览器同款请求头。
+/// 取数顺序:① 手动 Cookie 走 `GET {site}/api/v2/me/usages/big_model_credits`
+/// (按 Cookie 来源路由国际/国内站并带齐浏览器同款请求头);② 没配 Cookie
+/// 或 Cookie 请求失败时,退回本地 IPC 自动发现(Qoder → QoderCN,
+/// `credit/usage`)。Cookie 在前是实测结论(#18):付费账号的 IPC
+/// `credit/usage` 与网页 Credits 仪表盘不是同一口径(实测 99.9% vs
+/// 89.9% 剩余),用户显式提供的 Cookie 才对得上账单页。
 /// 两条路径都不落盘、不打日志任何凭据。
 struct QoderUsageService {
     var home: URL = FileManager.default.homeDirectoryForCurrentUser
@@ -251,16 +254,25 @@ struct QoderUsageService {
     }
 
     func fetch(cookie routedCookie: String?, now: Date = .now) async throws -> ProviderQuota {
-        if routedCookie == nil, let quota = await localQuota(now: now) { return quota }
-        guard let raw = routedCookie ?? loadCookie(),
-              let credentials = Self.cookieCredentials(raw, environment: environment) else {
-            throw ExtendedProviderError.notConfigured(.qoder)
+        if let raw = routedCookie ?? loadCookie(),
+           let credentials = Self.cookieCredentials(raw, environment: environment) {
+            do {
+                let data = try await httpRequest(
+                    credentials.site.usageURL,
+                    Self.requestHeaders(cookie: credentials.cookie, site: credentials.site)
+                )
+                return try Self.parse(data, now: now)
+            } catch {
+                // 显式路由到某个账户的 Cookie 失败时绝不换池——那会把
+                // 另一个账户(本机登录)的数字冒充给这个账户。全局默认
+                // 路径则允许退回 IPC,Cookie 过期时卡片仍有数可看。
+                guard routedCookie == nil else { throw error }
+                if let quota = await localQuota(now: now) { return quota }
+                throw error
+            }
         }
-        let data = try await httpRequest(
-            credentials.site.usageURL,
-            Self.requestHeaders(cookie: credentials.cookie, site: credentials.site)
-        )
-        return try Self.parse(data, now: now)
+        if routedCookie == nil, let quota = await localQuota(now: now) { return quota }
+        throw ExtendedProviderError.notConfigured(.qoder)
     }
 
     /// 本地 IPC 自动发现。任一环节失败(未安装、未运行、响应异常)都
@@ -305,15 +317,15 @@ struct QoderUsageService {
         guard remaining >= 0 else {
             throw ExtendedProviderError.invalidResponse(.qoder)
         }
-        let reported = ExtendedHTTP.number(result["totalUsagePercentage"])
-            ?? ExtendedHTTP.number(quota["percentage"])
+        // `totalUsagePercentage` / `userQuota.percentage` 不可信(#18):付费
+        // 账号实测它与网页 Credits 仪表盘差两个数量级(0.1% vs 10.1% 已用),
+        // 疑似跨池汇总或另一种刻度。具体计数器 used/total 与 Credits 界面
+        // 同源,始终按它计算。
         let percent: Double
         if total == 0 {
             percent = 0
         } else if result["isQuotaExceeded"] as? Bool == true {
             percent = 100
-        } else if let reported, reported.isFinite {
-            percent = reported
         } else {
             percent = used / total * 100
         }

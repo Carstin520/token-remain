@@ -203,6 +203,18 @@ struct QoderUsageServiceTests {
         #expect(quota.primary.usedPercent == 100)
     }
 
+    @Test("RPC counters beat a divergent reported percentage")
+    func rpcCountersBeatReportedPercent() throws {
+        // #18 实测形状:reported 比真实用量低两个数量级。具体计数器才与
+        // Credits 界面同源。
+        let result: [String: Any] = [
+            "totalUsagePercentage": 0.1,
+            "userQuota": ["used": 606, "total": 6000, "remaining": 5394, "percentage": 0.1]
+        ]
+        let quota = try QoderUsageService.parseRPCQuota(result)
+        #expect(abs(quota.primary.usedPercent - 10.1) < 0.000_001)
+    }
+
     @Test("RPC quota computes the percent when none is reported")
     func rpcComputedPercent() throws {
         let result: [String: Any] = ["userQuota": ["used": 30, "total": 120, "remaining": 90]]
@@ -346,44 +358,90 @@ struct QoderUsageServiceTests {
 
     // MARK: 取数顺序
 
-    @Test("Local IPC wins without consulting the stored cookie")
-    func fetchPrefersLocalIPC() async throws {
+    @Test("A stored cookie wins over local IPC")
+    func fetchPrefersStoredCookie() async throws {
+        // 付费账号实测(#18):IPC `credit/usage` 与网页 Credits 不是同一
+        // 口径,用户显式提供的 Cookie 必须压过自动发现。
+        let home = try makeTempHome()
+        defer { try? FileManager.default.removeItem(at: home) }
+        try writeInfoFile(home: home, appDir: "Qoder", contents: #"{"ipcServerPath": "/tmp/qoder-live.sock"}"#)
+        let box = Box()
+        let service = makeService(
+            home: home,
+            ipc: { path, _ in
+                box.ipcSocketPaths.append(path)
+                return Data(Self.rpcResultJSON.utf8)
+            },
+            cookie: "sid=abc",
+            http: { url, headers in
+                box.httpURLs.append(url)
+                box.httpHeaders.append(headers)
+                return Data(Self.httpUsageJSON.utf8)
+            }
+        )
+        let quota = try await service.fetch()
+        #expect(quota.primary.usedPercent == 40)
+        #expect(box.httpURLs == [QoderSite.international.usageURL])
+        #expect(box.ipcSocketPaths.isEmpty)
+    }
+
+    @Test("A failed cookie request falls back to local IPC on the global path")
+    func fetchFallsBackToIPCOnCookieFailure() async throws {
         let home = try makeTempHome()
         defer { try? FileManager.default.removeItem(at: home) }
         try writeInfoFile(home: home, appDir: "Qoder", contents: #"{"ipcServerPath": "/tmp/qoder-live.sock"}"#)
         let box = Box()
         // ipcExchange 的契约:收整帧请求,返回解帧后的响应体。
-        let responseBody = Data(Self.rpcResultJSON.utf8)
-        var service = makeService(home: home, ipc: { path, request in
-            box.ipcSocketPaths.append(path)
-            box.ipcRequests.append(request)
-            return responseBody
-        })
-        service.loadCookie = {
-            box.cookieAsked = true
-            return "sid=should-not-be-used"
-        }
-        service.httpRequest = { url, _ in
-            box.httpURLs.append(url)
-            throw ExtendedProviderError.requestFailed(.qoder, 500)
-        }
+        let service = makeService(
+            home: home,
+            ipc: { path, request in
+                box.ipcSocketPaths.append(path)
+                box.ipcRequests.append(request)
+                return Data(Self.rpcResultJSON.utf8)
+            },
+            cookie: "sid=expired",
+            http: { url, _ in
+                box.httpURLs.append(url)
+                throw ExtendedProviderError.requestFailed(.qoder, 401)
+            }
+        )
         let quota = try await service.fetch()
         #expect(quota.primary.usedPercent == 25)
         #expect(quota.planName == "personal_standard")
+        #expect(box.httpURLs.count == 1)
         #expect(box.ipcSocketPaths == ["/tmp/qoder-live.sock"])
-        #expect(box.cookieAsked == false)
-        #expect(box.httpURLs.isEmpty)
         // 发出的确实是一帧 credit/usage 请求。
         let sentFrame = try #require(box.ipcRequests.first)
         let requestBody = try #require(try QoderLocalIPC.frameBody(in: sentFrame))
         #expect(ExtendedHTTP.json(requestBody)?["method"] as? String == "credit/usage")
     }
 
-    @Test("A stopped Qoder app falls through to the manual cookie")
-    func fetchFallsBackWhenSocketDead() async throws {
+    @Test("A routed account cookie never substitutes the local IPC reading")
+    func routedCookieFailurePropagates() async throws {
         let home = try makeTempHome()
         defer { try? FileManager.default.removeItem(at: home) }
-        try writeInfoFile(home: home, appDir: "Qoder", contents: #"{"ipcServerPath": "/tmp/qoder-dead.sock"}"#)
+        try writeInfoFile(home: home, appDir: "Qoder", contents: #"{"ipcServerPath": "/tmp/qoder-live.sock"}"#)
+        let box = Box()
+        let service = makeService(
+            home: home,
+            ipc: { path, _ in
+                box.ipcSocketPaths.append(path)
+                return Data(Self.rpcResultJSON.utf8)
+            },
+            http: { _, _ in
+                throw ExtendedProviderError.requestFailed(.qoder, 401)
+            }
+        )
+        await #expect(throws: (any Error).self) {
+            _ = try await service.fetch(cookie: "sid=routed")
+        }
+        #expect(box.ipcSocketPaths.isEmpty)
+    }
+
+    @Test("Cookie headers carry the browser-equivalent shape")
+    func cookieRequestHeaders() async throws {
+        let home = try makeTempHome()
+        defer { try? FileManager.default.removeItem(at: home) }
         let box = Box()
         let service = makeService(
             home: home,
@@ -402,25 +460,16 @@ struct QoderUsageServiceTests {
         #expect(box.httpHeaders.first?["Bx-V"] == "2.5.35")
     }
 
-    @Test("A malformed IPC response also falls through to the manual cookie")
-    func fetchFallsBackOnMalformedIPC() async throws {
+    @Test("Without a cookie, a malformed IPC response surfaces notConfigured")
+    func fetchWithoutCookieRejectsMalformedIPC() async throws {
         let home = try makeTempHome()
         defer { try? FileManager.default.removeItem(at: home) }
         try writeInfoFile(home: home, appDir: "Qoder", contents: #"{"ipcServerPath": "/tmp/qoder-odd.sock"}"#)
-        let box = Box()
         let badBody = Data(#"{"jsonrpc":"2.0","id":1,"result":{"unexpected":true}}"#.utf8)
-        let service = makeService(
-            home: home,
-            ipc: { _, _ in badBody },
-            cookie: "sid=abc",
-            http: { url, _ in
-                box.httpURLs.append(url)
-                return Data(Self.httpUsageJSON.utf8)
-            }
-        )
-        let quota = try await service.fetch()
-        #expect(quota.primary.usedPercent == 40)
-        #expect(box.httpURLs.count == 1)
+        let service = makeService(home: home, ipc: { _, _ in badBody })
+        await #expect(throws: (any Error).self) {
+            _ = try await service.fetch()
+        }
     }
 
     @Test("A CN cookie is only ever sent to qoder.com.cn")
