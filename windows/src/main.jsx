@@ -917,14 +917,13 @@ function Limits({ state, action, onOpenCodexUsage }) {
 
 function DetectionSuggestionPrompt({ suggestion, onConnect, onDismiss }) {
   const name = providerPresentation(suggestion.providerID).name;
-  const message = trKey("provider.detect.prompt_message", [name]).replaceAll("Mac", "PC");
   return (
     <div className="detection-prompt-backdrop">
       <div className="settings-card detection-prompt" role="dialog" aria-modal="true" aria-labelledby="detection-prompt-title">
         <ProviderMark meta={providerPresentation(suggestion.providerID)} size={28} />
         <div>
           <h2 id="detection-prompt-title">{trKey("provider.detect.prompt_title", [name])}</h2>
-          <p>{message}</p>
+          <p>{trKey("provider.detect.prompt_message", [name])}</p>
         </div>
         <div className="detection-prompt-actions">
           <button className="secondary" onClick={onDismiss}>{trKey("provider.detect.not_now")}</button>
