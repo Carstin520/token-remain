@@ -193,6 +193,32 @@ struct SyncProtocolTests {
         #expect(opened.generatedAt == Date(timeIntervalSince1970: 1_784_764_800.987))
     }
 
+    @Test("Optional source day survives history round trip and stays bounded")
+    func historySourceDayRoundTrip() throws {
+        let history = SyncedDailyUsageHistory(
+            days: [SyncedDailyUsageDay(
+                day: "2026-07-22",
+                claudeTokens: 12,
+                claudeCost: 0.5,
+                codexTokens: 34,
+                codexCost: 1.25
+            )],
+            capturedAt: fixedNow,
+            sourceDay: "2026-07-22"
+        )
+        let decoded = try MobileUsageSnapshot.decodedPayload(
+            from: snapshot(dailyUsageHistory: history).encodedPayload()
+        )
+        #expect(decoded.dailyUsageHistory?.sourceDay == "2026-07-22")
+        #expect(throws: SyncValidationError.invalidDailyUsageHistory) {
+            try snapshot(dailyUsageHistory: SyncedDailyUsageHistory(
+                days: history.days,
+                capturedAt: fixedNow,
+                sourceDay: "2050-01-01"
+            )).validatedForTransport(configuration: fixedConfiguration)
+        }
+    }
+
     @Test("Daily usage history round-trips inside the encrypted allowlist")
     func dailyHistoryRoundTrip() throws {
         let history = SyncedDailyUsageHistory(

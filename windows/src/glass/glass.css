@@ -1,0 +1,119 @@
+/* Structural layer for GlassSurface.
+
+   liquid-glass-react is built as a free-floating pill: it emits five siblings
+   that centre themselves on top/left 50%, carries Tailwind class names this app
+   never loads, and puts inline `display:inline-flex`, padding, a 24px gap and a
+   drop shadow on its own `.glass` node. The rules below pin that whole stack to
+   the surface it decorates and strip the pill styling, so the library only ever
+   contributes material, refraction and rim — never layout, type or spacing. */
+
+.glass-surface { position: relative; }
+
+/* The effect stack never takes pointer input: hover, focus and clicks all
+   belong to the content painted above it. Interactive surfaces track the mouse
+   through `mouseContainer`, which listens on the surface element instead. */
+.glass-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: var(--glass-radius);
+  pointer-events: none;
+}
+
+/* Positioned so it paints above the absolutely positioned effect stack.
+   `relative` without offsets moves nothing. Wrapped in :where() so the rule
+   contributes no specificity of its own: a child that positions itself — the
+   shell's absolutely positioned live region, for one — keeps doing so, and
+   silently becoming an in-flow grid item would cost it a whole extra row. */
+.glass-surface > :where(:not([data-glass-layer])) { position: relative; }
+
+/* backdrop="none". Chromium paints the backdrop root of a `transparent: true`
+   Windows window opaque black as soon as any element carries a backdrop-filter,
+   so a window with no system backdrop behind it (the floating shortcut always,
+   the popover whenever DWM refuses acrylic) cannot mount the library at all.
+   This rule rebuilds the same three ingredients out of paint only — no
+   backdrop-filter, no filter:url() — from the tokens the surface already sets,
+   so the two modes stay one look.
+
+   The tint reads a mode-local override first: the surfaces that float free of
+   any scrim need a fraction of the popover's card density, and the inline
+   `--glass-tint-opacity` a surface writes for itself cannot be overridden from
+   a stylesheet. */
+.glass-layer[data-glass-backdrop="none"] {
+  background:
+    radial-gradient(
+      126% 100% at 32% 6%,
+      rgb(var(--glass-rim-rgb) / var(--glass-rim-opacity)),
+      rgb(var(--glass-rim-rgb) / 0) 58%
+    ),
+    rgb(var(--glass-surface-rgb) / var(--glass-plain-tint-opacity, var(--glass-tint-opacity)));
+  box-shadow:
+    inset 0 1px 0 rgb(var(--glass-rim-rgb) / var(--glass-rim-opacity)),
+    inset 0 0 0 1px rgb(var(--glass-rim-rgb) / calc(var(--glass-rim-opacity) / 2));
+}
+
+.glass-layer .glass {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  padding: 0 !important;
+  gap: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Pointer lift for interactive cards. It sits inside the effect stack, below
+   the content, so a hovered card brightens without touching its text. */
+.glass-lift {
+  position: absolute;
+  inset: 0;
+  background: rgb(var(--glass-rim-rgb) / 0);
+}
+.glass-surface[data-glass-interactive="true"]:hover .glass-lift {
+  background: rgb(var(--glass-rim-rgb) / var(--glass-lift-opacity));
+}
+
+/* Button labels need a box of their own: bare text is inline content, which
+   paints below the positioned effect stack. */
+.glass-label { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+
+/* Adaptive foreground. The whole subtree is re-tokenised at once, so no
+   component knows whether it is sitting on glass; the raised palette and the
+   glyph edge arrive through the same variables the flat surface already reads.
+   --glass-fg-shadow-opacity is set by whichever surface opts in, from
+   `adaptiveShadowOpacity` in glass-model.js. */
+[data-glass-adaptive="true"] {
+  --text: var(--glass-fg-text);
+  --secondary: var(--glass-fg-secondary);
+  --muted: var(--glass-fg-muted);
+  --border: var(--glass-fg-separator);
+  color: var(--text);
+  text-shadow: 0 .6px 1.4px rgb(0 0 0 / var(--glass-fg-shadow-opacity));
+}
+/* Chips carry their own fill and border, so the glyph edge would only muddy
+   their small uppercase type. */
+[data-glass-adaptive="true"] .badge { text-shadow: none; }
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Switching Frosted/Clear swaps a material rather than a value, so it is the
+     one popup change that needs an explicit cross-fade to stay continuous. */
+  :root:not([data-reduced-motion="true"]) .glass-surface {
+    transition:
+      background var(--glass-material-transition) ease-in-out,
+      border-color var(--glass-material-transition) ease-in-out;
+  }
+  :root:not([data-reduced-motion="true"]) .glass-lift { transition: background var(--glass-foreground-transition) ease; }
+  /* The plain backdrop carries the fill the library would otherwise contribute,
+     so it has to cross-fade on the same clock as the surface it sits in. */
+  :root:not([data-reduced-motion="true"]) .glass-layer[data-glass-backdrop="none"] { transition: background var(--glass-material-transition) ease-in-out; }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* The library hard-codes `transition: all` inline on every node it emits. */
+  .glass-layer .glass, .glass-layer > * { transition: none !important; }
+}
+:root[data-reduced-motion="true"] .glass-layer .glass,
+:root[data-reduced-motion="true"] .glass-layer > * { transition: none !important; }
+/* Forced colours flatten the whole effect to system colours, at which point the
+   filters are cost without benefit and the surface border carries the edge. */
+@media (forced-colors: active) {
+  .glass-layer { display: none; }
+}

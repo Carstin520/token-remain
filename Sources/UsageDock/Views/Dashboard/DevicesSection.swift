@@ -6,6 +6,7 @@ import SwiftUI
 /// than inventing a device inventory CloudKit does not expose to the app.
 struct DevicesSection: View {
     let insights: UsageInsights
+    @ObservedObject private var directSync = DirectSyncController.shared
 #if TOKENREMAIN_CLOUD_SYNC
     @ObservedObject private var sync = CrossDeviceSyncController.shared
 #endif
@@ -28,6 +29,71 @@ struct DevicesSection: View {
                     if let updated = insights.lastUpdated {
                         InfoRow(label: L10n.text("devices.last_updated"), value: updated.formatted(date: .abbreviated, time: .shortened))
                     }
+                }
+            }
+
+            DashboardCard {
+                VStack(alignment: .leading, spacing: 12) {
+                    PanelHeader(
+                        title: L10n.text("direct_sync.title"),
+                        subtitle: L10n.text("direct_sync.subtitle")
+                    ) {
+                        StatusDotLabel(
+                            color: directSyncStatusColor,
+                            text: directSyncStatusText,
+                            bold: true
+                        )
+                    }
+                    InfoRow(label: L10n.text("direct_sync.address"), value: directSync.address)
+                    InfoRow(
+                        label: L10n.text("direct_sync.paired_devices"),
+                        value: "\(directSync.peers.count)"
+                    )
+
+                    Toggle(isOn: sharesUsageHistoryBinding) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(L10n.text("direct_sync.share_history_title"))
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundStyle(DashboardTheme.text)
+                            Text(L10n.text("direct_sync.share_history_detail"))
+                                .font(.system(size: 10))
+                                .foregroundStyle(DashboardTheme.secondaryText)
+                        }
+                    }
+                    .toggleStyle(.switch)
+                    .tint(DashboardTheme.violet)
+
+                    if let code = directSync.pairingCode {
+                        Divider().overlay(DashboardTheme.border)
+                        Text(L10n.text("direct_sync.pairing_code"))
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(DashboardTheme.secondaryText)
+                        Text(code)
+                            .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                            .foregroundStyle(DashboardTheme.text)
+                            .textSelection(.enabled)
+                        if let expiry = directSync.pairingExpiresAt {
+                            Text(L10n.format(
+                                "direct_sync.expires_at",
+                                expiry.formatted(date: .omitted, time: .shortened)
+                            ))
+                            .font(.system(size: 10))
+                            .foregroundStyle(DashboardTheme.mutedText)
+                        }
+                        Button(L10n.text("direct_sync.cancel_pairing")) {
+                            directSync.cancelPairing()
+                        }
+                    } else {
+                        Button(L10n.text("direct_sync.start_pairing")) {
+                            directSync.beginPairing()
+                        }
+                        .disabled(directSync.state != .listening)
+                    }
+
+                    Text(L10n.text("direct_sync.privacy_note"))
+                        .font(.system(size: 10))
+                        .foregroundStyle(DashboardTheme.mutedText)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
 
@@ -97,6 +163,29 @@ struct DevicesSection: View {
         var sources = insights.quotas.map { $0.provider.displayName }
         if insights.daily != nil { sources.append("ccusage") }
         return sources.isEmpty ? L10n.text("common.none") : sources.joined(separator: " · ")
+    }
+
+    private var directSyncStatusText: String {
+        switch directSync.state {
+        case .starting: L10n.text("direct_sync.state.starting")
+        case .listening: L10n.text("direct_sync.state.listening")
+        case .failed: L10n.text("direct_sync.state.failed")
+        }
+    }
+
+    private var sharesUsageHistoryBinding: Binding<Bool> {
+        Binding(
+            get: { directSync.sharesUsageHistory },
+            set: directSync.setSharesUsageHistory
+        )
+    }
+
+    private var directSyncStatusColor: Color {
+        switch directSync.state {
+        case .listening: DashboardTheme.success
+        case .failed: DashboardTheme.warning
+        case .starting: DashboardTheme.secondaryText
+        }
     }
 
 #if TOKENREMAIN_CLOUD_SYNC

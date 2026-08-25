@@ -78,11 +78,15 @@ public enum MobileUsageSnapshotAggregator {
                 days[day.day, default: DailyAccumulator()].add(day)
             }
         }
+        let sourceDays = Set(histories.compactMap(\.sourceDay))
         return SyncedDailyUsageHistory(
             days: days.keys.sorted().suffix(SyncedDailyUsageHistory.maximumDays).map { day in
                 days[day]!.value(day: day)
             },
-            capturedAt: histories.map(\.capturedAt).max()!
+            capturedAt: histories.map(\.capturedAt).max()!,
+            sourceDay: sourceDays.count == 1 && histories.allSatisfy({ $0.sourceDay != nil })
+                ? sourceDays.first
+                : nil
         )
     }
 }
