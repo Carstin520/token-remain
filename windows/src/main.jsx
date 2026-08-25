@@ -1851,7 +1851,7 @@ function createPreviewAPI() {
   let preview = {
     sourceInstanceID: "8ad9c4b2-5ac9-44d7-b313-ae4f3fc59fb0",
     deviceName: "Windows PC",
-    appVersion: "1.3.6-windows.1",
+    appVersion: "1.3.7-windows.1",
     availableUpdate: previewParameters.get("update") === "1"
       ? { version: "1.3.6", url: "https://github.com/Carstin520/token-remain/releases/tag/v1.3.6" }
       : undefined,
