@@ -70,6 +70,16 @@ test("Quota cards carry every valid window for the expanded view", () => {
   assert.equal(claude.capturedText, "Updated just now");
 });
 
+test("Named primary pools label both the summary and expanded row", () => {
+  const [card] = popoverQuotaCards({ providers: [{
+    providerID: "cursor",
+    capturedAt: NOW,
+    windows: [{ usedPercent: 91, windowMinutes: 43_200, poolName: "Other Models" }],
+  }], notices: {} }, undefined, { now: NOW });
+  assert.equal(card.windowTitle, "Other Models · 30 d window");
+  assert.equal(card.windows[0].title, "Other Models · 30 d window");
+});
+
 test("The summary window leads the expanded list exactly once, under a stable key", () => {
   // Snapshot lists the weekly window first; the summary (shortest) window must
   // still lead without being repeated further down.

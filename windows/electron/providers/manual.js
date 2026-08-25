@@ -79,25 +79,141 @@ function fetchHeaders(secret, scheme = "bearer") {
   return scheme === "cookie" ? { Cookie: secret, Accept: "application/json" } : { Authorization: `Bearer ${secret}`, Accept: "application/json" };
 }
 
-async function collectZAI(secret, { fetchImpl, now }) {
-  const headers = fetchHeaders(secret);
-  const body = await fetchPayload("https://api.z.ai/api/monitor/usage/quota/limit", { headers }, { fetchImpl, timeoutMs: 12_000 });
+function durationLabel(minutes) {
+  if (minutes === 60) return "Hourly";
+  if (minutes === 300) return "Session";
+  if (minutes === 1_440) return "Daily";
+  if (minutes === 10_080) return "Weekly";
+  if (minutes === 43_200) return "Monthly";
+  return `${minutes} min`;
+}
+
+function scopeID(prefix, name, fallback, seen) {
+  const slug = String(name || "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+  const base = `${prefix}${slug || fallback}`.slice(0, 32);
+  let candidate = base;
+  let ordinal = 2;
+  while (seen.has(candidate)) {
+    const suffix = `_${ordinal}`;
+    candidate = `${base.slice(0, 32 - suffix.length)}${suffix}`;
+    ordinal += 1;
+  }
+  seen.add(candidate);
+  return candidate;
+}
+
+function kimiScopeID(name, seen) {
+  const slug = String(name || "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+  const base = `kimi_${(slug || "window").slice(0, 25)}`;
+  let candidate = base;
+  let ordinal = 2;
+  while (seen.has(candidate)) {
+    candidate = `${base}_${ordinal}`;
+    ordinal += 1;
+  }
+  seen.add(candidate);
+  return candidate;
+}
+
+function zaiWindowMinutes(entry) {
+  const unit = numeric(entry?.unit);
+  const count = numeric(entry?.number);
+  if (!(count > 0)) return undefined;
+  const perUnit = unit === 1 || unit === 4 ? 1_440 : unit === 3 ? 60 : unit === 5 ? 1 : unit === 6 ? 10_080 : undefined;
+  const minutes = perUnit * count;
+  return minutes >= 1 && Number.isSafeInteger(Math.trunc(minutes)) ? Math.trunc(minutes) : undefined;
+}
+
+function zaiEntryName(entry) {
+  for (const key of ["name", "display_name", "displayName", "show_name"]) {
+    const value = clean(entry?.[key]);
+    if (value && !["TOKENS_LIMIT", "TIME_LIMIT"].includes(value.toUpperCase())) return value;
+  }
+  return undefined;
+}
+
+function zaiWindow(entry, minutes, fallbackResetAt) {
+  let percent;
+  const usage = numeric(entry?.usage);
+  if (usage > 0 && (numeric(entry?.remaining) !== undefined || numeric(entry?.currentValue ?? entry?.current_value) !== undefined)) {
+    const usedFromRemaining = numeric(entry.remaining) === undefined ? 0 : usage - numeric(entry.remaining);
+    const current = numeric(entry.currentValue ?? entry.current_value) ?? 0;
+    percent = Math.max(0, Math.min(usage, Math.max(usedFromRemaining, current))) / usage * 100;
+  } else {
+    percent = numeric(entry?.percentage ?? entry?.usedPercent ?? entry?.used_percent);
+  }
+  if (percent === undefined) return undefined;
+  const resetsAt = timestamp(entry?.nextResetTime ?? entry?.next_reset_time) ?? fallbackResetAt;
+  return { usedPercent: clamp(percent), windowMinutes: minutes, ...(resetsAt ? { resetsAt } : {}) };
+}
+
+export function parseZAIUsage(body, { now = Date.now(), planName, subscriptionResetAt } = {}) {
   if (body?.success === false && String(body.msg || "").toLowerCase().includes("coding plan")) throw new Error("Z.ai account has no Coding Plan");
   const limits = body?.data?.limits ?? body?.limits;
   if (!Array.isArray(limits)) throw new Error("Z.ai returned no quota limits");
-  const windows = [];
+  const tokenEntries = [];
+  const scopedWindows = [];
+  const seen = new Set();
   for (const entry of limits) {
-    if ((entry.type ?? entry.name) !== "TOKENS_LIMIT") continue;
-    const unit = numeric(entry.unit);
-    const count = numeric(entry.number);
-    const perUnit = unit === 3 ? 60 : unit === 4 ? 1_440 : unit === 6 ? 10_080 : unit === 5 ? 43_200 : undefined;
-    const percentage = numeric(entry.percentage);
-    if (!perUnit || !(count > 0) || percentage === undefined) continue;
-    windows.push({ usedPercent: clamp(percentage), windowMinutes: Math.trunc(perUnit * count), ...(resetTime(entry.nextResetTime) ? { resetsAt: resetTime(entry.nextResetTime) } : {}) });
+    const type = String(entry?.type ?? entry?.limit_type ?? entry?.name ?? "").toUpperCase();
+    if (type === "TOKENS_LIMIT") {
+      const minutes = zaiWindowMinutes(entry);
+      const window = minutes && zaiWindow(entry, minutes);
+      if (window) tokenEntries.push({ name: zaiEntryName(entry), window, order: tokenEntries.length });
+    } else if (type === "TIME_LIMIT") {
+      const minutes = zaiWindowMinutes(entry) ?? 43_200;
+      const window = zaiWindow(entry, minutes, subscriptionResetAt);
+      if (!window) continue;
+      const name = zaiEntryName(entry);
+      scopedWindows.push({
+        scopeID: scopeID("zai_", name, `mcp_${minutes}m`, seen),
+        displayName: name || "MCP",
+        window,
+        observedAt: now,
+      });
+    }
   }
-  windows.sort((left, right) => left.windowMinutes - right.windowMinutes);
+  tokenEntries.sort((left, right) => left.window.windowMinutes - right.window.windowMinutes
+    || right.window.usedPercent - left.window.usedPercent || left.order - right.order);
+  const shortest = tokenEntries[0]?.window.windowMinutes;
+  const longest = tokenEntries.at(-1)?.window.windowMinutes;
+  const secondaryIndex = shortest !== undefined && longest !== shortest
+    ? tokenEntries.findIndex((entry) => entry.window.windowMinutes === longest)
+    : -1;
+  let primary;
+  let secondary;
+  for (const [index, token] of tokenEntries.entries()) {
+    const siblingCount = tokenEntries.filter((entry) => entry.window.windowMinutes === token.window.windowMinutes).length;
+    if (index === 0) {
+      primary = { ...token.window, ...(siblingCount > 1 && token.name ? { poolName: token.name } : {}) };
+    } else if (index === secondaryIndex) {
+      secondary = { ...token.window, ...(siblingCount > 1 && token.name ? { poolName: token.name } : {}) };
+    } else {
+      scopedWindows.push({
+        scopeID: scopeID("zai_", token.name, `tokens_${token.window.windowMinutes}m`, seen),
+        displayName: token.name || durationLabel(token.window.windowMinutes),
+        window: token.window,
+        observedAt: now,
+      });
+    }
+  }
+  if (!primary && scopedWindows.length) {
+    const promoted = scopedWindows.shift();
+    primary = { ...promoted.window, poolName: promoted.displayName };
+  }
+  if (!primary) throw new Error("Z.ai returned no usable quota window");
+  return quota("zai", [primary, ...(secondary ? [secondary] : [])], { now, planName, scopedWindows });
+}
+
+async function collectZAI(secret, { fetchImpl, now }) {
+  const headers = fetchHeaders(secret);
+  const body = await fetchPayload("https://api.z.ai/api/monitor/usage/quota/limit", { headers }, { fetchImpl, timeoutMs: 12_000 });
   const subscription = await fetchPayload("https://api.z.ai/api/biz/subscription/list", { headers }, { fetchImpl, timeoutMs: 10_000 }).catch(() => undefined);
-  return quota("zai", windows.slice(0, 2), { now, planName: clean(subscription?.data?.[0]?.productName) });
+  return parseZAIUsage(body, {
+    now,
+    planName: clean(subscription?.data?.[0]?.productName),
+    subscriptionResetAt: timestamp(subscription?.data?.[0]?.next_renew_time ?? subscription?.data?.[0]?.nextRenewTime),
+  });
 }
 
 function decryptZCodeCredential(value, { env, home }) {
@@ -146,20 +262,38 @@ async function zcodeCandidates(env) {
   return candidates;
 }
 
-function parseZCodeBilling(body, now) {
+export function parseZCodeBilling(body, now = Date.now()) {
+  const code = numeric(body?.code);
+  if (code !== undefined && code !== 0 && code !== 200) throw new Error("ZCode returned no plan balance");
   const balances = body?.data?.balances;
-  if (!Array.isArray(balances)) throw new Error("ZCode returned no plan balance");
-  const windows = balances.flatMap((balance) => {
+  if (!Array.isArray(balances) || !balances.length) throw new Error("ZCode returned no plan balance");
+  const buckets = balances.flatMap((balance, order) => {
     const total = numeric(balance.total_units);
     const used = numeric(balance.used_units);
     if (!(total > 0) || !(used >= 0)) return [];
     const resetsAt = timestamp(balance.period_end ?? balance.expires_at);
-    return [{ total, window: { usedPercent: clamp(used / total * 100), windowMinutes: 43_200, ...(resetsAt ? { resetsAt } : {}) } }];
-  }).sort((left, right) => right.total - left.total);
-  if (!windows.length) throw new Error("ZCode returned no usable plan balance");
-  const planID = clean(balances[0]?.plan_id);
-  const tier = planID?.match(/\b(lite|start|pro|max|team|enterprise)\b/i)?.[1];
-  return quota("zai", windows.slice(0, 2).map((item) => item.window), { now, planName: tier ? `ZCode ${titleCase(tier)}` : "ZCode" });
+    return [{
+      order,
+      name: clean(balance.show_name),
+      planID: clean(balance.plan_id),
+      window: { usedPercent: clamp(used / total * 100), windowMinutes: 43_200, ...(resetsAt ? { resetsAt } : {}) },
+    }];
+  }).sort((left, right) => right.window.usedPercent - left.window.usedPercent || left.order - right.order);
+  if (!buckets.length) throw new Error("ZCode returned no usable plan balance");
+  const busiest = buckets[0];
+  const seen = new Set();
+  const scopedWindows = buckets.slice(1).map((bucket, index) => ({
+    scopeID: scopeID("zcode_", bucket.name, `pool_${index + 2}`, seen),
+    displayName: bucket.name || `Pool ${index + 2}`,
+    window: bucket.window,
+    observedAt: now,
+  }));
+  const tier = busiest.planID?.match(/\b(lite|start|pro|max|team|enterprise)\b/i)?.[1];
+  return quota("zai", [{ ...busiest.window, ...(busiest.name ? { poolName: busiest.name } : {}) }], {
+    now,
+    planName: tier ? `ZCode ${titleCase(tier)}` : "ZCode",
+    scopedWindows,
+  });
 }
 
 async function collectZCodeCandidate(candidate, { fetchImpl, now, env }) {
@@ -195,39 +329,62 @@ async function collectZCodeCandidate(candidate, { fetchImpl, now, env }) {
 }
 
 async function parseZAIQuota(body, { fetchImpl, now, subscription = true, headers } = {}) {
-  if (body?.success === false && String(body.msg || "").toLowerCase().includes("coding plan")) throw new Error("Z.ai account has no Coding Plan");
-  const limits = body?.data?.limits ?? body?.limits;
-  if (!Array.isArray(limits)) throw new Error("Z.ai returned no quota limits");
-  const windows = [];
-  for (const entry of limits) {
-    if ((entry.type ?? entry.name) !== "TOKENS_LIMIT") continue;
-    const unit = numeric(entry.unit);
-    const count = numeric(entry.number);
-    const perUnit = unit === 3 ? 60 : unit === 4 ? 1_440 : unit === 6 ? 10_080 : unit === 5 ? 43_200 : undefined;
-    const percentage = numeric(entry.percentage);
-    if (!perUnit || !(count > 0) || percentage === undefined) continue;
-    windows.push({ usedPercent: clamp(percentage), windowMinutes: Math.trunc(perUnit * count), ...(timestamp(entry.nextResetTime) ? { resetsAt: timestamp(entry.nextResetTime) } : {}) });
-  }
-  windows.sort((left, right) => left.windowMinutes - right.windowMinutes);
   let planName;
+  let subscriptionResetAt;
   if (subscription) {
     const details = await fetchPayload("https://api.z.ai/api/biz/subscription/list", { headers }, { fetchImpl, timeoutMs: 10_000 }).catch(() => undefined);
     planName = clean(details?.data?.[0]?.productName);
+    subscriptionResetAt = timestamp(details?.data?.[0]?.next_renew_time ?? details?.data?.[0]?.nextRenewTime);
   }
-  return quota("zai", windows.slice(0, 2), { now, planName });
+  return parseZAIUsage(body, { now, planName, subscriptionResetAt });
+}
+
+export function parseOpenRouterUsage(creditsBody, keyBody, now = Date.now()) {
+  const credits = creditsBody?.data ?? creditsBody;
+  const key = keyBody?.data ?? keyBody;
+  let creditsWindow;
+  const totalCredits = numeric(credits?.total_credits);
+  const totalUsage = numeric(credits?.total_usage);
+  if (totalCredits >= 0 && totalUsage >= 0) {
+    const remaining = Math.max(0, totalCredits - totalUsage);
+    creditsWindow = balanceWindow(remaining, "USD", totalCredits > 0 ? totalUsage / totalCredits * 100 : 100);
+  }
+  let keyWindow;
+  const limit = numeric(key?.limit);
+  const rawUsage = numeric(key?.usage);
+  const rawRemaining = numeric(key?.limit_remaining);
+  if (limit > 0 && (rawUsage !== undefined || rawRemaining !== undefined)) {
+    const used = Math.max(0, rawUsage ?? (limit - (rawRemaining ?? limit)));
+    const remaining = Math.max(0, rawRemaining ?? (limit - used));
+    const cadence = String(key?.limit_reset || "").toLowerCase();
+    const windowMinutes = cadence === "daily" ? 1_440 : cadence === "weekly" ? 10_080 : cadence === "monthly" ? 43_200 : 0;
+    keyWindow = balanceWindow(remaining, "USD", used / limit * 100);
+    keyWindow.windowMinutes = windowMinutes;
+  }
+  const primary = keyWindow ?? creditsWindow;
+  if (!primary) throw new Error("OpenRouter returned no usable credits or key limit");
+  const canPublishCreditsWindow = keyWindow && creditsWindow && keyWindow.windowMinutes !== creditsWindow.windowMinutes;
+  const scopedWindows = keyWindow && creditsWindow && !canPublishCreditsWindow ? [{
+    scopeID: "openrouter_credits",
+    displayName: "Credits",
+    window: creditsWindow,
+    observedAt: now,
+  }] : undefined;
+  const planName = key?.is_management_key === true ? "Management"
+    : typeof key?.is_free_tier === "boolean" ? (key.is_free_tier ? "Free Tier" : "Pay As You Go") : undefined;
+  return quota("openrouter", [primary, ...(canPublishCreditsWindow ? [creditsWindow] : [])], {
+    now,
+    planName,
+    remainingBalance: primary.remainingBalance,
+    scopedWindows,
+  });
 }
 
 async function collectOpenRouter(secret, { fetchImpl, now }) {
   const headers = fetchHeaders(secret);
-  const body = await fetchPayload("https://openrouter.ai/api/v1/credits", { headers }, { fetchImpl });
-  const credits = Math.max(0, numeric(body?.data?.total_credits) ?? 0);
-  const usage = Math.max(0, numeric(body?.data?.total_usage) ?? 0);
-  if (!(credits > 0)) throw new Error("OpenRouter account has no prepaid credits");
-  const remaining = Math.max(0, credits - usage);
-  const metadata = await fetchPayload("https://openrouter.ai/api/v1/key", { headers }, { fetchImpl }).catch(() => undefined);
-  const planName = typeof metadata?.data?.is_free_tier === "boolean" ? (metadata.data.is_free_tier ? "Free Tier" : "Pay As You Go") : undefined;
-  const remainingBalance = { amount: remaining, currencyCode: "USD" };
-  return quota("openrouter", [{ ...balanceWindow(remaining, "USD", usage / credits * 100) }], { now, planName, remainingBalance });
+  const credits = await fetchPayload("https://openrouter.ai/api/v1/credits", { headers }, { fetchImpl });
+  const key = await fetchPayload("https://openrouter.ai/api/v1/key", { headers }, { fetchImpl }).catch(() => undefined);
+  return parseOpenRouterUsage(credits, key, now);
 }
 
 async function collectDeepSeek(secret, { fetchImpl, now }) {
@@ -241,10 +398,10 @@ async function collectDeepSeek(secret, { fetchImpl, now }) {
   return quota("deepseek", [balanceWindow(amount, currencyCode, body.is_available === false || amount <= 0 ? 100 : 0)], { now, planName: "Pay As You Go", remainingBalance });
 }
 
-function kimiWindows(body) {
+export function parseKimiUsage(body, now = Date.now()) {
   const entries = body?.limits ?? body?.data?.limits ?? [];
-  const windows = [];
-  for (const entry of entries) {
+  const parsed = [];
+  for (const [order, entry] of entries.entries()) {
     const detail = entry?.detail || entry;
     const used = firstNumber(detail, ["used", "usedAmount", "used_amount", "usage"]);
     const limit = firstNumber(detail, ["limit", "total", "quota", "amount"]);
@@ -256,11 +413,47 @@ function kimiWindows(body) {
     const duration = firstNumber(window, ["duration", "windowDuration", "window_duration", "size", "value"]);
     const unit = String(window.timeUnit ?? window.time_unit ?? window.unit ?? "").toUpperCase();
     const multiplier = unit.includes("MINUTE") ? 1 : unit.includes("HOUR") ? 60 : unit.includes("DAY") ? 1_440 : unit.includes("WEEK") ? 10_080 : unit.includes("SECOND") ? 1 / 60 : undefined;
-    const windowMinutes = duration > 0 && multiplier ? Math.max(1, Math.trunc(duration * multiplier)) : 300;
+    const windowMinutes = duration !== undefined && multiplier ? Math.trunc(duration * multiplier) : 300;
     const resetsAt = resetTime(detail.resetTime ?? detail.reset_time ?? window.resetTime);
-    windows.push({ usedPercent: clamp(percent), windowMinutes, ...(resetsAt ? { resetsAt } : {}) });
+    let name;
+    for (const source of [entry, detail]) {
+      for (const key of ["name", "title", "label", "displayName", "display_name"]) {
+        name ||= clean(source?.[key]);
+      }
+    }
+    parsed.push({ order, name, window: { usedPercent: clamp(percent), windowMinutes, ...(resetsAt ? { resetsAt } : {}) } });
   }
-  return windows.sort((left, right) => left.windowMinutes - right.windowMinutes).slice(0, 2);
+  parsed.sort((left, right) => left.window.windowMinutes - right.window.windowMinutes || left.order - right.order);
+  if (!parsed.length) throw new Error("Kimi returned no usable quota window");
+  const shortest = parsed[0].window.windowMinutes;
+  const longest = parsed.at(-1).window.windowMinutes;
+  const busiestIndex = (minutes) => {
+    let best = parsed.findIndex((item) => item.window.windowMinutes === minutes);
+    for (const [index, item] of parsed.entries()) {
+      if (item.window.windowMinutes === minutes && item.window.usedPercent > parsed[best].window.usedPercent) best = index;
+    }
+    return best;
+  };
+  const siblingCount = (minutes) => parsed.filter((item) => item.window.windowMinutes === minutes).length;
+  const primaryIndex = busiestIndex(shortest);
+  const secondaryIndex = longest === shortest ? -1 : busiestIndex(longest);
+  const primaryItem = parsed[primaryIndex];
+  const primary = { ...primaryItem.window, ...(siblingCount(shortest) > 1 ? { poolName: primaryItem.name || durationLabel(shortest) } : {}) };
+  const secondaryItem = secondaryIndex >= 0 ? parsed[secondaryIndex] : undefined;
+  const secondary = secondaryItem ? { ...secondaryItem.window, ...(siblingCount(longest) > 1 ? { poolName: secondaryItem.name || durationLabel(longest) } : {}) } : undefined;
+  const scopedWindows = [];
+  const seen = new Set();
+  for (const [index, item] of parsed.entries()) {
+    if (index === primaryIndex || index === secondaryIndex) continue;
+    const name = item.name || durationLabel(item.window.windowMinutes);
+    scopedWindows.push({
+      scopeID: kimiScopeID(name, seen),
+      displayName: name,
+      window: item.window,
+      observedAt: now,
+    });
+  }
+  return quota("kimi", [primary, ...(secondary ? [secondary] : [])], { now, scopedWindows });
 }
 
 async function collectKimi(secret, { fetchImpl, now }) {
@@ -285,7 +478,7 @@ async function collectKimi(secret, { fetchImpl, now }) {
   } else {
     body = await fetchPayload("https://api.kimi.com/coding/v1/usages", { headers: fetchHeaders(secret) }, { fetchImpl });
   }
-  return quota("kimi", kimiWindows(body), { now });
+  return parseKimiUsage(body, now);
 }
 
 async function kimiLocalCredential(env, now) {
@@ -308,7 +501,7 @@ async function collectKimiLocal(credential, { fetchImpl, now }) {
       ...(credential.deviceID ? { "X-Msh-Device-Id": credential.deviceID } : {}),
     },
   }, { fetchImpl });
-  return quota("kimi", kimiWindows(body), { now });
+  return parseKimiUsage(body, now);
 }
 
 async function collectMiniMax(secret, { fetchImpl, now }) {
@@ -330,19 +523,60 @@ async function collectMiniMax(secret, { fetchImpl, now }) {
   throw lastError;
 }
 
+function mimoMetric(row) {
+  if (!row) return undefined;
+  const used = numeric(row.used);
+  const limit = numeric(row.limit ?? row.total);
+  const ratio = numeric(row.percent);
+  const percent = used !== undefined && limit > 0 ? used / limit * 100 : ratio !== undefined ? ratio * 100 : undefined;
+  return percent === undefined ? undefined : clamp(percent);
+}
+
+function mimoDayReset(row, now) {
+  for (const key of ["resetTime", "reset_time", "resetAt", "reset_at", "endTime", "end_time"]) {
+    const value = timestamp(row?.[key]);
+    if (value) return value;
+  }
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Shanghai", year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(new Date(now));
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return Date.parse(`${values.year}-${values.month}-${values.day}T16:00:00Z`);
+}
+
+export function parseMiMoUsage(body, now = Date.now()) {
+  const payload = body?.data ?? body;
+  const month = findNested(body, (object) => String(object.name || "").toLowerCase() === "month_total_token");
+  const daily = findNested(body, (object) => String(object.name || "").toLowerCase() === "day_token");
+  const monthPercent = mimoMetric(month);
+  const dailyPercent = mimoMetric(daily);
+  const amount = numeric(payload?.balance);
+  const accountBalance = amount !== undefined ? { amount: Math.max(0, amount), currencyCode: String(payload?.currency || "").toUpperCase() } : undefined;
+  if (monthPercent !== undefined) {
+    const scopedWindows = dailyPercent === undefined ? undefined : [{
+      scopeID: "mimo_daily",
+      displayName: "Daily",
+      window: { usedPercent: dailyPercent, windowMinutes: 1_440, resetsAt: mimoDayReset(daily, now) },
+      observedAt: now,
+    }];
+    return quota("mimo", [{ usedPercent: monthPercent, windowMinutes: 43_200 }], { now, accountBalance, scopedWindows });
+  }
+  if (accountBalance) {
+    return quota("mimo", [balanceWindow(accountBalance.amount, accountBalance.currencyCode, accountBalance.amount > 0 ? 0 : 100)], {
+      now,
+      planName: "Pay As You Go",
+      accountBalance,
+      remainingBalance: accountBalance,
+    });
+  }
+  throw new Error("MiMo returned no usable balance or monthly quota");
+}
+
 async function collectMiMo(secret, { fetchImpl, now }) {
   const body = await fetchPayload("https://platform.xiaomimimo.com/api/v1/balance", {
     headers: { ...fetchHeaders(secret, "cookie"), Referer: "https://platform.xiaomimimo.com/#/console/balance" },
   }, { fetchImpl });
-  const row = findNested(body, (object) => String(object.name || "").toLowerCase() === "month_total_token");
-  if (!row) throw new Error("MiMo returned no monthly quota");
-  const used = numeric(row.used);
-  const limit = numeric(row.limit ?? row.total);
-  let percent = numeric(row.percent);
-  if (percent === undefined && used !== undefined && limit > 0) percent = used / limit * 100;
-  if (percent === undefined) throw new Error("MiMo returned an invalid monthly quota");
-  if (percent <= 1 && (used ?? 2) <= 1) percent *= 100;
-  return quota("mimo", [{ usedPercent: clamp(percent), windowMinutes: 43_200 }], { now });
+  return parseMiMoUsage(body, now);
 }
 
 function qoderSummary(payload, camel, snake) {
@@ -446,12 +680,31 @@ async function collectQoder(secret, { env, fetchImpl, now, qoderExchange: exchan
     },
   }, { fetchImpl });
   const payload = body?.data ?? body;
+  return parseQoderUsage(payload, now);
+}
+
+export function parseQoderUsage(payload, now = Date.now()) {
   const total = qoderSummary(payload, "totalQuota", "total_quota");
   const shared = qoderSummary(payload, "sharedQuota", "shared_quota");
-  if (!total || total.total + (shared?.total || 0) <= 0) throw new Error("Qoder returned no credits quota");
-  const used = total.used + (shared?.used || 0);
-  const limit = total.total + (shared?.total || 0);
-  return quota("qoder", [{ usedPercent: clamp(used / limit * 100), windowMinutes: 43_200 }], { now });
+  const personalPool = total?.total > 0 ? { name: "Personal", scopeID: "qoder_personal", usedPercent: clamp(total.used / total.total * 100) } : undefined;
+  const sharedPool = shared?.total > 0 ? { name: "Shared", scopeID: "qoder_shared", usedPercent: clamp(shared.used / shared.total * 100) } : undefined;
+  if (!personalPool && !sharedPool) throw new Error("Qoder returned no credits quota");
+  if (!personalPool || !sharedPool) {
+    const only = personalPool ?? sharedPool;
+    return quota("qoder", [{ usedPercent: only.usedPercent, windowMinutes: 43_200 }], { now });
+  }
+  const [busiest, other] = sharedPool.usedPercent > personalPool.usedPercent
+    ? [sharedPool, personalPool]
+    : [personalPool, sharedPool];
+  return quota("qoder", [{ usedPercent: busiest.usedPercent, windowMinutes: 43_200, poolName: busiest.name }], {
+    now,
+    scopedWindows: [{
+      scopeID: other.scopeID,
+      displayName: other.name,
+      window: { usedPercent: other.usedPercent, windowMinutes: 43_200 },
+      observedAt: now,
+    }],
+  });
 }
 
 function sha256(value) {
@@ -495,24 +748,65 @@ async function collectVolcengine(secret, { fetchImpl, now }) {
     headers: volcengineHeaders(secret.slice(0, separator), secret.slice(separator + 1), url, new Date(now)),
     body: "",
   }, { fetchImpl });
+  return parseVolcengineUsage(body, now);
+}
+
+function deterministicPercent(value) {
+  if (!value || typeof value !== "object") return undefined;
+  if (!Array.isArray(value)) {
+    const percent = numeric(value.Percent ?? value.percent);
+    if (percent !== undefined) return percent;
+    for (const key of Object.keys(value).sort()) {
+      const found = deterministicPercent(value[key]);
+      if (found !== undefined) return found;
+    }
+    return undefined;
+  }
+  for (const child of value) {
+    const found = deterministicPercent(child);
+    if (found !== undefined) return found;
+  }
+  return undefined;
+}
+
+export function parseVolcengineUsage(body, now = Date.now()) {
   const result = body?.Result ?? body?.result;
-  const row = findNested(result, (object) => numeric(object.Percent ?? object.percent) !== undefined);
-  const percent = numeric(row?.Percent ?? row?.percent);
+  let percent;
+  for (const key of ["user_limit", "UserLimit", "userLimit"]) {
+    percent ??= numeric(result?.[key]?.Percent ?? result?.[key]?.percent);
+  }
+  percent ??= deterministicPercent(result);
   if (percent === undefined) throw new Error("Volcengine returned no Coding Plan quota");
   return quota("volcengine", [{ usedPercent: clamp(percent), windowMinutes: 300 }], { now, planName: "Coding Plan" });
 }
 
-async function collectOllama(secret, { fetchImpl, now }) {
-  const html = await fetchPayload("https://ollama.com/settings", { headers: { Cookie: secret, Accept: "text/html,application/xhtml+xml" } }, { fetchImpl, text: true });
+export function parseOllamaUsage(html, now = Date.now()) {
   if (/sign in/i.test(html) && !/usage/i.test(html)) throw signInRequiredError("Ollama Cloud Cookie was rejected");
-  const windows = [];
+  let session;
+  let hourly;
+  let weekly;
   const pattern = /(Session usage|Hourly usage|Weekly usage)[\s\S]{0,400}?([0-9]+(?:\.[0-9]+)?)\s*%\s*used/gi;
   for (const match of html.matchAll(pattern)) {
     const label = match[1].toLowerCase();
-    windows.push({ usedPercent: clamp(Number(match[2])), windowMinutes: label.startsWith("weekly") ? 10_080 : label.startsWith("hourly") ? 60 : 300 });
+    const window = { usedPercent: clamp(Number(match[2])), windowMinutes: label.startsWith("weekly") ? 10_080 : label.startsWith("hourly") ? 60 : 300 };
+    if (label.startsWith("weekly")) weekly ??= window;
+    else if (label.startsWith("hourly")) hourly ??= window;
+    else session ??= window;
   }
-  windows.sort((left, right) => left.windowMinutes - right.windowMinutes);
-  return quota("ollama", windows.slice(0, 2), { now });
+  const primary = session ?? weekly ?? hourly;
+  if (!primary) throw new Error("Ollama returned no usable quota window");
+  const scopedWindows = hourly && !(session === undefined && weekly === undefined) ? [{
+    scopeID: "ollama_hourly",
+    displayName: "Hourly",
+    window: hourly,
+    observedAt: now,
+  }] : undefined;
+  return quota("ollama", [primary, ...(session && weekly ? [weekly] : [])], { now, scopedWindows });
+}
+
+async function collectOllama(secret, { fetchImpl, now }) {
+  const html = await fetchPayload("https://ollama.com/settings", { headers: { Cookie: secret, Accept: "text/html,application/xhtml+xml" } }, { fetchImpl, text: true });
+  return parseOllamaUsage(html, now);
 }
 
 const COLLECTORS = {

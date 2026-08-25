@@ -108,7 +108,7 @@ export async function runExecutable(command, args, options = {}) {
   return `${result.stdout || ""}\n${result.stderr || ""}`;
 }
 
-export function quota(providerID, windows, { now = Date.now(), planName, remainingBalance, scopedWindows } = {}) {
+export function quota(providerID, windows, { now = Date.now(), planName, remainingBalance, accountBalance, scopedWindows, extraUsage } = {}) {
   if (!windows.length) throw new Error(`${providerID} returned no usable quota window`);
   return {
     providerID,
@@ -116,7 +116,9 @@ export function quota(providerID, windows, { now = Date.now(), planName, remaini
     ...(planName ? { planName } : {}),
     windows,
     ...(remainingBalance ? { remainingBalance } : {}),
+    ...(accountBalance ? { accountBalance } : {}),
     ...(scopedWindows?.length ? { scopedWindows } : {}),
+    ...(extraUsage ? { extraUsage } : {}),
   };
 }
 

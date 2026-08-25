@@ -32,7 +32,7 @@ import {
   usagePace,
 } from "./overview-model.js";
 import { providerMeta } from "./provider-meta.js";
-import { providerQuotaDetailRows, visibleScopedWindows } from "./quota-details.js";
+import { poolDisplayName, providerQuotaDetailRows, visibleScopedWindows } from "./quota-details.js";
 import { usageDayTotals } from "./usage-history.js";
 
 export const POPOVER_QUOTA_CARD_LIMIT = 3;
@@ -113,11 +113,12 @@ function scopedWindowDetails(provider, preferences, now) {
   return visibleScopedWindows(provider, preferences).flatMap((scope) => {
     if (!isQuotaWindow(scope.window)) return [];
     const detail = windowDetail(scope.window, now);
+    const scopeName = poolDisplayName(scope.displayName || scope.scopeID);
     return [{
       ...detail,
       key: `scope-${scope.scopeID.toLowerCase()}`,
-      scopeName: scope.displayName || scope.scopeID,
-      title: `${scope.displayName || scope.scopeID} · ${detail.title}`,
+      scopeName,
+      title: `${scopeName} · ${detail.title}`,
     }];
   });
 }
@@ -128,7 +129,7 @@ function windowDetail(window, now) {
   const remaining = Math.min(100, Math.max(0, 100 - window.usedPercent));
   const pace = usagePace(window, now);
   return {
-    title: windowTitle(window.windowMinutes),
+    title: window.poolName ? `${poolDisplayName(window.poolName)} · ${windowTitle(window.windowMinutes)}` : windowTitle(window.windowMinutes),
     name: windowName(window.windowMinutes),
     remaining,
     remainingText: window.remainingBalance

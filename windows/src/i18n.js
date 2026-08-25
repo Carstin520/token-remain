@@ -14,6 +14,15 @@ const LANGUAGE_NAMES = {
 };
 
 const WINDOWS_MESSAGES = {
+  "Cursor Models": { "zh-Hans": "Cursor 模型", "zh-Hant": "Cursor 模型", ja: "Cursor モデル", ko: "Cursor 모델", es: "Modelos de Cursor", de: "Cursor-Modelle" },
+  "Other Models": { "zh-Hans": "其他模型", "zh-Hant": "其他模型", ja: "その他のモデル", ko: "기타 모델", es: "Otros modelos", de: "Andere Modelle" },
+  Chat: { "zh-Hans": "聊天", "zh-Hant": "聊天", ja: "チャット", ko: "채팅", es: "Chat", de: "Chat" },
+  Completions: { "zh-Hans": "补全", "zh-Hant": "補全", ja: "コード補完", ko: "코드 완성", es: "Autocompletado", de: "Vervollständigungen" },
+  Personal: { "zh-Hans": "个人", "zh-Hant": "個人", ja: "個人", ko: "개인", es: "Personal", de: "Persönlich" },
+  Shared: { "zh-Hans": "共享", "zh-Hant": "共用", ja: "共有", ko: "공유", es: "Compartido", de: "Geteilt" },
+  Daily: { "zh-Hans": "每日", "zh-Hant": "每日", ja: "日次", ko: "일일", es: "Diario", de: "Täglich" },
+  Hourly: { "zh-Hans": "每小时", "zh-Hant": "每小時", ja: "時間別", ko: "시간별", es: "Por hora", de: "Stündlich" },
+  Credits: { "zh-Hans": "积分", "zh-Hant": "點數", ja: "クレジット", ko: "크레딧", es: "Créditos", de: "Guthaben" },
   "%1$@ is signed out": {
     "zh-Hans": "%1$@ 已登出", "zh-Hant": "%1$@ 已登出", ja: "%1$@ からログアウトされています", ko: "%1$@에서 로그아웃되었습니다", es: "Se cerró la sesión de %1$@", de: "%1$@ ist abgemeldet",
   },

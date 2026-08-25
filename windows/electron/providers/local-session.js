@@ -37,6 +37,32 @@ function decodeJWTExpiry(token) {
 export function parseCursorUsage(object, { now = Date.now(), planName } = {}) {
   if (object?.enabled === false) throw new Error("Cursor has no active subscription");
   const plan = object?.planUsage;
+  const start = numeric(object.billingCycleStart);
+  const end = numeric(object.billingCycleEnd);
+  const minutes = start > 0 && end > start ? Math.max(1, Math.trunc((end - start) / 60_000)) : 43_200;
+  const cycleWindow = (usedPercent, poolName) => ({
+    usedPercent: clamp(usedPercent),
+    windowMinutes: minutes,
+    ...(end > 0 ? { resetsAt: Math.trunc(end) } : {}),
+    ...(poolName ? { poolName } : {}),
+  });
+  const auto = numeric(plan?.autoPercentUsed);
+  const api = numeric(plan?.apiPercentUsed);
+  if (auto !== undefined || api !== undefined) {
+    const autoPool = auto === undefined ? undefined : { name: "Cursor Models", scopeID: "cursor_auto", usedPercent: clamp(auto) };
+    const apiPool = api === undefined ? undefined : { name: "Other Models", scopeID: "cursor_api", usedPercent: clamp(api) };
+    if (!autoPool || !apiPool) {
+      const only = autoPool ?? apiPool;
+      return quota("cursor", [cycleWindow(only.usedPercent, only.name)], { now, planName: titleCase(planName) });
+    }
+    const [busiest, other] = apiPool.usedPercent > autoPool.usedPercent ? [apiPool, autoPool] : [autoPool, apiPool];
+    const siblingWindow = cycleWindow(other.usedPercent);
+    return quota("cursor", [cycleWindow(busiest.usedPercent, busiest.name)], {
+      now,
+      planName: titleCase(planName),
+      scopedWindows: [{ scopeID: other.scopeID, displayName: other.name, window: siblingWindow, observedAt: now }],
+    });
+  }
   let used = numeric(plan?.totalPercentUsed);
   if (used === undefined) {
     const limit = numeric(plan?.limit);
@@ -44,10 +70,7 @@ export function parseCursorUsage(object, { now = Date.now(), planName } = {}) {
     if (limit > 0 && spend !== undefined) used = spend / limit * 100;
   }
   if (used === undefined) throw new Error("Cursor returned no usable quota");
-  const start = numeric(object.billingCycleStart);
-  const end = numeric(object.billingCycleEnd);
-  const minutes = start > 0 && end > start ? Math.max(1, Math.trunc((end - start) / 60_000)) : 43_200;
-  return quota("cursor", [{ usedPercent: clamp(used), windowMinutes: minutes, ...(end > 0 ? { resetsAt: Math.trunc(end) } : {}) }], {
+  return quota("cursor", [cycleWindow(used)], {
     now,
     planName: titleCase(planName),
   });
@@ -139,15 +162,35 @@ function usedPercentFromCopilotSnapshot(snapshot) {
 export function parseCopilotUsage(body, now = Date.now()) {
   const resetsAt = timestamp(body?.quota_reset_date ?? body?.limited_user_reset_date);
   const snapshots = body?.quota_snapshots || {};
-  const values = [snapshots.premium_interactions, snapshots.chat, snapshots.completions]
-    .map(usedPercentFromCopilotSnapshot)
-    .filter((value) => value !== undefined);
-  if (!values.length) throw new Error("Copilot returned no personal quota");
-  return quota("copilot", values.slice(0, 2).map((usedPercent) => ({
+  const monthlyWindow = (usedPercent, poolName) => ({
     usedPercent,
     windowMinutes: 43_200,
     ...(resetsAt ? { resetsAt } : {}),
-  })), { now, planName: titleCase(body?.copilot_plan) });
+    ...(poolName ? { poolName } : {}),
+  });
+  const planName = titleCase(body?.copilot_plan);
+  const premium = usedPercentFromCopilotSnapshot(snapshots.premium_interactions);
+  if (premium !== undefined) {
+    const overageCount = numeric(snapshots.premium_interactions?.overage_count);
+    const extraUsage = snapshots.premium_interactions?.overage_permitted !== false && overageCount > 0
+      ? { spentUSD: overageCount * 0.04 }
+      : undefined;
+    return quota("copilot", [monthlyWindow(premium)], { now, planName, extraUsage });
+  }
+  const chat = usedPercentFromCopilotSnapshot(snapshots.chat);
+  const completions = usedPercentFromCopilotSnapshot(snapshots.completions);
+  if (chat === undefined && completions === undefined) throw new Error("Copilot returned no personal quota");
+  if (chat === undefined || completions === undefined) {
+    return quota("copilot", [monthlyWindow(chat ?? completions)], { now, planName });
+  }
+  const chatPool = { name: "Chat", scopeID: "copilot_chat", usedPercent: chat };
+  const completionsPool = { name: "Completions", scopeID: "copilot_completions", usedPercent: completions };
+  const [busiest, other] = completions > chat ? [completionsPool, chatPool] : [chatPool, completionsPool];
+  return quota("copilot", [monthlyWindow(busiest.usedPercent, busiest.name)], {
+    now,
+    planName,
+    scopedWindows: [{ scopeID: other.scopeID, displayName: other.name, window: monthlyWindow(other.usedPercent), observedAt: now }],
+  });
 }
 
 export async function collectCopilot({ env = process.env, now = Date.now(), fetchImpl = fetch } = {}) {
