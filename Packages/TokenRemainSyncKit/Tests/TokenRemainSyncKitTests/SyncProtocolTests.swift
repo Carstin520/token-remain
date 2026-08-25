@@ -100,6 +100,74 @@ struct SyncProtocolTests {
         #expect(decoded.providers.first?.scopedWindows?.first?.window.usedPercent == 67)
     }
 
+    @Test("Pool names round-trip; payloads without them decode as nil")
+    func poolNameRoundTrip() throws {
+        let provider = SyncedProviderQuota(
+            providerID: SyncedProviderID.cursor,
+            windows: [
+                SyncedQuotaWindow(
+                    usedPercent: 41,
+                    windowMinutes: 43_200,
+                    resetsAt: fixedNow + 600,
+                    poolName: "Cursor Models"
+                ),
+                SyncedQuotaWindow(usedPercent: 12, windowMinutes: 300, resetsAt: fixedNow + 300)
+            ],
+            capturedAt: fixedNow,
+            statusCode: .available
+        )
+        let original = snapshot(providers: [provider])
+        let payload = try original.encodedPayload()
+        let decoded = try MobileUsageSnapshot.decodedPayload(from: payload)
+
+        #expect(decoded.providers.first?.windows.first?.poolName == "Cursor Models")
+        #expect(decoded.providers.first?.windows.last?.poolName == nil)
+        #expect(throws: Never.self) {
+            try original.validatedForTransport(configuration: fixedConfiguration)
+        }
+
+        // A pool-less window omits the key entirely, so this payload is
+        // byte-shaped exactly like one from a pre-poolName build; decoding it
+        // proves an older Mac's payload still decodes, with poolName == nil.
+        let legacyShaped = try MobileUsageSnapshot.decodedPayload(
+            from: snapshot().encodedPayload()
+        )
+        let legacyText = try #require(String(data: try snapshot().encodedPayload(), encoding: .utf8))
+        #expect(!legacyText.contains("poolName"))
+        #expect(legacyShaped.providers.first?.windows.first?.poolName == nil)
+    }
+
+    @Test("An unsanitized pool name is rejected at the transport boundary")
+    func invalidPoolNameIsRejected() throws {
+        func provider(poolName: String) -> SyncedProviderQuota {
+            SyncedProviderQuota(
+                providerID: SyncedProviderID.cursor,
+                windows: [SyncedQuotaWindow(
+                    usedPercent: 41,
+                    windowMinutes: 43_200,
+                    resetsAt: fixedNow + 600,
+                    poolName: poolName
+                )],
+                capturedAt: fixedNow,
+                statusCode: .available
+            )
+        }
+
+        // Account-like and over-long labels both fail; the redactor drops them
+        // to nil before packaging, so only bypassing senders can hit this.
+        #expect(throws: SyncValidationError.invalidPoolName(SyncedProviderID.cursor)) {
+            try snapshot(providers: [provider(poolName: "user@example.com")])
+                .validatedForTransport(configuration: fixedConfiguration)
+        }
+        #expect(throws: SyncValidationError.invalidPoolName(SyncedProviderID.cursor)) {
+            try snapshot(providers: [provider(poolName: String(repeating: "a", count: 49))])
+                .validatedForTransport(configuration: fixedConfiguration)
+        }
+        #expect(SyncedQuotaWindow.sanitizedPoolName(String(repeating: "a", count: 48))
+            == String(repeating: "a", count: 48))
+        #expect(SyncedQuotaWindow.sanitizedPoolName(nil) == nil)
+    }
+
     @Test("AES-GCM envelope round-trips a normalized allowlisted snapshot")
     func roundTrip() throws {
         let key = try SyncEncryptionKey(rawValue: Data(repeating: 7, count: 32))

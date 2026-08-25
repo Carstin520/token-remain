@@ -105,6 +105,7 @@ final class UsageStore: ObservableObject {
     private var auxProviderFailureCounts: [ProviderQuota.Provider: Int] = [:]
     private var auxProviderRetryAfter: [ProviderQuota.Provider: Date] = [:]
     private var claudeRetryAfter: Date?
+    private var claudeConsecutiveFailures = 0
     private var lowLatencySyncEnabled = false
     /// 由状态栏控制器注入:本地用量正出现在任一可见界面(弹窗/仪表板/
     /// 浮窗)时返回 true。后台 ccusage 扫描据此决定是否维持分钟级节奏。
@@ -577,12 +578,15 @@ final class UsageStore: ObservableObject {
             guard let interval else { return false }
             return date.map { now.timeIntervalSince($0) >= interval } ?? true
         }
-        let backoffJustCompleted = claudeRetryAfter.map { now >= $0 } ?? false
+        // 失败后写入的退避窗口是硬性拦截,不只是补触发条件:活跃会话的
+        // 60 秒节奏不能在退避期内每分钟重新发起一次最长 30 秒的 PTY 探针。
+        // 用户的手动刷新(forceClaude)仍可穿透。
+        let claudeBackoffActive = claudeRetryAfter.map { now < $0 } ?? false
         let shouldRefreshClaude = tracked.isEnabled(.claude)
             && (
                 forceClaude
-                    || autoDue(since: lastClaudeAttempt, interval: localAIInterval)
-                    || backoffJustCompleted
+                    || (!claudeBackoffActive
+                        && autoDue(since: lastClaudeAttempt, interval: localAIInterval))
             )
 
         let codexAPIDue = forceClaude
@@ -749,6 +753,7 @@ final class UsageStore: ObservableObject {
                 assign(value, to: .claude)
                 providerNotices[.claude] = nil
                 claudeRetryAfter = nil
+                claudeConsecutiveFailures = 0
                 sessionAlerts.reportHealthy(.claude)
                 UserDefaults.standard.removeObject(forKey: claudeRetryAfterKey)
                 logger.info("Claude quota refreshed; primary usage: \(value.primary.usedPercent, privacy: .public)%, reset time available: \(value.primary.resetsAt != nil, privacy: .public)")
@@ -761,7 +766,19 @@ final class UsageStore: ObservableObject {
                 // 只有用户能修的失败必须主动出声,不能只写在弹窗里等人来看。
                 sessionAlerts.report(error: error, for: .claude, now: now)
                 if let serviceError = error as? ClaudeUsageService.ServiceError {
-                    let retryAfter = now.addingTimeInterval(serviceError.retryDelay)
+                    claudeConsecutiveFailures = min(claudeConsecutiveFailures + 1, 9)
+                    // 服务端给出明确 Retry-After 时以服务端为准,不再放大;
+                    // 其余失败(尤其 PTY 探针超时)按连续次数翻倍退避。
+                    let delay: TimeInterval
+                    if case .rateLimited(let seconds) = serviceError, seconds != nil {
+                        delay = serviceError.retryDelay
+                    } else {
+                        delay = AdaptiveRefreshPolicy.escalatedRetryDelay(
+                            base: serviceError.retryDelay,
+                            consecutiveFailures: claudeConsecutiveFailures
+                        )
+                    }
+                    let retryAfter = now.addingTimeInterval(delay)
                     claudeRetryAfter = retryAfter
                     UserDefaults.standard.set(retryAfter, forKey: claudeRetryAfterKey)
                 }
@@ -1004,6 +1021,7 @@ final class UsageStore: ObservableObject {
                     )
                 }
                 claudeRetryAfter = nil
+                claudeConsecutiveFailures = 0
                 UserDefaults.standard.removeObject(forKey: claudeRetryAfterKey)
             case .codex:
                 lastCodexAPIAttempt = now

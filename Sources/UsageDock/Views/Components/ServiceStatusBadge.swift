@@ -108,7 +108,7 @@ private struct ServiceStatusDetails: View {
             }
 
             Divider()
-                .overlay(DashboardTheme.border)
+                .overlay(DashboardSurface.border)
 
             HStack(spacing: 8) {
                 TimelineView(.periodic(from: .now, by: 60)) { context in

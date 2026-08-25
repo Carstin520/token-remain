@@ -141,7 +141,7 @@ private struct AddProviderTile: View {
             .background(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .strokeBorder(
-                        DashboardTheme.border,
+                        DashboardSurface.border,
                         style: StrokeStyle(lineWidth: 1.5, dash: [6, 5])
                     )
             )

@@ -90,12 +90,22 @@ struct CursorUsageService {
 }
 
 /// GetCurrentPeriodUsage 响应 → ProviderQuota。核心字段:
-/// `planUsage.totalPercentUsed`(0–100 已用百分比,新计费模型)或
-/// `planUsage.totalSpend / planUsage.limit`(美分,推算百分比);
+/// `planUsage.autoPercentUsed` / `planUsage.apiPercentUsed`(0–100,账期内的
+/// 两个独立池:Cursor 自家模型与其他模型)——Cursor 仪表盘分开展示,
+/// `totalPercentUsed` 只是按额度加权的混合值,单条展示会掩盖先耗尽的池;
+/// 两池齐全时用得多的做主窗口,另一池作命名 scoped 窗口;只剩一个池字段
+/// 时该命名池直接做主窗口。两池全缺才退回 `totalPercentUsed` 或
+/// `totalSpend / limit`(美分,推算百分比)的单条形态。
 /// `billingCycleStart` / `billingCycleEnd` 为 epoch 毫秒,窗口即真实账期。
 enum CursorAPIUsageParser {
     /// 账期字段缺失时按 30 天整月展示。
     static let defaultCycleMinutes = 43_200
+
+    /// 与 Cursor 仪表盘一致的池名;scopeID 需满足 sync 的 [a-z0-9_-] 约束。
+    static let autoPoolName = "Cursor Models"
+    static let autoPoolScopeID = "cursor_auto"
+    static let apiPoolName = "Other Models"
+    static let apiPoolScopeID = "cursor_api"
 
     static func parse(_ data: Data, planName: String? = nil, now: Date = .now) throws -> ProviderQuota {
         guard let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
@@ -104,12 +114,17 @@ enum CursorAPIUsageParser {
         guard object["enabled"] as? Bool != false else {
             throw CursorUsageService.ServiceError.noActiveSubscription
         }
-        guard let planUsage = object["planUsage"] as? [String: Any],
-              let usedPercent = usedPercent(planUsage) else {
+        guard let planUsage = object["planUsage"] as? [String: Any] else {
             throw CursorUsageService.ServiceError.invalidResponse
         }
 
         let cycle = billingCycle(object, now: now)
+        if let pools = poolQuota(planUsage, cycle: cycle, planName: planName, now: now) {
+            return pools
+        }
+        guard let usedPercent = usedPercent(planUsage) else {
+            throw CursorUsageService.ServiceError.invalidResponse
+        }
         return ProviderQuota(
             provider: .cursor,
             primary: QuotaWindow(
@@ -120,6 +135,72 @@ enum CursorAPIUsageParser {
             secondary: nil,
             planName: planLabel(planName),
             capturedAt: now
+        )
+    }
+
+    /// 两池并存时的双进度条形态。主窗口(菜单栏/收起态)取已用百分比更高
+    /// 的池——它才是真正的瓶颈;另一池以同账期的 scoped 窗口展示。不走
+    /// `secondary`:sync 校验拒绝两个同时长的账户级窗口,scoped 则允许。
+    private static func poolQuota(
+        _ planUsage: [String: Any],
+        cycle: (minutes: Int, resetsAt: Date?),
+        planName: String?,
+        now: Date
+    ) -> ProviderQuota? {
+        let autoPool = number(planUsage["autoPercentUsed"]).map { (
+            name: autoPoolName,
+            scopeID: autoPoolScopeID,
+            usedPercent: min(100, max(0, $0))
+        ) }
+        let apiPool = number(planUsage["apiPercentUsed"]).map { (
+            name: apiPoolName,
+            scopeID: apiPoolScopeID,
+            usedPercent: min(100, max(0, $0))
+        ) }
+        guard let autoPool, let apiPool else {
+            // 只有一个池字段时,用该命名池做主窗口(带 poolName,无 scoped
+            // 兄弟)——退回混合 totalPercentUsed 会把先耗尽的池重新掩盖;
+            // 两个池字段都缺才轮到混合值兜底。
+            guard let lone = autoPool ?? apiPool else { return nil }
+            return ProviderQuota(
+                provider: .cursor,
+                primary: QuotaWindow(
+                    usedPercent: lone.usedPercent,
+                    windowMinutes: cycle.minutes,
+                    resetsAt: cycle.resetsAt,
+                    poolName: lone.name
+                ),
+                secondary: nil,
+                planName: planLabel(planName),
+                capturedAt: now
+            )
+        }
+        let (busier, other) = apiPool.usedPercent > autoPool.usedPercent
+            ? (apiPool, autoPool)
+            : (autoPool, apiPool)
+        return ProviderQuota(
+            provider: .cursor,
+            primary: QuotaWindow(
+                usedPercent: busier.usedPercent,
+                windowMinutes: cycle.minutes,
+                resetsAt: cycle.resetsAt,
+                poolName: busier.name
+            ),
+            secondary: nil,
+            planName: planLabel(planName),
+            capturedAt: now,
+            scopedWindows: [
+                ScopedQuotaWindow(
+                    scopeID: other.scopeID,
+                    displayName: other.name,
+                    window: QuotaWindow(
+                        usedPercent: other.usedPercent,
+                        windowMinutes: cycle.minutes,
+                        resetsAt: cycle.resetsAt
+                    ),
+                    observedAt: now
+                )
+            ]
         )
     }
 

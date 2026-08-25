@@ -43,7 +43,7 @@ struct AIFeedHotStoriesCard: View {
                 if !posts.isEmpty {
                     ForEach(Array(posts.enumerated()), id: \.element.id) { index, post in
                         if index > 0 {
-                            Divider().overlay(DashboardTheme.border)
+                            Divider().overlay(DashboardSurface.border)
                         }
                         storyRow(post, showsFullText: isExpanded)
                     }

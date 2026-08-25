@@ -35,7 +35,7 @@ private struct FlowToggleRow: View {
                     .padding(.vertical, 6)
                     .background(
                         RoundedRectangle(cornerRadius: 9, style: .continuous)
-                            .fill(active ? DashboardTheme.surface3 : DashboardTheme.surface2)
+                            .fill(active ? DashboardSurface.surface3 : DashboardSurface.surface2)
                     )
                     .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
                 }
@@ -89,12 +89,14 @@ private struct MenuBarDisplayModePicker: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(
                         RoundedRectangle(cornerRadius: 11, style: .continuous)
-                            .fill(isSelected ? DashboardTheme.surface3 : DashboardTheme.surface2)
+                            .fill(isSelected ? DashboardSurface.surface3 : DashboardSurface.surface2)
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: 11, style: .continuous)
                             .stroke(
-                                isSelected ? DashboardTheme.violet : DashboardTheme.border,
+                                isSelected
+                                    ? AnyShapeStyle(DashboardTheme.violet)
+                                    : AnyShapeStyle(DashboardSurface.border),
                                 lineWidth: isSelected ? 1.5 : 1
                             )
                     )
@@ -247,7 +249,7 @@ struct SettingsSection: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
 
-                    Divider().overlay(DashboardTheme.border)
+                    Divider().overlay(DashboardSurface.border)
 
                     preferenceToggle(
                         title: L10n.text("settings.show_dock_icon"),
@@ -255,7 +257,7 @@ struct SettingsSection: View {
                         isOn: dockIconVisibleBinding
                     )
 
-                    Divider().overlay(DashboardTheme.border)
+                    Divider().overlay(DashboardSurface.border)
 
                     preferenceToggle(
                         title: L10n.text("settings.floating_widget"),
@@ -264,6 +266,8 @@ struct SettingsSection: View {
                     )
                 }
             }
+
+            appearanceSettings
 
             DashboardCard {
                 VStack(alignment: .leading, spacing: 12) {
@@ -286,19 +290,60 @@ struct SettingsSection: View {
                         .accessibilityLabel(L10n.text("settings.quota_summary_title"))
                         .accessibilityHint(L10n.text("settings.quota_summary_hint"))
                     }
-
-                    Divider().overlay(DashboardTheme.border)
-
-                    preferenceToggle(
-                        title: L10n.text("settings.antigravity_3p"),
-                        detail: L10n.text("settings.antigravity_3p_hint"),
-                        isOn: antigravityThirdPartyBinding
-                    )
-                    .disabled(!tracked.isEnabled(.antigravity))
                 }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// Appearance lives in General because it is the first thing a user reaches
+    /// for after "the window is too dark to look at", and it is the only
+    /// window-wide visual control the Dashboard has. The popup owns the
+    /// equivalent control for itself, in the popup.
+    private var appearanceSettings: some View {
+        DashboardCard {
+            VStack(alignment: .leading, spacing: 12) {
+                PanelHeader(
+                    title: L10n.text("settings.appearance"),
+                    subtitle: L10n.text("settings.dashboard_background_hint")
+                )
+
+                VStack(alignment: .leading, spacing: 7) {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(L10n.text("settings.dashboard_background"))
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(DashboardTheme.text)
+
+                        Spacer(minLength: 12)
+
+                        Text(backgroundLightnessLabel)
+                            .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                            .foregroundStyle(DashboardTheme.secondaryText)
+                            .frame(width: 46, alignment: .trailing)
+                    }
+
+                    // Continuous, live: the window behind the card is the
+                    // preview, exactly like the popup's opacity slider.
+                    Slider(
+                        value: backgroundLightnessBinding,
+                        in: PreferencesStore.dashboardBackgroundLightnessRange
+                    )
+                    .tint(DashboardTheme.violet)
+                    .accessibilityLabel(L10n.text("settings.dashboard_background"))
+                    .accessibilityHint(L10n.text("settings.dashboard_background_hint"))
+                    .accessibilityValue(backgroundLightnessLabel)
+
+                    HStack {
+                        Text(L10n.text("settings.dashboard_background_deeper"))
+                        Spacer()
+                        Text(L10n.text("settings.dashboard_background_lighter"))
+                    }
+                    .font(.system(size: 10))
+                    .foregroundStyle(DashboardTheme.mutedText)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
     }
 
     private var menuBarSettings: some View {
@@ -330,24 +375,55 @@ struct SettingsSection: View {
                 }
             }
 
-            DashboardCard {
-                VStack(alignment: .leading, spacing: 12) {
-                    PanelHeader(title: L10n.text("settings.model_quotas"))
+            modelQuotaSettings
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
 
-                    preferenceToggle(
-                        title: L10n.text("settings.menubar_fable"),
-                        detail: L10n.text("settings.menubar_fable_hint"),
-                        isOn: menuBarFableBinding
-                    )
-                    .disabled(!tracked.isEnabled(.claude))
+    /// 每个应用一节:池的语义各不相同,平铺列表放不下 7 类开关。
+    /// 只渲染"已接入"的应用,尾部一行 muted 说明兜底空态。
+    private var modelQuotaSettings: some View {
+        DashboardCard {
+            VStack(alignment: .leading, spacing: 12) {
+                PanelHeader(
+                    title: L10n.text("settings.model_quotas"),
+                    subtitle: L10n.text("settings.model_quotas_hint")
+                )
 
-                    preferenceToggle(
-                        title: L10n.text("settings.menubar_codex_spark"),
-                        detail: L10n.text("settings.menubar_codex_spark_hint"),
-                        isOn: menuBarCodexSparkBinding
-                    )
-                    .disabled(!tracked.isEnabled(.codex))
+                ForEach(Array(scopedPoolGroups.enumerated()), id: \.element.id) { index, group in
+                    if index > 0 {
+                        Divider().overlay(DashboardSurface.border)
+                    }
+                    scopedPoolGroup(group)
                 }
+
+                Text(L10n.text("settings.model_quotas_footer"))
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(DashboardTheme.mutedText)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+
+    private func scopedPoolGroup(_ group: ScopedPoolToggleCatalog.ProviderGroup) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 7) {
+                BrandIcon(provider: group.provider)
+                    .frame(width: 14, height: 14)
+                Text(group.provider.displayName)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(DashboardTheme.text)
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(group.provider.displayName)
+
+            ForEach(group.entries) { entry in
+                preferenceToggle(
+                    title: L10n.text(entry.titleKey),
+                    detail: L10n.text(entry.detailKey),
+                    isOn: scopedPoolBinding(for: entry)
+                )
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -380,7 +456,7 @@ struct SettingsSection: View {
                         .frame(width: 110)
                     }
 
-                    Divider().overlay(DashboardTheme.border)
+                    Divider().overlay(DashboardSurface.border)
 
                     HStack {
                         Spacer()
@@ -489,6 +565,24 @@ struct SettingsSection: View {
         )
     }
 
+    /// Same shape as the popup's opacity slider: continuous drag, stored at 2%
+    /// granularity so the value reads cleanly and a dragged slider does not
+    /// write a new float on every pixel.
+    private var backgroundLightnessBinding: Binding<Double> {
+        Binding(
+            get: { preferences.dashboardBackgroundLightness },
+            set: { lightness in
+                let rounded = (lightness / 0.02).rounded() * 0.02
+                guard rounded != preferences.dashboardBackgroundLightness else { return }
+                preferences.setDashboardBackgroundLightness(rounded)
+            }
+        )
+    }
+
+    private var backgroundLightnessLabel: String {
+        "\(Int((preferences.dashboardBackgroundLightness * 100).rounded()))%"
+    }
+
     private var floatingBinding: Binding<Bool> {
         Binding(
             get: { preferences.floatingWidgetEnabled },
@@ -503,25 +597,54 @@ struct SettingsSection: View {
         )
     }
 
-    private var menuBarCodexSparkBinding: Binding<Bool> {
-        Binding(
-            get: { preferences.showCodexSparkQuotaInMenuBarWidget },
-            set: { preferences.setShowCodexSparkQuotaInMenuBarWidget($0) }
+    /// 目录里有条目、且当前有额度数据的应用才成节——没接入的整节不渲染。
+    private var scopedPoolGroups: [ScopedPoolToggleCatalog.ProviderGroup] {
+        ScopedPoolToggleCatalog.settingsGroups(
+            order: tracked.enabledOrdered,
+            isConnected: { store.quotaValue(for: $0) != nil }
         )
     }
 
-    private var menuBarFableBinding: Binding<Bool> {
-        Binding(
-            get: { preferences.showFableQuotaInMenuBarWidget },
-            set: { preferences.setShowFableQuotaInMenuBarWidget($0) }
+    /// 池开关是 tri-state 存储:没存过时开关显示的就是挂件/卡片实际用的
+    /// 智能默认(该池当前有没有用量),存过就永远听用户的。set 一律写显式值。
+    private func scopedPoolBinding(
+        for entry: ScopedPoolToggleCatalog.Entry
+    ) -> Binding<Bool> {
+        let isActive = poolIsActive(entry)
+        return Binding(
+            get: {
+                preferences.resolvedScopedPoolVisibility(
+                    provider: entry.provider,
+                    poolKey: entry.poolKey,
+                    poolIsActive: isActive
+                )
+            },
+            set: {
+                preferences.setScopedPoolVisibility(
+                    $0,
+                    provider: entry.provider,
+                    poolKey: entry.poolKey
+                )
+            }
         )
     }
 
-    private var antigravityThirdPartyBinding: Binding<Bool> {
-        Binding(
-            get: { preferences.showAntigravityThirdPartyQuota },
-            set: { preferences.setShowAntigravityThirdPartyQuota($0) }
-        )
+    /// 该池当前是否在用。拿不到对应窗口(应用接入了但这个池没出现)时退回
+    /// 目录里的保守默认,而不是一律当成"没在用"。有窗口时走与挂件/卡片
+    /// 过滤共享的整组判定(ScopedPoolToggleCatalog.poolIsActive):组内任一
+    /// 行有用量或正余额即活跃,开关读数与行显隐永远一致。
+    private func poolIsActive(_ entry: ScopedPoolToggleCatalog.Entry) -> Bool {
+        guard let quota = store.quotaValue(for: entry.provider) else {
+            return entry.visibilityFallbackWithoutData
+        }
+        let poolHasWindows = quota.uniqueScopedWindows.contains { scoped in
+            ScopedPoolToggleCatalog.entry(
+                for: scoped,
+                provider: quota.provider
+            )?.id == entry.id
+        }
+        guard poolHasWindows else { return entry.visibilityFallbackWithoutData }
+        return ScopedPoolToggleCatalog.poolIsActive(entry: entry, in: quota)
     }
 
     private var quotaSummaryStrategyBinding: Binding<QuotaSummaryStrategy> {

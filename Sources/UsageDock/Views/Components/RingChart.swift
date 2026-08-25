@@ -38,7 +38,7 @@ struct RingChart: View {
             ZStack {
                 Circle()
                     .inset(by: lineWidth / 2 + 1)
-                    .stroke(DashboardTheme.track, lineWidth: lineWidth)
+                    .stroke(DashboardSurface.track, lineWidth: lineWidth)
 
                 ForEach(arcs, id: \.segment.id) { arc in
                     let isDimmed = highlightedSegmentID != nil && highlightedSegmentID != arc.segment.id

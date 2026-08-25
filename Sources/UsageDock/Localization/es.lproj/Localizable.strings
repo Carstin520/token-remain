@@ -373,6 +373,11 @@
 "service.zai.no_coding_plan" = "Esta cuenta de Z.ai no tiene suscripción a GLM Coding Plan";
 "settings.about" = "Acerca de";
 "settings.actions" = "Acciones";
+"settings.appearance" = "Apariencia";
+"settings.dashboard_background" = "Profundidad del fondo";
+"settings.dashboard_background_hint" = "Aclara las superficies negras hacia un gris frío suave: el panel, los widgets de la barra de menús y la ventana flotante cambian a la vez. El texto y los colores de identidad y estado no varían.";
+"settings.dashboard_background_deeper" = "Más oscuro";
+"settings.dashboard_background_lighter" = "Más claro";
 "settings.category_about_detail" = "Versión, datos y controles de la app";
 "settings.category_general_detail" = "Inicio, ventanas y funcionamiento en segundo plano";
 "settings.category_menubar_detail" = "Proveedores, densidad y cuotas por modelo";
@@ -689,3 +694,14 @@
 "accounts.setup.failed" = "El inicio de sesión no terminó. Comprueba la CLI e inténtalo de nuevo.";
 "service.claude.account_login_failed" = "El inicio de sesión de Claude no se completó.";
 "service.claude.account_session_missing" = "El inicio de sesión de Claude terminó sin crear una sesión de cuenta aislada.";
+
+"settings.pool_mimo_daily" = "Mostrar el grupo diario de MiMo";
+"settings.pool_mimo_daily_hint" = "Muestra el grupo diario de tokens junto a las ventanas de cuenta de MiMo; se muestra por defecto en cuanto registra uso.";
+"settings.pool_ollama_hourly" = "Mostrar el grupo por hora de Ollama";
+"settings.pool_ollama_hourly_hint" = "Muestra el límite por hora junto a las ventanas de sesión y semanal; se muestra por defecto en cuanto registra uso.";
+"settings.pool_deepseek_currencies" = "Mostrar otros saldos de divisas de DeepSeek";
+"settings.pool_deepseek_currencies_hint" = "Muestra filas de saldo para las divisas distintas de la principal; se muestran por defecto en cuanto registran uso.";
+"settings.pool_openrouter_credits" = "Mostrar el grupo de créditos de OpenRouter";
+"settings.pool_openrouter_credits_hint" = "Muestra los créditos prepagados como fila de progreso cuando la clave no tiene límite periódico; se muestra por defecto en cuanto se consumen créditos.";
+"settings.model_quotas_hint" = "Bolsas opcionales, agrupadas por aplicación. Cada interruptor solo cambia lo que muestran la ventana, la barra de menús y las tarjetas.";
+"settings.model_quotas_footer" = "Las aplicaciones aparecen aquí en cuanto se conectan y reportan cuota.";

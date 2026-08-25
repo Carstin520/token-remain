@@ -17,6 +17,7 @@ enum SyncContentFingerprint {
             let windowMinutes: Int
             let resetsAt: Date?
             let remainingBalance: QuotaBalance?
+            let poolName: String?
         }
         struct Provider: Codable {
             let id: String
@@ -35,33 +36,43 @@ enum SyncContentFingerprint {
         }
         let values = MobileSnapshotRedactor.publishedProviders.compactMap { provider -> Provider? in
             guard let quota = quotas[provider] else { return nil }
+            let windows = [quota.primary, quota.secondary].compactMap { $0 }.enumerated().map { index, window in
+                Window(
+                    usedPercent: min(max(window.usedPercent, 0), 100),
+                    windowMinutes: max(0, window.windowMinutes),
+                    resetsAt: window.resetsAt,
+                    remainingBalance: window.remainingBalance ?? (index == 0 ? quota.remainingBalance : nil),
+                    poolName: SyncedQuotaWindow.sanitizedPoolName(window.poolName)
+                )
+            }
+            let scopedWindows = quota.uniqueScopedWindows.compactMap { scoped -> ScopedWindow? in
+                guard MobileSnapshotRedactor.isWireSafe(scoped),
+                      let scopeID = MobileSnapshotRedactor.wireScopeID(for: scoped) else {
+                    return nil
+                }
+                return ScopedWindow(
+                    scopeID: scopeID,
+                    displayName: scoped.displayName,
+                    window: Window(
+                        usedPercent: min(max(scoped.window.usedPercent, 0), 100),
+                        windowMinutes: max(0, scoped.window.windowMinutes),
+                        resetsAt: scoped.window.resetsAt,
+                        remainingBalance: scoped.window.remainingBalance,
+                        poolName: SyncedQuotaWindow.sanitizedPoolName(scoped.window.poolName)
+                    )
+                )
+            }
+            // Mirror the redactor's deterministic scoped truncation so a change
+            // in a row that never crosses the wire cannot trigger a re-upload.
+            let scopedCapacity = max(
+                0,
+                MobileSnapshotRedactor.maximumSyncedWindowsPerProvider - windows.count
+            )
             return Provider(
                 id: MobileSnapshotRedactor.stableID(for: provider),
                 planName: SyncedProviderQuota.sanitizedPlanName(quota.planName),
-                windows: [quota.primary, quota.secondary].compactMap { $0 }.enumerated().map { index, window in
-                    Window(
-                        usedPercent: min(max(window.usedPercent, 0), 100),
-                        windowMinutes: max(0, window.windowMinutes),
-                        resetsAt: window.resetsAt,
-                        remainingBalance: window.remainingBalance ?? (index == 0 ? quota.remainingBalance : nil)
-                    )
-                },
-                scopedWindows: quota.uniqueScopedWindows.compactMap { scoped -> ScopedWindow? in
-                    guard MobileSnapshotRedactor.isWireSafe(scoped),
-                          let scopeID = MobileSnapshotRedactor.wireScopeID(for: scoped) else {
-                        return nil
-                    }
-                    return ScopedWindow(
-                        scopeID: scopeID,
-                        displayName: scoped.displayName,
-                        window: Window(
-                            usedPercent: min(max(scoped.window.usedPercent, 0), 100),
-                            windowMinutes: max(0, scoped.window.windowMinutes),
-                            resetsAt: scoped.window.resetsAt,
-                            remainingBalance: scoped.window.remainingBalance
-                        )
-                    )
-                }
+                windows: windows,
+                scopedWindows: Array(scopedWindows.prefix(scopedCapacity))
             )
         }
         let encoder = JSONEncoder()

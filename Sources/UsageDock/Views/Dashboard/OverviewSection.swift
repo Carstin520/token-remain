@@ -134,7 +134,7 @@ struct OverviewSection: View {
                 ForEach(rows) { window in
                     OfficialQuotaRow(window: window)
                 }
-                Divider().overlay(DashboardTheme.border)
+                Divider().overlay(DashboardSurface.border)
                 HStack {
                     Text(L10n.text("overview.risk_level"))
                         .font(.system(size: 11))
@@ -193,7 +193,7 @@ struct OverviewSection: View {
                 .fixedSize(horizontal: false, vertical: true)
 
             if let window = paceAssessment?.window ?? insights.constrainingWindow {
-                Divider().overlay(DashboardTheme.border)
+                Divider().overlay(DashboardSurface.border)
                 InfoRow(
                     label: L10n.text("overview.scarcest_window"),
                     value: "\(window.displayName) · \(UsageFormatting.windowName(minutes: window.windowMinutes))",

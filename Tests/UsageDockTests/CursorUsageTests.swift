@@ -28,6 +28,96 @@ struct CursorAPIUsageParserTests {
         #expect(quota.capturedAt == now)
     }
 
+    @Test("Splits the two pools, promoting the busier one to the primary bar")
+    func splitsPoolsWithBusierPrimary() throws {
+        let now = Date(timeIntervalSince1970: 1_784_000_000)
+        let end = 1_784_592_000_000.0
+        let payload = """
+        {
+          "enabled": true,
+          "planUsage": {
+            "autoPercentUsed": 1.93,
+            "apiPercentUsed": 91.07,
+            "totalPercentUsed": 12.7
+          },
+          "billingCycleStart": 1782000000000,
+          "billingCycleEnd": \(end)
+        }
+        """
+        let quota = try CursorAPIUsageParser.parse(Data(payload.utf8), planName: "pro", now: now)
+
+        #expect(quota.primary.usedPercent == 91.07)
+        #expect(quota.primary.poolName == CursorAPIUsageParser.apiPoolName)
+        #expect(quota.primary.resetsAt == Date(timeIntervalSince1970: end / 1000))
+        #expect(quota.secondary == nil)
+
+        let scoped = try #require(quota.uniqueScopedWindows.first)
+        #expect(quota.uniqueScopedWindows.count == 1)
+        #expect(scoped.scopeID == CursorAPIUsageParser.autoPoolScopeID)
+        #expect(scoped.displayName == CursorAPIUsageParser.autoPoolName)
+        #expect(scoped.window.usedPercent == 1.93)
+        #expect(scoped.window.windowMinutes == quota.primary.windowMinutes)
+        #expect(scoped.window.resetsAt == quota.primary.resetsAt)
+        #expect(scoped.observedAt == now)
+    }
+
+    @Test("The Cursor pool leads when it is the busier one, and ties favor it")
+    func autoPoolLeadsWhenBusierOrTied() throws {
+        let busier = """
+        {"enabled": true, "planUsage": {"autoPercentUsed": 70, "apiPercentUsed": 30}}
+        """
+        let busierQuota = try CursorAPIUsageParser.parse(Data(busier.utf8))
+        #expect(busierQuota.primary.usedPercent == 70)
+        #expect(busierQuota.primary.poolName == CursorAPIUsageParser.autoPoolName)
+        #expect(busierQuota.uniqueScopedWindows.first?.scopeID == CursorAPIUsageParser.apiPoolScopeID)
+
+        let tied = """
+        {"enabled": true, "planUsage": {"autoPercentUsed": 40, "apiPercentUsed": 40}}
+        """
+        let tiedQuota = try CursorAPIUsageParser.parse(Data(tied.utf8))
+        #expect(tiedQuota.primary.poolName == CursorAPIUsageParser.autoPoolName)
+    }
+
+    @Test("Pool percentages are clamped into 0...100")
+    func clampsPoolPercents() throws {
+        let payload = """
+        {"enabled": true, "planUsage": {"autoPercentUsed": 130, "apiPercentUsed": -5}}
+        """
+        let quota = try CursorAPIUsageParser.parse(Data(payload.utf8))
+        #expect(quota.primary.usedPercent == 100)
+        #expect(quota.uniqueScopedWindows.first?.window.usedPercent == 0)
+    }
+
+    @Test("A lone pool percentage becomes the named primary instead of the blended bar")
+    func lonePoolStaysNamed() throws {
+        // 只剩一个池字段时不再退回混合 totalPercentUsed(那会重新掩盖
+        // 先耗尽的池):该命名池直接做主窗口,无 scoped 兄弟。
+        let autoOnly = """
+        {"enabled": true, "planUsage": {"autoPercentUsed": 30, "totalPercentUsed": 12}}
+        """
+        let autoQuota = try CursorAPIUsageParser.parse(Data(autoOnly.utf8))
+        #expect(autoQuota.primary.usedPercent == 30)
+        #expect(autoQuota.primary.poolName == CursorAPIUsageParser.autoPoolName)
+        #expect(autoQuota.scopedWindows == nil)
+
+        let apiOnly = """
+        {"enabled": true, "planUsage": {"apiPercentUsed": 55, "totalPercentUsed": 12}}
+        """
+        let apiQuota = try CursorAPIUsageParser.parse(Data(apiOnly.utf8))
+        #expect(apiQuota.primary.usedPercent == 55)
+        #expect(apiQuota.primary.poolName == CursorAPIUsageParser.apiPoolName)
+        #expect(apiQuota.scopedWindows == nil)
+
+        // 两个池字段都缺才轮到混合值兜底。
+        let blended = """
+        {"enabled": true, "planUsage": {"totalPercentUsed": 12}}
+        """
+        let blendedQuota = try CursorAPIUsageParser.parse(Data(blended.utf8))
+        #expect(blendedQuota.primary.usedPercent == 12)
+        #expect(blendedQuota.primary.poolName == nil)
+        #expect(blendedQuota.scopedWindows == nil)
+    }
+
     @Test("Falls back to totalSpend over limit when the percent field is absent")
     func computesPercentFromSpend() throws {
         let payload = """

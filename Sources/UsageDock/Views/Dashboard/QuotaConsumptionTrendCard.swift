@@ -42,11 +42,11 @@ struct QuotaConsumptionTrendCard: View {
                     .frame(maxWidth: .infinity, minHeight: 92)
                 } else {
                     headerRow
-                    Divider().overlay(DashboardTheme.border)
+                    Divider().overlay(DashboardSurface.border)
                     ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in
                         QuotaTrendRow(row: row, cutoff: cutoff)
                         if index != rows.count - 1 {
-                            Divider().overlay(DashboardTheme.border.opacity(0.65))
+                            Divider().overlay(DashboardSurface.border.opacity(0.65))
                         }
                     }
                 }
@@ -143,6 +143,11 @@ struct QuotaPercentageSparkline: View {
     let cutoff: Date
     let color: Color
 
+    /// `Canvas` paints raw colors, so the grid resolves the palette here rather
+    /// than through a `ShapeStyle`.
+    @Environment(\.dashboardSurfaces)
+    private var surfaces
+
     var body: some View {
         TimelineView(.periodic(from: .now, by: 60)) { context in
             Canvas { graphics, size in
@@ -159,7 +164,7 @@ struct QuotaPercentageSparkline: View {
             let y = size.height * fraction
             path.move(to: CGPoint(x: 0, y: y))
             path.addLine(to: CGPoint(x: size.width, y: y))
-            graphics.stroke(path, with: .color(DashboardTheme.border.opacity(0.45)), lineWidth: 1)
+            graphics.stroke(path, with: .color(surfaces.border.opacity(0.45)), lineWidth: 1)
         }
     }
 

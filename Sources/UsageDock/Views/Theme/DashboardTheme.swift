@@ -22,23 +22,42 @@ enum DashboardTheme {
     // Reference brand lockup: near-black ground, cool-white "Token", and
     // violet "Remain". Keep these semantic so the wordmark and product chrome
     // stay synchronized without affecting provider or status colors.
-    static let brandCanvas = Color(hex: 0x0D0E10)
-    static let brandToken = Color(hex: 0xF2F3F5)
+    static let brandCanvas = Color(hex: canvasHex)
+    static let brandToken = Color(hex: textHex)
     static let brandRemain = Color(hex: 0x9B8AFB)
 
     // Surfaces — restrained, hue-neutral charcoal. Large fields must not
     // compete with provider identity or semantic status colors.
-    static let canvas = brandCanvas              // window / popover background
-    static let surface = Color(hex: 0x121316)    // primary card
-    static let surface2 = Color(hex: 0x1A1B1F)   // secondary chip / inset
-    static let surface3 = Color(hex: 0x23252A)   // raised element
-    static let border = Color(hex: 0x32353C)     // 1px card borders, pixel ticks
-    static let track = Color(hex: 0x272A30)      // empty segment / progress track
+    //
+    // The hex literals are named because the Dashboard's background-lightness
+    // preference interpolates from them (see `DashboardSurfaceLightening`). The
+    // `Color` tokens below stay the fixed dark set — they are what the menu-bar
+    // popup and every non-Dashboard surface keep using.
+    static let canvasHex: UInt = 0x0D0E10        // window / popover background
+    static let surfaceHex: UInt = 0x121316       // primary card
+    static let surface2Hex: UInt = 0x1A1B1F      // secondary chip / inset
+    static let surface3Hex: UInt = 0x23252A      // raised element
+    static let borderHex: UInt = 0x32353C        // 1px card borders, pixel ticks
+    static let trackHex: UInt = 0x272A30         // empty segment / progress track
+
+    static let canvas = brandCanvas
+    static let surface = Color(hex: surfaceHex)
+    static let surface2 = Color(hex: surface2Hex)
+    static let surface3 = Color(hex: surface3Hex)
+    static let border = Color(hex: borderHex)
+    static let track = Color(hex: trackHex)
 
     // Text (Color 3)
+    // Kept fixed on purpose: the background slider must never move the ink.
+    // The applied lightness range is capped so these stay readable at its top
+    // end — see `DashboardSurfaceLightening.maximumBlend`.
+    static let textHex: UInt = 0xF2F3F5
+    static let secondaryTextHex: UInt = 0xA7ABB4
+    static let mutedTextHex: UInt = 0x6F7580
+
     static let text = brandToken
-    static let secondaryText = Color(hex: 0xA7ABB4)
-    static let mutedText = Color(hex: 0x6F7580)
+    static let secondaryText = Color(hex: secondaryTextHex)
+    static let mutedText = Color(hex: mutedTextHex)
 
     // Color 1 — violet: robot and primary product accent
     static let violet = brandRemain

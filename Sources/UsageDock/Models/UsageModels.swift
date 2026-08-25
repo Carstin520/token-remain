@@ -9,6 +9,11 @@ struct QuotaWindow: Sendable, Codable {
     /// Some providers expose a monetary cap for each individual window. The
     /// percentage still drives the meter; this replaces only the remaining text.
     var remainingBalance: QuotaBalance? = nil
+    /// Cursor splits one billing cycle into named pools ("Cursor Models" /
+    /// "Other Models"). When the primary window is one such pool rather than
+    /// the whole account, this names it so rows stay distinguishable from the
+    /// sibling pool carried as a scoped window.
+    var poolName: String? = nil
 }
 
 /// A monetary remainder reported or derived for one quota window. The meter
@@ -48,7 +53,10 @@ struct ScopedQuotaWindow: Sendable, Codable {
     }
 
     var isCodexSpark: Bool {
-        scopeID.caseInsensitiveCompare("codex_bengalfox") == .orderedSame
+        // Codex 模型池的 scoped 窗口现在成对携带 `_session` / `_weekly`
+        // 后缀(见 CodexUsageService.scopedWindows),精确比较会漏掉带
+        // 后缀的窗口,这里用前缀匹配保住 Spark 显示开关。
+        scopeID.lowercased().hasPrefix("codex_bengalfox")
             || displayName.localizedCaseInsensitiveContains("Codex-Spark")
     }
 

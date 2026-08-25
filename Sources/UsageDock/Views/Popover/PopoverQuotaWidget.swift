@@ -55,22 +55,35 @@ struct PopoverQuotaWidget: View {
             .min { $0.windowMinutes < $1.windowMinutes }
     }
 
+    /// 目录内的池(Fable/Spark/3P/MiMo 日池等)由通用池开关 + 智能默认
+    /// 决定显隐;目录外的池(账户级兄弟池)维持既有行为——跟随展开态。
+    /// Fable 依旧不跟随 isExpanded(entry.followsExpansion == false):它往往
+    /// 先于 all-models 额度耗尽,收起态藏掉它就等于藏掉真正的瓶颈。
+    @MainActor
     static func scopedWindows(
         in quota: ProviderQuota,
         isExpanded: Bool,
-        showCodexSpark: Bool,
-        showFable: Bool = true,
-        showAntigravityThirdParty: Bool = false
+        preferences: PreferencesStore
     ) -> [ScopedQuotaWindow] {
         quota.uniqueScopedWindows.filter { scoped in
-            // Fable 与 Spark 一样受设置控制。它不跟随 isExpanded:Fable 往往
-            // 先于 all-models 额度耗尽,收起态藏掉它就等于藏掉真正的瓶颈。
-            if scoped.isFable { return showFable }
-            if scoped.isCodexSpark { return showCodexSpark }
-            if scoped.isAntigravityThirdParty {
-                return isExpanded && showAntigravityThirdParty
+            guard let entry = ScopedPoolToggleCatalog.entry(
+                for: scoped,
+                provider: quota.provider
+            ) else {
+                return isExpanded
             }
-            return isExpanded
+            if entry.followsExpansion && !isExpanded { return false }
+            // 活跃度按整个池组判定(见 ScopedPoolToggleCatalog.poolIsActive),
+            // 同组多行(如 Spark 的 _session/_weekly)显隐一致,且与设置页
+            // 开关读到的智能默认相同。
+            return preferences.resolvedScopedPoolVisibility(
+                provider: entry.provider,
+                poolKey: entry.poolKey,
+                poolIsActive: ScopedPoolToggleCatalog.poolIsActive(
+                    entry: entry,
+                    in: quota
+                )
+            )
         }
     }
 
@@ -106,7 +119,7 @@ struct PopoverQuotaWidget: View {
 
                     if isExpanded {
                         ForEach(Array(orderedWindows.dropFirst().enumerated()), id: \.offset) { _, item in
-                            Divider().overlay(DashboardTheme.border)
+                            Divider().overlay(DashboardSurface.border)
                             QuotaWindowRow(
                                 window: item.window,
                                 provider: provider,
@@ -120,13 +133,11 @@ struct PopoverQuotaWidget: View {
                         Self.scopedWindows(
                             in: quota,
                             isExpanded: isExpanded,
-                            showCodexSpark: preferences.showCodexSparkQuotaInMenuBarWidget,
-                            showFable: preferences.showFableQuotaInMenuBarWidget,
-                            showAntigravityThirdParty: preferences.showAntigravityThirdPartyQuota
+                            preferences: preferences
                         ),
                         id: \.scopeID
                     ) { scoped in
-                        Divider().overlay(DashboardTheme.border)
+                        Divider().overlay(DashboardSurface.border)
                         QuotaWindowRow(
                             window: scoped.window,
                             provider: provider,
@@ -138,15 +149,15 @@ struct PopoverQuotaWidget: View {
 
                     if isExpanded {
                         if let extraUsage = quota.extraUsage {
-                            Divider().overlay(DashboardTheme.border)
+                            Divider().overlay(DashboardSurface.border)
                             ExtraUsageRow(extraUsage: extraUsage)
                         }
                         if let balance = quota.accountBalance {
-                            Divider().overlay(DashboardTheme.border)
+                            Divider().overlay(DashboardSurface.border)
                             AccountBalanceRow(balance: balance)
                         }
                         if let spend = quota.spend, spend.hasValues {
-                            Divider().overlay(DashboardTheme.border)
+                            Divider().overlay(DashboardSurface.border)
                             ProviderSpendRow(spend: spend)
                         }
                         freshnessRow(quota)

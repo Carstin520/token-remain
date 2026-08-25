@@ -112,7 +112,7 @@ struct TrendsSection: View {
                 } else {
                     InfoRow(label: L10n.text("usage.today_tokens"), value: insights.totalTokens.map { UsageFormatting.compactNumber($0) } ?? "—")
                     InfoRow(label: L10n.text("usage.today_est_cost"), value: insights.totalCost.map { String(format: "$%.2f", $0) } ?? "—")
-                    Divider().overlay(DashboardTheme.border)
+                    Divider().overlay(DashboardSurface.border)
                     ForEach(insights.providerUsage) { usage in
                         InfoRow(
                             label: usage.displayName,

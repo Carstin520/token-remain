@@ -41,6 +41,14 @@ struct DashboardView: View {
 
     var body: some View {
         dashboardWithSyncGuidance
+            // The one place the Dashboard's background-lightness preference
+            // enters the view tree. Everything below resolves `DashboardSurface`
+            // tokens against it, so the whole window — chrome, cards, sheets and
+            // the Settings page itself — moves together and updates live while
+            // the slider is dragged. The menu-bar popup never sees this
+            // environment and keeps the fixed dark palette it configures with
+            // its own opacity slider.
+            .dashboardSurfaces(lightness: preferences.dashboardBackgroundLightness)
             .alert(item: detectedProviderBinding) { detection in
                 Alert(
                     title: Text(

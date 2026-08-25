@@ -220,7 +220,7 @@ struct DataSourcesSection: View {
     }
 
     private var rowDivider: some View {
-        Divider().overlay(DashboardTheme.border).padding(.vertical, 12)
+        Divider().overlay(DashboardSurface.border).padding(.vertical, 12)
     }
 
     private var feedSourceDetail: String {

@@ -168,6 +168,111 @@ struct MobileSnapshotRedactorTests {
         ))
     }
 
+    @Test("Pool names cross devices sanitized; account-like labels drop to nil")
+    func poolNamesCrossSanitized() throws {
+        let now = Date(timeIntervalSince1970: 1_784_764_800)
+        let quota = ProviderQuota(
+            provider: .cursor,
+            primary: QuotaWindow(
+                usedPercent: 41,
+                windowMinutes: 43_200,
+                resetsAt: now + 600,
+                poolName: "Cursor Models"
+            ),
+            secondary: QuotaWindow(
+                usedPercent: 12,
+                windowMinutes: 300,
+                resetsAt: now + 300,
+                // 不合格的池名只丢标签,不丢窗口、更不拒收快照。
+                poolName: "user@example.com"
+            ),
+            planName: nil,
+            capturedAt: now
+        )
+        let snapshot = MobileSnapshotRedactor.makeSnapshot(
+            from: [.cursor: quota],
+            sourceInstanceID: UUID(),
+            sequence: 1,
+            generatedAt: now
+        )
+        let windows = try #require(snapshot.providers.first?.windows)
+
+        #expect(windows.map(\.poolName) == ["Cursor Models", nil])
+        #expect(throws: Never.self) {
+            try snapshot.validatedForTransport(configuration: .current(now: now))
+        }
+
+        // Round-trip through the wire codec keeps the surviving label.
+        let decoded = try MobileUsageSnapshot.decodedPayload(from: snapshot.encodedPayload())
+        #expect(decoded.providers.first?.windows.first?.poolName == "Cursor Models")
+    }
+
+    @Test("A provider with more windows than the wire budget is truncated, not rejected")
+    func overflowingScopedWindowsAreTruncatedDeterministically() throws {
+        let now = Date(timeIntervalSince1970: 1_784_764_800)
+        // 4 个模型池 × (session, weekly) = 8 条 scoped,加上账户级 2 窗共
+        // 10,超出 maximumWindowsPerProvider(8)。整份快照绝不能因此
+        // 拒收:按服务端语义顺序保序截尾。
+        let scoped = (1...4).flatMap { index -> [ScopedQuotaWindow] in
+            [
+                ScopedQuotaWindow(
+                    scopeID: "pool\(index)_session",
+                    displayName: "Model Pool \(index)",
+                    window: QuotaWindow(usedPercent: Double(index), windowMinutes: 300, resetsAt: now + 600)
+                ),
+                ScopedQuotaWindow(
+                    scopeID: "pool\(index)_weekly",
+                    displayName: "Model Pool \(index)",
+                    window: QuotaWindow(usedPercent: Double(index * 10), windowMinutes: 10_080, resetsAt: now + 600)
+                )
+            ]
+        }
+        func quota(scopedWindows: [ScopedQuotaWindow]) -> ProviderQuota {
+            ProviderQuota(
+                provider: .codex,
+                primary: QuotaWindow(usedPercent: 31, windowMinutes: 300, resetsAt: now + 600),
+                secondary: QuotaWindow(usedPercent: 22, windowMinutes: 10_080, resetsAt: now + 900),
+                planName: nil,
+                capturedAt: now,
+                scopedWindows: scopedWindows
+            )
+        }
+
+        let snapshot = MobileSnapshotRedactor.makeSnapshot(
+            from: [.codex: quota(scopedWindows: scoped)],
+            sourceInstanceID: UUID(),
+            sequence: 1,
+            generatedAt: now
+        )
+        let provider = try #require(snapshot.providers.first)
+
+        // Exactly at the validation cap, first six scoped rows kept in order.
+        #expect(provider.windows.count == 2)
+        #expect(provider.scopedWindows?.count == 6)
+        #expect(provider.windows.count + (provider.scopedWindows?.count ?? 0)
+            == MobileSnapshotRedactor.maximumSyncedWindowsPerProvider)
+        #expect(provider.scopedWindows?.map(\.scopeID) == [
+            "pool1_session", "pool1_weekly",
+            "pool2_session", "pool2_weekly",
+            "pool3_session", "pool3_weekly"
+        ])
+        #expect(throws: Never.self) {
+            try snapshot.validatedForTransport(configuration: .current(now: now))
+        }
+
+        // The fingerprint mirrors the truncation: a change confined to the
+        // dropped tail must not trigger a re-upload of an identical payload.
+        #expect(SyncContentFingerprint.make(
+            quotas: [.codex: quota(scopedWindows: scoped)],
+            history: nil,
+            includesUsageHistory: false
+        ) == SyncContentFingerprint.make(
+            quotas: [.codex: quota(scopedWindows: Array(scoped.prefix(6)))],
+            history: nil,
+            includesUsageHistory: false
+        ))
+    }
+
     @Test("Every supported Mac provider is published and credential-like plan labels are removed")
     func allProviders() {
         let now = Date(timeIntervalSince1970: 1_784_764_800)

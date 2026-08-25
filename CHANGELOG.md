@@ -5,6 +5,82 @@ Versioning for public releases.
 
 ## Unreleased
 
+## 1.3.7 — 2026-08-25
+
+### Changed
+
+- Show Cursor's two usage pools as separate bars, matching Cursor's own
+  dashboard. The blended `totalPercentUsed` hid the real bottleneck: a
+  spend-weighted 13% could mask "Other Models" at 91% used. The busier pool
+  now drives the primary bar (and the menu-bar summary), while the other
+  pool renders as a named "Cursor Models" / "Other Models" row alongside it.
+  Accounts whose response lacks the per-pool fields keep the single bar.
+- Apply the same busier-pool-first convention everywhere an upstream splits
+  one billing cycle into pools: Copilot's free-tier Chat/Completions
+  counters, Qoder's Personal/Shared credits (previously summed together, so
+  an exhausted personal pool could read as "91% left"), and Z.ai ZCode's
+  per-model pools (now named by model, with cycle length derived from the
+  real period end).
+- Stop dropping quota dimensions that lost a slot race: Kimi keeps every
+  window the API reports (shortest → longest, middle tiers as named rows),
+  Ollama shows Session, Hourly, and Weekly instead of whichever two rendered
+  first, Codex model pools keep both their 5-hour and weekly windows, MiMo
+  surfaces its daily token pool, and Z.ai time-based limits use their real
+  duration and name instead of a hardcoded "MCP · 30 d".
+- Named pool rows (Fable, Codex-Spark, Antigravity third-party, MiMo daily,
+  Ollama hourly, DeepSeek extra currencies, OpenRouter credits) now share
+  one visibility store with a smart default: a pool the account actually
+  uses shows up on its own; an idle one stays hidden until switched on.
+  Existing Fable/Spark/third-party choices migrate as-is.
+- OpenRouter prepaid credits keep their percentage bar even when the API key
+  has no periodic limit, and Copilot paid plans estimate overage spend
+  ($0.04 per extra premium request) in the extra-usage row.
+
+### Added
+
+- A "Background depth" slider in Settings → General → Appearance (#42).
+  It lifts the deep-black surfaces toward a soft cool grey across the
+  Dashboard, the menu-bar widgets, and the desktop float together — text,
+  provider identity colors, and status colors are unchanged, and the range
+  is capped where secondary text still meets WCAG AA. The default keeps
+  today's look; the popup's glass opacity remains its own separate control.
+
+### Fixed
+
+- Quota cards no longer show a scroll bar next to trailing blank space
+  when their content already fits the fixed card slot (#42) — scrolling
+  now engages only when the measured content actually overflows, so a
+  future extra window row re-enables it automatically.
+- Clicking a bar in the Daily Usage Trend now opens that day's model
+  detail instead of always the most recent day's (#42). Every bar's tap
+  target was silently inflated to the whole chart — the hit shape was
+  declared after `.position`, which wraps the bar in a chart-sized frame —
+  so the topmost (latest) column swallowed every click while the hover
+  tooltip, computed from the pointer location, kept looking correct.
+- Qoder now trusts a saved dashboard cookie over the auto-discovered
+  local session, and computes usage from the concrete used/total counters
+  instead of the IPC's `totalUsagePercentage` (#18). On paid accounts the
+  local `credit/usage` probe reports a different pool than the Credits
+  dashboard (a real account read 99.9% remaining while the dashboard
+  showed 89.9%), so the pasted cookie — which matches the billing page —
+  wins whenever present, with the local probe kept as the no-cookie
+  fallback. An account-routed cookie still never substitutes the local
+  reading on failure.
+- A Copilot free plan or a multi-pool Z.ai ZCode plan no longer breaks
+  mobile sync for every provider: same-length sibling pools now travel as
+  named rows instead of two identical account windows, which the sync
+  schema rejects wholesale.
+- MiMo's empty pay-as-you-go wallet no longer pins the menu bar at "0%
+  remaining" under the lowest-remaining strategy; the wallet is shown as a
+  balance line instead of a second quota window.
+- Volcengine no longer picks a random usage percentage when the response
+  holds several: the parser prefers the documented path and traverses
+  deterministically.
+- Claude's terminal-based fallback no longer lets a model-scoped
+  "Current session (…)" line overwrite the account-wide 5-hour reading.
+- Antigravity third-party rows no longer vanish for a refresh cycle when
+  only the Gemini buckets report.
+
 ## 1.3.6 — 2026-08-21
 
 ### Changed
@@ -713,3 +789,4 @@ Versioning for public releases.
 [1.2.11]: https://github.com/Carstin520/token-remain/releases/tag/v1.2.11%2Bbuild.26
 [1.3.0]: https://github.com/Carstin520/token-remain/releases/tag/v1.3.0
 [1.3.1]: https://github.com/Carstin520/token-remain/releases/tag/v1.3.1
+[1.3.7]: https://github.com/Carstin520/token-remain/releases/tag/v1.3.7

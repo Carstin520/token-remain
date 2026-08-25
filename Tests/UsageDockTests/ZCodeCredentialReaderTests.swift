@@ -282,7 +282,7 @@ struct ZCodeCredentialReaderTests {
 
     // MARK: start-plan 余额解析
 
-    @Test("Billing balances become primary/secondary windows with a plan label")
+    @Test("The busiest model pool becomes the named primary; the sibling stays scoped")
     func billingParse() throws {
         let payload = #"""
         {"code": 0, "data": {"server_time": 1800000000, "balances": [
@@ -296,11 +296,60 @@ struct ZCodeCredentialReaderTests {
         """#
         let quota = try ZCodeQuotaContract.parseBilling(Data(payload.utf8))
         #expect(quota.provider == .zai)
+        // GLM-5.2 用掉 75%,比 GLM-5-Turbo 的 20% 更紧张——它才是主窗口,
+        // 哪怕它的池子更大;池名跟着主窗口走。
         #expect(quota.primary.usedPercent == 75)
+        #expect(quota.primary.poolName == "GLM-5.2")
         #expect(quota.primary.resetsAt == Date(timeIntervalSince1970: 1_800_700_000))
-        #expect(quota.secondary?.usedPercent == 20)
-        #expect(quota.secondary?.resetsAt == Date(timeIntervalSince1970: 1_800_600_000))
+        // 上游只给周期终点没有起点,差值是剩余时间而非窗口时长,逐刷会缩水;
+        // 时长固定按月度套餐节奏取 43_200 分钟,resetsAt 保留真实 period_end。
+        #expect(quota.primary.windowMinutes == 43_200)
+        // 兄弟池绝不进 secondary(同时长的账户级双窗会被手机同步整份拒收),
+        // 以命名 scoped 窗口保留。
+        #expect(quota.secondary == nil)
+        let sibling = try #require(quota.scopedWindows?.first)
+        #expect(quota.scopedWindows?.count == 1)
+        #expect(sibling.scopeID == "zcode_glm_5_turbo")
+        #expect(sibling.displayName == "GLM-5-Turbo")
+        #expect(sibling.window.usedPercent == 20)
+        #expect(sibling.window.windowMinutes == 43_200)
+        #expect(sibling.window.resetsAt == Date(timeIntervalSince1970: 1_800_600_000))
+        #expect(sibling.observedAt != nil)
         #expect(quota.planName == "ZCode Pro")
+    }
+
+    @Test("Three pools all survive; the plan label follows the primary's bucket")
+    func billingParseThreePools() throws {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        // plan_id 故意错开,验证计划名取的是主窗口所属桶,而不是
+        // balances.first。
+        let payload = #"""
+        {"code": 0, "data": {"balances": [
+            {"show_name": "GLM-5-Turbo", "plan_id": "zcode-v3-pro-plan",
+             "total_units": 50, "used_units": 10, "period_end": 1800600000},
+            {"show_name": "GLM-5.2", "plan_id": "zcode-v3-max-plan",
+             "total_units": 200, "used_units": 150, "period_end": 1800700000},
+            {"show_name": "GLM-5V", "plan_id": "zcode-v3-pro-plan",
+             "total_units": 100, "used_units": 5}
+        ]}}
+        """#
+        let quota = try ZCodeQuotaContract.parseBilling(Data(payload.utf8), now: now)
+        #expect(quota.primary.poolName == "GLM-5.2")
+        #expect(quota.primary.usedPercent == 75)
+        #expect(quota.primary.windowMinutes == 43_200)
+        #expect(quota.planName == "ZCode Max")
+        #expect(quota.secondary == nil)
+        // 第 3 池不再丢弃;兄弟池按用量降序排列。
+        let scoped = try #require(quota.scopedWindows)
+        #expect(scoped.map(\.scopeID) == ["zcode_glm_5_turbo", "zcode_glm_5v"])
+        #expect(scoped.map(\.displayName) == ["GLM-5-Turbo", "GLM-5V"])
+        #expect(scoped[0].window.usedPercent == 20)
+        #expect(scoped[0].window.windowMinutes == 43_200)
+        // 缺 period_end 的池同样固定月窗,resetsAt 保持未知。
+        #expect(scoped[1].window.usedPercent == 5)
+        #expect(scoped[1].window.windowMinutes == 43_200)
+        #expect(scoped[1].window.resetsAt == nil)
+        #expect(scoped.allSatisfy { $0.observedAt == now })
     }
 
     @Test("Empty balances or a business error code are treated as unusable")

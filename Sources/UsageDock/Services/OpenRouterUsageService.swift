@@ -104,6 +104,11 @@ struct OpenRouterUsageService {
 /// 消费,单位美元)→ ProviderQuota。这不是滚动窗口而是终身余额,
 /// windowMinutes 用 0 哨兵表示"累计",无重置时间。
 enum OpenRouterUsageParser {
+    /// 积分池在与 key 限额同为 0 分钟(累计)时的 scoped 身份;
+    /// scopeID 满足手机同步的 `[a-z0-9_-]{1,32}` 约束。
+    static let creditsScopeID = "openrouter_credits"
+    static let creditsDisplayName = "Credits"
+
     /// Backward-compatible entry point used by cached fixtures and focused
     /// parser tests that only contain the credits response.
     static func parse(_ data: Data, planName: String? = nil, now: Date = .now) throws -> ProviderQuota {
@@ -129,6 +134,25 @@ enum OpenRouterUsageParser {
         let canPublishCreditsWindow = keyWindow.map {
             $0.windowMinutes != creditsWindow?.windowMinutes
         } ?? false
+        // key 限额无周期时它与积分池同为 0 分钟:手机同步拒收同 provider 两个
+        // 同时长的账户级窗口,所以积分池不能进 secondary。以前这里降级成纯
+        // accountBalance,把"已用 xx%"的百分比维度整个丢掉;现在改走 scoped
+        // 出口——同步查重只看 primary/secondary,scoped 明确允许与 primary
+        // 同时长,所以百分比和剩余美元能同时保住,也不再需要 accountBalance
+        // 兜底(留着会和 scoped 行重复显示同一笔余额)。
+        let scopedCredits: [ScopedQuotaWindow]? =
+            keyWindow != nil && !canPublishCreditsWindow
+                ? creditsWindow.map {
+                    [
+                        ScopedQuotaWindow(
+                            scopeID: creditsScopeID,
+                            displayName: creditsDisplayName,
+                            window: $0,
+                            observedAt: now
+                        )
+                    ]
+                }
+                : nil
         return ProviderQuota(
             provider: .openrouter,
             primary: primary,
@@ -136,9 +160,7 @@ enum OpenRouterUsageParser {
             planName: planNameOverride ?? keyPayload.flatMap(planName),
             capturedAt: now,
             spend: spend,
-            accountBalance: keyWindow != nil && !canPublishCreditsWindow
-                ? creditsWindow?.remainingBalance
-                : nil,
+            scopedWindows: scopedCredits,
             remainingBalance: primaryBalance
         )
     }

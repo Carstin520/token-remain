@@ -107,7 +107,7 @@ struct CrossDeviceSyncSettingsCard: View {
                         .foregroundStyle(DashboardTheme.text)
                 }
 
-                Divider().overlay(DashboardTheme.border)
+                Divider().overlay(DashboardSurface.border)
 
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 10) {

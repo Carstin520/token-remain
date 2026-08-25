@@ -164,10 +164,10 @@ struct TrendModelBreakdownPanel: View {
             }
         }
         .padding(11)
-        .background(DashboardTheme.surface2, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .background(DashboardSurface.surface2, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .strokeBorder(DashboardTheme.border, lineWidth: 1)
+                .strokeBorder(DashboardSurface.border, lineWidth: 1)
         )
     }
 

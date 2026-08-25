@@ -22,15 +22,71 @@ struct CopilotUsageParserTests {
         #expect(quota.primary.usedPercent == 60)
         #expect(quota.primary.windowMinutes == CopilotUsageParser.monthlyMinutes)
         #expect(quota.primary.resetsAt != nil)
+        #expect(quota.primary.poolName == nil)
         #expect(quota.secondary == nil)
+        #expect(quota.uniqueScopedWindows.isEmpty)
         #expect(quota.planName == "Copilot Pro")
+        // 没有 overage_count 就没有超额消费行。
+        #expect(quota.extraUsage == nil)
     }
 
-    @Test("Free plan falls back to chat and completions buckets")
+    @Test("Paid plan overage count converts into an estimated pay-as-you-go spend")
+    func paidPlanOverage() throws {
+        let payload = """
+        {
+          "copilot_plan": "copilot_pro",
+          "quota_reset_date": "2026-09-01",
+          "quota_snapshots": {
+            "premium_interactions": {
+              "entitlement": 300, "remaining": 0, "percent_remaining": 0.0,
+              "overage_permitted": true, "overage_count": 25
+            }
+          }
+        }
+        """
+        let quota = try CopilotUsageParser.parse(Data(payload.utf8))
+        #expect(quota.primary.usedPercent == 100)
+        // 金额 = 次数 × $0.04(GitHub 公布单价),是推算不是账单;无金额上限字段。
+        let extra = try #require(quota.extraUsage)
+        #expect(extra == ExtraUsage(
+            spentUSD: 25 * CopilotUsageParser.premiumOverageUnitPriceUSD,
+            monthlyLimitUSD: nil
+        ))
+    }
+
+    @Test("Zero or disallowed overage never renders a spend line")
+    func overageBoundaries() throws {
+        let zeroCount = """
+        {
+          "copilot_plan": "copilot_pro",
+          "quota_snapshots": {
+            "premium_interactions": {
+              "entitlement": 300, "remaining": 30, "overage_permitted": true, "overage_count": 0
+            }
+          }
+        }
+        """
+        #expect(try CopilotUsageParser.parse(Data(zeroCount.utf8)).extraUsage == nil)
+
+        let disallowed = """
+        {
+          "copilot_plan": "copilot_pro",
+          "quota_snapshots": {
+            "premium_interactions": {
+              "entitlement": 300, "remaining": 30, "overage_permitted": false, "overage_count": 3
+            }
+          }
+        }
+        """
+        #expect(try CopilotUsageParser.parse(Data(disallowed.utf8)).extraUsage == nil)
+    }
+
+    @Test("Free plan promotes the busier pool to primary and scopes the sibling")
     func freePlan() throws {
         let payload = """
         {
           "copilot_plan": "free",
+          "quota_reset_date": "2026-09-01",
           "quota_snapshots": {
             "chat": {"entitlement": 50, "remaining": 10},
             "completions": {"entitlement": 2000, "remaining": 1500}
@@ -39,7 +95,79 @@ struct CopilotUsageParserTests {
         """
         let quota = try CopilotUsageParser.parse(Data(payload.utf8))
         #expect(quota.primary.usedPercent == 80)
-        #expect(quota.secondary?.usedPercent == 25)
+        #expect(quota.primary.poolName == CopilotUsageParser.chatPoolName)
+        #expect(quota.primary.windowMinutes == CopilotUsageParser.monthlyMinutes)
+        // 两个同时长的账户级窗口会触发手机同步的 duplicateWindow 拒收,兄弟池必须走 scoped。
+        #expect(quota.secondary == nil)
+        let scoped = try #require(quota.uniqueScopedWindows.first)
+        #expect(quota.uniqueScopedWindows.count == 1)
+        #expect(scoped.scopeID == CopilotUsageParser.completionsPoolScopeID)
+        #expect(scoped.displayName == CopilotUsageParser.completionsPoolName)
+        #expect(scoped.window.usedPercent == 25)
+        #expect(scoped.window.windowMinutes == CopilotUsageParser.monthlyMinutes)
+        #expect(scoped.observedAt != nil)
+        // 两池共享同一个月度重置日。
+        #expect(quota.primary.resetsAt != nil)
+        #expect(scoped.window.resetsAt == quota.primary.resetsAt)
+        // 免费档没有 premium overage 字段,不落超额消费行。
+        #expect(quota.extraUsage == nil)
+    }
+
+    @Test("Free plan with busier completions flips the pools")
+    func freePlanCompletionsBusier() throws {
+        let payload = """
+        {
+          "copilot_plan": "free",
+          "quota_snapshots": {
+            "chat": {"entitlement": 50, "remaining": 45},
+            "completions": {"entitlement": 2000, "remaining": 200}
+          }
+        }
+        """
+        let quota = try CopilotUsageParser.parse(Data(payload.utf8))
+        #expect(quota.primary.usedPercent == 90)
+        #expect(quota.primary.poolName == CopilotUsageParser.completionsPoolName)
+        #expect(quota.secondary == nil)
+        let scoped = try #require(quota.uniqueScopedWindows.first)
+        #expect(scoped.scopeID == CopilotUsageParser.chatPoolScopeID)
+        #expect(scoped.displayName == CopilotUsageParser.chatPoolName)
+        #expect(scoped.window.usedPercent == 10)
+    }
+
+    @Test("Free plan tie keeps chat as primary")
+    func freePlanTiePrefersChat() throws {
+        let payload = """
+        {
+          "copilot_plan": "free",
+          "quota_snapshots": {
+            "chat": {"entitlement": 100, "remaining": 60},
+            "completions": {"entitlement": 2000, "remaining": 1200}
+          }
+        }
+        """
+        let quota = try CopilotUsageParser.parse(Data(payload.utf8))
+        #expect(quota.primary.usedPercent == 40)
+        #expect(quota.primary.poolName == CopilotUsageParser.chatPoolName)
+        let scoped = try #require(quota.uniqueScopedWindows.first)
+        #expect(scoped.scopeID == CopilotUsageParser.completionsPoolScopeID)
+    }
+
+    @Test("Free plan with a single countable pool renders one plain window")
+    func freePlanSinglePool() throws {
+        let payload = """
+        {
+          "copilot_plan": "free",
+          "quota_snapshots": {
+            "chat": {"unlimited": true, "entitlement": -1},
+            "completions": {"entitlement": 2000, "remaining": 500}
+          }
+        }
+        """
+        let quota = try CopilotUsageParser.parse(Data(payload.utf8))
+        #expect(quota.primary.usedPercent == 75)
+        #expect(quota.primary.poolName == nil)
+        #expect(quota.secondary == nil)
+        #expect(quota.uniqueScopedWindows.isEmpty)
     }
 
     @Test("An org-managed seat with placeholder buckets is rejected with guidance")
@@ -138,6 +266,8 @@ struct OpenRouterUsageParserTests {
         #expect(quota.primary.resetsAt == nil)
         #expect(quota.primary.remainingBalance == QuotaBalance(amount: 62.5, currencyCode: "USD"))
         #expect(quota.primary.remainingBalance?.displayText == "$62.50")
+        // 积分池自己就是 primary 时无需 scoped 复制。
+        #expect(quota.uniqueScopedWindows.isEmpty)
         #expect(quota.planName == "Pay As You Go")
     }
 
@@ -160,18 +290,32 @@ struct OpenRouterUsageParserTests {
         #expect(quota.primary.remainingBalance == QuotaBalance(amount: 30, currencyCode: "USD"))
         #expect(quota.secondary?.windowMinutes == 0)
         #expect(quota.secondary?.remainingBalance == QuotaBalance(amount: 75, currencyCode: "USD"))
+        // 有周期的 key 限额维持现状:积分池走 secondary,不需要 scoped 行。
+        #expect(quota.uniqueScopedWindows.isEmpty)
         #expect(quota.planName == "Pay As You Go")
         #expect(quota.spend == ProviderSpend(todayUSD: 1.5, weekUSD: 4, monthUSD: 9, allTimeUSD: 10))
     }
 
-    @Test("A key limit without cadence does not duplicate the lifetime credits window")
+    @Test("A key limit without cadence keeps the credits pool as a scoped percent row")
     func avoidsDuplicateLifetimeWindows() throws {
         let credits = Data(#"{"data":{"total_credits":20,"total_usage":5}}"#.utf8)
         let key = Data(#"{"data":{"limit":10,"usage":2}}"#.utf8)
-        let quota = try OpenRouterUsageParser.parse(creditsData: credits, keyData: key)
+        let now = Date(timeIntervalSince1970: 1_784_000_000)
+        let quota = try OpenRouterUsageParser.parse(creditsData: credits, keyData: key, now: now)
         #expect(quota.primary.windowMinutes == 0)
+        #expect(quota.primary.usedPercent == 20)
+        // 同为 0 分钟的积分池不进 secondary(手机同步拒收同时长账户级双窗),
+        // 也不再降级成纯 accountBalance:scoped 行同时保住百分比和余额。
         #expect(quota.secondary == nil)
-        #expect(quota.accountBalance == QuotaBalance(amount: 15, currencyCode: "USD"))
+        #expect(quota.accountBalance == nil)
+        let scoped = try #require(quota.uniqueScopedWindows.first)
+        #expect(quota.uniqueScopedWindows.count == 1)
+        #expect(scoped.scopeID == OpenRouterUsageParser.creditsScopeID)
+        #expect(scoped.displayName == OpenRouterUsageParser.creditsDisplayName)
+        #expect(scoped.window.usedPercent == 25)
+        #expect(scoped.window.windowMinutes == 0)
+        #expect(scoped.window.remainingBalance == QuotaBalance(amount: 15, currencyCode: "USD"))
+        #expect(scoped.observedAt == now)
     }
 
     @Test("The zero-minute window renders as a lifetime label")
@@ -198,7 +342,8 @@ struct AntigravityUsageParserTests {
           }
         }
         """
-        let quota = try AntigravityUsageParser.parse(Data(payload.utf8))
+        let now = Date(timeIntervalSince1970: 1_784_000_000)
+        let quota = try AntigravityUsageParser.parse(Data(payload.utf8), now: now)
         #expect(quota.provider == .antigravity)
         #expect(abs(quota.primary.usedPercent - 20) < 0.0001)
         #expect(quota.primary.windowMinutes == 300)
@@ -211,6 +356,28 @@ struct AntigravityUsageParserTests {
         let scopedUsage = quota.uniqueScopedWindows.map(\.window.usedPercent)
         #expect(abs(scopedUsage[0] - 10) < 0.0001)
         #expect(abs(scopedUsage[1] - 30) < 0.0001)
+        // observedAt 必须落在 3P 行上:一次刷新只回 gemini 桶时,缺时间戳
+        // 的 scoped 行会被 retainingActiveScopedWindows 当作过期清掉。
+        #expect(quota.uniqueScopedWindows.allSatisfy { $0.observedAt == now })
+    }
+
+    @Test("Unknown bucket IDs are skipped instead of guessing a window")
+    func skipsUnknownBuckets() throws {
+        let payload = """
+        {
+          "groups": [
+            {"buckets": [
+              {"bucketId": "gemini-5h", "remainingFraction": 0.5},
+              {"bucketId": "mystery-pool", "remainingFraction": 0.25},
+              {"bucketId": "mystery-weekly", "remainingFraction": 0.75}
+            ]}
+          ]
+        }
+        """
+        let quota = try AntigravityUsageParser.parse(Data(payload.utf8))
+        #expect(abs(quota.primary.usedPercent - 50) < 0.0001)
+        #expect(quota.secondary == nil)
+        #expect(quota.uniqueScopedWindows.isEmpty)
     }
 
     @Test("Keychain payload decoding handles agy JSON and bearer fallbacks")

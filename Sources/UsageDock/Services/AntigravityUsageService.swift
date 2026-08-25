@@ -156,6 +156,16 @@ struct AntigravityUsageService {
 /// 是共享的第三方(Claude)池,作为可由用户显示/隐藏的 scoped windows。
 /// `remainingFraction` 0…1,翻转为已用百分比。
 enum AntigravityUsageParser {
+    /// 目前已知的四个配额桶。别的 bucketId 语义未知,渲染前先取证:
+    /// 记一条 info 日志后跳过,不静默丢。
+    private static let knownBucketIDs: Set<String> = [
+        "gemini-5h", "gemini-weekly", "3p-5h", "3p-weekly"
+    ]
+    private static let logger = Logger(
+        subsystem: "com.jamesli.usagedock",
+        category: "AntigravityUsage"
+    )
+
     static func parse(_ data: Data, now: Date = .now) throws -> ProviderQuota {
         guard let root = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
             throw AntigravityUsageService.ServiceError.invalidResponse
@@ -173,6 +183,12 @@ enum AntigravityUsageParser {
                       let fraction = number(bucket["remainingFraction"]), fraction.isFinite else {
                     continue
                 }
+                guard knownBucketIDs.contains(id) else {
+                    logger.info(
+                        "Skipping unknown Antigravity quota bucket \(id, privacy: .public)"
+                    )
+                    continue
+                }
                 let minutes = id.hasSuffix("-weekly") ? 10_080 : 300
                 pools[id] = QuotaWindow(
                     usedPercent: min(100, max(0, (1 - fraction) * 100)),
@@ -186,19 +202,23 @@ enum AntigravityUsageParser {
             throw AntigravityUsageService.ServiceError.quotaUnavailable
         }
         let secondary = pools["gemini-5h"] == nil ? nil : pools["gemini-weekly"]
+        // observedAt 必填:一次刷新只回 gemini 桶时,缺时间戳的 3P 行会被
+        // `retainingActiveScopedWindows` 当作过期立即清掉,造成行闪断。
         let thirdPartyWindows: [ScopedQuotaWindow] = [
             pools["3p-5h"].map {
                 ScopedQuotaWindow(
                     scopeID: "antigravity_3p_5h",
                     displayName: "Claude / Third-party",
-                    window: $0
+                    window: $0,
+                    observedAt: now
                 )
             },
             pools["3p-weekly"].map {
                 ScopedQuotaWindow(
                     scopeID: "antigravity_3p_weekly",
                     displayName: "Claude / Third-party",
-                    window: $0
+                    window: $0,
+                    observedAt: now
                 )
             }
         ].compactMap { $0 }
