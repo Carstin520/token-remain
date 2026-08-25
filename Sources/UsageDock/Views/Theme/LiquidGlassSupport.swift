@@ -569,7 +569,7 @@ private struct UsageDockPopoverShellBackdropModifier<ShellShape: Shape>: ViewMod
         } else {
             // The transparent panel is a macOS 26 surface; older systems keep
             // the system `NSPopover` and its flat canvas fallback.
-            content.background(DashboardTheme.canvas)
+            content.background(DashboardSurface.canvas)
         }
     }
 
@@ -585,7 +585,9 @@ private struct UsageDockPopoverShellBackdropModifier<ShellShape: Shape>: ViewMod
     private var clearBackdrop: some View {
         ZStack {
             Color.clear.glassEffect(Glass.clear, in: shape)
-            shape.fill(DashboardTheme.canvas.opacity(scrimOpacity))
+            // 底衬走动态明度调色板:背景深浅滑块提亮卡片时,外壳必须同步,
+            // 否则壳暗卡亮形成割裂。
+            shape.fill(DashboardSurface.canvas.opacity(scrimOpacity))
         }
     }
 
@@ -601,7 +603,8 @@ private struct UsageDockPopoverShellBackdropModifier<ShellShape: Shape>: ViewMod
         ZStack {
             Rectangle()
                 .fill(UsageDockPopoverAppearance.frostedMaterial)
-            DashboardTheme.canvas.opacity(scrimOpacity)
+            Rectangle()
+                .fill(DashboardSurface.canvas.opacity(scrimOpacity))
         }
         .clipShape(shape)
     }
