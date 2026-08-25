@@ -373,6 +373,11 @@
 "service.zai.no_coding_plan" = "Dieses Z.ai-Konto hat kein GLM-Coding-Plan-Abo";
 "settings.about" = "Über";
 "settings.actions" = "Aktionen";
+"settings.appearance" = "Erscheinungsbild";
+"settings.dashboard_background" = "Hintergrundtiefe";
+"settings.dashboard_background_hint" = "Hellt die tiefschwarzen Flächen zu einem sanften kühlen Grau auf – Dashboard, Menüleisten-Widgets und Schwebefenster folgen gemeinsam. Text-, Identitäts- und Statusfarben bleiben unverändert.";
+"settings.dashboard_background_deeper" = "Dunkler";
+"settings.dashboard_background_lighter" = "Heller";
 "settings.category_about_detail" = "Version, Daten und App-Steuerung";
 "settings.category_general_detail" = "Start, Fenster und Hintergrundverhalten";
 "settings.category_menubar_detail" = "Anbieter, Dichte und Modellkontingente";

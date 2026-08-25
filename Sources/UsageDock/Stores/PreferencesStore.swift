@@ -33,6 +33,7 @@ final class PreferencesStore: ObservableObject {
     /// `LiquidGlassPopupAvailability` 要从非隔离上下文读它。
     nonisolated static let forceLegacyPopoverKey = "tokenRemain.forceLegacyPopover.v1"
     static let popoverBackgroundOpacityKey = "tokenRemain.popoverBackgroundOpacity.v1"
+    static let dashboardBackgroundLightnessKey = "tokenRemain.dashboardBackgroundLightness.v1"
     static let quotaSummaryStrategyKey = "tokenRemain.quotaSummaryStrategy.v1"
     /// 旧的三个手拍开关键。只在初始化时一次性迁入
     /// `scopedPoolVisibilityKey`,之后不再读写。
@@ -50,6 +51,10 @@ final class PreferencesStore: ObservableObject {
     static let defaultPopoverBackgroundOpacity = 0.62
     static let popoverBackgroundOpacityRange = 0.0...1.0
 
+    /// 0 = 出厂的纯深色仪表盘。老用户升级后读到的就是这个值,观感零变化。
+    static let defaultDashboardBackgroundLightness = 0.0
+    static let dashboardBackgroundLightnessRange = DashboardSurfaceLightening.lightnessRange
+
     /// 刷新频率可选档位(分钟);0 = 仅手动刷新。
     static let refreshChoices = [1, 5, 15, 30, 0]
 
@@ -61,6 +66,9 @@ final class PreferencesStore: ObservableObject {
     @Published private(set) var popoverGlassStyle: PopoverGlassStyle
     /// 菜单栏弹窗深色底衬的不透明度；卡片与文字不受影响。
     @Published private(set) var popoverBackgroundOpacity: Double
+    /// 仪表盘背景的整体明度；0 = 纯深色,1 = 最浅的冷灰底。
+    /// 只影响仪表盘的底色/卡片/描边,文字与弹窗都不跟着走。
+    @Published private(set) var dashboardBackgroundLightness: Double
     /// Which account-level window compact summary surfaces display.
     @Published private(set) var quotaSummaryStrategy: QuotaSummaryStrategy
     /// 附加池可见性 tri-state 存储(键见 `scopedPoolStorageKey`)。
@@ -89,6 +97,11 @@ final class PreferencesStore: ObservableObject {
         let storedPopoverOpacity = defaults.object(forKey: Self.popoverBackgroundOpacityKey) as? Double
         popoverBackgroundOpacity = Self.clampedPopoverBackgroundOpacity(
             storedPopoverOpacity ?? Self.defaultPopoverBackgroundOpacity
+        )
+        let storedDashboardLightness = defaults
+            .object(forKey: Self.dashboardBackgroundLightnessKey) as? Double
+        dashboardBackgroundLightness = Self.clampedDashboardBackgroundLightness(
+            storedDashboardLightness ?? Self.defaultDashboardBackgroundLightness
         )
         quotaSummaryStrategy = defaults.string(forKey: Self.quotaSummaryStrategyKey)
             .flatMap(QuotaSummaryStrategy.init(rawValue:)) ?? .shortestWindow
@@ -129,6 +142,12 @@ final class PreferencesStore: ObservableObject {
         let clamped = Self.clampedPopoverBackgroundOpacity(opacity)
         popoverBackgroundOpacity = clamped
         defaults.set(clamped, forKey: Self.popoverBackgroundOpacityKey)
+    }
+
+    func setDashboardBackgroundLightness(_ lightness: Double) {
+        let clamped = Self.clampedDashboardBackgroundLightness(lightness)
+        dashboardBackgroundLightness = clamped
+        defaults.set(clamped, forKey: Self.dashboardBackgroundLightnessKey)
     }
 
     func setQuotaSummaryStrategy(_ strategy: QuotaSummaryStrategy) {
@@ -287,5 +306,13 @@ final class PreferencesStore: ObservableObject {
         guard opacity.isFinite else { return defaultPopoverBackgroundOpacity }
         return min(max(opacity, popoverBackgroundOpacityRange.lowerBound),
                    popoverBackgroundOpacityRange.upperBound)
+    }
+
+    /// 非有限值一律退回默认(=0 现状),不让一条脏的 defaults 把整个仪表盘
+    /// 洗成灰的。
+    private static func clampedDashboardBackgroundLightness(_ lightness: Double) -> Double {
+        guard lightness.isFinite else { return defaultDashboardBackgroundLightness }
+        return min(max(lightness, dashboardBackgroundLightnessRange.lowerBound),
+                   dashboardBackgroundLightnessRange.upperBound)
     }
 }

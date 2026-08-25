@@ -65,6 +65,7 @@ private struct SettingsCategoryTab: View {
     let isSelected: Bool
     let select: () -> Void
     @State private var isHovering = false
+    @Environment(\.dashboardSurfaces) private var surfaces
 
     var body: some View {
         Button(action: select) {
@@ -87,7 +88,7 @@ private struct SettingsCategoryTab: View {
                     .fill(
                         isSelected
                             ? DashboardTheme.violet
-                            : (isHovering ? DashboardTheme.surface3 : Color.clear)
+                            : (isHovering ? surfaces.surface3 : Color.clear)
                     )
             )
             .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))

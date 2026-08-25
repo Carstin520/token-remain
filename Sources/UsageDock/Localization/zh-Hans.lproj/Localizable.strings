@@ -374,6 +374,11 @@
 "service.zai.no_coding_plan" = "该 Z.ai 账户没有 GLM Coding Plan 订阅";
 "settings.about" = "关于";
 "settings.actions" = "操作";
+"settings.appearance" = "外观";
+"settings.dashboard_background" = "背景深浅";
+"settings.dashboard_background_hint" = "将深黑背景整体调向柔和冷灰——仪表盘、菜单栏挂件与桌面浮窗同步生效;文字、应用身份色与状态色保持不变。";
+"settings.dashboard_background_deeper" = "更深";
+"settings.dashboard_background_lighter" = "更浅";
 "settings.category_about_detail" = "版本、数据与应用控制";
 "settings.category_general_detail" = "启动、窗口与常驻行为";
 "settings.category_menubar_detail" = "应用、显示密度与模型额度";

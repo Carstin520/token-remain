@@ -35,7 +35,7 @@ private struct FlowToggleRow: View {
                     .padding(.vertical, 6)
                     .background(
                         RoundedRectangle(cornerRadius: 9, style: .continuous)
-                            .fill(active ? DashboardTheme.surface3 : DashboardTheme.surface2)
+                            .fill(active ? DashboardSurface.surface3 : DashboardSurface.surface2)
                     )
                     .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
                 }
@@ -89,12 +89,14 @@ private struct MenuBarDisplayModePicker: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(
                         RoundedRectangle(cornerRadius: 11, style: .continuous)
-                            .fill(isSelected ? DashboardTheme.surface3 : DashboardTheme.surface2)
+                            .fill(isSelected ? DashboardSurface.surface3 : DashboardSurface.surface2)
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: 11, style: .continuous)
                             .stroke(
-                                isSelected ? DashboardTheme.violet : DashboardTheme.border,
+                                isSelected
+                                    ? AnyShapeStyle(DashboardTheme.violet)
+                                    : AnyShapeStyle(DashboardSurface.border),
                                 lineWidth: isSelected ? 1.5 : 1
                             )
                     )
@@ -247,7 +249,7 @@ struct SettingsSection: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
 
-                    Divider().overlay(DashboardTheme.border)
+                    Divider().overlay(DashboardSurface.border)
 
                     preferenceToggle(
                         title: L10n.text("settings.show_dock_icon"),
@@ -255,7 +257,7 @@ struct SettingsSection: View {
                         isOn: dockIconVisibleBinding
                     )
 
-                    Divider().overlay(DashboardTheme.border)
+                    Divider().overlay(DashboardSurface.border)
 
                     preferenceToggle(
                         title: L10n.text("settings.floating_widget"),
@@ -264,6 +266,8 @@ struct SettingsSection: View {
                     )
                 }
             }
+
+            appearanceSettings
 
             DashboardCard {
                 VStack(alignment: .leading, spacing: 12) {
@@ -290,6 +294,56 @@ struct SettingsSection: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// Appearance lives in General because it is the first thing a user reaches
+    /// for after "the window is too dark to look at", and it is the only
+    /// window-wide visual control the Dashboard has. The popup owns the
+    /// equivalent control for itself, in the popup.
+    private var appearanceSettings: some View {
+        DashboardCard {
+            VStack(alignment: .leading, spacing: 12) {
+                PanelHeader(
+                    title: L10n.text("settings.appearance"),
+                    subtitle: L10n.text("settings.dashboard_background_hint")
+                )
+
+                VStack(alignment: .leading, spacing: 7) {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(L10n.text("settings.dashboard_background"))
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(DashboardTheme.text)
+
+                        Spacer(minLength: 12)
+
+                        Text(backgroundLightnessLabel)
+                            .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                            .foregroundStyle(DashboardTheme.secondaryText)
+                            .frame(width: 46, alignment: .trailing)
+                    }
+
+                    // Continuous, live: the window behind the card is the
+                    // preview, exactly like the popup's opacity slider.
+                    Slider(
+                        value: backgroundLightnessBinding,
+                        in: PreferencesStore.dashboardBackgroundLightnessRange
+                    )
+                    .tint(DashboardTheme.violet)
+                    .accessibilityLabel(L10n.text("settings.dashboard_background"))
+                    .accessibilityHint(L10n.text("settings.dashboard_background_hint"))
+                    .accessibilityValue(backgroundLightnessLabel)
+
+                    HStack {
+                        Text(L10n.text("settings.dashboard_background_deeper"))
+                        Spacer()
+                        Text(L10n.text("settings.dashboard_background_lighter"))
+                    }
+                    .font(.system(size: 10))
+                    .foregroundStyle(DashboardTheme.mutedText)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
     }
 
     private var menuBarSettings: some View {
@@ -338,7 +392,7 @@ struct SettingsSection: View {
 
                 ForEach(Array(scopedPoolGroups.enumerated()), id: \.element.id) { index, group in
                     if index > 0 {
-                        Divider().overlay(DashboardTheme.border)
+                        Divider().overlay(DashboardSurface.border)
                     }
                     scopedPoolGroup(group)
                 }
@@ -402,7 +456,7 @@ struct SettingsSection: View {
                         .frame(width: 110)
                     }
 
-                    Divider().overlay(DashboardTheme.border)
+                    Divider().overlay(DashboardSurface.border)
 
                     HStack {
                         Spacer()
@@ -509,6 +563,24 @@ struct SettingsSection: View {
             get: { preferences.refreshMinutes },
             set: { preferences.setRefreshMinutes($0) }
         )
+    }
+
+    /// Same shape as the popup's opacity slider: continuous drag, stored at 2%
+    /// granularity so the value reads cleanly and a dragged slider does not
+    /// write a new float on every pixel.
+    private var backgroundLightnessBinding: Binding<Double> {
+        Binding(
+            get: { preferences.dashboardBackgroundLightness },
+            set: { lightness in
+                let rounded = (lightness / 0.02).rounded() * 0.02
+                guard rounded != preferences.dashboardBackgroundLightness else { return }
+                preferences.setDashboardBackgroundLightness(rounded)
+            }
+        )
+    }
+
+    private var backgroundLightnessLabel: String {
+        "\(Int((preferences.dashboardBackgroundLightness * 100).rounded()))%"
     }
 
     private var floatingBinding: Binding<Bool> {

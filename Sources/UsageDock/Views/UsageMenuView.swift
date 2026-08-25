@@ -157,6 +157,10 @@ struct UsageMenuView: View {
             preferences.popoverGlassStyle
         )
         .preferredColorScheme(.dark)
+        // 背景明度与仪表盘同一滑块同步生效——菜单栏挂件与桌面浮窗都以
+        // 本视图为根,在链尾注入一次即覆盖设置浮层与画布背景;玻璃不透明
+        // 度仍由弹窗自己的滑块管,两者正交。
+        .dashboardSurfaces(lightness: preferences.dashboardBackgroundLightness)
         .onPreferenceChange(PopoverHeightKey.self) { measuredHeight = $0 }
         .task {
             store.start()
@@ -243,12 +247,7 @@ struct UsageMenuView: View {
                 .frame(width: 26, height: 26)
                 // The glass surface supplies its own rim; a second palette-colored
                 // circle on top of it was the button's share of the wireframe.
-                .usageDockGlassSurface(
-                    cornerRadius: 13,
-                    interactive: true,
-                    fallbackBackground: DashboardTheme.surface,
-                    fallbackBorder: DashboardTheme.border
-                )
+                .usageDockGlassSurface(cornerRadius: 13, interactive: true)
                 .contentShape(Circle())
         }
         .menuStyle(.borderlessButton)
@@ -283,12 +282,7 @@ struct UsageMenuView: View {
             // `.buttonStyle(.glass)` would pin this control to regular glass, so
             // the popup's two header buttons would sit side by side in different
             // materials and only one would follow the Clear/Frosted preference.
-            .usageDockGlassSurface(
-                cornerRadius: 13,
-                interactive: true,
-                fallbackBackground: DashboardTheme.surface,
-                fallbackBorder: DashboardTheme.border
-            )
+            .usageDockGlassSurface(cornerRadius: 13, interactive: true)
             .contentShape(Circle())
         }
         .buttonStyle(.plain)

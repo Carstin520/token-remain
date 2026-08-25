@@ -119,7 +119,7 @@ struct PopoverQuotaWidget: View {
 
                     if isExpanded {
                         ForEach(Array(orderedWindows.dropFirst().enumerated()), id: \.offset) { _, item in
-                            Divider().overlay(DashboardTheme.border)
+                            Divider().overlay(DashboardSurface.border)
                             QuotaWindowRow(
                                 window: item.window,
                                 provider: provider,
@@ -137,7 +137,7 @@ struct PopoverQuotaWidget: View {
                         ),
                         id: \.scopeID
                     ) { scoped in
-                        Divider().overlay(DashboardTheme.border)
+                        Divider().overlay(DashboardSurface.border)
                         QuotaWindowRow(
                             window: scoped.window,
                             provider: provider,
@@ -149,15 +149,15 @@ struct PopoverQuotaWidget: View {
 
                     if isExpanded {
                         if let extraUsage = quota.extraUsage {
-                            Divider().overlay(DashboardTheme.border)
+                            Divider().overlay(DashboardSurface.border)
                             ExtraUsageRow(extraUsage: extraUsage)
                         }
                         if let balance = quota.accountBalance {
-                            Divider().overlay(DashboardTheme.border)
+                            Divider().overlay(DashboardSurface.border)
                             AccountBalanceRow(balance: balance)
                         }
                         if let spend = quota.spend, spend.hasValues {
-                            Divider().overlay(DashboardTheme.border)
+                            Divider().overlay(DashboardSurface.border)
                             ProviderSpendRow(spend: spend)
                         }
                         freshnessRow(quota)

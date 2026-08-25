@@ -5,7 +5,9 @@ import SwiftUI
 struct DashboardCard<Content: View>: View {
     var padding: CGFloat = 14
     var cornerRadius: CGFloat = 15
-    var background: Color = DashboardTheme.surface
+    /// `nil` follows the environment palette — which is how Dashboard cards
+    /// track the background-lightness preference. Pass a color to pin one.
+    var background: Color?
     /// Menu-bar popup cards only. The Dashboard window is a dense grid of
     /// panels where a per-panel pointer response would be constant noise; the
     /// popup's cards are few, large and sit on glass, where the same response

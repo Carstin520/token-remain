@@ -40,11 +40,10 @@ struct RiskStrip: View {
             // Localize semantic color to the badge. A colored card face or
             // outline competes with the meters and makes medium risk feel like
             // a persistent alert rather than a decision summary.
-            .usageDockGlassSurface(
-                cornerRadius: 13,
-                fallbackBackground: DashboardTheme.surface,
-                fallbackBorder: DashboardTheme.border
-            )
+            // Colors omitted on purpose: the card follows the environment
+            // palette, so it tracks the Dashboard's background-lightness
+            // preference and stays dark inside the popup.
+            .usageDockGlassSurface(cornerRadius: 13)
             .pixelTicks(cornerRadius: 13)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(L10n.format(

@@ -532,6 +532,47 @@ struct PreferencesStoreTests {
         )
     }
 
+    @Test("Dashboard background lightness defaults to the shipped dark canvas")
+    func dashboardBackgroundLightnessDefault() {
+        let store = PreferencesStore(defaults: testDefaults())
+        #expect(store.dashboardBackgroundLightness == 0)
+        #expect(
+            store.dashboardBackgroundLightness
+                == PreferencesStore.defaultDashboardBackgroundLightness
+        )
+    }
+
+    @Test("Dashboard background lightness persists and stays within the valid range")
+    func dashboardBackgroundLightness() {
+        let defaults = testDefaults()
+        let store = PreferencesStore(defaults: defaults)
+
+        store.setDashboardBackgroundLightness(0.4)
+        #expect(PreferencesStore(defaults: defaults).dashboardBackgroundLightness == 0.4)
+
+        store.setDashboardBackgroundLightness(-1)
+        #expect(store.dashboardBackgroundLightness == 0)
+
+        store.setDashboardBackgroundLightness(2)
+        #expect(store.dashboardBackgroundLightness == 1)
+
+        defaults.set(Double.nan, forKey: PreferencesStore.dashboardBackgroundLightnessKey)
+        #expect(
+            PreferencesStore(defaults: defaults).dashboardBackgroundLightness
+                == PreferencesStore.defaultDashboardBackgroundLightness
+        )
+    }
+
+    @Test("A stored out-of-range lightness is clamped on load, not honored")
+    func dashboardBackgroundLightnessClampsStoredValue() {
+        let defaults = testDefaults()
+        defaults.set(4.2, forKey: PreferencesStore.dashboardBackgroundLightnessKey)
+        #expect(PreferencesStore(defaults: defaults).dashboardBackgroundLightness == 1)
+
+        defaults.set(-3.0, forKey: PreferencesStore.dashboardBackgroundLightnessKey)
+        #expect(PreferencesStore(defaults: defaults).dashboardBackgroundLightness == 0)
+    }
+
     @Test("Popover glass style defaults to frosted and persists clear glass")
     func popoverGlassStyle() {
         let defaults = testDefaults()

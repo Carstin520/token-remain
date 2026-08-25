@@ -31,7 +31,7 @@ struct PopoverSettingsPanel: View {
                 }
                 .buttonStyle(.plain)
                 .background(Circle().fill(Color.white.opacity(0.08)))
-                .overlay(Circle().stroke(DashboardTheme.border, lineWidth: 1))
+                .overlay(Circle().stroke(DashboardSurface.border, lineWidth: 1))
                 .help(L10n.text("action.close"))
                 .accessibilityLabel(L10n.text("action.close"))
             }
@@ -134,11 +134,11 @@ struct PopoverSettingsPanel: View {
         // and crash-free.
         .background(
             RoundedRectangle(cornerRadius: 13, style: .continuous)
-                .fill(DashboardTheme.surface.opacity(0.94))
+                .fill(DashboardSurface.surface.opacity(0.94))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 13, style: .continuous)
-                .stroke(DashboardTheme.border, lineWidth: 1)
+                .stroke(DashboardSurface.border, lineWidth: 1)
         )
         .accessibilityElement(children: .contain)
     }
@@ -158,7 +158,7 @@ struct PopoverSettingsPanel: View {
         )
         .overlay(
             RoundedRectangle(cornerRadius: 9, style: .continuous)
-                .stroke(DashboardTheme.border, lineWidth: 1)
+                .stroke(DashboardSurface.border, lineWidth: 1)
         )
         .accessibilityElement(children: .contain)
         .accessibilityLabel(L10n.text("settings.popover_glass_style"))
@@ -264,7 +264,7 @@ private struct LiquidGlassSlider: View {
                     .fill(Color.white.opacity(0.07))
                     .overlay(
                         Capsule(style: .continuous)
-                            .stroke(DashboardTheme.border, lineWidth: 1)
+                            .stroke(DashboardSurface.border, lineWidth: 1)
                     )
                     .frame(height: trackHeight)
 
@@ -361,7 +361,7 @@ private extension PopoverSettingsPanel {
         )
         .overlay(
             RoundedRectangle(cornerRadius: 9, style: .continuous)
-                .stroke(DashboardTheme.border, lineWidth: 1)
+                .stroke(DashboardSurface.border, lineWidth: 1)
         )
     }
 }

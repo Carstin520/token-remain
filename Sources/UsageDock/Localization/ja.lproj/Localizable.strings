@@ -373,6 +373,11 @@
 "service.zai.no_coding_plan" = "この Z.ai アカウントには GLM Coding Plan のサブスクリプションがありません";
 "settings.about" = "このアプリについて";
 "settings.actions" = "操作";
+"settings.appearance" = "外観";
+"settings.dashboard_background" = "背景の明るさ";
+"settings.dashboard_background_hint" = "漆黒の背景をやわらかなクールグレーへ持ち上げます。ダッシュボード・メニューバーウィジェット・デスクトップフロートが同時に変わり、文字色・アプリ識別色・状態色は変わりません。";
+"settings.dashboard_background_deeper" = "濃く";
+"settings.dashboard_background_lighter" = "淡く";
 "settings.category_about_detail" = "バージョン、データ、アプリ操作";
 "settings.category_general_detail" = "起動、ウインドウ、常駐動作";
 "settings.category_menubar_detail" = "プロバイダー、表示密度、モデル別クォータ";

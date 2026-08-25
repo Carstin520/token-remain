@@ -5,14 +5,20 @@ import SwiftUI
 /// Layered on card surfaces (both the macOS 26 glass path and the pre-26 flat
 /// `PixelCard` fallback) to carry the mobile TokenRemain identity onto desktop.
 struct PixelTickOverlay: View {
-    var color: Color = DashboardTheme.border
+    /// `nil` follows the environment palette (the Dashboard's
+    /// background-lightness preference); elsewhere that is the fixed border.
+    var color: Color?
     /// Distance of the tick corner from the card edge.
     var inset: CGFloat = 5
     /// Length of each L-mark arm.
     var armLength: CGFloat = 3
 
+    @Environment(\.dashboardSurfaces)
+    private var surfaces
+
     var body: some View {
-        Canvas { context, size in
+        let color = self.color ?? surfaces.border
+        return Canvas { context, size in
             let a = armLength
             let i = inset
 
@@ -56,24 +62,32 @@ struct PixelTickOverlay: View {
 /// the tick overlay separately via `.pixelTicks`.
 struct PixelCard<Content: View>: View {
     var cornerRadius: CGFloat = 8
-    var fill: Color = DashboardTheme.surface
-    var border: Color = DashboardTheme.border
+    /// `nil` on either of these follows the environment palette.
+    var fill: Color?
+    var border: Color?
     @ViewBuilder var content: () -> Content
+
+    @Environment(\.dashboardSurfaces)
+    private var surfaces
 
     var body: some View {
         content()
-            .background(fill, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            .background(
+                fill ?? surfaces.surface,
+                in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            )
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .strokeBorder(border, lineWidth: 1)
+                    .strokeBorder(border ?? surfaces.border, lineWidth: 1)
             )
-            .pixelTicks(cornerRadius: cornerRadius)
+            .pixelTicks(cornerRadius: cornerRadius, color: border)
     }
 }
 
 extension View {
     /// Applies the pixel-tech tick ornament clipped to the card's rounded rect.
-    func pixelTicks(cornerRadius: CGFloat, color: Color = DashboardTheme.border) -> some View {
+    /// `color: nil` follows the environment palette.
+    func pixelTicks(cornerRadius: CGFloat, color: Color? = nil) -> some View {
         overlay(
             PixelTickOverlay(color: color)
                 .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))

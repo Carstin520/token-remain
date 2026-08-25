@@ -35,6 +35,10 @@ struct UsageDockCanvasBackground: View {
     /// backdrop for both and this view stands down.
     @Environment(\.usageDockPopoverShellProvidesBackdrop)
     private var shellProvidesBackdrop
+    /// Dashboard only: the ink follows the background-lightness preference. In
+    /// the popup this stays `.dark`, which is the shipped canvas exactly.
+    @Environment(\.dashboardSurfaces)
+    private var surfaces
 
     init(
         inkOpacity: Double? = nil,
@@ -61,7 +65,7 @@ struct UsageDockCanvasBackground: View {
                 // theme. 0.62 remains translucent but reads consistently neutral
                 // across bright and strongly colored desktops. The floor below
                 // is the same one the menu-bar shell takes.
-                DashboardTheme.canvas.opacity(
+                surfaces.canvas.opacity(
                     UsageDockPopoverAppearance.scrimOpacity(
                         backdropOpacity: inkOpacity
                             ?? UsageDockPopoverAppearance.referenceBackdropOpacity
@@ -78,7 +82,7 @@ struct UsageDockCanvasBackground: View {
                 value: glassStyle
             )
         } else {
-            DashboardTheme.canvas.opacity(inkOpacity ?? 1)
+            surfaces.canvas.opacity(inkOpacity ?? 1)
         }
     }
 }
@@ -351,8 +355,11 @@ private struct UsageDockGlassSurfaceModifier: ViewModifier {
     let cornerRadius: CGFloat
     let tint: Color?
     let interactive: Bool
-    let fallbackBackground: Color
-    let fallbackBorder: Color
+    /// `nil` means "the standard card surface", resolved from the environment
+    /// palette so Dashboard cards follow the background-lightness preference
+    /// while the popup's explicitly-passed colors are untouched.
+    let fallbackBackground: Color?
+    let fallbackBorder: Color?
 
     @Environment(\.usageDockPopoverBackdropOpacity)
     private var popoverBackdropOpacity
@@ -360,6 +367,11 @@ private struct UsageDockGlassSurfaceModifier: ViewModifier {
     private var popoverGlassStyle
     @Environment(\.accessibilityReduceMotion)
     private var reduceMotion
+    @Environment(\.dashboardSurfaces)
+    private var surfaces
+
+    private var resolvedSurface: Color { fallbackBackground ?? surfaces.surface }
+    private var resolvedBorder: Color { fallbackBorder ?? surfaces.border }
 
     @ViewBuilder
     func body(content: Content) -> some View {
@@ -386,7 +398,7 @@ private struct UsageDockGlassSurfaceModifier: ViewModifier {
                         // to the style switch, the slider only inks the scrim.
                         shape
                             .strokeBorder(
-                                fallbackBorder.opacity(
+                                resolvedBorder.opacity(
                                     UsageDockPopoverAppearance.borderOpacity(
                                         backdropOpacity:
                                             UsageDockPopoverAppearance.referenceBackdropOpacity
@@ -422,7 +434,7 @@ private struct UsageDockGlassSurfaceModifier: ViewModifier {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        .strokeBorder(fallbackBorder, lineWidth: 1)
+                        .strokeBorder(resolvedBorder, lineWidth: 1)
                 )
         }
     }
@@ -435,7 +447,7 @@ private struct UsageDockGlassSurfaceModifier: ViewModifier {
         guard popoverBackdropOpacity != nil else {
             return tint.map { Glass.regular.tint($0) } ?? Glass.regular
         }
-        let surfaceColor = tint ?? fallbackBackground
+        let surfaceColor = tint ?? resolvedSurface
         let surfaceTint: Color? = surfaceColor.opacity(
             UsageDockPopoverAppearance.cardTintOpacity(glassStyle: popoverGlassStyle)
         )
@@ -454,8 +466,8 @@ private struct UsageDockGlassSurfaceModifier: ViewModifier {
     }
 
     private var resolvedFallbackBackground: Color {
-        guard let popoverBackdropOpacity else { return fallbackBackground }
-        return fallbackBackground.opacity(
+        guard let popoverBackdropOpacity else { return resolvedSurface }
+        return resolvedSurface.opacity(
             UsageDockPopoverAppearance.surfaceTintOpacity(
                 backdropOpacity: popoverBackdropOpacity
             )
@@ -682,12 +694,15 @@ private struct UsageDockAdaptiveTintModifier: ViewModifier {
 }
 
 private struct UsageDockSidebarBackgroundModifier: ViewModifier {
+    @Environment(\.dashboardSurfaces)
+    private var surfaces
+
     @ViewBuilder
     func body(content: Content) -> some View {
         if #available(macOS 26.0, *) {
             content
         } else {
-            content.background(DashboardTheme.canvas)
+            content.background(surfaces.canvas)
         }
     }
 }
@@ -743,8 +758,8 @@ extension View {
         cornerRadius: CGFloat,
         tint: Color? = nil,
         interactive: Bool = false,
-        fallbackBackground: Color = DashboardTheme.surface,
-        fallbackBorder: Color = DashboardTheme.border
+        fallbackBackground: Color? = nil,
+        fallbackBorder: Color? = nil
     ) -> some View {
         modifier(
             UsageDockGlassSurfaceModifier(

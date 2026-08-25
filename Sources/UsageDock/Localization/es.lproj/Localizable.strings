@@ -373,6 +373,11 @@
 "service.zai.no_coding_plan" = "Esta cuenta de Z.ai no tiene suscripción a GLM Coding Plan";
 "settings.about" = "Acerca de";
 "settings.actions" = "Acciones";
+"settings.appearance" = "Apariencia";
+"settings.dashboard_background" = "Profundidad del fondo";
+"settings.dashboard_background_hint" = "Aclara las superficies negras hacia un gris frío suave: el panel, los widgets de la barra de menús y la ventana flotante cambian a la vez. El texto y los colores de identidad y estado no varían.";
+"settings.dashboard_background_deeper" = "Más oscuro";
+"settings.dashboard_background_lighter" = "Más claro";
 "settings.category_about_detail" = "Versión, datos y controles de la app";
 "settings.category_general_detail" = "Inicio, ventanas y funcionamiento en segundo plano";
 "settings.category_menubar_detail" = "Proveedores, densidad y cuotas por modelo";

@@ -373,6 +373,11 @@
 "service.zai.no_coding_plan" = "이 Z.ai 계정에 GLM Coding Plan 구독이 없습니다";
 "settings.about" = "정보";
 "settings.actions" = "작업";
+"settings.appearance" = "모양";
+"settings.dashboard_background" = "배경 깊이";
+"settings.dashboard_background_hint" = "짙은 검정 배경을 부드러운 차가운 회색으로 밝힙니다. 대시보드·메뉴 막대 위젯·데스크톱 플로트가 함께 바뀌며, 글자·앱 식별 색·상태 색은 그대로입니다.";
+"settings.dashboard_background_deeper" = "더 진하게";
+"settings.dashboard_background_lighter" = "더 밝게";
 "settings.category_about_detail" = "버전, 데이터 및 앱 제어";
 "settings.category_general_detail" = "시작, 창 및 백그라운드 동작";
 "settings.category_menubar_detail" = "서비스, 표시 밀도 및 모델 할당량";

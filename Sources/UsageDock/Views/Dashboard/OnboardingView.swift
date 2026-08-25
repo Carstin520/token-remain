@@ -80,7 +80,7 @@ struct OnboardingView: View {
             .padding(.bottom, 28)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(DashboardTheme.canvas)
+        .background(DashboardSurface.canvas)
         .preferredColorScheme(.dark)
         .onAppear {
             guard detections.isEmpty else { return }
@@ -125,7 +125,7 @@ struct OnboardingView: View {
             .background(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .strokeBorder(
-                        DashboardTheme.border,
+                        DashboardSurface.border,
                         style: StrokeStyle(lineWidth: 1.5, dash: [6, 5])
                     )
             )
@@ -177,10 +177,15 @@ struct OnboardingView: View {
             .padding(.vertical, 10)
             .background(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(isOn ? DashboardTheme.surface2 : DashboardTheme.surface)
+                    .fill(isOn ? DashboardSurface.surface2 : DashboardSurface.surface)
                     .overlay(
                         RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .stroke(isOn ? DashboardTheme.purple.opacity(0.5) : DashboardTheme.border, lineWidth: 1)
+                            .stroke(
+                                isOn
+                                    ? AnyShapeStyle(DashboardTheme.purple.opacity(0.5))
+                                    : AnyShapeStyle(DashboardSurface.border),
+                                lineWidth: 1
+                            )
                     )
             )
             .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))

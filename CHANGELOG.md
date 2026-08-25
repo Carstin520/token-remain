@@ -34,8 +34,21 @@ Versioning for public releases.
   has no periodic limit, and Copilot paid plans estimate overage spend
   ($0.04 per extra premium request) in the extra-usage row.
 
+### Added
+
+- A "Background depth" slider in Settings → General → Appearance (#42).
+  It lifts the deep-black surfaces toward a soft cool grey across the
+  Dashboard, the menu-bar widgets, and the desktop float together — text,
+  provider identity colors, and status colors are unchanged, and the range
+  is capped where secondary text still meets WCAG AA. The default keeps
+  today's look; the popup's glass opacity remains its own separate control.
+
 ### Fixed
 
+- Quota cards no longer show a scroll bar next to trailing blank space
+  when their content already fits the fixed card slot (#42) — scrolling
+  now engages only when the measured content actually overflows, so a
+  future extra window row re-enables it automatically.
 - Clicking a bar in the Daily Usage Trend now opens that day's model
   detail instead of always the most recent day's (#42). Every bar's tap
   target was silently inflated to the whole chart — the hit shape was
