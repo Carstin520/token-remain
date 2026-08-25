@@ -20,7 +20,7 @@ import { PublicPricingService } from "./pricing.js";
 import { ServiceStatusService } from "./service-status.js";
 import { readWindowsReducedMotion, resolveReducedMotion } from "./system-motion.js";
 import { MANUAL_PROVIDER_IDS, normalizeProviderIDs, PROVIDER_CATALOG, PROVIDER_ID_SET } from "./providers/catalog.js";
-import { detectLocalProviders } from "./providers/detection.js";
+import { DESKTOP_APP_PROVIDER_IDS, detectLocalProviders, resolveProviderDesktopAppPath } from "./providers/detection.js";
 import { collectEnabledProviders } from "./providers/index.js";
 import { nextRefreshDelayMs, providerRetryState } from "./refresh-policy.js";
 import { StateStore } from "./state-store.js";
@@ -93,7 +93,7 @@ app.whenReady().then(async () => {
   reducedMotion = initialMotion.value;
   reducedMotionSources = initialMotion.sources;
   activateLanguage(store.state.preferences?.language, app.getLocale());
-  scanInstalledProviders();
+  const initialDetectionSuggestions = await scanInstalledProviders({ announce: false });
   pricingService = new PublicPricingService({
     cacheDirectory: join(app.getPath("userData"), "pricing"),
     fetchImpl: (url, options) => net.fetch(url, options),
@@ -111,6 +111,7 @@ app.whenReady().then(async () => {
       && initialLaunchArguments.openPopupSettings,
   });
   createTray();
+  if (initialDetectionSuggestions.length) openDashboard("limits");
   if (initialLaunchArguments.target === "popover") {
     showPopoverWhenReady({ appearanceOpen: initialLaunchArguments.openPopupSettings });
   }
@@ -531,7 +532,7 @@ function registerIPC() {
     return publicState();
   });
   ipcMain.handle("providers:rescan", async () => {
-    scanInstalledProviders();
+    await scanInstalledProviders();
     notifyRenderer();
     return publicState();
   });
@@ -546,7 +547,7 @@ function registerIPC() {
     if (!MANUAL_PROVIDER_IDS.has(providerID)) throw new Error("This provider uses its own local sign-in");
     await store.setProviderSecret(providerID, boundedString(value, 32 * 1024, "Credential"));
     if (!store.state.enabledProviders.includes(providerID)) await store.setProviderEnabled(providerID, true);
-    scanInstalledProviders();
+    await scanInstalledProviders();
     await refreshAfterMutation();
     return publicState();
   });
@@ -554,8 +555,30 @@ function registerIPC() {
     assertProviderID(providerID);
     if (!MANUAL_PROVIDER_IDS.has(providerID)) throw new Error("This provider uses its own local sign-in");
     await store.clearProviderSecret(providerID);
-    scanInstalledProviders();
+    await scanInstalledProviders();
     await refreshAfterMutation();
+    return publicState();
+  });
+  ipcMain.handle("providers:accept-detection", async (_event, providerID) => {
+    assertProviderID(providerID);
+    const first = store.state.pendingDetectionSuggestions?.[0];
+    if (!first || first.providerID !== providerID) throw new Error("Detection suggestion is no longer available");
+    await store.setProviderEnabled(providerID, true);
+    await refreshAfterMutation();
+    return publicState();
+  });
+  ipcMain.handle("providers:dismiss-detection", (_event, providerID) => {
+    assertProviderID(providerID);
+    store.dismissDetectionSuggestion(providerID);
+    notifyRenderer();
+    return publicState();
+  });
+  ipcMain.handle("providers:open-app", async (_event, providerID) => {
+    if (!DESKTOP_APP_PROVIDER_IDS.has(providerID)) throw new Error("Unsupported provider app");
+    const executablePath = resolveProviderDesktopAppPath(providerID);
+    if (!executablePath) throw new Error("The installed desktop app could not be found");
+    const launchError = await shell.openPath(executablePath);
+    if (launchError) throw new Error(publicError(launchError));
     return publicState();
   });
   ipcMain.handle("sync:pair", async (_event, input) => {
@@ -619,18 +642,8 @@ function registerIPC() {
     notifyRenderer();
     return publicState();
   });
-  ipcMain.handle("settings:set-fable-quota", async (_event, value) => {
-    await store.setShowFableQuota(value === true);
-    notifyRenderer();
-    return publicState();
-  });
-  ipcMain.handle("settings:set-codex-spark-quota", async (_event, value) => {
-    await store.setShowCodexSparkQuota(value === true);
-    notifyRenderer();
-    return publicState();
-  });
-  ipcMain.handle("settings:set-antigravity-third-party-quota", async (_event, value) => {
-    await store.setShowAntigravityThirdPartyQuota(value === true);
+  ipcMain.handle("settings:set-scoped-pool-visibility", async (_event, key, value) => {
+    await store.setScopedPoolVisibility(key, value);
     notifyRenderer();
     return publicState();
   });
@@ -1010,7 +1023,7 @@ async function performRefresh({ providerIDs, includeSharedSources = true } = {})
 }
 
 async function finishRefresh() {
-  scanInstalledProviders();
+  await scanInstalledProviders();
   store.recordQuotaUsage(mergeLocalFirstProviders(store.state.providers || [], store.state.remoteSnapshot?.providers || []));
   store.state.lastUpdatedAt = Date.now();
   store.state.isRefreshing = false;
@@ -1129,9 +1142,9 @@ function publicState() {
     popoverBackdropOpacity: store?.state?.preferences?.popoverBackdropOpacity ?? 0.62,
     trayDisplayMode: store?.state?.preferences?.trayDisplayMode || "full",
     trayProviders: store?.state?.preferences?.trayProviders || ["claude", "codex"],
-    showFableQuota: store?.state?.preferences?.showFableQuota !== false,
-    showCodexSparkQuota: Boolean(store?.state?.preferences?.showCodexSparkQuota),
-    showAntigravityThirdPartyQuota: Boolean(store?.state?.preferences?.showAntigravityThirdPartyQuota),
+    // Raw explicit overrides only. Missing keys are Auto; renderers combine
+    // this map with the provider scoped windows to resolve group activity.
+    scopedPoolVisibility: store?.state?.preferences?.scopedPoolVisibility || {},
     languagePreference: store?.state?.preferences?.language || "system",
     refreshMinutes: store?.state?.preferences?.refreshMinutes ?? 5,
     systemLocale: app.getLocale(),
@@ -1149,11 +1162,13 @@ function publicState() {
         credentialKind: definition.credentialKind,
         installed: Boolean(detection?.installed),
         configured: Boolean(detection?.configured),
+        launchable: Boolean(detection?.launchable),
         detail: detection?.detail,
         enabled: enabledProviders.includes(definition.id),
       };
     }),
     enabledProviders,
+    pendingDetectionSuggestions: store?.state?.pendingDetectionSuggestions || [],
     providers: mergeLocalFirstProviders(store?.state?.providers || [], store?.state?.remoteSnapshot?.providers || []),
     serviceStatus: serviceStatusService?.getStatuses() || {},
     localProviders: store?.state?.providers || [],
@@ -1227,11 +1242,17 @@ async function checkForAvailableUpdate(fetchImpl, now = Date.now()) {
   }
 }
 
-function scanInstalledProviders() {
-  store.state.providerDetections = detectLocalProviders({
+async function scanInstalledProviders({ announce = true } = {}) {
+  const detections = detectLocalProviders({
     hasStoredSecret: (providerID) => store.hasProviderSecret(providerID),
   });
-  return store.state.providerDetections;
+  store.state.providerDetections = detections;
+  const suggestions = await store.applyProviderDetections(detections);
+  if (announce && suggestions.length) {
+    notifyRenderer();
+    openDashboard("limits");
+  }
+  return suggestions;
 }
 
 function assertProviderID(providerID) {

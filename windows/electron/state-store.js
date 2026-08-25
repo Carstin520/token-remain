@@ -7,6 +7,11 @@ import { normalizeProviderIDs, PROVIDER_ID_SET } from "./providers/catalog.js";
 import { DEFAULT_REFRESH_MINUTES, isRefreshMinutes } from "./refresh-policy.js";
 import { newSourceID } from "./sync/crypto.js";
 import { normalizeUpdateCheckState } from "./update-check.js";
+import {
+  LEGACY_SCOPED_POOL_MAPPINGS,
+  normalizeScopedPoolVisibility,
+  SCOPED_POOL_CATALOG_KEYS,
+} from "../src/scoped-pools.js";
 
 const LANGUAGE_PREFERENCES = new Set(["system", "en", "zh-Hans", "zh-Hant", "ja", "ko", "es", "de"]);
 const TRAY_DISPLAY_MODES = new Set(["full", "compact", "minimal"]);
@@ -74,6 +79,19 @@ export class StateStore {
     this.state.quotaUsageHistory = normalizeQuotaUsageHistory(this.state.quotaUsageHistory);
     this.state.notificationBookkeeping = normalizeNotificationBookkeeping(this.state.notificationBookkeeping);
     this.state.updateCheck = normalizeUpdateCheckState(this.state.updateCheck);
+    const rawPreferences = this.state.preferences && typeof this.state.preferences === "object"
+      && !Array.isArray(this.state.preferences)
+      ? this.state.preferences
+      : {};
+    const scopedPoolVisibility = normalizeScopedPoolVisibility(rawPreferences.scopedPoolVisibility);
+    let migratedScopedPoolPreferences = false;
+    for (const mapping of LEGACY_SCOPED_POOL_MAPPINGS) {
+      if (scopedPoolVisibility[mapping.catalogKey] === undefined
+        && typeof rawPreferences[mapping.legacyKey] === "boolean") {
+        scopedPoolVisibility[mapping.catalogKey] = rawPreferences[mapping.legacyKey] ? "on" : "off";
+      }
+      if (Object.hasOwn(rawPreferences, mapping.legacyKey)) migratedScopedPoolPreferences = true;
+    }
     this.state.preferences = {
       backgroundDepth: DEFAULT_BACKGROUND_DEPTH,
       feedNotificationsEnabled: false,
@@ -82,25 +100,20 @@ export class StateStore {
       popoverBackdropOpacity: DEFAULT_POPOVER_BACKDROP_OPACITY,
       popoverGlassStyle: DEFAULT_POPOVER_GLASS_STYLE,
       refreshMinutes: DEFAULT_REFRESH_MINUTES,
-      showAntigravityThirdPartyQuota: false,
-      showCodexSparkQuota: false,
-      showFableQuota: true,
+      scopedPoolVisibility,
       summaryStrategy: "shortestWindow",
       taskbarIconHidden: false,
       trayDisplayMode: "full",
       trayProviders: [...DEFAULT_TRAY_PROVIDERS],
       zaiRegion: "global",
-      ...(this.state.preferences || {}),
+      ...rawPreferences,
+      scopedPoolVisibility,
     };
+    for (const mapping of LEGACY_SCOPED_POOL_MAPPINGS) delete this.state.preferences[mapping.legacyKey];
     if (!LANGUAGE_PREFERENCES.has(this.state.preferences.language)) this.state.preferences.language = "system";
     if (!isRefreshMinutes(this.state.preferences.refreshMinutes)) this.state.preferences.refreshMinutes = DEFAULT_REFRESH_MINUTES;
     this.state.preferences.feedNotificationsEnabled = this.state.preferences.feedNotificationsEnabled === true;
     this.state.preferences.backgroundDepth = normalizeBackgroundDepth(this.state.preferences.backgroundDepth);
-    this.state.preferences.showFableQuota = typeof this.state.preferences.showFableQuota === "boolean"
-      ? this.state.preferences.showFableQuota
-      : true;
-    this.state.preferences.showCodexSparkQuota = this.state.preferences.showCodexSparkQuota === true;
-    this.state.preferences.showAntigravityThirdPartyQuota = this.state.preferences.showAntigravityThirdPartyQuota === true;
     this.state.preferences.taskbarIconHidden = this.state.preferences.taskbarIconHidden === true;
     if (!ZAI_REGIONS.has(this.state.preferences.zaiRegion)) this.state.preferences.zaiRegion = "global";
     if (!SUMMARY_STRATEGIES.has(this.state.preferences.summaryStrategy)) this.state.preferences.summaryStrategy = "shortestWindow";
@@ -112,11 +125,16 @@ export class StateStore {
       : [...DEFAULT_TRAY_PROVIDERS];
     this.state.onboardingCompleted = Boolean(this.state.onboardingCompleted);
     this.state.enabledProviders = normalizeProviderIDs(this.state.enabledProviders);
+    this.state.pendingDetectionSuggestions = [];
+    if (Object.hasOwn(this.state, "detectedInstallations")) {
+      this.state.detectedInstallations = normalizeProviderIDs(this.state.detectedInstallations);
+    }
     this.state.providerSecrets = Object.fromEntries(
       Object.entries(this.state.providerSecrets || {}).filter(([providerID, value]) => (
         PROVIDER_ID_SET.has(providerID) && typeof value === "string" && value.trim()
       )),
     );
+    if (migratedScopedPoolPreferences) await this.save();
     return this.state;
   }
 
@@ -200,6 +218,7 @@ export class StateStore {
 
   async completeOnboarding(providerIDs) {
     this.state.enabledProviders = normalizeProviderIDs(providerIDs);
+    this.state.pendingDetectionSuggestions = [];
     this.state.onboardingCompleted = true;
     await this.save();
   }
@@ -215,7 +234,44 @@ export class StateStore {
     if (enabled) current.add(providerID);
     else current.delete(providerID);
     this.state.enabledProviders = normalizeProviderIDs([...current]);
+    if (enabled) {
+      this.state.pendingDetectionSuggestions = (this.state.pendingDetectionSuggestions || [])
+        .filter((suggestion) => suggestion.providerID !== providerID);
+    }
     await this.save();
+  }
+
+  async applyProviderDetections(detections) {
+    const current = normalizeProviderIDs(
+      detections.filter((detection) => detection?.installed).map((detection) => detection.providerID),
+    );
+    const hasBaseline = Object.hasOwn(this.state, "detectedInstallations");
+    const previous = new Set(normalizeProviderIDs(this.state.detectedInstallations));
+    this.state.detectedInstallations = current;
+
+    const enabled = new Set(this.state.enabledProviders || []);
+    const queued = new Set((this.state.pendingDetectionSuggestions || []).map((item) => item.providerID));
+    const suggestions = hasBaseline
+      ? detections.filter((detection) => (
+        detection?.installed
+          && PROVIDER_ID_SET.has(detection.providerID)
+          && !previous.has(detection.providerID)
+          && !enabled.has(detection.providerID)
+          && !queued.has(detection.providerID)
+      )).map((detection) => ({ providerID: detection.providerID, detail: detection.detail }))
+      : [];
+    this.state.pendingDetectionSuggestions = [
+      ...(this.state.pendingDetectionSuggestions || []),
+      ...suggestions,
+    ];
+    await this.save();
+    return suggestions;
+  }
+
+  dismissDetectionSuggestion(providerID) {
+    const first = this.state.pendingDetectionSuggestions?.[0];
+    if (!first || first.providerID !== providerID) throw new Error("Detection suggestion is no longer available");
+    this.state.pendingDetectionSuggestions = this.state.pendingDetectionSuggestions.slice(1);
   }
 
   async setFloatingWidgetEnabled(enabled) {
@@ -254,18 +310,13 @@ export class StateStore {
     await this.save();
   }
 
-  async setShowFableQuota(enabled) {
-    this.state.preferences = { ...(this.state.preferences || {}), showFableQuota: enabled === true };
-    await this.save();
-  }
-
-  async setShowCodexSparkQuota(enabled) {
-    this.state.preferences = { ...(this.state.preferences || {}), showCodexSparkQuota: enabled === true };
-    await this.save();
-  }
-
-  async setShowAntigravityThirdPartyQuota(enabled) {
-    this.state.preferences = { ...(this.state.preferences || {}), showAntigravityThirdPartyQuota: enabled === true };
+  async setScopedPoolVisibility(key, value) {
+    if (!SCOPED_POOL_CATALOG_KEYS.has(key)) throw new Error("Unsupported scoped quota pool");
+    if (!["auto", "on", "off"].includes(value)) throw new Error("Unsupported scoped quota visibility");
+    const next = { ...normalizeScopedPoolVisibility(this.state.preferences?.scopedPoolVisibility) };
+    if (value === "auto") delete next[key];
+    else next[key] = value;
+    this.state.preferences = { ...(this.state.preferences || {}), scopedPoolVisibility: next };
     await this.save();
   }
 
@@ -341,6 +392,7 @@ export class StateStore {
     await mkdir(dirname(this.path), { recursive: true });
     const temporary = `${this.path}.next`;
     const persisted = { ...this.state };
+    delete persisted.pendingDetectionSuggestions;
     delete persisted.remoteSnapshot;
     if (this.state.quotaUsageHistory) {
       if (!this.safeStorage.isEncryptionAvailable()) throw new Error("Windows credential protection is unavailable");

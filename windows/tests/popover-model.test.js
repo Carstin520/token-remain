@@ -126,6 +126,7 @@ test("Scoped windows join the expanded card with Fable enabled by default", () =
   assert.equal(scoped.level, "medium");
   assert.equal(scoped.resetText, "Resets in 12 hr 0 min");
   assert.deepEqual(card.scopedWindows.map((window) => window.scopeName), ["Opus", "Fable", "Fable 5"]);
+  assert.deepEqual(card.scopedWindows.map((window) => window.followsExpansion), [true, false, false]);
   // The account window list is untouched by scoped data.
   assert.deepEqual(card.windows.map((window) => window.key), ["window-0"]);
   // No scoped data means an empty list, not a missing field.
@@ -142,7 +143,7 @@ test("Scoped windows join the expanded card with Fable enabled by default", () =
       { scopeID: "future", displayName: "Future model", window: { usedPercent: 20, windowMinutes: 10_080 } },
     ] }],
     notices: {},
-    showFableQuota: false,
+    scopedPoolVisibility: { "claude|fable": "off" },
   }, undefined, { now: NOW });
   assert.deepEqual(fableHidden.scopedWindows.map((window) => window.scopeName), ["Future model"]);
 });

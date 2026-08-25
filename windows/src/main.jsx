@@ -55,6 +55,7 @@ import { activateLanguage, languageOptions, SYSTEM_LANGUAGE, tr, trKey } from ".
 import { buildOverviewSummary, buildTodayUsage, rankOfficialQuotaProviders, summaryWindow, usagePace } from "./overview-model.js";
 import { providerMeta } from "./provider-meta.js";
 import { poolDisplayName, providerQuotaDetailRows, visibleScopedWindows } from "./quota-details.js";
+import { scopedPoolSettingsGroups } from "./scoped-pools.js";
 import { compactAxisValue, linePoints, quotaTrendRows, TREND_RANGES, usageTrendModel } from "./trends-model.js";
 import { usageProviderIDs } from "./usage-history.js";
 import "./styles.css";
@@ -230,7 +231,7 @@ function App() {
             {section === "limits" && <Limits state={state} action={action} onOpenCodexUsage={openCodexUsage} />}
             {section === "trends" && <Trends state={state} />}
             {section === "devices" && <Devices state={state} action={action} />}
-            {section === "dataSources" && <DataSources state={state} action={action} />}
+            {section === "dataSources" && <DataSources state={state} action={action} runtimeError={error} />}
             {section === "settings" && <Settings state={state} action={action} onSelect={setSection} />}
           </div>
         </main>
@@ -865,8 +866,16 @@ function Limits({ state, action, onOpenCodexUsage }) {
   const [order, setOrder] = usePersistentOrder(providerIDs, LIMITS_ORDER_KEY);
   const showProvider = (id) => action(() => api.setProviderEnabled(id, true));
   const hideProvider = (id) => action(() => api.setProviderEnabled(id, false));
+  const detectionSuggestion = state.pendingDetectionSuggestions?.[0];
   return (
     <section className="content-section limits-section">
+      {detectionSuggestion && (
+        <DetectionSuggestionPrompt
+          suggestion={detectionSuggestion}
+          onConnect={() => action(() => api.acceptDetectionSuggestion(detectionSuggestion.providerID))}
+          onDismiss={() => action(() => api.dismissDetectionSuggestion(detectionSuggestion.providerID))}
+        />
+      )}
       <div className="limits-toolbar">
         <span>{tr("%1$d apps shown · drag cards to reorder", [providerIDs.length])}</span>
         <ProviderAddMenu
@@ -885,6 +894,7 @@ function Limits({ state, action, onOpenCodexUsage }) {
             provider={state.providers.find((item) => item.providerID === id)}
             notice={state.notices[id]}
             noticeDetail={state.noticeDetails?.[id]?.detail}
+            noticeKind={state.noticeDetails?.[id]?.kind}
             id={id}
             preferences={state}
             canRemove
@@ -902,6 +912,26 @@ function Limits({ state, action, onOpenCodexUsage }) {
         <p>{tr("Reset times come from official snapshots; when a window has no reset time yet, it shows \"Waiting for the official reset time\".")}</p>
       </div>
     </section>
+  );
+}
+
+function DetectionSuggestionPrompt({ suggestion, onConnect, onDismiss }) {
+  const name = providerPresentation(suggestion.providerID).name;
+  const message = trKey("provider.detect.prompt_message", [name]).replaceAll("Mac", "PC");
+  return (
+    <div className="detection-prompt-backdrop">
+      <div className="settings-card detection-prompt" role="dialog" aria-modal="true" aria-labelledby="detection-prompt-title">
+        <ProviderMark meta={providerPresentation(suggestion.providerID)} size={28} />
+        <div>
+          <h2 id="detection-prompt-title">{trKey("provider.detect.prompt_title", [name])}</h2>
+          <p>{message}</p>
+        </div>
+        <div className="detection-prompt-actions">
+          <button className="secondary" onClick={onDismiss}>{trKey("provider.detect.not_now")}</button>
+          <button className="primary" onClick={onConnect}>{trKey("provider.detect.connect")}</button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -949,7 +979,7 @@ function ProviderAddMenu({ providerIDs, providers, catalog, onAdd }) {
   );
 }
 
-function QuotaCard({ provider, notice, noticeDetail, id, preferences, canRemove, onRemove, onOpenCodexUsage }) {
+function QuotaCard({ provider, notice, noticeDetail, noticeKind, id, preferences, canRemove, onRemove, onOpenCodexUsage }) {
   const meta = providerPresentation(id);
   const windows = provider?.windows || [];
   const scopedWindows = visibleScopedWindows(provider, preferences);
@@ -960,7 +990,7 @@ function QuotaCard({ provider, notice, noticeDetail, id, preferences, canRemove,
         <ProviderMark meta={meta} />
         <h3>{meta.name}</h3>
         <ServiceStatusBadge status={preferences.serviceStatus?.[id]} />
-        {windows.length > 0 && notice && (
+        {windows.length > 0 && notice && noticeKind !== "signIn" && (
           <span className="notice-pill" title={noticeDetail || notice}><AlertIcon />{notice}</span>
         )}
         {provider?.planName && <Badge text={provider.planName} tone="plan" />}
@@ -972,6 +1002,12 @@ function QuotaCard({ provider, notice, noticeDetail, id, preferences, canRemove,
           title={canRemove ? tr("Remove %1$@ from Limits", [meta.name]) : tr("At least one app must remain")}
         ><MinusIcon /></button>
       </div>
+      {noticeKind === "signIn" && (
+        <div className="quota-login-recovery" title={noticeDetail || notice}>
+          <AlertIcon />
+          <span>{trKey("quota.login_recovery_hint")}</span>
+        </div>
+      )}
       {windows.length ? (
         <>
           {windows.map((window, index) => (
@@ -1386,10 +1422,11 @@ function Devices({ state, action }) {
 
 // MARK: - Data Sources
 
-function DataSources({ state, action }) {
+function DataSources({ state, action, runtimeError }) {
   const local = new Map((state.localProviders || []).map((provider) => [provider.providerID, provider]));
   const enabled = (state.providerCatalog || []).filter((provider) => provider.enabled);
   const remoteCount = state.sync.paired ? state.providers.filter((provider) => !local.has(provider.providerID)).length : 0;
+  const diagnostics = dataSourceDiagnostics(state, runtimeError);
   return (
     <section className="content-section data-sources-section">
       <div className="settings-card source-list">
@@ -1418,6 +1455,10 @@ function DataSources({ state, action }) {
             healthy={local.has(definition.id) && !state.notices[definition.id]}
             capturedAt={local.get(definition.id)?.capturedAt}
             status={local.has(definition.id) ? "Local" : definition.installed ? "Detected" : "Not found"}
+            action={definition.launchable && ["claude", "codex"].includes(definition.id) ? {
+              label: trKey("datasource.open_provider_app", [definition.id === "claude" ? "Claude" : "ChatGPT / Codex"]),
+              onSelect: () => action(() => api.openProviderApp(definition.id)),
+            } : undefined}
           />
         )) : <p className="quiet-note">{tr("No provider is enabled. Add one from Limits or scan this PC again.")}</p>}
       </div>
@@ -1452,6 +1493,12 @@ function DataSources({ state, action }) {
           capturedAt={state.feedUpdatedAt}
         />
       </div>
+      {diagnostics && (
+        <div className="settings-card diagnostics-card">
+          <strong><AlertIcon />{trKey("datasource.diagnostics_title")}</strong>
+          <pre>{diagnostics}</pre>
+        </div>
+      )}
       <div className="settings-card">
         <PanelHeader title={tr("Privacy")} />
         <ul className="privacy-list">
@@ -1465,6 +1512,18 @@ function DataSources({ state, action }) {
       </div>
     </section>
   );
+}
+
+function dataSourceDiagnostics(state, runtimeError) {
+  const messages = [
+    runtimeError,
+    ...Object.values(state.noticeDetails || {}).map((notice) => notice?.detail),
+    state.localUsage?.error,
+    state.localUsage?.pricing?.error,
+    state.sync?.error,
+    state.feedError,
+  ].filter((message) => typeof message === "string" && message.trim());
+  return [...new Set(messages)].join("\n") || undefined;
 }
 
 function CredentialSourceRow({ definition, provider, notice, noticeDetail, zaiRegion, action }) {
@@ -1518,7 +1577,7 @@ function CredentialSourceRow({ definition, provider, notice, noticeDetail, zaiRe
   );
 }
 
-function SourceHealthRow({ name, detail, detailTitle, healthy, capturedAt, iconID, status }) {
+function SourceHealthRow({ name, detail, detailTitle, healthy, capturedAt, iconID, status, action }) {
   return (
     <div className="source-row">
       {iconID ? <ProviderMark meta={providerPresentation(iconID)} size={20} /> : <span className={`source-dot ${healthy ? "tone-success" : "tone-warning"}`} aria-hidden="true" />}
@@ -1529,6 +1588,7 @@ function SourceHealthRow({ name, detail, detailTitle, healthy, capturedAt, iconI
       <div className="source-status">
         <span className={healthy ? "tone-success" : "tone-warning"}>{tr(status || (healthy ? "Healthy" : "Needs attention"))}</span>
         {capturedAt && <time>{formatClock(capturedAt)}</time>}
+        {action && <button className="secondary source-open-app" onClick={action.onSelect}>{action.label}</button>}
       </div>
     </div>
   );
@@ -1712,27 +1772,6 @@ function GeneralSettings({ state, action }) {
         onChange={(value) => action(() => api.setTaskbarIconHidden(!value))}
       />
       <Divider />
-      <ToggleRow
-        title={tr("Show Fable in the tray Claude widget")}
-        detail={tr("Displays Fable's weekly limit in the Claude quota widget in the Windows tray.")}
-        isOn={state.showFableQuota !== false}
-        onChange={(value) => action(() => api.setShowFableQuota(value))}
-      />
-      <Divider />
-      <ToggleRow
-        title={tr("Show GPT-5.3-Codex-Spark in the tray Codex widget")}
-        detail={tr("Displays the model-specific weekly limit in the Codex quota widget in the Windows tray.")}
-        isOn={Boolean(state.showCodexSparkQuota)}
-        onChange={(value) => action(() => api.setShowCodexSparkQuota(value))}
-      />
-      <Divider />
-      <ToggleRow
-        title={tr("Show Antigravity third-party pools")}
-        detail={tr("Show the optional Claude/third-party 5-hour and weekly pools; hidden by default.")}
-        isOn={Boolean(state.showAntigravityThirdPartyQuota)}
-        onChange={(value) => action(() => api.setShowAntigravityThirdPartyQuota(value))}
-      />
-      <Divider />
       <div className="preference-row quick-view-setting">
         <div className="preference-label">
           <strong>{tr("Quick View popup")}</strong>
@@ -1748,7 +1787,58 @@ function GeneralSettings({ state, action }) {
         </div>
       </div>
     </div>
+    <ModelQuotaSettings state={state} action={action} />
     </>
+  );
+}
+
+function ModelQuotaSettings({ state, action }) {
+  const groups = scopedPoolSettingsGroups(state.enabledProviders, state.providers);
+  const visibility = state.scopedPoolVisibility || {};
+  const choices = [
+    { value: "auto", label: "Auto" },
+    { value: "on", label: "Show" },
+    { value: "off", label: "Hide" },
+  ];
+  return (
+    <div className="settings-card model-quota-settings">
+      <PanelHeader title={trKey("settings.model_quotas")} subtitle={trKey("settings.model_quotas_hint")} />
+      {groups.map((group, groupIndex) => {
+        const meta = providerPresentation(group.providerID);
+        return (
+          <div className="model-quota-group" key={group.providerID}>
+            {groupIndex > 0 && <Divider />}
+            <div className="model-quota-group-title"><ProviderMark meta={meta} size={16} /><strong>{meta.name}</strong></div>
+            {group.entries.map((entry) => {
+              const selected = visibility[entry.key] || "auto";
+              return (
+                <div className="preference-row model-quota-row" key={entry.key}>
+                  <div className="preference-label">
+                    <strong>{trKey(entry.titleKey)}</strong>
+                    <span>{trKey(entry.detailKey)}</span>
+                  </div>
+                  <div className="tray-mode-segmented model-quota-segmented" role="radiogroup" aria-label={trKey(entry.titleKey)}>
+                    {choices.map((choice) => (
+                      <button
+                        type="button"
+                        key={choice.value}
+                        role="radio"
+                        aria-checked={selected === choice.value}
+                        className={selected === choice.value ? "selected" : ""}
+                        onClick={() => action(() => api.setScopedPoolVisibility(entry.key, choice.value))}
+                      >
+                        {tr(choice.label)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })}
+      <p className="model-quota-footer">{trKey("settings.model_quotas_footer")}</p>
+    </div>
   );
 }
 
@@ -1942,9 +2032,7 @@ function createPreviewAPI() {
     zaiRegion: "global",
     trayDisplayMode: "full",
     trayProviders: ["claude", "codex"],
-    showFableQuota: true,
-    showCodexSparkQuota: false,
-    showAntigravityThirdPartyQuota: false,
+    scopedPoolVisibility: {},
     languagePreference: previewParameters.get("lang") || SYSTEM_LANGUAGE,
     refreshMinutes: 5,
     summaryStrategy: "shortestWindow",
@@ -1955,8 +2043,15 @@ function createPreviewAPI() {
     isRefreshing: false,
     notices: {},
     onboarding: { completed: previewParameters.get("onboarding") !== "1", detections: previewCatalog.map((provider) => ({ providerID: provider.id, installed: provider.installed, configured: provider.configured, access: provider.access, credentialKind: provider.credentialKind, detail: provider.detail })) },
-    providerCatalog: previewCatalog.map((provider) => ({ ...provider, enabled: ["claude", "codex", "cursor", "openrouter"].includes(provider.id) })),
+    providerCatalog: previewCatalog.map((provider) => ({
+      ...provider,
+      launchable: ["claude", "codex"].includes(provider.id),
+      enabled: ["claude", "codex", "cursor", "openrouter"].includes(provider.id),
+    })),
     enabledProviders: ["claude", "codex", "cursor", "openrouter"],
+    pendingDetectionSuggestions: previewParameters.get("detection")
+      ? [{ providerID: previewParameters.get("detection"), detail: "Detected on this PC" }]
+      : [],
     localProviders: [...previewLocalProviders, previewCursor, previewOpenRouter],
     providers: [
       ...previewLocalProviders,
@@ -1995,6 +2090,20 @@ function createPreviewAPI() {
       const enabledProviders = [...next];
       return (preview = { ...preview, enabledProviders, providerCatalog: preview.providerCatalog.map((provider) => ({ ...provider, enabled: enabledProviders.includes(provider.id) })) });
     },
+    acceptDetectionSuggestion: async (providerID) => {
+      const enabledProviders = [...new Set([...preview.enabledProviders, providerID])];
+      return (preview = {
+        ...preview,
+        enabledProviders,
+        pendingDetectionSuggestions: preview.pendingDetectionSuggestions.filter((suggestion) => suggestion.providerID !== providerID),
+        providerCatalog: preview.providerCatalog.map((provider) => ({ ...provider, enabled: enabledProviders.includes(provider.id) })),
+      });
+    },
+    dismissDetectionSuggestion: async (providerID) => (preview = {
+      ...preview,
+      pendingDetectionSuggestions: preview.pendingDetectionSuggestions.filter((suggestion) => suggestion.providerID !== providerID),
+    }),
+    openProviderApp: async () => preview,
     setProviderCredential: async (providerID) => {
       const enabledProviders = [...new Set([...preview.enabledProviders, providerID])];
       return (preview = { ...preview, enabledProviders, providerCatalog: preview.providerCatalog.map((provider) => provider.id === providerID ? { ...provider, installed: true, configured: true, enabled: true } : provider) });
@@ -2013,9 +2122,12 @@ function createPreviewAPI() {
     setZAIRegion: async (value) => (preview = { ...preview, zaiRegion: value }),
     setTrayDisplayMode: async (value) => (preview = { ...preview, trayDisplayMode: value }),
     setTrayProviders: async (value) => (preview = { ...preview, trayProviders: value }),
-    setShowFableQuota: async (value) => (preview = { ...preview, showFableQuota: Boolean(value) }),
-    setShowCodexSparkQuota: async (value) => (preview = { ...preview, showCodexSparkQuota: Boolean(value) }),
-    setShowAntigravityThirdPartyQuota: async (value) => (preview = { ...preview, showAntigravityThirdPartyQuota: Boolean(value) }),
+    setScopedPoolVisibility: async (key, value) => {
+      const scopedPoolVisibility = { ...preview.scopedPoolVisibility };
+      if (value === "auto") delete scopedPoolVisibility[key];
+      else scopedPoolVisibility[key] = value;
+      return (preview = { ...preview, scopedPoolVisibility });
+    },
     setLanguage: async (value) => (preview = { ...preview, languagePreference: value }),
     setRefreshMinutes: async (value) => (preview = { ...preview, refreshMinutes: value }),
     setSummaryStrategy: async (value) => (preview = { ...preview, summaryStrategy: value }),

@@ -3,6 +3,8 @@ import { homedir } from "node:os";
 import { delimiter, join } from "node:path";
 import { PROVIDER_CATALOG } from "./catalog.js";
 
+export const DESKTOP_APP_PROVIDER_IDS = new Set(["claude", "codex"]);
+
 function clean(value) {
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
@@ -88,13 +90,56 @@ function automaticDetection(id, context) {
         return false;
     }
   })();
+  const desktopAppPath = resolveProviderDesktopAppPath(id, context);
   return {
     providerID: id,
     installed,
     configured: installed,
+    ...(DESKTOP_APP_PROVIDER_IDS.has(id) ? { launchable: Boolean(desktopAppPath) } : {}),
     access: "local-session",
     detail: installed ? `Detected ${context.definition.product} on this PC` : `Install and sign in to ${context.definition.product}`,
   };
+}
+
+/// Resolve only allow-listed, known executable locations. The renderer sends a
+/// provider ID, never a filesystem path; the main process repeats this lookup
+/// immediately before launching the app.
+export function resolveProviderDesktopAppPath(providerID, {
+  env = process.env,
+  platform = process.platform,
+  exists = existsSync,
+  readDirectory = readdirSync,
+} = {}) {
+  if (platform !== "win32" || !DESKTOP_APP_PROVIDER_IDS.has(providerID)) return undefined;
+  const localAppData = firstEnvironment(env, ["LOCALAPPDATA"]);
+  const appData = firstEnvironment(env, ["APPDATA"]);
+  const programFiles = firstEnvironment(env, ["PROGRAMFILES"]);
+  const programFilesX86 = firstEnvironment(env, ["PROGRAMFILES(X86)"]);
+  const names = providerID === "claude" ? ["Claude"] : ["ChatGPT", "Codex"];
+  const directCandidates = names.flatMap((name) => [
+    localAppData && join(localAppData, "Programs", name, `${name}.exe`),
+    localAppData && join(localAppData, name, `${name}.exe`),
+    localAppData && join(localAppData, "Microsoft", "WindowsApps", `${name}.exe`),
+    appData && join(appData, name, `${name}.exe`),
+    programFiles && join(programFiles, name, `${name}.exe`),
+    programFilesX86 && join(programFilesX86, name, `${name}.exe`),
+  ]).filter(Boolean);
+  const direct = directCandidates.find((candidate) => exists(candidate));
+  if (direct) return direct;
+
+  // Squirrel-style installs keep the executable under app-<version>.
+  for (const name of names) {
+    for (const root of [localAppData && join(localAppData, name), appData && join(appData, name)].filter(Boolean)) {
+      const versions = directoryEntries(root, readDirectory)
+        .filter((child) => child.toLowerCase().startsWith("app-"))
+        .sort((left, right) => right.localeCompare(left, undefined, { numeric: true }));
+      const versioned = versions
+        .map((child) => join(root, child, `${name}.exe`))
+        .find((candidate) => exists(candidate));
+      if (versioned) return versioned;
+    }
+  }
+  return undefined;
 }
 
 function manualConfigExists(definition, context) {
@@ -168,4 +213,12 @@ export function detectLocalProviders({
         : `Add a ${definition.credentialKind} locally in Data Sources`,
     };
   });
+}
+
+function directoryEntries(directory, readDirectory) {
+  try {
+    return readDirectory(directory).map((entry_) => typeof entry_ === "string" ? entry_ : entry_?.name).filter(Boolean);
+  } catch {
+    return [];
+  }
 }

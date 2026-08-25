@@ -33,6 +33,7 @@ import {
 } from "./overview-model.js";
 import { providerMeta } from "./provider-meta.js";
 import { poolDisplayName, providerQuotaDetailRows, visibleScopedWindows } from "./quota-details.js";
+import { scopedPoolEntryForWindow } from "./scoped-pools.js";
 import { usageDayTotals } from "./usage-history.js";
 
 export const POPOVER_QUOTA_CARD_LIMIT = 3;
@@ -114,11 +115,13 @@ function scopedWindowDetails(provider, preferences, now) {
     if (!isQuotaWindow(scope.window)) return [];
     const detail = windowDetail(scope.window, now);
     const scopeName = poolDisplayName(scope.displayName || scope.scopeID);
+    const catalogEntry = scopedPoolEntryForWindow(scope, provider?.providerID);
     return [{
       ...detail,
       key: `scope-${scope.scopeID.toLowerCase()}`,
       scopeName,
       title: `${scopeName} · ${detail.title}`,
+      followsExpansion: catalogEntry?.followsExpansion ?? true,
     }];
   });
 }

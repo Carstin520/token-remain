@@ -156,34 +156,130 @@ test("S-batch preferences default, persist, validate, and reset onboarding only"
   }
 });
 
-test("Scoped quota preferences default, persist, and reject non-boolean stored values", async () => {
+test("Scoped-pool visibility defaults to Auto, validates catalog values, and persists overrides", async () => {
   const directory = await mkdtemp(join(tmpdir(), "tokenremain-windows-quota-preferences-"));
   try {
     const store = new StateStore({ userDataPath: directory, safeStorage });
     await store.load();
-    assert.equal(store.state.preferences.showFableQuota, true);
-    assert.equal(store.state.preferences.showCodexSparkQuota, false);
-    assert.equal(store.state.preferences.showAntigravityThirdPartyQuota, false);
+    assert.deepEqual(store.state.preferences.scopedPoolVisibility, {});
 
-    await store.setShowFableQuota(false);
-    await store.setShowCodexSparkQuota(true);
-    await store.setShowAntigravityThirdPartyQuota(true);
+    await store.setScopedPoolVisibility("claude|fable", "off");
+    await store.setScopedPoolVisibility("codex|codex_bengalfox", "on");
+    await store.setScopedPoolVisibility("claude|fable", "auto");
+    await assert.rejects(() => store.setScopedPoolVisibility("future|pool", "on"), /Unsupported scoped quota pool/);
+    await assert.rejects(() => store.setScopedPoolVisibility("codex|codex_bengalfox", "sometimes"), /Unsupported scoped quota visibility/);
+
     const restored = new StateStore({ userDataPath: directory, safeStorage });
     await restored.load();
-    assert.equal(restored.state.preferences.showFableQuota, false);
-    assert.equal(restored.state.preferences.showCodexSparkQuota, true);
-    assert.equal(restored.state.preferences.showAntigravityThirdPartyQuota, true);
+    assert.deepEqual(restored.state.preferences.scopedPoolVisibility, { "codex|codex_bengalfox": "on" });
 
     const persisted = JSON.parse(await readFile(join(directory, "state-v1.json"), "utf8"));
-    persisted.preferences.showFableQuota = "yes";
-    persisted.preferences.showCodexSparkQuota = 1;
-    persisted.preferences.showAntigravityThirdPartyQuota = null;
+    persisted.preferences.scopedPoolVisibility = {
+      "codex|codex_bengalfox": "off",
+      "claude|fable": true,
+      "future|pool": "on",
+    };
     await writeFile(join(directory, "state-v1.json"), JSON.stringify(persisted));
     const validated = new StateStore({ userDataPath: directory, safeStorage });
     await validated.load();
-    assert.equal(validated.state.preferences.showFableQuota, true);
-    assert.equal(validated.state.preferences.showCodexSparkQuota, false);
-    assert.equal(validated.state.preferences.showAntigravityThirdPartyQuota, false);
+    assert.deepEqual(validated.state.preferences.scopedPoolVisibility, { "codex|codex_bengalfox": "off" });
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("Legacy scoped-quota booleans migrate every on/off combination and stop persisting", async () => {
+  const combinations = [
+    [false, false, false],
+    [true, false, true],
+    [false, true, true],
+    [true, true, false],
+  ];
+  for (const [fable, codex, antigravity] of combinations) {
+    const directory = await mkdtemp(join(tmpdir(), "tokenremain-windows-quota-migration-"));
+    try {
+      await writeFile(join(directory, "state-v1.json"), JSON.stringify({
+        schemaVersion: 1,
+        sourceInstanceID: "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+        sequence: 0,
+        providers: [],
+        notices: {},
+        preferences: {
+          showFableQuota: fable,
+          showCodexSparkQuota: codex,
+          showAntigravityThirdPartyQuota: antigravity,
+        },
+      }));
+      const store = new StateStore({ userDataPath: directory, safeStorage });
+      await store.load();
+      assert.deepEqual(store.state.preferences.scopedPoolVisibility, {
+        "claude|fable": fable ? "on" : "off",
+        "codex|codex_bengalfox": codex ? "on" : "off",
+        "antigravity|antigravity_3p_": antigravity ? "on" : "off",
+      });
+      const onDisk = JSON.parse(await readFile(join(directory, "state-v1.json"), "utf8"));
+      assert.equal("showFableQuota" in onDisk.preferences, false);
+      assert.equal("showCodexSparkQuota" in onDisk.preferences, false);
+      assert.equal("showAntigravityThirdPartyQuota" in onDisk.preferences, false);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  }
+});
+
+test("An existing scoped-pool override wins over its legacy boolean during migration", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "tokenremain-windows-quota-migration-precedence-"));
+  try {
+    await writeFile(join(directory, "state-v1.json"), JSON.stringify({
+      schemaVersion: 1,
+      sourceInstanceID: "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+      sequence: 0,
+      providers: [],
+      notices: {},
+      preferences: { scopedPoolVisibility: { "claude|fable": "off" }, showFableQuota: true },
+    }));
+    const store = new StateStore({ userDataPath: directory, safeStorage });
+    await store.load();
+    assert.deepEqual(store.state.preferences.scopedPoolVisibility, { "claude|fable": "off" });
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("Detected-installation baseline queues each disabled new app once and stays persisted on dismissal", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "tokenremain-windows-detection-baseline-"));
+  try {
+    const store = new StateStore({ userDataPath: directory, safeStorage });
+    await store.load();
+    const detection = (providerID, installed = true) => ({ providerID, installed, detail: `Detected ${providerID}` });
+
+    assert.deepEqual(await store.applyProviderDetections([detection("claude")]), []);
+    assert.deepEqual(store.state.detectedInstallations, ["claude"]);
+    const suggestions = await store.applyProviderDetections([detection("claude"), detection("codex")]);
+    assert.deepEqual(suggestions, [{ providerID: "codex", detail: "Detected codex" }]);
+    assert.deepEqual(store.state.pendingDetectionSuggestions, suggestions);
+
+    const onDisk = JSON.parse(await readFile(join(directory, "state-v1.json"), "utf8"));
+    assert.deepEqual(onDisk.detectedInstallations, ["claude", "codex"]);
+    assert.equal("pendingDetectionSuggestions" in onDisk, false);
+
+    store.dismissDetectionSuggestion("codex");
+    assert.deepEqual(await store.applyProviderDetections([detection("claude"), detection("codex")]), []);
+    assert.deepEqual(store.state.pendingDetectionSuggestions, []);
+
+    await store.applyProviderDetections([detection("claude")]);
+    assert.deepEqual(await store.applyProviderDetections([detection("claude"), detection("codex")]), [
+      { providerID: "codex", detail: "Detected codex" },
+    ]);
+
+    const restored = new StateStore({ userDataPath: directory, safeStorage });
+    await restored.load();
+    assert.deepEqual(restored.state.detectedInstallations, ["claude", "codex"]);
+    assert.deepEqual(restored.state.pendingDetectionSuggestions, []);
+    await restored.setProviderEnabled("cursor", true);
+    assert.deepEqual(await restored.applyProviderDetections([
+      detection("claude"), detection("codex"), detection("cursor"),
+    ]), []);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
