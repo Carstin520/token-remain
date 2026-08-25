@@ -100,6 +100,8 @@ const WINDOWS_MESSAGES = {
   "%1$@ %2$@ runs out in %3$@": { "zh-Hans": "%1$@ %2$@将在 %3$@ 后用尽", "zh-Hant": "%1$@ %2$@ 將在 %3$@ 後用盡", ja: "%1$@ の %2$@ は %3$@ 後に上限到達", ko: "%1$@ %2$@은(는) %3$@ 후 소진", es: "%1$@ %2$@ se agota en %3$@", de: "%1$@ %2$@ ist in %3$@ aufgebraucht" },
   tokens: { "zh-Hans": "tokens", "zh-Hant": "tokens", ja: "トークン", ko: "토큰", es: "tokens", de: "Token" },
   "Startup, quick view, and floating shortcut": { "zh-Hans": "启动、快速查看与浮动快捷组件", "zh-Hant": "啟動、快速檢視與浮動快捷元件", ja: "起動、クイックビュー、フローティングショートカット", ko: "시작, 빠른 보기 및 플로팅 바로가기", es: "Inicio, vista rápida y acceso flotante", de: "Start, Schnellansicht und schwebende Verknüpfung" },
+  "Show the Dashboard in the taskbar": { "zh-Hans": "在任务栏显示仪表盘窗口图标", "zh-Hant": "在工作列顯示儀表板視窗圖示", ja: "タスクバーにダッシュボードを表示", ko: "작업 표시줄에 대시보드 표시", es: "Mostrar el Dashboard en la barra de tareas", de: "Dashboard in der Taskleiste anzeigen" },
+  "Keep the Dashboard window available in the Windows taskbar.": { "zh-Hans": "让仪表盘窗口持续显示在 Windows 任务栏中。", "zh-Hant": "讓儀表板視窗持續顯示在 Windows 工作列中。", ja: "Dashboard ウインドウを Windows のタスクバーから開けるようにします。", ko: "Windows 작업 표시줄에서 대시보드 창을 계속 사용할 수 있게 합니다.", es: "Mantén la ventana del Dashboard disponible en la barra de tareas de Windows.", de: "Hält das Dashboard-Fenster in der Windows-Taskleiste verfügbar." },
   // Windows-only source strings for the two model-quota toggles. The shared
   // catalog's originals talk about the macOS menu bar; rather than edit the
   // generated catalog, main.jsx passes these tray-worded sources and picks up

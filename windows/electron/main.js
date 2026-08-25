@@ -2,7 +2,9 @@ import { app, BrowserWindow, clipboard, ipcMain, Menu, nativeImage, net, Notific
 import { hostname, release } from "node:os";
 import { join } from "node:path";
 import { fetchCuratedFeed, isAllowedPostURL } from "./feed.js";
+import { isAllowedCodexUsageURL } from "./codex-usage.js";
 import { applyDragDelta } from "./floating-drag.js";
+import { DASHBOARD_SECTIONS, parseLaunchArgs } from "./launch-args.js";
 import { ccusageBinaryPath, collectLocalUsage, mergeDailyUsageHistories } from "./local-usage.js";
 import { decideProviderNotifications, noticeFromError, selectFeedNotifications, truncateNotificationBody } from "./notification-policy.js";
 import {
@@ -42,7 +44,6 @@ const TRAY_REOPEN_GUARD_MS = 320;
 /// window is hidden. Keeping this below the tray guard makes repeated clicks
 /// feel immediate without flashing the popover back open.
 const POPOVER_EXIT_ANIMATION_MS = 180;
-const DASHBOARD_SECTIONS = new Set(["overview", "limits", "trends", "devices", "dataSources", "settings"]);
 const MAX_POPOVER_CONTENT_HEIGHT = 4_000;
 const FLOATING_WIDGET_WIDTH = 80;
 const FLOATING_WIDGET_HEIGHT = 80;
@@ -72,17 +73,22 @@ let reducedMotionSources = { spi: undefined, electron: undefined };
 let reducedMotionTimer;
 let pricingService;
 let serviceStatusService;
+let pendingSecondInstanceLaunchArguments;
+const initialLaunchArguments = parseLaunchArgs(process.argv);
 
 if (!app.requestSingleInstanceLock()) app.quit();
 
-app.on("second-instance", () => {
-  if (app.isReady()) openDashboard();
+app.on("second-instance", (_event, argv) => {
+  const arguments_ = parseLaunchArgs(argv);
+  if (app.isReady()) handleLaunchArguments(arguments_).catch(() => {});
+  else pendingSecondInstanceLaunchArguments = arguments_;
 });
 
 app.whenReady().then(async () => {
   app.setAppUserModelId("com.jamesli.tokenremain.windows");
   store = new StateStore({ userDataPath: app.getPath("userData"), safeStorage });
   await store.load();
+  if (initialLaunchArguments.resetOnboarding) await store.resetOnboarding();
   const initialMotion = readReducedMotionPreference();
   reducedMotion = initialMotion.value;
   reducedMotionSources = initialMotion.sources;
@@ -96,9 +102,22 @@ app.whenReady().then(async () => {
     fetchImpl: (url, options) => net.fetch(url, options),
   });
   registerIPC();
-  createWindow();
-  createPopoverWindow();
+  createWindow({
+    showOnReady: initialLaunchArguments.target === "dashboard",
+    initialSection: initialLaunchArguments.dashboardSection,
+  });
+  createPopoverWindow({
+    openAppearanceOnFirstShow: initialLaunchArguments.target === "popover"
+      && initialLaunchArguments.openPopupSettings,
+  });
   createTray();
+  if (initialLaunchArguments.target === "popover") {
+    showPopoverWhenReady({ appearanceOpen: initialLaunchArguments.openPopupSettings });
+  }
+  if (pendingSecondInstanceLaunchArguments) {
+    await handleLaunchArguments(pendingSecondInstanceLaunchArguments);
+    pendingSecondInstanceLaunchArguments = undefined;
+  }
   if (store.state.preferences?.floatingWidgetEnabled) showFloatingWidget();
   powerMonitor.on("resume", () => {
     scheduleAutomaticRefresh();
@@ -115,7 +134,7 @@ app.whenReady().then(async () => {
 });
 
 app.on("activate", () => {
-  if (!mainWindow || mainWindow.isDestroyed()) createWindow();
+  openDashboard("overview");
 });
 
 app.on("window-all-closed", () => {
@@ -131,7 +150,7 @@ app.on("before-quit", () => {
   clearTimeout(reducedMotionTimer);
 });
 
-function createWindow() {
+function createWindow({ showOnReady = false, initialSection } = {}) {
   mainWindow = new BrowserWindow({
     width: 1180,
     height: 780,
@@ -154,6 +173,7 @@ function createWindow() {
     },
   });
   mainWindow.setMenu(null);
+  mainWindow.setSkipTaskbar(Boolean(store.state.preferences?.taskbarIconHidden));
   mainWindow.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
   mainWindow.webContents.on("will-navigate", (event) => event.preventDefault());
   observeRefreshVisibility(mainWindow);
@@ -164,8 +184,11 @@ function createWindow() {
       mainWindow.hide();
     }
   });
-  mainWindow.loadFile(join(import.meta.dirname, "../dist/index.html"));
-  mainWindow.once("ready-to-show", () => mainWindow.show());
+  mainWindow.loadFile(
+    join(import.meta.dirname, "../dist/index.html"),
+    initialSection ? { search: `section=${encodeURIComponent(initialSection)}` } : undefined,
+  );
+  if (showOnReady) mainWindow.once("ready-to-show", () => mainWindow.show());
 }
 
 /// The Watch complication's circular remaining-rings surface, adapted as a
@@ -268,7 +291,7 @@ async function setFloatingWidgetEnabled(enabled) {
 
 /// The tray popover: one reused window that is hidden, never destroyed, so a
 /// click always paints the cached state instead of booting a renderer.
-function createPopoverWindow() {
+function createPopoverWindow({ openAppearanceOnFirstShow = false } = {}) {
   const acrylic = prefersAcrylic(process.platform, release());
   popoverWindow = new BrowserWindow({
     width: POPOVER_WIDTH,
@@ -316,13 +339,15 @@ function createPopoverWindow() {
     event.preventDefault();
     hidePopover();
   });
-  popoverWindow.loadFile(
-    join(import.meta.dirname, "../dist/popover.html"),
-    acrylic ? { search: "material=acrylic" } : undefined,
-  );
+  const search = new URLSearchParams();
+  if (acrylic) search.set("material", "acrylic");
+  if (openAppearanceOnFirstShow) search.set("appearance", "1");
+  popoverWindow.loadFile(join(import.meta.dirname, "../dist/popover.html"), (
+    search.size ? { search: search.toString() } : undefined
+  ));
 }
 
-function showPopover(anchorBounds, anchorKind = "tray") {
+function showPopover(anchorBounds, anchorKind = "tray", options = {}) {
   if (!popoverWindow || popoverWindow.isDestroyed()) createPopoverWindow();
   clearTimeout(popoverHideTimer);
   popoverHideTimer = undefined;
@@ -334,20 +359,27 @@ function showPopover(anchorBounds, anchorKind = "tray") {
   popoverWindow.setAlwaysOnTop(true, "pop-up-menu");
   popoverWindow.focus();
   publishPopoverVisibility(true);
-  popoverWindow.webContents.send("popover:shown");
+  popoverWindow.webContents.send("popover:shown", { appearanceOpen: options.appearanceOpen === true });
 }
 
-function openPopover(anchorBounds, anchorKind) {
+function openPopover(anchorBounds, anchorKind, options = {}) {
   const explicitAnchor = usableTrayBounds(anchorBounds);
   if (explicitAnchor) {
-    showPopover(explicitAnchor, anchorKind || "tray");
+    showPopover(explicitAnchor, anchorKind || "tray", options);
     return;
   }
   const floatingAnchor = floatingWidgetWindow?.isVisible()
     ? usableTrayBounds(floatingWidgetWindow.getBounds())
     : undefined;
-  if (floatingAnchor) showPopover(floatingAnchor, "floating");
-  else showPopover(usableTrayBounds(tray?.getBounds?.()), "tray");
+  if (floatingAnchor) showPopover(floatingAnchor, "floating", options);
+  else showPopover(usableTrayBounds(tray?.getBounds?.()), "tray", options);
+}
+
+function showPopoverWhenReady(options = {}) {
+  if (!popoverWindow || popoverWindow.isDestroyed()) createPopoverWindow();
+  const show = () => openPopover(undefined, undefined, options);
+  if (popoverWindow.webContents.isLoading()) popoverWindow.webContents.once("did-finish-load", show);
+  else show();
 }
 
 function hidePopover(options = {}) {
@@ -461,6 +493,18 @@ function openDashboard(section) {
   if (section) sendToDashboard("navigate:section", section);
 }
 
+async function handleLaunchArguments(arguments_) {
+  if (arguments_.resetOnboarding) {
+    await store.resetOnboarding();
+    notifyRenderer();
+  }
+  if (arguments_.target === "popover") {
+    showPopoverWhenReady({ appearanceOpen: arguments_.openPopupSettings });
+    return;
+  }
+  openDashboard(arguments_.dashboardSection);
+}
+
 function sendToDashboard(channel, payload) {
   if (!mainWindow || mainWindow.isDestroyed()) return;
   if (!mainWindow.webContents.isLoading()) {
@@ -538,6 +582,11 @@ function registerIPC() {
     await shell.openExternal(value, { activate: true });
     return true;
   });
+  ipcMain.handle("codex:usage-open", async (_event, value) => {
+    if (!isAllowedCodexUsageURL(value)) throw new Error("This Codex usage link is not allowed");
+    await shell.openExternal(value, { activate: true });
+    return true;
+  });
   ipcMain.handle("update:open", async (_event, value) => {
     if (!isAllowedReleaseURL(value)) throw new Error("This update link is not allowed");
     await shell.openExternal(value, { activate: true });
@@ -549,6 +598,22 @@ function registerIPC() {
     return publicState();
   });
   ipcMain.handle("settings:set-floating-widget", (_event, value) => setFloatingWidgetEnabled(Boolean(value)));
+  ipcMain.handle("settings:set-background-depth", async (_event, value) => {
+    await store.setBackgroundDepth(value);
+    notifyRenderer();
+    return publicState();
+  });
+  ipcMain.handle("settings:set-taskbar-icon-hidden", async (_event, value) => {
+    await store.setTaskbarIconHidden(value === true);
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.setSkipTaskbar(value === true);
+    notifyRenderer();
+    return publicState();
+  });
+  ipcMain.handle("settings:set-zai-region", async (_event, value) => {
+    await store.setZAIRegion(value);
+    await refreshAfterMutation();
+    return publicState();
+  });
   ipcMain.handle("settings:set-feed-notifications", async (_event, value) => {
     await store.setFeedNotificationsEnabled(value === true);
     notifyRenderer();
@@ -835,6 +900,7 @@ async function performRefresh({ providerIDs, includeSharedSources = true } = {})
     collectEnabledProviders(attemptedProviders, {
       fetchImpl: windowsFetch,
       getStoredSecret: (providerID) => store.getProviderSecret(providerID),
+      zaiRegion: store.state.preferences?.zaiRegion,
     }),
     includeSharedSources ? fetchCuratedFeed() : Promise.resolve(undefined),
     includeSharedSources ? collectWindowsLocalUsage() : Promise.resolve(undefined),
@@ -1055,6 +1121,9 @@ function publicState() {
     reducedMotionSources,
     feedNotificationsEnabled: Boolean(store?.state?.preferences?.feedNotificationsEnabled),
     floatingWidgetEnabled: Boolean(store?.state?.preferences?.floatingWidgetEnabled),
+    backgroundDepth: store?.state?.preferences?.backgroundDepth ?? 0,
+    taskbarIconHidden: Boolean(store?.state?.preferences?.taskbarIconHidden),
+    zaiRegion: store?.state?.preferences?.zaiRegion || "global",
     summaryStrategy: store?.state?.preferences?.summaryStrategy || "shortestWindow",
     popoverGlassStyle: store?.state?.preferences?.popoverGlassStyle || "frosted",
     popoverBackdropOpacity: store?.state?.preferences?.popoverBackdropOpacity ?? 0.62,

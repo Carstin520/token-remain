@@ -205,10 +205,11 @@ export function parseZAIUsage(body, { now = Date.now(), planName, subscriptionRe
   return quota("zai", [primary, ...(secondary ? [secondary] : [])], { now, planName, scopedWindows });
 }
 
-async function collectZAI(secret, { fetchImpl, now }) {
+async function collectZAI(secret, { fetchImpl, now, zaiRegion }) {
   const headers = fetchHeaders(secret);
-  const body = await fetchPayload("https://api.z.ai/api/monitor/usage/quota/limit", { headers }, { fetchImpl, timeoutMs: 12_000 });
-  const subscription = await fetchPayload("https://api.z.ai/api/biz/subscription/list", { headers }, { fetchImpl, timeoutMs: 10_000 }).catch(() => undefined);
+  const origin = zaiRegion === "china" ? "https://open.bigmodel.cn" : "https://api.z.ai";
+  const body = await fetchPayload(`${origin}/api/monitor/usage/quota/limit`, { headers }, { fetchImpl, timeoutMs: 12_000 });
+  const subscription = await fetchPayload(`${origin}/api/biz/subscription/list`, { headers }, { fetchImpl, timeoutMs: 10_000 }).catch(() => undefined);
   return parseZAIUsage(body, {
     now,
     planName: clean(subscription?.data?.[0]?.productName),
@@ -821,7 +822,7 @@ const COLLECTORS = {
   ollama: collectOllama,
 };
 
-export async function collectManualProvider(providerID, { env = process.env, storedSecret, now = Date.now(), fetchImpl = fetch, qoderExchange } = {}) {
+export async function collectManualProvider(providerID, { env = process.env, storedSecret, now = Date.now(), fetchImpl = fetch, qoderExchange, zaiRegion } = {}) {
   if (providerID === "qoder") {
     const secret = await resolveManualSecret(providerID, { env, storedSecret });
     return collectQoder(secret, { env, now, fetchImpl, qoderExchange });
@@ -837,7 +838,7 @@ export async function collectManualProvider(providerID, { env = process.env, sto
       catch (error) { localError ||= error; }
     }
     const secret = await resolveManualSecret(providerID, { env, storedSecret });
-    if (secret) return collectZAI(secret, { env, now, fetchImpl });
+    if (secret) return collectZAI(secret, { now, fetchImpl, zaiRegion });
     if (localError) throw localError;
   }
   const secret = await resolveManualSecret(providerID, { env, storedSecret });

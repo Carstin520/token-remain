@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import appIcon from "../../site/assets/brand/appicon-mac.png";
+import { backgroundDepthCSSPercentage, normalizeBackgroundDepth } from "../electron/background-depth.js";
 import { DirectReorderGrid, usePersistentOrder } from "./direct-reorder.jsx";
 import { curateForDisplay, initials, morePosts, priorityTitle, selectImportantForDisplay, topStories } from "./feed-model.js";
 import {
@@ -154,6 +155,9 @@ function App() {
   useLayoutEffect(() => {
     document.documentElement.dataset.reducedMotion = state?.reducedMotion ? "true" : "false";
   }, [state?.reducedMotion]);
+  useLayoutEffect(() => {
+    document.documentElement.style.setProperty("--background-depth", backgroundDepthCSSPercentage(state?.backgroundDepth));
+  }, [state?.backgroundDepth]);
 
   // The tray popover keeps this window alive and hidden, so "Settings" from the
   // popover has to navigate the already-loaded dashboard instead of reloading.
@@ -180,6 +184,12 @@ function App() {
   async function openUpdate(url) {
     setError(undefined);
     try { await api.openUpdate(url); }
+    catch (reason) { setError(reason.message); }
+  }
+
+  async function openCodexUsage(url) {
+    setError(undefined);
+    try { await api.openCodexUsage(url); }
     catch (reason) { setError(reason.message); }
   }
 
@@ -217,7 +227,7 @@ function App() {
             />
             {error && <div className="error-banner" role="alert">{error}</div>}
             {section === "overview" && <Overview state={state} action={action} onSelect={setSection} onOpen={openExternal} />}
-            {section === "limits" && <Limits state={state} action={action} />}
+            {section === "limits" && <Limits state={state} action={action} onOpenCodexUsage={openCodexUsage} />}
             {section === "trends" && <Trends state={state} />}
             {section === "devices" && <Devices state={state} action={action} />}
             {section === "dataSources" && <DataSources state={state} action={action} />}
@@ -433,8 +443,21 @@ function Divider() {
   return <hr className="divider" />;
 }
 
-function InfoRow({ label, value, tone }) {
-  return <div className="info-row"><span>{label}</span><strong className={tone ? `tone-${tone}` : undefined}>{value}</strong></div>;
+function InfoRow({ label, value, tone, action, note }) {
+  if (note) return <div className="info-row info-note-row"><span>{note}</span></div>;
+  return (
+    <div className="info-row">
+      <span>{label}</span>
+      <span className="info-row-trailing">
+        <strong className={tone ? `tone-${tone}` : undefined}>{value}</strong>
+        {action && (
+          <button className="info-row-action" onClick={action.onSelect}>
+            {action.label}<ArrowUpRightIcon />
+          </button>
+        )}
+      </span>
+    </div>
+  );
 }
 
 function StatusDotLabel({ tone, text }) {
@@ -836,7 +859,7 @@ function FeedPostCard({ post, onOpen }) {
 
 // MARK: - Limits
 
-function Limits({ state, action }) {
+function Limits({ state, action, onOpenCodexUsage }) {
   const providerIDs = state.enabledProviders || [];
   const hiddenIDs = (state.providerCatalog || []).map((provider) => provider.id).filter((id) => !providerIDs.includes(id));
   const [order, setOrder] = usePersistentOrder(providerIDs, LIMITS_ORDER_KEY);
@@ -866,6 +889,7 @@ function Limits({ state, action }) {
             preferences={state}
             canRemove
             onRemove={() => hideProvider(id)}
+            onOpenCodexUsage={onOpenCodexUsage}
           />
         )}
       />
@@ -925,7 +949,7 @@ function ProviderAddMenu({ providerIDs, providers, catalog, onAdd }) {
   );
 }
 
-function QuotaCard({ provider, notice, noticeDetail, id, preferences, canRemove, onRemove }) {
+function QuotaCard({ provider, notice, noticeDetail, id, preferences, canRemove, onRemove, onOpenCodexUsage }) {
   const meta = providerPresentation(id);
   const windows = provider?.windows || [];
   const scopedWindows = visibleScopedWindows(provider, preferences);
@@ -965,7 +989,12 @@ function QuotaCard({ provider, notice, noticeDetail, id, preferences, canRemove,
           {detailRows.map((row) => (
             <React.Fragment key={row.key}>
               <Divider />
-              <InfoRow label={row.label} value={row.value} />
+              <InfoRow
+                label={row.label}
+                value={row.value}
+                note={row.note}
+                action={row.action ? { ...row.action, onSelect: () => onOpenCodexUsage(row.action.url) } : undefined}
+              />
             </React.Fragment>
           ))}
           <CaptureFreshness capturedAt={provider.capturedAt} />
@@ -1376,6 +1405,7 @@ function DataSources({ state, action }) {
             provider={local.get(definition.id)}
             notice={state.notices[definition.id]}
             noticeDetail={state.noticeDetails?.[definition.id]?.detail}
+            zaiRegion={state.zaiRegion}
             action={action}
           />
         ) : (
@@ -1437,7 +1467,7 @@ function DataSources({ state, action }) {
   );
 }
 
-function CredentialSourceRow({ definition, provider, notice, noticeDetail, action }) {
+function CredentialSourceRow({ definition, provider, notice, noticeDetail, zaiRegion, action }) {
   const [value, setValue] = useState("");
   const [busy, setBusy] = useState(false);
   const meta = providerPresentation(definition.id);
@@ -1460,6 +1490,20 @@ function CredentialSourceRow({ definition, provider, notice, noticeDetail, actio
       <div>
         <strong>{meta.name}<span className="source-mode-pill">{definition.localSessionFirst ? tr("App session + %1$@", [definition.credentialKind]) : tr("Local %1$@", [definition.credentialKind])}</span></strong>
         <small title={notice ? (noticeDetail || notice) : undefined}>{notice || (provider ? (definition.localSessionFirst ? tr("Quota is being read from %1$@ or its local fallback", [definition.product]) : tr("Quota is being read with the credential protected on this PC")) : tr(definition.detail))}</small>
+        {definition.id === "zai" && (
+          <label className="zai-region-setting" htmlFor="zai-region">
+            <span>{trKey("datasource.zai_region")}</span>
+            <select
+              id="zai-region"
+              className="language-select"
+              value={zaiRegion || "global"}
+              onChange={(event) => action(() => api.setZAIRegion(event.target.value))}
+            >
+              <option value="global">{trKey("datasource.zai_region_global")}</option>
+              <option value="china">{trKey("datasource.zai_region_china")}</option>
+            </select>
+          </label>
+        )}
         <form className="credential-form" onSubmit={save}>
           <input type="password" autoComplete="off" value={value} onChange={(event) => setValue(event.target.value)} placeholder={definition.configured ? tr("Replace saved %1$@", [definition.credentialKind]) : tr("Paste %1$@", [definition.credentialKind])} />
           <button className="secondary" disabled={busy || !value.trim()}>{tr(busy ? "Saving…" : "Save locally")}</button>
@@ -1539,7 +1583,33 @@ function GeneralSettings({ state, action }) {
     const next = (state.providerCatalog || []).map((provider) => provider.id).filter((id) => nextSet.has(id));
     action(() => api.setTrayProviders(next));
   };
+  const backgroundDepth = normalizeBackgroundDepth(state.backgroundDepth);
   return (
+    <>
+    <div className="settings-card background-depth-card">
+      <PanelHeader title={tr("Appearance")} />
+      <div className="background-depth-heading">
+        <label className="preference-label" htmlFor="dashboard-background-depth">
+          <strong>{trKey("settings.dashboard_background")}</strong>
+          <span>{trKey("settings.dashboard_background_hint")}</span>
+        </label>
+        <strong className="preference-value">{Math.round(backgroundDepth * 100)}%</strong>
+      </div>
+      <input
+        id="dashboard-background-depth"
+        className="background-depth-slider"
+        type="range"
+        min="0"
+        max="100"
+        step="2"
+        value={Math.round(backgroundDepth * 100)}
+        onChange={(event) => action(() => api.setBackgroundDepth(Number(event.target.value) / 100))}
+      />
+      <div className="background-depth-scale">
+        <span>{trKey("settings.dashboard_background_deeper")}</span>
+        <span>{trKey("settings.dashboard_background_lighter")}</span>
+      </div>
+    </div>
     <div className="settings-card">
       <PanelHeader title={tr("General")} />
       <div className="preference-row language-setting">
@@ -1636,6 +1706,13 @@ function GeneralSettings({ state, action }) {
       />
       <Divider />
       <ToggleRow
+        title={tr("Show the Dashboard in the taskbar")}
+        detail={tr("Keep the Dashboard window available in the Windows taskbar.")}
+        isOn={!state.taskbarIconHidden}
+        onChange={(value) => action(() => api.setTaskbarIconHidden(!value))}
+      />
+      <Divider />
+      <ToggleRow
         title={tr("Show Fable in the tray Claude widget")}
         detail={tr("Displays Fable's weekly limit in the Claude quota widget in the Windows tray.")}
         isOn={state.showFableQuota !== false}
@@ -1671,6 +1748,7 @@ function GeneralSettings({ state, action }) {
         </div>
       </div>
     </div>
+    </>
   );
 }
 
@@ -1859,6 +1937,9 @@ function createPreviewAPI() {
     reducedMotion: false,
     feedNotificationsEnabled: false,
     floatingWidgetEnabled: false,
+    backgroundDepth: normalizeBackgroundDepth(Number.parseFloat(previewParameters.get("depth"))),
+    taskbarIconHidden: false,
+    zaiRegion: "global",
     trayDisplayMode: "full",
     trayProviders: ["claude", "codex"],
     showFableQuota: true,
@@ -1922,10 +2003,14 @@ function createPreviewAPI() {
     pair: async () => preview,
     disconnect: async () => (preview = { ...preview, sync: { paired: false } }),
     openExternal: async () => true,
+    openCodexUsage: async () => true,
     openUpdate: async () => true,
     setLaunchAtLogin: async (value) => (preview = { ...preview, launchAtLogin: Boolean(value) }),
     setFeedNotificationsEnabled: async (value) => (preview = { ...preview, feedNotificationsEnabled: Boolean(value) }),
     setFloatingWidgetEnabled: async (value) => (preview = { ...preview, floatingWidgetEnabled: Boolean(value) }),
+    setBackgroundDepth: async (value) => (preview = { ...preview, backgroundDepth: normalizeBackgroundDepth(value) }),
+    setTaskbarIconHidden: async (value) => (preview = { ...preview, taskbarIconHidden: Boolean(value) }),
+    setZAIRegion: async (value) => (preview = { ...preview, zaiRegion: value }),
     setTrayDisplayMode: async (value) => (preview = { ...preview, trayDisplayMode: value }),
     setTrayProviders: async (value) => (preview = { ...preview, trayProviders: value }),
     setShowFableQuota: async (value) => (preview = { ...preview, showFableQuota: Boolean(value) }),

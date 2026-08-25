@@ -255,6 +255,32 @@ test("All local-credential adapters parse provider responses without Mac Sync", 
   }
 });
 
+test("Z.ai manual credentials route both API calls through the selected region", async () => {
+  for (const [zaiRegion, expectedOrigin] of [
+    ["global", "https://api.z.ai"],
+    ["china", "https://open.bigmodel.cn"],
+  ]) {
+    const requests = [];
+    await collectManualProvider("zai", {
+      storedSecret: "zai-key",
+      env: { USERPROFILE: "/nonexistent" },
+      now: NOW,
+      zaiRegion,
+      fetchImpl: async (input) => {
+        requests.push(String(input));
+        if (String(input).endsWith("/api/monitor/usage/quota/limit")) {
+          return response({ data: { limits: [{ type: "TOKENS_LIMIT", unit: 3, number: 5, percentage: 22 }] } });
+        }
+        return response({ data: [{ productName: "Coding Pro" }] });
+      },
+    });
+    assert.deepEqual(requests, [
+      `${expectedOrigin}/api/monitor/usage/quota/limit`,
+      `${expectedOrigin}/api/biz/subscription/list`,
+    ]);
+  }
+});
+
 test("Qoder, Kimi, and Z.ai prefer app-owned Windows sessions before manual fallback", async () => {
   const directory = await mkdtemp(join(tmpdir(), "tokenremain-local-sessions-"));
   try {
@@ -295,6 +321,7 @@ test("Qoder, Kimi, and Z.ai prefer app-owned Windows sessions before manual fall
     const zai = await collectManualProvider("zai", {
       env: { USERPROFILE: directory, ZCODE_HOME: zcodeRoot, USERNAME: "tester" },
       now: NOW,
+      zaiRegion: "china",
       fetchImpl: async (url, options) => {
         assert.match(String(url), /api\.z\.ai\/api\/monitor/);
         assert.equal(options.headers.Authorization, "zcode-owned-key");

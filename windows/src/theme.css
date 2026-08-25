@@ -5,14 +5,18 @@
 :root {
   font-family: "Segoe UI Variable", "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", system-ui, sans-serif;
   color: #f2f3f5;
-  background: #0d0e10;
+  /* The stored 0...1 background-depth preference maps to this 0...25%
+     interpolation amount, matching DashboardSurfaceLightening on macOS. */
+  --background-depth: 0%;
+  --background-depth-target: #8a9099;
+  background: var(--bg);
   font-synthesis: none;
-  --bg: #0d0e10;
-  --surface: #121316;
-  --surface-2: #1a1b1f;
-  --surface-3: #23252a;
-  --border: #32353c;
-  --track: #272a30;
+  --bg: color-mix(in srgb, #0d0e10, var(--background-depth-target) var(--background-depth));
+  --surface: color-mix(in srgb, #121316, var(--background-depth-target) var(--background-depth));
+  --surface-2: color-mix(in srgb, #1a1b1f, var(--background-depth-target) var(--background-depth));
+  --surface-3: color-mix(in srgb, #23252a, var(--background-depth-target) var(--background-depth));
+  --border: color-mix(in srgb, #32353c, var(--background-depth-target) var(--background-depth));
+  --track: color-mix(in srgb, #272a30, var(--background-depth-target) var(--background-depth));
   --text: #f2f3f5;
   --secondary: #a7abb4;
   --muted: #6f7580;
@@ -33,13 +37,13 @@
      opacity preference; the concrete values are set per surface by
      src/glass/glass-model.js. Semantic red/amber/green above are never mixed
      into glass: status keeps its glyph, its label and its own conventional hue. */
-  --glass-canvas-rgb: 13 14 16;
-  --glass-surface-rgb: 18 19 22;
+  --glass-canvas-rgb: from var(--bg) r g b;
+  --glass-surface-rgb: from var(--surface) r g b;
   /* The other two steps of the charcoal ladder as channel triples, so Frosted
      can paint the app's own --surface-2/--surface-3 hierarchy translucently
      instead of replacing it with a white veil. */
-  --glass-surface-2-rgb: 26 27 31;
-  --glass-surface-3-rgb: 35 37 42;
+  --glass-surface-2-rgb: from var(--surface-2) r g b;
+  --glass-surface-3-rgb: from var(--surface-3) r g b;
   --glass-rim-rgb: 255 255 255;
   --glass-radius: 13px;
   --glass-scrim-opacity: .62;

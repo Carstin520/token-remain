@@ -1,5 +1,6 @@
 import { formatBalance } from "./format.js";
 import { tr, trKey } from "./i18n.js";
+import { CODEX_USAGE_URL } from "../electron/codex-usage.js";
 
 export function visibleScopedWindows(provider, preferences = {}) {
   const order = [];
@@ -38,7 +39,15 @@ export function providerQuotaDetailRows(provider) {
     ? formatBalance(accountBalance)
     : undefined;
   return [
-    ...(resetCredits ? [{ key: "codex-reset-credits", label: trKey("codex.reset_credits.title"), value: resetCredits }] : []),
+    ...(resetCredits ? [
+      {
+        key: "codex-reset-credits",
+        label: trKey("codex.reset_credits.title"),
+        value: resetCredits,
+        action: { label: trKey("codex.reset_credits.manage"), url: CODEX_USAGE_URL },
+      },
+      { key: "codex-reset-credits-expiration", note: trKey("codex.reset_credits.expiration") },
+    ] : []),
     ...(extraUsage ? [{ key: "extra-usage", label: trKey("quota.extra_usage"), value: extraUsage }] : []),
     ...(balance ? [{ key: "account-balance", label: trKey("quota.account_balance"), value: balance }] : []),
   ];

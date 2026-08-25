@@ -121,10 +121,15 @@ nav svg { width: 16px; height: 16px; }
 .divider { width: 100%; margin: 10px 0; border: 0; border-top: 1px solid var(--border); }
 
 .info-row { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; padding: 5px 0; color: var(--secondary); font-size: 12px; }
-.info-row strong { max-width: 70%; overflow-wrap: anywhere; color: var(--text); text-align: right; font-family: var(--mono); font-weight: 500; }
+.info-row-trailing { display: flex; max-width: 74%; align-items: baseline; justify-content: flex-end; gap: 8px; }
+.info-row strong { overflow-wrap: anywhere; color: var(--text); text-align: right; font-family: var(--mono); font-weight: 500; }
 .info-row strong.tone-low { color: var(--success); }
 .info-row strong.tone-medium { color: var(--warning); }
 .info-row strong.tone-high { color: var(--danger); }
+.info-note-row { padding-top: 2px; font-size: 10px; line-height: 1.45; }
+.info-row-action { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 3px; padding: 0; border: 0; color: var(--cyan); background: transparent; cursor: pointer; font-size: 10px; font-weight: 600; }
+.info-row-action:hover { color: var(--text); }
+.info-row-action svg { width: 10px; height: 10px; }
 
 .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 30px 16px; text-align: center; }
 .empty-state svg { width: 30px; height: 30px; color: var(--secondary); margin-bottom: 4px; }
@@ -382,6 +387,8 @@ nav svg { width: 16px; height: 16px; }
 .credential-form input { min-width: 0; height: 34px; padding: 0 10px; border: 1px solid var(--border); border-radius: 7px; color: var(--text); background: var(--bg); font-size: 11px; }
 .credential-form input:focus { border-color: var(--violet); outline: none; box-shadow: 0 0 0 2px rgba(155, 138, 251, .12); }
 .credential-form .secondary { min-height: 34px; padding-inline: 10px; font-size: 10px; }
+.zai-region-setting { display: flex; align-items: center; gap: 9px; margin-top: 7px; color: var(--secondary); font-size: 10.5px; }
+.zai-region-setting .language-select { min-width: 116px; height: 30px; }
 .compact-button { min-height: 30px; padding-inline: 10px; font-size: 10px; }
 .privacy-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
 .privacy-list li { position: relative; padding-left: 16px; color: var(--secondary); font-size: 12px; line-height: 1.55; }
@@ -400,6 +407,10 @@ nav svg { width: 16px; height: 16px; }
 .preference-label strong { font-size: 13px; font-weight: 500; }
 .preference-label span { color: var(--secondary); font-size: 11px; line-height: 1.5; }
 .preference-value { color: var(--text); font-family: var(--mono); font-size: 12px; white-space: nowrap; }
+.background-depth-heading { display: flex; align-items: flex-start; gap: 16px; }
+.background-depth-heading .preference-label { flex: 1; }
+.background-depth-slider { width: 100%; margin: 10px 0 0; accent-color: var(--violet); }
+.background-depth-scale { display: flex; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 9.5px; }
 .language-select { min-width: 184px; height: 34px; padding: 0 30px 0 10px; border: 1px solid var(--border); border-radius: 7px; outline: none; color: var(--text); background: var(--surface-2); font: 11px var(--sans); cursor: pointer; }
 .language-select:hover { border-color: color-mix(in srgb, var(--violet) 52%, var(--border)); }
 .language-select:focus-visible { border-color: var(--violet); box-shadow: 0 0 0 2px rgba(155, 138, 251, .16); }

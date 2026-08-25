@@ -596,6 +596,11 @@ svg.widget-glyph { color: var(--secondary); }
 .popover-spend-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; min-width: 0; }
 .popover-spend-row span { flex: 0 0 auto; color: var(--secondary); font-size: 11px; font-weight: 500; }
 .popover-spend-row strong { overflow: hidden; font-family: var(--mono); font-size: 11px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.popover-spend-row.is-note span { flex: 1; font-size: 9.5px; line-height: 1.4; }
+.popover-spend-trailing { display: inline-flex; min-width: 0; align-items: baseline; justify-content: flex-end; gap: 7px; }
+.popover-spend-trailing button { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 3px; padding: 0; border: 0; color: var(--cyan); background: transparent; cursor: pointer; font-size: 9.5px; font-weight: 600; }
+.popover-spend-trailing button:hover { color: var(--text); }
+.popover-spend-trailing button svg { width: 9px; height: 9px; }
 .popover-trend-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: end; gap: 8px; margin-top: 6px; }
 .popover-trend-row > span { color: var(--secondary); font-size: 11px; font-weight: 500; }
 /* Bars normalise to the window peak; the newest day is the solid one. */
