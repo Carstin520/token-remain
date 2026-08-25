@@ -80,6 +80,21 @@ test("Named primary pools label both the summary and expanded row", () => {
   assert.equal(card.windows[0].title, "Other Models · 30 d window");
 });
 
+test("Popover quota rows prefix attribution without replacing the host card name", () => {
+  const [card] = popoverQuotaCards({ providers: [{
+    providerID: "claude",
+    capturedAt: NOW,
+    attribution: { displayName: "DeepSeek API", routeIdentifier: "claude|deepseek|api.deepseek.com" },
+    windows: [{ usedPercent: 25, windowMinutes: 300 }],
+    scopedWindows: [{ scopeID: "model", displayName: "Model Pool", window: { usedPercent: 30, windowMinutes: 10_080 } }],
+  }] }, undefined, { now: NOW });
+
+  assert.equal(card.name, "Claude");
+  assert.equal(card.windowTitle, "DeepSeek API · 5 hr window");
+  assert.equal(card.windows[0].title, "DeepSeek API · 5 hr window");
+  assert.equal(card.scopedWindows[0].title, "DeepSeek API · Model Pool · 7 d window");
+});
+
 test("The summary window leads the expanded list exactly once, under a stable key", () => {
   // Snapshot lists the weekly window first; the summary (shortest) window must
   // still lead without being repeated further down.

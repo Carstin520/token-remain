@@ -1,4 +1,4 @@
-import { formatBalance } from "./format.js";
+import { formatBalance, windowTitle } from "./format.js";
 import { tr, trKey } from "./i18n.js";
 import { CODEX_USAGE_URL } from "../electron/codex-usage.js";
 import {
@@ -52,6 +52,15 @@ export function providerQuotaDetailRows(provider) {
 
 export function poolDisplayName(value) {
   return typeof value === "string" && value ? tr(value) : value;
+}
+
+/// Mac parity: host identity stays in the card header while the actual billing
+/// source prefixes each quota-window title (`DeepSeek API · 5 hr window`).
+export function attributedQuotaWindowTitle(window, { scopeName, attribution } = {}) {
+  const duration = windowTitle(window?.windowMinutes);
+  const scoped = scopeName ? `${poolDisplayName(scopeName)} · ${duration}` : duration;
+  const source = attribution?.displayName;
+  return source ? `${tr(source)} · ${scoped}` : scoped;
 }
 
 function usd(amount) {
