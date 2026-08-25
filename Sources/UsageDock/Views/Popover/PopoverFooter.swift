@@ -94,8 +94,8 @@ private extension View {
         usageDockGlassSurface(
             cornerRadius: 9,
             interactive: true,
-            fallbackBackground: .clear,
-            fallbackBorder: .clear
+            fallbackBackground: Color.clear,
+            fallbackBorder: Color.clear
         )
     }
 }

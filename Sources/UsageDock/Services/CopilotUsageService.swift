@@ -78,34 +78,116 @@ struct CopilotUsageService {
 enum CopilotUsageParser {
     static let monthlyMinutes = 43_200
 
+    /// GitHub 公布的 premium request 超额单价:$0.04/次(GitHub Copilot
+    /// 计费文档 "Requests in GitHub Copilot" / 定价页,2025-06 生效)。
+    /// 接口只回 `overage_count`(次数),不回金额——spentUSD 是
+    /// 单价 × 次数的推算,不是账单;GitHub 若调价,此处金额会偏差,
+    /// 以 GitHub 计费页为准。
+    static let premiumOverageUnitPriceUSD = 0.04
+
+    /// 与 GitHub 计费页一致的池名;scopeID 需满足 sync 的 [a-z0-9_-] 约束。
+    static let chatPoolName = "Chat"
+    static let chatPoolScopeID = "copilot_chat"
+    static let completionsPoolName = "Completions"
+    static let completionsPoolScopeID = "copilot_completions"
+
     static func parse(_ data: Data, now: Date = .now) throws -> ProviderQuota {
         guard let body = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
             throw CopilotUsageService.ServiceError.invalidResponse
         }
         let resetsAt = resetDate(body["quota_reset_date"]) ?? resetDate(body["limited_user_reset_date"])
         let snapshots = body["quota_snapshots"] as? [String: Any]
+        let planName = planLabel(body["copilot_plan"])
 
-        var windows: [QuotaWindow] = []
-        if let premium = usedPercent(snapshots?["premium_interactions"]) {
-            windows.append(QuotaWindow(usedPercent: premium, windowMinutes: monthlyMinutes, resetsAt: resetsAt))
-        } else {
-            // 免费档:chat / completions 各自的月度计数池。
-            for key in ["chat", "completions"] {
-                if let percent = usedPercent(snapshots?[key]) {
-                    windows.append(QuotaWindow(usedPercent: percent, windowMinutes: monthlyMinutes, resetsAt: resetsAt))
-                }
-            }
+        let premiumSnapshot = snapshots?["premium_interactions"] as? [String: Any]
+        if let premium = usedPercent(premiumSnapshot) {
+            // 付费档:premium_interactions 单一月度积分池。
+            return ProviderQuota(
+                provider: .copilot,
+                primary: QuotaWindow(usedPercent: premium, windowMinutes: monthlyMinutes, resetsAt: resetsAt),
+                secondary: nil,
+                planName: planName,
+                capturedAt: now,
+                extraUsage: premiumOverage(premiumSnapshot)
+            )
         }
 
-        guard let primary = windows.first else {
+        // 免费档:chat / completions 各自的月度计数池。
+        let chat = usedPercent(snapshots?["chat"])
+        let completions = usedPercent(snapshots?["completions"])
+        if let chat, let completions {
+            return poolQuota(chat: chat, completions: completions, resetsAt: resetsAt, planName: planName, now: now)
+        }
+        guard let single = chat ?? completions else {
             throw CopilotUsageService.ServiceError.quotaUnavailable
         }
         return ProviderQuota(
             provider: .copilot,
-            primary: primary,
-            secondary: windows.count > 1 ? windows[1] : nil,
-            planName: planLabel(body["copilot_plan"]),
+            primary: QuotaWindow(usedPercent: single, windowMinutes: monthlyMinutes, resetsAt: resetsAt),
+            secondary: nil,
+            planName: planName,
             capturedAt: now
+        )
+    }
+
+    /// 免费档 chat/completions 两池并存时的双进度条形态。主窗口(菜单栏/收起态)
+    /// 取已用百分比更高的池——它才是真正的瓶颈;另一池以同账期的 scoped 窗口
+    /// 展示。不走 `secondary`:sync 校验拒绝两个同时长的账户级窗口(两池同为
+    /// 43200 分钟会让整份手机同步快照被拒收),scoped 则允许。平手时 chat 优先。
+    private static func poolQuota(
+        chat: Double,
+        completions: Double,
+        resetsAt: Date?,
+        planName: String?,
+        now: Date
+    ) -> ProviderQuota {
+        let chatPool = (name: chatPoolName, scopeID: chatPoolScopeID, usedPercent: chat)
+        let completionsPool = (name: completionsPoolName, scopeID: completionsPoolScopeID, usedPercent: completions)
+        let (busier, other) = completionsPool.usedPercent > chatPool.usedPercent
+            ? (completionsPool, chatPool)
+            : (chatPool, completionsPool)
+        return ProviderQuota(
+            provider: .copilot,
+            primary: QuotaWindow(
+                usedPercent: busier.usedPercent,
+                windowMinutes: monthlyMinutes,
+                resetsAt: resetsAt,
+                poolName: busier.name
+            ),
+            secondary: nil,
+            planName: planName,
+            capturedAt: now,
+            scopedWindows: [
+                ScopedQuotaWindow(
+                    scopeID: other.scopeID,
+                    displayName: other.name,
+                    window: QuotaWindow(
+                        usedPercent: other.usedPercent,
+                        windowMinutes: monthlyMinutes,
+                        resetsAt: resetsAt
+                    ),
+                    observedAt: now
+                )
+            ]
+        )
+    }
+
+    /// 付费档订阅池之外的按量超额:`overage_count` 是本账期超出订阅
+    /// premium request 池的次数,`overage_permitted` 是用户/组织的超额
+    /// 开关。只在真的发生过超额(count > 0)且开关未显式关闭时落
+    /// ExtraUsage;`overage_permitted == false` 或 count == 0 都保持 nil
+    /// (免费档 snapshot 没有这些字段,自然不落)。接口没有超额金额
+    /// 上限字段,monthlyLimitUSD 置 nil。
+    private static func premiumOverage(_ snapshot: [String: Any]?) -> ExtraUsage? {
+        guard let snapshot,
+              snapshot["overage_permitted"] as? Bool != false,
+              let count = number(snapshot["overage_count"]),
+              count.isFinite, count > 0 else {
+            return nil
+        }
+        return ExtraUsage(
+            spentUSD: count * premiumOverageUnitPriceUSD,
+            monthlyLimitUSD: nil
         )
     }
 

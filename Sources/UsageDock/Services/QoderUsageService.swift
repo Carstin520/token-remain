@@ -228,9 +228,12 @@ enum QoderLocalIPC {
 
 // MARK: - Qoder(本地 IPC 优先,Cookie 兜底)
 
-/// 取数顺序:① 本地 IPC 自动发现(Qoder → QoderCN,`credit/usage`);
-/// ② 手动 Cookie 走 `GET {site}/api/v2/me/usages/big_model_credits`,
-/// 按 Cookie 来源路由国际/国内站并带齐浏览器同款请求头。
+/// 取数顺序:① 手动 Cookie 走 `GET {site}/api/v2/me/usages/big_model_credits`
+/// (按 Cookie 来源路由国际/国内站并带齐浏览器同款请求头);② 没配 Cookie
+/// 或 Cookie 请求失败时,退回本地 IPC 自动发现(Qoder → QoderCN,
+/// `credit/usage`)。Cookie 在前是实测结论(#18):付费账号的 IPC
+/// `credit/usage` 与网页 Credits 仪表盘不是同一口径(实测 99.9% vs
+/// 89.9% 剩余),用户显式提供的 Cookie 才对得上账单页。
 /// 两条路径都不落盘、不打日志任何凭据。
 struct QoderUsageService {
     var home: URL = FileManager.default.homeDirectoryForCurrentUser
@@ -251,16 +254,25 @@ struct QoderUsageService {
     }
 
     func fetch(cookie routedCookie: String?, now: Date = .now) async throws -> ProviderQuota {
-        if routedCookie == nil, let quota = await localQuota(now: now) { return quota }
-        guard let raw = routedCookie ?? loadCookie(),
-              let credentials = Self.cookieCredentials(raw, environment: environment) else {
-            throw ExtendedProviderError.notConfigured(.qoder)
+        if let raw = routedCookie ?? loadCookie(),
+           let credentials = Self.cookieCredentials(raw, environment: environment) {
+            do {
+                let data = try await httpRequest(
+                    credentials.site.usageURL,
+                    Self.requestHeaders(cookie: credentials.cookie, site: credentials.site)
+                )
+                return try Self.parse(data, now: now)
+            } catch {
+                // 显式路由到某个账户的 Cookie 失败时绝不换池——那会把
+                // 另一个账户(本机登录)的数字冒充给这个账户。全局默认
+                // 路径则允许退回 IPC,Cookie 过期时卡片仍有数可看。
+                guard routedCookie == nil else { throw error }
+                if let quota = await localQuota(now: now) { return quota }
+                throw error
+            }
         }
-        let data = try await httpRequest(
-            credentials.site.usageURL,
-            Self.requestHeaders(cookie: credentials.cookie, site: credentials.site)
-        )
-        return try Self.parse(data, now: now)
+        if routedCookie == nil, let quota = await localQuota(now: now) { return quota }
+        throw ExtendedProviderError.notConfigured(.qoder)
     }
 
     /// 本地 IPC 自动发现。任一环节失败(未安装、未运行、响应异常)都
@@ -305,15 +317,15 @@ struct QoderUsageService {
         guard remaining >= 0 else {
             throw ExtendedProviderError.invalidResponse(.qoder)
         }
-        let reported = ExtendedHTTP.number(result["totalUsagePercentage"])
-            ?? ExtendedHTTP.number(quota["percentage"])
+        // `totalUsagePercentage` / `userQuota.percentage` 不可信(#18):付费
+        // 账号实测它与网页 Credits 仪表盘差两个数量级(0.1% vs 10.1% 已用),
+        // 疑似跨池汇总或另一种刻度。具体计数器 used/total 与 Credits 界面
+        // 同源,始终按它计算。
         let percent: Double
         if total == 0 {
             percent = 0
         } else if result["isQuotaExceeded"] as? Bool == true {
             percent = 100
-        } else if let reported, reported.isFinite {
-            percent = reported
         } else {
             percent = used / total * 100
         }
@@ -482,8 +494,16 @@ struct QoderUsageService {
         ]
     }
 
-    /// `totalQuota.quotaSummary{usedValue,limitValue}`(+可选 sharedQuota)
-    /// 合并为月度 Credits 百分比。
+    /// 与 Qoder 控制台"我的额度 / 团队共享"两栏一致的池名;
+    /// scopeID 需满足 sync 的 [a-z0-9_-]{1,32} 约束。
+    static let personalPoolName = "Personal"
+    static let personalPoolScopeID = "qoder_personal"
+    static let sharedPoolName = "Shared"
+    static let sharedPoolScopeID = "qoder_shared"
+
+    /// `totalQuota.quotaSummary{usedValue,limitValue}`(个人池)+ 可选
+    /// `sharedQuota`(团队共享池)。两池独立计费,绝不求和——个人池耗尽
+    /// 而共享池未动时,求和会把 100% 稀释成"还剩很多",掩盖真正的瓶颈。
     static func parse(_ data: Data, now: Date = .now) throws -> ProviderQuota {
         guard let body = ExtendedHTTP.json(data) else {
             throw ExtendedProviderError.invalidResponse(.qoder)
@@ -503,19 +523,68 @@ struct QoderUsageService {
             throw ExtendedProviderError.invalidResponse(.qoder)
         }
         let shared = summary("sharedQuota", "shared_quota")
-        let usedCredits = total.used + (shared?.used ?? 0)
-        let totalCredits = total.total + (shared?.total ?? 0)
-        guard totalCredits > 0 else { throw ExtendedProviderError.invalidResponse(.qoder) }
-        return ProviderQuota(
-            provider: .qoder,
-            primary: QuotaWindow(
-                usedPercent: ExtendedHTTP.clamp(usedCredits / totalCredits * 100),
-                windowMinutes: 43_200,
-                resetsAt: nil
-            ),
-            secondary: nil,
-            planName: nil,
-            capturedAt: now
-        )
+
+        typealias Pool = (name: String, scopeID: String, usedPercent: Double)
+        func pool(_ name: String, _ scopeID: String, _ values: (used: Double, total: Double)?) -> Pool? {
+            // 零上限的池不参与展示:免费/无团队账号的 sharedQuota 常是 0/0 占位。
+            guard let values, values.total > 0 else { return nil }
+            return (name, scopeID, ExtendedHTTP.clamp(values.used / values.total * 100))
+        }
+        let personalPool = pool(personalPoolName, personalPoolScopeID, total)
+        let sharedPool = pool(sharedPoolName, sharedPoolScopeID, shared)
+
+        func singlePool(_ only: Pool) -> ProviderQuota {
+            // 单池维持历史形态:一条主窗口,不带 poolName。
+            ProviderQuota(
+                provider: .qoder,
+                primary: QuotaWindow(
+                    usedPercent: only.usedPercent,
+                    windowMinutes: 43_200,
+                    resetsAt: nil
+                ),
+                secondary: nil,
+                planName: nil,
+                capturedAt: now
+            )
+        }
+
+        switch (personalPool, sharedPool) {
+        case (nil, nil):
+            throw ExtendedProviderError.invalidResponse(.qoder)
+        case (let only?, nil), (nil, let only?):
+            return singlePool(only)
+        case (let personal?, let team?):
+            // 双池走 Cursor 约定:较忙的池(已用百分比更高者,即真正的瓶颈)
+            // 做 primary 并带 poolName,另一池以命名 scoped 窗口展示。不走
+            // `secondary`:两池同为 43200 分钟的账户级窗口,手机同步的
+            // duplicateWindow 校验会拒收第二个,scoped 则允许。
+            let (busier, other) = team.usedPercent > personal.usedPercent
+                ? (team, personal)
+                : (personal, team)
+            return ProviderQuota(
+                provider: .qoder,
+                primary: QuotaWindow(
+                    usedPercent: busier.usedPercent,
+                    windowMinutes: 43_200,
+                    resetsAt: nil,
+                    poolName: busier.name
+                ),
+                secondary: nil,
+                planName: nil,
+                capturedAt: now,
+                scopedWindows: [
+                    ScopedQuotaWindow(
+                        scopeID: other.scopeID,
+                        displayName: other.name,
+                        window: QuotaWindow(
+                            usedPercent: other.usedPercent,
+                            windowMinutes: 43_200,
+                            resetsAt: nil
+                        ),
+                        observedAt: now
+                    )
+                ]
+            )
+        }
     }
 }

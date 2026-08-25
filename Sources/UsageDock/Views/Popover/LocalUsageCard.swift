@@ -165,7 +165,7 @@ struct LocalUsageCard: View {
         let tiles = insights.spendTiles()
         let trend = insights.dailyTokenTrend
         if !tiles.isEmpty || trend.count >= 2 {
-            Divider().overlay(DashboardTheme.border)
+            Divider().overlay(DashboardSurface.border)
             VStack(alignment: .leading, spacing: 4) {
                 ForEach(tiles) { tile in
                     HStack(alignment: .firstTextBaseline) {
@@ -243,7 +243,7 @@ struct LocalUsageCard: View {
         .padding(.horizontal, 7)
         .frame(height: 22)
         .background(
-            isHovered ? DashboardTheme.surface3 : Color.clear,
+            isHovered ? AnyShapeStyle(DashboardSurface.surface3) : AnyShapeStyle(Color.clear),
             in: RoundedRectangle(cornerRadius: 7, style: .continuous)
         )
         .contentShape(Rectangle())

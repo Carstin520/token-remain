@@ -324,6 +324,9 @@ private struct MenuBarPopupChrome<Content: View>: View {
                 shape: shape,
                 glassStyle: preferences.popoverGlassStyle
             )
+            // 外壳底衬在 UsageMenuView 之外由本 chrome 套上,环境只向下
+            // 传递,所以明度注入必须在这里再做一次才能罩住壳层。
+            .dashboardSurfaces(lightness: preferences.dashboardBackgroundLightness)
     }
 }
 

@@ -12,6 +12,9 @@ struct PixelBadge: View {
     /// The HIGH risk badge (red field) therefore uses ink text.
     var filled: Bool = false
 
+    @Environment(\.dashboardSurfaces)
+    private var surfaces
+
     var body: some View {
         Text(text.uppercased())
             .font(.system(size: 9, weight: .bold, design: .monospaced))
@@ -22,7 +25,7 @@ struct PixelBadge: View {
             .padding(.horizontal, 7)
             .padding(.vertical, 3)
             .background(
-                filled ? color : DashboardTheme.surface2,
+                filled ? color : surfaces.surface2,
                 in: RoundedRectangle(cornerRadius: 3, style: .continuous)
             )
             .overlay(

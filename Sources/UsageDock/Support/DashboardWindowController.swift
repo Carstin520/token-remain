@@ -36,6 +36,14 @@ final class DashboardWindowController: NSWindowController {
     private let visibility = DashboardVisibility()
     private let onBecameVisible: () -> Void
     private var visibilityObservers: [NSObjectProtocol] = []
+    private var backgroundLightnessObserver: AnyCancellable?
+
+    /// The pre-macOS 26 window fill. Bluer than `DashboardTheme.canvas` on
+    /// purpose — it is only ever seen at the window's own edges during a live
+    /// resize, where a flat ink reads better than the canvas token. It follows
+    /// the same lightness mapping so those edges do not stay black once the
+    /// user lifts the Dashboard background.
+    private static let windowBaseHex: UInt = 0x090D14
 
     init(
         store: UsageStore,
@@ -72,11 +80,8 @@ final class DashboardWindowController: NSWindowController {
             window.isOpaque = false
             window.backgroundColor = .clear
         } else {
-            window.backgroundColor = NSColor(
-                srgbRed: 0x09 / 255,
-                green: 0x0D / 255,
-                blue: 0x14 / 255,
-                alpha: 1
+            window.backgroundColor = Self.windowBackgroundColor(
+                lightness: PreferencesStore.shared.dashboardBackgroundLightness
             )
         }
         window.isReleasedWhenClosed = false
@@ -105,6 +110,27 @@ final class DashboardWindowController: NSWindowController {
                 }
             }
         }
+
+        // macOS 26 draws a clear window over system glass, so only the older
+        // flat-fill path has anything to keep in sync with the preference.
+        if #unavailable(macOS 26.0) {
+            backgroundLightnessObserver = PreferencesStore.shared
+                .$dashboardBackgroundLightness
+                .receive(on: RunLoop.main)
+                .sink { [weak self] lightness in
+                    self?.window?.backgroundColor = Self.windowBackgroundColor(
+                        lightness: lightness
+                    )
+                }
+        }
+    }
+
+    private static func windowBackgroundColor(lightness: Double) -> NSColor {
+        let rgb = DashboardSurfaceLightening.lightenedComponents(
+            windowBaseHex,
+            lightness: lightness
+        )
+        return NSColor(srgbRed: rgb.red, green: rgb.green, blue: rgb.blue, alpha: 1)
     }
 
     @available(*, unavailable)

@@ -10,7 +10,11 @@ struct SegmentBar: View {
     var segments: Int = 14
     var height: CGFloat = 6
     var gap: CGFloat = 3
-    var track: Color = DashboardTheme.track
+    /// `nil` follows the environment palette's track color.
+    var track: Color?
+
+    @Environment(\.dashboardSurfaces)
+    private var surfaces
 
     private var clamped: Double { min(1, max(0, value)) }
 
@@ -27,7 +31,7 @@ struct SegmentBar: View {
         HStack(spacing: gap) {
             ForEach(0..<segments, id: \.self) { index in
                 RoundedRectangle(cornerRadius: 2, style: .continuous)
-                    .fill(index < filledCount ? accent : track)
+                    .fill(index < filledCount ? accent : (track ?? surfaces.track))
                     .frame(maxWidth: .infinity)
             }
         }

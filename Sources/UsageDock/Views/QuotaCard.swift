@@ -31,13 +31,43 @@ struct QuotaCard: View {
     /// accepting a secret, so the compact plus button never triggers a surprise.
     @State private var isPresentingAccountSetup = false
     @State private var pendingCredentialUpdateID: ProviderAccountID?
+    /// 实测的滚动视口与内容高度。卡片槽位固定(网格对齐),但内容装得下
+    /// 时不该出现滚动条+大片留白的矛盾观感(#42:Codex Plus 用户没有
+    /// Spark 行,内容其实放得下)。测量驱动而非按 provider 硬编码,之后
+    /// 任何新窗口行(如模型池 5h)把内容顶超槽位时滚动会自动恢复。
+    @State private var scrollViewportHeight: CGFloat = 0
+    @State private var scrollContentHeight: CGFloat = 0
 
+    /// 首帧测量未落地时(0/0)按"装得下"处理,避免加载态闪一下滚动条。
+    private var quotaContentFits: Bool {
+        scrollContentHeight <= scrollViewportHeight + 0.5
+    }
+
+    /// Dashboard 卡片:目录内的池由通用池开关 + 智能默认决定显隐;
+    /// 目录外的池(账户级兄弟池)维持既有行为——恒显。
+    @MainActor
     static func scopedWindows(
         in quota: ProviderQuota,
-        showAntigravityThirdParty: Bool = true
+        preferences: PreferencesStore
     ) -> [ScopedQuotaWindow] {
-        quota.uniqueScopedWindows.filter {
-            showAntigravityThirdParty || !$0.isAntigravityThirdParty
+        quota.uniqueScopedWindows.filter { scoped in
+            guard let entry = ScopedPoolToggleCatalog.entry(
+                for: scoped,
+                provider: quota.provider
+            ) else {
+                return true
+            }
+            // 活跃度按整个池组判定(见 ScopedPoolToggleCatalog.poolIsActive),
+            // 同组多行(如 Spark 的 _session/_weekly)显隐一致,且与设置页
+            // 开关读到的智能默认相同。
+            return preferences.resolvedScopedPoolVisibility(
+                provider: entry.provider,
+                poolKey: entry.poolKey,
+                poolIsActive: ScopedPoolToggleCatalog.poolIsActive(
+                    entry: entry,
+                    in: quota
+                )
+            )
         }
     }
 
@@ -55,8 +85,11 @@ struct QuotaCard: View {
                         quotaContent
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(heightReader { scrollContentHeight = $0 })
                 }
-                .scrollIndicators(.automatic)
+                .scrollDisabled(quotaContentFits)
+                .scrollIndicators(quotaContentFits ? .hidden : .automatic)
+                .background(heightReader { scrollViewportHeight = $0 })
             }
             .frame(height: Self.dashboardContentHeight, alignment: .top)
         }
@@ -87,6 +120,15 @@ struct QuotaCard: View {
             }
         } message: { id in
             Text(L10n.format(removeMessageKey(for: id), accountName(for: id)))
+        }
+    }
+
+    /// 尺寸测量探针:铺在被测视图的 background 里,不参与命中与布局。
+    private func heightReader(_ update: @escaping (CGFloat) -> Void) -> some View {
+        GeometryReader { proxy in
+            Color.clear
+                .onAppear { update(proxy.size.height) }
+                .onChange(of: proxy.size.height) { _, newValue in update(newValue) }
         }
     }
 
@@ -132,7 +174,7 @@ struct QuotaCard: View {
         if let quota {
             if provider == .codex, let credits = quota.codexResetCredits {
                 CodexResetCreditsCard(credits: credits)
-                Divider().overlay(DashboardTheme.border)
+                Divider().overlay(DashboardSurface.border)
             }
             QuotaWindowRow(
                 window: quota.primary,
@@ -141,7 +183,7 @@ struct QuotaCard: View {
                 remainingBalance: quota.primary.remainingBalance ?? quota.remainingBalance
             )
             if let secondary = quota.secondary {
-                Divider().overlay(DashboardTheme.border)
+                Divider().overlay(DashboardSurface.border)
                 QuotaWindowRow(
                     window: secondary,
                     provider: provider,
@@ -149,13 +191,10 @@ struct QuotaCard: View {
                 )
             }
             ForEach(
-                Self.scopedWindows(
-                    in: quota,
-                    showAntigravityThirdParty: preferences.showAntigravityThirdPartyQuota
-                ),
+                Self.scopedWindows(in: quota, preferences: preferences),
                 id: \.scopeID
             ) { scoped in
-                Divider().overlay(DashboardTheme.border)
+                Divider().overlay(DashboardSurface.border)
                 QuotaWindowRow(
                     window: scoped.window,
                     provider: provider,
@@ -164,15 +203,15 @@ struct QuotaCard: View {
                 )
             }
             if let extraUsage = quota.extraUsage {
-                Divider().overlay(DashboardTheme.border)
+                Divider().overlay(DashboardSurface.border)
                 ExtraUsageRow(extraUsage: extraUsage)
             }
             if let balance = quota.accountBalance {
-                Divider().overlay(DashboardTheme.border)
+                Divider().overlay(DashboardSurface.border)
                 AccountBalanceRow(balance: balance)
             }
             if let spend = quota.spend, spend.hasValues {
-                Divider().overlay(DashboardTheme.border)
+                Divider().overlay(DashboardSurface.border)
                 ProviderSpendRow(spend: spend)
             }
             TimelineView(.periodic(from: .now, by: 60)) { context in
@@ -415,11 +454,11 @@ struct QuotaCard: View {
             .padding(.vertical, 3)
             .background {
                 RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .fill(DashboardTheme.surface2)
+                    .fill(DashboardSurface.surface2)
             }
             .overlay {
                 RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .stroke(DashboardTheme.border, lineWidth: 1)
+                    .stroke(DashboardSurface.border, lineWidth: 1)
             }
             .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
         }
@@ -455,11 +494,11 @@ struct QuotaCard: View {
             .frame(width: 20, height: 18)
             .background {
                 RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .fill(DashboardTheme.surface2)
+                    .fill(DashboardSurface.surface2)
             }
             .overlay {
                 RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .stroke(DashboardTheme.border, lineWidth: 1)
+                    .stroke(DashboardSurface.border, lineWidth: 1)
             }
             .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
         }
@@ -540,7 +579,7 @@ struct QuotaCard: View {
             }
 
             ForEach(enabled) { snapshot in
-                Divider().overlay(DashboardTheme.border)
+                Divider().overlay(DashboardSurface.border)
                 AccountDigestRow(
                     snapshot: snapshot,
                     provider: provider,
@@ -816,11 +855,11 @@ struct CodexResetCreditsCard: View {
         .padding(.vertical, 8)
         .background {
             RoundedRectangle(cornerRadius: 9, style: .continuous)
-                .fill(DashboardTheme.surface2)
+                .fill(DashboardSurface.surface2)
         }
         .overlay {
             RoundedRectangle(cornerRadius: 9, style: .continuous)
-                .stroke(DashboardTheme.border, lineWidth: 1)
+                .stroke(DashboardSurface.border, lineWidth: 1)
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(
@@ -950,6 +989,12 @@ struct QuotaWindowRow: View {
     var scopeName: String?
     var remainingBalance: QuotaBalance? = nil
 
+    /// Scoped rows are named by their call site; a general window can also
+    /// name itself when it represents one pool of a split cycle (Cursor).
+    private var effectiveScopeName: String? {
+        scopeName ?? window.poolName
+    }
+
     private var remainingPercent: Double {
         min(100, max(0, 100 - window.usedPercent))
     }
@@ -1045,7 +1090,7 @@ struct QuotaWindowRow: View {
     private var windowTitle: String {
         Self.displayTitle(
             windowMinutes: window.windowMinutes,
-            scopeName: scopeName,
+            scopeName: effectiveScopeName,
             attribution: attribution
         )
     }
@@ -1063,7 +1108,7 @@ struct QuotaWindowRow: View {
 
     private var windowAccessibilityDescriptor: String {
         let duration = UsageFormatting.windowName(minutes: window.windowMinutes)
-        return scopeName.map { "\($0) · \(duration)" } ?? duration
+        return effectiveScopeName.map { "\($0) · \(duration)" } ?? duration
     }
 
     private var accessibilityProviderName: String {

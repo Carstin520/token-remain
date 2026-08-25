@@ -446,7 +446,7 @@ struct AddCLIProviderAccountSheet: View {
                             .buttonStyle(.borderless)
                         }
                         .padding(8)
-                        .background(DashboardTheme.surface2, in: RoundedRectangle(cornerRadius: 8))
+                        .background(DashboardSurface.surface2, in: RoundedRectangle(cornerRadius: 8))
 
                         HStack {
                             Link(destination: setup.officialGuideURL) {
@@ -562,10 +562,10 @@ private struct AccountSetupNotice: View {
         }
         .padding(9)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(DashboardTheme.surface2, in: RoundedRectangle(cornerRadius: 9))
+        .background(DashboardSurface.surface2, in: RoundedRectangle(cornerRadius: 9))
         .overlay {
             RoundedRectangle(cornerRadius: 9)
-                .stroke(DashboardTheme.border, lineWidth: 1)
+                .stroke(DashboardSurface.border, lineWidth: 1)
         }
         .accessibilityElement(children: .combine)
     }
@@ -581,8 +581,8 @@ private struct SetupStepRow: View {
                 .numericFont(9, .bold)
                 .foregroundStyle(DashboardTheme.text)
                 .frame(width: 18, height: 18)
-                .background(DashboardTheme.surface2, in: Circle())
-                .overlay { Circle().stroke(DashboardTheme.border, lineWidth: 1) }
+                .background(DashboardSurface.surface2, in: Circle())
+                .overlay { Circle().stroke(DashboardSurface.border, lineWidth: 1) }
             Text(text)
                 .font(.system(size: 10.5))
                 .foregroundStyle(DashboardTheme.secondaryText)

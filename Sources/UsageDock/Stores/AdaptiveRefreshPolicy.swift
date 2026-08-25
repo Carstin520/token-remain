@@ -68,6 +68,20 @@ enum AdaptiveRefreshPolicy {
         return min(activeInterval * pow(2, Double(exponent)), maximumBackoff)
     }
 
+    /// Claude 降级链的失败(尤其 PTY 探针超时)每次要付出最多 30 秒的
+    /// 进程成本,持续性故障(登出、CLI 界面变化)下固定 5 分钟仍过于
+    /// 频繁:以服务错误自带的首次延迟为底数按连续次数翻倍,上限半小时。
+    static let escalatedMaximumBackoff: TimeInterval = 30 * 60
+
+    static func escalatedRetryDelay(
+        base: TimeInterval,
+        consecutiveFailures: Int
+    ) -> TimeInterval {
+        guard consecutiveFailures > 1 else { return base }
+        let exponent = min(consecutiveFailures - 1, 4)
+        return min(base * pow(2, Double(exponent)), escalatedMaximumBackoff)
+    }
+
     /// 本地 ccusage 扫描的节奏。它 spawn 一个 helper 进程重新解析近
     /// 30 天的会话日志,不能默默地每分钟跑:只有本地用量正被某个界面
     /// 展示、或 Apple 设备同步需要持续新鲜度时才值得分钟级;其余时间

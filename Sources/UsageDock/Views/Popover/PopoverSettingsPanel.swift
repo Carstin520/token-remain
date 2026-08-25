@@ -31,7 +31,7 @@ struct PopoverSettingsPanel: View {
                 }
                 .buttonStyle(.plain)
                 .background(Circle().fill(Color.white.opacity(0.08)))
-                .overlay(Circle().stroke(DashboardTheme.border, lineWidth: 1))
+                .overlay(Circle().stroke(DashboardSurface.border, lineWidth: 1))
                 .help(L10n.text("action.close"))
                 .accessibilityLabel(L10n.text("action.close"))
             }
@@ -60,14 +60,27 @@ struct PopoverSettingsPanel: View {
                         .frame(width: 42, alignment: .trailing)
                 }
 
-                Slider(
+                LiquidGlassSlider(
                     value: opacityBinding,
-                    in: PreferencesStore.popoverBackgroundOpacityRange
+                    range: PreferencesStore.popoverBackgroundOpacityRange
                 )
-                .tint(DashboardTheme.violet)
+                .accessibilityElement()
                 .accessibilityLabel(L10n.text("settings.popover_background_opacity"))
                 .accessibilityHint(L10n.text("settings.popover_background_opacity_hint"))
                 .accessibilityValue(opacityLabel)
+                .accessibilityAdjustableAction { direction in
+                    // 0.1 是存储粒度 0.02 的整数倍,十步走完全程。
+                    let step = 0.1
+                    let current = preferences.popoverBackgroundOpacity
+                    switch direction {
+                    case .increment:
+                        opacityBinding.wrappedValue = min(current + step, PreferencesStore.popoverBackgroundOpacityRange.upperBound)
+                    case .decrement:
+                        opacityBinding.wrappedValue = max(current - step, PreferencesStore.popoverBackgroundOpacityRange.lowerBound)
+                    @unknown default:
+                        break
+                    }
+                }
 
                 HStack {
                     Text(L10n.text("settings.popover_more_transparent"))
@@ -114,23 +127,25 @@ struct PopoverSettingsPanel: View {
         // Keep the dynamically inserted editor out of Liquid Glass sampling.
         // On macOS 26, inserting native Slider/SegmentedControl hosts into a
         // live GlassEffectContainer while the panel resizes can recurse through
-        // MaterialProviderBox and terminate the process. The popup around this
-        // editor remains the real live preview; this stable utility surface
-        // exists only to keep its controls readable and crash-free.
+        // MaterialProviderBox and terminate the process — which is why every
+        // control in this panel is now drawn in pure SwiftUI, the slider
+        // included. The popup around this editor remains the real live preview;
+        // this stable utility surface exists only to keep its controls readable
+        // and crash-free.
         .background(
             RoundedRectangle(cornerRadius: 13, style: .continuous)
-                .fill(DashboardTheme.surface.opacity(0.94))
+                .fill(DashboardSurface.surface.opacity(0.94))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 13, style: .continuous)
-                .stroke(DashboardTheme.border, lineWidth: 1)
+                .stroke(DashboardSurface.border, lineWidth: 1)
         )
         .accessibilityElement(children: .contain)
     }
 
     /// Two-chip style switch matching the Dashboard's brand-violet selection
     /// pill. Also sidesteps the hosted AppKit segmented control entirely —
-    /// the panel keeps no native control hosts except the slider.
+    /// the panel keeps no native control hosts at all.
     private var glassStyleControl: some View {
         HStack(spacing: 3) {
             glassStyleChip(.frosted, L10n.text("settings.popover_glass_frosted"))
@@ -143,7 +158,7 @@ struct PopoverSettingsPanel: View {
         )
         .overlay(
             RoundedRectangle(cornerRadius: 9, style: .continuous)
-                .stroke(DashboardTheme.border, lineWidth: 1)
+                .stroke(DashboardSurface.border, lineWidth: 1)
         )
         .accessibilityElement(children: .contain)
         .accessibilityLabel(L10n.text("settings.popover_glass_style"))
@@ -219,8 +234,109 @@ struct PopoverSettingsPanel: View {
             set: { launchAtLogin.setEnabled($0) }
         )
     }
+}
 
-    private func settingsAction(
+/// 纯 SwiftUI 的液态玻璃滑块:5pt 细轨道 + 13pt 玻璃拇指,替代系统
+/// Slider 的大号 AppKit 宿主。拇指的玻璃感是纯绘制的(透明白渐变 +
+/// 上缘高光沿),不做真正的 glassEffect 背景采样——这个面板承诺
+/// 停留在 Liquid Glass 采样之外(见 body 的 background 注释),
+/// 材质在这里是视觉语言,不是渲染管线。
+private struct LiquidGlassSlider: View {
+    @Binding var value: Double
+    let range: ClosedRange<Double>
+
+    /// 拖动期间拇指连续跟随光标;存储值仍按调用方 binding 的粒度量化,
+    /// 松手后拇指落回量化位置。
+    @State private var dragFraction: Double?
+
+    private let trackHeight: CGFloat = 5
+    private let thumbDiameter: CGFloat = 13
+
+    var body: some View {
+        GeometryReader { proxy in
+            let travel = max(1, proxy.size.width - thumbDiameter)
+            let fraction = dragFraction ?? storedFraction
+            let thumbCenter = thumbDiameter / 2 + travel * fraction
+            let isDragging = dragFraction != nil
+
+            ZStack(alignment: .leading) {
+                Capsule(style: .continuous)
+                    .fill(Color.white.opacity(0.07))
+                    .overlay(
+                        Capsule(style: .continuous)
+                            .stroke(DashboardSurface.border, lineWidth: 1)
+                    )
+                    .frame(height: trackHeight)
+
+                Capsule(style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [DashboardTheme.violetDim, DashboardTheme.violet],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .frame(width: max(trackHeight, thumbCenter), height: trackHeight)
+                    .shadow(
+                        color: DashboardTheme.violet.opacity(isDragging ? 0.45 : 0.2),
+                        radius: isDragging ? 5 : 2
+                    )
+
+                glassThumb(isDragging: isDragging)
+                    .offset(x: thumbCenter - thumbDiameter / 2)
+            }
+            .frame(maxHeight: .infinity, alignment: .center)
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { gestureValue in
+                        let raw = (gestureValue.location.x - thumbDiameter / 2) / travel
+                        let clamped = min(max(raw, 0), 1)
+                        dragFraction = clamped
+                        value = range.lowerBound
+                            + (range.upperBound - range.lowerBound) * clamped
+                    }
+                    .onEnded { _ in dragFraction = nil }
+            )
+            .animation(.spring(response: 0.28, dampingFraction: 0.75), value: isDragging)
+        }
+        .frame(height: 20)
+    }
+
+    private var storedFraction: Double {
+        let span = range.upperBound - range.lowerBound
+        guard span > 0 else { return 0 }
+        return min(max((value - range.lowerBound) / span, 0), 1)
+    }
+
+    private func glassThumb(isDragging: Bool) -> some View {
+        Circle()
+            .fill(
+                LinearGradient(
+                    colors: [Color.white.opacity(0.38), Color.white.opacity(0.16)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
+            .overlay(
+                Circle()
+                    .stroke(
+                        LinearGradient(
+                            colors: [Color.white.opacity(0.65), Color.white.opacity(0.08)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        ),
+                        lineWidth: 1
+                    )
+            )
+            .frame(width: thumbDiameter, height: thumbDiameter)
+            .shadow(color: Color.black.opacity(0.35), radius: 2, y: 1)
+            .scaleEffect(isDragging ? 1.25 : 1)
+    }
+}
+
+private extension PopoverSettingsPanel {
+    func settingsAction(
         _ title: String,
         systemImage: String,
         action: @escaping () -> Void
@@ -245,7 +361,7 @@ struct PopoverSettingsPanel: View {
         )
         .overlay(
             RoundedRectangle(cornerRadius: 9, style: .continuous)
-                .stroke(DashboardTheme.border, lineWidth: 1)
+                .stroke(DashboardSurface.border, lineWidth: 1)
         )
     }
 }

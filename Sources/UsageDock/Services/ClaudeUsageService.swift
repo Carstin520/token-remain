@@ -79,13 +79,13 @@ struct ClaudeUsageService {
             if case .rateLimited(let seconds) = error {
                 throw ServiceError.rateLimited(retryAfterSeconds: seconds)
             }
-            guard ClaudeCLIUsageProbe.isAvailable else {
+            guard Self.probeCanRecover(from: error), ClaudeCLIUsageProbe.isAvailable else {
                 throw Self.noCLIFallbackError(for: error)
             }
             // Missing/expired credentials normally fall through to the PTY so
             // Claude Code can refresh them. When Claude itself explicitly says
             // it is logged out, however, the PTY can only sit on the login
-            // screen until our 30-second deadline. Surface the real recovery
+            // screen until our 45-second deadline. Surface the real recovery
             // action immediately instead of misclassifying it as a timeout.
             if Self.mayReflectSignedOutClaude(error),
                await ClaudeCLIUsageProbe.isExplicitlyLoggedOut(
@@ -93,11 +93,15 @@ struct ClaudeUsageService {
                ) {
                 throw ServiceError.credentialsUnavailable
             }
-            logger.info("Claude API path unavailable (\(error.localizedDescription, privacy: .public)); falling back to PTY probe")
+            // .notice 起才会持久化到 unified log。降级原因必须留痕:出现
+            // "读取超时"时,事后唯一能区分"凭证过期"和"网络故障"的就是这条。
+            logger.notice("Claude API path unavailable (\(error.localizedDescription, privacy: .public)); falling back to PTY probe")
         } catch {
-            // 网络层错误(离线、超时)同样交给 PTY 兜底。
-            guard ClaudeCLIUsageProbe.isAvailable else { throw error }
-            logger.info("Claude API path failed (\(error.localizedDescription, privacy: .public)); falling back to PTY probe")
+            // 传输层错误(离线、请求超时)不降级:PTY 里的 /usage 读的是
+            // 同一个接口,网络不通时探针只会再白等 45 秒,然后把一个普通的
+            // 网络问题误报成"读取超时"。保留缓存快照,下一轮直查即可。
+            logger.notice("Claude API transport failure (\(error.localizedDescription, privacy: .public)); keeping cached snapshot instead of probing")
+            throw error
         }
         let output = try await ClaudeCLIUsageProbe.run(
             configurationDirectory: configurationDirectory
@@ -133,6 +137,24 @@ struct ClaudeUsageService {
         // A transport or protocol failure says nothing about the session, and
         // rate limiting never reaches here.
         case .rateLimited, .requestFailed, .invalidResponse:
+            return false
+        }
+    }
+
+    /// PTY 降级一次要付出最多 45 秒的进程成本,只在探针可能修复问题时
+    /// 才值得:凭证类失败让 Claude Code 自己续期,`invalidResponse` 覆盖
+    /// API 不返回订阅会话行的账户(此时 /usage 画面是唯一数据源)。
+    /// 服务端明确拒绝(429/5xx)时换个入口没有意义——探针读的是同一个
+    /// 接口,只会把服务端故障拖成一条"读取超时"。
+    static func probeCanRecover(
+        from error: ClaudeOAuthUsageService.APIError
+    ) -> Bool {
+        switch error {
+        case .credentialsUnavailable, .credentialsAuthorizationRequired,
+             .credentialsExpired, .invalidStoredCredentials, .tokenRejected,
+             .invalidResponse:
+            return true
+        case .rateLimited, .requestFailed:
             return false
         }
     }
@@ -222,7 +244,7 @@ private actor ClaudeScopedUsageSupplement {
             return quota.mergingScopedWindows(entry.cachedWindows)
         } catch {
             Logger(subsystem: "com.jamesli.usagedock", category: "ClaudeUsage")
-                .info("Claude Fable supplement unavailable: \(error.localizedDescription, privacy: .public)")
+                .notice("Claude Fable supplement unavailable: \(error.localizedDescription, privacy: .public)")
             return mergingFreshCache(into: quota, entry: entry, now: now)
         }
     }
@@ -266,9 +288,12 @@ enum ClaudeCLIUsageParser {
         }
         let text = cleanedTerminalText(raw)
         let sessionReadings = sessionReadings(in: text)
+        // 账户级 5 小时窗只能来自无 scope 的 `Current session` 行;带 scope
+        // 的行(如 `Current session (Fable)`)另行进 scoped 窗口。
+        let accountSessionReadings = sessionReadings.filter { $0.scopeName == nil }
         let weeklyReadings = weeklyReadings(in: text)
         let generalWeeklyReadings = weeklyReadings.filter(\.isGeneral)
-        guard let sessionReading = sessionReadings.last,
+        guard let sessionReading = accountSessionReadings.last,
               let generalWeeklyReading = generalWeeklyReadings.last else {
             throw ClaudeUsageService.ServiceError.invalidUsageOutput
         }
@@ -282,7 +307,7 @@ enum ClaudeCLIUsageParser {
         // one still parses into a confident, wrong date. Resolve resets from
         // every copy of their row instead — see `resolveReset`.
         let primaryReset = resolveReset(
-            in: sessionReadings.compactMap(\.resetDescription),
+            in: accountSessionReadings.compactMap(\.resetDescription),
             windowMinutes: 300,
             now: now,
             calendar: calendar
@@ -308,7 +333,7 @@ enum ClaudeCLIUsageParser {
                 descriptionsByScope[scopeID, default: []].append(description)
             }
         }
-        let scopedWindows = scopedOrder.compactMap { scopeID -> ScopedQuotaWindow? in
+        let scopedWeeklyWindows = scopedOrder.compactMap { scopeID -> ScopedQuotaWindow? in
             guard let reading = latestByScope[scopeID] else { return nil }
             return ScopedQuotaWindow(
                 scopeID: scopeID,
@@ -329,6 +354,51 @@ enum ClaudeCLIUsageParser {
                 observedAt: now
             )
         }
+
+        // 带 scope 的 `Current session (X)` 行 → 5 小时 scoped 窗口。scopeID
+        // 用 scope 名 slug 化后加 `_session` 后缀,与 weekly 侧的裸 slug
+        // (如 `fable`)天然区分,也与 Codex 模型池的后缀约定一致。
+        var scopedSessionOrder: [String] = []
+        var latestSessionByScope: [String: NamedSessionReading] = [:]
+        var sessionDescriptionsByScope: [String: [String]] = [:]
+        for reading in sessionReadings {
+            guard let name = reading.scopeName, let baseID = scopeID(for: name) else { continue }
+            // scopeID 上限 32 字符,给 `_session` 后缀预留 8 个。
+            let sessionScopeID = String(baseID.prefix(24)) + "_session"
+            if latestSessionByScope[sessionScopeID] == nil {
+                scopedSessionOrder.append(sessionScopeID)
+            }
+            // PTY capture can contain several repainted copies of the same
+            // section. The final copy is the freshest complete reading.
+            latestSessionByScope[sessionScopeID] = reading
+            if let description = reading.resetDescription {
+                sessionDescriptionsByScope[sessionScopeID, default: []].append(description)
+            }
+        }
+        let scopedSessionWindows = scopedSessionOrder.compactMap { scopeID -> ScopedQuotaWindow? in
+            guard let reading = latestSessionByScope[scopeID],
+                  let name = reading.scopeName else { return nil }
+            return ScopedQuotaWindow(
+                scopeID: scopeID,
+                displayName: name,
+                window: QuotaWindow(
+                    usedPercent: reading.usedPercent,
+                    windowMinutes: 300,
+                    // 同一次会话共用一个 5 小时窗,自己的 reset 读不出来时
+                    // 用账户级会话 reset 兜底,与 weekly 侧的兜底对称。
+                    resetsAt: resolveReset(
+                        in: sessionDescriptionsByScope[scopeID] ?? [],
+                        windowMinutes: 300,
+                        now: now,
+                        calendar: calendar
+                    ) ?? primaryReset
+                ),
+                observedAt: now
+            )
+        }
+
+        // 会话窗在前、周窗在后,呼应主卡 5h+7d 的堆叠顺序。
+        let scopedWindows = scopedSessionWindows + scopedWeeklyWindows
         return ProviderQuota(
             provider: .claude,
             primary: QuotaWindow(
@@ -350,7 +420,9 @@ enum ClaudeCLIUsageParser {
     static func hasCompleteUsage(in data: Data) -> Bool {
         guard let raw = String(data: data, encoding: .utf8) else { return false }
         let text = cleanedTerminalText(raw)
-        guard let session = sessionReadings(in: text).last,
+        // 完整性只看账户级读数:一条带 scope 的会话行不能代表账户 5h 窗
+        // 已经画全。
+        guard let session = sessionReadings(in: text).last(where: { $0.scopeName == nil }),
               let weekly = weeklyReadings(in: text).last(where: \.isGeneral) else {
             return false
         }
@@ -451,13 +523,49 @@ enum ClaudeCLIUsageParser {
         )
     }
 
-    private static func sessionReadings(in text: String) -> [UsageReading] {
-        let pattern = #"(?is)Current[ \t]*session(.*?)(?=Current[ \t]*(?:week|session)|Weekly[ \t]*limits|\z)"#
+    private struct NamedSessionReading {
+        /// nil 表示账户级 5 小时窗;非 nil 是 `Current session (X)` 括号里的
+        /// 模型/产品 scope 名。
+        let scopeName: String?
+        let usedPercent: Double
+        let resetDescription: String?
+    }
+
+    /// `Current session` 行与 weekly 侧同一处理方式:scope 名只允许出现在
+    /// 同一行的括号里,不允许跨行。带 scope 的会话读数进 scoped 窗口,
+    /// 只有无 scope 的读数才是账户级 5 小时窗——否则模型级会话额度会
+    /// 顶掉账户 5h(旧的 last-wins bug)。
+    private static func sessionReadings(in text: String) -> [NamedSessionReading] {
+        let pattern = #"(?is)Current[ \t]*session([^\r\n]*)(.*?)(?=Current[ \t]*(?:week|session)|Weekly[ \t]*limits|\z)"#
         guard let regex = try? NSRegularExpression(pattern: pattern) else { return [] }
         let fullRange = NSRange(text.startIndex..., in: text)
         return regex.matches(in: text, range: fullRange).compactMap { match in
-            guard let bodyRange = Range(match.range(at: 1), in: text) else { return nil }
-            return usageReading(in: String(text[bodyRange]))
+            guard let headerRange = Range(match.range(at: 1), in: text),
+                  let bodyRange = Range(match.range(at: 2), in: text) else { return nil }
+            let header = text[headerRange].trimmingCharacters(in: .whitespacesAndNewlines)
+            var scopeName: String?
+            if let opening = header.firstIndex(of: "(") {
+                // 括号残缺(重绘丢字)时整条丢弃,与 legacyWeeklyReadings
+                // 一致:读数属于哪个 scope 已不可判,绝不能顶替账户级窗口。
+                guard let closing = header[header.index(after: opening)...].firstIndex(of: ")") else {
+                    return nil
+                }
+                let name = String(header[header.index(after: opening)..<closing])
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                // `(all models)` 一类通用标签仍是账户级读数,不算 scope。
+                scopeName = (name.isEmpty || ScopedQuotaWindow.isGeneralWeeklyLabel(name)) ? nil : name
+            }
+            // 无 scope 的读数保持修复前的解析方式:header 里的残帧文本并回
+            // body 一起解析,确保没有 scoped session 行时行为逐字节一致。
+            let body = scopeName == nil
+                ? String(text[headerRange]) + String(text[bodyRange])
+                : String(text[bodyRange])
+            guard let reading = usageReading(in: body) else { return nil }
+            return NamedSessionReading(
+                scopeName: scopeName,
+                usedPercent: reading.usedPercent,
+                resetDescription: reading.resetDescription
+            )
         }
     }
 
@@ -848,9 +956,14 @@ private enum ClaudeCLIUsageProbe {
         }.value
     }
 
+    /// 45 秒预算:冷启动的 Claude Code(自动更新检查、MCP 加载)可能
+    /// 前 10–20 秒都没进主界面,再算上 /usage 渲染和 5 秒的 Fable 段
+    /// 收尾,30 秒经常差一口气。探针有了失败退避后只会低频运行,一次
+    /// 成功探针能让 token 续期、换来之后数小时的秒级 API 直查,比多次
+    /// 失败的 30 秒便宜;45 也仍在 60 秒的活跃刷新节奏之内。
     static func run(
         configurationDirectory: URL? = nil,
-        timeout: TimeInterval = 30
+        timeout: TimeInterval = 45
     ) async throws -> Data {
         try await Task.detached(priority: .utility) {
             guard let executable = claudeExecutable() else {

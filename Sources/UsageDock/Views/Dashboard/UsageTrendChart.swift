@@ -239,12 +239,16 @@ struct UsageTrendChart: View {
                         dimmed: dimmed
                     )
                     .frame(width: columnW, height: plotH)
-                    .position(x: centerX, y: plotH / 2)
-                    .accessibilityLabel(accessibilityLabel(for: day))
+                    // 命中区必须在 `.position` 之前定形:`.position` 会把视图包进
+                    // 撑满整个 ZStack 的弹性 frame,若在其后再 `.contentShape`,
+                    // 每根柱的点击热区都是整张图,最顶层(最近一天)吃掉所有
+                    // 点击——模型明细永远打开最后一天(#42)。
                     .contentShape(Rectangle())
                     .onTapGesture {
                         pinnedDayID = pinnedDayID == day.id ? nil : day.id
                     }
+                    .position(x: centerX, y: plotH / 2)
+                    .accessibilityLabel(accessibilityLabel(for: day))
 
                     xLabel(index: index, day: day, centerX: centerX, y: plotH)
 
@@ -344,7 +348,7 @@ struct UsageTrendChart: View {
         ForEach(gridlineFractions, id: \.self) { fraction in
             let y = plotH - plotH * CGFloat(fraction)
             Rectangle()
-                .fill(DashboardTheme.border.opacity(0.4))
+                .fill(DashboardSurface.border.opacity(0.4))
                 .frame(width: plotW, height: 1)
                 .position(x: leftGutter + plotW / 2, y: y)
                 .accessibilityHidden(true)
@@ -653,7 +657,7 @@ private struct TrendTooltip: View {
             ForEach(rows) { item in
                 row(color: item.color, name: item.name, value: item.value)
             }
-            Divider().overlay(DashboardTheme.border)
+            Divider().overlay(DashboardSurface.border)
             HStack {
                 Text(L10n.text("trends.total_label"))
                     .font(.system(size: 10))
@@ -669,10 +673,10 @@ private struct TrendTooltip: View {
         }
         .padding(.horizontal, 9)
         .padding(.vertical, 8)
-        .background(DashboardTheme.surface3, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+        .background(DashboardSurface.surface3, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 6, style: .continuous)
-                .strokeBorder(DashboardTheme.border, lineWidth: 1)
+                .strokeBorder(DashboardSurface.border, lineWidth: 1)
         )
         .shadow(color: DashboardTheme.canvas.opacity(0.55), radius: 8, y: 3)
     }
@@ -725,10 +729,10 @@ struct PixelSegmentedControl<Value: Hashable>: View {
             }
         }
         .padding(2)
-        .background(DashboardTheme.surface2, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+        .background(DashboardSurface.surface2, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .strokeBorder(DashboardTheme.border, lineWidth: 1)
+                .strokeBorder(DashboardSurface.border, lineWidth: 1)
         )
     }
 }

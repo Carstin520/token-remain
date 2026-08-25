@@ -4,6 +4,7 @@ import SwiftUI
 struct AIFeedPostCard: View {
     let post: AIFeedPost
     @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
+    @Environment(\.dashboardSurfaces) private var surfaces
     @State private var isHovering = false
 
     var body: some View {
@@ -89,7 +90,7 @@ struct AIFeedPostCard: View {
             .pixelTicks(
                 cornerRadius: 13,
                 color: post.priority == .normal
-                    ? DashboardTheme.border
+                    ? surfaces.border
                     : priorityAccent.opacity(0.76)
             )
             .animation(
@@ -124,7 +125,7 @@ struct AIFeedPostCard: View {
 
     private var cardBorderColor: Color {
         post.priority == .normal
-            ? DashboardTheme.border
+            ? surfaces.border
             : priorityAccent.opacity(0.80)
     }
 
@@ -133,7 +134,7 @@ struct AIFeedPostCard: View {
     }
 
     private var cardFillColor: Color {
-        isHovering ? DashboardTheme.surface2 : DashboardTheme.surface
+        isHovering ? surfaces.surface2 : surfaces.surface
     }
 
     private var perimeterGlowColor: Color {
@@ -151,7 +152,7 @@ struct AIFeedPostCard: View {
             .foregroundStyle(priorityAccent)
             .padding(.horizontal, 8)
             .padding(.vertical, 5)
-            .background(DashboardTheme.surface3.opacity(0.9), in: Capsule())
+            .background(DashboardSurface.surface3.opacity(0.9), in: Capsule())
             .overlay {
                 Capsule()
                     .strokeBorder(priorityAccent.opacity(0.52), lineWidth: 1)

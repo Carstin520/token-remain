@@ -18,7 +18,7 @@ struct ClaudeCLIAuthStatusParserTests {
 }
 
 /// 决定"要不要先问一句 Claude Code 是否已登出"的判据。判错的代价不对称:
-/// 漏判会让探针在登录界面上空转满 30 秒,然后把"账号登出了"报成"读取超时",
+/// 漏判会让探针在登录界面上空转满 45 秒,然后把"账号登出了"报成"读取超时",
 /// 用户照着错误提示怎么修都修不好。
 @Suite("Claude signed-out detection")
 struct ClaudeSignedOutDetectionTests {
@@ -33,12 +33,41 @@ struct ClaudeSignedOutDetectionTests {
         #expect(ClaudeUsageService.mayReflectSignedOutClaude(.tokenRejected(401)))
     }
 
-    @Test("Transport and protocol failures keep the PTY fallback")
-    func transportFailuresStillFallBack() {
-        // 这些和会话无关,探针仍然是有意义的兜底,不该被短路掉。
+    @Test("Transport and protocol failures do not imply a signed-out session")
+    func transportFailuresSkipTheAuthCheck() {
+        // 这些和会话状态无关,不值得为它们先花一次 `auth status` 询问。
         #expect(!ClaudeUsageService.mayReflectSignedOutClaude(.requestFailed(500)))
         #expect(!ClaudeUsageService.mayReflectSignedOutClaude(.invalidResponse))
         #expect(!ClaudeUsageService.mayReflectSignedOutClaude(.rateLimited(retryAfterSeconds: 60)))
+    }
+}
+
+/// PTY 降级一次要付出最多 45 秒的进程成本,只有探针可能修复的失败才值得:
+/// 凭证类失败靠探针里的 Claude Code 自行续期,`invalidResponse` 靠 /usage
+/// 画面兜底。网络或服务端故障时探针读的是同一个接口,降级只会把一个普通
+/// 故障拖成一条误导性的"读取超时"。
+@Suite("Claude PTY fallback gating")
+struct ClaudePTYFallbackGatingTests {
+    @Test("Credential-shaped failures are worth a probe")
+    func credentialFailuresProbe() {
+        #expect(ClaudeUsageService.probeCanRecover(from: .credentialsUnavailable))
+        #expect(ClaudeUsageService.probeCanRecover(from: .credentialsAuthorizationRequired))
+        #expect(ClaudeUsageService.probeCanRecover(from: .credentialsExpired))
+        #expect(ClaudeUsageService.probeCanRecover(from: .invalidStoredCredentials))
+        #expect(ClaudeUsageService.probeCanRecover(from: .tokenRejected(401)))
+    }
+
+    @Test("An API response without a subscription session row still probes")
+    func inferenceOnlyAccountsProbe() {
+        // 部分账户的 oauth/usage 不含订阅会话行,/usage 画面是唯一数据源。
+        #expect(ClaudeUsageService.probeCanRecover(from: .invalidResponse))
+    }
+
+    @Test("Server-side failures never probe")
+    func serverFailuresDoNotProbe() {
+        #expect(!ClaudeUsageService.probeCanRecover(from: .requestFailed(500)))
+        #expect(!ClaudeUsageService.probeCanRecover(from: .rateLimited(retryAfterSeconds: 60)))
+        #expect(!ClaudeUsageService.probeCanRecover(from: .rateLimited(retryAfterSeconds: nil)))
     }
 }
 
@@ -393,6 +422,137 @@ struct ScopedQuotaWindowSanitationTests {
         #expect(!ScopedQuotaWindow.isGeneralWeeklyLabel("modes"))
         #expect(ScopedQuotaWindow.isGeneralWeeklyLabel("all models"))
         #expect(ScopedQuotaWindow.isGeneralWeeklyLabel("ll models"))
+    }
+}
+
+/// `Current session (X)` 是模型级会话额度,不是账户 5 小时窗。旧解析器
+/// 不看括号、last-wins,一条模型级会话行就能顶掉账户读数(审计 🟠 项)。
+@Suite("Claude PTY scoped session rows")
+struct ClaudePTYScopedSessionRowTests {
+    private func shanghai() throws -> Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = try #require(TimeZone(identifier: "Asia/Shanghai"))
+        return calendar
+    }
+
+    /// 09:39 Asia/Shanghai,和 repaint recovery 套件同一观测时刻。
+    private func morning() throws -> Date {
+        try #require(ISO8601DateFormatter().date(from: "2026-08-14T01:39:00Z"))
+    }
+
+    @Test("A scoped session row becomes a scoped window instead of the account 5h")
+    func scopedSessionRowDoesNotReplaceAccountSession() throws {
+        // scoped 行画在账户行之后:旧的 last-wins 会把账户 5h 显示成 88%。
+        // 同屏还有一份重绘的旧拷贝(80%),必须按最后一份完整读数去重。
+        let output = """
+        Current session
+        12% used
+        Resets 11:40am
+        Current session (Fable)
+        80% used
+        Resets 11:40am
+        Current session (Fable)
+        88% used
+        Resets 11:40am
+        Current week (all models)
+        60% used
+        Resets Aug 14 at 1pm
+        Current week (Fable)
+        98% used
+        Resets Aug 14 at 1pm
+        """
+
+        let quota = try ClaudeCLIUsageParser.parse(
+            Data(output.utf8),
+            now: try morning(),
+            calendar: try shanghai()
+        )
+
+        #expect(quota.primary.usedPercent == 12)
+        #expect(quota.secondary?.usedPercent == 60)
+        // 会话窗在前、周窗在后,呼应主卡 5h+7d 的堆叠顺序。
+        #expect(quota.uniqueScopedWindows.map(\.scopeID) == ["fable_session", "fable"])
+        let fableSession = try #require(quota.uniqueScopedWindows.first)
+        #expect(fableSession.displayName == "Fable")
+        #expect(fableSession.window.usedPercent == 88)
+        #expect(fableSession.window.windowMinutes == 300)
+        #expect(fableSession.window.resetsAt == quota.primary.resetsAt)
+        #expect(fableSession.isFable)
+    }
+
+    @Test("A scoped session row without its own reset borrows the account session reset")
+    func scopedSessionFallsBackToAccountReset() throws {
+        let output = """
+        Current session
+        12% used
+        Resets 11:40am
+        Current session (Fable)
+        88% used
+        Current week (all models)
+        60% used
+        Resets Aug 14 at 1pm
+        """
+
+        let quota = try ClaudeCLIUsageParser.parse(
+            Data(output.utf8),
+            now: try morning(),
+            calendar: try shanghai()
+        )
+        let fableSession = try #require(
+            quota.uniqueScopedWindows.first { $0.scopeID == "fable_session" }
+        )
+
+        #expect(quota.primary.resetsAt != nil)
+        #expect(fableSession.window.resetsAt == quota.primary.resetsAt)
+    }
+
+    @Test("A screen with only scoped session rows is not a complete account reading")
+    func scopedSessionAloneDoesNotSatisfyTheParser() throws {
+        let output = """
+        Current session (Fable)
+        88% used
+        Resets 11:40am
+        Current week (all models)
+        60% used
+        Resets Aug 14 at 1pm
+        """
+
+        // 账户级 5 小时读数缺席时宁可整体判为未画全,也不能把模型级
+        // 会话额度冒充成账户窗口。
+        #expect(!ClaudeCLIUsageParser.hasCompleteUsage(in: Data(output.utf8)))
+        #expect(throws: (any Error).self) {
+            try ClaudeCLIUsageParser.parse(
+                Data(output.utf8),
+                now: try morning(),
+                calendar: try shanghai()
+            )
+        }
+    }
+
+    @Test("An unterminated scoped session header is dropped entirely")
+    func dropsUnterminatedScopedSessionHeader() throws {
+        // 重绘丢掉了闭括号:该拷贝属于哪个 scope 已不可判,既不能当
+        // 账户读数,也不能当 scoped 读数——与 weekly 侧的处理一致。
+        let output = """
+        Current session (Fable
+        88% used
+        Resets 11:40am
+        Current session
+        12% used
+        Resets 11:40am
+        Current week (all models)
+        60% used
+        Resets Aug 14 at 1pm
+        """
+
+        let quota = try ClaudeCLIUsageParser.parse(
+            Data(output.utf8),
+            now: try morning(),
+            calendar: try shanghai()
+        )
+
+        #expect(quota.primary.usedPercent == 12)
+        #expect(quota.uniqueScopedWindows.isEmpty)
     }
 }
 
