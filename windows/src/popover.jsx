@@ -900,9 +900,12 @@ function QuotaWidget({ card, serviceStatus, expanded, onToggleExpanded, onOpenCo
       {card.notice && (
         <span className="popover-quota-notice"><AlertIcon /><span title={card.noticeDetail || card.notice}>{card.notice}</span></span>
       )}
-      {expanded && (
+      {(expanded || card.scopedWindows?.some((window) => !window.followsExpansion)) && (
         <div className="quota-windows">
-          {[...card.windows.slice(1), ...(card.scopedWindows || [])].map((window) => {
+          {[
+            ...(expanded ? card.windows.slice(1) : []),
+            ...(card.scopedWindows || []).filter((window) => expanded || !window.followsExpansion),
+          ].map((window) => {
             const windowCue = windowRiskCue(window);
             return (
               <QuotaWindowRow
@@ -917,7 +920,7 @@ function QuotaWidget({ card, serviceStatus, expanded, onToggleExpanded, onOpenCo
               />
             );
           })}
-          {(card.detailRows || []).map((row) => (
+          {expanded && (card.detailRows || []).map((row) => (
             <div className={`popover-spend-row ${row.note ? "is-note" : ""}`} key={row.key}>
               <span>{row.note || row.label}</span>
               {!row.note && (
@@ -932,7 +935,7 @@ function QuotaWidget({ card, serviceStatus, expanded, onToggleExpanded, onOpenCo
               )}
             </div>
           ))}
-          {card.capturedText && (
+          {expanded && card.capturedText && (
             <span
               className={card.capturedStale ? "quota-captured is-stale" : "quota-captured"}
               title={card.capturedStale ? tr("Snapshot is more than 10 minutes old") : card.capturedText}

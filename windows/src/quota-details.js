@@ -1,21 +1,18 @@
 import { formatBalance } from "./format.js";
 import { tr, trKey } from "./i18n.js";
 import { CODEX_USAGE_URL } from "../electron/codex-usage.js";
+import {
+  resolvedScopedPoolVisibility,
+  scopedPoolEntryForWindow,
+  uniqueScopedWindows,
+} from "./scoped-pools.js";
 
 export function visibleScopedWindows(provider, preferences = {}) {
-  const order = [];
-  const latestByScope = new Map();
-  for (const scope of provider?.scopedWindows || []) {
-    if (typeof scope?.scopeID !== "string" || !scope.scopeID) continue;
-    const key = scope.scopeID.toLowerCase();
-    if (!latestByScope.has(key)) order.push(key);
-    latestByScope.set(key, scope);
-  }
-  return order.map((key) => latestByScope.get(key)).filter((scope) => {
-    if (isFableScope(scope)) return preferences.showFableQuota !== false;
-    if (isCodexSparkScope(scope)) return preferences.showCodexSparkQuota === true;
-    if (isAntigravityThirdPartyScope(scope)) return preferences.showAntigravityThirdPartyQuota === true;
-    return true;
+  return uniqueScopedWindows(provider).filter((scoped) => {
+    const entry = scopedPoolEntryForWindow(scoped, provider?.providerID);
+    // Account-level sibling pools and future scopes are outside this catalog
+    // and remain visible on Dashboard cards, matching the Mac's behavior.
+    return !entry || resolvedScopedPoolVisibility(entry, provider, preferences.scopedPoolVisibility);
   });
 }
 
@@ -55,18 +52,6 @@ export function providerQuotaDetailRows(provider) {
 
 export function poolDisplayName(value) {
   return typeof value === "string" && value ? tr(value) : value;
-}
-
-function isFableScope(scope) {
-  return scope.scopeID.toLowerCase().startsWith("fable") || /fable/i.test(scope.displayName || "");
-}
-
-function isCodexSparkScope(scope) {
-  return scope.scopeID.toLowerCase().startsWith("codex_bengalfox") || /codex-spark/i.test(scope.displayName || "");
-}
-
-function isAntigravityThirdPartyScope(scope) {
-  return scope.scopeID.toLowerCase().startsWith("antigravity_3p_");
 }
 
 function usd(amount) {

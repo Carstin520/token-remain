@@ -15,15 +15,19 @@ const provider = {
 };
 
 test("Scoped quota preferences gate only their known scopes and keep unknown scopes visible", () => {
-  assert.deepEqual(visibleScopedWindows(provider).map((scope) => scope.scopeID), ["fable", "future_scope"]);
-  assert.deepEqual(visibleScopedWindows(provider, { showFableQuota: false }).map((scope) => scope.scopeID), ["future_scope"]);
-  assert.deepEqual(visibleScopedWindows(provider, { showCodexSparkQuota: true }).map((scope) => scope.scopeID), ["fable", "codex_bengalfox_session", "future_scope"]);
-  assert.deepEqual(visibleScopedWindows(provider, { showAntigravityThirdPartyQuota: true }).map((scope) => scope.scopeID), ["fable", "antigravity_3p_5h", "future_scope"]);
+  assert.deepEqual(visibleScopedWindows(provider).map((scope) => scope.scopeID), ["fable", "codex_bengalfox_session", "antigravity_3p_5h", "future_scope"]);
+  assert.deepEqual(visibleScopedWindows(provider, { scopedPoolVisibility: { "claude|fable": "off" } }).map((scope) => scope.scopeID), ["codex_bengalfox_session", "antigravity_3p_5h", "future_scope"]);
+  assert.deepEqual(visibleScopedWindows(provider, { scopedPoolVisibility: {
+    "codex|codex_bengalfox": "off",
+    "antigravity|antigravity_3p_": "off",
+  } }).map((scope) => scope.scopeID), ["fable", "future_scope"]);
   assert.deepEqual(visibleScopedWindows(provider, {
-    showFableQuota: true,
-    showCodexSparkQuota: true,
-    showAntigravityThirdPartyQuota: true,
-  }).map((scope) => scope.scopeID), ["fable", "codex_bengalfox_session", "antigravity_3p_5h", "future_scope"]);
+    scopedPoolVisibility: {
+      "claude|fable": "off",
+      "codex|codex_bengalfox": "off",
+      "antigravity|antigravity_3p_": "off",
+    },
+  }).map((scope) => scope.scopeID), ["future_scope"]);
 });
 
 test("Extra usage and reset-credit rows format valid values and omit absent data", () => {

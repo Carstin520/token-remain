@@ -21,13 +21,13 @@ test("preview state renders a full popover model", () => {
   assert.deepEqual(ids, ["claude", "codex"]);
   const claude = model.quota.find((card) => card.id === "claude");
   assert.equal(claude.windows.length, 2);
-  // Fable is enabled by default while Spark stays hidden by default.
+  // Both pools have activity, so Auto shows them without explicit overrides.
   assert.equal(claude.scopedWindows.length, 2);
   assert.deepEqual(claude.scopedWindows.map((scope) => scope.key), ["scope-fable", "scope-opus"]);
   assert.equal(claude.scopedWindows[1].title, "Opus · 7 d window");
   assert.equal(claude.detailRows[0].value, "$12.50 spent / $50.00");
   const codex = model.quota.find((card) => card.id === "codex");
-  assert.deepEqual(codex.scopedWindows, []);
+  assert.deepEqual(codex.scopedWindows.map((scope) => scope.key), ["scope-codex_bengalfox"]);
   assert.equal(codex.detailRows[0].value, "2 available");
   assert.equal(codex.level, "high");
   assert.equal(model.risk.level, "high");
