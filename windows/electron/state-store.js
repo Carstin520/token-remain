@@ -12,6 +12,12 @@ import {
   normalizeScopedPoolVisibility,
   SCOPED_POOL_CATALOG_KEYS,
 } from "../src/scoped-pools.js";
+import {
+  canonicalLocalSourceID,
+  isWellFormedLocalSourceID,
+  normalizeDisabledLocalUsageSources,
+} from "../src/local-sources.js";
+import { normalizeDailyUsageHistory } from "../src/usage-history.js";
 
 const LANGUAGE_PREFERENCES = new Set(["system", "en", "zh-Hans", "zh-Hant", "ja", "ko", "es", "de"]);
 const TRAY_DISPLAY_MODES = new Set(["full", "compact", "minimal"]);
@@ -70,6 +76,7 @@ export class StateStore {
         Buffer.from(this.state.protectedLocalDailyUsageHistory, "base64"),
       ));
     }
+    this.state.localDailyUsageHistory = normalizeDailyUsageHistory(this.state.localDailyUsageHistory);
     if (this.state.protectedProviderSecrets) {
       if (!this.safeStorage.isEncryptionAvailable()) throw new Error("Windows credential protection is unavailable");
       this.state.providerSecrets = JSON.parse(this.safeStorage.decryptString(
@@ -94,6 +101,7 @@ export class StateStore {
     }
     this.state.preferences = {
       backgroundDepth: DEFAULT_BACKGROUND_DEPTH,
+      disabledLocalUsageSources: [],
       feedNotificationsEnabled: false,
       floatingWidgetEnabled: false,
       language: "system",
@@ -113,6 +121,9 @@ export class StateStore {
     if (!LANGUAGE_PREFERENCES.has(this.state.preferences.language)) this.state.preferences.language = "system";
     if (!isRefreshMinutes(this.state.preferences.refreshMinutes)) this.state.preferences.refreshMinutes = DEFAULT_REFRESH_MINUTES;
     this.state.preferences.feedNotificationsEnabled = this.state.preferences.feedNotificationsEnabled === true;
+    this.state.preferences.disabledLocalUsageSources = normalizeDisabledLocalUsageSources(
+      this.state.preferences.disabledLocalUsageSources,
+    );
     this.state.preferences.backgroundDepth = normalizeBackgroundDepth(this.state.preferences.backgroundDepth);
     this.state.preferences.taskbarIconHidden = this.state.preferences.taskbarIconHidden === true;
     if (!ZAI_REGIONS.has(this.state.preferences.zaiRegion)) this.state.preferences.zaiRegion = "global";
@@ -188,7 +199,7 @@ export class StateStore {
 
   setLocalDailyUsageHistory(history) {
     if (!this.safeStorage.isEncryptionAvailable()) throw new Error("Windows credential protection is unavailable");
-    this.state.localDailyUsageHistory = history;
+    this.state.localDailyUsageHistory = normalizeDailyUsageHistory(history);
   }
 
   getProviderSecret(providerID) {
@@ -306,6 +317,21 @@ export class StateStore {
     this.state.preferences = {
       ...(this.state.preferences || {}),
       feedNotificationsEnabled: enabled === true,
+    };
+    await this.save();
+  }
+
+  async setLocalUsageSourceEnabled(id, enabled) {
+    const canonical = canonicalLocalSourceID(id);
+    if (!isWellFormedLocalSourceID(canonical)) throw new Error("Unsupported local usage source");
+    const disabled = new Set(normalizeDisabledLocalUsageSources(
+      this.state.preferences?.disabledLocalUsageSources,
+    ));
+    if (enabled) disabled.delete(canonical);
+    else disabled.add(canonical);
+    this.state.preferences = {
+      ...(this.state.preferences || {}),
+      disabledLocalUsageSources: [...disabled].sort(),
     };
     await this.save();
   }

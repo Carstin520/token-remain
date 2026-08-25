@@ -5,6 +5,10 @@ import {
   linePoints,
   niceCeiling,
   quotaTrendRows,
+  stepPinnedDay,
+  togglePinnedDay,
+  trendDayModelBreakdown,
+  unpinDay,
   usageTrendModel,
 } from "../src/trends-model.js";
 
@@ -59,4 +63,53 @@ test("quota rows respect provider order, range, and percentage geometry", () => 
   assert.deepEqual(rows.map((row) => row.providerID), ["claude", "codex"]);
   assert.equal(rows[1].samples.length, 1);
   assert.match(rows[0].points, /,/);
+});
+
+test("day pinning toggles, steps within bounds, and unpins", () => {
+  const days = ["2026-08-23", "2026-08-24", "2026-08-25"];
+  assert.equal(togglePinnedDay(undefined, days[1]), days[1]);
+  assert.equal(togglePinnedDay(days[1], days[1]), undefined);
+  assert.equal(stepPinnedDay(days, undefined, "left"), days[1]);
+  assert.equal(stepPinnedDay(days, days[0], "left"), days[0]);
+  assert.equal(stepPinnedDay(days, days[1], "right"), days[2]);
+  assert.equal(stepPinnedDay(days, days[2], "right"), days[2]);
+  assert.equal(stepPinnedDay([], days[1], "right"), undefined);
+  assert.equal(unpinDay(), undefined);
+});
+
+test("model breakdown keeps five named rows, rolls the tail into Other, and marks missing prices", () => {
+  const models = Array.from({ length: 8 }, (_, index) => ({
+    id: `model-${index + 1}`,
+    inputTokens: (8 - index) * 100,
+    outputTokens: (8 - index) * 10,
+    cacheTokens: index,
+    cost: 8 - index,
+    constituentCount: 1,
+  }));
+  const breakdown = trendDayModelBreakdown({
+    day: "2026-08-25",
+    agents: [{ id: "codex", tokens: 4_000, cost: 36, unpricedModels: ["model-8"], models }],
+  }, ["codex"], "tokens");
+  assert.equal(breakdown.groups.length, 1);
+  assert.equal(breakdown.groups[0].displayName, "Codex");
+  assert.deepEqual(breakdown.groups[0].rows.slice(0, 5).map((row) => row.id), [
+    "model-1", "model-2", "model-3", "model-4", "model-5",
+  ]);
+  const other = breakdown.groups[0].rows[5];
+  assert.equal(other.id, "other");
+  assert.equal(other.constituentCount, 3);
+  assert.equal(other.inputTokens, 600);
+  assert.equal(other.outputTokens, 60);
+  assert.equal(other.cacheTokens, 18);
+  assert.equal(other.cost, 6);
+  assert.equal(other.isUnpriced, true);
+  assert.equal(breakdown.groups[0].rows.reduce((total, row) => total + row.share, 0), 1);
+});
+
+test("old persisted days without models produce the panel's unavailable state", () => {
+  const breakdown = trendDayModelBreakdown({
+    day: "2026-08-25",
+    agents: [{ id: "codex", tokens: 200, cost: 1, unpricedModels: [] }],
+  }, ["codex"], "cost");
+  assert.deepEqual(breakdown, { day: "2026-08-25", groups: [] });
 });

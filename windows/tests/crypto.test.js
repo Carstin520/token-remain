@@ -82,6 +82,24 @@ test("Direct Sync omits Windows-only provider detail fields", () => {
   assert.equal(snapshot.providers[0].codexResetCredits, undefined);
 });
 
+test("Direct Sync keeps retained local model breakdowns off the wire", () => {
+  const snapshot = makeSnapshot({
+    sourceInstanceID,
+    sequence: 3,
+    providers: [],
+    dailyUsageHistory: {
+      sourceDay: "2026-08-25",
+      capturedAt: Date.now(),
+      days: [{
+        day: "2026-08-25",
+        agents: [{ id: "codex", models: [{ id: "gpt-5.3-codex", inputTokens: 10 }] }],
+      }],
+    },
+  });
+  assert.equal(snapshot.dailyUsageHistory, undefined);
+  assert.doesNotMatch(stableStringify(snapshot), /models|gpt-5\.3-codex/);
+});
+
 test("Mac responses bind the paired source and reject replayed sequences", () => {
   const snapshot = makeSnapshot({
     sourceInstanceID: "12345678-1234-4234-8234-123456789abc",
