@@ -71,6 +71,70 @@ struct ClaudePTYFallbackGatingTests {
     }
 }
 
+/// PTY 可能在 Claude Code 已经续期后才因终端输出不完整而失败。恢复路径
+/// 只能依据只读重读得到的新 token，不能自己续期，也不能拿旧 token 重打 API。
+@Suite("Claude PTY credential recovery")
+struct ClaudePTYCredentialRecoveryTests {
+    @Test("A newly usable token retries the API once and returns its quota")
+    func retriesAfterTokenRefresh() async throws {
+        let expected = ProviderQuota(
+            provider: .claude,
+            primary: QuotaWindow(usedPercent: 12, windowMinutes: 300, resetsAt: nil),
+            secondary: nil,
+            planName: "Max",
+            capturedAt: .now
+        )
+
+        let recovered = try await ClaudeUsageService.retryOAuthAfterCredentialRefresh(
+            previousAccessToken: "expired-token",
+            readCurrentAccessToken: { "renewed-token" },
+            fetchOAuthUsage: { expected }
+        )
+
+        #expect(recovered?.primary.usedPercent == 12)
+        #expect(recovered?.planName == "Max")
+    }
+
+    @Test("The same token never causes a second API request")
+    func skipsRetryForUnchangedToken() async throws {
+        let recovered = try await ClaudeUsageService.retryOAuthAfterCredentialRefresh(
+            previousAccessToken: "same-token",
+            readCurrentAccessToken: { "same-token" },
+            fetchOAuthUsage: {
+                Issue.record("an unchanged token must not retry oauth/usage")
+                return ProviderQuota(
+                    provider: .claude,
+                    primary: QuotaWindow(usedPercent: 0, windowMinutes: 300, resetsAt: nil),
+                    secondary: nil,
+                    planName: nil,
+                    capturedAt: .now
+                )
+            }
+        )
+
+        #expect(recovered == nil)
+    }
+
+    @Test("A previously unavailable credential may recover to a usable token")
+    func retriesWhenMissingCredentialBecomesUsable() async throws {
+        let recovered = try await ClaudeUsageService.retryOAuthAfterCredentialRefresh(
+            previousAccessToken: nil,
+            readCurrentAccessToken: { "renewed-token" },
+            fetchOAuthUsage: {
+                ProviderQuota(
+                    provider: .claude,
+                    primary: QuotaWindow(usedPercent: 34, windowMinutes: 300, resetsAt: nil),
+                    secondary: nil,
+                    planName: nil,
+                    capturedAt: .now
+                )
+            }
+        )
+
+        #expect(recovered?.primary.usedPercent == 34)
+    }
+}
+
 @Suite("Claude recovery without the CLI")
 struct ClaudeNoCLIFallbackTests {
     @Test("Preserves actionable credential states")
