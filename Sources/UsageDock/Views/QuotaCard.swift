@@ -43,6 +43,20 @@ struct QuotaCard: View {
         scrollContentHeight <= scrollViewportHeight + 0.5
     }
 
+    /// #44:只有一条额度窗口(可带 Codex 重置卡)的极简配置,内容高度有
+    /// 天然上界,卡片直接按内容定高、整体不滚动——重置卡把内容顶出固定
+    /// 槽位时长高卡片而不是出滚动条。多窗口/多账户配置仍走固定槽位+
+    /// 滚动,避免单个多池 provider 抬高整行网格。
+    private var usesBoundedContentLayout: Bool {
+        guard let quota, !showsAccountOverview else { return false }
+        if let store, store.isAddingProviderAccount(provider) { return false }
+        return quota.secondary == nil
+            && Self.scopedWindows(in: quota, preferences: preferences).isEmpty
+            && quota.extraUsage == nil
+            && quota.accountBalance == nil
+            && !(quota.spend?.hasValues ?? false)
+    }
+
     /// Dashboard 卡片:目录内的池由通用池开关 + 智能默认决定显隐;
     /// 目录外的池(账户级兄弟池)维持既有行为——恒显。
     @MainActor
@@ -80,18 +94,29 @@ struct QuotaCard: View {
         DashboardCard(padding: 13) {
             VStack(alignment: .leading, spacing: 11) {
                 header
-                ScrollView(.vertical) {
+                if usesBoundedContentLayout {
                     VStack(alignment: .leading, spacing: 11) {
                         quotaContent
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(heightReader { scrollContentHeight = $0 })
+                } else {
+                    ScrollView(.vertical) {
+                        VStack(alignment: .leading, spacing: 11) {
+                            quotaContent
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(heightReader { scrollContentHeight = $0 })
+                    }
+                    .scrollDisabled(quotaContentFits)
+                    .scrollIndicators(quotaContentFits ? .hidden : .automatic)
+                    .background(heightReader { scrollViewportHeight = $0 })
                 }
-                .scrollDisabled(quotaContentFits)
-                .scrollIndicators(quotaContentFits ? .hidden : .automatic)
-                .background(heightReader { scrollViewportHeight = $0 })
             }
-            .frame(height: Self.dashboardContentHeight, alignment: .top)
+            .frame(
+                minHeight: Self.dashboardContentHeight,
+                maxHeight: usesBoundedContentLayout ? nil : Self.dashboardContentHeight,
+                alignment: .top
+            )
         }
         .accessibilityElement(children: .contain)
         .alert(
