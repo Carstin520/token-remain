@@ -64,7 +64,9 @@ struct ProviderSecretStore {
 
     private var keychain: KeychainSecretStore {
         KeychainSecretStore(
-            service: "com.jamesli.usagedock.\(provider.rawValue.lowercased().replacingOccurrences(of: " ", with: "-"))",
+            service: AppOwnedKeychainNamespace.current.service(
+                provider.rawValue.lowercased().replacingOccurrences(of: " ", with: "-")
+            ),
             account: "secret"
         )
     }
@@ -75,15 +77,26 @@ struct ProviderSecretStore {
                 if let value = normalized(environment[key]) { return value }
             }
         }
-        return normalized((try? keychain.read()) ?? nil)
+        guard case .available(let value) = keychain.readState() else { return nil }
+        return normalized(value)
     }
 
     func hasStoredSecret() -> Bool {
-        normalized((try? keychain.read()) ?? nil) != nil
+        credentialStatus() == .available
+    }
+
+    func credentialStatus() -> StoredCredentialStatus {
+        StoredCredentialStatus(keychainState: keychain.readState())
+    }
+
+    func loadFromKeychain(interaction: KeychainRead.Interaction) throws -> String? {
+        normalized(try keychain.read(interaction: interaction))
     }
 
     func save(_ value: String) throws {
-        try keychain.save(value.trimmingCharacters(in: .whitespacesAndNewlines))
+        try keychain.saveRebindingAuthorization(
+            value.trimmingCharacters(in: .whitespacesAndNewlines)
+        )
     }
 
     func clear() throws {

@@ -62,6 +62,7 @@ struct ClaudeUsageService {
     func fetch(forceScopedUsageProbe: Bool = false) async throws -> ProviderQuota {
         let logger = Logger(subsystem: "com.jamesli.usagedock", category: "ClaudeUsage")
         let environment = profileEnvironment
+        var accessTokenBeforeProbe: String?
         do {
             let quota = try await ClaudeOAuthUsageService().fetch(
                 environment: environment,
@@ -82,6 +83,9 @@ struct ClaudeUsageService {
             guard Self.probeCanRecover(from: error), ClaudeCLIUsageProbe.isAvailable else {
                 throw Self.noCLIFallbackError(for: error)
             }
+            // 只记录探针前可读到的 token 身份。探针之后必须出现一个新的、
+            // 仍在有效期内的 token 才能证明 Claude Code 已完成续期。
+            accessTokenBeforeProbe = await currentAccessToken(environment: environment)
             // Missing/expired credentials normally fall through to the PTY so
             // Claude Code can refresh them. When Claude itself explicitly says
             // it is logged out, however, the PTY can only sit on the login
@@ -103,10 +107,37 @@ struct ClaudeUsageService {
             logger.notice("Claude API transport failure (\(error.localizedDescription, privacy: .public)); keeping cached snapshot instead of probing")
             throw error
         }
-        let output = try await ClaudeCLIUsageProbe.run(
-            configurationDirectory: configurationDirectory
-        )
-        return try ClaudeCLIUsageParser.parse(output)
+        do {
+            let output = try await ClaudeCLIUsageProbe.run(
+                configurationDirectory: configurationDirectory
+            )
+            return try ClaudeCLIUsageParser.parse(output)
+        } catch {
+            let probeError = error
+            do {
+                if let quota = try await Self.retryOAuthAfterCredentialRefresh(
+                    previousAccessToken: accessTokenBeforeProbe,
+                    readCurrentAccessToken: {
+                        await currentAccessToken(environment: environment)
+                    },
+                    fetchOAuthUsage: {
+                        try await ClaudeOAuthUsageService().fetch(
+                            environment: environment,
+                            isolatedConfiguration: configurationDirectory != nil
+                        )
+                    }
+                ) {
+                    logger.notice("Claude PTY probe ended after refreshing credentials; quota served by oauth/usage API")
+                    return quota
+                }
+            } catch let error as ClaudeOAuthUsageService.APIError {
+                if case .rateLimited(let seconds) = error {
+                    throw ServiceError.rateLimited(retryAfterSeconds: seconds)
+                }
+                throw Self.noCLIFallbackError(for: error)
+            }
+            throw probeError
+        }
     }
 
     private var cacheKey: String {
@@ -118,6 +149,31 @@ struct ClaudeUsageService {
             base: ProcessInfo.processInfo.environment,
             configurationDirectory: configurationDirectory
         )
+    }
+
+    private func currentAccessToken(environment: [String: String]) async -> String? {
+        var reader = ClaudeCredentialsReader()
+        reader.environment = environment
+        reader.fallbackToDefaultDirectory = configurationDirectory == nil
+        reader.allowsKeychain = configurationDirectory == nil
+        return await reader.readAllowingAppleTool(
+            keychainInteraction: .disallowed
+        ).credentials?.accessToken
+    }
+
+    /// PTY 抓屏失败不等于续期失败：Claude Code 可能已先写入新 token，再因
+    /// 终端重绘不完整而超时。只在只读重读确认 token 已变化时补一次 API；
+    /// 不刷新、不写回，也不让同一个旧 token 制造额外请求。
+    static func retryOAuthAfterCredentialRefresh(
+        previousAccessToken: String?,
+        readCurrentAccessToken: () async -> String?,
+        fetchOAuthUsage: () async throws -> ProviderQuota
+    ) async throws -> ProviderQuota? {
+        guard let currentAccessToken = await readCurrentAccessToken(),
+              currentAccessToken != previousAccessToken else {
+            return nil
+        }
+        return try await fetchOAuthUsage()
     }
 
     /// Which API failures a signed-out Claude Code would equally well explain.
@@ -283,10 +339,7 @@ enum ClaudeCLIUsageParser {
     }
 
     static func parse(_ data: Data, now: Date = .now, calendar: Calendar = .current) throws -> ProviderQuota {
-        guard let raw = String(data: data, encoding: .utf8) else {
-            throw ClaudeUsageService.ServiceError.invalidUsageOutput
-        }
-        let text = cleanedTerminalText(raw)
+        let text = reconstructedTerminalText(data)
         let sessionReadings = sessionReadings(in: text)
         // 账户级 5 小时窗只能来自无 scope 的 `Current session` 行;带 scope
         // 的行(如 `Current session (Fable)`)另行进 scoped 窗口。
@@ -418,8 +471,7 @@ enum ClaudeCLIUsageParser {
     }
 
     static func hasCompleteUsage(in data: Data) -> Bool {
-        guard let raw = String(data: data, encoding: .utf8) else { return false }
-        let text = cleanedTerminalText(raw)
+        let text = reconstructedTerminalText(data)
         // 完整性只看账户级读数:一条带 scope 的会话行不能代表账户 5h 窗
         // 已经画全。
         guard let session = sessionReadings(in: text).last(where: { $0.scopeName == nil }),
@@ -430,8 +482,7 @@ enum ClaudeCLIUsageParser {
     }
 
     static func containsTrustPrompt(in data: Data) -> Bool {
-        guard let raw = String(data: data, encoding: .utf8) else { return false }
-        return whitespaceCollapsedTerminalText(raw).contains("trustthisfolder")
+        whitespaceCollapsedTerminalText(data).contains("trustthisfolder")
     }
 
     static func shouldSendUsageCommand(
@@ -441,43 +492,21 @@ enum ClaudeCLIUsageParser {
         now: Date,
         retryInterval: TimeInterval = 5
     ) -> Bool {
-        guard let raw = String(data: data, encoding: .utf8),
-              !whitespaceCollapsedTerminalText(raw).contains("currentsession") else {
+        guard !whitespaceCollapsedTerminalText(data).contains("currentsession") else {
             return false
         }
         return now.timeIntervalSince(lastSentAt ?? startedAt) >= retryInterval
     }
 
-    private static func whitespaceCollapsedTerminalText(_ raw: String) -> String {
-        cleanedTerminalText(raw)
+    private static func whitespaceCollapsedTerminalText(_ data: Data) -> String {
+        reconstructedTerminalText(data)
             .components(separatedBy: .whitespacesAndNewlines)
             .joined()
             .lowercased()
     }
 
-    private static func cleanedTerminalText(_ raw: String) -> String {
-        let escape = "\u{001B}"
-        var text = raw
-        text = text.replacingOccurrences(
-            of: "\(escape)\\[[0-9;?]*[ -/]*[@-~]",
-            with: "",
-            options: .regularExpression
-        )
-        text = text.replacingOccurrences(
-            of: "\(escape)\\][^\u{0007}]*(?:\u{0007}|\(escape)\\\\)",
-            with: "",
-            options: .regularExpression
-        )
-        text = text.replacingOccurrences(
-            of: "\(escape)[()][A-Za-z0-9]",
-            with: "",
-            options: .regularExpression
-        )
-        text = text.replacingOccurrences(of: "\r", with: "\n")
-        text = text.replacingOccurrences(of: "\u{0008}", with: "")
-        text = text.replacingOccurrences(of: "\u{000E}", with: "")
-        text = text.replacingOccurrences(of: "\u{000F}", with: "")
-        return text
+    static func reconstructedTerminalText(_ data: Data) -> String {
+        TerminalScreenBuffer.reconstruct(data, columns: 80, rows: 60)
     }
 
     private static func percentReadings(in text: String) -> [PercentReading] {
@@ -1126,6 +1155,7 @@ private enum ClaudeCLIUsageProbe {
             base: ProcessInfo.processInfo.environment,
             configurationDirectory: configurationDirectory
         )
+        environment = SystemProxyEnvironment.applyingSystemSettings(to: environment)
         environment["PATH"] = pathWithClaudeHints(environment["PATH"])
         return environment
     }

@@ -248,7 +248,10 @@ struct OpenRouterKeyStore {
     var homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser
 
     private var keychain: KeychainSecretStore {
-        KeychainSecretStore(service: "com.jamesli.usagedock.openrouter", account: "api-key")
+        KeychainSecretStore(
+            service: AppOwnedKeychainNamespace.current.service("openrouter"),
+            account: "api-key"
+        )
     }
 
     func load() -> String? {
@@ -260,15 +263,26 @@ struct OpenRouterKeyStore {
            let key = ZAIKeyStore.key(fromConfigText: text) {
             return key
         }
-        return normalized((try? keychain.read()) ?? nil)
+        guard case .available(let value) = keychain.readState() else { return nil }
+        return normalized(value)
     }
 
     func hasStoredKey() -> Bool {
-        normalized((try? keychain.read()) ?? nil) != nil
+        credentialStatus() == .available
+    }
+
+    func credentialStatus() -> StoredCredentialStatus {
+        StoredCredentialStatus(keychainState: keychain.readState())
+    }
+
+    func loadFromKeychain(interaction: KeychainRead.Interaction) throws -> String? {
+        normalized(try keychain.read(interaction: interaction))
     }
 
     func save(_ key: String) throws {
-        try keychain.save(key.trimmingCharacters(in: .whitespacesAndNewlines))
+        try keychain.saveRebindingAuthorization(
+            key.trimmingCharacters(in: .whitespacesAndNewlines)
+        )
     }
 
     func clear() throws {

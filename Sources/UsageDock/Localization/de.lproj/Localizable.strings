@@ -122,6 +122,7 @@
 "datasource.detail.third_party" = "New-API-kompatibler oder benutzerdefinierter Kontostand-Endpunkt";
 "duration.total" = "Gesamt";
 
+"action.authorize" = "Autorisieren";
 "action.cancel" = "Abbrechen";
 "action.clear" = "Löschen";
 "action.refresh" = "Aktualisieren";
@@ -170,6 +171,11 @@
 "datasource.feed_waiting" = "Wartet auf die Hintergrundsynchronisierung der kuratierten Inhalte";
 "datasource.healthy" = "Fehlerfrei";
 "datasource.key_saved_placeholder" = "Gesichert (neuen Key zum Ersetzen einfügen)";
+"datasource.credential_authorization_placeholder" = "Autorisierung erforderlich (zum Reparieren erneut einfügen)";
+"datasource.credential_authorization_required" = "Die gespeicherten Zugangsdaten benötigen eine Schlüsselbund-Autorisierung. Autorisiere den Lesezugriff oder füge sie erneut ein, um sie sicher zu ersetzen.";
+"datasource.credential_authorization_still_required" = "Wähle im Schlüsselbund-Dialog „Immer erlauben“, damit die Hintergrundaktualisierung diese Zugangsdaten lesen kann.";
+"datasource.credential_missing" = "Für %1$@ sind keine Zugangsdaten im Schlüsselbund gespeichert.";
+"datasource.credential_read_failed" = "TokenRemain konnte die gespeicherten Zugangsdaten nicht lesen. Füge sie erneut ein, um sie zu ersetzen.";
 "datasource.name_grok" = "Grok (xAI)";
 "datasource.name_zai" = "Z.ai (GLM Coding Plan)";
 "datasource.none_connected" = "Noch keine Datenquelle erfolgreich verbunden";
@@ -218,6 +224,7 @@
 "feed.view_on_x" = "Auf X ansehen";
 "keychain.operation_failed" = "Schlüsselbund-Vorgang fehlgeschlagen: %1$@";
 "keychain.unknown_error" = "Unbekannter Fehler";
+"keychain.verification_failed" = "TokenRemain konnte den reparierten Schlüsselbundeintrag nicht überprüfen.";
 "launch.allow_in_system_settings" = "TokenRemain unter „Systemeinstellungen → Allgemein → Anmeldeobjekte“ erlauben";
 "launch.restart_failed" = "TokenRemain konnte nicht neu gestartet werden: %1$@";
 "launch.update_failed" = "Anmeldeobjekt konnte nicht aktualisiert werden: %1$@";

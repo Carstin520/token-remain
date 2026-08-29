@@ -31,7 +31,7 @@ actor BroadcastPushRegistrationService {
 
     private let defaults = UserDefaults.standard
     private let registrationKeyStore = KeychainSecretStore(
-        service: "com.jamesli.usagedock.broadcast",
+        service: AppOwnedKeychainNamespace.current.service("broadcast"),
         account: "device-registration-key"
     )
     private let installationIDKey = "broadcastInstallationID"

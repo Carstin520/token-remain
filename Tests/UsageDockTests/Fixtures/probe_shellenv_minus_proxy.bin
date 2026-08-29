@@ -1,0 +1,78 @@
+7[r8[?25h[?25l[?2004h[?1004h[?2031h[>0q[c]0;✳ Claude Code╭───[6GClaude[13GCode[18Gv2.1.238[27G─────────────────────────────────────────────────────╮
+│[54G│[56GTips[61Gfor[65Ggetting[80G│
+│[17GWelcome[25Gback[30GDongheng![54G│[56Gstarted[80G│
+│[54G│[56GRun[60G/init[66Gto[69Gcreate[76Ga[78G…[80G│
+│[25G▐▛███▛█[54G│[56G───────────────────────[80G│
+│[24G▝▜██████▀[54G│[56GWhat's[63Gnew[80G│
+│[26G▝▝[29G▝▝[54G│[56GAdded[62Ga[64G`keybindingFla…[80G│
+│[8GOpus[13G5[15G(1M[19Gcontext)[28G·[30GClaude[37GMax[41G·[54G│[56GPlugin[63Gmarketplaces:[77G`…[80G│
+│[8Gjamescarstin520@gmail.com's[36GOrganization[54G│[56GA[58Gcatalog[66Gentry's[74G`hea…[80G│
+│[6G~/…/Caches/com.jamesli.usagedock/claude-probe[54G│[56G/release-notes[71Gfor[75Gmore[80G│
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+
+────────────────────────────────────────────────────────────────────────────────
+❯ Try[7G"how[12Gdo[15GI[17Glog[21Gan[24Gerror?"
+────────────────────────────────────────────────────────────────────────────────
+[3G⚠[5GTranscript[16Gsaving[23Gis[26Goff[30G—[32Ginherited[42GCLAUDE_CODE_CHILD_SESSION[68Gmarker[75G·[77Gr…
+[3G⏵⏵[6Gauto[11Gmode[16Gon[19G(shift+tab[30Gto[33Gcycle)[63G●[65Ghigh[70G·[72G/effort
+[64G/rc[68Gconnecting…
+[2C[5A[?25h[?25l[2D[5B[2C[5A[K
+
+
+
+
+[2C[5A[?25h[?25l[2D[5B[2C[2A📁[6Gclaude-probe[19G │  🤖 Opus 5[33G(1M context)[47G│[50G💰[53G$0.000[2C[1B⏵⏵[6Gauto[11Gmode[16Gon[19G(shift+tab[30Gto[33Gcycle)
+[2C[5A[?25h[?25l[2D[5B[6A❯ /usage[K[1B[K[2C[2BSetti[9Ggs  S[15Gatus   Config [30G Usag[36G   Stats[K[2C[1B[K[2C[1BSession[11G[K
+
+[3GTotal[9Gcost:[26G$0.0000
+[3GTotal[9Gduration[18G(API):[26G0s
+[3GTotal[9Gduration[18G(wall):[26G4s
+[3GTotal[9Gcode[14Gchanges:[26G0[28Glines[34Gadded,[41G0[43Glines[49Gremoved
+[3GUsage:[26G0[28Ginput,[35G0[37Goutput,[45G0[47Gcache[53Gread,[59G0[61Gcache[67Gwrite
+
+[3GCurrent[11Gsession
+[3G██████████[54G20%[58Gused
+[3GResets[10G8:40pm[17G(Asia/Shanghai)
+
+[3GCurrent[11Gweek[16G(all[21Gmodels)
+[3G█████████████████████████[54G50%[58Gused
+[3GResets[10GAug[14G28[17Gat[20G1pm[24G(Asia/Shanghai)
+[3G+50%[8Gweekly[15Glimits[22Gpromo[28Gthrough[36GAug[40G31[43G·[45Gclau.de/cc-50-promo
+
+[3GCurrent[11Gweek[16G(Fable)
+[3G██████████████████████████████████████▌[54G77%[58Gused
+[3GResets[10GAug[14G28[17Gat[20G1pm[24G(Asia/Shanghai)
+
+[3GWhat's[10Gcontributing[23Gto[26Gyour[31Glimits[38Gusage?
+[3GApproximate,[16Gbased[22Gon[25Glocal[31Gsessions[40Gon[43Gthis[48Gmachine[56G—[58Gdoes[63Gnot[67Ginclude
+[3Gother[9Gdevices[17Gor[20Gclaude.ai
+
+[3GScanning[12Glocal[18Gsessions…
+
+[3GUsage[9Gcredits
+[3GUsage[9Gcredits[17Gare[21Goff[25G·[27G/usage-credits[42Gto[45Gturn[50Gthem[55Gon
+
+[3GRefreshing…
+
+[3GEsc[7Gto[10Gcancel
+[30C[35A[30D[35B[2C[8ALast 24h[12G· these are independent[36Gcharacteristics[52Gof[55Gyour[60Gusage,[67Gnot[71Ga[2C[1Bbreakdown[2C[1B[K[2C[1B85% of your us[18Gg[21Gcame from subag[37Gnt-heavy sessions[55G[K[3C[1BEach[9Gsubagent[18Gruns[23Gits[27Gown[31Grequests.[41GBe[44Gdeliberate[55Gabout[61Gspawning[70Gthem[75G—[77Gand[2C[1B consider configuring[25Ga[27Gcheaper[35Gmodel[41Gfor[45Gsimpler[53Gsubagents.[2C[2B82%[7Gof[10Gyour usage[21Gwas[25Gat[28G>150k[34Gcontext
+[4GLonger[11Gsessions[20Gare[24Gmore[29Gexpensive[39Geven[44Gwhen[49Gcached.[57G/compact[66Gmid-task,
+[4G/clear[11Gwhen[16Gswitching[26Gto[29Gnew[33Gtasks.
+
+[3GSubagents[27G%[29Gof[32Gusage
+[3GExplore[35G6%
+
+[3GMCP[7Gservers[27G%[29Gof[32Gusage
+[3Gccd_session[35G1%
+
+[3Gd[5Gto[8Gday[12G·[14Gw[16Gto[19Gweek
+
+[3GUsage[9Gcredits
+[3GUsage[9Gcredits[17Gare[21Goff[25G·[27G/usage-credits[42Gto[45Gturn[50Gthem[55Gon
+
+[3GRefreshing…
+
+[3GEsc[7Gto[10Gcancel
+[30C[52A[30D[52B[2C[3AShowing last-known[22Gusage[28Gas[31Gof[34G14s[38Gago[42G(could[49Gnot[53Grefresh)[2C[2Br to retry · Esc[20Gto[23Gcancel
+[30C[52A

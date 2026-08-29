@@ -8,14 +8,16 @@ struct ProviderAccountSecretStore: Sendable {
 
     private var keychain: KeychainSecretStore {
         KeychainSecretStore(
-            service: "com.jamesli.usagedock.provider-account.\(provider.storageSlug)",
+            service: AppOwnedKeychainNamespace.current.service(
+                "provider-account.\(provider.storageSlug)"
+            ),
             account: accountID.rawValue,
             accessibility: .afterFirstUnlockThisDeviceOnly
         )
     }
 
-    func load() -> String? {
-        guard let value = try? keychain.read() else { return nil }
+    func load() throws -> String? {
+        guard let value = try keychain.read() else { return nil }
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
     }
@@ -23,7 +25,7 @@ struct ProviderAccountSecretStore: Sendable {
     func save(_ value: String) throws {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        try keychain.save(trimmed)
+        try keychain.saveRebindingAuthorization(trimmed)
     }
 
     func delete() throws {

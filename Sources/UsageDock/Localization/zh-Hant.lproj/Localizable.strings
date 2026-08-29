@@ -123,6 +123,7 @@
 "datasource.detail.third_party" = "New API 相容或自訂餘額端點（設定僅存本機鑰匙圈）";
 "duration.total" = "累計";
 
+"action.authorize" = "授權";
 "action.cancel" = "取消";
 "action.clear" = "清除";
 "action.refresh" = "重新整理";
@@ -171,6 +172,11 @@
 "datasource.feed_waiting" = "等待背景同步精選內容";
 "datasource.healthy" = "正常";
 "datasource.key_saved_placeholder" = "已儲存（貼上新 Key 即可替換）";
+"datasource.credential_authorization_placeholder" = "需要授權（再次貼上憑證可修復）";
+"datasource.credential_authorization_required" = "已儲存的憑證需要鑰匙圈授權。你可以授權唯讀存取，或再次貼上憑證以安全替換。";
+"datasource.credential_authorization_still_required" = "請在鑰匙圈提示中選擇「永遠允許」，讓背景重新整理能讀取此憑證。";
+"datasource.credential_missing" = "%1$@ 沒有已儲存的鑰匙圈憑證。";
+"datasource.credential_read_failed" = "TokenRemain 無法讀取已儲存的憑證。請再次貼上以替換。";
 "datasource.name_grok" = "Grok（xAI）";
 "datasource.name_zai" = "Z.ai（GLM Coding Plan）";
 "datasource.none_connected" = "尚無成功連線過的資料來源";
@@ -219,6 +225,7 @@
 "feed.view_on_x" = "在 X 查看";
 "keychain.operation_failed" = "鑰匙圈操作失敗：%1$@";
 "keychain.unknown_error" = "未知錯誤";
+"keychain.verification_failed" = "TokenRemain 無法驗證修復後的鑰匙圈項目。";
 "launch.allow_in_system_settings" = "請在「系統設定 → 一般 → 登入項目」中允許 TokenRemain";
 "launch.restart_failed" = "無法重新啟動 TokenRemain：%1$@";
 "launch.update_failed" = "無法更新登入項目：%1$@";

@@ -5,6 +5,29 @@ Versioning for public releases.
 
 ## Unreleased
 
+## 1.3.8 — 2026-08-29
+
+### Added
+
+- Add the Mac side of encrypted Direct Sync pairing for the Windows companion.
+  A one-time code establishes a device key on the local network, quota
+  snapshots remain application-layer encrypted, and daily usage history is
+  shared only when explicitly enabled.
+
+### Fixed
+
+- Pasted provider credentials (including DeepSeek) no longer appear missing
+  when an older development build owns the Keychain ACL. TokenRemain now
+  distinguishes authorization from absence, validates a replacement before
+  rebuilding the app-owned item, verifies the repaired value, and isolates
+  development Keychain services from production so the collision cannot recur.
+- Claude sessions can renew when TokenRemain starts from the macOS GUI and the
+  network requires a system proxy. The quota probe now projects the system
+  proxy into the CLI environment and reconstructs Claude Code's incremental
+  terminal repaint before parsing its usage screen.
+- A single-window quota card can grow to fit Codex reset-credit controls instead
+  of clipping them behind a fixed slot or showing a needless scroll bar (#44).
+
 ## 1.3.7 — 2026-08-25
 
 ### Changed
@@ -790,3 +813,4 @@ Versioning for public releases.
 [1.3.0]: https://github.com/Carstin520/token-remain/releases/tag/v1.3.0
 [1.3.1]: https://github.com/Carstin520/token-remain/releases/tag/v1.3.1
 [1.3.7]: https://github.com/Carstin520/token-remain/releases/tag/v1.3.7
+[1.3.8]: https://github.com/Carstin520/token-remain/releases/tag/v1.3.8

@@ -122,6 +122,7 @@
 "datasource.detail.third_party" = "New API 互換またはカスタム残高エンドポイント";
 "duration.total" = "累計";
 
+"action.authorize" = "許可";
 "action.cancel" = "キャンセル";
 "action.clear" = "消去";
 "action.refresh" = "更新";
@@ -170,6 +171,11 @@
 "datasource.feed_waiting" = "厳選コンテンツのバックグラウンド同期を待機中";
 "datasource.healthy" = "正常";
 "datasource.key_saved_placeholder" = "保存済み(新しいキーを貼り付けると置き換え)";
+"datasource.credential_authorization_placeholder" = "許可が必要です（再度貼り付けて修復）";
+"datasource.credential_authorization_required" = "保存済みの認証情報にはキーチェーンの許可が必要です。読み取りを許可するか、再度貼り付けて安全に置き換えてください。";
+"datasource.credential_authorization_still_required" = "バックグラウンド更新で読み取れるよう、キーチェーンの確認画面で「常に許可」を選択してください。";
+"datasource.credential_missing" = "%1$@ のキーチェーン認証情報は保存されていません。";
+"datasource.credential_read_failed" = "保存済みの認証情報を読み取れませんでした。再度貼り付けて置き換えてください。";
 "datasource.name_grok" = "Grok(xAI)";
 "datasource.name_zai" = "Z.ai(GLM Coding Plan)";
 "datasource.none_connected" = "接続に成功したデータソースはまだありません";
@@ -218,6 +224,7 @@
 "feed.view_on_x" = "X で表示";
 "keychain.operation_failed" = "キーチェーン操作に失敗しました:%1$@";
 "keychain.unknown_error" = "不明なエラー";
+"keychain.verification_failed" = "修復したキーチェーン項目を検証できませんでした。";
 "launch.allow_in_system_settings" = "「システム設定 → 一般 → ログイン項目」で TokenRemain を許可してください";
 "launch.restart_failed" = "TokenRemain を再起動できません:%1$@";
 "launch.update_failed" = "ログイン項目を更新できません:%1$@";

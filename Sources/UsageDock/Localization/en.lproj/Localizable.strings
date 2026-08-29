@@ -123,6 +123,7 @@
 "datasource.detail.third_party" = "New API-compatible or custom balance endpoint (configuration stored in the local keychain)";
 "duration.total" = "Total";
 
+"action.authorize" = "Authorize";
 "action.cancel" = "Cancel";
 "action.clear" = "Clear";
 "action.refresh" = "Refresh";
@@ -165,6 +166,11 @@
 "datasource.feed_waiting" = "Waiting for the background sync of curated content";
 "datasource.healthy" = "Healthy";
 "datasource.key_saved_placeholder" = "Saved (paste a new key to replace)";
+"datasource.credential_authorization_placeholder" = "Authorization required (paste the key again to repair)";
+"datasource.credential_authorization_required" = "The saved credential needs Keychain authorization. Authorize read access or paste it again to replace it safely.";
+"datasource.credential_authorization_still_required" = "Choose Always Allow in the Keychain prompt so background refresh can read this credential.";
+"datasource.credential_missing" = "%1$@ has no saved Keychain credential.";
+"datasource.credential_read_failed" = "TokenRemain couldn't read the saved credential. Paste it again to replace it.";
 "datasource.name_grok" = "Grok (xAI)";
 "datasource.name_zai" = "Z.ai (GLM Coding Plan)";
 "datasource.none_connected" = "No data source has connected successfully yet";
@@ -214,6 +220,7 @@
 "feed.view_on_x" = "View on X";
 "keychain.operation_failed" = "Keychain operation failed: %1$@";
 "keychain.unknown_error" = "Unknown error";
+"keychain.verification_failed" = "TokenRemain could not verify the repaired Keychain item.";
 "launch.allow_in_system_settings" = "Allow TokenRemain in System Settings → General → Login Items";
 "launch.restart_failed" = "Could not restart TokenRemain: %1$@";
 "launch.update_failed" = "Could not update the login item: %1$@";

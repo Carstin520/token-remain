@@ -1,0 +1,78 @@
+
+7[r8[?25h[?25l[?2004h[?1004h[?2031h[>0q[c]0;✳ Claude Code[38;5;174m╭───[6GClaude[13GCode[18G[38;5;246mv2.1.238[27G[38;5;174m─────────────────────────────────────────────────────╮[39m
+[38;5;174m│[54G[2m│[56G[22m[1mTips[61Gfor[65Ggetting[80G[22m│[39m
+[38;5;174m│[17G[39m[1mWelcome[25Gback[30GDongheng![54G[22m[2m[38;5;174m│[56G[22m[1mstarted[80G[22m│[39m
+[38;5;174m│[54G[2m│[56G[39m[22mRun[60G/init[66Gto[69Gcreate[76Ga[78G…[80G[38;5;174m│[39m
+[38;5;174m│[25G▐[48;5;16m▛███▛█[54G[49m[2m│[56G[22m───────────────────────[80G│[39m
+[38;5;174m│[24G▝▜[48;5;16m█████[49m█▀[54G[2m│[56G[22m[1mWhat's[63Gnew[80G[22m│[39m
+[38;5;174m│[26G▝▝[29G▝▝[54G[2m│[56G[39m[22mAdded[62Ga[64G`keybindingFla…[80G[38;5;174m│[39m
+[38;5;174m│[8G[38;5;246mOpus[13G5[15G(1M[19Gcontext)[28G·[30GClaude[37GMax[41G·[54G[2m[38;5;174m│[56G[39m[22mPlugin[63Gmarketplaces:[77G`…[80G[38;5;174m│[39m
+[38;5;174m│[8G[38;5;246mjamescarstin520@gmail.com's[36GOrganization[54G[2m[38;5;174m│[56G[39m[22mA[58Gcatalog[66Gentry's[74G`hea…[80G[38;5;174m│[39m
+[38;5;174m│[6G[38;5;246m~/…/Caches/com.jamesli.usagedock/claude-probe[54G[2m[38;5;174m│[56G[22m[38;5;246m[3m/release-notes[71Gfor[75Gmore[80G[23m[38;5;174m│[39m
+[38;5;174m╰──────────────────────────────────────────────────────────────────────────────╯[39m
+
+
+[38;5;244m────────────────────────────────────────────────────────────────────────────────[39m
+❯ [2mTry[7G"fix[12Gtypecheck[22Gerrors"[22m
+[38;5;244m────────────────────────────────────────────────────────────────────────────────[39m
+[3G[38;5;220m⏵⏵[6Gauto[11Gmode[16Gon[38;5;246m (shift+tab[30Gto[33Gcycle)[40G·[42G←[44Gfor[48Gagents[63G●[65Ghigh[70G·[72G/effort[39m
+[64G[38;5;220m/rc[68Gconnecting…[39m
+[2C[4A[?25h[?25l[2D[4B[2C[2A[38;5;45m📁 [38;5;51mclaude-probe[38;5;240m  │  [38;5;207m🤖 [38;5;213mOpus 5 (1M context)[38;5;240m  │  [38;5;220m💰 $0.000[2C[1B⏵⏵ auto mode on[38;5;246m (shift+tab to cycle) · ← for agents[39m
+[2C[4A[?25h[?25l[2D[4B[2C[4A[K
+
+
+
+[2C[4A[?25h[?25l[2D[4B[5A[48;5;237m[38;5;239m❯ [38;5;231m/usage[39m                                                                        [1B[49m[K[1B[38;5;153m────────────────────────────────────────────────────────────────────────────────[2C[1B[1mSettings[22m[39m  Status   Config  [48;5;153m[38;5;16m[1m Usage [22m[39m[49m  Stats[K[2C[1B[K
+[3G[1mSession[22m
+
+[3G[38;5;246mTotal[9Gcost:[26G$0.0000[39m
+[3G[38;5;246mTotal[9Gduration[18G(API):[26G0s[39m
+[3G[38;5;246mTotal[9Gduration[18G(wall):[26G4s[39m
+[3G[38;5;246mTotal[9Gcode[14Gchanges:[26G0[28Glines[34Gadded,[41G0[43Glines[49Gremoved[39m
+[3G[38;5;246mUsage:[26G0[28Ginput,[35G0[37Goutput,[45G0[47Gcache[53Gread,[59G0[61Gcache[67Gwrite[39m
+
+[3G[1mCurrent[11Gsession[22m
+[3G[48;5;102m[38;5;153m█████▌                                            [54G[39m[49m11%[58Gused
+[3G[38;5;246mResets[10G8:40pm[17G(Asia/Shanghai)[39m
+
+[3G[1mCurrent[11Gweek[16G(all[21Gmodels)[22m
+[3G[48;5;102m[38;5;153m████████████████████████▌                         [54G[39m[49m49%[58Gused
+[3G[38;5;246mResets[10GAug[14G28[17Gat[20G1pm[24G(Asia/Shanghai)[39m
+[3G[38;5;174m+50%[8Gweekly[15Glimits[22Gpromo[28Gthrough[36GAug[40G31[43G·[45Gclau.de/cc-50-promo[39m
+
+[3G[1mCurrent[11Gweek[16G(Fable)[22m
+[3G[48;5;102m[38;5;153m█████████████████████████████████████▌            [54G[39m[49m75%[58Gused
+[3G[38;5;246mResets[10GAug[14G28[17Gat[20G1pm[24G(Asia/Shanghai)[39m
+
+[3G[1mWhat's[10Gcontributing[23Gto[26Gyour[31Glimits[38Gusage?[22m
+[3G[38;5;246mApproximate,[16Gbased[22Gon[25Glocal[31Gsessions[40Gon[43Gthis[48Gmachine[56G—[58Gdoes[63Gnot[67Ginclude[39m
+[3G[38;5;246mother[9Gdevices[17Gor[20Gclaude.ai[39m
+
+[3G[38;5;246mScanning[12Glocal[18Gsessions…[39m
+
+[3G[1mUsage[9Gcredits[22m
+[3G[38;5;246mUsage[9Gcredits[17Gare[21Goff[25G·[27G/usage-credits[42Gto[45Gturn[50Gthem[55Gon[39m
+
+[3G[38;5;246mRefreshing…[39m
+
+[3G[38;5;246mEsc[7Gto[10Gcancel[39m
+[30C[35A[30D[35B[2C[8A[38;5;246mLast 24h[12G· these are independent characteristics of your usage, not a [2C[1Bbreakdown[2C[1B[39m[K[2C[1B87% of your usage came from subagent-heavy sessions[K[3C[1B[38;5;246mEach subagent runs its own requests. Be deliberate about spawning them — and [2C[1B[39m [38;5;246mconsider configuring a cheaper model for simpler subagents.[2C[2B[39m83% of your usage[21Gwas[25Gat[28G>150k[34Gcontext
+[4G[38;5;246mLonger[11Gsessions[20Gare[24Gmore[29Gexpensive[39Geven[44Gwhen[49Gcached.[57G/compact[66Gmid-task,[39m
+[4G[38;5;246m/clear[11Gwhen[16Gswitching[26Gto[29Gnew[33Gtasks.[39m
+
+[3GSubagents[27G[38;5;246m%[29Gof[32Gusage[39m
+[3G[38;5;246mExplore[35G6%[39m
+
+[3GMCP[7Gservers[27G[38;5;246m%[29Gof[32Gusage[39m
+[3G[38;5;246mccd_session[35G1%[39m
+
+[3G[38;5;246md[5Gto[8Gday[12G·[14Gw[16Gto[19Gweek[39m
+
+[3G[1mUsage[9Gcredits[22m
+[3G[38;5;246mUsage[9Gcredits[17Gare[21Goff[25G·[27G/usage-credits[42Gto[45Gturn[50Gthem[55Gon[39m
+
+[3G[38;5;246mRefreshing…[39m
+
+[3G[38;5;246mEsc[7Gto[10Gcancel[39m
+[30C[52A[30D[52B[2C[3A[38;5;246mShowing last-known usage as of 5m ago (could not refresh)[2C[2Br to retry · Esc to cancel[39m
+[30C[52A
