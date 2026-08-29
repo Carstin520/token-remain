@@ -80,15 +80,18 @@ ALLOWED_LITERAL_COUNT="$(printf '%s\n' "$ALLOWED_LITERALS" \
   | /usr/bin/tr -d '[:space:]')"
 METHOD_ALLOWED_COUNT="$(printf '%s\n' "$INTERACTIVE_METHOD" \
   | /usr/bin/awk -F'//' '$1 ~ /\.allowed/ { count++ } END { print count + 0 }')"
-if [[ "$ALLOWED_LITERAL_COUNT" != "2" \
-  || "$METHOD_ALLOWED_COUNT" != "2" \
+if [[ "$ALLOWED_LITERAL_COUNT" != "3" \
+  || "$METHOD_ALLOWED_COUNT" != "3" \
   || "$(printf '%s\n' "$ALLOWED_LITERALS" | /usr/bin/cut -d: -f1 | /usr/bin/sort -u)" != "$INTERACTIVE_ENTRY" ]]; then
   echo "$ALLOWED_LITERALS" >&2
-  fail "Interaction.allowed must appear exactly twice inside UsageStore.authorizeProviderCredentials"
+  fail "Interaction.allowed must appear exactly three times inside UsageStore.authorizeProviderCredentials"
 fi
 /usr/bin/grep -Fq 'await store.authorizeProviderCredentials(provider)' \
   Sources/UsageDock/Views/Dashboard/DataSourcesSection.swift \
   || fail "the interactive Keychain read is no longer initiated by the explicit Data Sources action"
+/usr/bin/grep -Fq 'await store.authorizeProviderCredentials(provider)' \
+  Sources/UsageDock/Views/ProviderCredentialEntryRow.swift \
+  || fail "the pasted-credential Keychain read is no longer initiated by its explicit authorization action"
 
 # 6. 变量转发的那一处必须默认 .disallowed,否则第 5 条就被架空了。
 /usr/bin/grep -Eq 'keychainInteraction: *KeychainRead\.Interaction *= *\.disallowed' \

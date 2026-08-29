@@ -196,7 +196,7 @@ struct ProviderAccountFetchService: Sendable {
             guard !normalized.isEmpty else { throw FetchError.missingCredential }
             return Credential(raw: normalized)
         }
-        guard let raw = ProviderAccountSecretStore(
+        guard let raw = try ProviderAccountSecretStore(
             provider: profile.provider,
             accountID: profile.id
         ).load() else {

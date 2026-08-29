@@ -540,7 +540,10 @@ struct ZAIKeyStore {
     var homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser
 
     private var keychain: KeychainSecretStore {
-        KeychainSecretStore(service: "com.jamesli.usagedock.zai", account: "api-key")
+        KeychainSecretStore(
+            service: AppOwnedKeychainNamespace.current.service("zai"),
+            account: "api-key"
+        )
     }
 
     func load() -> String? {
@@ -552,16 +555,27 @@ struct ZAIKeyStore {
            let key = Self.key(fromConfigText: text) {
             return key
         }
-        return normalized((try? keychain.read()) ?? nil)
+        guard case .available(let value) = keychain.readState() else { return nil }
+        return normalized(value)
     }
 
     /// 钥匙串里是否存了 Key(区别于环境变量/配置文件来源,供 UI 显示状态)。
     func hasStoredKey() -> Bool {
-        normalized((try? keychain.read()) ?? nil) != nil
+        credentialStatus() == .available
+    }
+
+    func credentialStatus() -> StoredCredentialStatus {
+        StoredCredentialStatus(keychainState: keychain.readState())
+    }
+
+    func loadFromKeychain(interaction: KeychainRead.Interaction) throws -> String? {
+        normalized(try keychain.read(interaction: interaction))
     }
 
     func save(_ key: String) throws {
-        try keychain.save(key.trimmingCharacters(in: .whitespacesAndNewlines))
+        try keychain.saveRebindingAuthorization(
+            key.trimmingCharacters(in: .whitespacesAndNewlines)
+        )
     }
 
     func clear() throws {

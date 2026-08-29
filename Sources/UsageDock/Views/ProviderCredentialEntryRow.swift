@@ -27,12 +27,18 @@ struct ProviderCredentialConfiguration: Equatable {
         }
     }
 
-    static func hasStoredCredential(for provider: ProviderQuota.Provider) -> Bool {
+    static func storedCredentialStatus(
+        for provider: ProviderQuota.Provider
+    ) -> StoredCredentialStatus {
         switch provider {
-        case .zai: ZAIKeyStore().hasStoredKey()
-        case .openrouter: OpenRouterKeyStore().hasStoredKey()
-        default: ProviderSecretStore(provider: provider).hasStoredSecret()
+        case .zai: ZAIKeyStore().credentialStatus()
+        case .openrouter: OpenRouterKeyStore().credentialStatus()
+        default: ProviderSecretStore(provider: provider).credentialStatus()
         }
+    }
+
+    static func hasStoredCredential(for provider: ProviderQuota.Provider) -> Bool {
+        storedCredentialStatus(for: provider) == .available
     }
 }
 
@@ -42,7 +48,7 @@ struct ProviderCredentialEntryRow: View {
     @ObservedObject var store: UsageStore
     let provider: ProviderQuota.Provider
     let configuration: ProviderCredentialConfiguration
-    @State private var hasStoredCredential: Bool
+    @State private var credentialStatus: StoredCredentialStatus
     @State private var draft = ""
     @State private var isSaving = false
     @State private var zaiRegion: ZAIAPIRegion
@@ -55,8 +61,8 @@ struct ProviderCredentialEntryRow: View {
         self.store = store
         self.provider = provider
         self.configuration = configuration
-        _hasStoredCredential = State(
-            initialValue: ProviderCredentialConfiguration.hasStoredCredential(for: provider)
+        _credentialStatus = State(
+            initialValue: ProviderCredentialConfiguration.storedCredentialStatus(for: provider)
         )
         _zaiRegion = State(initialValue: ZAIRegionStore().load())
     }
@@ -90,9 +96,7 @@ struct ProviderCredentialEntryRow: View {
 
             HStack(spacing: 8) {
                 SecureField(
-                    hasStoredCredential
-                        ? L10n.text("datasource.key_saved_placeholder")
-                        : configuration.placeholder,
+                    credentialPlaceholder,
                     text: $draft
                 )
                 .textFieldStyle(.roundedBorder)
@@ -100,39 +104,78 @@ struct ProviderCredentialEntryRow: View {
                 .disabled(isSaving)
 
                 Button(
-                    hasStoredCredential ? L10n.text("action.replace") : L10n.text("action.save")
+                    canReplaceCredential
+                        ? L10n.text("action.replace")
+                        : L10n.text("action.save")
                 ) {
                     let credential = draft.trimmingCharacters(in: .whitespacesAndNewlines)
                     guard !credential.isEmpty else { return }
                     isSaving = true
                     Task {
-                        await store.saveAPIKey(credential, for: provider)
-                        draft = ""
-                        hasStoredCredential = ProviderCredentialConfiguration.hasStoredCredential(
-                            for: provider
-                        )
+                        let saved = await store.saveAPIKey(credential, for: provider)
+                        if saved { draft = "" }
+                        reloadCredentialStatus()
                         isSaving = false
                     }
                 }
                 .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSaving)
 
-                if hasStoredCredential {
+                if canReplaceCredential {
                     Button(L10n.text("action.clear")) {
                         isSaving = true
                         Task {
-                            await store.clearAPIKey(for: provider)
-                            hasStoredCredential = ProviderCredentialConfiguration.hasStoredCredential(
-                                for: provider
-                            )
+                            _ = await store.clearAPIKey(for: provider)
+                            reloadCredentialStatus()
                             isSaving = false
                         }
                     }
                     .disabled(isSaving)
                 }
             }
+
+            if credentialStatus == .authorizationRequired {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(L10n.text("datasource.credential_authorization_required"))
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(DashboardTheme.warning)
+                    Spacer(minLength: 4)
+                    Button(L10n.text("action.authorize")) {
+                        isSaving = true
+                        Task {
+                            _ = await store.authorizeProviderCredentials(provider)
+                            reloadCredentialStatus()
+                            isSaving = false
+                        }
+                    }
+                    .disabled(isSaving)
+                }
+            } else if credentialStatus == .failed {
+                Text(L10n.text("datasource.credential_read_failed"))
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(DashboardTheme.warning)
+            }
         }
         .controlSize(.small)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(L10n.format("datasource.api_key_settings", provider.displayName))
+    }
+
+    private var canReplaceCredential: Bool {
+        credentialStatus == .available || credentialStatus == .authorizationRequired
+    }
+
+    private var credentialPlaceholder: String {
+        switch credentialStatus {
+        case .available:
+            return L10n.text("datasource.key_saved_placeholder")
+        case .authorizationRequired:
+            return L10n.text("datasource.credential_authorization_placeholder")
+        case .missing, .failed:
+            return configuration.placeholder
+        }
+    }
+
+    private func reloadCredentialStatus() {
+        credentialStatus = ProviderCredentialConfiguration.storedCredentialStatus(for: provider)
     }
 }

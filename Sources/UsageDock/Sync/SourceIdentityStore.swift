@@ -30,7 +30,7 @@ struct SourceIdentityStore {
         self.init(
             defaults: defaults,
             keychain: KeychainSecretStore(
-                service: Self.service,
+                service: AppOwnedKeychainNamespace.current.service("private-sync.identity"),
                 account: Self.account,
                 accessibility: .afterFirstUnlockThisDeviceOnly
             ),

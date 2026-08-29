@@ -122,6 +122,7 @@
 "datasource.detail.third_party" = "Endpoint compatible con New API o de saldo personalizado";
 "duration.total" = "Total";
 
+"action.authorize" = "Autorizar";
 "action.cancel" = "Cancelar";
 "action.clear" = "Borrar";
 "action.refresh" = "Actualizar";
@@ -170,6 +171,11 @@
 "datasource.feed_waiting" = "Esperando la sincronización en segundo plano del contenido seleccionado";
 "datasource.healthy" = "Correcto";
 "datasource.key_saved_placeholder" = "Guardada (pega una clave nueva para reemplazarla)";
+"datasource.credential_authorization_placeholder" = "Se requiere autorización (vuelve a pegarla para reparar)";
+"datasource.credential_authorization_required" = "La credencial guardada necesita autorización del Llavero. Autoriza el acceso de lectura o vuelve a pegarla para reemplazarla de forma segura.";
+"datasource.credential_authorization_still_required" = "Elige Permitir siempre en el aviso del Llavero para que la actualización en segundo plano pueda leer esta credencial.";
+"datasource.credential_missing" = "%1$@ no tiene una credencial guardada en el Llavero.";
+"datasource.credential_read_failed" = "TokenRemain no pudo leer la credencial guardada. Vuelve a pegarla para reemplazarla.";
 "datasource.name_grok" = "Grok (xAI)";
 "datasource.name_zai" = "Z.ai (GLM Coding Plan)";
 "datasource.none_connected" = "Ninguna fuente de datos se ha conectado correctamente todavía";
@@ -218,6 +224,7 @@
 "feed.view_on_x" = "Ver en X";
 "keychain.operation_failed" = "Falló la operación del llavero: %1$@";
 "keychain.unknown_error" = "Error desconocido";
+"keychain.verification_failed" = "TokenRemain no pudo verificar el elemento reparado del Llavero.";
 "launch.allow_in_system_settings" = "Permite TokenRemain en Ajustes del Sistema → General → Ítems de inicio";
 "launch.restart_failed" = "No se pudo reiniciar TokenRemain: %1$@";
 "launch.update_failed" = "No se pudo actualizar el ítem de inicio de sesión: %1$@";

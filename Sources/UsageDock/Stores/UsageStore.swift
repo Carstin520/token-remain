@@ -957,35 +957,148 @@ final class UsageStore: ObservableObject {
         errorMessage = combined.isEmpty ? nil : combined
     }
 
+    nonisolated private static func supportsPastedCredential(
+        _ provider: ProviderQuota.Provider
+    ) -> Bool {
+        provider == .zai
+            || provider == .openrouter
+            || ProviderSecretStore.descriptor(for: provider) != nil
+    }
+
+    private func storedCredentialStatus(
+        for provider: ProviderQuota.Provider
+    ) -> StoredCredentialStatus {
+        switch provider {
+        case .zai:
+            return ZAIKeyStore().credentialStatus()
+        case .openrouter:
+            return OpenRouterKeyStore().credentialStatus()
+        default:
+            return ProviderSecretStore(provider: provider).credentialStatus()
+        }
+    }
+
+    private func storedCredentialReadIssue(
+        for provider: ProviderQuota.Provider
+    ) -> String? {
+        guard Self.supportsPastedCredential(provider) else { return nil }
+        switch storedCredentialStatus(for: provider) {
+        case .authorizationRequired:
+            return L10n.text("datasource.credential_authorization_required")
+        case .failed:
+            return L10n.text("datasource.credential_read_failed")
+        case .missing, .available:
+            return nil
+        }
+    }
+
+    private func storedPastedCredential(
+        for provider: ProviderQuota.Provider,
+        interaction: KeychainRead.Interaction
+    ) throws -> String? {
+        switch provider {
+        case .zai:
+            return try ZAIKeyStore().loadFromKeychain(interaction: interaction)
+        case .openrouter:
+            return try OpenRouterKeyStore().loadFromKeychain(interaction: interaction)
+        default:
+            guard ProviderSecretStore.descriptor(for: provider) != nil else { return nil }
+            return try ProviderSecretStore(provider: provider)
+                .loadFromKeychain(interaction: interaction)
+        }
+    }
+
+    /// Fetches only with the submitted credential. No environment variable,
+    /// config file, IPC session, or pre-existing Keychain item may satisfy this
+    /// validation request on behalf of the value the user is replacing.
+    private func fetchQuota(
+        for provider: ProviderQuota.Provider,
+        credential: String,
+        now: Date
+    ) async throws -> ProviderQuota {
+        switch provider {
+        case .zai:
+            return try await ZAIUsageService().fetch(
+                apiKey: credential,
+                region: ZAIRegionStore().load(),
+                now: now
+            )
+        case .openrouter:
+            return try await OpenRouterUsageService().fetch(apiKey: credential, now: now)
+        case .deepseek:
+            return try await DeepSeekUsageService().fetch(apiKey: credential, now: now)
+        case .kimi:
+            return try await KimiUsageService().fetch(secret: credential, now: now)
+        case .minimax:
+            return try await MiniMaxUsageService().fetch(apiKey: credential, now: now)
+        case .mimo:
+            return try await MiMoUsageService().fetch(cookie: credential, now: now)
+        case .qoder:
+            return try await QoderUsageService().fetch(cookie: credential, now: now)
+        case .volcengine:
+            return try await VolcengineUsageService().fetch(credentials: credential, now: now)
+        case .ollama:
+            return try await OllamaUsageService().fetch(cookie: credential, now: now)
+        case .zaiTeam:
+            return try await ZAITeamUsageService().fetch(configuration: credential, now: now)
+        case .thirdParty:
+            return try await ThirdPartyUsageService().fetch(configuration: credential, now: now)
+        default:
+            throw ProviderAccountFetchService.FetchError.unsupportedProvider(
+                provider.displayName
+            )
+        }
+    }
+
     /// 保存用户在「额度」卡或「数据源」页粘贴的凭据(入钥匙串),
     /// 随即直查一次。凭据可以是 API Key、Cookie 或 AK:SK 组合。
-    func saveAPIKey(_ key: String, for provider: ProviderQuota.Provider) async {
+    @discardableResult
+    func saveAPIKey(_ key: String, for provider: ProviderQuota.Provider) async -> Bool {
+        let normalized = key.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalized.isEmpty, Self.supportsPastedCredential(provider) else { return false }
+        providerNotices[provider] = nil
         do {
+            // Validate against the selected provider before touching an older
+            // Keychain item. This is essential when repairing a stale ACL,
+            // because rebinding requires delete + add rather than an update.
+            let quota = try await fetchQuota(
+                for: provider,
+                credential: normalized,
+                now: .now
+            )
             switch provider {
-            case .zai: try ZAIKeyStore().save(key)
-            case .openrouter: try OpenRouterKeyStore().save(key)
+            case .zai: try ZAIKeyStore().save(normalized)
+            case .openrouter: try OpenRouterKeyStore().save(normalized)
             default:
-                guard ProviderSecretStore.descriptor(for: provider) != nil else { return }
-                try ProviderSecretStore(provider: provider).save(key)
+                try ProviderSecretStore(provider: provider).save(normalized)
             }
+            assign(quota, to: provider)
+            providerNotices[provider] = nil
+            quotaCache.save(currentSnapshot())
+            return true
         } catch {
             providerNotices[provider] = error.localizedDescription
-            return
+            return false
         }
-        await refreshKeyProvider(provider)
     }
 
     /// 清除钥匙串中的 Key。环境变量/配置文件来源不受影响,
     /// 若仍存在会在下一轮刷新时继续生效。
-    func clearAPIKey(for provider: ProviderQuota.Provider) async {
-        switch provider {
-        case .zai: try? ZAIKeyStore().clear()
-        case .openrouter: try? OpenRouterKeyStore().clear()
-        default:
-            guard ProviderSecretStore.descriptor(for: provider) != nil else { return }
-            try? ProviderSecretStore(provider: provider).clear()
+    @discardableResult
+    func clearAPIKey(for provider: ProviderQuota.Provider) async -> Bool {
+        guard Self.supportsPastedCredential(provider) else { return false }
+        do {
+            switch provider {
+            case .zai: try ZAIKeyStore().clear()
+            case .openrouter: try OpenRouterKeyStore().clear()
+            default: try ProviderSecretStore(provider: provider).clear()
+            }
+        } catch {
+            providerNotices[provider] = error.localizedDescription
+            return false
         }
         await refreshKeyProvider(provider)
+        return true
     }
 
     /// Region selection is non-secret account metadata. Persist it separately
@@ -1025,6 +1138,22 @@ final class UsageStore: ObservableObject {
                         now: now,
                         keychainInteraction: .allowed
                     )
+                }
+            case .zai, .openrouter, .deepseek, .kimi, .minimax, .mimo,
+                 .qoder, .volcengine, .ollama, .zaiTeam, .thirdParty:
+                guard let credential = try storedPastedCredential(
+                    for: provider,
+                    interaction: .allowed
+                ) else {
+                    throw StoredCredentialActionError.missing(provider.displayName)
+                }
+                quota = try await fetchQuota(
+                    for: provider,
+                    credential: credential,
+                    now: now
+                )
+                guard storedCredentialStatus(for: provider) == .available else {
+                    throw StoredCredentialActionError.authorizationStillRequired
                 }
             default:
                 return false
@@ -1093,11 +1222,14 @@ final class UsageStore: ObservableObject {
                       !credential.isEmpty else {
                     throw ProviderAccountFetchService.FetchError.missingCredential
                 }
+                initialQuota = try await ProviderAccountFetchService().fetch(
+                    profile,
+                    credentialOverride: credential
+                )
                 try ProviderAccountSecretStore(
                     provider: provider,
                     accountID: profile.id
                 ).save(credential)
-                initialQuota = try await ProviderAccountFetchService().fetch(profile)
             case nil:
                 throw ProviderAccountFetchService.FetchError.unsupportedProvider(provider.displayName)
             }
@@ -1233,7 +1365,8 @@ final class UsageStore: ObservableObject {
         let results = await Self.fetchAux(providers: [provider])
         guard let fetchResult = results[provider] else { return }
         apply(fetchResult, to: provider) { self.assign($0, to: provider) }
-        if case .failure = fetchResult {
+        if case .failure = fetchResult,
+           storedCredentialReadIssue(for: provider) == nil {
             // Key 被清空后旧数据已无意义,不再展示。
             assign(nil, to: provider)
         }
@@ -1251,10 +1384,11 @@ final class UsageStore: ObservableObject {
             assign(value)
             providerNotices[provider] = nil
         case .failure(let error):
-            if Self.invalidatesCachedQuota(error) {
+            let credentialIssue = storedCredentialReadIssue(for: provider)
+            if credentialIssue == nil, Self.invalidatesCachedQuota(error) {
                 self.assign(nil, to: provider)
             }
-            providerNotices[provider] = error.localizedDescription
+            providerNotices[provider] = credentialIssue ?? error.localizedDescription
         }
     }
 
