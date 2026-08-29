@@ -1,0 +1,449 @@
+import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
+import { DEFAULT_BACKGROUND_DEPTH, normalizeBackgroundDepth } from "./background-depth.js";
+import { normalizeNotificationBookkeeping } from "./notification-policy.js";
+import { normalizeQuotaUsageHistory, recordQuotaUsageHistory } from "./quota-history.js";
+import { normalizeProviderIDs, PROVIDER_ID_SET } from "./providers/catalog.js";
+import { DEFAULT_REFRESH_MINUTES, isRefreshMinutes } from "./refresh-policy.js";
+import { newSourceID } from "./sync/crypto.js";
+import { normalizeUpdateCheckState } from "./update-check.js";
+import {
+  LEGACY_SCOPED_POOL_MAPPINGS,
+  normalizeScopedPoolVisibility,
+  SCOPED_POOL_CATALOG_KEYS,
+} from "../src/scoped-pools.js";
+import {
+  canonicalLocalSourceID,
+  isWellFormedLocalSourceID,
+  normalizeDisabledLocalUsageSources,
+} from "../src/local-sources.js";
+import { normalizeDailyUsageHistory } from "../src/usage-history.js";
+
+const LANGUAGE_PREFERENCES = new Set(["system", "en", "zh-Hans", "zh-Hant", "ja", "ko", "es", "de"]);
+const TRAY_DISPLAY_MODES = new Set(["full", "compact", "minimal"]);
+const SUMMARY_STRATEGIES = new Set(["shortestWindow", "lowestRemaining"]);
+const DEFAULT_TRAY_PROVIDERS = Object.freeze(["claude", "codex"]);
+const POPOVER_GLASS_STYLES = new Set(["frosted", "clear"]);
+const ZAI_REGIONS = new Set(["global", "china"]);
+const DEFAULT_POPOVER_GLASS_STYLE = "frosted";
+/// Mirrors the macOS reference backdrop opacity and its 2% storage grid; see
+/// src/glass/glass-model.js for the renderer half of the same contract.
+const DEFAULT_POPOVER_BACKDROP_OPACITY = 0.62;
+const POPOVER_BACKDROP_OPACITY_STEP = 0.02;
+
+/// Clamp to 0–1 and snap to the 2% grid. Anything non-finite falls back to the
+/// shipped default rather than to zero, which would persist an invisible popup.
+function clampPopoverBackdropOpacity(value) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return DEFAULT_POPOVER_BACKDROP_OPACITY;
+  const steps = 1 / POPOVER_BACKDROP_OPACITY_STEP;
+  return Math.round(Math.min(Math.max(value, 0), 1) * steps) / steps;
+}
+
+export class StateStore {
+  constructor({ userDataPath, safeStorage }) {
+    this.path = join(userDataPath, "state-v1.json");
+    this.safeStorage = safeStorage;
+    this.state = undefined;
+  }
+
+  async load() {
+    if (this.state) return this.state;
+    try {
+      this.state = JSON.parse(await readFile(this.path, "utf8"));
+    } catch {
+      this.state = { schemaVersion: 1, sourceInstanceID: newSourceID(), sequence: 0, providers: [], notices: {} };
+      await this.save();
+    }
+    if (!this.state.sourceInstanceID) this.state.sourceInstanceID = newSourceID();
+    if (this.state.protectedRemoteSnapshot) {
+      if (!this.safeStorage.isEncryptionAvailable()) throw new Error("Windows credential protection is unavailable");
+      this.state.remoteSnapshot = JSON.parse(this.safeStorage.decryptString(
+        Buffer.from(this.state.protectedRemoteSnapshot, "base64"),
+      ));
+    } else if (this.state.remoteSnapshot) {
+      this.setRemoteSnapshot(this.state.remoteSnapshot);
+      await this.save();
+    }
+    if (this.state.protectedQuotaUsageHistory) {
+      if (!this.safeStorage.isEncryptionAvailable()) throw new Error("Windows credential protection is unavailable");
+      this.state.quotaUsageHistory = JSON.parse(this.safeStorage.decryptString(
+        Buffer.from(this.state.protectedQuotaUsageHistory, "base64"),
+      ));
+    }
+    if (this.state.protectedLocalDailyUsageHistory) {
+      if (!this.safeStorage.isEncryptionAvailable()) throw new Error("Windows credential protection is unavailable");
+      this.state.localDailyUsageHistory = JSON.parse(this.safeStorage.decryptString(
+        Buffer.from(this.state.protectedLocalDailyUsageHistory, "base64"),
+      ));
+    }
+    this.state.localDailyUsageHistory = normalizeDailyUsageHistory(this.state.localDailyUsageHistory);
+    if (this.state.protectedProviderSecrets) {
+      if (!this.safeStorage.isEncryptionAvailable()) throw new Error("Windows credential protection is unavailable");
+      this.state.providerSecrets = JSON.parse(this.safeStorage.decryptString(
+        Buffer.from(this.state.protectedProviderSecrets, "base64"),
+      ));
+    }
+    this.state.quotaUsageHistory = normalizeQuotaUsageHistory(this.state.quotaUsageHistory);
+    this.state.notificationBookkeeping = normalizeNotificationBookkeeping(this.state.notificationBookkeeping);
+    this.state.updateCheck = normalizeUpdateCheckState(this.state.updateCheck);
+    const rawPreferences = this.state.preferences && typeof this.state.preferences === "object"
+      && !Array.isArray(this.state.preferences)
+      ? this.state.preferences
+      : {};
+    const scopedPoolVisibility = normalizeScopedPoolVisibility(rawPreferences.scopedPoolVisibility);
+    let migratedScopedPoolPreferences = false;
+    for (const mapping of LEGACY_SCOPED_POOL_MAPPINGS) {
+      if (scopedPoolVisibility[mapping.catalogKey] === undefined
+        && typeof rawPreferences[mapping.legacyKey] === "boolean") {
+        scopedPoolVisibility[mapping.catalogKey] = rawPreferences[mapping.legacyKey] ? "on" : "off";
+      }
+      if (Object.hasOwn(rawPreferences, mapping.legacyKey)) migratedScopedPoolPreferences = true;
+    }
+    this.state.preferences = {
+      backgroundDepth: DEFAULT_BACKGROUND_DEPTH,
+      disabledLocalUsageSources: [],
+      feedNotificationsEnabled: false,
+      floatingWidgetEnabled: false,
+      language: "system",
+      popoverBackdropOpacity: DEFAULT_POPOVER_BACKDROP_OPACITY,
+      popoverGlassStyle: DEFAULT_POPOVER_GLASS_STYLE,
+      refreshMinutes: DEFAULT_REFRESH_MINUTES,
+      scopedPoolVisibility,
+      summaryStrategy: "shortestWindow",
+      taskbarIconHidden: false,
+      trayDisplayMode: "full",
+      trayProviders: [...DEFAULT_TRAY_PROVIDERS],
+      zaiRegion: "global",
+      ...rawPreferences,
+      scopedPoolVisibility,
+    };
+    for (const mapping of LEGACY_SCOPED_POOL_MAPPINGS) delete this.state.preferences[mapping.legacyKey];
+    if (!LANGUAGE_PREFERENCES.has(this.state.preferences.language)) this.state.preferences.language = "system";
+    if (!isRefreshMinutes(this.state.preferences.refreshMinutes)) this.state.preferences.refreshMinutes = DEFAULT_REFRESH_MINUTES;
+    this.state.preferences.feedNotificationsEnabled = this.state.preferences.feedNotificationsEnabled === true;
+    this.state.preferences.disabledLocalUsageSources = normalizeDisabledLocalUsageSources(
+      this.state.preferences.disabledLocalUsageSources,
+    );
+    this.state.preferences.backgroundDepth = normalizeBackgroundDepth(this.state.preferences.backgroundDepth);
+    this.state.preferences.taskbarIconHidden = this.state.preferences.taskbarIconHidden === true;
+    if (!ZAI_REGIONS.has(this.state.preferences.zaiRegion)) this.state.preferences.zaiRegion = "global";
+    if (!SUMMARY_STRATEGIES.has(this.state.preferences.summaryStrategy)) this.state.preferences.summaryStrategy = "shortestWindow";
+    if (!POPOVER_GLASS_STYLES.has(this.state.preferences.popoverGlassStyle)) this.state.preferences.popoverGlassStyle = DEFAULT_POPOVER_GLASS_STYLE;
+    this.state.preferences.popoverBackdropOpacity = clampPopoverBackdropOpacity(this.state.preferences.popoverBackdropOpacity);
+    if (!TRAY_DISPLAY_MODES.has(this.state.preferences.trayDisplayMode)) this.state.preferences.trayDisplayMode = "full";
+    this.state.preferences.trayProviders = Array.isArray(this.state.preferences.trayProviders)
+      ? normalizeProviderIDs(this.state.preferences.trayProviders).slice(0, 4)
+      : [...DEFAULT_TRAY_PROVIDERS];
+    this.state.onboardingCompleted = Boolean(this.state.onboardingCompleted);
+    this.state.enabledProviders = normalizeProviderIDs(this.state.enabledProviders);
+    this.state.pendingDetectionSuggestions = [];
+    if (Object.hasOwn(this.state, "detectedInstallations")) {
+      this.state.detectedInstallations = normalizeProviderIDs(this.state.detectedInstallations);
+    }
+    this.state.providerSecrets = Object.fromEntries(
+      Object.entries(this.state.providerSecrets || {}).filter(([providerID, value]) => (
+        PROVIDER_ID_SET.has(providerID) && typeof value === "string" && value.trim()
+      )),
+    );
+    if (migratedScopedPoolPreferences) await this.save();
+    return this.state;
+  }
+
+  getPairedMac() {
+    const value = this.state?.pairedMac;
+    if (!value) return undefined;
+    if (!this.safeStorage.isEncryptionAvailable()) throw new Error("Windows credential protection is unavailable");
+    const decoded = JSON.parse(this.safeStorage.decryptString(Buffer.from(value.protected, "base64")));
+    return {
+      baseURL: value.baseURL,
+      deviceName: value.deviceName,
+      serverSourceInstanceID: value.serverSourceInstanceID,
+      lastRemoteSequence: Number.isSafeInteger(value.lastRemoteSequence) ? value.lastRemoteSequence : 0,
+      ...decoded,
+      key: Buffer.from(decoded.key, "base64"),
+    };
+  }
+
+  async setPairedMac(value) {
+    if (!this.safeStorage.isEncryptionAvailable()) throw new Error("Windows credential protection is unavailable");
+    const protectedValue = this.safeStorage.encryptString(JSON.stringify({ key: value.key.toString("base64"), keyID: value.keyID }));
+    this.state.pairedMac = {
+      baseURL: value.baseURL,
+      deviceName: value.deviceName,
+      serverSourceInstanceID: value.serverSourceInstanceID,
+      lastRemoteSequence: 0,
+      protected: protectedValue.toString("base64"),
+    };
+    await this.save();
+  }
+
+  async disconnect() {
+    delete this.state.pairedMac;
+    delete this.state.remoteSnapshot;
+    delete this.state.protectedRemoteSnapshot;
+    delete this.state.lastSyncAt;
+    await this.save();
+  }
+
+  setRemoteSnapshot(snapshot) {
+    if (!this.safeStorage.isEncryptionAvailable()) throw new Error("Windows credential protection is unavailable");
+    this.state.remoteSnapshot = snapshot;
+    this.state.protectedRemoteSnapshot = this.safeStorage
+      .encryptString(JSON.stringify(snapshot))
+      .toString("base64");
+  }
+
+  recordQuotaUsage(providers, now = Date.now()) {
+    this.state.quotaUsageHistory = recordQuotaUsageHistory(this.state.quotaUsageHistory, providers, now);
+  }
+
+  setLocalDailyUsageHistory(history) {
+    if (!this.safeStorage.isEncryptionAvailable()) throw new Error("Windows credential protection is unavailable");
+    this.state.localDailyUsageHistory = normalizeDailyUsageHistory(history);
+  }
+
+  getProviderSecret(providerID) {
+    if (!PROVIDER_ID_SET.has(providerID)) return undefined;
+    return this.state.providerSecrets?.[providerID];
+  }
+
+  hasProviderSecret(providerID) {
+    return Boolean(this.getProviderSecret(providerID));
+  }
+
+  async setProviderSecret(providerID, value) {
+    if (!PROVIDER_ID_SET.has(providerID)) throw new Error("Unsupported provider");
+    const secret = String(value || "").trim();
+    if (!secret || Buffer.byteLength(secret) > 32 * 1024) throw new Error("Credential is missing or too long");
+    this.state.providerSecrets = { ...(this.state.providerSecrets || {}), [providerID]: secret };
+    await this.save();
+  }
+
+  async clearProviderSecret(providerID) {
+    if (!PROVIDER_ID_SET.has(providerID)) throw new Error("Unsupported provider");
+    const next = { ...(this.state.providerSecrets || {}) };
+    delete next[providerID];
+    this.state.providerSecrets = next;
+    await this.save();
+  }
+
+  async completeOnboarding(providerIDs) {
+    this.state.enabledProviders = normalizeProviderIDs(providerIDs);
+    this.state.pendingDetectionSuggestions = [];
+    this.state.onboardingCompleted = true;
+    await this.save();
+  }
+
+  async resetOnboarding() {
+    this.state.onboardingCompleted = false;
+    await this.save();
+  }
+
+  async setProviderEnabled(providerID, enabled) {
+    if (!PROVIDER_ID_SET.has(providerID)) throw new Error("Unsupported provider");
+    const current = new Set(this.state.enabledProviders || []);
+    if (enabled) current.add(providerID);
+    else current.delete(providerID);
+    this.state.enabledProviders = normalizeProviderIDs([...current]);
+    if (enabled) {
+      this.state.pendingDetectionSuggestions = (this.state.pendingDetectionSuggestions || [])
+        .filter((suggestion) => suggestion.providerID !== providerID);
+    }
+    await this.save();
+  }
+
+  async applyProviderDetections(detections) {
+    const current = normalizeProviderIDs(
+      detections.filter((detection) => detection?.installed).map((detection) => detection.providerID),
+    );
+    const hasBaseline = Object.hasOwn(this.state, "detectedInstallations");
+    const previous = new Set(normalizeProviderIDs(this.state.detectedInstallations));
+    this.state.detectedInstallations = current;
+
+    const enabled = new Set(this.state.enabledProviders || []);
+    const queued = new Set((this.state.pendingDetectionSuggestions || []).map((item) => item.providerID));
+    const suggestions = hasBaseline
+      ? detections.filter((detection) => (
+        detection?.installed
+          && PROVIDER_ID_SET.has(detection.providerID)
+          && !previous.has(detection.providerID)
+          && !enabled.has(detection.providerID)
+          && !queued.has(detection.providerID)
+      )).map((detection) => ({ providerID: detection.providerID, detail: detection.detail }))
+      : [];
+    this.state.pendingDetectionSuggestions = [
+      ...(this.state.pendingDetectionSuggestions || []),
+      ...suggestions,
+    ];
+    await this.save();
+    return suggestions;
+  }
+
+  dismissDetectionSuggestion(providerID) {
+    const first = this.state.pendingDetectionSuggestions?.[0];
+    if (!first || first.providerID !== providerID) throw new Error("Detection suggestion is no longer available");
+    this.state.pendingDetectionSuggestions = this.state.pendingDetectionSuggestions.slice(1);
+  }
+
+  async setFloatingWidgetEnabled(enabled) {
+    this.state.preferences = {
+      ...(this.state.preferences || {}),
+      floatingWidgetEnabled: Boolean(enabled),
+    };
+    await this.save();
+  }
+
+  async setBackgroundDepth(value) {
+    if (typeof value !== "number" || !Number.isFinite(value)) throw new Error("Unsupported background depth");
+    this.state.preferences = {
+      ...(this.state.preferences || {}),
+      backgroundDepth: normalizeBackgroundDepth(value),
+    };
+    await this.save();
+  }
+
+  async setTaskbarIconHidden(hidden) {
+    this.state.preferences = { ...(this.state.preferences || {}), taskbarIconHidden: hidden === true };
+    await this.save();
+  }
+
+  async setZAIRegion(value) {
+    if (!ZAI_REGIONS.has(value)) throw new Error("Unsupported Z.ai API region");
+    this.state.preferences = { ...(this.state.preferences || {}), zaiRegion: value };
+    await this.save();
+  }
+
+  async setFeedNotificationsEnabled(enabled) {
+    this.state.preferences = {
+      ...(this.state.preferences || {}),
+      feedNotificationsEnabled: enabled === true,
+    };
+    await this.save();
+  }
+
+  async setLocalUsageSourceEnabled(id, enabled) {
+    const canonical = canonicalLocalSourceID(id);
+    if (!isWellFormedLocalSourceID(canonical)) throw new Error("Unsupported local usage source");
+    const disabled = new Set(normalizeDisabledLocalUsageSources(
+      this.state.preferences?.disabledLocalUsageSources,
+    ));
+    if (enabled) disabled.delete(canonical);
+    else disabled.add(canonical);
+    this.state.preferences = {
+      ...(this.state.preferences || {}),
+      disabledLocalUsageSources: [...disabled].sort(),
+    };
+    await this.save();
+  }
+
+  async setScopedPoolVisibility(key, value) {
+    if (!SCOPED_POOL_CATALOG_KEYS.has(key)) throw new Error("Unsupported scoped quota pool");
+    if (!["auto", "on", "off"].includes(value)) throw new Error("Unsupported scoped quota visibility");
+    const next = { ...normalizeScopedPoolVisibility(this.state.preferences?.scopedPoolVisibility) };
+    if (value === "auto") delete next[key];
+    else next[key] = value;
+    this.state.preferences = { ...(this.state.preferences || {}), scopedPoolVisibility: next };
+    await this.save();
+  }
+
+  async setSummaryStrategy(value) {
+    if (!SUMMARY_STRATEGIES.has(value)) throw new Error("Unsupported quota summary strategy");
+    this.state.preferences = { ...(this.state.preferences || {}), summaryStrategy: value };
+    await this.save();
+  }
+
+  async setPopoverGlassStyle(value) {
+    if (!POPOVER_GLASS_STYLES.has(value)) throw new Error("Unsupported popover glass style");
+    this.state.preferences = { ...(this.state.preferences || {}), popoverGlassStyle: value };
+    await this.save();
+  }
+
+  /// Out-of-range and off-grid values are corrected rather than rejected: the
+  /// slider is a continuous control and this app never interrupts one to ask.
+  async setPopoverBackdropOpacity(value) {
+    if (typeof value !== "number" || !Number.isFinite(value)) throw new Error("Unsupported popover backdrop opacity");
+    this.state.preferences = {
+      ...(this.state.preferences || {}),
+      popoverBackdropOpacity: clampPopoverBackdropOpacity(value),
+    };
+    await this.save();
+  }
+
+  async setTrayDisplayMode(value) {
+    if (!TRAY_DISPLAY_MODES.has(value)) throw new Error("Unsupported tray display mode");
+    this.state.preferences = { ...(this.state.preferences || {}), trayDisplayMode: value };
+    await this.save();
+  }
+
+  async setTrayProviders(values) {
+    this.state.preferences = { ...(this.state.preferences || {}), trayProviders: normalizeProviderIDs(values).slice(0, 4) };
+    await this.save();
+  }
+
+  setNotificationBookkeeping(value) {
+    this.state.notificationBookkeeping = normalizeNotificationBookkeeping(value);
+  }
+
+  setUpdateCheck(value) {
+    this.state.updateCheck = normalizeUpdateCheckState(value);
+  }
+
+  async setLanguage(value) {
+    if (!LANGUAGE_PREFERENCES.has(value)) throw new Error("Unsupported language");
+    this.state.preferences = { ...(this.state.preferences || {}), language: value };
+    await this.save();
+  }
+
+  async setRefreshMinutes(value) {
+    if (!isRefreshMinutes(value)) throw new Error("Unsupported refresh interval");
+    this.state.preferences = { ...(this.state.preferences || {}), refreshMinutes: value };
+    await this.save();
+  }
+
+  async setFloatingWidgetBounds(bounds) {
+    if (!bounds) return;
+    this.state.preferences = {
+      ...(this.state.preferences || {}),
+      floatingWidgetBounds: {
+        x: Math.round(bounds.x),
+        y: Math.round(bounds.y),
+        width: Math.round(bounds.width),
+        height: Math.round(bounds.height),
+      },
+    };
+    await this.save();
+  }
+
+  async save() {
+    await mkdir(dirname(this.path), { recursive: true });
+    const temporary = `${this.path}.next`;
+    const persisted = { ...this.state };
+    delete persisted.pendingDetectionSuggestions;
+    delete persisted.remoteSnapshot;
+    if (this.state.quotaUsageHistory) {
+      if (!this.safeStorage.isEncryptionAvailable()) throw new Error("Windows credential protection is unavailable");
+      persisted.protectedQuotaUsageHistory = this.safeStorage
+        .encryptString(JSON.stringify(this.state.quotaUsageHistory))
+        .toString("base64");
+    }
+    delete persisted.quotaUsageHistory;
+    if (this.state.localDailyUsageHistory) {
+      if (!this.safeStorage.isEncryptionAvailable()) throw new Error("Windows credential protection is unavailable");
+      persisted.protectedLocalDailyUsageHistory = this.safeStorage
+        .encryptString(JSON.stringify(this.state.localDailyUsageHistory))
+        .toString("base64");
+    }
+    delete persisted.localDailyUsageHistory;
+    if (Object.keys(this.state.providerSecrets || {}).length) {
+      if (!this.safeStorage.isEncryptionAvailable()) throw new Error("Windows credential protection is unavailable");
+      persisted.protectedProviderSecrets = this.safeStorage
+        .encryptString(JSON.stringify(this.state.providerSecrets))
+        .toString("base64");
+    } else {
+      delete persisted.protectedProviderSecrets;
+    }
+    delete persisted.providerSecrets;
+    await writeFile(temporary, JSON.stringify(persisted, null, 2), { mode: 0o600 });
+    await rename(temporary, this.path);
+  }
+}

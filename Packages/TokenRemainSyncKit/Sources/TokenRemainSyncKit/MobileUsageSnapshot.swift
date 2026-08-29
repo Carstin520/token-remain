@@ -242,10 +242,18 @@ public struct SyncedDailyUsageHistory: Codable, Sendable, Equatable {
 
     public let days: [SyncedDailyUsageDay]
     public let capturedAt: Date
+    /// The wire day key that represents "today" in the publishing Mac's
+    /// calendar. Older snapshots omit it and remain decodable.
+    public let sourceDay: String?
 
-    public init(days: [SyncedDailyUsageDay], capturedAt: Date) {
+    public init(
+        days: [SyncedDailyUsageDay],
+        capturedAt: Date,
+        sourceDay: String? = nil
+    ) {
         self.days = days
         self.capturedAt = capturedAt
+        self.sourceDay = sourceDay
     }
 }
 
@@ -451,7 +459,8 @@ public struct MobileUsageSnapshot: Codable, Sendable, Equatable {
             dailyUsageHistory: try dailyUsageHistory.map {
                 SyncedDailyUsageHistory(
                     days: $0.days,
-                    capturedAt: try SyncTimestamp.normalized($0.capturedAt)
+                    capturedAt: try SyncTimestamp.normalized($0.capturedAt),
+                    sourceDay: $0.sourceDay
                 )
             },
             curatedFeed: try curatedFeed.map {
@@ -640,6 +649,13 @@ public struct MobileUsageSnapshot: Codable, Sendable, Equatable {
         var previousDay: String?
         let earliest = SyncDayKey.dayOffset(-SyncedDailyUsageHistory.maximumDays, from: configuration.now)
         let latest = SyncDayKey.dayOffset(1, from: configuration.now)
+        if let sourceDay = dailyUsageHistory.sourceDay {
+            guard SyncDayKey.date(from: sourceDay) != nil,
+                  sourceDay >= earliest,
+                  sourceDay <= latest else {
+                throw SyncValidationError.invalidDailyUsageHistory
+            }
+        }
         for day in dailyUsageHistory.days {
             guard SyncDayKey.date(from: day.day) != nil,
                   day.day >= earliest,

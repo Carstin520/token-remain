@@ -1,4 +1,3 @@
-#if TOKENREMAIN_CLOUD_SYNC
 import Foundation
 import TokenRemainSyncKit
 
@@ -46,6 +45,11 @@ enum MobileSnapshotRedactor {
         _ history: DailyUsageHistory,
         now: Date
     ) -> SyncedDailyUsageHistory {
+        var sourceCalendar = Calendar(identifier: .gregorian)
+        sourceCalendar.locale = Locale(identifier: "en_US_POSIX")
+        sourceCalendar.timeZone = .current
+        let sourceToday = sourceCalendar.startOfDay(for: now)
+
         var calendar = Calendar(identifier: .gregorian)
         calendar.locale = Locale(identifier: "en_US_POSIX")
         // Wire day keys are canonical UTC. The receiver validates against the
@@ -81,8 +85,17 @@ enum MobileSnapshotRedactor {
                 byDay.values.sorted { $0.day < $1.day }
                     .suffix(SyncedDailyUsageHistory.maximumDays)
             ),
-            capturedAt: history.capturedAt
+            capturedAt: history.capturedAt,
+            sourceDay: wireDayKey(for: sourceToday, calendar: calendar)
         )
+    }
+
+    private static func wireDayKey(for date: Date, calendar: Calendar) -> String? {
+        let components = calendar.dateComponents([.year, .month, .day], from: date)
+        guard let year = components.year,
+              let month = components.month,
+              let day = components.day else { return nil }
+        return String(format: "%04d-%02d-%02d", year, month, day)
     }
 
     private static func boundedTokens(_ value: Int64) -> Int64 {
@@ -207,4 +220,3 @@ enum MobileSnapshotRedactor {
         }
     }
 }
-#endif

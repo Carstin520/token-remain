@@ -1,0 +1,154 @@
+/* Palette = macOS DashboardTheme: neutral charcoal surfaces, violet product
+   accent, cyan information, conventional green/amber/red status, muted
+   provider identity hues. Shared by the dashboard window and the tray popover
+   so both surfaces stay one design system. */
+:root {
+  font-family: "Segoe UI Variable", "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", system-ui, sans-serif;
+  color: #f2f3f5;
+  /* The stored 0...1 background-depth preference maps to this 0...25%
+     interpolation amount, matching DashboardSurfaceLightening on macOS. */
+  --background-depth: 0%;
+  --background-depth-target: #8a9099;
+  background: var(--bg);
+  font-synthesis: none;
+  --bg: color-mix(in srgb, #0d0e10, var(--background-depth-target) var(--background-depth));
+  --surface: color-mix(in srgb, #121316, var(--background-depth-target) var(--background-depth));
+  --surface-2: color-mix(in srgb, #1a1b1f, var(--background-depth-target) var(--background-depth));
+  --surface-3: color-mix(in srgb, #23252a, var(--background-depth-target) var(--background-depth));
+  --border: color-mix(in srgb, #32353c, var(--background-depth-target) var(--background-depth));
+  --track: color-mix(in srgb, #272a30, var(--background-depth-target) var(--background-depth));
+  --text: #f2f3f5;
+  --secondary: #a7abb4;
+  --muted: #6f7580;
+  --violet: #9b8afb;
+  --violet-dim: #6357b8;
+  --cyan: #3ecfe0;
+  --success: #57d19a;
+  --warning: #ffb554;
+  --danger: #ff6b6b;
+  --claude: #bf8471;
+  --codex: #6687c5;
+  /* CJK glyphs must fall back to YaHei here: Windows resolves the bare
+     `monospace` generic to SimSun (a serif) for Chinese text. */
+  --mono: "Cascadia Mono", Consolas, "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", monospace;
+
+  /* Liquid Glass — the macOS LiquidGlassSupport palette. Held as channel
+     triples because every glass surface mixes its own alpha from the popover's
+     opacity preference; the concrete values are set per surface by
+     src/glass/glass-model.js. Semantic red/amber/green above are never mixed
+     into glass: status keeps its glyph, its label and its own conventional hue. */
+  --glass-canvas-rgb: from var(--bg) r g b;
+  --glass-surface-rgb: from var(--surface) r g b;
+  /* The other two steps of the charcoal ladder as channel triples, so Frosted
+     can paint the app's own --surface-2/--surface-3 hierarchy translucently
+     instead of replacing it with a white veil. */
+  --glass-surface-2-rgb: from var(--surface-2) r g b;
+  --glass-surface-3-rgb: from var(--surface-3) r g b;
+  --glass-rim-rgb: 255 255 255;
+  --glass-radius: 13px;
+  --glass-scrim-opacity: .62;
+  --glass-tint-opacity: .62;
+  --glass-rim-opacity: .13;
+  --glass-lift-opacity: .05;
+  /* Frosted's diffusion tier — the Windows stand-in for .regularMaterial. Fixed
+     by the style, never by the opacity slider: a charcoal veil over a
+     shell-level blur, thick enough that the desktop is unreadable at every
+     slider position. Whether the tier is mounted at all is a branch rather than
+     a value, so it is not a token: the 200ms cross-fade animates the layer's own
+     opacity from rules keyed on [data-glass-style]. The tint and the blur radius
+     below stay constant, so no filter is ever animated. */
+  --glass-diffusion-tint: .52;
+  --glass-diffusion-filter: blur(24px) saturate(108%);
+  /* Per-style surface ladders. Frosted spends ink (--glass-*-tint over the
+     charcoal triples above); Clear spends light (--glass-*-fill over white) and
+     leaves its cards on the faint dark tint so the desktop stays readable
+     through them. Only one of the two pairs is ever non-zero. Defaults mirror
+     the Frosted values in src/glass/glass-model.js; every GlassSurface
+     republishes the whole set for its own glass style. */
+  --glass-shell-stroke: .2;
+  --glass-control-tint: .72;
+  --glass-control-hover-tint: .8;
+  --glass-control-fill: 0;
+  --glass-control-hover-fill: 0;
+  /* Frosted's flat card edge, on the macOS borderOpacity curve
+     (0.85 − 0.40 × slider) converted to white. Clear holds a constant .14 and
+     wears the gradient ring instead. */
+  --glass-card-stroke: .169;
+  --glass-specular-opacity: .04;
+  /* Second blur ladder + gradient rim. Only the acrylic popover reads these:
+     a `transparent: true` Windows window paints every filtered element's
+     backdrop root opaque black, so the fallback surfaces stay plain paint.
+     Defaults mirror the Frosted values in src/glass/glass-model.js — where the
+     cards do not re-blur at all, because the diffusion tier behind them has
+     already done it, and only the flyout keeps a blur of its own. */
+  --glass-card-backdrop: none;
+  --glass-control-backdrop: none;
+  --glass-flyout-backdrop: blur(28px) saturate(118%);
+  --glass-flyout-scrim: .85;
+  /* Clear's edge, zero on Frosted: the two styles differ in edge treatment and
+     not only in density. */
+  --glass-rim-gradient-start: 0;
+  --glass-rim-gradient-end: 0;
+  --glass-inner-highlight: 0;
+  --glass-surface-shadow: 0 8px 24px rgb(0 0 0 / .25);
+  --glass-material-transition: 200ms;
+  --glass-foreground-transition: 160ms;
+
+  /* Adaptive foreground — the macOS `usageDockAdaptiveForeground` palette. A
+     translucent surface can cross a bright desktop, so the hierarchy is raised
+     as a whole rather than per component: a surface that needs it swaps these
+     over --text/--secondary/--muted/--border for its own subtree. Semantic
+     red/amber/green are not in the list; status keeps its conventional hue. */
+  --glass-fg-text: #ffffff;
+  --glass-fg-secondary: #edf0f5;
+  --glass-fg-muted: #d2d7e0;
+  /* Separators on glass are light-on-dark rather than a fixed charcoal, which
+     disappears the moment the desktop behind is bright. */
+  --glass-fg-separator: rgb(255 255 255 / .1);
+  --glass-fg-shadow-opacity: 0;
+}
+* { box-sizing: border-box; }
+button, input { font: inherit; }
+button { color: inherit; }
+
+/* Chromium otherwise exposes the classic wide Windows scrollbar, which reads
+   like a foreign light stripe inside this dark desktop surface. */
+* { scrollbar-width: thin; scrollbar-color: rgba(111, 117, 128, .68) transparent; }
+*::-webkit-scrollbar { width: 9px; height: 9px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  min-height: 34px;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: rgba(111, 117, 128, .68);
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover { background-color: rgba(167, 171, 180, .76); }
+*::-webkit-scrollbar-corner { background: transparent; }
+
+/* Segment meter — the Mac SegmentBar block progress. */
+.segment-bar { display: flex; gap: 3px; }
+.segment-bar i { flex: 1; border-radius: 2px; background: var(--track); }
+
+/* Pixel badge — uppercase mono chip; HIGH risk fills red with ink text. */
+.badge { display: inline-flex; align-items: center; padding: 3px 7px; border: 1px solid currentColor; border-radius: 3px; font-family: var(--mono); font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; background: var(--surface-2); white-space: nowrap; }
+.badge.tone-low { color: var(--success); border-color: rgba(87, 209, 154, .55); }
+.badge.tone-medium { color: var(--warning); border-color: rgba(255, 181, 84, .55); }
+.badge.tone-high { color: var(--danger); border-color: rgba(255, 107, 107, .55); }
+.badge.tone-high.filled { color: #0d0e10; background: var(--danger); border-color: transparent; }
+.badge.tone-unknown { color: var(--secondary); border-color: rgba(167, 171, 180, .45); }
+.badge.tone-codex { color: var(--codex); border-color: rgba(102, 135, 197, .55); }
+.badge.tone-cyan { color: var(--cyan); border-color: rgba(62, 207, 224, .55); }
+.badge.tone-plan { color: var(--secondary); border-color: rgba(167, 171, 180, .45); }
+
+.spinning { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .spinning { animation: none; }
+}
+:root[data-reduced-motion="true"] .spinning { animation: none; }
+@media (forced-colors: active) {
+  .segment-bar i { border: 1px solid CanvasText; forced-color-adjust: none; }
+  .badge { border-color: currentColor; }
+}

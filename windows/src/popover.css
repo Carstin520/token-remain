@@ -1,0 +1,811 @@
+@import "./theme.css";
+
+/* Tray popover — the Mac menu-bar popover's information hierarchy at Windows
+   density. Fixed header and footer, one scroll region between them, so the
+   window can be capped to the current monitor's work area without clipping. */
+*, *::before, *::after { box-sizing: border-box; }
+html, body, #root { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+/* theme.css paints the canvas on :root (0,1,0); a plain `html` selector loses
+   to it and the transparent window gets an opaque square behind its corners. */
+:root, body, #root { background: transparent; }
+
+.popover-root {
+  height: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--glass-radius);
+  background: var(--bg);
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  will-change: opacity;
+}
+.popover-root.is-visible { opacity: 1; pointer-events: auto; }
+.popover-content {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  height: 100%;
+  min-height: 0;
+  transform: translateY(8px) scale(.985);
+  transform-origin: 50% 100%;
+  will-change: transform;
+}
+.popover-root.is-visible .popover-content { transform: translateY(0) scale(1); }
+/* Without acrylic every surface below is already opaque and carries its own
+   fill, from the rules in this file — so the plain backdrop contributes the
+   specular and the rim only, and spends no tint of its own. A second layer of
+   --glass-tint-opacity here would darken exactly the surfaces the palette
+   deliberately lifts (the header's round buttons, the footer chips). With
+   acrylic the plain backdrop is not mounted at all and the token is unread. */
+.popover-root { --glass-plain-tint-opacity: 0; }
+/* The shared corner highlight is tuned for the floating shortcut's 72px coin.
+   Spread across a card that is 376px wide and 60px tall it stops being a
+   highlight and becomes a pale stripe along the top edge, which is exactly what
+   the real-device screenshot shows. The popover keeps the same ingredient at a
+   size and a strength that never resolves as a shape. The layer's inner rim is
+   left alone here: without acrylic it is the only edge the borderless footer
+   chips have. */
+.popover-root .glass-layer[data-glass-backdrop="none"] {
+  background:
+    radial-gradient(
+      148% 132% at 0% 0%,
+      rgb(var(--glass-rim-rgb) / var(--glass-specular-opacity)),
+      rgb(var(--glass-rim-rgb) / 0) 62%
+    ),
+    rgb(var(--glass-surface-rgb) / var(--glass-plain-tint-opacity, var(--glass-tint-opacity)));
+}
+
+/* Windows 11 22H2+ only; every other build keeps the opaque surfaces below.
+   With acrylic there is a system backdrop worth revealing, and the two glass
+   styles become two *materials* over it rather than two densities of one:
+
+   Frosted — the fixed diffusion tier below (a charcoal veil over a shell-level
+   blur), plus the one scrim the opacity slider owns, plus the app's own charcoal
+   ladder made translucent. Cards are dense panes wearing a flat border, and
+   nothing above the shell re-blurs, because the diffusion already has.
+
+   Clear — no material tier at all: DWM's own blur and the same scrim are the
+   whole shell. Cards spend a fraction of the reference on tint so the desktop
+   stays faintly readable through them, and every liquid-glass ingredient — the
+   second blur, the top-lit gradient ring, the inner lip — lives on this side.
+
+   Remapping the three charcoal surface tokens per style converts the whole
+   popover at once, so a chip, a menu row or a badge deep inside a widget lands
+   on its own style's ladder instead of staying an opaque slab on a translucent
+   pane. Everything that can be a value is a value, so switching styles is a
+   pure CSS cross-fade; only the two things that cannot — which ladder
+   --surface-2 reads, and whether the ring exists at all — branch on the
+   attribute. */
+html[data-material="acrylic"] .popover-root {
+  --surface: rgb(var(--glass-surface-rgb) / var(--glass-tint-opacity));
+  --border: rgb(var(--glass-rim-rgb) / var(--glass-card-stroke));
+  --track: rgb(var(--glass-rim-rgb) / .12);
+  /* One light source for the whole popup, declared on the shell so every
+     surface below inherits the same already-resolved gradient. The stops
+     themselves are inline on this element, written by GlassSurface from
+     rimGradientStops() — which returns zero on Frosted, so the ring is drawn
+     only by the Clear-scoped rules further down. */
+  --glass-rim-gradient: linear-gradient(
+    135deg,
+    rgb(var(--glass-rim-rgb) / var(--glass-rim-gradient-start)),
+    rgb(var(--glass-rim-rgb) / var(--glass-rim-gradient-end))
+  );
+  border-color: rgb(var(--glass-rim-rgb) / var(--glass-shell-stroke));
+  background: rgb(var(--glass-canvas-rgb) / var(--glass-scrim-opacity));
+}
+/* Frosted spends ink. --surface-2/-3 are the next two charcoals of the app's own
+   dark ladder, dense enough that a control reads as a solid chip on a solid
+   card — the Windows 10 fallback's hierarchy, seen through glass. */
+html[data-material="acrylic"] .popover-root[data-glass-style="frosted"] {
+  --surface-2: rgb(var(--glass-surface-2-rgb) / var(--glass-control-tint));
+  --surface-3: rgb(var(--glass-surface-3-rgb) / var(--glass-control-hover-tint));
+}
+/* Clear spends light. A control above a faint card has to read as *lighter*, the
+   way Windows itself layers on acrylic; a second dark pane there would just
+   close the window the style exists to keep open. */
+html[data-material="acrylic"] .popover-root[data-glass-style="clear"] {
+  --surface-2: rgb(var(--glass-rim-rgb) / var(--glass-control-fill));
+  --surface-3: rgb(var(--glass-rim-rgb) / var(--glass-control-hover-fill));
+}
+/* The shell must not be a backdrop root, or the whole material collapses.
+   Chromium isolates an element that carries opacity, a filter, a mask — or a
+   `will-change` naming any of them, whatever its current value — and every
+   backdrop-filter inside it then samples only what that element itself painted,
+   with black wherever nothing was. With `will-change: opacity` on the shell,
+   each card blurred the shell's own scrim over nothing and rendered as a black
+   rectangle: the same symptom as the transparent-window defect, from a
+   different cause, and it hides the acrylic completely.
+
+   So under acrylic the shell never carries opacity at all. Show and hide become
+   a visibility swap, and the entrance is left to the content's transform, which
+   is not one of the properties that isolates. Verified in the dev harness: with
+   `will-change: opacity` present the cards are black over the simulated
+   wallpaper, and without it they blur it. */
+html[data-material="acrylic"] .popover-root {
+  opacity: 1;
+  visibility: hidden;
+  will-change: auto;
+}
+html[data-material="acrylic"] .popover-root.is-visible { visibility: visible; }
+/* With acrylic every surface draws its own stroke off the ladder, so the
+   layer's inner rim becomes a second edge a pixel inside the first — the
+   doubling that made the shell and the cards read as one weight. */
+html[data-material="acrylic"] .popover-root .glass-layer[data-glass-backdrop="none"] {
+  box-shadow: none;
+}
+
+/* Frosted's diffusion tier — the Windows stand-in for the Mac's
+   `.regularMaterial`. It is the shell's own .glass-layer: a *child* of the
+   shell, never the shell itself, which is what keeps it from becoming the
+   backdrop root that every card inside would then blur instead of the desktop.
+
+   Two ingredients, both constants of the style: a charcoal veil at a fixed
+   alpha, and a shell-level blur that makes the desktop genuinely unreadable
+   rather than merely dimmed. The opacity slider moves the scrim underneath and
+   nothing else — that is the whole correction macOS records in
+   UsageDockPopoverAppearance.frostedMaterial, where a slider-driven material
+   left the two styles trading places at the ends of the slider's travel.
+
+   The veil and the scrim are the same canvas colour, so which of the two
+   composites first cannot change the result; what matters is the floor of 0.52
+   that no slider position can take away.
+
+   Scoped to the direct child, so a card's own layer keeps painting the corner
+   sheen from the shared rule above and gains none of this. */
+html[data-material="acrylic"] .popover-root > .glass-layer[data-glass-backdrop="none"] {
+  background:
+    radial-gradient(
+      148% 132% at 0% 0%,
+      rgb(var(--glass-rim-rgb) / var(--glass-specular-opacity)),
+      rgb(var(--glass-rim-rgb) / 0) 62%
+    ),
+    rgb(var(--glass-canvas-rgb) / var(--glass-diffusion-tint));
+  backdrop-filter: var(--glass-diffusion-filter);
+  opacity: 1;
+}
+/* Clear has no material tier at all, so the layer is not merely faded out: once
+   the cross-fade ends it stops being painted, and its blur stops costing a
+   compositing pass in a window that is open all day. `visibility` is the only
+   property that can do that and still take part in a transition — hence the
+   delayed step in the motion block at the foot of this file. It is deliberately
+   not restated as `visible` on the Frosted side: the shell hides itself the same
+   way while the popover is closed, and this layer has to keep inheriting that.
+
+   Whether the tier is mounted is a branch, not a value — the same category as
+   whether the gradient ring exists — so it is keyed on the attribute rather than
+   published as a 0-or-1 token. `mountsDiffusionTier` in glass-model.js is the
+   assertable statement of the same fact. */
+html[data-material="acrylic"] .popover-root[data-glass-style="clear"] > .glass-layer[data-glass-backdrop="none"] {
+  opacity: 0;
+  visibility: hidden;
+}
+
+/* The gradient rim, as a 1px masked ring rather than a border, for two reasons
+   a plain border cannot satisfy: a border cannot hold a gradient at all, and
+   keeping the fill in `background-color` is what lets a hovered control
+   cross-fade as a colour instead of as a whole background image. `inset: -1px`
+   puts the ring on the border box, so a surface keeps the same outer size on
+   both materials and nothing in the layout moves when acrylic appears.
+
+   Clear only. This is the ingredient that reads as liquid glass — bright at the
+   top-left corner, nearly gone at the bottom-right — and Frosted deliberately
+   does without it, keeping the flat pre-redesign edge from --border so the two
+   styles differ in edge treatment and not only in density. */
+html[data-material="acrylic"] .popover-root[data-glass-style="clear"] .popover-card::after,
+html[data-material="acrylic"] .popover-root[data-glass-style="clear"] .menu-pop::after,
+html[data-material="acrylic"] .popover-root[data-glass-style="clear"] .popover-header .icon-button:not(.is-plain)::after,
+html[data-material="acrylic"] .popover-root[data-glass-style="clear"] .popover-footer > button::after,
+html[data-material="acrylic"] .popover-root[data-glass-style="clear"] .popover-footer .menu-wrap > button::after,
+html[data-material="acrylic"] .popover-root[data-glass-style="clear"] .popover-appearance-chips::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  padding: 1px;
+  border-radius: calc(var(--rim-radius, var(--glass-radius)) + 1px);
+  background: var(--glass-rim-gradient);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* Cards. On Clear they are true glass panes: a faint tint over their own blur of
+   whatever the shell's scrim still lets through, an inner lip for the thickness
+   of the pane, the ring above for an edge. That second blur is the whole point
+   there — a card that only tints reads as paint, a card that re-blurs reads as
+   glass sitting on glass.
+
+   On Frosted they are dense charcoal panes and take no blur at all: the
+   diffusion tier behind them has already made the desktop unreadable, and
+   re-blurring a blur buys a compositing pass and nothing else. Their edge is the
+   flat --border, on the macOS borderOpacity curve.
+
+   Both cases are one rule because --glass-card-backdrop and
+   --glass-inner-highlight are already per-style values (`none` and 0 on
+   Frosted), so the style switch cross-fades instead of re-selecting. */
+html[data-material="acrylic"] .popover-card {
+  backdrop-filter: var(--glass-card-backdrop);
+  box-shadow:
+    inset 0 1px 0 rgb(var(--glass-rim-rgb) / var(--glass-inner-highlight)),
+    var(--glass-surface-shadow);
+}
+/* Where the ring is the edge, the flat border stands down; where there is no
+   ring, it is the only edge there is. */
+html[data-material="acrylic"] .popover-root[data-glass-style="clear"] .popover-card,
+html[data-material="acrylic"] .popover-root[data-glass-style="clear"] .menu-pop,
+html[data-material="acrylic"] .popover-root[data-glass-style="clear"] .popover-header .icon-button:not(.is-plain),
+html[data-material="acrylic"] .popover-root[data-glass-style="clear"] .popover-appearance-chips {
+  border-color: transparent;
+}
+
+/* Controls follow their card's style, through --surface-2: a denser charcoal
+   chip on Frosted, a lighter white veil on Clear, so hover stays a single
+   background-color swap either way. They blur one step less than a card where
+   they blur at all — they are small, and a card-weight blur under a 6px chip
+   only smears the card it sits on. The refresh coin is the only header circle
+   that wears glass; "add widget" stays a bare glyph, so the header has exactly
+   one circle to look at. */
+html[data-material="acrylic"] .popover-header .icon-button:not(.is-plain),
+html[data-material="acrylic"] .popover-footer > button,
+html[data-material="acrylic"] .popover-footer .menu-wrap > button,
+html[data-material="acrylic"] .popover-appearance-chips {
+  position: relative;
+  background-color: var(--surface-2);
+  backdrop-filter: var(--glass-control-backdrop);
+  box-shadow: inset 0 1px 0 rgb(var(--glass-rim-rgb) / var(--glass-inner-highlight));
+}
+/* The segmented Frosted/Clear switch is one surface, not two: the group wears
+   the control veil and the chips inside it stay bare until one is selected. */
+html[data-material="acrylic"] .popover-appearance-chips { --rim-radius: var(--glass-control-radius); }
+html[data-material="acrylic"] .popover-appearance-chips button {
+  background-color: transparent;
+  backdrop-filter: none;
+  box-shadow: none;
+}
+/* One more step for a hovered control. Quit is excluded because its hover is a
+   semantic red the ladder must not paint over. */
+html[data-material="acrylic"] .popover-footer > button:not(.footer-quit):hover,
+html[data-material="acrylic"] .popover-footer .menu-wrap > button:hover,
+html[data-material="acrylic"] .popover-header .icon-button:not(.is-plain):hover {
+  background-color: var(--surface-3);
+}
+
+/* Flyouts are the one exception to the per-style trade. A menu or the appearance
+   panel covers content the user is still reading, so it has to occlude rather
+   than reveal: its style's control surface goes over a high scrim of its own,
+   and the hardest blur in the ladder goes under both — the one blur Frosted
+   keeps, since here the diffusion tier is behind the flyout's own backdrop
+   rather than in front of it. Blur alone would not do it (blurred text is still
+   legible as text), so the scrim is what guarantees nothing bleeds through, at
+   Frosted and at Clear alike. Listed after the card rule because the appearance
+   panel is also a .popover-card and has to win. */
+html[data-material="acrylic"] .menu-pop,
+html[data-material="acrylic"] .popover-appearance {
+  background-color: rgb(var(--glass-canvas-rgb) / var(--glass-flyout-scrim));
+  background-image: linear-gradient(var(--surface-2), var(--surface-2));
+  backdrop-filter: var(--glass-flyout-backdrop);
+  box-shadow:
+    inset 0 1px 0 rgb(var(--glass-rim-rgb) / var(--glass-inner-highlight)),
+    0 10px 28px rgb(0 0 0 / .45);
+}
+html[data-material="acrylic"] .menu-pop { --rim-radius: var(--glass-card-radius); }
+
+/* Performance guardrail. backdrop-filter is never animated: every frame of a
+   changing blur radius is a full re-composite of everything behind the surface,
+   and eight cards would each pay it. Both styles' blur radii are compile-time
+   constants, and the Frosted/Clear change is carried by fills and edges, which
+   are colours — so the transition list narrows to the four properties Chromium
+   can hand to the compositor. The switch does step the blur on and off (Frosted
+   cards do not re-blur at all), and that step is deliberately instantaneous
+   while the colours cross-fade under it. */
+html[data-material="acrylic"] .popover-card,
+html[data-material="acrylic"] .menu-pop,
+html[data-material="acrylic"] .popover-appearance,
+html[data-material="acrylic"] .popover-footer button,
+html[data-material="acrylic"] .icon-button,
+html[data-material="acrylic"] .popover-appearance-chips {
+  transition-property: opacity, transform, background-color, border-color;
+}
+
+.popover-loading { display: grid; height: 100%; place-items: center; color: var(--muted); font-size: 12px; }
+
+/* Icons are boxes, never glyphs. An inline SVG is placed by the surrounding
+   font's baseline, and the two families Windows resolves for this app — Segoe
+   UI Variable and Microsoft YaHei UI — carry different ascents and descents, so
+   the same mark lands high beside Latin text and low beside Chinese. Every icon
+   in this popup is therefore a block inside a fixed, flex- or grid-centred box
+   with line-height:1, which takes the font out of the decision entirely. Any
+   mark that used to be typed as a character — the menu checkmark, the footer
+   separator — is drawn instead, for the same reason. */
+.popover-root svg,
+.popover-root img.widget-glyph { display: block; }
+.popover-root .icon-button,
+.popover-root .glass-label,
+.popover-root .menu-item-mark,
+.popover-root .footer-separator,
+.popover-root .widget-chevron,
+.popover-root .widget-glyph,
+.popover-root .risk-mark,
+.popover-root .feed-open-arrow { line-height: 1; }
+
+/* Header — the Mac's two-line identity block, then the add and refresh
+   controls. There is no close button in the resting layout: Escape and
+   click-outside dismiss the window, and the keyboard-only fallback below
+   stays out of the way until it takes focus. */
+.popover-header { display: flex; align-items: center; gap: 10px; padding: 12px 12px 10px; border-bottom: 1px solid var(--border); }
+.popover-identity { display: grid; flex: 1; gap: 2px; min-width: 0; }
+/* The Mac wordmark is monospaced and monochrome here: the popover already
+   carries the product's identity, so the violet is spent on nothing else. */
+.popover-brand { overflow: hidden; color: var(--text); font-family: var(--mono); font-size: 18px; font-weight: 700; letter-spacing: -.3px; line-height: 1.12; text-overflow: ellipsis; white-space: nowrap; }
+.popover-updated { min-width: 0; overflow: hidden; color: var(--muted); font-size: 10px; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
+.icon-button { display: grid; flex: 0 0 28px; width: 28px; height: 28px; place-items: center; padding: 0; border: 1px solid var(--border); border-radius: 50%; background: var(--surface-2); color: inherit; cursor: pointer; }
+.icon-button:hover { border-color: var(--violet-dim); color: var(--violet); }
+.icon-button:disabled { opacity: .55; cursor: default; }
+.icon-button svg { width: 13px; height: 13px; }
+/* "Add widget" is a bare glyph on the Mac; only refresh wears the glass coin,
+   so the header has exactly one circle to look at. */
+.icon-button.is-plain { border-color: transparent; background: transparent; color: var(--secondary); }
+.icon-button.is-plain:hover { border-color: transparent; background: transparent; color: var(--text); }
+.icon-button.is-plain svg { width: 16px; height: 16px; }
+/* Reachable by Tab, invisible until it is: a focusable control the user cannot
+   see would be a worse trade than the missing circle. */
+.popover-close-keyboard {
+  position: absolute;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+}
+.popover-close-keyboard:focus-visible {
+  position: static;
+  display: inline-flex;
+  clip: auto;
+  gap: 5px;
+  align-items: center;
+  width: auto;
+  height: auto;
+  margin: 0;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--glass-control-radius);
+  background: var(--surface-2);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 10.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.popover-close-keyboard svg { width: 11px; height: 11px; }
+
+/* Scroll region */
+.popover-scroll { min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 10px 12px 12px; scrollbar-width: thin; scrollbar-color: var(--surface-3) transparent; }
+.popover-scroll::-webkit-scrollbar { width: 8px; }
+.popover-scroll::-webkit-scrollbar-thumb { border: 2px solid transparent; border-radius: var(--glass-control-radius); background: var(--surface-3); background-clip: content-box; }
+.popover-sections { display: grid; align-content: start; gap: 8px; min-width: 0; }
+
+.popover-card { min-width: 0; padding: 11px 12px; border: 1px solid var(--border); border-radius: var(--glass-radius); background: var(--surface); }
+.popover-root .badge { border-radius: var(--glass-control-radius); }
+.popover-card-head { display: flex; align-items: center; gap: 7px; margin-bottom: 8px; }
+.popover-card-head h2 { flex: 1; min-width: 0; margin: 0; overflow: hidden; font-size: 11.5px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.popover-card-head strong { font-family: var(--mono); font-size: 12.5px; font-weight: 700; white-space: nowrap; }
+.popover-empty { margin: 0; color: var(--secondary); font-size: 11px; line-height: 1.5; }
+.popover-empty strong { display: block; margin-bottom: 3px; color: var(--text); font-size: 11.5px; font-weight: 600; }
+
+/* Risk strip — one badge beside a two-line block, nothing else. The badge is
+   the only coloured element and it always spells out its own level, so the
+   detail line below stays neutral instead of restating the status in red. */
+.popover-risk { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; }
+.popover-risk .badge { flex: 0 0 auto; margin-top: 1px; }
+.popover-risk-text { display: grid; gap: 2px; min-width: 0; }
+.popover-risk-text strong { min-width: 0; overflow: hidden; font-size: 13px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.popover-risk-detail { min-width: 0; overflow: hidden; color: var(--secondary); font-family: var(--mono); font-size: 10px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Reorderable widget chrome — every widget keeps the popover-card surface and
+   gains the Mac's header row: identity glyph, title, expand chevron, then the
+   trailing summary and the keep-expanded pin. */
+.popover-widget { display: grid; gap: 8px; }
+.widget-head { position: relative; display: flex; align-items: center; gap: 7px; min-width: 0; min-height: 22px; }
+.widget-title-row { display: flex; flex: 0 1 auto; align-items: center; gap: 8px; min-width: 0; padding: 0; border: 0; background: transparent; color: inherit; text-align: left; }
+.widget-title-row.is-toggle { cursor: pointer; }
+.widget-title { min-width: 0; margin: 0; overflow: hidden; font-size: 14px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.widget-glyph { flex: 0 0 20px; width: 20px; height: 20px; border-radius: 5px; }
+svg.widget-glyph { color: var(--secondary); }
+.widget-chevron { flex: 0 0 12px; width: 12px; height: 12px; color: var(--muted); }
+.widget-chevron.is-open { transform: rotate(90deg); }
+.widget-title-row.is-toggle:hover .widget-chevron { color: var(--text); }
+/* Trailing summary slots: the local-usage amount and the feed's item count. */
+.widget-amount { flex: 0 0 auto; margin-left: auto; font-family: var(--mono); font-size: 15px; font-weight: 700; white-space: nowrap; }
+.widget-count { flex: 0 0 auto; margin-left: auto; color: var(--secondary); font-size: 10px; font-weight: 600; white-space: nowrap; }
+.widget-count.is-cached { color: var(--warning); }
+.widget-controls { display: flex; flex: 0 0 auto; align-items: center; gap: 2px; margin-left: auto; }
+.widget-amount + .widget-controls, .widget-count + .widget-controls, .service-status-badge + .widget-controls { margin-left: 0; }
+/* Local Usage reaches its actions by right-click only, so its menu keeps an
+   anchor but no column: the wrap leaves the flex row entirely and the trigger
+   collapses to nothing, which puts the day's cost flush against the card's
+   content edge — the same trailing edge the share column and the spend rows
+   below already line up on. The flyout still hangs from `right: 0` here. */
+.widget-controls.is-anchor-only { position: absolute; top: 0; right: 0; margin: 0; }
+.widget-controls.is-anchor-only .widget-menu-button.is-anchor {
+  position: absolute;
+  top: 0;
+  right: 0;
+  flex: 0 0 0;
+  width: 0;
+  height: 0;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+.widget-controls .icon-button { flex: 0 0 20px; width: 20px; height: 22px; border-color: transparent; border-radius: var(--glass-control-radius); background: transparent; color: var(--muted); }
+.widget-controls .icon-button:hover { background: var(--surface-3); color: var(--text); }
+.widget-controls .icon-button svg { width: 12px; height: 12px; }
+.widget-pin-button[aria-pressed="true"] { color: var(--text); }
+/* The Mac reaches these actions by right-click alone, so the trigger rests
+   invisible; hover, keyboard focus, and an open menu all bring it back. */
+.widget-menu-button { opacity: 0; pointer-events: none; }
+.popover-widget:hover .widget-menu-button:not(.is-anchor),
+.popover-widget:focus-within .widget-menu-button:not(.is-anchor),
+.widget-menu-button[aria-expanded="true"]:not(.is-anchor) { opacity: 1; pointer-events: auto; }
+.copied-chip { padding: 2px 7px; border: 1px solid rgba(120, 220, 160, .4); border-radius: var(--glass-control-radius); color: #8fdcb0; background: rgba(52, 120, 82, .22); font-size: 9.5px; font-weight: 600; white-space: nowrap; }
+
+/* Anchored menus (widget overflow + the header's show-hidden dropdown).
+   A flyout can never be allowed outside the shell: the popup window is
+   content-sized, so anything that lands past its bounds is simply clipped away
+   by the window itself. Every menu is therefore capped to the viewport — which
+   here *is* the shell — and scrolls internally rather than overflowing. The
+   window also grows to fit an open flyout; see measure() in popover.jsx. */
+.menu-wrap { position: relative; display: inline-flex; }
+.menu-pop {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 4px);
+  right: 0;
+  display: grid;
+  gap: 1px;
+  min-width: 148px;
+  max-width: calc(100vw - 16px);
+  max-height: min(300px, calc(100vh - 72px));
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--glass-card-radius);
+  background: var(--surface-2);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, .45);
+  overscroll-behavior: contain;
+}
+.menu-pop.menu-up { top: auto; bottom: calc(100% + 4px); }
+/* Fixed leading column for the checkmark, present on every row of a menu that
+   has any checkable item, so labels line up whether or not they are checked.
+   line-height:1 with flex centring is deliberate: the row's height is 28px of
+   box, and letting the glyph ride the font's ascent is exactly how Segoe UI and
+   Microsoft YaHei end up disagreeing about where the centre of a row is. */
+.menu-item { display: flex; align-items: center; gap: 7px; min-height: 28px; padding: 5px 9px; border: 0; border-radius: var(--glass-control-radius); background: transparent; color: var(--text); cursor: pointer; font-size: 11.5px; line-height: 1; text-align: left; white-space: nowrap; }
+.menu-item:hover:not(:disabled), .menu-item:focus-visible { background: var(--surface-3); }
+.menu-item:disabled { color: var(--muted); cursor: default; }
+/* The row is line-height:1 so the mark box centres on the box and not on the
+   text; the label takes its leading back, because an ellipsised span at
+   line-height:1 clips its own descenders. */
+.menu-item-label { min-width: 0; overflow: hidden; line-height: 1.4; text-overflow: ellipsis; }
+.menu-item-mark { display: flex; flex: 0 0 13px; align-items: center; justify-content: center; width: 13px; height: 13px; }
+.menu-item-mark svg { width: 13px; height: 13px; }
+
+/* Reorderable widget stack — the popover's single-column DirectReorderGrid.
+   Slots keep the section gap; the dragged card lifts subtly above the rest. */
+.popover-reorder { display: grid; align-content: start; gap: 8px; min-width: 0; }
+.popover-reorder .sortable-card { min-width: 0; border-radius: var(--glass-card-radius); cursor: grab; touch-action: manipulation; }
+.popover-reorder .sortable-card.is-dragging {
+  position: relative;
+  z-index: 40;
+  outline: 1px solid var(--violet-dim);
+  outline-offset: 2px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .4);
+  cursor: grabbing;
+  touch-action: none;
+  user-select: none;
+  will-change: transform;
+}
+.popover-reorder .sortable-card:focus-visible { outline: 2px solid rgba(155, 138, 251, .85); outline-offset: 2px; }
+.popover-reorder[data-reorder-active="true"] { cursor: grabbing; }
+
+.sr-only { position: absolute; overflow: hidden; clip: rect(0 0 0 0); width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; white-space: nowrap; }
+
+/* Provider quota widgets */
+.provider-mark-fallback { display: grid; place-items: center; border: 1px solid var(--border); color: var(--violet); background: var(--surface-2); font-family: var(--mono); font-size: 8px; font-weight: 700; }
+.service-status-badge { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 3px; max-width: 92px; padding: 3px 5px; border: 1px solid currentColor; border-radius: var(--glass-control-radius); font-size: 8px; font-weight: 650; line-height: 1; white-space: nowrap; }
+.service-status-badge svg { flex: 0 0 9px; width: 9px; height: 9px; }
+.service-status-badge span { overflow: hidden; text-overflow: ellipsis; }
+.service-status-badge.tone-minor { color: var(--warning); background: rgba(255, 181, 84, .11); }
+.service-status-badge.tone-major, .service-status-badge.tone-critical { color: var(--danger); background: rgba(255, 107, 107, .11); }
+.risk-mark { flex: 0 0 12px; width: 12px; height: 12px; }
+.risk-mark.tone-medium { color: var(--warning); }
+.risk-mark.tone-high { color: var(--danger); }
+
+/* One quota window: name opposite the remaining share, the bar, the reset.
+   The three lines belong together, so they keep a tighter rhythm than the gap
+   between the card's own blocks. */
+.quota-window { display: grid; gap: 6px; min-width: 0; }
+.quota-window-row { display: flex; align-items: baseline; gap: 7px; min-width: 0; }
+.quota-window-title { min-width: 0; overflow: hidden; color: var(--secondary); font-size: 12.5px; text-overflow: ellipsis; white-space: nowrap; }
+.quota-window-row .risk-mark { align-self: center; margin-left: auto; }
+.quota-window-remaining { margin-left: auto; font-family: var(--mono); font-size: 14px; font-weight: 700; white-space: nowrap; }
+.quota-window-row .risk-mark + .quota-window-remaining { margin-left: 0; }
+.quota-window-reset { display: flex; align-items: center; gap: 5px; min-width: 0; color: var(--muted); font-family: var(--mono); font-size: 10px; }
+.quota-window-reset svg { flex: 0 0 10px; width: 10px; height: 10px; }
+.quota-window-reset span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.quota-window-reset.tone-medium { color: var(--warning); }
+.quota-window-reset.tone-high { color: var(--danger); }
+
+/* Expanded per-window list */
+.quota-windows { display: grid; gap: 9px; margin-top: 1px; padding-top: 9px; border-top: 1px solid var(--border); }
+.quota-captured { display: flex; align-items: center; gap: 5px; color: var(--muted); font-family: var(--mono); font-size: 9.5px; }
+.quota-captured svg { flex: 0 0 10px; width: 10px; height: 10px; }
+/* The Mac's 10-minute stale cue: the warning triangle carries the meaning, the
+   colour only reinforces it. */
+.quota-captured.is-stale { color: var(--warning); }
+.popover-quota-notice { display: flex; align-items: center; gap: 5px; color: var(--warning); font-size: 10.5px; }
+.popover-quota-notice svg { flex: 0 0 11px; width: 11px; height: 11px; }
+.popover-quota-notice span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Today's local usage */
+/* The Mac draws its 52px ring inset by half the 8px stroke, so what is painted
+   is a 50px annulus with a 34px hole — and the legend reads against the painted
+   edge, not the frame. Matching the painted figure (and taking the stroke one
+   point thicker, which is what keeps a 50px donut from looking like a hoop)
+   puts the legend the same distance from the ring as it sits on the Mac. */
+.popover-usage-composition { display: grid; grid-template-columns: 50px minmax(0, 1fr); align-items: center; gap: 12px; }
+.popover-usage-ring { --ring-hole: 16px; position: relative; display: grid; width: 50px; height: 50px; place-items: center; border-radius: 50%; cursor: default; forced-color-adjust: none; }
+/* A real annulus, not a disc wearing a smaller disc. The conic gradient gets
+   its own layer and a radial mask cuts the hole clean out of it, so the centre
+   *is* the card — no fill of its own to match, and only one edge in the whole
+   figure. The painted centre it replaces could never match the veil behind it
+   under acrylic (a translucent well tints toward whatever segment it covers),
+   and its rim plus the ring's read as two concentric seams. --ring-hole is the
+   25px outer radius less the 9px stroke that usageRingSegmentAtPoint hit-tests
+   against; the half-pixel before the opaque stop is the mask's only feather. */
+.popover-usage-ring::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--ring-fill, conic-gradient(var(--track) 0% 100%));
+  -webkit-mask: radial-gradient(circle closest-side, transparent calc(var(--ring-hole) - .5px), #000 var(--ring-hole));
+  mask: radial-gradient(circle closest-side, transparent calc(var(--ring-hole) - .5px), #000 var(--ring-hole));
+}
+/* The hovered provider's cost and tokens, sized to the 18px hole radius: two
+   mono lines inside the cut-out, never a plate behind them. */
+.popover-usage-ring-center { position: relative; display: grid; width: 32px; height: 32px; place-content: center; text-align: center; }
+.popover-usage-ring-center strong { max-width: 32px; overflow: hidden; font-family: var(--mono); font-size: 8.5px; font-weight: 700; letter-spacing: -.3px; line-height: 1.1; text-overflow: ellipsis; white-space: nowrap; }
+.popover-usage-ring-center small { max-width: 32px; overflow: hidden; margin-top: 1px; color: var(--muted); font-family: var(--mono); font-size: 7.5px; letter-spacing: -.3px; line-height: 1.1; text-overflow: ellipsis; white-space: nowrap; }
+.popover-usage-rows { display: grid; gap: 2px; }
+/* The pill is the row's only hover paint, and the row already carries its
+   padding and min-height at rest, so highlighting shifts nothing. */
+.popover-usage-row { display: grid; grid-template-columns: 7px minmax(0, 1fr) auto 39px; align-items: center; gap: 6px; min-width: 0; min-height: 22px; padding: 0 7px; border-radius: var(--glass-control-radius); }
+.popover-usage-row.is-highlighted { background: var(--surface-2); }
+.popover-usage-row i { width: 7px; height: 7px; border-radius: 50%; }
+.popover-usage-row span { overflow: hidden; font-size: 11px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.popover-usage-row em { color: var(--secondary); font-family: var(--mono); font-size: 10px; font-style: normal; }
+.popover-usage-row b { font-family: var(--mono); font-size: 11px; font-weight: 600; text-align: right; }
+.popover-usage-row.is-highlighted b { color: var(--provider-color); }
+.popover-spend { display: grid; gap: 4px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+.popover-spend-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; min-width: 0; }
+.popover-spend-row span { flex: 0 0 auto; color: var(--secondary); font-size: 11px; font-weight: 500; }
+.popover-spend-row strong { overflow: hidden; font-family: var(--mono); font-size: 11px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.popover-spend-row.is-note span { flex: 1; font-size: 9.5px; line-height: 1.4; }
+.popover-spend-trailing { display: inline-flex; min-width: 0; align-items: baseline; justify-content: flex-end; gap: 7px; }
+.popover-spend-trailing button { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 3px; padding: 0; border: 0; color: var(--cyan); background: transparent; cursor: pointer; font-size: 9.5px; font-weight: 600; }
+.popover-spend-trailing button:hover { color: var(--text); }
+.popover-spend-trailing button svg { width: 9px; height: 9px; }
+.popover-trend-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: end; gap: 8px; margin-top: 6px; }
+.popover-trend-row > span { color: var(--secondary); font-size: 11px; font-weight: 500; }
+/* Bars normalise to the window peak; the newest day is the solid one. */
+.popover-trend { display: flex; align-items: flex-end; justify-self: end; gap: 2px; width: 100%; max-width: 170px; height: 22px; }
+.popover-trend i { flex: 1; min-width: 2px; border-radius: 1.5px 1.5px 0 0; background: var(--secondary); opacity: .55; }
+.popover-trend i.is-latest { opacity: 1; }
+/* A day with no recorded usage is a real zero, drawn as a baseline tick so it
+   never reads as a short bar. */
+.popover-trend i.is-zero { height: 2px; border-radius: 1px; opacity: .3; }
+
+/* AI Feed — the Mac's flat list: no sub-card behind a story, a hairline
+   between rows, and one line of headline until the card is expanded. */
+.popover-feed-widget { gap: 10px; }
+.popover-feed-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; margin-top: -2px; }
+.popover-feed-head > span { min-width: 0; overflow: hidden; color: var(--secondary); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.popover-feed { display: grid; }
+.popover-feed-row { display: flex; align-items: flex-start; gap: 9px; width: 100%; padding: 7px 0; border: 0; background: transparent; color: inherit; text-align: left; cursor: pointer; }
+.popover-feed-row + .popover-feed-row { border-top: 1px solid var(--border); }
+.popover-feed-row .feed-dot { flex: 0 0 6px; width: 6px; height: 6px; margin-top: 4px; border-radius: 50%; }
+.popover-feed-text { display: grid; gap: 3px; min-width: 0; }
+.popover-feed-meta { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+/* The meta line stays one row: a long account name gives up width first. */
+.popover-feed-meta b { flex: 0 1 auto; overflow: hidden; font-size: 10px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.popover-feed-meta time { flex: 0 0 auto; color: var(--muted); font-family: var(--mono); font-size: 9px; white-space: nowrap; }
+.popover-feed-title { overflow: hidden; color: var(--secondary); font-size: 11px; font-weight: 500; line-height: 1.4; text-overflow: ellipsis; white-space: nowrap; }
+/* Expanded feed rows drop the one-line clamp and show the whole story text. */
+.popover-feed-title.is-expanded { overflow: visible; white-space: normal; }
+.popover-feed-row .feed-open-arrow { flex: 0 0 11px; width: 11px; height: 11px; margin-top: 3px; margin-left: auto; color: var(--muted); }
+.popover-feed-row:hover .popover-feed-title, .popover-feed-row:hover .feed-open-arrow { color: var(--text); }
+.link-button { flex: 0 0 auto; padding: 0; border: 0; background: transparent; color: var(--secondary); cursor: pointer; font-size: 10px; font-weight: 600; white-space: nowrap; }
+.link-button:hover { color: var(--text); text-decoration: underline; }
+
+/* Popup appearance panel — ported from the Mac PopoverSettingsPanel. Anchored
+   above the footer rather than inside the Settings menu: a slider is not a menu
+   item, and the live preview has to stay visible while it is dragged.
+
+   It is anchored to the footer's own box, not to a trigger, so it spans the
+   shell's width less a gutter and can never reach an edge. The cap is the
+   backstop for the case the window cannot grow any further — the main process
+   clamps the requested height to the monitor's work area — at which point the
+   panel scrolls instead of being cut off. */
+.popover-appearance {
+  position: absolute;
+  z-index: 30;
+  right: 8px;
+  bottom: calc(100% + 6px);
+  left: 8px;
+  display: grid;
+  gap: 6px;
+  max-height: calc(100vh - 84px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, .45);
+}
+.popover-appearance .popover-card-head { margin-bottom: 2px; }
+.popover-appearance .popover-card-head h2 { font-size: 12px; }
+.popover-appearance .icon-button { flex: 0 0 22px; width: 22px; height: 22px; border-color: transparent; background: transparent; color: var(--muted); }
+.popover-appearance .icon-button:hover { border-color: var(--border); background: var(--surface-2); color: var(--text); }
+.popover-appearance-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.popover-appearance-label { flex: 1; min-width: 0; overflow: hidden; font-size: 11px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.popover-appearance-readout { flex: 0 0 auto; font-family: var(--mono); font-size: 11px; font-weight: 700; }
+.popover-appearance-chips { display: inline-flex; flex: 0 0 auto; gap: 2px; padding: 2px; border: 1px solid var(--border); border-radius: var(--glass-control-radius); background: var(--surface-2); }
+.popover-appearance-chips button { padding: 3px 8px; border: 0; border-radius: var(--glass-control-radius); background: transparent; color: var(--secondary); cursor: pointer; font-size: 10.5px; font-weight: 600; white-space: nowrap; }
+.popover-appearance-chips button:hover { color: var(--text); }
+/* Selection is the violet product accent, never a semantic status colour. */
+/* Outranks the acrylic footer-control fill so the selected chip keeps its
+   brand fill on both materials. */
+.popover-footer .popover-appearance-chips button.selected,
+html[data-material="acrylic"] .popover-footer .popover-appearance-chips button.selected { color: #fff; background: var(--violet-dim); box-shadow: none; }
+.popover-appearance-slider { width: 100%; margin: 0; accent-color: var(--violet); }
+.popover-appearance-scale { display: flex; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 9.5px; }
+
+/* Footer — Open Dashboard alone on the left, Settings and Quit paired on the
+   right, exactly as the Mac groups them. */
+.popover-footer { position: relative; display: flex; align-items: center; gap: 2px; padding: 9px 12px 10px; border-top: 1px solid var(--border); }
+.popover-footer button { padding: 5px 10px; border: 0; border-radius: var(--glass-control-radius); background: transparent; cursor: pointer; font-size: 11px; font-weight: 400; }
+.popover-footer button:hover { background: var(--surface-2); }
+.popover-footer .footer-dashboard { color: var(--text); font-size: 12px; font-weight: 600; }
+.popover-footer .footer-secondary { color: var(--secondary); }
+.popover-footer .footer-quit { color: var(--secondary); }
+.popover-footer .footer-quit:hover { color: #e2a09f; background: rgba(255, 107, 107, .1); }
+.popover-footer .footer-spacer { flex: 1; min-width: 8px; }
+/* Drawn rather than typed. A middot is a font glyph, so its position inside the
+   line box is decided by the ascent and descent of whichever family Windows
+   resolved — and Segoe UI and Microsoft YaHei do not agree, which is what left
+   it visibly off-centre between the two chips. */
+.popover-footer .footer-separator { display: flex; flex: 0 0 10px; align-items: center; justify-content: center; width: 10px; height: 10px; }
+.popover-footer .footer-separator::before { content: ""; width: 3px; height: 3px; border-radius: 50%; background: var(--muted); }
+/* The footer's flyouts anchor to the footer itself rather than to their trigger
+   — a static .menu-wrap hands the absolute menu up to .popover-footer — so the
+   Settings menu spans from the shell's left gutter instead of running off the
+   right edge from a trigger that sits near it. It also always opens upward:
+   below the footer is outside the window, where the popup's own bounds clip it
+   away entirely, and that is the defect this replaces. */
+.popover-footer .menu-wrap { position: static; }
+.popover-footer .menu-pop {
+  top: auto;
+  right: auto;
+  bottom: calc(100% + 6px);
+  left: 8px;
+  max-width: calc(100% - 16px);
+}
+/* The Mac's one amber line above the footer. It sits inside the measured
+   footer block so the window grows for it instead of clipping it, and it
+   repeats rather than replaces whatever the affected card already says. */
+.popover-notice { display: flex; align-items: center; gap: 6px; min-width: 0; margin: 0; padding: 7px 12px 0; color: var(--warning); font-size: 11px; }
+.popover-notice svg { flex: 0 0 12px; width: 12px; height: 12px; }
+.popover-notice span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+button:focus-visible, [tabindex]:focus-visible { outline: 2px solid rgba(155, 138, 251, .85); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-reduced-motion="true"]) .popover-root {
+    transition:
+      opacity 130ms ease-in,
+      background var(--glass-material-transition) ease-in-out,
+      border-color var(--glass-material-transition) ease-in-out;
+  }
+  :root:not([data-reduced-motion="true"]) .popover-content {
+    transition: transform 150ms cubic-bezier(.4, 0, 1, 1);
+  }
+  /* The Mac fades the legend highlight in over 0.14s; the pill and the share's
+     identity colour are the only things that move. */
+  :root:not([data-reduced-motion="true"]) .popover-usage-row {
+    transition: background-color 140ms ease-out;
+  }
+  :root:not([data-reduced-motion="true"]) .popover-usage-row b {
+    transition: color 140ms ease-out;
+  }
+  :root:not([data-reduced-motion="true"]) .popover-root.is-visible {
+    transition:
+      opacity 170ms ease-out,
+      background var(--glass-material-transition) ease-in-out,
+      border-color var(--glass-material-transition) ease-in-out;
+  }
+  :root:not([data-reduced-motion="true"]) .popover-root.is-visible .popover-content {
+    transition: transform 190ms cubic-bezier(.2, .8, .2, 1);
+  }
+  :root:not([data-reduced-motion="true"]) .popover-feed-row,
+  :root:not([data-reduced-motion="true"]) .icon-button,
+  :root:not([data-reduced-motion="true"]) .menu-item,
+  :root:not([data-reduced-motion="true"]) .popover-footer button {
+    transition: color .15s ease, background .15s ease, border-color .15s ease;
+  }
+  /* The style cross-fade. Frosted's diffusion tier is faded in and out as a
+     whole rather than being inserted and removed, so switching styles is
+     continuous instead of popping a blur layer into place. Only `opacity` and
+     the veil colour move; the blur radius under them is a constant, which is
+     what keeps this off the never-animate-a-filter list.
+
+     Hiding delays `visibility` by the full duration so the layer stays painted
+     until the fade has finished and then stops costing anything; showing takes
+     it back immediately. Declaring the delay on the Clear rule alone is what
+     makes one transition serve both directions. */
+  html[data-material="acrylic"]:not([data-reduced-motion="true"]) .popover-root > .glass-layer[data-glass-backdrop="none"] {
+    transition:
+      background var(--glass-material-transition) ease-in-out,
+      opacity var(--glass-material-transition) ease-in-out,
+      visibility 0s;
+  }
+  html[data-material="acrylic"]:not([data-reduced-motion="true"]) .popover-root[data-glass-style="clear"] > .glass-layer[data-glass-backdrop="none"] {
+    transition:
+      background var(--glass-material-transition) ease-in-out,
+      opacity var(--glass-material-transition) ease-in-out,
+      visibility 0s linear var(--glass-material-transition);
+  }
+  :root:not([data-reduced-motion="true"]) .widget-chevron { transition: transform .15s ease; }
+  :root:not([data-reduced-motion="true"]) .widget-menu-button { transition: opacity .12s ease, color .15s ease, background .15s ease; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .popover-root { will-change: auto; }
+  .popover-content { transform: none; will-change: auto; }
+}
+:root[data-reduced-motion="true"] .popover-root { will-change: auto; }
+:root[data-reduced-motion="true"] .popover-content { transform: none; will-change: auto; }
+@media (forced-colors: active) {
+  .popover-root { border-color: CanvasText; }
+  .popover-card, .popover-feed-row, .menu-pop { border-color: CanvasText; }
+  /* Forced colours flatten every surface to system colours, at which point the
+     blur and the gradient rim are cost without benefit and the system border is
+     the only edge that means anything. */
+  html[data-material="acrylic"] .popover-card,
+  html[data-material="acrylic"] .menu-pop,
+  html[data-material="acrylic"] .popover-appearance,
+  html[data-material="acrylic"] .popover-footer > button,
+  html[data-material="acrylic"] .popover-footer .menu-wrap > button,
+  html[data-material="acrylic"] .popover-appearance-chips,
+  html[data-material="acrylic"] .popover-header .icon-button:not(.is-plain) {
+    border-color: CanvasText;
+    backdrop-filter: none;
+    box-shadow: none;
+  }
+  html[data-material="acrylic"] .popover-card::after,
+  html[data-material="acrylic"] .menu-pop::after,
+  html[data-material="acrylic"] .popover-header .icon-button:not(.is-plain)::after,
+  html[data-material="acrylic"] .popover-footer > button::after,
+  html[data-material="acrylic"] .popover-footer .menu-wrap > button::after,
+  html[data-material="acrylic"] .popover-appearance-chips::after { display: none; }
+  /* Box-shadow lift disappears under forced colours; a system-coloured
+     outline keeps the dragged card identifiable. */
+  .popover-reorder .sortable-card.is-dragging { outline: 2px solid Highlight; box-shadow: none; }
+  .popover-usage-ring { outline: 1px solid CanvasText; }
+  .popover-usage-row.is-highlighted { outline: 1px solid Highlight; }
+  /* Opacity carries the newest-day emphasis, which forced colours flatten, so
+     fall back to an outline every bar keeps. */
+  .popover-trend i { border: 1px solid CanvasText; opacity: 1; forced-color-adjust: none; }
+}

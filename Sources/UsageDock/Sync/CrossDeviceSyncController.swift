@@ -122,15 +122,15 @@ final class CrossDeviceSyncController: ObservableObject {
         guard storeSubscription == nil else { return }
         usageStore = store
         store.setLowLatencySyncEnabled(isEnabled)
-        latestQuotas = store.quotas
+        latestQuotas = store.localQuotasForDirectSync
         latestHistory = store.history
         updatePreview()
         storeSubscription = store.$quotas
             .dropFirst()
             .receive(on: RunLoop.main)
-            .sink { [weak self] quotas in
-                guard let self else { return }
-                self.latestQuotas = quotas
+            .sink { [weak self, weak store] _ in
+                guard let self, let store else { return }
+                self.latestQuotas = store.localQuotasForDirectSync
                 self.updatePreview()
                 self.scheduleUpload(after: 4)
             }
