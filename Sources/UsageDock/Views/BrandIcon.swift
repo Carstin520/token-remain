@@ -10,6 +10,11 @@ struct BrandIcon: View {
     struct Artwork: Equatable {
         let resourceName: String
         let isTemplate: Bool
+        /// Extra inner padding applied only when rasterizing the menu-bar
+        /// attachment. Zero keeps the vendor canvas. Grok's Lobe mark is a
+        /// diagonal that touches the PNG edges, so it needs room or the 13pt
+        /// status-item glyph sits off the percent baseline.
+        var menuBarPaddingRatio: CGFloat = 0
     }
 
     let provider: ProviderQuota.Provider
@@ -101,6 +106,19 @@ struct BrandIcon: View {
         return image
     }
 
+    /// Rasterizes a status-item glyph whose point size matches the attachment
+    /// bounds. `image(for:size:)` only changes `NSImage.size` on a 640px Lobe
+    /// PNG; `NSTextAttachmentCell` can still key off the pixel buffer and
+    /// draw edge-flush marks (Grok) off the 12pt percent baseline.
+    static func menuBarImage(
+        for provider: ProviderQuota.Provider,
+        size: CGFloat
+    ) -> NSImage {
+        let source = image(for: provider, size: size)
+        let paddingRatio = artwork(for: provider)?.menuBarPaddingRatio ?? 0
+        return rasterizeForMenuBar(source, pointSize: size, paddingRatio: paddingRatio)
+    }
+
     static func artwork(for provider: ProviderQuota.Provider) -> Artwork? {
         switch provider {
         case .claude, .codex:
@@ -108,7 +126,11 @@ struct BrandIcon: View {
         case .cursor:
             return Artwork(resourceName: "cursor", isTemplate: true)
         case .grok:
-            return Artwork(resourceName: "grok", isTemplate: true)
+            return Artwork(
+                resourceName: "grok",
+                isTemplate: true,
+                menuBarPaddingRatio: 0.14
+            )
         case .zai, .zaiTeam:
             return Artwork(resourceName: "zai", isTemplate: true)
         case .copilot:
@@ -191,6 +213,57 @@ struct BrandIcon: View {
                 accessibilityDescription: ProviderQuota.Provider.claude.rawValue
             )
             ?? NSImage(size: NSSize(width: 32, height: 32))
+    }
+
+    /// Draws `source` into a 2× bitmap of `pointSize`. When `paddingRatio` is
+    /// positive, the mark is scaled into a centered inner square so spikes
+    /// that touch the vendor canvas no longer flush against neighboring text.
+    static func rasterizeForMenuBar(
+        _ source: NSImage,
+        pointSize: CGFloat,
+        paddingRatio: CGFloat
+    ) -> NSImage {
+        let scale: CGFloat = 2
+        let pixels = max(1, Int((pointSize * scale).rounded()))
+        guard let rep = NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: pixels,
+            pixelsHigh: pixels,
+            bitsPerSample: 8,
+            samplesPerPixel: 4,
+            hasAlpha: true,
+            isPlanar: false,
+            colorSpaceName: .deviceRGB,
+            bytesPerRow: 0,
+            bitsPerPixel: 0
+        ) else {
+            return source
+        }
+        rep.size = NSSize(width: pointSize, height: pointSize)
+
+        // The bitmap context is sized in points (`rep.size`), not pixels.
+        let clampedPad = min(max(paddingRatio, 0), 0.4)
+        let pad = clampedPad * pointSize
+        let inner = max(1, pointSize - 2 * pad)
+        let dest = NSRect(x: pad, y: pad, width: inner, height: inner)
+
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
+        NSGraphicsContext.current?.imageInterpolation = .high
+        source.draw(
+            in: dest,
+            from: .zero,
+            operation: .sourceOver,
+            fraction: 1,
+            respectFlipped: false,
+            hints: [.interpolation: NSImageInterpolation.high]
+        )
+        NSGraphicsContext.restoreGraphicsState()
+
+        let image = NSImage(size: NSSize(width: pointSize, height: pointSize))
+        image.addRepresentation(rep)
+        image.isTemplate = source.isTemplate
+        return image
     }
 
     private static func fallbackImage(
