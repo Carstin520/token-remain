@@ -521,14 +521,13 @@ final class StatusBarController: NSObject {
         _ provider: ProviderQuota.Provider,
         size: CGFloat
     ) -> NSAttributedString {
-        // `BrandIcon.image` already returns a provider-owned NSImage at the
-        // requested size. Avoid force-casting `NSCopying.copy()` here: an
-        // unexpected image subclass implementation would otherwise terminate
-        // the entire menu-bar process while refreshing its title.
-        let image = BrandIcon.image(for: provider, size: size)
+        // Rasterize at the attachment point size. Passing a 640px Lobe PNG
+        // through NSTextAttachmentCell lets AppKit prefer the pixel buffer
+        // over `image.size`, which shifts edge-flush marks such as Grok.
+        let image = BrandIcon.menuBarImage(for: provider, size: size)
 
         let attachment = NSTextAttachment()
-        attachment.attachmentCell = NSTextAttachmentCell(imageCell: image)
+        attachment.image = image
         attachment.bounds = NSRect(x: 0, y: -2, width: size, height: size)
         return NSAttributedString(attachment: attachment)
     }

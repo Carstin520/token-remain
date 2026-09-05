@@ -5,6 +5,13 @@ Versioning for public releases.
 
 ## Unreleased
 
+### Fixed
+
+- Grok's menu-bar mark no longer sits flush against the remaining-percent
+  text. The Lobe glyph is a diagonal that fills the PNG canvas; the status
+  item now rasterizes a padded 13pt attachment instead of handing the 640px
+  bitmap to `NSTextAttachmentCell`.
+
 ## 1.3.8 — 2026-08-29
 
 ### Added
