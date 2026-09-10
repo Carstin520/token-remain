@@ -5,6 +5,14 @@ Versioning for public releases.
 
 ## Unreleased
 
+### Fixed
+
+- A second Claude account no longer shows "Login not detected" after a
+  successful official sign-in. Claude Code 2.1+ stores that isolated session in
+  a `CLAUDE_CONFIG_DIR`-scoped Keychain item instead of `.credentials.json`;
+  TokenRemain now reads that item (never the shared system credential) and runs
+  `claude auth login` on a PTY so the browser OAuth page opens once.
+
 ## 1.3.8 — 2026-08-29
 
 ### Added

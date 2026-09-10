@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 
 struct ClaudeAccountLoginService: Sendable {
@@ -19,10 +20,7 @@ struct ClaudeAccountLoginService: Sendable {
     }
 
     func login(configurationDirectory: URL) async throws {
-        try await run(
-            arguments: ["auth", "login", "--claudeai"],
-            configurationDirectory: configurationDirectory
-        )
+        try await runLogin(configurationDirectory: configurationDirectory)
         let status = try await status(configurationDirectory: configurationDirectory)
         guard status else { throw LoginError.loginDidNotCreateSession }
     }
@@ -66,8 +64,6 @@ struct ClaudeAccountLoginService: Sendable {
                 process.standardOutput = output
                 process.standardError = FileHandle.nullDevice
             } else {
-                // Claude opens the OAuth page itself. Keep terminal chatter out of
-                // the GUI process while the browser completes the official flow.
                 process.standardOutput = FileHandle.nullDevice
                 process.standardError = FileHandle.nullDevice
             }
@@ -77,6 +73,60 @@ struct ClaudeAccountLoginService: Sendable {
                 throw LoginError.loginFailed(process.terminationStatus)
             }
             return capturesOutput ? output.fileHandleForReading.readDataToEndOfFile() : Data()
+        }.value
+    }
+
+    /// `claude auth login` is a TUI. Pointing stdout/stderr at `/dev/null`
+    /// makes Ink think the first browser open failed, so it launches OAuth
+    /// a second time. Give it a real PTY, drain the paint, and wait for the
+    /// official callback to finish.
+    private func runLogin(configurationDirectory: URL) async throws {
+        try await Task.detached(priority: .userInitiated) {
+            guard let executable = Self.claudeExecutable() else {
+                throw LoginError.cliNotFound
+            }
+
+            var master: Int32 = -1
+            var slave: Int32 = -1
+            var windowSize = winsize(ws_row: 24, ws_col: 80, ws_xpixel: 0, ws_ypixel: 0)
+            guard openpty(&master, &slave, nil, nil, &windowSize) == 0 else {
+                throw LoginError.loginFailed(-1)
+            }
+            defer { Darwin.close(master) }
+
+            let process = Process()
+            process.executableURL = executable
+            process.arguments = ["auth", "login", "--claudeai"]
+            var environment = ProviderAccountProcessEnvironment.claude(
+                base: ProcessInfo.processInfo.environment,
+                configurationDirectory: configurationDirectory
+            )
+            environment["PATH"] = ProviderCLIExecutableResolver.launchPath(
+                existing: environment["PATH"],
+                executable: executable
+            )
+            environment["TERM"] = "xterm-256color"
+            process.environment = environment
+
+            let terminal = FileHandle(fileDescriptor: slave, closeOnDealloc: false)
+            process.standardInput = terminal
+            process.standardOutput = terminal
+            process.standardError = terminal
+            try process.run()
+            Darwin.close(slave)
+
+            let flags = fcntl(master, F_GETFL)
+            _ = fcntl(master, F_SETFL, flags | O_NONBLOCK)
+            var bytes = [UInt8](repeating: 0, count: 8_192)
+            while process.isRunning {
+                while Darwin.read(master, &bytes, bytes.count) > 0 {}
+                usleep(50_000)
+            }
+            process.waitUntilExit()
+            while Darwin.read(master, &bytes, bytes.count) > 0 {}
+            guard process.terminationStatus == 0 else {
+                throw LoginError.loginFailed(process.terminationStatus)
+            }
         }.value
     }
 
