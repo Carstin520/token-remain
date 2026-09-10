@@ -16,6 +16,9 @@ Versioning for public releases.
   this Mac's current login. Expanding a card still reveals each account's extra
   windows; the status-item remaining percent uses the tightest account so the
   headline matches the panel.
+- Clicking a provider name or icon in the menu-bar popover expands or collapses
+  that card; the chevron still does the same. Long-press the empty header space
+  to reorder.
 
 ## 1.3.8 — 2026-08-29
 
