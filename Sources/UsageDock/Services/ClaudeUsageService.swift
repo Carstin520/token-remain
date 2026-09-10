@@ -155,7 +155,7 @@ struct ClaudeUsageService {
         var reader = ClaudeCredentialsReader()
         reader.environment = environment
         reader.fallbackToDefaultDirectory = configurationDirectory == nil
-        reader.allowsKeychain = configurationDirectory == nil
+        reader.allowsKeychain = true
         return await reader.readAllowingAppleTool(
             keychainInteraction: .disallowed
         ).credentials?.accessToken

@@ -34,8 +34,20 @@ struct PopoverWidgetHeader<Summary: View>: View {
     private var headerContent: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 7) {
-                titleLabel
-                    .directReorderHandle()
+                if widget.supportsExpansion {
+                    Button(action: onToggleExpanded) {
+                        titleLabel
+                    }
+                    .buttonStyle(.plain)
+                    .help(isExpanded ? L10n.text("widget.collapse") : L10n.text("widget.expand"))
+                    .accessibilityLabel(widget.title)
+                    .accessibilityHint(
+                        isExpanded ? L10n.text("widget.collapse") : L10n.text("widget.expand")
+                    )
+                } else {
+                    titleLabel
+                        .directReorderHandle()
+                }
 
                 if widget.supportsExpansion {
                     compactButton(
@@ -98,6 +110,7 @@ struct PopoverWidgetHeader<Summary: View>: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(alignment: .leading)
+        .contentShape(Rectangle())
         .layoutPriority(1)
     }
 

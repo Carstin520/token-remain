@@ -27,7 +27,7 @@ struct UsageMenuView: View {
         UsageInsights(
             claude: nil,
             codex: nil,
-            others: Array(store.quotas.values),
+            others: store.headlineQuotas,
             daily: store.daily,
             history: store.history
         )
@@ -196,6 +196,7 @@ struct UsageMenuView: View {
                 quota: store.quotaValue(for: provider),
                 serviceStatus: store.serviceStatuses[provider],
                 notice: store.providerNotices[provider],
+                store: store,
                 layout: layout
             )
         }

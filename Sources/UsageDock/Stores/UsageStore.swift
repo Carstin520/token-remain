@@ -157,8 +157,10 @@ final class UsageStore: ObservableObject {
     ]
 
     /// 当前全部 provider 快照(含未追踪的 nil),固定顺序。
+    /// Multi-account providers contribute the tightest remaining login so a
+    /// second Claude/Codex session can drive the Dock face and menu-bar extra.
     private var allQuotas: [ProviderQuota?] {
-        TrackedProvidersStore.allProviders.map(quotaValue(for:))
+        TrackedProvidersStore.allProviders.map { headlineQuota(for: $0) }
     }
 
     var aggregateRemainingPercent: Double? {
@@ -233,6 +235,43 @@ final class UsageStore: ObservableObject {
         // Never substitute another account's reading. A managed account that
         // has not answered yet must render unavailable, not the system quota.
         return providerAccountStates[id]?.quota
+    }
+
+    /// The quota that should drive compact headlines (menu-bar extra, risk
+    /// strip, Dock face). A provider with several signed-in accounts contributes
+    /// the tightest remaining window so a second login cannot hide the one that
+    /// is about to run out.
+    func headlineQuota(
+        for provider: ProviderQuota.Provider,
+        strategy: QuotaSummaryStrategy
+    ) -> ProviderQuota? {
+        let enabled = accountSnapshots(for: provider).filter(\.profile.isEnabled)
+        let quotas = enabled.compactMap(\.quota)
+        if enabled.count > 1 {
+            return Self.tightestQuota(among: quotas, strategy: strategy)
+        }
+        return quotas.first ?? quotaValue(for: provider)
+    }
+
+    func headlineQuota(for provider: ProviderQuota.Provider) -> ProviderQuota? {
+        headlineQuota(
+            for: provider,
+            strategy: PreferencesStore.shared.quotaSummaryStrategy
+        )
+    }
+
+    var headlineQuotas: [ProviderQuota] {
+        ProviderQuota.Provider.displayOrder.compactMap { headlineQuota(for: $0) }
+    }
+
+    nonisolated static func tightestQuota(
+        among quotas: [ProviderQuota],
+        strategy: QuotaSummaryStrategy
+    ) -> ProviderQuota? {
+        quotas.min { lhs, rhs in
+            lhs.generalQuotaSummary(strategy: strategy).remainingPercent
+                < rhs.generalQuotaSummary(strategy: strategy).remainingPercent
+        }
     }
 
     func displayedNotice(for provider: ProviderQuota.Provider) -> String? {

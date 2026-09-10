@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import Security
 
@@ -56,7 +57,11 @@ struct ClaudeOAuthUsageService {
         var reader = ClaudeCredentialsReader()
         reader.environment = environment
         reader.fallbackToDefaultDirectory = !isolatedConfiguration
-        reader.allowsKeychain = !isolatedConfiguration
+        // Isolated profiles still read Keychain, but only the CLAUDE_CONFIG_DIR
+        // scoped item. Claude Code 2.1+ no longer writes `.credentials.json`.
+        let isolatedDirectory = environment["CLAUDE_CONFIG_DIR"]?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        reader.allowsKeychain = !isolatedConfiguration || !isolatedDirectory.isEmpty
         let result = await reader.readAllowingAppleTool(
             now: now,
             keychainInteraction: keychainInteraction
@@ -327,9 +332,10 @@ enum ClaudeOAuthUsageParser {
 
 /// 只读发现 Claude Code 的 OAuth 凭证。查找顺序:
 /// 1. `$CLAUDE_CONFIG_DIR/.credentials.json` 或 `~/.claude/.credentials.json`(无需授权提示)
-/// 2. 钥匙串 `Claude Code-credentials`。自动刷新走 `.disallowed`:已在 ACL 里
-///    授权过的条目照常读到,未授权则立即失败(绝不弹框、绝不阻塞)。构建脚本
-///    的稳定签名让"始终允许"跨重建生效。
+/// 2. 钥匙串。默认家目录是 `Claude Code-credentials`;自定义
+///    `CLAUDE_CONFIG_DIR` 是 `Claude Code-credentials-<sha256(path)[:8]>`。
+///    自动刷新走 `.disallowed`:已在 ACL 里授权过的条目照常读到,未授权则立即
+///    失败(绝不弹框、绝不阻塞)。构建脚本的稳定签名让"始终允许"跨重建生效。
 /// 3. 同一条目改由 `/usr/bin/security` 代读(`readAllowingAppleTool`)。第 2 步
 ///    在实机上恒定失败:该条目的 partition list 只有 `apple-tool:`,分区检查先于
 ///    信任应用检查,于是"始终允许"点多少次都不生效。见
@@ -381,9 +387,9 @@ struct ClaudeCredentialsReader {
     var allowsKeychain = true
     static let keychainService = "Claude Code-credentials"
 
-    var keychainPayload: @Sendable (KeychainRead.Interaction) -> KeychainRead.Outcome = { interaction in
+    var keychainPayload: @Sendable (String, KeychainRead.Interaction) -> KeychainRead.Outcome = { service, interaction in
         KeychainRead.genericPassword(
-            service: ClaudeCredentialsReader.keychainService,
+            service: service,
             interaction: interaction
         )
     }
@@ -431,7 +437,7 @@ struct ClaudeCredentialsReader {
         // 自动额度刷新永远不应召唤系统密码框。已选择过“始终允许”的钥匙串
         // 项目仍能成功读取；尚未授权时立即静默失败，由调用方降级到 Claude
         // CLI /usage 探针。只有明确的用户操作才能传 `.allowed`。
-        let outcome = keychainPayload(keychainInteraction)
+        let outcome = keychainPayload(resolvedKeychainService, keychainInteraction)
         let parsed = outcome.payload.flatMap(Self.decode)
         let credentials = parsed.flatMap {
             Self.isUsable($0, now: now) ? $0.credentials : nil
@@ -449,10 +455,9 @@ struct ClaudeCredentialsReader {
     /// The direct read is cheaper and wins whenever this app really is inside the
     /// item's partition. When it is not — the normal state for a credential a CLI
     /// wrote, see `KeychainRead.genericPasswordViaAppleTool` — retry through
-    /// `/usr/bin/security` rather than degrading to the PTY probe. Managed
-    /// profiles never take this path: their credentials live in their own
-    /// configuration directory, while the shared keychain item belongs to
-    /// whichever account Claude Code is currently signed into.
+    /// `/usr/bin/security` rather than degrading to the PTY probe. Isolated
+    /// profiles use the CLAUDE_CONFIG_DIR-scoped item; they must never fall
+    /// through to the unsuffixed system-account service.
     func readAllowingAppleTool(
         now: Date = .now,
         keychainInteraction: KeychainRead.Interaction = .disallowed
@@ -461,7 +466,7 @@ struct ClaudeCredentialsReader {
         guard allowsKeychain, direct.credentials == nil, direct.needsAuthorization else {
             return direct
         }
-        let outcome = await appleToolPayload(Self.keychainService)
+        let outcome = await appleToolPayload(resolvedKeychainService)
         guard let payload = outcome.payload, let parsed = Self.decode(payload) else {
             // Keep the direct result: it already describes why the item is out
             // of reach, and the delegate adds no new recovery action.
@@ -515,6 +520,42 @@ struct ClaudeCredentialsReader {
 
     private static func isUsable(_ parsed: ParsedCredentials, now: Date) -> Bool {
         parsed.expiresAt.map { $0.timeIntervalSince(now) > expiryMargin } ?? true
+    }
+
+    /// Claude Code 2.1+ stores OAuth tokens in a Keychain item named after the
+    /// configuration home. The default `~/.claude` directory keeps the historical
+    /// unsuffixed service; any other `CLAUDE_CONFIG_DIR` gets
+    /// `Claude Code-credentials-<sha256(path)[:8]>`. Hashing the path Claude
+    /// itself received is what keeps a second account from inheriting the
+    /// system login.
+    static func keychainServiceName(
+        configurationDirectory: String?,
+        homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser
+    ) -> String {
+        guard var path = configurationDirectory?
+            .trimmingCharacters(in: .whitespacesAndNewlines), !path.isEmpty else {
+            return keychainService
+        }
+        if path.hasPrefix("~") {
+            path = homeDirectory.path + path.dropFirst()
+        }
+        while path.count > 1 && path.hasSuffix("/") {
+            path.removeLast()
+        }
+        let defaultPath = homeDirectory.appending(path: ".claude").path
+        if path == defaultPath {
+            return keychainService
+        }
+        let digest = SHA256.hash(data: Data(path.utf8))
+        let suffix = digest.prefix(4).map { String(format: "%02x", $0) }.joined()
+        return "\(keychainService)-\(suffix)"
+    }
+
+    private var resolvedKeychainService: String {
+        Self.keychainServiceName(
+            configurationDirectory: environment["CLAUDE_CONFIG_DIR"],
+            homeDirectory: homeDirectory
+        )
     }
 
     private func filePayloads() -> [String] {
