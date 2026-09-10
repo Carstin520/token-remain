@@ -407,6 +407,35 @@ struct ClaudeCredentialsReaderTests {
         #expect(ClaudeCredentialsReader.parse(payload)?.accessToken == "sk-ant-oat01-test")
     }
 
+    @Test("Custom CLAUDE_CONFIG_DIR uses a SHA-256-prefixed keychain service")
+    func scopedKeychainServiceName() {
+        let home = URL(fileURLWithPath: "/Users/example")
+        #expect(
+            ClaudeCredentialsReader.keychainServiceName(
+                configurationDirectory: nil,
+                homeDirectory: home
+            ) == ClaudeCredentialsReader.keychainService
+        )
+        #expect(
+            ClaudeCredentialsReader.keychainServiceName(
+                configurationDirectory: "/Users/example/.claude",
+                homeDirectory: home
+            ) == ClaudeCredentialsReader.keychainService
+        )
+        #expect(
+            ClaudeCredentialsReader.keychainServiceName(
+                configurationDirectory: "~/.claude",
+                homeDirectory: home
+            ) == ClaudeCredentialsReader.keychainService
+        )
+        #expect(
+            ClaudeCredentialsReader.keychainServiceName(
+                configurationDirectory: "/tmp/tokenremain-claude-account/",
+                homeDirectory: home
+            ) == "Claude Code-credentials-7ebe5f89"
+        )
+    }
+
     @Test("Reads the credentials file from CLAUDE_CONFIG_DIR before the keychain")
     func readsConfigDirFile() throws {
         let directory = FileManager.default.temporaryDirectory
@@ -419,7 +448,7 @@ struct ClaudeCredentialsReaderTests {
 
         var reader = ClaudeCredentialsReader()
         reader.environment = ["CLAUDE_CONFIG_DIR": directory.path]
-        reader.keychainPayload = { _ in
+        reader.keychainPayload = { _, _ in
             Issue.record("keychain must not be consulted when the file already answers")
             return KeychainRead.Outcome(payload: nil, status: errSecItemNotFound)
         }
@@ -432,7 +461,7 @@ struct ClaudeCredentialsReaderTests {
         reader.environment = [:]
         reader.homeDirectory = FileManager.default.temporaryDirectory
             .appendingPathComponent("usagedock-missing-\(UUID().uuidString)", isDirectory: true)
-        reader.keychainPayload = { _ in
+        reader.keychainPayload = { _, _ in
             KeychainRead.Outcome(
                 payload: #"{"claudeAiOauth": {"accessToken": "sk-ant-oat01-keychain"}}"#,
                 status: errSecSuccess
@@ -443,27 +472,29 @@ struct ClaudeCredentialsReaderTests {
 
     @Test("An isolated managed account never inherits the system Claude credential")
     func managedAccountDoesNotFallBack() {
-        let keychainConsulted = ClaudeLockedValue(false)
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("usagedock-managed-missing-\(UUID().uuidString)")
+            .path
+        let scopedService = ClaudeCredentialsReader.keychainServiceName(
+            configurationDirectory: directory
+        )
+        let observedService = ClaudeLockedValue<String?>(nil)
         var reader = ClaudeCredentialsReader()
-        reader.environment = [
-            "CLAUDE_CONFIG_DIR": FileManager.default.temporaryDirectory
-                .appendingPathComponent("usagedock-managed-missing-\(UUID().uuidString)")
-                .path
-        ]
+        reader.environment = ["CLAUDE_CONFIG_DIR": directory]
         reader.homeDirectory = FileManager.default.temporaryDirectory
             .appendingPathComponent("usagedock-system-home-\(UUID().uuidString)")
         reader.fallbackToDefaultDirectory = false
-        reader.allowsKeychain = false
-        reader.keychainPayload = { _ in
-            keychainConsulted.set(true)
+        reader.keychainPayload = { service, _ in
+            observedService.set(service)
             return KeychainRead.Outcome(
-                payload: #"{"claudeAiOauth": {"accessToken": "system-token"}}"#,
+                payload: #"{"claudeAiOauth": {"accessToken": "scoped-token"}}"#,
                 status: errSecSuccess
             )
         }
 
-        #expect(reader.load() == nil)
-        #expect(keychainConsulted.get() == false)
+        #expect(scopedService != ClaudeCredentialsReader.keychainService)
+        #expect(reader.load()?.accessToken == "scoped-token")
+        #expect(observedService.get() == scopedService)
     }
 
     /// 这两个只验证"意图有没有传到 KeychainRead 门口"。禁止交互究竟有没有生效
@@ -476,7 +507,7 @@ struct ClaudeCredentialsReaderTests {
         reader.environment = [:]
         reader.homeDirectory = FileManager.default.temporaryDirectory
             .appendingPathComponent("usagedock-missing-\(UUID().uuidString)", isDirectory: true)
-        reader.keychainPayload = { interaction in
+        reader.keychainPayload = { _, interaction in
             observed.set(interaction)
             return KeychainRead.Outcome(
                 payload: #"{"claudeAiOauth": {"accessToken": "sk-ant-oat01-keychain"}}"#,
@@ -495,7 +526,7 @@ struct ClaudeCredentialsReaderTests {
         reader.environment = [:]
         reader.homeDirectory = FileManager.default.temporaryDirectory
             .appendingPathComponent("usagedock-missing-\(UUID().uuidString)", isDirectory: true)
-        reader.keychainPayload = { interaction in
+        reader.keychainPayload = { _, interaction in
             observed.set(interaction)
             return KeychainRead.Outcome(
                 payload: #"{"claudeAiOauth": {"accessToken": "sk-ant-oat01-keychain"}}"#,
@@ -518,7 +549,7 @@ struct ClaudeCredentialsReaderTests {
         reader.environment = [:]
         reader.homeDirectory = FileManager.default.temporaryDirectory
             .appendingPathComponent("usagedock-missing-\(UUID().uuidString)", isDirectory: true)
-        reader.keychainPayload = { _ in
+        reader.keychainPayload = { _, _ in
             KeychainRead.Outcome(payload: nil, status: errSecItemNotFound)
         }
         #expect(reader.load() == nil)
@@ -529,7 +560,7 @@ struct ClaudeCredentialsReaderTests {
         var reader = ClaudeCredentialsReader()
         reader.environment = [:]
         reader.homeDirectory = URL(fileURLWithPath: "/tmp/tokenremain-claude-auth-required")
-        reader.keychainPayload = { _ in
+        reader.keychainPayload = { _, _ in
             KeychainRead.Outcome(payload: nil, status: errSecInteractionNotAllowed)
         }
         let result = reader.read()
@@ -542,7 +573,7 @@ struct ClaudeCredentialsReaderTests {
         var reader = ClaudeCredentialsReader()
         reader.environment = [:]
         reader.homeDirectory = URL(fileURLWithPath: "/tmp/tokenremain-claude-invalid")
-        reader.keychainPayload = { _ in
+        reader.keychainPayload = { _, _ in
             KeychainRead.Outcome(payload: #"{"future":true}"#, status: errSecSuccess)
         }
         let result = reader.read()
@@ -558,7 +589,7 @@ struct ClaudeCredentialsReaderTests {
         var reader = ClaudeCredentialsReader()
         reader.environment = [:]
         reader.homeDirectory = URL(fileURLWithPath: "/tmp/tokenremain-claude-expired")
-        reader.keychainPayload = { _ in
+        reader.keychainPayload = { _, _ in
             KeychainRead.Outcome(
                 payload: #"{"claudeAiOauth":{"accessToken":"expired","expiresAt":\#(expiredMs)}}"#,
                 status: errSecSuccess
@@ -591,7 +622,7 @@ struct ClaudeAppleToolDelegateTests {
         reader.environment = [:]
         reader.homeDirectory = FileManager.default.temporaryDirectory
             .appendingPathComponent("usagedock-missing-\(UUID().uuidString)", isDirectory: true)
-        reader.keychainPayload = { _ in keychain }
+        reader.keychainPayload = { _, _ in keychain }
         reader.appleToolPayload = { _ in
             delegateConsulted.set(true)
             return delegate
@@ -648,23 +679,36 @@ struct ClaudeAppleToolDelegateTests {
         #expect(consulted.get() == false)
     }
 
-    /// 委托读的是全局钥匙串条目,也就是 Claude Code 当前登录的那个账户。托管
-    /// 账户一旦走这条路,拿到的就是**别人的**额度,比读不到严重得多。
-    @Test("An isolated managed account never delegates to the shared keychain item")
-    func skipsDelegateForManagedProfiles() async {
-        let consulted = ClaudeLockedValue(false)
-        var reader = reader(
-            keychain: KeychainRead.Outcome(payload: nil, status: errSecAuthFailed),
-            delegate: KeychainRead.Outcome(payload: Self.usablePayload, status: errSecSuccess),
-            delegateConsulted: consulted
+    /// Claude Code 2.1+ stores a second account under
+    /// `Claude Code-credentials-<sha256(CLAUDE_CONFIG_DIR)[:8]>`. Delegating to
+    /// the unsuffixed system item would show someone else's quota.
+    @Test("An isolated managed account delegates only to its scoped keychain item")
+    func managedProfileDelegatesToScopedKeychain() async {
+        let directory = "/tmp/tokenremain-claude-account"
+        let expectedService = ClaudeCredentialsReader.keychainServiceName(
+            configurationDirectory: directory
         )
+        let observed = ClaudeLockedValue<String?>(nil)
+        var reader = ClaudeCredentialsReader()
+        reader.environment = ["CLAUDE_CONFIG_DIR": directory]
+        reader.homeDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("usagedock-system-home-\(UUID().uuidString)")
         reader.fallbackToDefaultDirectory = false
-        reader.allowsKeychain = false
+        reader.keychainPayload = { _, _ in
+            KeychainRead.Outcome(payload: nil, status: errSecAuthFailed)
+        }
+        reader.appleToolPayload = { service in
+            observed.set(service)
+            return KeychainRead.Outcome(payload: Self.usablePayload, status: errSecSuccess)
+        }
 
         let result = await reader.readAllowingAppleTool()
 
-        #expect(result.credentials == nil)
-        #expect(consulted.get() == false)
+        #expect(expectedService == "Claude Code-credentials-7ebe5f89")
+        #expect(expectedService != ClaudeCredentialsReader.keychainService)
+        #expect(observed.get() == expectedService)
+        #expect(result.credentials?.accessToken == "sk-ant-oat01-delegated")
+        #expect(result.source == .keychain)
     }
 
     @Test("An expired delegated token is reported as expired, not as usable")
