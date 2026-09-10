@@ -28,6 +28,19 @@ struct ProviderAccountsTests {
         #expect(summary.balancesByCurrency == ["USD": 20])
     }
 
+    @Test("Headline quota prefers the tightest remaining login")
+    func tightestQuotaPicksTheMostConstrainedAccount() {
+        let healthy = quota(used: 13, weeklyUsed: 40)
+        let tight = quota(used: 92, weeklyUsed: 35)
+        let chosen = UsageStore.tightestQuota(
+            among: [healthy, tight],
+            strategy: .lowestRemaining
+        )
+
+        #expect(chosen?.primary.usedPercent == 92)
+        #expect(UsageStore.tightestQuota(among: [], strategy: .lowestRemaining) == nil)
+    }
+
     @Test("Managed profile metadata and selection survive a store reload")
     @MainActor
     func profilePersistence() throws {

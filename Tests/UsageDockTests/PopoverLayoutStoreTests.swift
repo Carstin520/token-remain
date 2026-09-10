@@ -15,6 +15,43 @@ struct PopoverLayoutStoreTests {
         #expect(PopoverWidget.aiFeed.title == "AI动态")
     }
 
+    @Test("A second signed-in account earns its own popover row")
+    func multipleEnabledAccountsShowSeparateRows() {
+        let current = ProviderAccountSnapshot(
+            profile: ProviderAccountProfile.system(.claude),
+            state: ProviderAccountState(quota: quota(used: 13))
+        )
+        let work = ProviderAccountSnapshot(
+            profile: ProviderAccountProfile(
+                id: .managed(UUID()),
+                provider: .claude,
+                displayName: "Work",
+                kind: .managed,
+                configurationDirectory: "/tmp/opaque-test-account",
+                isEnabled: true,
+                createdAt: .now
+            ),
+            state: ProviderAccountState(quota: quota(used: 40))
+        )
+        let paused = ProviderAccountSnapshot(
+            profile: ProviderAccountProfile(
+                id: .managed(UUID()),
+                provider: .claude,
+                displayName: "Paused",
+                kind: .managed,
+                configurationDirectory: "/tmp/opaque-paused-account",
+                isEnabled: false,
+                createdAt: .now
+            ),
+            state: ProviderAccountState(quota: quota(used: 90))
+        )
+
+        #expect(PopoverQuotaWidget.showsAccountRows([current, work]))
+        #expect(!PopoverQuotaWidget.showsAccountRows([current]))
+        #expect(!PopoverQuotaWidget.showsAccountRows([current, paused]))
+        #expect(!PopoverQuotaWidget.showsAccountRows([]))
+    }
+
     @Test("Collapsed provider card always chooses the shortest quota window")
     func shortestWindowWinsOverLowestRemaining() throws {
         let quota = ProviderQuota(
@@ -119,5 +156,15 @@ struct PopoverLayoutStoreTests {
         let defaults = UserDefaults(suiteName: suiteName)!
         defaults.removePersistentDomain(forName: suiteName)
         return defaults
+    }
+
+    private func quota(used: Double) -> ProviderQuota {
+        ProviderQuota(
+            provider: .claude,
+            primary: QuotaWindow(usedPercent: used, windowMinutes: 300, resetsAt: nil),
+            secondary: nil,
+            planName: nil,
+            capturedAt: .now
+        )
     }
 }

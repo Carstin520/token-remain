@@ -12,6 +12,10 @@ Versioning for public releases.
   a `CLAUDE_CONFIG_DIR`-scoped Keychain item instead of `.credentials.json`;
   TokenRemain now reads that item (never the shared system credential) and runs
   `claude auth login` on a PTY so the browser OAuth page opens once.
+- The menu-bar popover lists every signed-in account for a provider, not only
+  this Mac's current login. Expanding a card still reveals each account's extra
+  windows; the status-item remaining percent uses the tightest account so the
+  headline matches the panel.
 
 ## 1.3.8 — 2026-08-29
 

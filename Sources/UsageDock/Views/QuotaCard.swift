@@ -689,7 +689,7 @@ struct QuotaCard: View {
     }
 }
 
-private extension ProviderAccountProfile {
+extension ProviderAccountProfile {
     /// The system account has no stored name and a managed account can only be
     /// renamed to a non-empty string, so this is the single naming fallback.
     var accountDisplayName: String {
