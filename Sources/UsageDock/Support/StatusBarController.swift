@@ -487,7 +487,7 @@ final class StatusBarController: NSObject {
                 let separator = displayMode == .compact ? " " : " · "
                 title.append(NSAttributedString(string: separator, attributes: attributes))
             }
-            title.append(statusIcon(segment.0, size: iconSize))
+            title.append(Self.statusIcon(segment.0, size: iconSize))
             if displayMode != .compact {
                 title.append(NSAttributedString(string: " \(segment.1)", attributes: attributes))
             }
@@ -517,17 +517,17 @@ final class StatusBarController: NSObject {
         }
     }
 
-    private func statusIcon(
+    static func statusIcon(
         _ provider: ProviderQuota.Provider,
         size: CGFloat
     ) -> NSAttributedString {
-        // Rasterize at the attachment point size. Passing a 640px Lobe PNG
-        // through NSTextAttachmentCell lets AppKit prefer the pixel buffer
-        // over `image.size`, which shifts edge-flush marks such as Grok.
+        // Normalize size/padding first, then let the cell apply template-image
+        // colors for the current appearance. Assigning attachment.image draws
+        // the black template pixels literally on dark menu-bar backgrounds.
         let image = BrandIcon.menuBarImage(for: provider, size: size)
 
         let attachment = NSTextAttachment()
-        attachment.image = image
+        attachment.attachmentCell = NSTextAttachmentCell(imageCell: image)
         attachment.bounds = NSRect(x: 0, y: -2, width: size, height: size)
         return NSAttributedString(attachment: attachment)
     }

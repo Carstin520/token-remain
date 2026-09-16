@@ -107,9 +107,8 @@ struct BrandIcon: View {
     }
 
     /// Rasterizes a status-item glyph whose point size matches the attachment
-    /// bounds. `image(for:size:)` only changes `NSImage.size` on a 640px Lobe
-    /// PNG; `NSTextAttachmentCell` can still key off the pixel buffer and
-    /// draw edge-flush marks (Grok) off the 12pt percent baseline.
+    /// bounds and leaves breathing room around edge-flush marks such as Grok.
+    /// Template coloring is applied later by the status item's attachment cell.
     static func menuBarImage(
         for provider: ProviderQuota.Provider,
         size: CGFloat
@@ -205,8 +204,25 @@ struct BrandIcon: View {
         return image
     }
 
+    static func claudeResourceURL() -> URL? {
+        if let bundled = AppResourceBundle.bundle.url(forResource: "claude", withExtension: "png") {
+            return bundled
+        }
+        #if DEBUG
+        // Match the other providers' source-asset lookup in SwiftPM tests.
+        let sourceResource = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("Resources/claude.png")
+        if FileManager.default.fileExists(atPath: sourceResource.path) {
+            return sourceResource
+        }
+        #endif
+        return nil
+    }
+
     private static func claudeImage() -> NSImage {
-        AppResourceBundle.bundle.url(forResource: "claude", withExtension: "png")
+        claudeResourceURL()
             .flatMap(NSImage.init(contentsOf:))
             ?? NSImage(
                 systemSymbolName: "questionmark.circle",

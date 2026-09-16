@@ -7,10 +7,9 @@ Versioning for public releases.
 
 ### Fixed
 
-- Grok's menu-bar mark no longer sits flush against the remaining-percent
-  text. The Lobe glyph is a diagonal that fills the PNG canvas; the status
-  item now rasterizes a padded 13pt attachment instead of handing the 640px
-  bitmap to `NSTextAttachmentCell`.
+- Grok's menu-bar mark has inner padding so its diagonal tips no longer crowd
+  the remaining-percent text. Monochrome menu-bar icons continue to adapt to
+  light and dark appearances, while colored brand marks keep their colors.
 
 ## 1.3.8 — 2026-08-29
 
