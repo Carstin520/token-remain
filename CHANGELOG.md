@@ -3,13 +3,14 @@
 All notable product changes are recorded here. TokenRemain uses Semantic
 Versioning for public releases.
 
-## Unreleased
+## 1.3.9 — Unreleased
 
 ### Fixed
 
 - Grok's menu-bar mark has inner padding so its diagonal tips no longer crowd
   the remaining-percent text. Monochrome menu-bar icons continue to adapt to
-  light and dark appearances, while colored brand marks keep their colors.
+  light and dark appearances, while colored brand marks keep their colors
+  (PR #54).
 
 ## 1.3.8 — 2026-08-29
 
