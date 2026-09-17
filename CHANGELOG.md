@@ -16,6 +16,8 @@ Versioning for public releases.
 
 ### Fixed
 
+- Remove the Mac–Windows Direct Sync setup panel from Devices until its
+  user-facing rollout is ready; local Mac and iCloud status remain available.
 - Limits cards have a taller shared baseline and let up to two quota windows
   grow with their reset, pace and freshness labels, avoiding unnecessary inner
   scrolling. Larger quota collections retain their scrollable layout.
