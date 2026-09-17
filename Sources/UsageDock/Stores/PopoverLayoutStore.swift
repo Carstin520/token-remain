@@ -18,6 +18,7 @@ enum PopoverWidget: String, CaseIterable, Codable, Identifiable {
     case kimi
     case minimax
     case mimo
+    case alibabaTokenPlan
     case qoder
     case kiro
     case volcengine
@@ -80,6 +81,7 @@ enum PopoverWidget: String, CaseIterable, Codable, Identifiable {
         case .kimi: return .kimi
         case .minimax: return .minimax
         case .mimo: return .mimo
+        case .alibabaTokenPlan: return .alibabaTokenPlan
         case .qoder: return .qoder
         case .kiro: return .kiro
         case .volcengine: return .volcengine
@@ -101,14 +103,14 @@ final class PopoverLayoutStore: ObservableObject {
     static let defaultOrder: [PopoverWidget] = [
         .claude, .codex, .cursor, .copilot, .devin, .windsurf,
         .grok, .openrouter, .antigravity, .opencode, .zai, .zaiTeam,
-        .deepseek, .kimi, .minimax, .mimo, .qoder, .kiro, .volcengine, .ollama, .thirdParty,
+        .deepseek, .kimi, .minimax, .mimo, .alibabaTokenPlan, .qoder, .kiro, .volcengine, .ollama, .thirdParty,
         .localUsage, .aiFeed
     ]
     /// 首次出现时默认隐藏的挂件:主流三家之外的 provider 面向少数用户,
     /// 通过 "+" 菜单一键添加,不给其他用户增加弹窗长度。
     static let defaultHidden: Set<PopoverWidget> = [
         .grok, .zai, .zaiTeam, .copilot, .devin, .windsurf, .openrouter, .antigravity, .opencode,
-        .deepseek, .kimi, .minimax, .mimo, .qoder, .kiro, .volcengine, .ollama, .thirdParty
+        .deepseek, .kimi, .minimax, .mimo, .alibabaTokenPlan, .qoder, .kiro, .volcengine, .ollama, .thirdParty
     ]
 
     @Published private(set) var order: [PopoverWidget]

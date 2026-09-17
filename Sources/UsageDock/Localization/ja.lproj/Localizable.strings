@@ -139,8 +139,8 @@
 "datasource.authorizing" = "確認中…";
 "datasource.open_provider_app" = "%1$@ を開く";
 "service.claude.authorization_required" = "TokenRemain に Claude ログイン情報への読み取り専用アクセスを許可してください";
-"service.claude.invalid_stored_credentials" = "Claude ログイン情報を認識できません。Claude アプリで再度ログインしてください";
-"service.claude.session_expired" = "Claude セッションの期限が切れました。Claude アプリで Code を開いて更新してください";
+"service.claude.invalid_stored_credentials" = "Claude ログイン情報を認識できません。ターミナルで claude を実行し /login で再ログインしてください";
+"service.claude.session_expired" = "Claude セッションの期限が切れました。ターミナルで claude を一度実行して更新してください";
 "service.codex.authorization_required" = "TokenRemain に Codex ログイン情報への読み取り専用アクセスを許可してください";
 "service.codex.invalid_stored_credentials" = "Codex ログイン情報を認識できません。ChatGPT または Codex で再度ログインしてください";
 "datasource.broken" = "データ連携切れ";
@@ -334,11 +334,12 @@
 "service.antigravity.not_logged_in" = "Antigravity が検出されません。TokenRemain がローカルのクォータサービスを読み取れるよう、Antigravity を開いたまま実行してください";
 "service.claude.api_rate_limited" = "Claude 使用量 API がレート制限中です。しばらくしてから再試行してください";
 "service.claude.api_rate_limited_minutes" = "Claude 使用量 API がレート制限中です。約%1$d分後に再試行してください";
-"service.claude.cli_not_found" = "オプションの Claude CLI フォールバックは利用できません。Claude アプリの Code でログインまたは更新してください";
+"service.claude.cli_not_found" = "Claude Code CLI が見つからないため自動更新できません。CLI をインストールするか、ターミナルで claude を実行してください";
 "alert.provider_signed_out.title" = "%@ からログアウトされています";
 "alert.provider_signed_out.body" = "TokenRemain は使用量を読み取れなくなりました。カードは最後に取得できた値を表示しています。%@ に再度ログインすると復旧します。";
 "service.claude.cli_timeout" = "Claude Code の使用量読み取りがタイムアウトしました。最新のキャッシュを表示しています";
-"service.claude.credentials_unavailable" = "利用可能な Claude 認証情報が見つかりません。Claude アプリで Code を開いてログインしてください";
+"service.claude.network_unreachable" = "現在 Claude に接続できません。最新のキャッシュを表示し、ネットワークまたはプロキシの復旧後に再試行します";
+"service.claude.credentials_unavailable" = "利用可能な Claude ログイン情報が見つかりません。ターミナルで claude を実行し /login でログインしてください";
 "service.claude.invalid_usage_output" = "Claude Code が認識可能な 5 時間 / 7 日の使用量を返しませんでした";
 "service.claude.probe_launch_failed" = "Claude Code 使用量プローブを起動できません:%1$@";
 "service.claude.rate_limited" = "Claude 使用量 API がレート制限中です。まもなく自動的に再試行します";
@@ -613,6 +614,9 @@
 "accounts.add_accessibility" = "別の %1$@ アカウントを追加";
 "accounts.adding" = "サインイン中…";
 "accounts.adding_progress" = "公式ブラウザでのサインイン完了を待っています…";
+"accounts.login_remaining" = "ログインの待機時間: 残り %1$@";
+"accounts.login_timed_out" = "ログインがタイムアウトしました。準備ができたら、もう一度ログインしてください。";
+"accounts.login_cancelled" = "ログインをキャンセルしました。もう一度お試しいただけます。";
 "accounts.show_only" = "このアカウントのみ表示";
 "accounts.rename" = "名前を変更…";
 "accounts.rename_title" = "アカウント名を変更";
@@ -712,3 +716,24 @@
 "settings.pool_openrouter_credits_hint" = "キーに周期的な上限がない場合、プリペイドクレジットを進捗行として表示します。クレジットを消費するとデフォルトで表示されます。";
 "settings.model_quotas_hint" = "アプリごとにまとめた追加プール。スイッチはポップアップ・メニューバー・カードの表示だけを変更します。";
 "settings.model_quotas_footer" = "接続してクォータを取得できたアプリがここに表示されます。";
+
+"operation.timed_out" = "操作がタイムアウトしました。もう一度お試しください。";
+"operation.cancelled" = "操作をキャンセルしました。もう一度お試しいただけます。";
+
+/* Alibaba Token Plan */
+"alibaba.region" = "リージョン";
+"alibaba.region.china" = "中国本土";
+"alibaba.region.international" = "国際";
+"alibaba.edition" = "プラン";
+"alibaba.edition.team" = "チーム";
+"alibaba.edition.personal" = "個人";
+"alibaba.cookie_placeholder" = "コンソールの Cookie を貼り付け（CSRF Cookie を含む）";
+"alibaba.setup_hint" = "コンソールの地域とプランを選び、Cookie を貼り付けてください。割り当てはそのアカウントに属します。検証後に設定を保存します。";
+"alibaba.route_setup" = "データソースで Alibaba Token Plan を追加し、コンソールの Cookie を設定してください。API キーでは割り当ての取得やルートのアカウント確認はできません。";
+"alibaba.credits" = "%.2f クレジット";
+"alibaba.error.configuration" = "login_aliyunid_csrf または csrf を含む有効な Cookie を貼り付けてください。API キーは使用できません。";
+"alibaba.error.authentication" = "セッションが期限切れです。選択したサイトにログインし、Cookie を置き換えてください。";
+"alibaba.error.unavailable" = "選択したプランの割り当てが取得できません。地域とプランを確認して再試行してください。";
+"alibaba.error.response" = "未対応の割り当てデータです。後で再試行してください。";
+"alibaba.error.request" = "割り当てを取得できません。権限、地域、プランを確認してください。";
+"alibaba.error.network" = "接続できません。ネットワークを確認して再試行してください。";

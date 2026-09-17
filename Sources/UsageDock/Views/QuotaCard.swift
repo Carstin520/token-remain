@@ -4,10 +4,10 @@ import SwiftUI
 /// window (remaining %, progress bar, reset label). Shown in the Dashboard's
 /// Limits section. Renders a waiting state before data arrives.
 struct QuotaCard: View {
-    /// Every card in the Dashboard grid occupies the same visual slot. Keep the
-    /// provider header pinned and let extra quota windows scroll inside the card
-    /// so one multi-window provider cannot make the whole grid row taller.
-    static let dashboardContentHeight: CGFloat = 198
+    /// Give ordinary two-window cards room for reset, pace and freshness labels.
+    /// Bounded content can grow for wrapping text; larger collections keep this
+    /// shared slot and scroll below the pinned provider header.
+    static let dashboardContentHeight: CGFloat = 224
     /// Reserve one shared title slot for every grid card so quota rows stay
     /// aligned even when a compact connection warning is present.
     private static let headerHeight: CGFloat = 26
@@ -43,18 +43,16 @@ struct QuotaCard: View {
         scrollContentHeight <= scrollViewportHeight + 0.5
     }
 
-    /// #44:只有一条额度窗口(可带 Codex 重置卡)的极简配置,内容高度有
-    /// 天然上界,卡片直接按内容定高、整体不滚动——重置卡把内容顶出固定
-    /// 槽位时长高卡片而不是出滚动条。多窗口/多账户配置仍走固定槽位+
+    /// #44 的内容定高布局覆盖最多两条可见额度(含 scoped 池)。附属的
+    /// 重置卡、余额与消费摘要也只有固定数量的行,一起按内容撑高,不为
+    /// 少量信息增加内层滚动。更多窗口/多账户配置仍走固定槽位+
     /// 滚动,避免单个多池 provider 抬高整行网格。
     private var usesBoundedContentLayout: Bool {
         guard let quota, !showsAccountOverview else { return false }
         if let store, store.isAddingProviderAccount(provider) { return false }
-        return quota.secondary == nil
-            && Self.scopedWindows(in: quota, preferences: preferences).isEmpty
-            && quota.extraUsage == nil
-            && quota.accountBalance == nil
-            && !(quota.spend?.hasValues ?? false)
+        let visibleWindowCount = 1 + (quota.secondary == nil ? 0 : 1)
+            + Self.scopedWindows(in: quota, preferences: preferences).count
+        return visibleWindowCount <= 2
     }
 
     /// Dashboard 卡片:目录内的池由通用池开关 + 智能默认决定显隐;
@@ -184,7 +182,17 @@ struct QuotaCard: View {
     private var quotaContent: some View {
         if supportsMultipleAccounts, let store,
            store.isAddingProviderAccount(provider) {
-            AccountAddProgressRow(credentialKind: multiAccountCapability?.credentialKind)
+            AccountAddProgressRow(
+                credentialKind: multiAccountCapability?.credentialKind,
+                deadline: store.accountLoginDeadlines[provider],
+                onCancel: { store.cancelProviderAccountLogin(provider) }
+            )
+        } else if let message = store?.accountManagementNotice(for: provider) {
+            Label(message, systemImage: "info.circle")
+                .font(.system(size: 11))
+                .foregroundStyle(DashboardTheme.secondaryText)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityLabel(L10n.format("accounts.management_notice", message))
         }
 
         if showsAccountOverview {
@@ -689,7 +697,7 @@ struct QuotaCard: View {
     }
 }
 
-private extension ProviderAccountProfile {
+extension ProviderAccountProfile {
     /// The system account has no stored name and a managed account can only be
     /// renamed to a non-empty string, so this is the single naming fallback.
     var accountDisplayName: String {
@@ -719,7 +727,8 @@ private struct AccountDigestRow: View {
             "quota.remaining",
             QuotaWindowRow.remainingValueText(
                 remainingPercent: summary.remainingPercent,
-                remainingBalance: summary.remainingBalance
+                remainingBalance: summary.remainingBalance,
+                remainingCredits: summary.window.remainingCredits
             )
         )
     }
@@ -789,9 +798,11 @@ private struct AccountDigestRow: View {
 /// instead of looking frozen.
 private struct AccountAddProgressRow: View {
     let credentialKind: ProviderAccountCredentialKind?
+    let deadline: Date?
+    let onCancel: () -> Void
 
     private var messageKey: String {
-        credentialKind == .keychainSecret
+        credentialKind == .keychainSecret || deadline == nil
             ? "accounts.adding_progress_credential"
             : "accounts.adding_progress"
     }
@@ -799,12 +810,27 @@ private struct AccountAddProgressRow: View {
     var body: some View {
         HStack(spacing: 8) {
             ProgressView().controlSize(.small)
-            Text(L10n.text(messageKey))
-                .font(.system(size: 11))
-                .foregroundStyle(DashboardTheme.secondaryText)
-                .fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(L10n.text(messageKey))
+                    .font(.system(size: 11))
+                    .foregroundStyle(DashboardTheme.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let deadline {
+                    TimelineView(.periodic(from: .now, by: 1)) { context in
+                        let seconds = max(0, Int(ceil(deadline.timeIntervalSince(context.date))))
+                        Text(L10n.format("accounts.login_remaining", String(format: "%d:%02d", seconds / 60, seconds % 60)))
+                            .font(.system(size: 10).monospacedDigit())
+                            .foregroundStyle(DashboardTheme.secondaryText)
+                    }
+                }
+            }
+            if deadline != nil {
+                Spacer(minLength: 4)
+                Button(L10n.text("action.cancel"), action: onCancel)
+                    .controlSize(.small)
+            }
         }
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .contain)
         .accessibilityLabel(L10n.text(messageKey))
     }
 }
@@ -1100,16 +1126,21 @@ struct QuotaWindowRow: View {
             "quota.remaining",
             Self.remainingValueText(
                 remainingPercent: remainingPercent,
-                remainingBalance: remainingBalance ?? window.remainingBalance
+                remainingBalance: remainingBalance ?? window.remainingBalance,
+                remainingCredits: window.remainingCredits
             )
         )
     }
 
     static func remainingValueText(
         remainingPercent: Double,
-        remainingBalance: QuotaBalance?
+        remainingBalance: QuotaBalance?,
+        remainingCredits: Double? = nil
     ) -> String {
-        remainingBalance?.displayText ?? UsageFormatting.percent(remainingPercent)
+        if let credits = remainingCredits, credits.isFinite, credits >= 0 {
+            return L10n.format("alibaba.credits", credits)
+        }
+        return remainingBalance?.displayText ?? UsageFormatting.percent(remainingPercent)
     }
 
     private var windowTitle: String {

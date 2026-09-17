@@ -139,8 +139,8 @@
 "datasource.authorizing" = "Wird geprüft…";
 "datasource.open_provider_app" = "%1$@ öffnen";
 "service.claude.authorization_required" = "Erlaube TokenRemain den schreibgeschützten Zugriff auf deine Claude-Anmeldedaten";
-"service.claude.invalid_stored_credentials" = "Claude-Anmeldedaten wurden nicht erkannt; melde dich in der Claude-App erneut an";
-"service.claude.session_expired" = "Deine Claude-Sitzung ist abgelaufen; öffne Code in der Claude-App, um sie zu erneuern";
+"service.claude.invalid_stored_credentials" = "Claude-Anmeldedaten wurden nicht erkannt; führe claude im Terminal aus und melde dich mit /login erneut an";
+"service.claude.session_expired" = "Deine Claude-Sitzung ist abgelaufen; führe claude einmal im Terminal aus, um sie zu erneuern";
 "service.codex.authorization_required" = "Erlaube TokenRemain den schreibgeschützten Zugriff auf deine Codex-Anmeldedaten";
 "service.codex.invalid_stored_credentials" = "Codex-Anmeldedaten wurden nicht erkannt; melde dich in ChatGPT oder Codex erneut an";
 "datasource.broken" = "Verbindung unterbrochen";
@@ -334,11 +334,12 @@
 "service.antigravity.not_logged_in" = "Antigravity wurde nicht erkannt; öffne Antigravity und lasse es laufen, damit TokenRemain den lokalen Kontingentdienst lesen kann";
 "service.claude.api_rate_limited" = "Claude-Nutzungs-API gedrosselt; später erneut versuchen";
 "service.claude.api_rate_limited_minutes" = "Claude-Nutzungs-API gedrosselt; in ca. %1$d Min erneut versuchen";
-"service.claude.cli_not_found" = "Der optionale Claude-CLI-Fallback ist nicht verfügbar; bitte Code in der Claude-App öffnen und anmelden oder erneuern";
+"service.claude.cli_not_found" = "Claude-Code-CLI nicht gefunden, die Sitzung kann nicht automatisch erneuert werden; installiere die CLI oder führe claude im Terminal aus";
 "alert.provider_signed_out.title" = "%@ ist abgemeldet";
 "alert.provider_signed_out.body" = "TokenRemain kann deine Nutzung nicht mehr lesen – die Karten zeigen den letzten gültigen Stand. Melde dich wieder bei %@ an, um sie wiederherzustellen.";
 "service.claude.cli_timeout" = "Zeitüberschreitung beim Lesen der Claude-Code-Nutzung; letzter Cache wird angezeigt";
-"service.claude.credentials_unavailable" = "Keine nutzbaren Claude-Anmeldedaten gefunden; bitte Code in der Claude-App öffnen und anmelden";
+"service.claude.network_unreachable" = "Claude ist derzeit nicht erreichbar; letzter Cache wird angezeigt, neuer Versuch sobald Netzwerk oder Proxy zurück sind";
+"service.claude.credentials_unavailable" = "Keine nutzbare Claude-Anmeldung gefunden; führe claude im Terminal aus und melde dich mit /login an";
 "service.claude.invalid_usage_output" = "Claude Code lieferte keine erkennbare 5-Stunden-/7-Tage-Nutzung";
 "service.claude.probe_launch_failed" = "Claude-Code-Nutzungssonde konnte nicht gestartet werden: %1$@";
 "service.claude.rate_limited" = "Claude-Nutzungs-API gedrosselt; automatischer neuer Versuch in Kürze";
@@ -613,6 +614,9 @@
 "accounts.add_accessibility" = "Weiteres %1$@-Konto hinzufügen";
 "accounts.adding" = "Anmeldung läuft…";
 "accounts.adding_progress" = "Warte auf den Abschluss der offiziellen Browser-Anmeldung…";
+"accounts.login_remaining" = "Verbleibende Anmeldezeit: %1$@";
+"accounts.login_timed_out" = "Zeitlimit für die Anmeldung erreicht. Starte die Anmeldung erneut, wenn du bereit bist.";
+"accounts.login_cancelled" = "Anmeldung abgebrochen. Du kannst es erneut versuchen.";
 "accounts.show_only" = "Nur dieses Konto anzeigen";
 "accounts.rename" = "Umbenennen…";
 "accounts.rename_title" = "Konto umbenennen";
@@ -712,3 +716,24 @@
 "settings.pool_openrouter_credits_hint" = "Zeigt Prepaid-Guthaben als Fortschrittszeile, wenn der Schlüssel kein periodisches Limit hat; wird standardmäßig angezeigt, sobald Guthaben verbraucht wird.";
 "settings.model_quotas_hint" = "Optionale Kontingente, nach App gruppiert. Jeder Schalter ändert nur, was Popup, Menüleiste und Karten anzeigen.";
 "settings.model_quotas_footer" = "Apps erscheinen hier, sobald sie verbunden sind und Kontingente melden.";
+
+"operation.timed_out" = "Der Vorgang hat zu lange gedauert. Bitte erneut versuchen.";
+"operation.cancelled" = "Der Vorgang wurde abgebrochen. Sie können es erneut versuchen.";
+
+/* Alibaba Token Plan */
+"alibaba.region" = "Region";
+"alibaba.region.china" = "Festlandchina";
+"alibaba.region.international" = "International";
+"alibaba.edition" = "Tarif";
+"alibaba.edition.team" = "Team";
+"alibaba.edition.personal" = "Privat";
+"alibaba.cookie_placeholder" = "Konsolen-Cookie einfügen (einschließlich CSRF-Cookie)";
+"alibaba.setup_hint" = "Region und Tarif der Konsole wählen und deren Cookie einfügen. Das Kontingent gehört zu diesem Konto. Einstellungen werden erst nach der Prüfung gespeichert.";
+"alibaba.route_setup" = "Alibaba Token Plan unter Datenquellen mit dem Konsolen-Cookie hinzufügen. Ein API-Schlüssel kann dieses Kontingent nicht lesen oder die Kontozuordnung der Route bestätigen.";
+"alibaba.credits" = "%.2f Credits";
+"alibaba.error.configuration" = "Einen gültigen Konsolen-Cookie mit login_aliyunid_csrf oder csrf einfügen. API-Schlüssel werden nicht akzeptiert.";
+"alibaba.error.authentication" = "Die Sitzung ist abgelaufen. Auf der gewählten Website anmelden und den Cookie ersetzen.";
+"alibaba.error.unavailable" = "Kein nutzbares Kontingent erhalten. Region und Tarif prüfen und erneut versuchen.";
+"alibaba.error.response" = "Nicht unterstützte Kontingentdaten erhalten. Später erneut versuchen.";
+"alibaba.error.request" = "Kontingent konnte nicht gelesen werden. Berechtigungen, Region und Tarif prüfen.";
+"alibaba.error.network" = "Keine Verbindung zur Konsole. Netzwerk prüfen und erneut versuchen.";

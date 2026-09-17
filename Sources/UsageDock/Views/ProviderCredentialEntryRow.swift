@@ -50,8 +50,11 @@ struct ProviderCredentialEntryRow: View {
     let configuration: ProviderCredentialConfiguration
     @State private var credentialStatus: StoredCredentialStatus
     @State private var draft = ""
-    @State private var isSaving = false
+    @StateObject private var action = AsyncViewAction()
+    private var isSaving: Bool { action.isRunning }
     @State private var zaiRegion: ZAIAPIRegion
+    @State private var alibabaRegion: AlibabaTokenPlanConfiguration.Region
+    @State private var alibabaEdition: AlibabaTokenPlanConfiguration.Edition
 
     init(
         store: UsageStore,
@@ -65,10 +68,33 @@ struct ProviderCredentialEntryRow: View {
             initialValue: ProviderCredentialConfiguration.storedCredentialStatus(for: provider)
         )
         _zaiRegion = State(initialValue: ZAIRegionStore().load())
+        let alibabaConfig = provider == .alibabaTokenPlan
+            ? ProviderSecretStore(provider: provider).load().flatMap { try? AlibabaTokenPlanConfiguration.decode($0) }
+            : nil
+        _alibabaRegion = State(initialValue: alibabaConfig?.region ?? .china)
+        _alibabaEdition = State(initialValue: alibabaConfig?.edition ?? .team)
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
+            if provider == .alibabaTokenPlan {
+                Picker(L10n.text("alibaba.region"), selection: $alibabaRegion) {
+                    ForEach(AlibabaTokenPlanConfiguration.Region.allCases, id: \.self) { region in
+                        Text(region.displayName).tag(region)
+                    }
+                }
+                .disabled(isSaving)
+                Picker(L10n.text("alibaba.edition"), selection: $alibabaEdition) {
+                    ForEach(AlibabaTokenPlanConfiguration.Edition.allCases, id: \.self) { edition in
+                        Text(edition.displayName).tag(edition)
+                    }
+                }
+                .disabled(isSaving)
+                Text(L10n.text("alibaba.setup_hint"))
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(DashboardTheme.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             if provider == .zai {
                 HStack(spacing: 8) {
                     Text(L10n.text("datasource.zai_region"))
@@ -80,7 +106,7 @@ struct ProviderCredentialEntryRow: View {
                             get: { zaiRegion },
                             set: { newRegion in
                                 zaiRegion = newRegion
-                                Task { await store.setZAIRegion(newRegion) }
+                                action.start { await store.setZAIRegion(newRegion) }
                             }
                         )
                     ) {
@@ -91,6 +117,7 @@ struct ProviderCredentialEntryRow: View {
                     .labelsHidden()
                     .pickerStyle(.segmented)
                     .frame(maxWidth: 230)
+                    .disabled(isSaving)
                 }
             }
 
@@ -108,28 +135,40 @@ struct ProviderCredentialEntryRow: View {
                         ? L10n.text("action.replace")
                         : L10n.text("action.save")
                 ) {
-                    let credential = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+                    var credential = draft.trimmingCharacters(in: .whitespacesAndNewlines)
                     guard !credential.isEmpty else { return }
-                    isSaving = true
-                    Task {
-                        let saved = await store.saveAPIKey(credential, for: provider)
+                    if provider == .alibabaTokenPlan {
+                        let config = AlibabaTokenPlanConfiguration(
+                            region: alibabaRegion, edition: alibabaEdition, cookie: credential
+                        )
+                        guard let encoded = try? config.encoded() else { return }
+                        credential = encoded
+                    }
+                    let submittedCredential = credential
+                    action.start {
+                        let saved = await store.saveAPIKey(submittedCredential, for: provider)
+                        guard !Task.isCancelled else { return }
                         if saved { draft = "" }
                         reloadCredentialStatus()
-                        isSaving = false
                     }
                 }
                 .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSaving)
 
                 if canReplaceCredential {
                     Button(L10n.text("action.clear")) {
-                        isSaving = true
-                        Task {
+                        action.start {
                             _ = await store.clearAPIKey(for: provider)
                             reloadCredentialStatus()
-                            isSaving = false
                         }
                     }
                     .disabled(isSaving)
+                }
+            }
+
+            if isSaving {
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.mini)
+                    Button(L10n.text("action.cancel")) { action.cancel() }
                 }
             }
 
@@ -140,11 +179,10 @@ struct ProviderCredentialEntryRow: View {
                         .foregroundStyle(DashboardTheme.warning)
                     Spacer(minLength: 4)
                     Button(L10n.text("action.authorize")) {
-                        isSaving = true
-                        Task {
+                        action.start {
                             _ = await store.authorizeProviderCredentials(provider)
+                            guard !Task.isCancelled else { return }
                             reloadCredentialStatus()
-                            isSaving = false
                         }
                     }
                     .disabled(isSaving)
@@ -155,6 +193,7 @@ struct ProviderCredentialEntryRow: View {
                     .foregroundStyle(DashboardTheme.warning)
             }
         }
+        .onDisappear { action.cancel() }
         .controlSize(.small)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(L10n.format("datasource.api_key_settings", provider.displayName))

@@ -395,7 +395,7 @@ final class StatusBarController: NSObject {
         let summaryStrategy = PreferencesStore.shared.quotaSummaryStrategy
         let remainingPercent = Dictionary(
             uniqueKeysWithValues: selectedProviders.compactMap { provider in
-                let quota = store.quotaValue(for: provider)
+                let quota = store.headlineQuota(for: provider, strategy: summaryStrategy)
                 return StatusBarPresentation.headlineRemainingPercent(
                     in: quota,
                     strategy: summaryStrategy
@@ -411,18 +411,18 @@ final class StatusBarController: NSObject {
         )
         let segments: [(ProviderQuota.Provider, String)] = displayedProviders.map { provider in
             let remaining = StatusBarPresentation.remainingText(
-                for: store.quotaValue(for: provider),
+                for: store.headlineQuota(for: provider, strategy: summaryStrategy),
                 strategy: summaryStrategy
             )
             return (provider, remaining)
         }
 
         let claudeRemaining = UsageStore.logoQuotaSelection(
-            from: [store.quotaValue(for: .claude)],
+            from: [store.headlineQuota(for: .claude, strategy: summaryStrategy)],
             strategy: summaryStrategy
         )?.remainingPercent
         let codexRemaining = UsageStore.logoQuotaSelection(
-            from: [store.quotaValue(for: .codex)],
+            from: [store.headlineQuota(for: .codex, strategy: summaryStrategy)],
             strategy: summaryStrategy
         )?.remainingPercent
         let state = TokenRemainLogoState.resolve(
@@ -437,7 +437,7 @@ final class StatusBarController: NSObject {
         let insights = UsageInsights(
             claude: nil,
             codex: nil,
-            others: Array(store.quotas.values),
+            others: store.headlineQuotas,
             daily: nil
         )
         // 菜单栏文字维持用户自选项;Dock logo 的表情与双进度条只比较
@@ -447,7 +447,7 @@ final class StatusBarController: NSObject {
             insights.decisionHeadline()
         ]
         for provider in ProviderQuota.Provider.displayOrder {
-            guard let quota = store.quotaValue(for: provider) else { continue }
+            guard let quota = store.headlineQuota(for: provider, strategy: summaryStrategy) else { continue }
             let remaining = StatusBarPresentation.remainingText(for: quota, strategy: summaryStrategy)
             let providerLabel = StatusBarPresentation.tooltipProviderLabel(
                 provider,
@@ -487,7 +487,7 @@ final class StatusBarController: NSObject {
                 let separator = displayMode == .compact ? " " : " · "
                 title.append(NSAttributedString(string: separator, attributes: attributes))
             }
-            title.append(statusIcon(segment.0, size: iconSize))
+            title.append(Self.statusIcon(segment.0, size: iconSize))
             if displayMode != .compact {
                 title.append(NSAttributedString(string: " \(segment.1)", attributes: attributes))
             }
@@ -517,15 +517,14 @@ final class StatusBarController: NSObject {
         }
     }
 
-    private func statusIcon(
+    static func statusIcon(
         _ provider: ProviderQuota.Provider,
         size: CGFloat
     ) -> NSAttributedString {
-        // `BrandIcon.image` already returns a provider-owned NSImage at the
-        // requested size. Avoid force-casting `NSCopying.copy()` here: an
-        // unexpected image subclass implementation would otherwise terminate
-        // the entire menu-bar process while refreshing its title.
-        let image = BrandIcon.image(for: provider, size: size)
+        // Normalize size/padding first, then let the cell apply template-image
+        // colors for the current appearance. Assigning attachment.image draws
+        // the black template pixels literally on dark menu-bar backgrounds.
+        let image = BrandIcon.menuBarImage(for: provider, size: size)
 
         let attachment = NSTextAttachment()
         attachment.attachmentCell = NSTextAttachmentCell(imageCell: image)

@@ -172,7 +172,10 @@ final class AIFeedStore: ObservableObject {
         isRefreshing = true
         defer { isRefreshing = false }
         do {
-            let fetched = try await CuratedFeedService(endpoint: endpoint).fetch()
+            let fetched = try await AsyncDeadline.run(timeout: 30) {
+                try await CuratedFeedService(endpoint: endpoint).fetch()
+            }
+            try Task.checkCancellation()
             let now = Date()
             // The broadcast API owns compact-feed relevance and momentum
             // ranking so every Apple client shows the same featured order.

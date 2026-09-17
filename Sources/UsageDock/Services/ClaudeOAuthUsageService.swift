@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import Security
 
@@ -56,7 +57,11 @@ struct ClaudeOAuthUsageService {
         var reader = ClaudeCredentialsReader()
         reader.environment = environment
         reader.fallbackToDefaultDirectory = !isolatedConfiguration
-        reader.allowsKeychain = !isolatedConfiguration
+        // Isolated profiles still read Keychain, but only the CLAUDE_CONFIG_DIR
+        // scoped item. Claude Code 2.1+ no longer writes `.credentials.json`.
+        let isolatedDirectory = environment["CLAUDE_CONFIG_DIR"]?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        reader.allowsKeychain = !isolatedConfiguration || !isolatedDirectory.isEmpty
         let result = await reader.readAllowingAppleTool(
             now: now,
             keychainInteraction: keychainInteraction
@@ -68,21 +73,26 @@ struct ClaudeOAuthUsageService {
             if result.hasExpiredCredentials {
                 throw APIError.credentialsExpired
             }
-            if result.hasInvalidKeychainPayload {
+            // `/logout` 之后 Claude Code 会保留 MCP 的 OAuth 段、删掉账号段:
+            // 条目还在,但已经不是登录凭证。这是"登出",不是"格式无法识别"。
+            if result.hasInvalidKeychainPayload && !result.keychainPayloadIsSignedOut {
                 throw APIError.invalidStoredCredentials
             }
             throw APIError.credentialsUnavailable
         }
 
         var request = URLRequest(url: Self.usageURL)
-        request.timeoutInterval = 10
+        // 空闲超时。跨境链路偶发抖动下 10 秒经常刚好差一口气,一次抖动就
+        // 把"请求超时"挂到卡片上;25 秒仍远短于一轮刷新,配合下面的一次
+        // 重试足以吸收单次抖动。
+        request.timeoutInterval = Self.requestTimeout
         request.setValue("Bearer \(credentials.accessToken)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("oauth-2025-04-20", forHTTPHeaderField: "anthropic-beta")
         // 接口按 Claude Code 客户端的形态放行;裸 UA 会被部分网关拦截。
         request.setValue("claude-code/2.1.69", forHTTPHeaderField: "User-Agent")
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await Self.performWithOneTransportRetry(request)
         guard let http = response as? HTTPURLResponse else {
             throw APIError.invalidResponse
         }
@@ -102,6 +112,52 @@ struct ClaudeOAuthUsageService {
             rateLimitTier: credentials.rateLimitTier,
             now: now
         )
+    }
+
+    static let requestTimeout: TimeInterval = 25
+    static let transportRetryDelay: TimeInterval = 2
+
+    /// 传输层失败(超时、连接断开、DNS 失败)会自己恢复,和凭证或服务端
+    /// 状态无关。只有这类错误值得在同一轮里重试一次;HTTP 状态码和解析
+    /// 错误不走这里。
+    static func isTransportFailure(_ error: Error) -> Bool {
+        guard let urlError = error as? URLError else { return false }
+        switch urlError.code {
+        case .timedOut, .networkConnectionLost, .cannotConnectToHost,
+             .cannotFindHost, .dnsLookupFailed, .notConnectedToInternet,
+             .secureConnectionFailed, .internationalRoamingOff, .callIsActive,
+             .dataNotAllowed, .resourceUnavailable:
+            return true
+        default:
+            return false
+        }
+    }
+
+    /// 一次传输失败后隔 `retryDelay` 再发一次同样的请求,第二次失败原样
+    /// 抛出。只重试一次:连续两次都超时说明链路真的不通,再等下去只会拖
+    /// 慢整轮刷新,交给下一轮即可。
+    static func performWithOneTransportRetry(
+        _ request: URLRequest,
+        retryDelay: TimeInterval = transportRetryDelay,
+        perform: (URLRequest) async throws -> (Data, URLResponse) = {
+            try await URLSession.shared.data(for: $0)
+        }
+    ) async throws -> (Data, URLResponse) {
+        try Task.checkCancellation()
+        do {
+            let response = try await perform(request)
+            try Task.checkCancellation()
+            return response
+        } catch let error where isTransportFailure(error) {
+            try Task.checkCancellation()
+            if retryDelay > 0 {
+                try await Task.sleep(for: .seconds(retryDelay))
+            }
+            try Task.checkCancellation()
+            let response = try await perform(request)
+            try Task.checkCancellation()
+            return response
+        }
     }
 
     static func retryAfterSeconds(_ response: HTTPURLResponse, now: Date = .now) -> Int? {
@@ -327,9 +383,10 @@ enum ClaudeOAuthUsageParser {
 
 /// 只读发现 Claude Code 的 OAuth 凭证。查找顺序:
 /// 1. `$CLAUDE_CONFIG_DIR/.credentials.json` 或 `~/.claude/.credentials.json`(无需授权提示)
-/// 2. 钥匙串 `Claude Code-credentials`。自动刷新走 `.disallowed`:已在 ACL 里
-///    授权过的条目照常读到,未授权则立即失败(绝不弹框、绝不阻塞)。构建脚本
-///    的稳定签名让"始终允许"跨重建生效。
+/// 2. 钥匙串。默认家目录是 `Claude Code-credentials`;自定义
+///    `CLAUDE_CONFIG_DIR` 是 `Claude Code-credentials-<sha256(path)[:8]>`。
+///    自动刷新走 `.disallowed`:已在 ACL 里授权过的条目照常读到,未授权则立即
+///    失败(绝不弹框、绝不阻塞)。构建脚本的稳定签名让"始终允许"跨重建生效。
 /// 3. 同一条目改由 `/usr/bin/security` 代读(`readAllowingAppleTool`)。第 2 步
 ///    在实机上恒定失败:该条目的 partition list 只有 `apple-tool:`,分区检查先于
 ///    信任应用检查,于是"始终允许"点多少次都不生效。见
@@ -353,6 +410,8 @@ struct ClaudeCredentialsReader {
         let source: Source?
         let keychainStatus: OSStatus?
         let hasExpiredCredentials: Bool
+        /// 钥匙串读到的是合法 JSON,只是没有 `claudeAiOauth` 账号段。
+        var keychainPayloadIsSignedOut: Bool = false
 
         var needsAuthorization: Bool {
             guard let keychainStatus else { return false }
@@ -381,9 +440,9 @@ struct ClaudeCredentialsReader {
     var allowsKeychain = true
     static let keychainService = "Claude Code-credentials"
 
-    var keychainPayload: @Sendable (KeychainRead.Interaction) -> KeychainRead.Outcome = { interaction in
+    var keychainPayload: @Sendable (String, KeychainRead.Interaction) -> KeychainRead.Outcome = { service, interaction in
         KeychainRead.genericPassword(
-            service: ClaudeCredentialsReader.keychainService,
+            service: service,
             interaction: interaction
         )
     }
@@ -431,7 +490,7 @@ struct ClaudeCredentialsReader {
         // 自动额度刷新永远不应召唤系统密码框。已选择过“始终允许”的钥匙串
         // 项目仍能成功读取；尚未授权时立即静默失败，由调用方降级到 Claude
         // CLI /usage 探针。只有明确的用户操作才能传 `.allowed`。
-        let outcome = keychainPayload(keychainInteraction)
+        let outcome = keychainPayload(resolvedKeychainService, keychainInteraction)
         let parsed = outcome.payload.flatMap(Self.decode)
         let credentials = parsed.flatMap {
             Self.isUsable($0, now: now) ? $0.credentials : nil
@@ -442,17 +501,18 @@ struct ClaudeCredentialsReader {
             credentials: credentials,
             source: credentials == nil ? nil : .keychain,
             keychainStatus: outcome.status,
-            hasExpiredCredentials: foundExpiredCredentials
+            hasExpiredCredentials: foundExpiredCredentials,
+            keychainPayloadIsSignedOut: parsed == nil
+                && outcome.payload.map(Self.isSignedOutPayload) == true
         )
     }
 
     /// The direct read is cheaper and wins whenever this app really is inside the
     /// item's partition. When it is not — the normal state for a credential a CLI
     /// wrote, see `KeychainRead.genericPasswordViaAppleTool` — retry through
-    /// `/usr/bin/security` rather than degrading to the PTY probe. Managed
-    /// profiles never take this path: their credentials live in their own
-    /// configuration directory, while the shared keychain item belongs to
-    /// whichever account Claude Code is currently signed into.
+    /// `/usr/bin/security` rather than degrading to the PTY probe. Isolated
+    /// profiles use the CLAUDE_CONFIG_DIR-scoped item; they must never fall
+    /// through to the unsuffixed system-account service.
     func readAllowingAppleTool(
         now: Date = .now,
         keychainInteraction: KeychainRead.Interaction = .disallowed
@@ -461,11 +521,22 @@ struct ClaudeCredentialsReader {
         guard allowsKeychain, direct.credentials == nil, direct.needsAuthorization else {
             return direct
         }
-        let outcome = await appleToolPayload(Self.keychainService)
-        guard let payload = outcome.payload, let parsed = Self.decode(payload) else {
+        let outcome = await appleToolPayload(resolvedKeychainService)
+        guard let payload = outcome.payload else {
             // Keep the direct result: it already describes why the item is out
             // of reach, and the delegate adds no new recovery action.
             return direct
+        }
+        guard let parsed = Self.decode(payload) else {
+            // 代读成功但内容不是登录凭证:要么已 /logout(只剩 mcpOAuth),
+            // 要么格式真的变了。两者都不该再报"需要授权"。
+            return ReadResult(
+                credentials: nil,
+                source: nil,
+                keychainStatus: errSecSuccess,
+                hasExpiredCredentials: false,
+                keychainPayloadIsSignedOut: Self.isSignedOutPayload(payload)
+            )
         }
         guard Self.isUsable(parsed, now: now) else {
             return ReadResult(
@@ -488,6 +559,19 @@ struct ClaudeCredentialsReader {
             return nil
         }
         return parsed.credentials
+    }
+
+    /// 合法 JSON 对象,但没有可用的 `claudeAiOauth.accessToken`。Claude Code
+    /// `/logout` 后就是这个形态(通常只剩 `mcpOAuth`)。
+    static func isSignedOutPayload(_ payload: String) -> Bool {
+        guard let data = payload.data(using: .utf8),
+              let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
+            return false
+        }
+        guard let oauth = object["claudeAiOauth"] as? [String: Any] else { return true }
+        let token = (oauth["accessToken"] as? String)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return token.isEmpty
     }
 
     private static func decode(_ payload: String) -> ParsedCredentials? {
@@ -515,6 +599,42 @@ struct ClaudeCredentialsReader {
 
     private static func isUsable(_ parsed: ParsedCredentials, now: Date) -> Bool {
         parsed.expiresAt.map { $0.timeIntervalSince(now) > expiryMargin } ?? true
+    }
+
+    /// Claude Code 2.1+ stores OAuth tokens in a Keychain item named after the
+    /// configuration home. The default `~/.claude` directory keeps the historical
+    /// unsuffixed service; any other `CLAUDE_CONFIG_DIR` gets
+    /// `Claude Code-credentials-<sha256(path)[:8]>`. Hashing the path Claude
+    /// itself received is what keeps a second account from inheriting the
+    /// system login.
+    static func keychainServiceName(
+        configurationDirectory: String?,
+        homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser
+    ) -> String {
+        guard var path = configurationDirectory?
+            .trimmingCharacters(in: .whitespacesAndNewlines), !path.isEmpty else {
+            return keychainService
+        }
+        if path.hasPrefix("~") {
+            path = homeDirectory.path + path.dropFirst()
+        }
+        while path.count > 1 && path.hasSuffix("/") {
+            path.removeLast()
+        }
+        let defaultPath = homeDirectory.appending(path: ".claude").path
+        if path == defaultPath {
+            return keychainService
+        }
+        let digest = SHA256.hash(data: Data(path.utf8))
+        let suffix = digest.prefix(4).map { String(format: "%02x", $0) }.joined()
+        return "\(keychainService)-\(suffix)"
+    }
+
+    private var resolvedKeychainService: String {
+        Self.keychainServiceName(
+            configurationDirectory: environment["CLAUDE_CONFIG_DIR"],
+            homeDirectory: homeDirectory
+        )
     }
 
     private func filePayloads() -> [String] {

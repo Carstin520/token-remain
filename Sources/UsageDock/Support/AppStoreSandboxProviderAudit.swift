@@ -102,6 +102,7 @@ enum AppStoreSandboxProviderAudit {
         case .kimi: return try await KimiUsageService().fetch()
         case .minimax: return try await MiniMaxUsageService().fetch()
         case .mimo: return try await MiMoUsageService().fetch()
+        case .alibabaTokenPlan: return try await AlibabaTokenPlanUsageService().fetch()
         case .qoder: return try await QoderUsageService().fetch()
         case .kiro: return try await KiroUsageService().fetch()
         case .volcengine: return try await VolcengineUsageService().fetch()

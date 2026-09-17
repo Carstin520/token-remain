@@ -331,17 +331,18 @@
 "service.claude.api_rate_limited" = "Claude usage API is rate limited; retry later";
 "service.claude.api_rate_limited_minutes" = "Claude usage API is rate limited; retry in about %1$d min";
 "service.claude.authorization_required" = "Allow TokenRemain read-only access to your Claude login credentials";
-"service.claude.cli_not_found" = "The optional Claude CLI fallback is unavailable; sign in or renew from Code in the Claude app";
+"service.claude.cli_not_found" = "Claude Code CLI not found, so the session cannot renew automatically; install the CLI or run claude in a terminal";
 "alert.provider_signed_out.title" = "%@ is signed out";
 "alert.provider_signed_out.body" = "TokenRemain can no longer read your usage — the cards are showing the last good snapshot. Sign in to %@ again to restore it.";
 "service.claude.cli_timeout" = "Claude Code usage read timed out; showing the latest cached data";
-"service.claude.credentials_unavailable" = "No usable Claude login credentials found; sign in from Code in the Claude app";
-"service.claude.invalid_stored_credentials" = "Claude login credentials are not recognized; sign in again in the Claude app";
+"service.claude.network_unreachable" = "Claude is unreachable right now; showing the latest cached data and retrying once the network or proxy is back";
+"service.claude.credentials_unavailable" = "No usable Claude login found; run claude in a terminal and sign in with /login";
+"service.claude.invalid_stored_credentials" = "Claude login credentials are not recognized; run claude in a terminal and sign in again with /login";
 "service.claude.invalid_usage_output" = "Claude Code did not return recognizable 5-hour / 7-day usage";
 "service.claude.probe_launch_failed" = "Could not launch the Claude Code usage probe: %1$@";
 "service.claude.rate_limited" = "Claude usage API is rate limited; retrying automatically soon";
 "service.claude.rate_limited_minutes" = "Claude usage API is rate limited; retrying automatically in about %1$d min";
-"service.claude.session_expired" = "Your Claude session expired; open Code in the Claude app to renew it";
+"service.claude.session_expired" = "Your Claude session expired; run claude in a terminal once to renew it";
 "service.codex.authorization_required" = "Allow TokenRemain read-only access to your Codex login credentials";
 "service.codex.invalid_stored_credentials" = "Codex login credentials are not recognized; sign in again in ChatGPT or Codex";
 "service.codex.not_logged_in" = "No Codex login credentials found; sign in with ChatGPT or Codex";
@@ -624,6 +625,9 @@
 "accounts.add_accessibility" = "Add another %1$@ account";
 "accounts.adding" = "Signing in…";
 "accounts.adding_progress" = "Waiting for the official browser sign-in to finish…";
+"accounts.login_remaining" = "Sign-in timeout in %1$@";
+"accounts.login_timed_out" = "Sign-in timed out. Start sign-in again when you are ready.";
+"accounts.login_cancelled" = "Sign-in cancelled. You can try again.";
 "accounts.show_only" = "Show This Account";
 "accounts.rename" = "Rename…";
 "accounts.rename_title" = "Rename account";
@@ -712,3 +716,24 @@
 "accounts.setup.failed" = "Sign-in did not finish. Check the CLI and try again.";
 "service.claude.account_login_failed" = "Claude sign-in did not complete.";
 "service.claude.account_session_missing" = "Claude sign-in finished without creating an isolated account session.";
+
+"operation.timed_out" = "The operation timed out. Please try again.";
+"operation.cancelled" = "The operation was cancelled. You can try again.";
+
+/* Alibaba Token Plan */
+"alibaba.region" = "Region";
+"alibaba.region.china" = "China mainland";
+"alibaba.region.international" = "International";
+"alibaba.edition" = "Plan";
+"alibaba.edition.team" = "Team";
+"alibaba.edition.personal" = "Personal";
+"alibaba.cookie_placeholder" = "Paste the console Cookie, including its CSRF cookie";
+"alibaba.setup_hint" = "Select the site and plan used in the console. Paste its Cookie; the quota belongs to that console account. Settings are saved only after verification.";
+"alibaba.route_setup" = "Add Alibaba Token Plan in Data Sources with its console Cookie. An API key cannot read this quota or prove that the console account owns this route.";
+"alibaba.credits" = "%.2f credits";
+"alibaba.error.configuration" = "Paste a valid console Cookie including login_aliyunid_csrf or csrf; API keys are not accepted.";
+"alibaba.error.authentication" = "The console session has expired. Sign in to the selected site and replace the Cookie.";
+"alibaba.error.unavailable" = "The selected plan did not return usable quota. Check the region and plan, then retry.";
+"alibaba.error.response" = "The console returned an unsupported quota response. Retry later.";
+"alibaba.error.request" = "The console could not read this quota. Check account permissions, region and plan, then retry.";
+"alibaba.error.network" = "Could not connect to the console. Check the network and retry.";

@@ -9,6 +9,24 @@ enum AdaptiveRefreshPolicy {
     static let activeInterval: TimeInterval = 60
     static let idleInterval: TimeInterval = 5 * 60
     static let maximumBackoff: TimeInterval = 5 * 60
+    /// 传输类失败的静默期下限。
+    static let transportFailureGraceMinimum: TimeInterval = 10 * 60
+
+    /// 传输类失败(请求超时、连接断开)会自己恢复,而卡片会继续渲染上一份
+    /// 快照。快照仍在刷新节奏之内时,一次抖动不值得挂出错误直到下一轮
+    /// 成功;只有缓存已经明显过时,用户才需要知道数据停了。
+    /// 静默期 = 两轮刷新间隔,且不短于十分钟:分钟级刷新下一次抖动
+    /// 不出声,三十分钟档下一小时内不出声。
+    static func suppressesTransportFailureNotice(
+        cachedCapturedAt: Date?,
+        now: Date,
+        refreshInterval: TimeInterval?
+    ) -> Bool {
+        guard let cachedCapturedAt else { return false }
+        let grace = max(2 * (refreshInterval ?? idleInterval), transportFailureGraceMinimum)
+        let age = now.timeIntervalSince(cachedCapturedAt)
+        return age >= 0 && age < grace
+    }
 
     static func localAIQuotaInterval(
         preferred: TimeInterval?,

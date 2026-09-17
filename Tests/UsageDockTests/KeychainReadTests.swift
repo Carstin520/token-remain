@@ -91,6 +91,19 @@ struct KeychainReadTests {
         #expect(result.outcome.needsAuthorization)
     }
 
+
+    @Test("Interactive retries do not queue behind a dialog still owned by the OS")
+    func interactiveRetryDoesNotQueue() {
+        let gate = NSLock()
+        gate.lock()
+        defer { gate.unlock() }
+        let started = Date()
+        let result = probe(interaction: .allowed, gate: gate, waitLimit: 0.05)
+        #expect(Date().timeIntervalSince(started) < 1)
+        #expect(result.steps.isEmpty)
+        #expect(result.outcome.needsAuthorization)
+    }
+
     /// 刷新是并发的:Claude / Cursor / Copilot / Antigravity 会同时读钥匙串。
     /// 它们之间的锁竞争是良性的(一次读取毫秒级),**必须**互相等一下;早期实现
     /// 用 `NSLock.try()` 直接失败,会让其中一个白白降级到 45 秒的 PTY 探针。

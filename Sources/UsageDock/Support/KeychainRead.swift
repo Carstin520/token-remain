@@ -63,7 +63,12 @@ enum KeychainRead {
         switch interaction {
         case .allowed:
             // 交互式读取同样占锁,否则并发的静默读取会把这次弹窗一起压掉。
-            gate.lock()
+            // A retry must not queue another future dialog behind a read the
+            // user has already cancelled in the app. The current OS dialog is
+            // owned by Security.framework and still requires user dismissal.
+            guard gate.lock(before: Date().addingTimeInterval(waitLimit)) else {
+                return Outcome(payload: nil, status: errSecInteractionNotAllowed)
+            }
             defer { gate.unlock() }
             return outcome(copy(query))
 

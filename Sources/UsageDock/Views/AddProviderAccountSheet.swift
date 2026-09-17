@@ -170,7 +170,8 @@ struct AddProviderAccountSheet: View {
 
     @State private var accountName = ""
     @State private var credential = ""
-    @State private var isSubmitting = false
+    @StateObject private var action = AsyncViewAction()
+    private var isSubmitting: Bool { action.isRunning }
     @State private var failure: String?
     @FocusState private var isCredentialFocused: Bool
 
@@ -302,10 +303,10 @@ struct AddProviderAccountSheet: View {
                 }
                 Spacer(minLength: 8)
                 Button(L10n.text("action.cancel")) {
+                    action.cancel()
                     credential = ""
                     isPresented = false
                 }
-                .disabled(isSubmitting)
                 Button(
                     L10n.text(
                         isEditing
@@ -325,6 +326,7 @@ struct AddProviderAccountSheet: View {
             store.clearAccountManagementNotice(for: provider)
             isCredentialFocused = true
         }
+        .onDisappear { action.cancel() }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(L10n.format("accounts.credential_title", provider.displayName))
     }
@@ -335,8 +337,7 @@ struct AddProviderAccountSheet: View {
         let secret = trimmedCredential
         guard !secret.isEmpty, !isSubmitting else { return }
         failure = nil
-        isSubmitting = true
-        Task {
+        action.start {
             let added: Bool
             if let editingProfile {
                 added = await store.updateProviderAccountCredential(
@@ -350,7 +351,7 @@ struct AddProviderAccountSheet: View {
                     credential: secret
                 )
             }
-            isSubmitting = false
+            guard !Task.isCancelled else { return }
             credential = ""
             if added {
                 accountName = ""
@@ -500,8 +501,11 @@ struct AddCLIProviderAccountSheet: View {
                         .foregroundStyle(DashboardTheme.secondaryText)
                 }
                 Spacer(minLength: 8)
-                Button(L10n.text("action.cancel")) { isPresented = false }
-                    .disabled(isSubmitting)
+                Button(L10n.text("action.cancel")) {
+                    if isSubmitting { store.cancelProviderAccountLogin(provider) }
+                    isPresented = false
+                }
+                .disabled(isSubmitting && store.accountLoginDeadlines[provider] == nil)
                 Button(L10n.text("accounts.setup.continue"), action: submit)
                     .keyboardShortcut(.defaultAction)
                     .disabled(setup?.executable == nil || isSubmitting)

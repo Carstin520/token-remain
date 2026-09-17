@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 
 struct ClaudeAccountLoginService: Sendable {
@@ -18,66 +19,41 @@ struct ClaudeAccountLoginService: Sendable {
         }
     }
 
+    var executable: URL? = nil
+    var loginTimeout: TimeInterval = AccountLoginProcessRunner.loginTimeout
+    var statusTimeout: TimeInterval = AccountLoginProcessRunner.statusTimeout
+
     func login(configurationDirectory: URL) async throws {
-        try await run(
-            arguments: ["auth", "login", "--claudeai"],
+        try Task.checkCancellation()
+        guard let executable = executable ?? Self.claudeExecutable() else { throw LoginError.cliNotFound }
+        var environment = ProviderAccountProcessEnvironment.claude(
+            base: ProcessInfo.processInfo.environment,
             configurationDirectory: configurationDirectory
         )
-        let status = try await status(configurationDirectory: configurationDirectory)
-        guard status else { throw LoginError.loginDidNotCreateSession }
-    }
-
-    private func status(configurationDirectory: URL) async throws -> Bool {
-        let data = try await run(
-            arguments: ["auth", "status", "--json"],
-            configurationDirectory: configurationDirectory,
-            capturesOutput: true
+        environment["PATH"] = ProviderCLIExecutableResolver.launchPath(
+            existing: environment["PATH"], executable: executable
         )
-        guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            return false
+        environment["TERM"] = "xterm-256color"
+        let deadline = ProcessInfo.processInfo.systemUptime + loginTimeout
+        do {
+            // The official TUI needs a PTY to avoid opening OAuth twice.
+            _ = try await AccountLoginProcessRunner.run(
+                executable: executable, arguments: ["auth", "login", "--claudeai"],
+                environment: environment, usesTerminal: true, timeout: loginTimeout
+            )
+            let data = try await AccountLoginProcessRunner.run(
+                executable: executable, arguments: ["auth", "status", "--json"],
+                environment: environment, capturesOutput: true,
+                timeout: min(statusTimeout, deadline - ProcessInfo.processInfo.systemUptime)
+            )
+            guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  object["loggedIn"] as? Bool == true else {
+                throw LoginError.loginDidNotCreateSession
+            }
+            try Task.checkCancellation()
+        } catch AccountLoginProcessRunner.Failure.exited(let status) {
+            throw LoginError.loginFailed(status)
         }
-        return object["loggedIn"] as? Bool == true
-    }
-
-    @discardableResult
-    private func run(
-        arguments: [String],
-        configurationDirectory: URL,
-        capturesOutput: Bool = false
-    ) async throws -> Data {
-        try await Task.detached(priority: .userInitiated) {
-            guard let executable = Self.claudeExecutable() else {
-                throw LoginError.cliNotFound
-            }
-            let process = Process()
-            let output = Pipe()
-            process.executableURL = executable
-            process.arguments = arguments
-            var environment = ProviderAccountProcessEnvironment.claude(
-                base: ProcessInfo.processInfo.environment,
-                configurationDirectory: configurationDirectory
-            )
-            environment["PATH"] = ProviderCLIExecutableResolver.launchPath(
-                existing: environment["PATH"],
-                executable: executable
-            )
-            process.environment = environment
-            if capturesOutput {
-                process.standardOutput = output
-                process.standardError = FileHandle.nullDevice
-            } else {
-                // Claude opens the OAuth page itself. Keep terminal chatter out of
-                // the GUI process while the browser completes the official flow.
-                process.standardOutput = FileHandle.nullDevice
-                process.standardError = FileHandle.nullDevice
-            }
-            try process.run()
-            process.waitUntilExit()
-            guard process.terminationStatus == 0 else {
-                throw LoginError.loginFailed(process.terminationStatus)
-            }
-            return capturesOutput ? output.fileHandleForReading.readDataToEndOfFile() : Data()
-        }.value
     }
 
     static func claudeExecutable(

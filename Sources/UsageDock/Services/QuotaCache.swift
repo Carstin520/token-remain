@@ -53,9 +53,13 @@ struct QuotaCache: Sendable {
 
     private let url: URL
 
-    init() {
+    init(url: URL? = nil) {
+        if let url {
+            self.url = url
+            return
+        }
         let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!
-        url = caches
+        self.url = caches
             .appending(path: "com.jamesli.usagedock", directoryHint: .isDirectory)
             .appending(path: "quota-cache.json")
     }

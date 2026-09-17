@@ -125,6 +125,9 @@
 
 "action.authorize" = "授权";
 "action.cancel" = "取消";
+"accounts.login_remaining" = "登录等待剩余 %1$@";
+"accounts.login_timed_out" = "登录等待已超时，准备好后请重新发起登录。";
+"accounts.login_cancelled" = "登录已取消，可以重新尝试。";
 "action.clear" = "清除";
 "action.refresh" = "刷新";
 "action.refresh_all_sources" = "立即刷新所有数据源";
@@ -331,17 +334,18 @@
 "service.claude.api_rate_limited" = "Claude 用量接口限流,稍后重试";
 "service.claude.api_rate_limited_minutes" = "Claude 用量接口限流,约 %1$d 分钟后重试";
 "service.claude.authorization_required" = "需要允许 TokenRemain 只读访问 Claude 登录凭证";
-"service.claude.cli_not_found" = "选用的 Claude CLI 兜底不可用；请打开 Claude 应用的 Code 页面登录或续期";
+"service.claude.cli_not_found" = "未找到 Claude Code 命令行，无法自动续期；请安装 CLI 或在终端运行 claude 登录";
 "alert.provider_signed_out.title" = "%@ 已登出";
 "alert.provider_signed_out.body" = "TokenRemain 已读不到用量，卡片显示的是最后一次成功的快照。重新登录 %@ 后自动恢复。";
 "service.claude.cli_timeout" = "Claude Code 用量读取超时，正在显示最近缓存";
-"service.claude.credentials_unavailable" = "未找到可用的 Claude 登录凭证；请打开 Claude 应用的 Code 页面登录";
-"service.claude.invalid_stored_credentials" = "Claude 登录凭证格式无法识别；请打开 Claude 应用重新登录";
+"service.claude.network_unreachable" = "当前无法连接 Claude 服务，正在显示最近缓存；网络或代理恢复后自动重试";
+"service.claude.credentials_unavailable" = "未找到可用的 Claude 登录凭证；请在终端运行 claude 并执行 /login";
+"service.claude.invalid_stored_credentials" = "Claude 登录凭证格式无法识别；请在终端运行 claude 并执行 /login 重新登录";
 "service.claude.invalid_usage_output" = "Claude Code 未返回可识别的 5 小时 / 7 天用量";
 "service.claude.probe_launch_failed" = "无法启动 Claude Code 用量探针：%1$@";
 "service.claude.rate_limited" = "Claude 用量接口限流，稍后自动重试";
 "service.claude.rate_limited_minutes" = "Claude 用量接口限流，约 %1$d 分钟后自动重试";
-"service.claude.session_expired" = "Claude 登录已过期；请打开 Claude 应用的 Code 页面完成续期";
+"service.claude.session_expired" = "Claude 登录已过期；请在终端运行一次 claude 完成续期";
 "service.codex.authorization_required" = "需要允许 TokenRemain 只读访问 Codex 登录凭证";
 "service.codex.invalid_stored_credentials" = "Codex 登录凭证格式无法识别；请打开 ChatGPT 或 Codex 重新登录";
 "service.codex.not_logged_in" = "未找到 Codex 登录凭证；请打开 ChatGPT 或 Codex 登录";
@@ -712,3 +716,24 @@
 "accounts.setup.failed" = "登录未完成，请检查 CLI 后重试。";
 "service.claude.account_login_failed" = "Claude 登录未完成。";
 "service.claude.account_session_missing" = "Claude 登录已结束，但未创建隔离的账户会话。";
+
+"operation.timed_out" = "操作超时，请重试。";
+"operation.cancelled" = "操作已取消，可以重试。";
+
+/* Alibaba Token Plan */
+"alibaba.region" = "地域";
+"alibaba.region.china" = "国内";
+"alibaba.region.international" = "国际";
+"alibaba.edition" = "套餐";
+"alibaba.edition.team" = "团队版";
+"alibaba.edition.personal" = "个人版";
+"alibaba.cookie_placeholder" = "粘贴控制台 Cookie（包含 CSRF Cookie）";
+"alibaba.setup_hint" = "选择控制台的地域和套餐，再粘贴 Cookie；额度属于该控制台账号。验证成功后才保存设置。";
+"alibaba.route_setup" = "请在数据来源添加 Alibaba Token Plan 并配置控制台 Cookie。API Key 无法读取此额度，也无法证明控制台账号属于当前路由。";
+"alibaba.credits" = "%.2f Credits";
+"alibaba.error.configuration" = "请粘贴包含 login_aliyunid_csrf 或 csrf 的有效控制台 Cookie；不接受 API Key。";
+"alibaba.error.authentication" = "控制台会话已过期。请登录所选站点后替换 Cookie。";
+"alibaba.error.unavailable" = "所选套餐未返回可用额度。请检查地域和套餐后重试。";
+"alibaba.error.response" = "控制台返回了不支持的额度数据，请稍后重试。";
+"alibaba.error.request" = "控制台未能读取额度。请检查账号权限、地域及套餐后重试。";
+"alibaba.error.network" = "无法连接控制台，请检查网络后重试。";

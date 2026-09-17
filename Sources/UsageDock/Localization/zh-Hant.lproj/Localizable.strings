@@ -125,6 +125,9 @@
 
 "action.authorize" = "授權";
 "action.cancel" = "取消";
+"accounts.login_remaining" = "登入等待剩餘 %1$@";
+"accounts.login_timed_out" = "登入等待已逾時，準備好後請重新發起登入。";
+"accounts.login_cancelled" = "登入已取消，可以重新嘗試。";
 "action.clear" = "清除";
 "action.refresh" = "重新整理";
 "action.refresh_all_sources" = "立即重新整理所有資料來源";
@@ -140,8 +143,8 @@
 "datasource.authorizing" = "正在驗證…";
 "datasource.open_provider_app" = "開啟 %1$@";
 "service.claude.authorization_required" = "需要允許 TokenRemain 唯讀存取 Claude 登入憑證";
-"service.claude.invalid_stored_credentials" = "無法辨識 Claude 登入憑證；請在 Claude App 中重新登入";
-"service.claude.session_expired" = "Claude 登入已過期；請開啟 Claude App 的 Code 頁面完成續期";
+"service.claude.invalid_stored_credentials" = "無法辨識 Claude 登入憑證；請在終端機執行 claude 並輸入 /login 重新登入";
+"service.claude.session_expired" = "Claude 登入已過期；請在終端機執行一次 claude 完成續期";
 "service.codex.authorization_required" = "需要允許 TokenRemain 唯讀存取 Codex 登入憑證";
 "service.codex.invalid_stored_credentials" = "無法辨識 Codex 登入憑證；請在 ChatGPT 或 Codex 中重新登入";
 "datasource.broken" = "資料鏈失效";
@@ -335,11 +338,12 @@
 "service.antigravity.not_logged_in" = "未偵測到 Antigravity；請開啟並保持 Antigravity 執行，TokenRemain 會自動讀取其本機配額服務";
 "service.claude.api_rate_limited" = "Claude 用量 API 受速率限制，請稍後重試";
 "service.claude.api_rate_limited_minutes" = "Claude 用量 API 受速率限制，約 %1$d 分鐘後重試";
-"service.claude.cli_not_found" = "選用的 Claude CLI 備援不可用；請在 Claude App 的 Code 頁面登入或續期";
+"service.claude.cli_not_found" = "找不到 Claude Code 命令列，無法自動續期；請安裝 CLI 或在終端機執行 claude 登入";
 "alert.provider_signed_out.title" = "%@ 已登出";
 "alert.provider_signed_out.body" = "TokenRemain 已讀不到用量，卡片顯示的是最後一次成功的快照。重新登入 %@ 後自動恢復。";
 "service.claude.cli_timeout" = "Claude Code 用量讀取逾時，正在顯示最近的快取資料";
-"service.claude.credentials_unavailable" = "找不到可用的 Claude 登入憑證；請開啟 Claude App 的 Code 頁面登入";
+"service.claude.network_unreachable" = "目前無法連線 Claude 服務，正在顯示最近的快取；網路或代理恢復後會自動重試";
+"service.claude.credentials_unavailable" = "找不到可用的 Claude 登入憑證；請在終端機執行 claude 並輸入 /login";
 "service.claude.invalid_usage_output" = "Claude Code 未回傳可識別的 5 小時 / 7 天用量";
 "service.claude.probe_launch_failed" = "無法啟動 Claude Code 用量探針：%1$@";
 "service.claude.rate_limited" = "Claude 用量 API 受速率限制，稍後將自動重試";
@@ -712,3 +716,24 @@
 "accounts.setup.failed" = "登入未完成，請檢查 CLI 後再試一次。";
 "service.claude.account_login_failed" = "Claude 登入未完成。";
 "service.claude.account_session_missing" = "Claude 登入已結束，但未建立隔離的帳戶工作階段。";
+
+"operation.timed_out" = "操作逾時，請重試。";
+"operation.cancelled" = "操作已取消，可以重試。";
+
+/* Alibaba Token Plan */
+"alibaba.region" = "地區";
+"alibaba.region.china" = "中國大陸";
+"alibaba.region.international" = "國際";
+"alibaba.edition" = "方案";
+"alibaba.edition.team" = "團隊版";
+"alibaba.edition.personal" = "個人版";
+"alibaba.cookie_placeholder" = "貼上控制台 Cookie（含 CSRF Cookie）";
+"alibaba.setup_hint" = "選擇控制台的地區和方案，再貼上 Cookie；額度屬於該控制台帳號。驗證成功後才儲存設定。";
+"alibaba.route_setup" = "請在資料來源新增 Alibaba Token Plan 並設定控制台 Cookie。API Key 無法讀取此額度，也無法證明控制台帳號屬於目前路由。";
+"alibaba.credits" = "%.2f Credits";
+"alibaba.error.configuration" = "請貼上含 login_aliyunid_csrf 或 csrf 的有效控制台 Cookie；不接受 API Key。";
+"alibaba.error.authentication" = "控制台工作階段已過期。請登入所選站點後替換 Cookie。";
+"alibaba.error.unavailable" = "所選方案未傳回可用額度。請檢查地區和方案後重試。";
+"alibaba.error.response" = "控制台傳回不支援的額度資料，請稍後重試。";
+"alibaba.error.request" = "控制台無法讀取額度。請檢查帳號權限、地區及方案後重試。";
+"alibaba.error.network" = "無法連線至控制台，請檢查網路後重試。";

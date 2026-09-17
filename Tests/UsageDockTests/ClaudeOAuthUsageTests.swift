@@ -407,6 +407,35 @@ struct ClaudeCredentialsReaderTests {
         #expect(ClaudeCredentialsReader.parse(payload)?.accessToken == "sk-ant-oat01-test")
     }
 
+    @Test("Custom CLAUDE_CONFIG_DIR uses a SHA-256-prefixed keychain service")
+    func scopedKeychainServiceName() {
+        let home = URL(fileURLWithPath: "/Users/example")
+        #expect(
+            ClaudeCredentialsReader.keychainServiceName(
+                configurationDirectory: nil,
+                homeDirectory: home
+            ) == ClaudeCredentialsReader.keychainService
+        )
+        #expect(
+            ClaudeCredentialsReader.keychainServiceName(
+                configurationDirectory: "/Users/example/.claude",
+                homeDirectory: home
+            ) == ClaudeCredentialsReader.keychainService
+        )
+        #expect(
+            ClaudeCredentialsReader.keychainServiceName(
+                configurationDirectory: "~/.claude",
+                homeDirectory: home
+            ) == ClaudeCredentialsReader.keychainService
+        )
+        #expect(
+            ClaudeCredentialsReader.keychainServiceName(
+                configurationDirectory: "/tmp/tokenremain-claude-account/",
+                homeDirectory: home
+            ) == "Claude Code-credentials-7ebe5f89"
+        )
+    }
+
     @Test("Reads the credentials file from CLAUDE_CONFIG_DIR before the keychain")
     func readsConfigDirFile() throws {
         let directory = FileManager.default.temporaryDirectory
@@ -419,7 +448,7 @@ struct ClaudeCredentialsReaderTests {
 
         var reader = ClaudeCredentialsReader()
         reader.environment = ["CLAUDE_CONFIG_DIR": directory.path]
-        reader.keychainPayload = { _ in
+        reader.keychainPayload = { _, _ in
             Issue.record("keychain must not be consulted when the file already answers")
             return KeychainRead.Outcome(payload: nil, status: errSecItemNotFound)
         }
@@ -432,7 +461,7 @@ struct ClaudeCredentialsReaderTests {
         reader.environment = [:]
         reader.homeDirectory = FileManager.default.temporaryDirectory
             .appendingPathComponent("usagedock-missing-\(UUID().uuidString)", isDirectory: true)
-        reader.keychainPayload = { _ in
+        reader.keychainPayload = { _, _ in
             KeychainRead.Outcome(
                 payload: #"{"claudeAiOauth": {"accessToken": "sk-ant-oat01-keychain"}}"#,
                 status: errSecSuccess
@@ -443,27 +472,29 @@ struct ClaudeCredentialsReaderTests {
 
     @Test("An isolated managed account never inherits the system Claude credential")
     func managedAccountDoesNotFallBack() {
-        let keychainConsulted = ClaudeLockedValue(false)
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("usagedock-managed-missing-\(UUID().uuidString)")
+            .path
+        let scopedService = ClaudeCredentialsReader.keychainServiceName(
+            configurationDirectory: directory
+        )
+        let observedService = ClaudeLockedValue<String?>(nil)
         var reader = ClaudeCredentialsReader()
-        reader.environment = [
-            "CLAUDE_CONFIG_DIR": FileManager.default.temporaryDirectory
-                .appendingPathComponent("usagedock-managed-missing-\(UUID().uuidString)")
-                .path
-        ]
+        reader.environment = ["CLAUDE_CONFIG_DIR": directory]
         reader.homeDirectory = FileManager.default.temporaryDirectory
             .appendingPathComponent("usagedock-system-home-\(UUID().uuidString)")
         reader.fallbackToDefaultDirectory = false
-        reader.allowsKeychain = false
-        reader.keychainPayload = { _ in
-            keychainConsulted.set(true)
+        reader.keychainPayload = { service, _ in
+            observedService.set(service)
             return KeychainRead.Outcome(
-                payload: #"{"claudeAiOauth": {"accessToken": "system-token"}}"#,
+                payload: #"{"claudeAiOauth": {"accessToken": "scoped-token"}}"#,
                 status: errSecSuccess
             )
         }
 
-        #expect(reader.load() == nil)
-        #expect(keychainConsulted.get() == false)
+        #expect(scopedService != ClaudeCredentialsReader.keychainService)
+        #expect(reader.load()?.accessToken == "scoped-token")
+        #expect(observedService.get() == scopedService)
     }
 
     /// 这两个只验证"意图有没有传到 KeychainRead 门口"。禁止交互究竟有没有生效
@@ -476,7 +507,7 @@ struct ClaudeCredentialsReaderTests {
         reader.environment = [:]
         reader.homeDirectory = FileManager.default.temporaryDirectory
             .appendingPathComponent("usagedock-missing-\(UUID().uuidString)", isDirectory: true)
-        reader.keychainPayload = { interaction in
+        reader.keychainPayload = { _, interaction in
             observed.set(interaction)
             return KeychainRead.Outcome(
                 payload: #"{"claudeAiOauth": {"accessToken": "sk-ant-oat01-keychain"}}"#,
@@ -495,7 +526,7 @@ struct ClaudeCredentialsReaderTests {
         reader.environment = [:]
         reader.homeDirectory = FileManager.default.temporaryDirectory
             .appendingPathComponent("usagedock-missing-\(UUID().uuidString)", isDirectory: true)
-        reader.keychainPayload = { interaction in
+        reader.keychainPayload = { _, interaction in
             observed.set(interaction)
             return KeychainRead.Outcome(
                 payload: #"{"claudeAiOauth": {"accessToken": "sk-ant-oat01-keychain"}}"#,
@@ -518,7 +549,7 @@ struct ClaudeCredentialsReaderTests {
         reader.environment = [:]
         reader.homeDirectory = FileManager.default.temporaryDirectory
             .appendingPathComponent("usagedock-missing-\(UUID().uuidString)", isDirectory: true)
-        reader.keychainPayload = { _ in
+        reader.keychainPayload = { _, _ in
             KeychainRead.Outcome(payload: nil, status: errSecItemNotFound)
         }
         #expect(reader.load() == nil)
@@ -529,7 +560,7 @@ struct ClaudeCredentialsReaderTests {
         var reader = ClaudeCredentialsReader()
         reader.environment = [:]
         reader.homeDirectory = URL(fileURLWithPath: "/tmp/tokenremain-claude-auth-required")
-        reader.keychainPayload = { _ in
+        reader.keychainPayload = { _, _ in
             KeychainRead.Outcome(payload: nil, status: errSecInteractionNotAllowed)
         }
         let result = reader.read()
@@ -542,7 +573,7 @@ struct ClaudeCredentialsReaderTests {
         var reader = ClaudeCredentialsReader()
         reader.environment = [:]
         reader.homeDirectory = URL(fileURLWithPath: "/tmp/tokenremain-claude-invalid")
-        reader.keychainPayload = { _ in
+        reader.keychainPayload = { _, _ in
             KeychainRead.Outcome(payload: #"{"future":true}"#, status: errSecSuccess)
         }
         let result = reader.read()
@@ -558,7 +589,7 @@ struct ClaudeCredentialsReaderTests {
         var reader = ClaudeCredentialsReader()
         reader.environment = [:]
         reader.homeDirectory = URL(fileURLWithPath: "/tmp/tokenremain-claude-expired")
-        reader.keychainPayload = { _ in
+        reader.keychainPayload = { _, _ in
             KeychainRead.Outcome(
                 payload: #"{"claudeAiOauth":{"accessToken":"expired","expiresAt":\#(expiredMs)}}"#,
                 status: errSecSuccess
@@ -591,7 +622,7 @@ struct ClaudeAppleToolDelegateTests {
         reader.environment = [:]
         reader.homeDirectory = FileManager.default.temporaryDirectory
             .appendingPathComponent("usagedock-missing-\(UUID().uuidString)", isDirectory: true)
-        reader.keychainPayload = { _ in keychain }
+        reader.keychainPayload = { _, _ in keychain }
         reader.appleToolPayload = { _ in
             delegateConsulted.set(true)
             return delegate
@@ -648,23 +679,36 @@ struct ClaudeAppleToolDelegateTests {
         #expect(consulted.get() == false)
     }
 
-    /// 委托读的是全局钥匙串条目,也就是 Claude Code 当前登录的那个账户。托管
-    /// 账户一旦走这条路,拿到的就是**别人的**额度,比读不到严重得多。
-    @Test("An isolated managed account never delegates to the shared keychain item")
-    func skipsDelegateForManagedProfiles() async {
-        let consulted = ClaudeLockedValue(false)
-        var reader = reader(
-            keychain: KeychainRead.Outcome(payload: nil, status: errSecAuthFailed),
-            delegate: KeychainRead.Outcome(payload: Self.usablePayload, status: errSecSuccess),
-            delegateConsulted: consulted
+    /// Claude Code 2.1+ stores a second account under
+    /// `Claude Code-credentials-<sha256(CLAUDE_CONFIG_DIR)[:8]>`. Delegating to
+    /// the unsuffixed system item would show someone else's quota.
+    @Test("An isolated managed account delegates only to its scoped keychain item")
+    func managedProfileDelegatesToScopedKeychain() async {
+        let directory = "/tmp/tokenremain-claude-account"
+        let expectedService = ClaudeCredentialsReader.keychainServiceName(
+            configurationDirectory: directory
         )
+        let observed = ClaudeLockedValue<String?>(nil)
+        var reader = ClaudeCredentialsReader()
+        reader.environment = ["CLAUDE_CONFIG_DIR": directory]
+        reader.homeDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("usagedock-system-home-\(UUID().uuidString)")
         reader.fallbackToDefaultDirectory = false
-        reader.allowsKeychain = false
+        reader.keychainPayload = { _, _ in
+            KeychainRead.Outcome(payload: nil, status: errSecAuthFailed)
+        }
+        reader.appleToolPayload = { service in
+            observed.set(service)
+            return KeychainRead.Outcome(payload: Self.usablePayload, status: errSecSuccess)
+        }
 
         let result = await reader.readAllowingAppleTool()
 
-        #expect(result.credentials == nil)
-        #expect(consulted.get() == false)
+        #expect(expectedService == "Claude Code-credentials-7ebe5f89")
+        #expect(expectedService != ClaudeCredentialsReader.keychainService)
+        #expect(observed.get() == expectedService)
+        #expect(result.credentials?.accessToken == "sk-ant-oat01-delegated")
+        #expect(result.source == .keychain)
     }
 
     @Test("An expired delegated token is reported as expired, not as usable")
@@ -706,5 +750,209 @@ private final class ClaudeLockedValue<Value>: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         return value
+    }
+}
+
+@Suite("Claude oauth/usage transport retry")
+struct ClaudeOAuthUsageTransportRetryTests {
+    private static func response(_ status: Int) -> (Data, URLResponse) {
+        let http = HTTPURLResponse(
+            url: URL(string: "https://api.anthropic.com/api/oauth/usage")!,
+            statusCode: status,
+            httpVersion: nil,
+            headerFields: nil
+        )!
+        return (Data(), http)
+    }
+
+    @Test("Classifies link-level URL errors as transport failures")
+    func transportFailureClassification() {
+        #expect(ClaudeOAuthUsageService.isTransportFailure(URLError(.timedOut)))
+        #expect(ClaudeOAuthUsageService.isTransportFailure(URLError(.networkConnectionLost)))
+        #expect(ClaudeOAuthUsageService.isTransportFailure(URLError(.notConnectedToInternet)))
+        #expect(!ClaudeOAuthUsageService.isTransportFailure(URLError(.badServerResponse)))
+        #expect(!ClaudeOAuthUsageService.isTransportFailure(URLError(.cancelled)))
+        #expect(!ClaudeOAuthUsageService.isTransportFailure(ClaudeOAuthUsageService.APIError.invalidResponse))
+    }
+
+    @Test("A single transport timeout is retried once and the retry result wins")
+    func retriesOnceAfterTimeout() async throws {
+        var attempts = 0
+        let request = URLRequest(url: URL(string: "https://api.anthropic.com/api/oauth/usage")!)
+        let (_, response) = try await ClaudeOAuthUsageService.performWithOneTransportRetry(
+            request,
+            retryDelay: 0
+        ) { _ in
+            attempts += 1
+            if attempts == 1 { throw URLError(.timedOut) }
+            return Self.response(200)
+        }
+        #expect(attempts == 2)
+        #expect((response as? HTTPURLResponse)?.statusCode == 200)
+    }
+
+    @Test("Two consecutive transport failures give up with the second error")
+    func retriesOnlyOnce() async {
+        var attempts = 0
+        let request = URLRequest(url: URL(string: "https://api.anthropic.com/api/oauth/usage")!)
+        await #expect(throws: URLError.self) {
+            _ = try await ClaudeOAuthUsageService.performWithOneTransportRetry(
+                request,
+                retryDelay: 0
+            ) { _ in
+                attempts += 1
+                throw URLError(.networkConnectionLost)
+            }
+        }
+        #expect(attempts == 2)
+    }
+
+    @Test("Non-transport errors are not retried")
+    func doesNotRetryOtherErrors() async {
+        var attempts = 0
+        let request = URLRequest(url: URL(string: "https://api.anthropic.com/api/oauth/usage")!)
+        await #expect(throws: URLError.self) {
+            _ = try await ClaudeOAuthUsageService.performWithOneTransportRetry(
+                request,
+                retryDelay: 0
+            ) { _ in
+                attempts += 1
+                throw URLError(.badServerResponse)
+            }
+        }
+        #expect(attempts == 1)
+    }
+
+    @Test("The request timeout leaves room for one retry inside a refresh round")
+    func timeoutBudget() {
+        #expect(ClaudeOAuthUsageService.requestTimeout == 25)
+        #expect(ClaudeOAuthUsageService.transportRetryDelay == 2)
+        #expect(2 * ClaudeOAuthUsageService.requestTimeout + ClaudeOAuthUsageService.transportRetryDelay < AdaptiveRefreshPolicy.activeInterval)
+    }
+
+    @Test("Cancellation during a failed request prevents a transport retry")
+    func cancellationPreventsRetry() async {
+        let attempt = Task {
+            var calls = 0
+            do {
+                _ = try await ClaudeOAuthUsageService.performWithOneTransportRetry(
+                    URLRequest(url: URL(string: "https://unused.invalid")!), retryDelay: 0
+                ) { _ in
+                    calls += 1
+                    withUnsafeCurrentTask { $0?.cancel() }
+                    throw URLError(.timedOut)
+                }
+                Issue.record("A cancelled read must throw")
+            } catch { #expect(error is CancellationError) }
+            return calls
+        }
+        #expect(await attempt.value == 1)
+    }
+
+    @Test("Cancellation rejects a late successful response")
+    func cancellationRejectsLateSuccess() async {
+        let attempt = Task {
+            do {
+                _ = try await ClaudeOAuthUsageService.performWithOneTransportRetry(
+                    URLRequest(url: URL(string: "https://unused.invalid")!), retryDelay: 0
+                ) { _ in
+                    withUnsafeCurrentTask { $0?.cancel() }
+                    return Self.response(200)
+                }
+                Issue.record("A late response must not become a successful read")
+            } catch { #expect(error is CancellationError) }
+        }
+        await attempt.value
+    }
+
+    @Test("Cancelling a credential reread cannot issue an OAuth request")
+    func cancellationBeforeTokenChangeRetry() async {
+        let attempt = Task {
+            do {
+                _ = try await ClaudeUsageService.retryOAuthAfterCredentialRefresh(
+                    previousAccessToken: "old-fixture",
+                    readCurrentAccessToken: {
+                        withUnsafeCurrentTask { $0?.cancel() }
+                        return "new-fixture"
+                    },
+                    fetchOAuthUsage: {
+                        Issue.record("Cancelled recovery must not make another request")
+                        throw URLError(.badServerResponse)
+                    }
+                )
+                Issue.record("Cancelled recovery must throw")
+            } catch { #expect(error is CancellationError) }
+        }
+        await attempt.value
+    }
+}
+
+@Suite("Claude signed-out keychain payloads")
+struct ClaudeSignedOutPayloadTests {
+    @Test("Signed-out managed profiles retain the scoped Keychain identity")
+    func managedSignedOutReadStaysScoped() async {
+        var reader = ClaudeCredentialsReader()
+        let directory = "/tmp/claude-scoped-signout-\(UUID().uuidString)"
+        reader.environment = ["CLAUDE_CONFIG_DIR": directory]
+        reader.fallbackToDefaultDirectory = false
+        let service = ClaudeCredentialsReader.keychainServiceName(configurationDirectory: directory)
+        reader.keychainPayload = { requested, _ in
+            #expect(requested == service)
+            return KeychainRead.Outcome(payload: nil, status: errSecAuthFailed)
+        }
+        reader.appleToolPayload = { requested in
+            #expect(requested == service)
+            return KeychainRead.Outcome(payload: #"{"mcpOAuth":{}}"#, status: errSecSuccess)
+        }
+        let result = await reader.readAllowingAppleTool()
+        #expect(result.keychainPayloadIsSignedOut)
+        #expect(!result.needsAuthorization)
+        #expect(result.credentials == nil)
+    }
+
+    @Test("A payload that only carries MCP OAuth state means Claude Code is signed out")
+    func mcpOnlyPayloadIsSignedOut() {
+        #expect(ClaudeCredentialsReader.isSignedOutPayload(#"{"mcpOAuth": {"server": {"accessToken": "x"}}}"#))
+        #expect(ClaudeCredentialsReader.isSignedOutPayload(#"{"claudeAiOauth": {"accessToken": ""}}"#))
+        #expect(!ClaudeCredentialsReader.isSignedOutPayload(#"{"claudeAiOauth": {"accessToken": "sk-ant-oat01-x"}}"#))
+        #expect(!ClaudeCredentialsReader.isSignedOutPayload("not json"))
+    }
+
+    @Test("The direct keychain read reports a signed-out payload instead of an invalid one")
+    func directReadClassifiesSignedOut() {
+        var reader = ClaudeCredentialsReader()
+        reader.environment = [:]
+        reader.homeDirectory = URL(fileURLWithPath: "/tmp/tokenremain-claude-signed-out")
+        reader.keychainPayload = { _, _ in
+            KeychainRead.Outcome(payload: #"{"mcpOAuth": {}}"#, status: errSecSuccess)
+        }
+        let result = reader.read()
+        #expect(result.credentials == nil)
+        #expect(result.hasInvalidKeychainPayload)
+        #expect(result.keychainPayloadIsSignedOut)
+
+        reader.keychainPayload = { _, _ in
+            KeychainRead.Outcome(payload: "garbage", status: errSecSuccess)
+        }
+        let garbage = reader.read()
+        #expect(garbage.hasInvalidKeychainPayload)
+        #expect(!garbage.keychainPayloadIsSignedOut)
+    }
+
+    @Test("A signed-out payload behind the Apple tool no longer reads as an authorization problem")
+    func appleToolReadClassifiesSignedOut() async {
+        var reader = ClaudeCredentialsReader()
+        reader.environment = [:]
+        reader.homeDirectory = URL(fileURLWithPath: "/tmp/tokenremain-claude-signed-out-tool")
+        reader.keychainPayload = { _, _ in
+            KeychainRead.Outcome(payload: nil, status: errSecAuthFailed)
+        }
+        reader.appleToolPayload = { _ in
+            KeychainRead.Outcome(payload: #"{"mcpOAuth": {}}"#, status: errSecSuccess)
+        }
+        let result = await reader.readAllowingAppleTool()
+        #expect(!result.needsAuthorization)
+        #expect(result.hasInvalidKeychainPayload)
+        #expect(result.keychainPayloadIsSignedOut)
     }
 }

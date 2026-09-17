@@ -175,6 +175,7 @@ enum DashboardTheme {
         case .kiro: return Color(hex: 0xA292C7)          // muted lavender
         case .volcengine: return Color(hex: 0x6BA3C4)    // muted volcano sky
         case .ollama: return Color(hex: 0xCBD5E1)        // light slate
+        case .alibabaTokenPlan: return Color(hex: 0xC89468)
         case .thirdParty: return Color(hex: 0x7C91A8)
         }
     }

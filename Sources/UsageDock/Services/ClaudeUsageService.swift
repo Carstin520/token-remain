@@ -19,6 +19,9 @@ struct ClaudeUsageService {
         case cliLaunchFailed(String)
         case invalidUsageOutput
         case rateLimited(retryAfterSeconds: Int?)
+        /// 每条已知路线(进程变量、Claude settings、系统代理、shell 代理、
+        /// 直连)都连不到 api.anthropic.com。探针没有启动,缓存照旧。
+        case networkUnreachable
 
         var errorDescription: String? {
             switch self {
@@ -43,6 +46,8 @@ struct ClaudeUsageService {
                     return L10n.format("service.claude.rate_limited_minutes", max(1, Int((Double(seconds) / 60).rounded(.up))))
                 }
                 return L10n.text("service.claude.rate_limited")
+            case .networkUnreachable:
+                return L10n.text("service.claude.network_unreachable")
             }
         }
 
@@ -50,7 +55,17 @@ struct ClaudeUsageService {
             if case .rateLimited(let seconds) = self, let seconds {
                 return max(60, TimeInterval(seconds))
             }
+            // 网络恢复往往就是用户重新连上代理的那一刻,比探针失败值得
+            // 更早回来看一眼。
+            if case .networkUnreachable = self {
+                return 120
+            }
             return 300
+        }
+
+        var isTransportFailure: Bool {
+            if case .networkUnreachable = self { return true }
+            return false
         }
     }
 
@@ -63,6 +78,7 @@ struct ClaudeUsageService {
         let logger = Logger(subsystem: "com.jamesli.usagedock", category: "ClaudeUsage")
         let environment = profileEnvironment
         var accessTokenBeforeProbe: String?
+        var probeProxyVariables: [String: String] = [:]
         do {
             let quota = try await ClaudeOAuthUsageService().fetch(
                 environment: environment,
@@ -74,6 +90,7 @@ struct ClaudeUsageService {
                 configurationDirectory: configurationDirectory,
                 forceProbe: forceScopedUsageProbe
             )
+            try Task.checkCancellation()
             logger.info("Claude quota served by oauth/usage API; Fable available: \(supplemented.fableWindow != nil, privacy: .public)")
             return supplemented
         } catch let error as ClaudeOAuthUsageService.APIError {
@@ -97,6 +114,18 @@ struct ClaudeUsageService {
                ) {
                 throw ServiceError.credentialsUnavailable
             }
+            try Task.checkCancellation()
+            // 探针的唯一价值是让 CLI 续期,而 CLI 只认环境变量里的代理。先
+            // 用一次 5 秒预检挑出真正能连到 Claude 的路线;一条都不通就不
+            // 启动探针——否则是白等 45 秒,再把网络问题误报成"读取超时"。
+            guard let proxyVariables = await ClaudeProbeNetworkEnvironment.resolve(
+                configurationDirectory: configurationDirectory
+            ) else {
+                try Task.checkCancellation()
+                logger.notice("Claude API path unavailable (\(error.localizedDescription, privacy: .public)); no network route for the probe, keeping cached snapshot")
+                throw ServiceError.networkUnreachable
+            }
+            probeProxyVariables = proxyVariables
             // .notice 起才会持久化到 unified log。降级原因必须留痕:出现
             // "读取超时"时,事后唯一能区分"凭证过期"和"网络故障"的就是这条。
             logger.notice("Claude API path unavailable (\(error.localizedDescription, privacy: .public)); falling back to PTY probe")
@@ -107,13 +136,35 @@ struct ClaudeUsageService {
             logger.notice("Claude API transport failure (\(error.localizedDescription, privacy: .public)); keeping cached snapshot instead of probing")
             throw error
         }
+        try Task.checkCancellation()
+        // 探针一旦让 CLI 写出新 token,就没必要再等它把 /usage 画面渲染完:
+        // 每两秒重读一次凭证,变新即叫停探针,改走 API。这样续期耗时由
+        // 画面解析是否成功决定,变成只由 CLI 续期快慢决定。
+        let renewal = ClaudeProbeRenewalWatch()
+        let renewalWatcher = Task.detached(priority: .utility) { [accessTokenBeforeProbe] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(2))
+                if Task.isCancelled { return }
+                if let current = await currentAccessToken(environment: environment),
+                   current != accessTokenBeforeProbe {
+                    renewal.markRenewed()
+                    return
+                }
+            }
+        }
+        defer { renewalWatcher.cancel() }
         do {
             let output = try await ClaudeCLIUsageProbe.run(
-                configurationDirectory: configurationDirectory
+                configurationDirectory: configurationDirectory,
+                proxyVariables: probeProxyVariables,
+                shouldStopEarly: { renewal.renewed }
             )
             return try ClaudeCLIUsageParser.parse(output)
         } catch {
-            let probeError = error
+            try Task.checkCancellation()
+            let probeError = error is ClaudeProbeRenewalWatch.Interrupted
+                ? ServiceError.invalidUsageOutput
+                : error
             do {
                 if let quota = try await Self.retryOAuthAfterCredentialRefresh(
                     previousAccessToken: accessTokenBeforeProbe,
@@ -155,7 +206,7 @@ struct ClaudeUsageService {
         var reader = ClaudeCredentialsReader()
         reader.environment = environment
         reader.fallbackToDefaultDirectory = configurationDirectory == nil
-        reader.allowsKeychain = configurationDirectory == nil
+        reader.allowsKeychain = true
         return await reader.readAllowingAppleTool(
             keychainInteraction: .disallowed
         ).credentials?.accessToken
@@ -169,10 +220,12 @@ struct ClaudeUsageService {
         readCurrentAccessToken: () async -> String?,
         fetchOAuthUsage: () async throws -> ProviderQuota
     ) async throws -> ProviderQuota? {
+        try Task.checkCancellation()
         guard let currentAccessToken = await readCurrentAccessToken(),
               currentAccessToken != previousAccessToken else {
             return nil
         }
+        try Task.checkCancellation()
         return try await fetchOAuthUsage()
     }
 
@@ -263,6 +316,7 @@ private actor ClaudeScopedUsageSupplement {
         now: Date = .now,
         forceProbe: Bool = false
     ) async -> ProviderQuota {
+        guard !Task.isCancelled else { return quota }
         var entry = entries[cacheKey] ?? Entry()
         if quota.fableWindow != nil {
             entry.cachedWindows = quota.uniqueScopedWindows
@@ -282,14 +336,19 @@ private actor ClaudeScopedUsageSupplement {
         guard ClaudeCLIUsageProbe.isAvailable,
               !(await ClaudeCLIUsageProbe.isExplicitlyLoggedOut(
                   configurationDirectory: configurationDirectory
-              )) else {
+              )),
+              let proxyVariables = await ClaudeProbeNetworkEnvironment.resolve(
+                  configurationDirectory: configurationDirectory
+              ) else {
             return mergingFreshCache(into: quota, entry: entry, now: now)
         }
 
         do {
             let output = try await ClaudeCLIUsageProbe.run(
-                configurationDirectory: configurationDirectory
+                configurationDirectory: configurationDirectory,
+                proxyVariables: proxyVariables
             )
+            try Task.checkCancellation()
             let supplemental = try ClaudeCLIUsageParser.parse(output, now: now)
             guard supplemental.fableWindow != nil else {
                 return mergingFreshCache(into: quota, entry: entry, now: now)
@@ -937,52 +996,21 @@ private enum ClaudeCLIUsageProbe {
         claudeExecutable() != nil
     }
 
+    /// 冷启动的 CLI 光是加载就可能超过两秒;超时被当作"没登出",探针接着
+    /// 白跑 45 秒。六秒足够回答,又不会拖垮刷新轮次。
     static func isExplicitlyLoggedOut(
         configurationDirectory: URL? = nil,
-        timeout: TimeInterval = 2
+        timeout: TimeInterval = 6
     ) async -> Bool {
-        await Task.detached(priority: .utility) {
-            guard let executable = claudeExecutable() else { return false }
-
-            let process = Process()
-            let stdout = Pipe()
-            let stderr = Pipe()
-            process.executableURL = executable
-            process.arguments = ["auth", "status", "--json"]
-            process.standardOutput = stdout
-            process.standardError = stderr
-            process.environment = profileEnvironment(configurationDirectory)
-
-            do {
-                try process.run()
-            } catch {
-                return false
-            }
-
-            let deadline = Date().addingTimeInterval(max(0.1, timeout))
-            while process.isRunning && Date() < deadline {
-                usleep(25_000)
-            }
-            guard !process.isRunning else {
-                process.terminate()
-                let terminationDeadline = Date().addingTimeInterval(0.1)
-                while process.isRunning && Date() < terminationDeadline {
-                    usleep(10_000)
-                }
-                if process.isRunning {
-                    _ = Darwin.kill(process.processIdentifier, SIGKILL)
-                }
-                return false
-            }
-
-            process.waitUntilExit()
-            let output = stdout.fileHandleForReading.readDataToEndOfFile()
-            if ClaudeCLIAuthStatusParser.isExplicitlyLoggedOut(output) {
-                return true
-            }
-            let errorOutput = stderr.fileHandleForReading.readDataToEndOfFile()
-            return ClaudeCLIAuthStatusParser.isExplicitlyLoggedOut(errorOutput)
-        }.value
+        guard let executable = claudeExecutable() else { return false }
+        guard let output = try? await ProcessRunner.capture(
+            executable.path,
+            arguments: ["auth", "status", "--json"],
+            environment: profileEnvironment(configurationDirectory),
+            timeout: timeout
+        ) else { return false }
+        return ClaudeCLIAuthStatusParser.isExplicitlyLoggedOut(output.stdout)
+            || ClaudeCLIAuthStatusParser.isExplicitlyLoggedOut(output.stderr)
     }
 
     /// 45 秒预算:冷启动的 Claude Code(自动更新检查、MCP 加载)可能
@@ -992,9 +1020,13 @@ private enum ClaudeCLIUsageProbe {
     /// 失败的 30 秒便宜;45 也仍在 60 秒的活跃刷新节奏之内。
     static func run(
         configurationDirectory: URL? = nil,
+        proxyVariables: [String: String]? = nil,
+        shouldStopEarly: @escaping @Sendable () -> Bool = { false },
         timeout: TimeInterval = 45
     ) async throws -> Data {
-        try await Task.detached(priority: .utility) {
+        try Task.checkCancellation()
+        let worker = Task.detached(priority: .utility) {
+            try Task.checkCancellation()
             guard let executable = claudeExecutable() else {
                 throw ClaudeUsageService.ServiceError.cliNotFound
             }
@@ -1015,7 +1047,7 @@ private enum ClaudeCLIUsageProbe {
             process.executableURL = executable
             process.arguments = ["--allowed-tools", ""]
             process.currentDirectoryURL = probeDirectory
-            var environment = profileEnvironment(configurationDirectory)
+            var environment = profileEnvironment(configurationDirectory, proxyVariables: proxyVariables)
             environment["TERM"] = "xterm-256color"
             environment["PATH"] = pathWithClaudeHints(environment["PATH"])
             process.environment = environment
@@ -1032,6 +1064,7 @@ private enum ClaudeCLIUsageProbe {
                 throw ClaudeUsageService.ServiceError.cliLaunchFailed(error.localizedDescription)
             }
             Darwin.close(slave)
+            defer { if process.isRunning { stop(process, terminal: master) } }
 
             let flags = fcntl(master, F_GETFL)
             _ = fcntl(master, F_SETFL, flags | O_NONBLOCK)
@@ -1042,10 +1075,16 @@ private enum ClaudeCLIUsageProbe {
             var lastInputAt = Date.distantPast
             var handledTrustPrompt = false
             var completedAt: Date?
+            var stoppedEarly = false
 
             while process.isRunning && Date().timeIntervalSince(startedAt) < timeout {
+                try Task.checkCancellation()
                 readAvailable(from: master, into: &output)
                 let now = Date()
+                if shouldStopEarly() {
+                    stoppedEarly = true
+                    break
+                }
 
                 if !handledTrustPrompt && ClaudeCLIUsageParser.containsTrustPrompt(in: output) {
                     write("\r", to: master)
@@ -1083,37 +1122,35 @@ private enum ClaudeCLIUsageProbe {
             readAvailable(from: master, into: &output)
 
             guard ClaudeCLIUsageParser.hasCompleteUsage(in: output) else {
+                if stoppedEarly {
+                    throw ClaudeProbeRenewalWatch.Interrupted()
+                }
                 if Date().timeIntervalSince(startedAt) >= timeout {
                     throw ClaudeUsageService.ServiceError.cliTimedOut
                 }
                 throw ClaudeUsageService.ServiceError.invalidUsageOutput
             }
+            try Task.checkCancellation()
             return output
-        }.value
+        }
+        return try await withTaskCancellationHandler {
+            let output = try await worker.value
+            try Task.checkCancellation()
+            return output
+        } onCancel: {
+            worker.cancel()
+        }
     }
 
+    /// 与"添加账号"登录共用同一套查找规则:nvm / volta / asdf / pnpm 装的
+    /// CLI 在 GUI 的最小 PATH 里找不到,以前探针会因此直接放弃续期。
     private static func claudeExecutable() -> URL? {
-        let fileManager = FileManager.default
         let environment = ProcessInfo.processInfo.environment
-        var candidates: [String] = []
-        if let override = environment["USAGEDOCK_CLAUDE_COMMAND"], !override.isEmpty {
-            candidates.append(override)
+        if let override = environment["USAGEDOCK_CLAUDE_COMMAND"], !override.isEmpty,
+           FileManager.default.isExecutableFile(atPath: override) {
+            return URL(fileURLWithPath: override)
         }
-
-        let home = fileManager.homeDirectoryForCurrentUser.path
-        candidates.append(contentsOf: [
-            "\(home)/.local/bin/claude",
-            "\(home)/.npm-global/bin/claude",
-            "/opt/homebrew/bin/claude",
-            "/usr/local/bin/claude"
-        ])
-        if let path = environment["PATH"] {
-            candidates.append(contentsOf: path.split(separator: ":").map { "\($0)/claude" })
-        }
-        guard let path = candidates.first(where: { fileManager.isExecutableFile(atPath: $0) }) else {
-            return nil
-        }
-        return URL(fileURLWithPath: path)
+        return ProviderCLIExecutableResolver.resolve(named: "claude", environment: environment)
     }
 
     private static func prepareProbeDirectory() throws -> URL {
@@ -1150,19 +1187,32 @@ private enum ClaudeCLIUsageProbe {
         return Array(NSOrderedSet(array: hints + current)).compactMap { $0 as? String }.joined(separator: ":")
     }
 
-    private static func profileEnvironment(_ configurationDirectory: URL?) -> [String: String] {
+    /// `proxyVariables` 来自预检选中的路线;给了就覆盖(空字典 = 直连,
+    /// 同时清掉进程里可能残留的代理变量),没给则退回系统代理投影。
+    private static func profileEnvironment(
+        _ configurationDirectory: URL?,
+        proxyVariables: [String: String]? = nil
+    ) -> [String: String] {
         var environment = ProviderAccountProcessEnvironment.claude(
             base: ProcessInfo.processInfo.environment,
             configurationDirectory: configurationDirectory
         )
-        environment = SystemProxyEnvironment.applyingSystemSettings(to: environment)
+        if let proxyVariables {
+            for key in ClaudeProbeNetworkEnvironment.proxyKeys {
+                environment[key] = nil
+            }
+            environment.merge(proxyVariables, uniquingKeysWith: { _, chosen in chosen })
+        } else {
+            environment = SystemProxyEnvironment.applyingSystemSettings(to: environment)
+        }
         environment["PATH"] = pathWithClaudeHints(environment["PATH"])
         return environment
     }
 
     private static func readAvailable(from descriptor: Int32, into data: inout Data) {
         var bytes = [UInt8](repeating: 0, count: 8_192)
-        while true {
+        // A continuously writing child must yield to the timeout/cancel checks.
+        for _ in 0..<32 {
             let count = Darwin.read(descriptor, &bytes, bytes.count)
             if count > 0 {
                 data.append(contentsOf: bytes.prefix(Int(count)))
@@ -1201,5 +1251,23 @@ private enum ClaudeCLIUsageProbe {
         while process.isRunning && Date() < deadline {
             usleep(25_000)
         }
+    }
+}
+
+/// 探针与凭证轮询之间的一个标志位:凭证一变新,探针循环就提前收工。
+final class ClaudeProbeRenewalWatch: @unchecked Sendable {
+    struct Interrupted: Error {}
+
+    private let lock = NSLock()
+    private var flag = false
+
+    var renewed: Bool {
+        lock.lock(); defer { lock.unlock() }
+        return flag
+    }
+
+    func markRenewed() {
+        lock.lock(); defer { lock.unlock() }
+        flag = true
     }
 }
