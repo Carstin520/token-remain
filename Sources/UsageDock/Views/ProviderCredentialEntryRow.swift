@@ -50,7 +50,8 @@ struct ProviderCredentialEntryRow: View {
     let configuration: ProviderCredentialConfiguration
     @State private var credentialStatus: StoredCredentialStatus
     @State private var draft = ""
-    @State private var isSaving = false
+    @StateObject private var action = AsyncViewAction()
+    private var isSaving: Bool { action.isRunning }
     @State private var zaiRegion: ZAIAPIRegion
 
     init(
@@ -80,7 +81,7 @@ struct ProviderCredentialEntryRow: View {
                             get: { zaiRegion },
                             set: { newRegion in
                                 zaiRegion = newRegion
-                                Task { await store.setZAIRegion(newRegion) }
+                                action.start { await store.setZAIRegion(newRegion) }
                             }
                         )
                     ) {
@@ -91,6 +92,7 @@ struct ProviderCredentialEntryRow: View {
                     .labelsHidden()
                     .pickerStyle(.segmented)
                     .frame(maxWidth: 230)
+                    .disabled(isSaving)
                 }
             }
 
@@ -110,26 +112,30 @@ struct ProviderCredentialEntryRow: View {
                 ) {
                     let credential = draft.trimmingCharacters(in: .whitespacesAndNewlines)
                     guard !credential.isEmpty else { return }
-                    isSaving = true
-                    Task {
+                    action.start {
                         let saved = await store.saveAPIKey(credential, for: provider)
+                        guard !Task.isCancelled else { return }
                         if saved { draft = "" }
                         reloadCredentialStatus()
-                        isSaving = false
                     }
                 }
                 .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSaving)
 
                 if canReplaceCredential {
                     Button(L10n.text("action.clear")) {
-                        isSaving = true
-                        Task {
+                        action.start {
                             _ = await store.clearAPIKey(for: provider)
                             reloadCredentialStatus()
-                            isSaving = false
                         }
                     }
                     .disabled(isSaving)
+                }
+            }
+
+            if isSaving {
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.mini)
+                    Button(L10n.text("action.cancel")) { action.cancel() }
                 }
             }
 
@@ -140,11 +146,10 @@ struct ProviderCredentialEntryRow: View {
                         .foregroundStyle(DashboardTheme.warning)
                     Spacer(minLength: 4)
                     Button(L10n.text("action.authorize")) {
-                        isSaving = true
-                        Task {
+                        action.start {
                             _ = await store.authorizeProviderCredentials(provider)
+                            guard !Task.isCancelled else { return }
                             reloadCredentialStatus()
-                            isSaving = false
                         }
                     }
                     .disabled(isSaving)
@@ -155,6 +160,7 @@ struct ProviderCredentialEntryRow: View {
                     .foregroundStyle(DashboardTheme.warning)
             }
         }
+        .onDisappear { action.cancel() }
         .controlSize(.small)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(L10n.format("datasource.api_key_settings", provider.displayName))

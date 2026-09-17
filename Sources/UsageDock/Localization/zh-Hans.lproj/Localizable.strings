@@ -125,6 +125,9 @@
 
 "action.authorize" = "授权";
 "action.cancel" = "取消";
+"accounts.login_remaining" = "登录等待剩余 %1$@";
+"accounts.login_timed_out" = "登录等待已超时，准备好后请重新发起登录。";
+"accounts.login_cancelled" = "登录已取消，可以重新尝试。";
 "action.clear" = "清除";
 "action.refresh" = "刷新";
 "action.refresh_all_sources" = "立即刷新所有数据源";
@@ -712,3 +715,6 @@
 "accounts.setup.failed" = "登录未完成，请检查 CLI 后重试。";
 "service.claude.account_login_failed" = "Claude 登录未完成。";
 "service.claude.account_session_missing" = "Claude 登录已结束，但未创建隔离的账户会话。";
+
+"operation.timed_out" = "操作超时，请重试。";
+"operation.cancelled" = "操作已取消，可以重试。";

@@ -155,7 +155,7 @@ struct ClaudeUsageService {
         var reader = ClaudeCredentialsReader()
         reader.environment = environment
         reader.fallbackToDefaultDirectory = configurationDirectory == nil
-        reader.allowsKeychain = configurationDirectory == nil
+        reader.allowsKeychain = true
         return await reader.readAllowingAppleTool(
             keychainInteraction: .disallowed
         ).credentials?.accessToken
@@ -941,48 +941,15 @@ private enum ClaudeCLIUsageProbe {
         configurationDirectory: URL? = nil,
         timeout: TimeInterval = 2
     ) async -> Bool {
-        await Task.detached(priority: .utility) {
-            guard let executable = claudeExecutable() else { return false }
-
-            let process = Process()
-            let stdout = Pipe()
-            let stderr = Pipe()
-            process.executableURL = executable
-            process.arguments = ["auth", "status", "--json"]
-            process.standardOutput = stdout
-            process.standardError = stderr
-            process.environment = profileEnvironment(configurationDirectory)
-
-            do {
-                try process.run()
-            } catch {
-                return false
-            }
-
-            let deadline = Date().addingTimeInterval(max(0.1, timeout))
-            while process.isRunning && Date() < deadline {
-                usleep(25_000)
-            }
-            guard !process.isRunning else {
-                process.terminate()
-                let terminationDeadline = Date().addingTimeInterval(0.1)
-                while process.isRunning && Date() < terminationDeadline {
-                    usleep(10_000)
-                }
-                if process.isRunning {
-                    _ = Darwin.kill(process.processIdentifier, SIGKILL)
-                }
-                return false
-            }
-
-            process.waitUntilExit()
-            let output = stdout.fileHandleForReading.readDataToEndOfFile()
-            if ClaudeCLIAuthStatusParser.isExplicitlyLoggedOut(output) {
-                return true
-            }
-            let errorOutput = stderr.fileHandleForReading.readDataToEndOfFile()
-            return ClaudeCLIAuthStatusParser.isExplicitlyLoggedOut(errorOutput)
-        }.value
+        guard let executable = claudeExecutable() else { return false }
+        guard let output = try? await ProcessRunner.capture(
+            executable.path,
+            arguments: ["auth", "status", "--json"],
+            environment: profileEnvironment(configurationDirectory),
+            timeout: timeout
+        ) else { return false }
+        return ClaudeCLIAuthStatusParser.isExplicitlyLoggedOut(output.stdout)
+            || ClaudeCLIAuthStatusParser.isExplicitlyLoggedOut(output.stderr)
     }
 
     /// 45 秒预算:冷启动的 Claude Code(自动更新检查、MCP 加载)可能
@@ -994,7 +961,9 @@ private enum ClaudeCLIUsageProbe {
         configurationDirectory: URL? = nil,
         timeout: TimeInterval = 45
     ) async throws -> Data {
-        try await Task.detached(priority: .utility) {
+        try Task.checkCancellation()
+        let worker = Task.detached(priority: .utility) {
+            try Task.checkCancellation()
             guard let executable = claudeExecutable() else {
                 throw ClaudeUsageService.ServiceError.cliNotFound
             }
@@ -1032,6 +1001,7 @@ private enum ClaudeCLIUsageProbe {
                 throw ClaudeUsageService.ServiceError.cliLaunchFailed(error.localizedDescription)
             }
             Darwin.close(slave)
+            defer { if process.isRunning { stop(process, terminal: master) } }
 
             let flags = fcntl(master, F_GETFL)
             _ = fcntl(master, F_SETFL, flags | O_NONBLOCK)
@@ -1044,6 +1014,7 @@ private enum ClaudeCLIUsageProbe {
             var completedAt: Date?
 
             while process.isRunning && Date().timeIntervalSince(startedAt) < timeout {
+                try Task.checkCancellation()
                 readAvailable(from: master, into: &output)
                 let now = Date()
 
@@ -1088,8 +1059,16 @@ private enum ClaudeCLIUsageProbe {
                 }
                 throw ClaudeUsageService.ServiceError.invalidUsageOutput
             }
+            try Task.checkCancellation()
             return output
-        }.value
+        }
+        return try await withTaskCancellationHandler {
+            let output = try await worker.value
+            try Task.checkCancellation()
+            return output
+        } onCancel: {
+            worker.cancel()
+        }
     }
 
     private static func claudeExecutable() -> URL? {
@@ -1162,7 +1141,8 @@ private enum ClaudeCLIUsageProbe {
 
     private static func readAvailable(from descriptor: Int32, into data: inout Data) {
         var bytes = [UInt8](repeating: 0, count: 8_192)
-        while true {
+        // A continuously writing child must yield to the timeout/cancel checks.
+        for _ in 0..<32 {
             let count = Darwin.read(descriptor, &bytes, bytes.count)
             if count > 0 {
                 data.append(contentsOf: bytes.prefix(Int(count)))

@@ -5,12 +5,36 @@ Versioning for public releases.
 
 ## 1.3.9 — Unreleased
 
+### Added
+
+- The menu-bar and floating panels show separate named rows for each enabled
+  provider account. Compact quota summaries use the account with the least
+  remaining quota under the selected summary strategy (PR #56).
+- Provider cards can be expanded or collapsed by clicking their name or icon;
+  the chevron remains available and empty header space supports reordering
+  (PR #56).
+
 ### Fixed
 
+- Limits cards have a taller shared baseline and let up to two quota windows
+  grow with their reset, pace and freshness labels, avoiding unnecessary inner
+  scrolling. Larger quota collections retain their scrollable layout.
 - Grok's menu-bar mark has inner padding so its diagonal tips no longer crowd
   the remaining-percent text. Monochrome menu-bar icons continue to adapt to
   light and dark appearances, while colored brand marks keep their colors
   (PR #54).
+- Isolated Claude accounts can read their configuration-directory-scoped
+  Keychain credentials, with credential-file compatibility retained. Official
+  account login now runs on a PTY (PR #55; local validation in progress).
+- Claude and Codex account sign-in can be cancelled and expires after five
+  minutes, with a countdown in the quota card and a bounded session check.
+  Failed launches, cancelled attempts, and timeouts clean up the owned process
+  and terminal descriptors instead of leaving sign-in spinning indefinitely.
+
+- Credential validation, explicit read authorization, and quota refreshes have
+  bounded waits. Credential forms can cancel pending work; late responses cannot
+  save cancelled credentials. Completed account login no longer waits for its
+  first quota request, and cancelled process startup always completes its caller.
 
 ## 1.3.8 — 2026-08-29
 

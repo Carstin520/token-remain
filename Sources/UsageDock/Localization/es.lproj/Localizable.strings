@@ -613,6 +613,9 @@
 "accounts.add_accessibility" = "Añadir otra cuenta de %1$@";
 "accounts.adding" = "Iniciando sesión…";
 "accounts.adding_progress" = "Esperando a que termine el inicio de sesión oficial en el navegador…";
+"accounts.login_remaining" = "Tiempo de inicio de sesión restante: %1$@";
+"accounts.login_timed_out" = "Se agotó el tiempo de inicio de sesión. Vuelve a intentarlo cuando estés listo.";
+"accounts.login_cancelled" = "Inicio de sesión cancelado. Puedes volver a intentarlo.";
 "accounts.show_only" = "Mostrar solo esta cuenta";
 "accounts.rename" = "Cambiar nombre…";
 "accounts.rename_title" = "Cambiar nombre de la cuenta";
@@ -712,3 +715,6 @@
 "settings.pool_openrouter_credits_hint" = "Muestra los créditos prepagados como fila de progreso cuando la clave no tiene límite periódico; se muestra por defecto en cuanto se consumen créditos.";
 "settings.model_quotas_hint" = "Bolsas opcionales, agrupadas por aplicación. Cada interruptor solo cambia lo que muestran la ventana, la barra de menús y las tarjetas.";
 "settings.model_quotas_footer" = "Las aplicaciones aparecen aquí en cuanto se conectan y reportan cuota.";
+
+"operation.timed_out" = "La operación ha agotado el tiempo de espera. Inténtalo de nuevo.";
+"operation.cancelled" = "La operación se ha cancelado. Puedes intentarlo de nuevo.";

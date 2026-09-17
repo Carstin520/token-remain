@@ -125,6 +125,9 @@
 
 "action.authorize" = "授權";
 "action.cancel" = "取消";
+"accounts.login_remaining" = "登入等待剩餘 %1$@";
+"accounts.login_timed_out" = "登入等待已逾時，準備好後請重新發起登入。";
+"accounts.login_cancelled" = "登入已取消，可以重新嘗試。";
 "action.clear" = "清除";
 "action.refresh" = "重新整理";
 "action.refresh_all_sources" = "立即重新整理所有資料來源";
@@ -712,3 +715,6 @@
 "accounts.setup.failed" = "登入未完成，請檢查 CLI 後再試一次。";
 "service.claude.account_login_failed" = "Claude 登入未完成。";
 "service.claude.account_session_missing" = "Claude 登入已結束，但未建立隔離的帳戶工作階段。";
+
+"operation.timed_out" = "操作逾時，請重試。";
+"operation.cancelled" = "操作已取消，可以重試。";

@@ -624,6 +624,9 @@
 "accounts.add_accessibility" = "Add another %1$@ account";
 "accounts.adding" = "Signing in…";
 "accounts.adding_progress" = "Waiting for the official browser sign-in to finish…";
+"accounts.login_remaining" = "Sign-in timeout in %1$@";
+"accounts.login_timed_out" = "Sign-in timed out. Start sign-in again when you are ready.";
+"accounts.login_cancelled" = "Sign-in cancelled. You can try again.";
 "accounts.show_only" = "Show This Account";
 "accounts.rename" = "Rename…";
 "accounts.rename_title" = "Rename account";
@@ -712,3 +715,6 @@
 "accounts.setup.failed" = "Sign-in did not finish. Check the CLI and try again.";
 "service.claude.account_login_failed" = "Claude sign-in did not complete.";
 "service.claude.account_session_missing" = "Claude sign-in finished without creating an isolated account session.";
+
+"operation.timed_out" = "The operation timed out. Please try again.";
+"operation.cancelled" = "The operation was cancelled. You can try again.";

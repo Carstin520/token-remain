@@ -55,13 +55,24 @@ final class UsageStore: ObservableObject {
     @Published private(set) var providerAccountStates: [ProviderAccountID: ProviderAccountState] = [:]
     @Published private(set) var providerAccountSelections: [ProviderQuota.Provider: ProviderAccountSelection] = [:]
     @Published private(set) var addingProviderAccounts: Set<ProviderQuota.Provider> = []
+    @Published private(set) var accountLoginDeadlines: [ProviderQuota.Provider: Date] = [:]
     @Published private(set) var accountManagementNotices: [ProviderQuota.Provider: String] = [:]
+    private var accountLoginTasks: [ProviderQuota.Provider: Task<Void, Error>] = [:]
+    private let operationTimeout: TimeInterval
+    private let credentialValidation: @Sendable (ProviderQuota.Provider, String, Date) async throws -> ProviderQuota
+    private let credentialSave: @Sendable (ProviderQuota.Provider, String) throws -> Void
+    private let accountFetch: @Sendable (ProviderAccountProfile, String?) async throws -> ProviderQuota
+    private let accountLogin: @Sendable (ProviderQuota.Provider, URL) async throws -> Void
 
     var isAddingClaudeAccount: Bool { addingProviderAccounts.contains(.claude) }
     var accountManagementNotice: String? { accountManagementNotices[.claude] }
 
     func isAddingProviderAccount(_ provider: ProviderQuota.Provider) -> Bool {
         addingProviderAccounts.contains(provider)
+    }
+
+    func cancelProviderAccountLogin(_ provider: ProviderQuota.Provider) {
+        accountLoginTasks[provider]?.cancel()
     }
 
     func accountManagementNotice(for provider: ProviderQuota.Provider) -> String? {
@@ -110,11 +121,11 @@ final class UsageStore: ObservableObject {
     /// 由状态栏控制器注入:本地用量正出现在任一可见界面(弹窗/仪表板/
     /// 浮窗)时返回 true。后台 ccusage 扫描据此决定是否维持分钟级节奏。
     var localUsageUIVisibilityProvider: (() -> Bool)?
-    private let quotaCache = QuotaCache()
+    private let quotaCache: QuotaCache
     private let sessionAlerts = ProviderSessionAlertCenter.shared
-    private let providerAccountQuotaCache = ProviderAccountQuotaCache()
+    private let providerAccountQuotaCache: ProviderAccountQuotaCache
     private let historyCache = DailyHistoryCache()
-    private let quotaUsageHistoryCache = QuotaUsageHistoryCache()
+    private let quotaUsageHistoryCache: QuotaUsageHistoryCache
     private let logger = Logger(subsystem: "com.jamesli.usagedock", category: "UsageRefresh")
     private let claudeRetryAfterKey = "claudeRetryAfter"
     private let serviceStatusRefreshInterval: TimeInterval = 300
@@ -157,8 +168,10 @@ final class UsageStore: ObservableObject {
     ]
 
     /// 当前全部 provider 快照(含未追踪的 nil),固定顺序。
+    /// Multi-account providers contribute the tightest remaining login so a
+    /// second Claude/Codex session can drive the Dock face and menu-bar extra.
     private var allQuotas: [ProviderQuota?] {
-        TrackedProvidersStore.allProviders.map(quotaValue(for:))
+        TrackedProvidersStore.allProviders.map { headlineQuota(for: $0) }
     }
 
     var aggregateRemainingPercent: Double? {
@@ -233,6 +246,43 @@ final class UsageStore: ObservableObject {
         // Never substitute another account's reading. A managed account that
         // has not answered yet must render unavailable, not the system quota.
         return providerAccountStates[id]?.quota
+    }
+
+    /// The quota that should drive compact headlines (menu-bar extra, risk
+    /// strip, Dock face). A provider with several signed-in accounts contributes
+    /// the tightest remaining window so a second login cannot hide the one that
+    /// is about to run out.
+    func headlineQuota(
+        for provider: ProviderQuota.Provider,
+        strategy: QuotaSummaryStrategy
+    ) -> ProviderQuota? {
+        let enabled = accountSnapshots(for: provider).filter(\.profile.isEnabled)
+        let quotas = enabled.compactMap(\.quota)
+        if enabled.count > 1 {
+            return Self.tightestQuota(among: quotas, strategy: strategy)
+        }
+        return quotas.first ?? quotaValue(for: provider)
+    }
+
+    func headlineQuota(for provider: ProviderQuota.Provider) -> ProviderQuota? {
+        headlineQuota(
+            for: provider,
+            strategy: PreferencesStore.shared.quotaSummaryStrategy
+        )
+    }
+
+    var headlineQuotas: [ProviderQuota] {
+        ProviderQuota.Provider.displayOrder.compactMap { headlineQuota(for: $0) }
+    }
+
+    nonisolated static func tightestQuota(
+        among quotas: [ProviderQuota],
+        strategy: QuotaSummaryStrategy
+    ) -> ProviderQuota? {
+        quotas.min { lhs, rhs in
+            lhs.generalQuotaSummary(strategy: strategy).remainingPercent
+                < rhs.generalQuotaSummary(strategy: strategy).remainingPercent
+        }
     }
 
     func displayedNotice(for provider: ProviderQuota.Provider) -> String? {
@@ -356,7 +406,7 @@ final class UsageStore: ObservableObject {
             for provider in providers {
                 guard let fetcher = auxFetcher(for: provider) else { continue }
                 group.addTask {
-                    do { return (provider, .success(try await fetcher())) }
+                    do { return (provider, .success(try await AsyncDeadline.run(operation: fetcher))) }
                     catch { return (provider, .failure(error)) }
                 }
             }
@@ -404,16 +454,52 @@ final class UsageStore: ObservableObject {
         defaults: UserDefaults = .standard,
         home: URL = FileManager.default.homeDirectoryForCurrentUser,
         sessionActivityMonitor: LocalAISessionActivityMonitor = .shared,
-        providerAccountsStore: ProviderAccountsStore? = nil
+        providerAccountsStore: ProviderAccountsStore? = nil,
+        automaticallyStarts: Bool = true,
+        quotaCache: QuotaCache = QuotaCache(),
+        quotaUsageHistoryCache: QuotaUsageHistoryCache = QuotaUsageHistoryCache(),
+        providerAccountQuotaCache: ProviderAccountQuotaCache = ProviderAccountQuotaCache(),
+        operationTimeout: TimeInterval = AsyncDeadline.providerTimeout,
+        credentialValidation: @escaping @Sendable (ProviderQuota.Provider, String, Date) async throws -> ProviderQuota = { provider, credential, now in
+            try await UsageStore.fetchQuota(for: provider, credential: credential, now: now)
+        },
+        credentialSave: @escaping @Sendable (ProviderQuota.Provider, String) throws -> Void = { provider, credential in
+            try UsageStore.saveCredential(provider, credential)
+        },
+        accountFetch: @escaping @Sendable (ProviderAccountProfile, String?) async throws -> ProviderQuota = { profile, credential in
+            try await ProviderAccountFetchService().fetch(profile, credentialOverride: credential)
+        },
+        accountLogin: @escaping @Sendable (ProviderQuota.Provider, URL) async throws -> Void = { provider, directory in
+            if provider == .claude {
+                try await ClaudeAccountLoginService().login(configurationDirectory: directory)
+            } else if provider == .codex {
+                try await CodexAccountLoginService().login(configurationDirectory: directory)
+            }
+        }
     ) {
         self.tracked = tracked
         self.defaults = defaults
         self.providerAccountsStore = providerAccountsStore ?? ProviderAccountsStore(defaults: defaults)
         self.sessionActivityMonitor = sessionActivityMonitor
+        self.quotaCache = quotaCache
+        self.quotaUsageHistoryCache = quotaUsageHistoryCache
+        self.providerAccountQuotaCache = providerAccountQuotaCache
+        self.accountLogin = accountLogin
+        self.operationTimeout = operationTimeout
+        self.credentialValidation = credentialValidation
+        self.credentialSave = credentialSave
+        self.accountFetch = accountFetch
         hostQuotaRouter = HostAppQuotaRoutingService(
             detector: HostAppQuotaRouteDetector(homeDirectory: home)
         )
         traeAgentTrajectoryStore = TraeAgentTrajectoryStore(defaults: defaults, home: home)
+        // In-memory hosts/tests can exercise account state without loading
+        // shared caches or starting real provider collection.
+        if !automaticallyStarts {
+            providerAccountProfiles = self.providerAccountsStore.allProfiles
+            providerAccountSelections = self.providerAccountsStore.selections
+            return
+        }
         disabledLocalUsageSourceIDs = Set(
             (defaults.stringArray(forKey: disabledLocalUsageSourcesKey) ?? [])
                 .map(LocalUsageSourceCatalog.canonicalID)
@@ -887,7 +973,9 @@ final class UsageStore: ObservableObject {
             var merged: LocalUsageSnapshot?
             var errors: [String] = []
             do {
-                merged = try await CCUsageService().fetchSnapshot(days: 30, now: now)
+                merged = try await AsyncDeadline.run {
+                    try await CCUsageService().fetchSnapshot(days: 30, now: now)
+                }
             } catch {
                 errors.append("ccusage: \(error.localizedDescription)")
             }
@@ -900,12 +988,18 @@ final class UsageStore: ObservableObject {
                     }
             } == true
             if !traeDirectories.isEmpty, !ccusageAlreadyIncludesTrae {
-                let trae = await TraeAgentUsageService(
-                    directories: traeDirectories
-                ).fetchSnapshot(days: 30, now: now)
-                merged = merged.map { $0.merging(trae) } ?? trae
+                do {
+                    let trae = try await AsyncDeadline.run {
+                        await TraeAgentUsageService(directories: traeDirectories)
+                            .fetchSnapshot(days: 30, now: now)
+                    }
+                    merged = merged.map { $0.merging(trae) } ?? trae
+                } catch {
+                    errors.append("Trae: \(AsyncDeadline.message(for: error))")
+                }
             }
 
+            guard !Task.isCancelled else { return }
             if let merged {
                 latestLocalUsageSnapshot = merged
                 applyLocalUsageSnapshot(merged)
@@ -972,7 +1066,7 @@ final class UsageStore: ObservableObject {
             || ProviderSecretStore.descriptor(for: provider) != nil
     }
 
-    private func storedCredentialStatus(
+    nonisolated private static func storedCredentialStatus(
         for provider: ProviderQuota.Provider
     ) -> StoredCredentialStatus {
         switch provider {
@@ -989,7 +1083,7 @@ final class UsageStore: ObservableObject {
         for provider: ProviderQuota.Provider
     ) -> String? {
         guard Self.supportsPastedCredential(provider) else { return nil }
-        switch storedCredentialStatus(for: provider) {
+        switch Self.storedCredentialStatus(for: provider) {
         case .authorizationRequired:
             return L10n.text("datasource.credential_authorization_required")
         case .failed:
@@ -999,7 +1093,7 @@ final class UsageStore: ObservableObject {
         }
     }
 
-    private func storedPastedCredential(
+    nonisolated private static func storedPastedCredential(
         for provider: ProviderQuota.Provider,
         interaction: KeychainRead.Interaction
     ) throws -> String? {
@@ -1018,7 +1112,7 @@ final class UsageStore: ObservableObject {
     /// Fetches only with the submitted credential. No environment variable,
     /// config file, IPC session, or pre-existing Keychain item may satisfy this
     /// validation request on behalf of the value the user is replacing.
-    private func fetchQuota(
+    nonisolated static func fetchQuota(
         for provider: ProviderQuota.Provider,
         credential: String,
         now: Date
@@ -1068,24 +1162,27 @@ final class UsageStore: ObservableObject {
             // Validate against the selected provider before touching an older
             // Keychain item. This is essential when repairing a stale ACL,
             // because rebinding requires delete + add rather than an update.
-            let quota = try await fetchQuota(
-                for: provider,
-                credential: normalized,
-                now: .now
-            )
-            switch provider {
-            case .zai: try ZAIKeyStore().save(normalized)
-            case .openrouter: try OpenRouterKeyStore().save(normalized)
-            default:
-                try ProviderSecretStore(provider: provider).save(normalized)
+            let validate = credentialValidation
+            let quota = try await AsyncDeadline.run(timeout: operationTimeout) {
+                try await validate(provider, normalized, .now)
             }
+            try Task.checkCancellation()
+            try credentialSave(provider, normalized)
             assign(quota, to: provider)
             providerNotices[provider] = nil
             quotaCache.save(currentSnapshot())
             return true
         } catch {
-            providerNotices[provider] = error.localizedDescription
+            providerNotices[provider] = AsyncDeadline.message(for: error)
             return false
+        }
+    }
+
+    nonisolated static func saveCredential(_ provider: ProviderQuota.Provider, _ credential: String) throws {
+        switch provider {
+        case .zai: try ZAIKeyStore().save(credential)
+        case .openrouter: try OpenRouterKeyStore().save(credential)
+        default: try ProviderSecretStore(provider: provider).save(credential)
         }
     }
 
@@ -1120,52 +1217,51 @@ final class UsageStore: ObservableObject {
     @discardableResult
     func authorizeProviderCredentials(_ provider: ProviderQuota.Provider) async -> Bool {
         let now = Date()
+        let router = hostQuotaRouter
+        let validate = credentialValidation
+        if provider == .claude { lastClaudeAttempt = now }
+        if provider == .codex { lastCodexAPIAttempt = now }
         do {
-            let quota: ProviderQuota
-            switch provider {
-            case .claude:
-                lastClaudeAttempt = now
-                if hostQuotaRouter.route(for: .claude).isExternal {
-                    quota = try await hostQuotaRouter.fetchClaude()
-                } else {
-                    quota = try await ClaudeOAuthUsageService().fetch(
+            let quota = try await AsyncDeadline.run(timeout: operationTimeout) {
+                switch provider {
+                case .claude:
+                    if router.route(for: .claude).isExternal {
+                        return try await router.fetchClaude()
+                    }
+                    return try await ClaudeOAuthUsageService().fetch(
                         now: now,
                         keychainInteraction: .allowed
                     )
+                case .codex:
+                    if router.route(for: .codex).isExternal {
+                        return try await router.fetchCodex(preferAPI: true)
+                    }
+                    return try await CodexAPIUsageService().fetch(
+                        now: now,
+                        keychainInteraction: .allowed
+                    )
+                default:
+                    guard Self.supportsPastedCredential(provider),
+                          let credential = try Self.storedPastedCredential(
+                            for: provider, interaction: .allowed
+                          ) else {
+                        throw StoredCredentialActionError.missing(provider.displayName)
+                    }
+                    try Task.checkCancellation()
+                    let quota = try await validate(provider, credential, now)
+                    try Task.checkCancellation()
+                    guard Self.storedCredentialStatus(for: provider) == .available else {
+                        throw StoredCredentialActionError.authorizationStillRequired
+                    }
+                    return quota
                 }
+            }
+            try Task.checkCancellation()
+            if provider == .claude {
                 claudeRetryAfter = nil
                 claudeConsecutiveFailures = 0
                 UserDefaults.standard.removeObject(forKey: claudeRetryAfterKey)
-            case .codex:
-                lastCodexAPIAttempt = now
-                if hostQuotaRouter.route(for: .codex).isExternal {
-                    quota = try await hostQuotaRouter.fetchCodex(preferAPI: true)
-                } else {
-                    quota = try await CodexAPIUsageService().fetch(
-                        now: now,
-                        keychainInteraction: .allowed
-                    )
-                }
-            case .zai, .openrouter, .deepseek, .kimi, .minimax, .mimo,
-                 .qoder, .volcengine, .ollama, .zaiTeam, .thirdParty:
-                guard let credential = try storedPastedCredential(
-                    for: provider,
-                    interaction: .allowed
-                ) else {
-                    throw StoredCredentialActionError.missing(provider.displayName)
-                }
-                quota = try await fetchQuota(
-                    for: provider,
-                    credential: credential,
-                    now: now
-                )
-                guard storedCredentialStatus(for: provider) == .available else {
-                    throw StoredCredentialActionError.authorizationStillRequired
-                }
-            default:
-                return false
             }
-
             assign(quota, to: provider)
             providerNotices[provider] = nil
             quotaCache.save(currentSnapshot())
@@ -1176,7 +1272,7 @@ final class UsageStore: ObservableObject {
                 assign(nil, to: provider)
                 quotaCache.save(currentSnapshot())
             }
-            providerNotices[provider] = error.localizedDescription
+            providerNotices[provider] = AsyncDeadline.message(for: error)
             logger.error("Explicit read-only credential authorization failed for \(provider.rawValue, privacy: .public): \(error.localizedDescription, privacy: .public)")
             return false
         }
@@ -1198,9 +1294,14 @@ final class UsageStore: ObservableObject {
     ) async -> Bool {
         guard provider.multiAccountCapability != nil,
               !addingProviderAccounts.contains(provider) else { return false }
+        guard !Task.isCancelled else { return false }
         addingProviderAccounts.insert(provider)
         accountManagementNotices[provider] = nil
-        defer { addingProviderAccounts.remove(provider) }
+        defer {
+            accountLoginTasks[provider] = nil
+            accountLoginDeadlines[provider] = nil
+            addingProviderAccounts.remove(provider)
+        }
 
         let profile: ProviderAccountProfile
         do {
@@ -1213,26 +1314,39 @@ final class UsageStore: ObservableObject {
             return false
         }
 
+        var attemptedSecretSave = false
         do {
             var initialQuota: ProviderQuota?
             switch profile.credentialKind {
             case .isolatedCLI:
                 guard let path = profile.configurationDirectory else { return false }
                 let directory = URL(fileURLWithPath: path)
-                if provider == .claude {
-                    try await ClaudeAccountLoginService().login(configurationDirectory: directory)
-                } else if provider == .codex {
-                    try await CodexAccountLoginService().login(configurationDirectory: directory)
+                let login = accountLogin
+                let task = Task { try await login(provider, directory) }
+                accountLoginTasks[provider] = task
+                accountLoginDeadlines[provider] = Date().addingTimeInterval(AccountLoginProcessRunner.loginTimeout)
+                try await withTaskCancellationHandler {
+                    try await task.value
+                } onCancel: {
+                    task.cancel()
                 }
+                // Cancellation can race with a successful CLI exit. Do not
+                // publish a cancelled attempt as a new managed account.
+                try Task.checkCancellation()
+                if task.isCancelled { throw CancellationError() }
+                accountLoginTasks[provider] = nil
+                accountLoginDeadlines[provider] = nil
             case .keychainSecret:
                 guard let credential = credential?.trimmingCharacters(in: .whitespacesAndNewlines),
                       !credential.isEmpty else {
                     throw ProviderAccountFetchService.FetchError.missingCredential
                 }
-                initialQuota = try await ProviderAccountFetchService().fetch(
-                    profile,
-                    credentialOverride: credential
-                )
+                let fetch = accountFetch
+                initialQuota = try await AsyncDeadline.run(timeout: operationTimeout) {
+                    try await fetch(profile, credential)
+                }
+                try Task.checkCancellation()
+                attemptedSecretSave = true
                 try ProviderAccountSecretStore(
                     provider: provider,
                     accountID: profile.id
@@ -1252,15 +1366,20 @@ final class UsageStore: ObservableObject {
                 providerAccountQuotaCache.save(currentProviderAccountQuotas())
                 return true
             }
-            await refreshProviderAccount(profile.id)
-            return providerAccountStates[profile.id]?.quota != nil
+            // Official sign-in is complete. Quota availability is a separate,
+            // bounded refresh and must not keep the login form waiting.
+            Task { await refreshProviderAccount(profile.id) }
+            return true
         } catch {
-            try? ProviderAccountSecretStore(
-                provider: provider,
-                accountID: profile.id
-            ).delete()
+            if attemptedSecretSave {
+                try? ProviderAccountSecretStore(
+                    provider: provider,
+                    accountID: profile.id
+                ).delete()
+            }
             providerAccountsStore.discardPreparedProfile(profile)
-            accountManagementNotices[provider] = error.localizedDescription
+            accountManagementNotices[provider] = error is CancellationError
+                ? L10n.text("accounts.login_cancelled") : error.localizedDescription
             return false
         }
     }
@@ -1288,10 +1407,12 @@ final class UsageStore: ObservableObject {
         state.isRefreshing = true
         providerAccountStates[id] = state
         do {
-            let quota = try await ProviderAccountFetchService().fetch(
-                profile,
-                credentialOverride: normalized
-            )
+            let fetch = accountFetch
+            let quota = try await AsyncDeadline.run(timeout: operationTimeout) {
+                try await fetch(profile, normalized)
+            }
+            try Task.checkCancellation()
+            guard providerAccountProfiles.contains(where: { $0.id == id }) else { return false }
             try ProviderAccountSecretStore(
                 provider: profile.provider,
                 accountID: profile.id
@@ -1303,10 +1424,11 @@ final class UsageStore: ObservableObject {
             providerAccountQuotaCache.save(currentProviderAccountQuotas())
             return true
         } catch {
+            guard providerAccountProfiles.contains(where: { $0.id == id }) else { return false }
             state.isRefreshing = false
-            state.notice = error.localizedDescription
+            state.notice = AsyncDeadline.message(for: error)
             providerAccountStates[id] = state
-            accountManagementNotices[profile.provider] = error.localizedDescription
+            accountManagementNotices[profile.provider] = AsyncDeadline.message(for: error)
             return false
         }
     }
@@ -1358,11 +1480,16 @@ final class UsageStore: ObservableObject {
         state.isRefreshing = true
         providerAccountStates[id] = state
         do {
-            state.quota = try await ProviderAccountFetchService().fetch(profile)
+            let fetch = accountFetch
+            state.quota = try await AsyncDeadline.run(timeout: operationTimeout) {
+                try await fetch(profile, nil)
+            }
+            try Task.checkCancellation()
             state.notice = nil
         } catch {
-            state.notice = error.localizedDescription
+            state.notice = AsyncDeadline.message(for: error)
         }
+        guard providerAccountProfiles.contains(where: { $0.id == id && $0.isEnabled }) else { return }
         state.isRefreshing = false
         providerAccountStates[id] = state
         providerAccountQuotaCache.save(currentProviderAccountQuotas())
@@ -1370,7 +1497,7 @@ final class UsageStore: ObservableObject {
 
     private func refreshKeyProvider(_ provider: ProviderQuota.Provider) async {
         let results = await Self.fetchAux(providers: [provider])
-        guard let fetchResult = results[provider] else { return }
+        guard !Task.isCancelled, let fetchResult = results[provider] else { return }
         apply(fetchResult, to: provider) { self.assign($0, to: provider) }
         if case .failure = fetchResult,
            storedCredentialReadIssue(for: provider) == nil {
@@ -1477,6 +1604,6 @@ final class UsageStore: ObservableObject {
 }
 
 private func result<T: Sendable>(_ operation: @escaping @Sendable () async throws -> T) async -> Result<T, Error> {
-    do { return .success(try await operation()) }
+    do { return .success(try await AsyncDeadline.run(operation: operation)) }
     catch { return .failure(error) }
 }

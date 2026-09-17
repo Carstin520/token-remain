@@ -613,6 +613,9 @@
 "accounts.add_accessibility" = "別の %1$@ アカウントを追加";
 "accounts.adding" = "サインイン中…";
 "accounts.adding_progress" = "公式ブラウザでのサインイン完了を待っています…";
+"accounts.login_remaining" = "ログインの待機時間: 残り %1$@";
+"accounts.login_timed_out" = "ログインがタイムアウトしました。準備ができたら、もう一度ログインしてください。";
+"accounts.login_cancelled" = "ログインをキャンセルしました。もう一度お試しいただけます。";
 "accounts.show_only" = "このアカウントのみ表示";
 "accounts.rename" = "名前を変更…";
 "accounts.rename_title" = "アカウント名を変更";
@@ -712,3 +715,6 @@
 "settings.pool_openrouter_credits_hint" = "キーに周期的な上限がない場合、プリペイドクレジットを進捗行として表示します。クレジットを消費するとデフォルトで表示されます。";
 "settings.model_quotas_hint" = "アプリごとにまとめた追加プール。スイッチはポップアップ・メニューバー・カードの表示だけを変更します。";
 "settings.model_quotas_footer" = "接続してクォータを取得できたアプリがここに表示されます。";
+
+"operation.timed_out" = "操作がタイムアウトしました。もう一度お試しください。";
+"operation.cancelled" = "操作をキャンセルしました。もう一度お試しいただけます。";

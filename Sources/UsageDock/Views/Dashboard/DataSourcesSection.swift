@@ -235,7 +235,8 @@ struct DataSourcesSection: View {
 private struct ProviderAuthorizationRow: View {
     @ObservedObject var store: UsageStore
     let provider: ProviderQuota.Provider
-    @State private var isAuthorizing = false
+    @StateObject private var action = AsyncViewAction()
+    private var isAuthorizing: Bool { action.isRunning }
 
     private var appName: String {
         switch provider {
@@ -253,19 +254,20 @@ private struct ProviderAuthorizationRow: View {
                         ? L10n.text("datasource.authorizing")
                         : L10n.text("datasource.authorize_read")
                 ) {
-                    isAuthorizing = true
-                    Task {
+                    action.start {
                         _ = await store.authorizeProviderCredentials(provider)
-                        isAuthorizing = false
                     }
                 }
                 .disabled(isAuthorizing)
+
+                if isAuthorizing {
+                    Button(L10n.text("action.cancel")) { action.cancel() }
+                }
 
                 if ProviderDesktopAppService.applicationURL(for: provider) != nil {
                     Button(L10n.format("datasource.open_provider_app", appName)) {
                         ProviderDesktopAppService.open(provider)
                     }
-                    .disabled(isAuthorizing)
                 }
             }
             .controlSize(.small)
@@ -277,6 +279,7 @@ private struct ProviderAuthorizationRow: View {
         }
         .padding(.top, 8)
         .padding(.leading, 20)
+        .onDisappear { action.cancel() }
     }
 }
 

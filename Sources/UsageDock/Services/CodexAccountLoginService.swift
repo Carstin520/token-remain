@@ -20,59 +20,38 @@ struct CodexAccountLoginService: Sendable {
         }
     }
 
-    func login(configurationDirectory: URL) async throws {
-        try await run(arguments: ["login"], configurationDirectory: configurationDirectory)
-        let data = try await run(
-            arguments: ["login", "status"],
-            configurationDirectory: configurationDirectory,
-            capturesOutput: true
-        )
-        let text = String(data: data, encoding: .utf8)?.lowercased() ?? ""
-        guard text.contains("logged in") else {
-            throw LoginError.loginDidNotCreateSession
-        }
-    }
+    var executableURL: URL? = nil
+    var loginTimeout: TimeInterval = AccountLoginProcessRunner.loginTimeout
+    var statusTimeout: TimeInterval = AccountLoginProcessRunner.statusTimeout
 
-    @discardableResult
-    private func run(
-        arguments: [String],
-        configurationDirectory: URL,
-        capturesOutput: Bool = false
-    ) async throws -> Data {
-        try await Task.detached(priority: .userInitiated) {
-            guard let executable = Self.executable() else {
-                throw LoginError.cliNotFound
-            }
-            let process = Process()
-            let output = Pipe()
-            process.executableURL = executable
-            process.arguments = arguments
-            var environment = ProviderAccountProcessEnvironment.codex(
-                base: ProcessInfo.processInfo.environment,
-                configurationDirectory: configurationDirectory
+    func login(configurationDirectory: URL) async throws {
+        try Task.checkCancellation()
+        guard let executable = executableURL ?? Self.executable() else { throw LoginError.cliNotFound }
+        var environment = ProviderAccountProcessEnvironment.codex(
+            base: ProcessInfo.processInfo.environment,
+            configurationDirectory: configurationDirectory
+        )
+        // Keep Node resolvable for CLI installations outside a GUI app's PATH.
+        environment["PATH"] = ProviderCLIExecutableResolver.launchPath(
+            existing: environment["PATH"], executable: executable
+        )
+        let deadline = ProcessInfo.processInfo.systemUptime + loginTimeout
+        do {
+            _ = try await AccountLoginProcessRunner.run(
+                executable: executable, arguments: ["login"], environment: environment,
+                timeout: loginTimeout
             )
-            // GUI apps do not inherit the user's interactive shell PATH. Keep
-            // the resolved CLI's directory first so Node-based Codex installs
-            // (for example NVM) can also resolve their `node` interpreter.
-            environment["PATH"] = ProviderCLIExecutableResolver.launchPath(
-                existing: environment["PATH"],
-                executable: executable
+            let data = try await AccountLoginProcessRunner.run(
+                executable: executable, arguments: ["login", "status"], environment: environment,
+                capturesOutput: true, mergesStandardError: true,
+                timeout: min(statusTimeout, deadline - ProcessInfo.processInfo.systemUptime)
             )
-            process.environment = environment
-            if capturesOutput {
-                process.standardOutput = output
-                process.standardError = output
-            } else {
-                process.standardOutput = FileHandle.nullDevice
-                process.standardError = FileHandle.nullDevice
-            }
-            try process.run()
-            process.waitUntilExit()
-            guard process.terminationStatus == 0 else {
-                throw LoginError.loginFailed(process.terminationStatus)
-            }
-            return capturesOutput ? output.fileHandleForReading.readDataToEndOfFile() : Data()
-        }.value
+            let text = String(data: data, encoding: .utf8)?.lowercased() ?? ""
+            guard text.contains("logged in") else { throw LoginError.loginDidNotCreateSession }
+            try Task.checkCancellation()
+        } catch AccountLoginProcessRunner.Failure.exited(let status) {
+            throw LoginError.loginFailed(status)
+        }
     }
 
     static func executable(

@@ -15,13 +15,42 @@ enum ProcessRunner {
         environment: [String: String]? = nil,
         timeout: TimeInterval = 30
     ) async throws -> Data {
+        let output = try await capture(
+            executable, arguments: arguments, environment: environment, timeout: timeout
+        )
+        guard output.status == 0 else {
+            let detail = String(data: output.stderr, encoding: .utf8)?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            throw Failure(message: detail?.isEmpty == false
+                ? detail! : L10n.format("process.command_failed", output.status))
+        }
+        return output.stdout
+    }
+
+    struct Output: Sendable {
+        let stdout: Data
+        let stderr: Data
+        let status: Int32
+    }
+
+    /// Some status commands report valid JSON on stderr or use a nonzero exit
+    /// for signed-out state. Drain both streams with the same deadline.
+    static func capture(
+        _ executable: String,
+        arguments: [String],
+        environment: [String: String]? = nil,
+        timeout: TimeInterval = 30
+    ) async throws -> Output {
+        try Task.checkCancellation()
         let execution = ProcessExecution(
             executable: executable,
             arguments: arguments,
             environment: environment
         )
         return try await withTaskCancellationHandler {
-            try await execution.run(timeout: max(timeout, 0.01))
+            let output = try await execution.run(timeout: max(timeout, 0.01))
+            try Task.checkCancellation()
+            return output
         } onCancel: {
             execution.cancel()
         }
@@ -33,7 +62,7 @@ private final class ProcessExecution: @unchecked Sendable {
     private let stdout = Pipe()
     private let stderr = Pipe()
     private let lock = NSLock()
-    private var continuation: CheckedContinuation<Data, Error>?
+    private var continuation: CheckedContinuation<ProcessRunner.Output, Error>?
     private var timeoutWorkItem: DispatchWorkItem?
     private var output = Data()
     private var errorOutput = Data()
@@ -52,12 +81,18 @@ private final class ProcessExecution: @unchecked Sendable {
         process.standardError = stderr
     }
 
-    func run(timeout: TimeInterval) async throws -> Data {
+    func run(timeout: TimeInterval) async throws -> ProcessRunner.Output {
         try await withCheckedThrowingContinuation { continuation in
             lock.lock()
+            guard !finished else {
+                lock.unlock()
+                continuation.resume(throwing: CancellationError())
+                return
+            }
             self.continuation = continuation
-            lock.unlock()
-
+            // Keep setup/start under the same lock as cancellation. Otherwise
+            // cancel can finish before the continuation exists, or stop a
+            // not-yet-started process which is then launched without a timer.
             stdout.fileHandleForReading.readabilityHandler = { [weak self] handle in
                 self?.consume(handle.availableData, fromStandardError: false)
             }
@@ -71,6 +106,7 @@ private final class ProcessExecution: @unchecked Sendable {
             do {
                 try process.run()
             } catch {
+                lock.unlock()
                 finish(.failure(error))
                 return
             }
@@ -78,18 +114,12 @@ private final class ProcessExecution: @unchecked Sendable {
             let timeoutWorkItem = DispatchWorkItem { [weak self] in
                 self?.timeOut()
             }
-            lock.lock()
-            if finished {
-                lock.unlock()
-                timeoutWorkItem.cancel()
-            } else {
-                self.timeoutWorkItem = timeoutWorkItem
-                lock.unlock()
-                DispatchQueue.global(qos: .utility).asyncAfter(
-                    deadline: .now() + timeout,
-                    execute: timeoutWorkItem
-                )
-            }
+            self.timeoutWorkItem = timeoutWorkItem
+            lock.unlock()
+            DispatchQueue.global(qos: .utility).asyncAfter(
+                deadline: .now() + timeout,
+                execute: timeoutWorkItem
+            )
         }
     }
 
@@ -104,7 +134,7 @@ private final class ProcessExecution: @unchecked Sendable {
     }
 
     private func consume(_ data: Data, fromStandardError: Bool) {
-        var result: Result<Data, Error>?
+        var result: Result<ProcessRunner.Output, Error>?
         lock.lock()
         if !finished {
             if data.isEmpty {
@@ -127,7 +157,7 @@ private final class ProcessExecution: @unchecked Sendable {
     }
 
     private func didTerminate(status: Int32) {
-        var result: Result<Data, Error>?
+        var result: Result<ProcessRunner.Output, Error>?
         lock.lock()
         if !finished {
             terminationStatus = status
@@ -139,24 +169,13 @@ private final class ProcessExecution: @unchecked Sendable {
         }
     }
 
-    private func completionIfReadyLocked() -> Result<Data, Error>? {
+    private func completionIfReadyLocked() -> Result<ProcessRunner.Output, Error>? {
         guard let terminationStatus, stdoutClosed, stderrClosed else { return nil }
-        guard terminationStatus == 0 else {
-            let detail = String(data: errorOutput, encoding: .utf8)?
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-            return .failure(
-                ProcessRunner.Failure(
-                    message: detail?.isEmpty == false
-                        ? detail!
-                        : L10n.format("process.command_failed", terminationStatus)
-                )
-            )
-        }
-        return .success(output)
+        return .success(ProcessRunner.Output(stdout: output, stderr: errorOutput, status: terminationStatus))
     }
 
-    private func finish(_ result: Result<Data, Error>) {
-        let continuation: CheckedContinuation<Data, Error>?
+    private func finish(_ result: Result<ProcessRunner.Output, Error>) {
+        let continuation: CheckedContinuation<ProcessRunner.Output, Error>?
         let timeoutWorkItem: DispatchWorkItem?
         lock.lock()
         guard !finished else {

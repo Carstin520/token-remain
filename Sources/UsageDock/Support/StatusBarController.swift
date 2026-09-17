@@ -395,7 +395,7 @@ final class StatusBarController: NSObject {
         let summaryStrategy = PreferencesStore.shared.quotaSummaryStrategy
         let remainingPercent = Dictionary(
             uniqueKeysWithValues: selectedProviders.compactMap { provider in
-                let quota = store.quotaValue(for: provider)
+                let quota = store.headlineQuota(for: provider, strategy: summaryStrategy)
                 return StatusBarPresentation.headlineRemainingPercent(
                     in: quota,
                     strategy: summaryStrategy
@@ -411,18 +411,18 @@ final class StatusBarController: NSObject {
         )
         let segments: [(ProviderQuota.Provider, String)] = displayedProviders.map { provider in
             let remaining = StatusBarPresentation.remainingText(
-                for: store.quotaValue(for: provider),
+                for: store.headlineQuota(for: provider, strategy: summaryStrategy),
                 strategy: summaryStrategy
             )
             return (provider, remaining)
         }
 
         let claudeRemaining = UsageStore.logoQuotaSelection(
-            from: [store.quotaValue(for: .claude)],
+            from: [store.headlineQuota(for: .claude, strategy: summaryStrategy)],
             strategy: summaryStrategy
         )?.remainingPercent
         let codexRemaining = UsageStore.logoQuotaSelection(
-            from: [store.quotaValue(for: .codex)],
+            from: [store.headlineQuota(for: .codex, strategy: summaryStrategy)],
             strategy: summaryStrategy
         )?.remainingPercent
         let state = TokenRemainLogoState.resolve(
@@ -437,7 +437,7 @@ final class StatusBarController: NSObject {
         let insights = UsageInsights(
             claude: nil,
             codex: nil,
-            others: Array(store.quotas.values),
+            others: store.headlineQuotas,
             daily: nil
         )
         // 菜单栏文字维持用户自选项;Dock logo 的表情与双进度条只比较
@@ -447,7 +447,7 @@ final class StatusBarController: NSObject {
             insights.decisionHeadline()
         ]
         for provider in ProviderQuota.Provider.displayOrder {
-            guard let quota = store.quotaValue(for: provider) else { continue }
+            guard let quota = store.headlineQuota(for: provider, strategy: summaryStrategy) else { continue }
             let remaining = StatusBarPresentation.remainingText(for: quota, strategy: summaryStrategy)
             let providerLabel = StatusBarPresentation.tooltipProviderLabel(
                 provider,

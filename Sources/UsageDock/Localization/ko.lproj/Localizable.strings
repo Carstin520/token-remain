@@ -613,6 +613,9 @@
 "accounts.add_accessibility" = "다른 %1$@ 계정 추가";
 "accounts.adding" = "로그인 중…";
 "accounts.adding_progress" = "공식 브라우저 로그인이 완료되기를 기다리는 중…";
+"accounts.login_remaining" = "로그인 대기 시간: %1$@ 남음";
+"accounts.login_timed_out" = "로그인 대기 시간이 초과되었습니다. 준비되면 다시 로그인해 주세요.";
+"accounts.login_cancelled" = "로그인이 취소되었습니다. 다시 시도할 수 있습니다.";
 "accounts.show_only" = "이 계정만 보기";
 "accounts.rename" = "이름 변경…";
 "accounts.rename_title" = "계정 이름 변경";
@@ -712,3 +715,6 @@
 "settings.pool_openrouter_credits_hint" = "키에 주기적 한도가 없을 때 선불 크레딧을 진행 행으로 표시합니다. 크레딧을 사용하면 기본으로 표시됩니다.";
 "settings.model_quotas_hint" = "앱별로 묶은 추가 풀입니다. 스위치는 팝업, 메뉴 막대, 카드에 무엇을 표시할지만 바꿉니다.";
 "settings.model_quotas_footer" = "연결되어 할당량을 보고하는 앱이 여기에 표시됩니다.";
+
+"operation.timed_out" = "작업 시간이 초과되었습니다. 다시 시도해 주세요.";
+"operation.cancelled" = "작업이 취소되었습니다. 다시 시도할 수 있습니다.";

@@ -613,6 +613,9 @@
 "accounts.add_accessibility" = "Weiteres %1$@-Konto hinzufügen";
 "accounts.adding" = "Anmeldung läuft…";
 "accounts.adding_progress" = "Warte auf den Abschluss der offiziellen Browser-Anmeldung…";
+"accounts.login_remaining" = "Verbleibende Anmeldezeit: %1$@";
+"accounts.login_timed_out" = "Zeitlimit für die Anmeldung erreicht. Starte die Anmeldung erneut, wenn du bereit bist.";
+"accounts.login_cancelled" = "Anmeldung abgebrochen. Du kannst es erneut versuchen.";
 "accounts.show_only" = "Nur dieses Konto anzeigen";
 "accounts.rename" = "Umbenennen…";
 "accounts.rename_title" = "Konto umbenennen";
@@ -712,3 +715,6 @@
 "settings.pool_openrouter_credits_hint" = "Zeigt Prepaid-Guthaben als Fortschrittszeile, wenn der Schlüssel kein periodisches Limit hat; wird standardmäßig angezeigt, sobald Guthaben verbraucht wird.";
 "settings.model_quotas_hint" = "Optionale Kontingente, nach App gruppiert. Jeder Schalter ändert nur, was Popup, Menüleiste und Karten anzeigen.";
 "settings.model_quotas_footer" = "Apps erscheinen hier, sobald sie verbunden sind und Kontingente melden.";
+
+"operation.timed_out" = "Der Vorgang hat zu lange gedauert. Bitte erneut versuchen.";
+"operation.cancelled" = "Der Vorgang wurde abgebrochen. Sie können es erneut versuchen.";
