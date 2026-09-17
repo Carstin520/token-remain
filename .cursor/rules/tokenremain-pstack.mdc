@@ -1,0 +1,35 @@
+---
+description: TokenRemain 的 pstack 项目边界、授权与验证规则。
+alwaysApply: true
+---
+
+# TokenRemain pstack 适配规则
+
+先读仓库根目录 [AGENTS.md](../../AGENTS.md)。其中编号规则是项目约束；本文件只规定 pstack 的接入方式。宿主更高优先级指令和用户当前明确授权仍然有效。不要把规则当成工具权限隔离。
+
+## 必须覆盖的上游默认行为
+
+- **任务范围与工作区：** 每次进入新任务先确认范围、Git 基线和已有改动；不采用上游“重置后重做”、自动 stash、强制 worktree 清理或全仓 diff 清理。只审查/修改本任务拥有的文件或 hunk。
+- **提交与 PR：** `Opening a PR`、频繁 commit、重排提交、自动 merge 不是默认收尾。没有相应任务授权时，改为交付本地 diff；已有授权直接沿用。`/loop` 和无人值守指令不扩大权限。
+- **外部服务：** MCP 可用不等于授权发消息、更新工单、发布、上传或操作生产数据；遵守 AGENTS.md R2、R3。
+- **清理：** `/no-comments` 默认跳过自动删除；仅按 R6 进行局部审查。`subtract-before-you-add` 不授权清理第三方兼容逻辑、用户资产或任务外代码。
+- **兼容：** `migrate-callers-then-delete-legacy-apis` 限定内部、可协调迁移的 API；跨设备协议与持久化数据走 R4。
+- **委派：** 不机械套用 mandatory delegation/arena。小任务可单人实现，说明简化原因；按 R7 限制并行数量并显式传递约束。共享文件和真实应用实例不能多写者竞争。
+- **运行验证：** 原生 macOS 走本项目验证入口；浏览器/Electron 证据不能替代 SwiftUI/AppKit。无匹配控制工具时如实标记未验证，继续可独立完成的工作。
+- **设计边界：** 涉及异步等待的设计、architect、实现及审查按 R12 与 [DB-001](../../docs/design-boundaries.md#db-001) 执行：先决定是否需要超时，再明确各结束状态的界面、取消边界、迟到结果与重试策略；不能只有成功路径或统一套用一个秒数。验收同时检查实际写入出口的测试隔离。
+- **UI 简洁性：** 卡片/列表/面板设计与审查按 R13 和 [DB-002](../../docs/design-boundaries.md#db-002) 执行：先让常见内容在合理尺寸内完整呈现，额外滚动/折叠需有理由；同时验证窄宽度、长文案、整页滚动和真实溢出。不能用裁切或隐藏重要信息制造简洁。
+- **技能与模型：** 不自动修补插件、写全局 `pstack-models.mdc`、运行 `/automate-me`/`reflect` 或创建额外 PR。缺少依赖时使用可用工具完成同一目标，并披露降级。
+
+## 入口与执行
+
+维护任务优先使用 [tokenremain-mode](../skills/tokenremain-mode/SKILL.md)，验证使用 [verify-tokenremain](../skills/verify-tokenremain/SKILL.md)。用户直接调用 `/poteto-mode` 或其他 pstack 技能时，本规则仍适用；不要递归互调两个 mode。
+
+父代理把 AGENTS.md、对应技能路径、允许写入范围、已授予权限和验收条件交给子代理。无法确认子代理加载规则时，在任务说明中重述必要限制，不假定其自动继承。
+
+上游流程发生冲突时，在任务记录中写 `项目规则调整：步骤 / 对应 R 编号 / 替代动作`，继续可执行步骤。不要一边写“跳过”，一边在后续自动 commit、开 PR 或发布。
+
+## 配置维护
+
+此适配层的初始审阅基线是官方 `cursor/plugins` commit `93b00b89ef425a9c1bac0d0b317dfc49c930ac99` 下的 `pstack/`，仅用于追踪，不表示插件已安装或版本已锁定。
+
+pstack 升级后检查 `poteto-mode`、`opening-a-pr`、`no-comments`、验证生成器及子代理/模型行为是否变化。模型在 Cursor 实际环境中配置，不把示例 model slug 或某台机器的账号选择写进仓库。只有明确配置任务才运行 `/setup-pstack`。
