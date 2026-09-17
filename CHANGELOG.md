@@ -7,6 +7,11 @@ Versioning for public releases.
 
 ### Added
 
+- Add a dedicated Alibaba Token Plan source with manual console Cookie setup,
+  explicit China/international and Team/Personal selection, Team Credits and
+  independent personal quota windows. Reads are bounded and cancellable; API
+  routes explain the separate console account instead of requesting generic JSON.
+
 - The menu-bar and floating panels show separate named rows for each enabled
   provider account. Compact quota summaries use the account with the least
   remaining quota under the selected summary strategy (PR #56).

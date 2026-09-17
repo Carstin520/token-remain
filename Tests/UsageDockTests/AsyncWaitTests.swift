@@ -225,6 +225,46 @@ struct CredentialWaitStateTests {
         #expect(fixture.accounts.profiles.isEmpty)
     }
 
+    @Test("An older Token Plan validation cannot overwrite a newer console account")
+    @MainActor
+    func tokenPlanReplacementRejectsLateResults() async throws {
+        let gate = DelayedValidation()
+        let writes = CredentialWrites()
+        let fixture = try Fixture(writes: writes, validate: { provider, credential, _ in
+            if credential == "older-fixture-config" { await gate.wait() }
+            return sampleQuota(provider, used: credential == "older-fixture-config" ? 10 : 70)
+        })
+        defer { fixture.remove() }
+        let older = Task { await fixture.store.saveAPIKey("older-fixture-config", for: .alibabaTokenPlan) }
+        try await waitUntil { await gate.started }
+        #expect(await fixture.store.saveAPIKey("newer-fixture-config", for: .alibabaTokenPlan))
+        await gate.release()
+        #expect(!(await older.value))
+        #expect(writes.values == ["newer-fixture-config"])
+        #expect(fixture.store.quotaValue(for: .alibabaTokenPlan)?.primary.usedPercent == 70)
+    }
+
+    @Test("Token Plan timeout retains the previous quota and never saves a late result")
+    @MainActor
+    func tokenPlanTimeoutPreservesPreviousAccount() async throws {
+        let gate = DelayedValidation()
+        let writes = CredentialWrites()
+        let fixture = try Fixture(timeout: 0.03, writes: writes, validate: { provider, credential, _ in
+            if credential == "slow-fixture-config" { await gate.wait() }
+            return sampleQuota(provider, used: 40)
+        })
+        defer { fixture.remove() }
+        #expect(await fixture.store.saveAPIKey("good-fixture-config", for: .alibabaTokenPlan))
+        let capturedAt = fixture.store.quotaValue(for: .alibabaTokenPlan)?.capturedAt
+        #expect(!(await fixture.store.saveAPIKey("slow-fixture-config", for: .alibabaTokenPlan)))
+        #expect(fixture.store.quotaValue(for: .alibabaTokenPlan)?.capturedAt == capturedAt)
+        #expect(fixture.store.providerNotices[.alibabaTokenPlan] == L10n.text("operation.timed_out"))
+        await gate.release()
+        try await Task.sleep(for: .milliseconds(20))
+        #expect(writes.values == ["good-fixture-config"])
+        #expect(fixture.store.quotaValue(for: .alibabaTokenPlan)?.capturedAt == capturedAt)
+    }
+
     @MainActor
     private struct Fixture {
         let root: URL

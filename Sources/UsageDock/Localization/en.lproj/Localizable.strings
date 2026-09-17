@@ -718,3 +718,21 @@
 
 "operation.timed_out" = "The operation timed out. Please try again.";
 "operation.cancelled" = "The operation was cancelled. You can try again.";
+
+/* Alibaba Token Plan */
+"alibaba.region" = "Region";
+"alibaba.region.china" = "China mainland";
+"alibaba.region.international" = "International";
+"alibaba.edition" = "Plan";
+"alibaba.edition.team" = "Team";
+"alibaba.edition.personal" = "Personal";
+"alibaba.cookie_placeholder" = "Paste the console Cookie, including its CSRF cookie";
+"alibaba.setup_hint" = "Select the site and plan used in the console. Paste its Cookie; the quota belongs to that console account. Settings are saved only after verification.";
+"alibaba.route_setup" = "Add Alibaba Token Plan in Data Sources with its console Cookie. An API key cannot read this quota or prove that the console account owns this route.";
+"alibaba.credits" = "%.2f credits";
+"alibaba.error.configuration" = "Paste a valid console Cookie including login_aliyunid_csrf or csrf; API keys are not accepted.";
+"alibaba.error.authentication" = "The console session has expired. Sign in to the selected site and replace the Cookie.";
+"alibaba.error.unavailable" = "The selected plan did not return usable quota. Check the region and plan, then retry.";
+"alibaba.error.response" = "The console returned an unsupported quota response. Retry later.";
+"alibaba.error.request" = "The console could not read this quota. Check account permissions, region and plan, then retry.";
+"alibaba.error.network" = "Could not connect to the console. Check the network and retry.";

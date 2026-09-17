@@ -40,6 +40,22 @@ enum L10n {
     /// domain strings deterministic there and is also the final safety net if
     /// an installed localization is missing a key.
     private static let fallback: [String: String] = [
+        "alibaba.region": "地域",
+        "alibaba.region.china": "国内",
+        "alibaba.region.international": "国际",
+        "alibaba.edition": "套餐",
+        "alibaba.edition.team": "团队版",
+        "alibaba.edition.personal": "个人版",
+        "alibaba.cookie_placeholder": "粘贴控制台 Cookie（包含 CSRF Cookie）",
+        "alibaba.setup_hint": "选择控制台的地域和套餐，再粘贴 Cookie；额度属于该控制台账号。验证成功后才保存设置。",
+        "alibaba.route_setup": "请在数据来源添加 Alibaba Token Plan 并配置控制台 Cookie。API Key 无法读取此额度，也无法证明控制台账号属于当前路由。",
+        "alibaba.credits": "%.2f Credits",
+        "alibaba.error.configuration": "请粘贴包含 login_aliyunid_csrf 或 csrf 的有效控制台 Cookie；不接受 API Key。",
+        "alibaba.error.authentication": "控制台会话已过期。请登录所选站点后替换 Cookie。",
+        "alibaba.error.unavailable": "所选套餐未返回可用额度。请检查地域和套餐后重试。",
+        "alibaba.error.response": "控制台返回了不支持的额度数据，请稍后重试。",
+        "alibaba.error.request": "控制台未能读取额度。请检查账号权限、地域及套餐后重试。",
+        "alibaba.error.network": "无法连接控制台，请检查网络后重试。",
         "widget.local_usage": "今日本地统计",
         "widget.ai_feed": "AI动态",
         "usage.api_cost": "API 花费",

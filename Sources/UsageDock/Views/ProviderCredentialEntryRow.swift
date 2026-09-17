@@ -53,6 +53,8 @@ struct ProviderCredentialEntryRow: View {
     @StateObject private var action = AsyncViewAction()
     private var isSaving: Bool { action.isRunning }
     @State private var zaiRegion: ZAIAPIRegion
+    @State private var alibabaRegion: AlibabaTokenPlanConfiguration.Region
+    @State private var alibabaEdition: AlibabaTokenPlanConfiguration.Edition
 
     init(
         store: UsageStore,
@@ -66,10 +68,33 @@ struct ProviderCredentialEntryRow: View {
             initialValue: ProviderCredentialConfiguration.storedCredentialStatus(for: provider)
         )
         _zaiRegion = State(initialValue: ZAIRegionStore().load())
+        let alibabaConfig = provider == .alibabaTokenPlan
+            ? ProviderSecretStore(provider: provider).load().flatMap { try? AlibabaTokenPlanConfiguration.decode($0) }
+            : nil
+        _alibabaRegion = State(initialValue: alibabaConfig?.region ?? .china)
+        _alibabaEdition = State(initialValue: alibabaConfig?.edition ?? .team)
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
+            if provider == .alibabaTokenPlan {
+                Picker(L10n.text("alibaba.region"), selection: $alibabaRegion) {
+                    ForEach(AlibabaTokenPlanConfiguration.Region.allCases, id: \.self) { region in
+                        Text(region.displayName).tag(region)
+                    }
+                }
+                .disabled(isSaving)
+                Picker(L10n.text("alibaba.edition"), selection: $alibabaEdition) {
+                    ForEach(AlibabaTokenPlanConfiguration.Edition.allCases, id: \.self) { edition in
+                        Text(edition.displayName).tag(edition)
+                    }
+                }
+                .disabled(isSaving)
+                Text(L10n.text("alibaba.setup_hint"))
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(DashboardTheme.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             if provider == .zai {
                 HStack(spacing: 8) {
                     Text(L10n.text("datasource.zai_region"))
@@ -110,10 +135,18 @@ struct ProviderCredentialEntryRow: View {
                         ? L10n.text("action.replace")
                         : L10n.text("action.save")
                 ) {
-                    let credential = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+                    var credential = draft.trimmingCharacters(in: .whitespacesAndNewlines)
                     guard !credential.isEmpty else { return }
+                    if provider == .alibabaTokenPlan {
+                        let config = AlibabaTokenPlanConfiguration(
+                            region: alibabaRegion, edition: alibabaEdition, cookie: credential
+                        )
+                        guard let encoded = try? config.encoded() else { return }
+                        credential = encoded
+                    }
+                    let submittedCredential = credential
                     action.start {
-                        let saved = await store.saveAPIKey(credential, for: provider)
+                        let saved = await store.saveAPIKey(submittedCredential, for: provider)
                         guard !Task.isCancelled else { return }
                         if saved { draft = "" }
                         reloadCredentialStatus()

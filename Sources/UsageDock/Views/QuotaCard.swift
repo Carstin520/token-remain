@@ -727,7 +727,8 @@ private struct AccountDigestRow: View {
             "quota.remaining",
             QuotaWindowRow.remainingValueText(
                 remainingPercent: summary.remainingPercent,
-                remainingBalance: summary.remainingBalance
+                remainingBalance: summary.remainingBalance,
+                remainingCredits: summary.window.remainingCredits
             )
         )
     }
@@ -1125,16 +1126,21 @@ struct QuotaWindowRow: View {
             "quota.remaining",
             Self.remainingValueText(
                 remainingPercent: remainingPercent,
-                remainingBalance: remainingBalance ?? window.remainingBalance
+                remainingBalance: remainingBalance ?? window.remainingBalance,
+                remainingCredits: window.remainingCredits
             )
         )
     }
 
     static func remainingValueText(
         remainingPercent: Double,
-        remainingBalance: QuotaBalance?
+        remainingBalance: QuotaBalance?,
+        remainingCredits: Double? = nil
     ) -> String {
-        remainingBalance?.displayText ?? UsageFormatting.percent(remainingPercent)
+        if let credits = remainingCredits, credits.isFinite, credits >= 0 {
+            return L10n.format("alibaba.credits", credits)
+        }
+        return remainingBalance?.displayText ?? UsageFormatting.percent(remainingPercent)
     }
 
     private var windowTitle: String {

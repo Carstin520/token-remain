@@ -212,6 +212,8 @@ enum MobileSnapshotRedactor {
         case .kimi: "kimi"
         case .minimax: "minimax"
         case .mimo: "mimo"
+        // Desktop-only until published consumers support this provider.
+        case .alibabaTokenPlan: "alibaba-token-plan"
         case .qoder: "qoder"
         case .kiro: "kiro"
         case .volcengine: "volcengine"

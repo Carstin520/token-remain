@@ -14,6 +14,9 @@ struct QuotaWindow: Sendable, Codable {
     /// the whole account, this names it so rows stay distinguishable from the
     /// sibling pool carried as a scoped window.
     var poolName: String? = nil
+    /// Non-monetary Token Plan credits. Optional for old cache compatibility.
+    /// Deliberately excluded from the current mobile wire format.
+    var remainingCredits: Double? = nil
 }
 
 /// A monetary remainder reported or derived for one quota window. The meter
@@ -386,6 +389,7 @@ struct ProviderQuota: Sendable, Codable {
         case kimi = "Kimi"
         case minimax = "MiniMax"
         case mimo = "MiMo Code"
+        case alibabaTokenPlan = "Alibaba Token Plan"
         case qoder = "Qoder"
         case kiro = "Kiro"
         case volcengine = "Volcengine"
@@ -396,7 +400,7 @@ struct ProviderQuota: Sendable, Codable {
         static let displayOrder: [Provider] = [
             .claude, .codex, .cursor, .copilot, .devin, .windsurf,
             .grok, .openrouter, .antigravity, .opencode, .zai, .zaiTeam,
-            .deepseek, .kimi, .minimax, .mimo, .qoder,
+            .deepseek, .kimi, .minimax, .mimo, .alibabaTokenPlan, .qoder,
             .kiro, .volcengine, .ollama, .thirdParty
         ]
 
@@ -419,6 +423,7 @@ struct ProviderQuota: Sendable, Codable {
             case .kimi: return "Kimi"
             case .minimax: return "MiniMax"
             case .mimo: return "MiMo"
+            case .alibabaTokenPlan: return "Bailian"
             case .qoder: return "Qoder"
             case .kiro: return "Kiro"
             case .volcengine: return "Volcengine"
@@ -895,6 +900,7 @@ extension ProviderQuota.Provider {
         case .kimi: "kimi"
         case .minimax: "minimax"
         case .mimo: "mimo"
+        case .alibabaTokenPlan: "alibaba-token-plan"
         case .qoder: "qoder"
         case .kiro: "kiro"
         case .volcengine: "volcengine"

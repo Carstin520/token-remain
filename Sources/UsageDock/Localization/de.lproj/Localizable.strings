@@ -718,3 +718,21 @@
 
 "operation.timed_out" = "Der Vorgang hat zu lange gedauert. Bitte erneut versuchen.";
 "operation.cancelled" = "Der Vorgang wurde abgebrochen. Sie können es erneut versuchen.";
+
+/* Alibaba Token Plan */
+"alibaba.region" = "Region";
+"alibaba.region.china" = "Festlandchina";
+"alibaba.region.international" = "International";
+"alibaba.edition" = "Tarif";
+"alibaba.edition.team" = "Team";
+"alibaba.edition.personal" = "Privat";
+"alibaba.cookie_placeholder" = "Konsolen-Cookie einfügen (einschließlich CSRF-Cookie)";
+"alibaba.setup_hint" = "Region und Tarif der Konsole wählen und deren Cookie einfügen. Das Kontingent gehört zu diesem Konto. Einstellungen werden erst nach der Prüfung gespeichert.";
+"alibaba.route_setup" = "Alibaba Token Plan unter Datenquellen mit dem Konsolen-Cookie hinzufügen. Ein API-Schlüssel kann dieses Kontingent nicht lesen oder die Kontozuordnung der Route bestätigen.";
+"alibaba.credits" = "%.2f Credits";
+"alibaba.error.configuration" = "Einen gültigen Konsolen-Cookie mit login_aliyunid_csrf oder csrf einfügen. API-Schlüssel werden nicht akzeptiert.";
+"alibaba.error.authentication" = "Die Sitzung ist abgelaufen. Auf der gewählten Website anmelden und den Cookie ersetzen.";
+"alibaba.error.unavailable" = "Kein nutzbares Kontingent erhalten. Region und Tarif prüfen und erneut versuchen.";
+"alibaba.error.response" = "Nicht unterstützte Kontingentdaten erhalten. Später erneut versuchen.";
+"alibaba.error.request" = "Kontingent konnte nicht gelesen werden. Berechtigungen, Region und Tarif prüfen.";
+"alibaba.error.network" = "Keine Verbindung zur Konsole. Netzwerk prüfen und erneut versuchen.";

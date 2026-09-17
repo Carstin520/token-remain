@@ -718,3 +718,21 @@
 
 "operation.timed_out" = "La operación ha agotado el tiempo de espera. Inténtalo de nuevo.";
 "operation.cancelled" = "La operación se ha cancelado. Puedes intentarlo de nuevo.";
+
+/* Alibaba Token Plan */
+"alibaba.region" = "Región";
+"alibaba.region.china" = "China continental";
+"alibaba.region.international" = "Internacional";
+"alibaba.edition" = "Plan";
+"alibaba.edition.team" = "Equipo";
+"alibaba.edition.personal" = "Personal";
+"alibaba.cookie_placeholder" = "Pegar Cookie de la consola (incluida la Cookie CSRF)";
+"alibaba.setup_hint" = "Selecciona la región y el plan de la consola y pega su Cookie. La cuota pertenece a esa cuenta. La configuración se guarda tras verificarla.";
+"alibaba.route_setup" = "Añade Alibaba Token Plan en Fuentes de datos con su Cookie de consola. Una clave API no permite leer esta cuota ni confirmar la cuenta de la ruta.";
+"alibaba.credits" = "%.2f créditos";
+"alibaba.error.configuration" = "Pega una Cookie válida con login_aliyunid_csrf o csrf. No se aceptan claves API.";
+"alibaba.error.authentication" = "La sesión ha caducado. Inicia sesión en el sitio elegido y reemplaza la Cookie.";
+"alibaba.error.unavailable" = "No se recibió una cuota válida. Revisa la región y el plan y reintenta.";
+"alibaba.error.response" = "La consola devolvió datos no compatibles. Reintenta más tarde.";
+"alibaba.error.request" = "No se pudo leer la cuota. Revisa los permisos, la región y el plan.";
+"alibaba.error.network" = "No se pudo conectar. Revisa la red y reintenta.";

@@ -363,6 +363,10 @@ struct HostAppQuotaRouteDetector: Sendable {
         // A concrete hostname is authoritative. A custom relay named
         // "deepseek-proxy" is billed by that relay, not api.deepseek.com.
         if !host.isEmpty {
+            if ["token-plan.cn-beijing.maas.aliyuncs.com",
+                "token-plan.ap-southeast-1.maas.aliyuncs.com"].contains(host) {
+                return (.alibabaTokenPlan, "Alibaba Token Plan")
+            }
             if (host == "api.openai.com" || host.hasSuffix(".openai.com")),
                id.contains("openai") {
                 return (.thirdParty, "OpenAI API")
@@ -466,6 +470,11 @@ struct HostAppQuotaRoutingService: Sendable {
                 try await KimiUsageService().fetch(secret: route.credential)
             case .minimax:
                 try await MiniMaxUsageService().fetch(apiKey: route.credential)
+            case .alibabaTokenPlan:
+                // A console session cannot prove ownership of this route API key.
+                throw ExtendedProviderError.invalidSecret(
+                    .alibabaTokenPlan, detail: L10n.text("alibaba.route_setup")
+                )
             case .mimo:
                 // MiMo's coding route token is not the console cookie required
                 // by its balance API. Never substitute a separately stored

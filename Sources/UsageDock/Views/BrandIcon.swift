@@ -160,6 +160,8 @@ struct BrandIcon: View {
             return Artwork(resourceName: "volcengine", isTemplate: false)
         case .ollama:
             return Artwork(resourceName: "ollama", isTemplate: true)
+        case .alibabaTokenPlan:
+            return Artwork(resourceName: "bailian", isTemplate: false)
         case .thirdParty:
             return nil
         }

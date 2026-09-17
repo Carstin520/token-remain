@@ -21,3 +21,7 @@ brand guide, retrieved 2026-07-29 from:
 
 - https://windsurf.com/brand
 - https://exafunction.github.io/public/brand/windsurf-white-symbol.png
+
+`bailian.svg` and `bailian.png` use the Bailian color mark from the same
+Lobe Icons 1.94.0 packages (`icons/bailian-color.svg`, `light/bailian-color.png`),
+retrieved 2026-09-17. The source artwork is unchanged.

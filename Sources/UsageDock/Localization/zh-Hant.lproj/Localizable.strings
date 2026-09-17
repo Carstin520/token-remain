@@ -718,3 +718,21 @@
 
 "operation.timed_out" = "操作逾時，請重試。";
 "operation.cancelled" = "操作已取消，可以重試。";
+
+/* Alibaba Token Plan */
+"alibaba.region" = "地區";
+"alibaba.region.china" = "中國大陸";
+"alibaba.region.international" = "國際";
+"alibaba.edition" = "方案";
+"alibaba.edition.team" = "團隊版";
+"alibaba.edition.personal" = "個人版";
+"alibaba.cookie_placeholder" = "貼上控制台 Cookie（含 CSRF Cookie）";
+"alibaba.setup_hint" = "選擇控制台的地區和方案，再貼上 Cookie；額度屬於該控制台帳號。驗證成功後才儲存設定。";
+"alibaba.route_setup" = "請在資料來源新增 Alibaba Token Plan 並設定控制台 Cookie。API Key 無法讀取此額度，也無法證明控制台帳號屬於目前路由。";
+"alibaba.credits" = "%.2f Credits";
+"alibaba.error.configuration" = "請貼上含 login_aliyunid_csrf 或 csrf 的有效控制台 Cookie；不接受 API Key。";
+"alibaba.error.authentication" = "控制台工作階段已過期。請登入所選站點後替換 Cookie。";
+"alibaba.error.unavailable" = "所選方案未傳回可用額度。請檢查地區和方案後重試。";
+"alibaba.error.response" = "控制台傳回不支援的額度資料，請稍後重試。";
+"alibaba.error.request" = "控制台無法讀取額度。請檢查帳號權限、地區及方案後重試。";
+"alibaba.error.network" = "無法連線至控制台，請檢查網路後重試。";

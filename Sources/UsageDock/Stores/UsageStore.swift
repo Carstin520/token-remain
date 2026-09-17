@@ -49,6 +49,8 @@ final class UsageStore: ObservableObject {
     /// 刻意不进全局错误条:"未接入某工具"是卡片语境的信息,
     /// 不该像故障一样反复告警。
     @Published private(set) var providerNotices: [ProviderQuota.Provider: String] = [:]
+    /// A credential replacement/clear retires reads started for the previous account.
+    private var credentialRevisions: [ProviderQuota.Provider: UInt64] = [:]
     /// Additive multi-account state. The provider-keyed `localQuotas` remains
     /// the system-account compatibility projection for persistence/sync/history.
     @Published private(set) var providerAccountProfiles: [ProviderAccountProfile] = []
@@ -140,7 +142,7 @@ final class UsageStore: ObservableObject {
         case claude(Result<ProviderQuota, Error>)
         case providerAccount(ProviderAccountProfile, Result<ProviderQuota, Error>)
         case codex(Result<ProviderQuota, Error>)
-        case auxiliary(ProviderQuota.Provider, Result<ProviderQuota, Error>)
+        case auxiliary(ProviderQuota.Provider, UInt64, Result<ProviderQuota, Error>)
         case serviceStatuses([ProviderQuota.Provider: ProviderServiceStatus])
     }
 
@@ -163,7 +165,7 @@ final class UsageStore: ObservableObject {
     nonisolated static let auxProviders: [ProviderQuota.Provider] = [
         .cursor, .grok, .zai, .zaiTeam, .copilot, .devin, .windsurf,
         .openrouter, .antigravity, .opencode,
-        .deepseek, .kimi, .minimax, .mimo, .qoder, .kiro, .volcengine, .ollama,
+        .deepseek, .kimi, .minimax, .mimo, .alibabaTokenPlan, .qoder, .kiro, .volcengine, .ollama,
         .thirdParty
     ]
 
@@ -388,6 +390,7 @@ final class UsageStore: ObservableObject {
         case .kimi: return { try await KimiUsageService().fetch() }
         case .minimax: return { try await MiniMaxUsageService().fetch() }
         case .mimo: return { try await MiMoUsageService().fetch() }
+        case .alibabaTokenPlan: return { try await AlibabaTokenPlanUsageService().fetch() }
         case .qoder: return { try await QoderUsageService().fetch() }
         case .kiro: return { try await KiroUsageService().fetch() }
         case .volcengine: return { try await VolcengineUsageService().fetch() }
@@ -776,8 +779,9 @@ final class UsageStore: ObservableObject {
             }
             for provider in dueAuxProviders {
                 guard let fetcher = Self.auxFetcher(for: provider) else { continue }
+                let revision = credentialRevisions[provider, default: 0]
                 group.addTask {
-                    .auxiliary(provider, await result { try await fetcher() })
+                    .auxiliary(provider, revision, await result { try await fetcher() })
                 }
             }
             for profile in dueManagedProfiles {
@@ -915,7 +919,8 @@ final class UsageStore: ObservableObject {
             }
             syncSystemAccountNotice(.codex)
 
-        case .auxiliary(let provider, let auxResult):
+        case .auxiliary(let provider, let revision, let auxResult):
+            guard revision == credentialRevisions[provider, default: 0] else { return }
             lastAuxProviderAttempts[provider] = now
             switch auxResult {
             case .success:
@@ -1134,6 +1139,8 @@ final class UsageStore: ObservableObject {
             return try await MiniMaxUsageService().fetch(apiKey: credential, now: now)
         case .mimo:
             return try await MiMoUsageService().fetch(cookie: credential, now: now)
+        case .alibabaTokenPlan:
+            return try await AlibabaTokenPlanUsageService().fetch(configuration: credential, now: now)
         case .qoder:
             return try await QoderUsageService().fetch(cookie: credential, now: now)
         case .volcengine:
@@ -1157,6 +1164,8 @@ final class UsageStore: ObservableObject {
     func saveAPIKey(_ key: String, for provider: ProviderQuota.Provider) async -> Bool {
         let normalized = key.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !normalized.isEmpty, Self.supportsPastedCredential(provider) else { return false }
+        credentialRevisions[provider, default: 0] &+= 1
+        let revision = credentialRevisions[provider, default: 0]
         providerNotices[provider] = nil
         do {
             // Validate against the selected provider before touching an older
@@ -1167,12 +1176,16 @@ final class UsageStore: ObservableObject {
                 try await validate(provider, normalized, .now)
             }
             try Task.checkCancellation()
+            guard revision == credentialRevisions[provider, default: 0] else { return false }
             try credentialSave(provider, normalized)
+            // Also retire background reads that started while validation was running.
+            credentialRevisions[provider, default: 0] &+= 1
             assign(quota, to: provider)
             providerNotices[provider] = nil
             quotaCache.save(currentSnapshot())
             return true
         } catch {
+            guard revision == credentialRevisions[provider, default: 0] else { return false }
             providerNotices[provider] = AsyncDeadline.message(for: error)
             return false
         }
@@ -1191,6 +1204,7 @@ final class UsageStore: ObservableObject {
     @discardableResult
     func clearAPIKey(for provider: ProviderQuota.Provider) async -> Bool {
         guard Self.supportsPastedCredential(provider) else { return false }
+        credentialRevisions[provider, default: 0] &+= 1
         do {
             switch provider {
             case .zai: try ZAIKeyStore().clear()
@@ -1216,6 +1230,7 @@ final class UsageStore: ObservableObject {
     /// 显示一次钥匙串访问确认；仍然只读凭证，不刷新、不写回 token。
     @discardableResult
     func authorizeProviderCredentials(_ provider: ProviderQuota.Provider) async -> Bool {
+        let revision = credentialRevisions[provider, default: 0]
         let now = Date()
         let router = hostQuotaRouter
         let validate = credentialValidation
@@ -1257,6 +1272,7 @@ final class UsageStore: ObservableObject {
                 }
             }
             try Task.checkCancellation()
+            guard revision == credentialRevisions[provider, default: 0] else { return false }
             if provider == .claude {
                 claudeRetryAfter = nil
                 claudeConsecutiveFailures = 0
@@ -1268,6 +1284,7 @@ final class UsageStore: ObservableObject {
             logger.info("Explicit read-only credential authorization succeeded for \(provider.rawValue, privacy: .public)")
             return true
         } catch {
+            guard revision == credentialRevisions[provider, default: 0] else { return false }
             if Self.invalidatesCachedQuota(error) {
                 assign(nil, to: provider)
                 quotaCache.save(currentSnapshot())
@@ -1496,8 +1513,10 @@ final class UsageStore: ObservableObject {
     }
 
     private func refreshKeyProvider(_ provider: ProviderQuota.Provider) async {
+        let revision = credentialRevisions[provider, default: 0]
         let results = await Self.fetchAux(providers: [provider])
-        guard !Task.isCancelled, let fetchResult = results[provider] else { return }
+        guard !Task.isCancelled, revision == credentialRevisions[provider, default: 0],
+              let fetchResult = results[provider] else { return }
         apply(fetchResult, to: provider) { self.assign($0, to: provider) }
         if case .failure = fetchResult,
            storedCredentialReadIssue(for: provider) == nil {
@@ -1598,6 +1617,7 @@ final class UsageStore: ObservableObject {
         let summary = quota.generalQuotaSummary(
             strategy: PreferencesStore.shared.quotaSummaryStrategy
         )
+        if let credits = summary.window.remainingCredits { return L10n.format("alibaba.credits", credits) }
         return summary.remainingBalance?.displayText
             ?? UsageFormatting.percent(summary.remainingPercent)
     }

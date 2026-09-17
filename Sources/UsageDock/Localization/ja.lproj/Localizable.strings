@@ -718,3 +718,21 @@
 
 "operation.timed_out" = "操作がタイムアウトしました。もう一度お試しください。";
 "operation.cancelled" = "操作をキャンセルしました。もう一度お試しいただけます。";
+
+/* Alibaba Token Plan */
+"alibaba.region" = "リージョン";
+"alibaba.region.china" = "中国本土";
+"alibaba.region.international" = "国際";
+"alibaba.edition" = "プラン";
+"alibaba.edition.team" = "チーム";
+"alibaba.edition.personal" = "個人";
+"alibaba.cookie_placeholder" = "コンソールの Cookie を貼り付け（CSRF Cookie を含む）";
+"alibaba.setup_hint" = "コンソールの地域とプランを選び、Cookie を貼り付けてください。割り当てはそのアカウントに属します。検証後に設定を保存します。";
+"alibaba.route_setup" = "データソースで Alibaba Token Plan を追加し、コンソールの Cookie を設定してください。API キーでは割り当ての取得やルートのアカウント確認はできません。";
+"alibaba.credits" = "%.2f クレジット";
+"alibaba.error.configuration" = "login_aliyunid_csrf または csrf を含む有効な Cookie を貼り付けてください。API キーは使用できません。";
+"alibaba.error.authentication" = "セッションが期限切れです。選択したサイトにログインし、Cookie を置き換えてください。";
+"alibaba.error.unavailable" = "選択したプランの割り当てが取得できません。地域とプランを確認して再試行してください。";
+"alibaba.error.response" = "未対応の割り当てデータです。後で再試行してください。";
+"alibaba.error.request" = "割り当てを取得できません。権限、地域、プランを確認してください。";
+"alibaba.error.network" = "接続できません。ネットワークを確認して再試行してください。";
