@@ -240,3 +240,63 @@ struct AdaptiveRefreshPolicyTests {
     }
     #endif
 }
+
+@Suite("Transport failure notice suppression")
+struct TransportFailureNoticeSuppressionTests {
+    private let now = Date(timeIntervalSince1970: 1_800_000_000)
+
+    @Test("A fresh cached snapshot keeps a transport failure silent")
+    func freshSnapshotStaysSilent() {
+        #expect(AdaptiveRefreshPolicy.suppressesTransportFailureNotice(
+            cachedCapturedAt: now.addingTimeInterval(-90),
+            now: now,
+            refreshInterval: 60
+        ))
+    }
+
+    @Test("The grace period is two refresh rounds but never under ten minutes")
+    func gracePeriodScalesWithInterval() {
+        // Minute-level refresh: ten-minute floor applies.
+        #expect(AdaptiveRefreshPolicy.suppressesTransportFailureNotice(
+            cachedCapturedAt: now.addingTimeInterval(-9 * 60),
+            now: now,
+            refreshInterval: 60
+        ))
+        #expect(!AdaptiveRefreshPolicy.suppressesTransportFailureNotice(
+            cachedCapturedAt: now.addingTimeInterval(-11 * 60),
+            now: now,
+            refreshInterval: 60
+        ))
+        // Thirty-minute refresh: an hour of silence.
+        #expect(AdaptiveRefreshPolicy.suppressesTransportFailureNotice(
+            cachedCapturedAt: now.addingTimeInterval(-55 * 60),
+            now: now,
+            refreshInterval: 30 * 60
+        ))
+        #expect(!AdaptiveRefreshPolicy.suppressesTransportFailureNotice(
+            cachedCapturedAt: now.addingTimeInterval(-61 * 60),
+            now: now,
+            refreshInterval: 30 * 60
+        ))
+        // Manual-only refresh falls back to the idle cadence.
+        #expect(AdaptiveRefreshPolicy.suppressesTransportFailureNotice(
+            cachedCapturedAt: now.addingTimeInterval(-9 * 60),
+            now: now,
+            refreshInterval: nil
+        ))
+    }
+
+    @Test("No snapshot or a clock-skewed snapshot always surfaces the failure")
+    func missingOrFutureSnapshotSurfaces() {
+        #expect(!AdaptiveRefreshPolicy.suppressesTransportFailureNotice(
+            cachedCapturedAt: nil,
+            now: now,
+            refreshInterval: 60
+        ))
+        #expect(!AdaptiveRefreshPolicy.suppressesTransportFailureNotice(
+            cachedCapturedAt: now.addingTimeInterval(120),
+            now: now,
+            refreshInterval: 60
+        ))
+    }
+}

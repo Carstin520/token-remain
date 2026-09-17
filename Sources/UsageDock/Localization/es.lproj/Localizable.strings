@@ -139,8 +139,8 @@
 "datasource.authorizing" = "Verificando…";
 "datasource.open_provider_app" = "Abrir %1$@";
 "service.claude.authorization_required" = "Permite a TokenRemain acceder en modo de solo lectura a tus credenciales de Claude";
-"service.claude.invalid_stored_credentials" = "No se reconocen las credenciales de Claude; inicia sesión de nuevo en la app Claude";
-"service.claude.session_expired" = "Tu sesión de Claude caducó; abre Code en la app Claude para renovarla";
+"service.claude.invalid_stored_credentials" = "No se reconocen las credenciales de Claude; ejecuta claude en la terminal e inicia sesión de nuevo con /login";
+"service.claude.session_expired" = "Tu sesión de Claude caducó; ejecuta claude una vez en la terminal para renovarla";
 "service.codex.authorization_required" = "Permite a TokenRemain acceder en modo de solo lectura a tus credenciales de Codex";
 "service.codex.invalid_stored_credentials" = "No se reconocen las credenciales de Codex; inicia sesión de nuevo en ChatGPT o Codex";
 "datasource.broken" = "Conexión interrumpida";
@@ -334,11 +334,12 @@
 "service.antigravity.not_logged_in" = "No se detectó Antigravity; abre Antigravity y mantenlo en ejecución para que TokenRemain pueda leer su servicio local de cuota";
 "service.claude.api_rate_limited" = "La API de uso de Claude está limitada; reintenta más tarde";
 "service.claude.api_rate_limited_minutes" = "La API de uso de Claude está limitada; reintenta en unos %1$d min";
-"service.claude.cli_not_found" = "La alternativa opcional de Claude CLI no está disponible; inicia sesión o renueva desde Code en la app Claude";
+"service.claude.cli_not_found" = "No se encontró la CLI de Claude Code y la sesión no puede renovarse sola; instala la CLI o ejecuta claude en la terminal";
 "alert.provider_signed_out.title" = "Se cerró la sesión de %@";
 "alert.provider_signed_out.body" = "TokenRemain ya no puede leer tu uso: las tarjetas muestran la última instantánea correcta. Vuelve a iniciar sesión en %@ para restaurarlo.";
 "service.claude.cli_timeout" = "La lectura de uso de Claude Code superó el tiempo de espera; se muestra la última caché";
-"service.claude.credentials_unavailable" = "No se encontraron credenciales de Claude utilizables; abre Code en la app Claude e inicia sesión";
+"service.claude.network_unreachable" = "No se puede conectar con Claude ahora; se muestra la última caché y se reintentará cuando vuelva la red o el proxy";
+"service.claude.credentials_unavailable" = "No se encontró una sesión de Claude utilizable; ejecuta claude en la terminal e inicia sesión con /login";
 "service.claude.invalid_usage_output" = "Claude Code no devolvió un uso reconocible de 5 horas / 7 días";
 "service.claude.probe_launch_failed" = "No se pudo iniciar la sonda de uso de Claude Code: %1$@";
 "service.claude.rate_limited" = "La API de uso de Claude está limitada; se reintentará automáticamente pronto";

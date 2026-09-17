@@ -752,3 +752,207 @@ private final class ClaudeLockedValue<Value>: @unchecked Sendable {
         return value
     }
 }
+
+@Suite("Claude oauth/usage transport retry")
+struct ClaudeOAuthUsageTransportRetryTests {
+    private static func response(_ status: Int) -> (Data, URLResponse) {
+        let http = HTTPURLResponse(
+            url: URL(string: "https://api.anthropic.com/api/oauth/usage")!,
+            statusCode: status,
+            httpVersion: nil,
+            headerFields: nil
+        )!
+        return (Data(), http)
+    }
+
+    @Test("Classifies link-level URL errors as transport failures")
+    func transportFailureClassification() {
+        #expect(ClaudeOAuthUsageService.isTransportFailure(URLError(.timedOut)))
+        #expect(ClaudeOAuthUsageService.isTransportFailure(URLError(.networkConnectionLost)))
+        #expect(ClaudeOAuthUsageService.isTransportFailure(URLError(.notConnectedToInternet)))
+        #expect(!ClaudeOAuthUsageService.isTransportFailure(URLError(.badServerResponse)))
+        #expect(!ClaudeOAuthUsageService.isTransportFailure(URLError(.cancelled)))
+        #expect(!ClaudeOAuthUsageService.isTransportFailure(ClaudeOAuthUsageService.APIError.invalidResponse))
+    }
+
+    @Test("A single transport timeout is retried once and the retry result wins")
+    func retriesOnceAfterTimeout() async throws {
+        var attempts = 0
+        let request = URLRequest(url: URL(string: "https://api.anthropic.com/api/oauth/usage")!)
+        let (_, response) = try await ClaudeOAuthUsageService.performWithOneTransportRetry(
+            request,
+            retryDelay: 0
+        ) { _ in
+            attempts += 1
+            if attempts == 1 { throw URLError(.timedOut) }
+            return Self.response(200)
+        }
+        #expect(attempts == 2)
+        #expect((response as? HTTPURLResponse)?.statusCode == 200)
+    }
+
+    @Test("Two consecutive transport failures give up with the second error")
+    func retriesOnlyOnce() async {
+        var attempts = 0
+        let request = URLRequest(url: URL(string: "https://api.anthropic.com/api/oauth/usage")!)
+        await #expect(throws: URLError.self) {
+            _ = try await ClaudeOAuthUsageService.performWithOneTransportRetry(
+                request,
+                retryDelay: 0
+            ) { _ in
+                attempts += 1
+                throw URLError(.networkConnectionLost)
+            }
+        }
+        #expect(attempts == 2)
+    }
+
+    @Test("Non-transport errors are not retried")
+    func doesNotRetryOtherErrors() async {
+        var attempts = 0
+        let request = URLRequest(url: URL(string: "https://api.anthropic.com/api/oauth/usage")!)
+        await #expect(throws: URLError.self) {
+            _ = try await ClaudeOAuthUsageService.performWithOneTransportRetry(
+                request,
+                retryDelay: 0
+            ) { _ in
+                attempts += 1
+                throw URLError(.badServerResponse)
+            }
+        }
+        #expect(attempts == 1)
+    }
+
+    @Test("The request timeout leaves room for one retry inside a refresh round")
+    func timeoutBudget() {
+        #expect(ClaudeOAuthUsageService.requestTimeout == 25)
+        #expect(ClaudeOAuthUsageService.transportRetryDelay == 2)
+        #expect(2 * ClaudeOAuthUsageService.requestTimeout + ClaudeOAuthUsageService.transportRetryDelay < AdaptiveRefreshPolicy.activeInterval)
+    }
+
+    @Test("Cancellation during a failed request prevents a transport retry")
+    func cancellationPreventsRetry() async {
+        let attempt = Task {
+            var calls = 0
+            do {
+                _ = try await ClaudeOAuthUsageService.performWithOneTransportRetry(
+                    URLRequest(url: URL(string: "https://unused.invalid")!), retryDelay: 0
+                ) { _ in
+                    calls += 1
+                    withUnsafeCurrentTask { $0?.cancel() }
+                    throw URLError(.timedOut)
+                }
+                Issue.record("A cancelled read must throw")
+            } catch { #expect(error is CancellationError) }
+            return calls
+        }
+        #expect(await attempt.value == 1)
+    }
+
+    @Test("Cancellation rejects a late successful response")
+    func cancellationRejectsLateSuccess() async {
+        let attempt = Task {
+            do {
+                _ = try await ClaudeOAuthUsageService.performWithOneTransportRetry(
+                    URLRequest(url: URL(string: "https://unused.invalid")!), retryDelay: 0
+                ) { _ in
+                    withUnsafeCurrentTask { $0?.cancel() }
+                    return Self.response(200)
+                }
+                Issue.record("A late response must not become a successful read")
+            } catch { #expect(error is CancellationError) }
+        }
+        await attempt.value
+    }
+
+    @Test("Cancelling a credential reread cannot issue an OAuth request")
+    func cancellationBeforeTokenChangeRetry() async {
+        let attempt = Task {
+            do {
+                _ = try await ClaudeUsageService.retryOAuthAfterCredentialRefresh(
+                    previousAccessToken: "old-fixture",
+                    readCurrentAccessToken: {
+                        withUnsafeCurrentTask { $0?.cancel() }
+                        return "new-fixture"
+                    },
+                    fetchOAuthUsage: {
+                        Issue.record("Cancelled recovery must not make another request")
+                        throw URLError(.badServerResponse)
+                    }
+                )
+                Issue.record("Cancelled recovery must throw")
+            } catch { #expect(error is CancellationError) }
+        }
+        await attempt.value
+    }
+}
+
+@Suite("Claude signed-out keychain payloads")
+struct ClaudeSignedOutPayloadTests {
+    @Test("Signed-out managed profiles retain the scoped Keychain identity")
+    func managedSignedOutReadStaysScoped() async {
+        var reader = ClaudeCredentialsReader()
+        let directory = "/tmp/claude-scoped-signout-\(UUID().uuidString)"
+        reader.environment = ["CLAUDE_CONFIG_DIR": directory]
+        reader.fallbackToDefaultDirectory = false
+        let service = ClaudeCredentialsReader.keychainServiceName(configurationDirectory: directory)
+        reader.keychainPayload = { requested, _ in
+            #expect(requested == service)
+            return KeychainRead.Outcome(payload: nil, status: errSecAuthFailed)
+        }
+        reader.appleToolPayload = { requested in
+            #expect(requested == service)
+            return KeychainRead.Outcome(payload: #"{"mcpOAuth":{}}"#, status: errSecSuccess)
+        }
+        let result = await reader.readAllowingAppleTool()
+        #expect(result.keychainPayloadIsSignedOut)
+        #expect(!result.needsAuthorization)
+        #expect(result.credentials == nil)
+    }
+
+    @Test("A payload that only carries MCP OAuth state means Claude Code is signed out")
+    func mcpOnlyPayloadIsSignedOut() {
+        #expect(ClaudeCredentialsReader.isSignedOutPayload(#"{"mcpOAuth": {"server": {"accessToken": "x"}}}"#))
+        #expect(ClaudeCredentialsReader.isSignedOutPayload(#"{"claudeAiOauth": {"accessToken": ""}}"#))
+        #expect(!ClaudeCredentialsReader.isSignedOutPayload(#"{"claudeAiOauth": {"accessToken": "sk-ant-oat01-x"}}"#))
+        #expect(!ClaudeCredentialsReader.isSignedOutPayload("not json"))
+    }
+
+    @Test("The direct keychain read reports a signed-out payload instead of an invalid one")
+    func directReadClassifiesSignedOut() {
+        var reader = ClaudeCredentialsReader()
+        reader.environment = [:]
+        reader.homeDirectory = URL(fileURLWithPath: "/tmp/tokenremain-claude-signed-out")
+        reader.keychainPayload = { _, _ in
+            KeychainRead.Outcome(payload: #"{"mcpOAuth": {}}"#, status: errSecSuccess)
+        }
+        let result = reader.read()
+        #expect(result.credentials == nil)
+        #expect(result.hasInvalidKeychainPayload)
+        #expect(result.keychainPayloadIsSignedOut)
+
+        reader.keychainPayload = { _, _ in
+            KeychainRead.Outcome(payload: "garbage", status: errSecSuccess)
+        }
+        let garbage = reader.read()
+        #expect(garbage.hasInvalidKeychainPayload)
+        #expect(!garbage.keychainPayloadIsSignedOut)
+    }
+
+    @Test("A signed-out payload behind the Apple tool no longer reads as an authorization problem")
+    func appleToolReadClassifiesSignedOut() async {
+        var reader = ClaudeCredentialsReader()
+        reader.environment = [:]
+        reader.homeDirectory = URL(fileURLWithPath: "/tmp/tokenremain-claude-signed-out-tool")
+        reader.keychainPayload = { _, _ in
+            KeychainRead.Outcome(payload: nil, status: errSecAuthFailed)
+        }
+        reader.appleToolPayload = { _ in
+            KeychainRead.Outcome(payload: #"{"mcpOAuth": {}}"#, status: errSecSuccess)
+        }
+        let result = await reader.readAllowingAppleTool()
+        #expect(!result.needsAuthorization)
+        #expect(result.hasInvalidKeychainPayload)
+        #expect(result.keychainPayloadIsSignedOut)
+    }
+}

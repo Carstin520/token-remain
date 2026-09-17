@@ -73,21 +73,26 @@ struct ClaudeOAuthUsageService {
             if result.hasExpiredCredentials {
                 throw APIError.credentialsExpired
             }
-            if result.hasInvalidKeychainPayload {
+            // `/logout` 之后 Claude Code 会保留 MCP 的 OAuth 段、删掉账号段:
+            // 条目还在,但已经不是登录凭证。这是"登出",不是"格式无法识别"。
+            if result.hasInvalidKeychainPayload && !result.keychainPayloadIsSignedOut {
                 throw APIError.invalidStoredCredentials
             }
             throw APIError.credentialsUnavailable
         }
 
         var request = URLRequest(url: Self.usageURL)
-        request.timeoutInterval = 10
+        // 空闲超时。跨境链路偶发抖动下 10 秒经常刚好差一口气,一次抖动就
+        // 把"请求超时"挂到卡片上;25 秒仍远短于一轮刷新,配合下面的一次
+        // 重试足以吸收单次抖动。
+        request.timeoutInterval = Self.requestTimeout
         request.setValue("Bearer \(credentials.accessToken)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("oauth-2025-04-20", forHTTPHeaderField: "anthropic-beta")
         // 接口按 Claude Code 客户端的形态放行;裸 UA 会被部分网关拦截。
         request.setValue("claude-code/2.1.69", forHTTPHeaderField: "User-Agent")
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await Self.performWithOneTransportRetry(request)
         guard let http = response as? HTTPURLResponse else {
             throw APIError.invalidResponse
         }
@@ -107,6 +112,52 @@ struct ClaudeOAuthUsageService {
             rateLimitTier: credentials.rateLimitTier,
             now: now
         )
+    }
+
+    static let requestTimeout: TimeInterval = 25
+    static let transportRetryDelay: TimeInterval = 2
+
+    /// 传输层失败(超时、连接断开、DNS 失败)会自己恢复,和凭证或服务端
+    /// 状态无关。只有这类错误值得在同一轮里重试一次;HTTP 状态码和解析
+    /// 错误不走这里。
+    static func isTransportFailure(_ error: Error) -> Bool {
+        guard let urlError = error as? URLError else { return false }
+        switch urlError.code {
+        case .timedOut, .networkConnectionLost, .cannotConnectToHost,
+             .cannotFindHost, .dnsLookupFailed, .notConnectedToInternet,
+             .secureConnectionFailed, .internationalRoamingOff, .callIsActive,
+             .dataNotAllowed, .resourceUnavailable:
+            return true
+        default:
+            return false
+        }
+    }
+
+    /// 一次传输失败后隔 `retryDelay` 再发一次同样的请求,第二次失败原样
+    /// 抛出。只重试一次:连续两次都超时说明链路真的不通,再等下去只会拖
+    /// 慢整轮刷新,交给下一轮即可。
+    static func performWithOneTransportRetry(
+        _ request: URLRequest,
+        retryDelay: TimeInterval = transportRetryDelay,
+        perform: (URLRequest) async throws -> (Data, URLResponse) = {
+            try await URLSession.shared.data(for: $0)
+        }
+    ) async throws -> (Data, URLResponse) {
+        try Task.checkCancellation()
+        do {
+            let response = try await perform(request)
+            try Task.checkCancellation()
+            return response
+        } catch let error where isTransportFailure(error) {
+            try Task.checkCancellation()
+            if retryDelay > 0 {
+                try await Task.sleep(for: .seconds(retryDelay))
+            }
+            try Task.checkCancellation()
+            let response = try await perform(request)
+            try Task.checkCancellation()
+            return response
+        }
     }
 
     static func retryAfterSeconds(_ response: HTTPURLResponse, now: Date = .now) -> Int? {
@@ -359,6 +410,8 @@ struct ClaudeCredentialsReader {
         let source: Source?
         let keychainStatus: OSStatus?
         let hasExpiredCredentials: Bool
+        /// 钥匙串读到的是合法 JSON,只是没有 `claudeAiOauth` 账号段。
+        var keychainPayloadIsSignedOut: Bool = false
 
         var needsAuthorization: Bool {
             guard let keychainStatus else { return false }
@@ -448,7 +501,9 @@ struct ClaudeCredentialsReader {
             credentials: credentials,
             source: credentials == nil ? nil : .keychain,
             keychainStatus: outcome.status,
-            hasExpiredCredentials: foundExpiredCredentials
+            hasExpiredCredentials: foundExpiredCredentials,
+            keychainPayloadIsSignedOut: parsed == nil
+                && outcome.payload.map(Self.isSignedOutPayload) == true
         )
     }
 
@@ -467,10 +522,21 @@ struct ClaudeCredentialsReader {
             return direct
         }
         let outcome = await appleToolPayload(resolvedKeychainService)
-        guard let payload = outcome.payload, let parsed = Self.decode(payload) else {
+        guard let payload = outcome.payload else {
             // Keep the direct result: it already describes why the item is out
             // of reach, and the delegate adds no new recovery action.
             return direct
+        }
+        guard let parsed = Self.decode(payload) else {
+            // 代读成功但内容不是登录凭证:要么已 /logout(只剩 mcpOAuth),
+            // 要么格式真的变了。两者都不该再报"需要授权"。
+            return ReadResult(
+                credentials: nil,
+                source: nil,
+                keychainStatus: errSecSuccess,
+                hasExpiredCredentials: false,
+                keychainPayloadIsSignedOut: Self.isSignedOutPayload(payload)
+            )
         }
         guard Self.isUsable(parsed, now: now) else {
             return ReadResult(
@@ -493,6 +559,19 @@ struct ClaudeCredentialsReader {
             return nil
         }
         return parsed.credentials
+    }
+
+    /// 合法 JSON 对象,但没有可用的 `claudeAiOauth.accessToken`。Claude Code
+    /// `/logout` 后就是这个形态(通常只剩 `mcpOAuth`)。
+    static func isSignedOutPayload(_ payload: String) -> Bool {
+        guard let data = payload.data(using: .utf8),
+              let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
+            return false
+        }
+        guard let oauth = object["claudeAiOauth"] as? [String: Any] else { return true }
+        let token = (oauth["accessToken"] as? String)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return token.isEmpty
     }
 
     private static func decode(_ payload: String) -> ParsedCredentials? {

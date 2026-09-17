@@ -22,7 +22,8 @@ enum ProviderSessionAlerts {
             case .credentialsUnavailable, .sessionExpired, .invalidStoredCredentials:
                 return true
             case .cliNotFound, .cliTimedOut, .credentialsAuthorizationRequired,
-                 .cliLaunchFailed, .invalidUsageOutput, .rateLimited:
+                 .cliLaunchFailed, .invalidUsageOutput, .rateLimited,
+                 .networkUnreachable:
                 return false
             }
         }

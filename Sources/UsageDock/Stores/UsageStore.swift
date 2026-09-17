@@ -851,10 +851,24 @@ final class UsageStore: ObservableObject {
                 if Self.invalidatesCachedQuota(error) {
                     assign(nil, to: .claude)
                 }
-                providerNotices[.claude] = error.localizedDescription
-                // 卡片会继续渲染上一份成功的快照,看起来一切正常,所以登出这类
-                // 只有用户能修的失败必须主动出声,不能只写在弹窗里等人来看。
-                sessionAlerts.report(error: error, for: .claude, now: now)
+                // 一次网络抖动不值得在卡片上挂到下一轮成功:缓存还新鲜时
+                // 只留日志。缓存过时后照常出声,用户才知道数据真的停了。
+                let transportFailure = ClaudeOAuthUsageService.isTransportFailure(error)
+                    || (error as? ClaudeUsageService.ServiceError)?.isTransportFailure == true
+                let suppressedTransportFailure = transportFailure
+                    && AdaptiveRefreshPolicy.suppressesTransportFailureNotice(
+                        cachedCapturedAt: claude?.capturedAt,
+                        now: now,
+                        refreshInterval: PreferencesStore.shared.refreshInterval
+                    )
+                if suppressedTransportFailure {
+                    logger.notice("Claude transport failure kept silent while the cached snapshot is fresh: \(error.localizedDescription, privacy: .public)")
+                } else {
+                    providerNotices[.claude] = error.localizedDescription
+                    // 卡片会继续渲染上一份成功的快照,看起来一切正常,所以登出这类
+                    // 只有用户能修的失败必须主动出声,不能只写在弹窗里等人来看。
+                    sessionAlerts.report(error: error, for: .claude, now: now)
+                }
                 if let serviceError = error as? ClaudeUsageService.ServiceError {
                     claudeConsecutiveFailures = min(claudeConsecutiveFailures + 1, 9)
                     // 服务端给出明确 Retry-After 时以服务端为准,不再放大;
@@ -872,8 +886,10 @@ final class UsageStore: ObservableObject {
                     claudeRetryAfter = retryAfter
                     UserDefaults.standard.set(retryAfter, forKey: claudeRetryAfterKey)
                 }
-                logger.error("Claude quota refresh failed: \(error.localizedDescription, privacy: .public)")
-                errors.append("Claude: \(error.localizedDescription)")
+                if !suppressedTransportFailure {
+                    logger.error("Claude quota refresh failed: \(error.localizedDescription, privacy: .public)")
+                    errors.append("Claude: \(error.localizedDescription)")
+                }
             }
             var systemState = providerAccountStates[.system(.claude)] ?? ProviderAccountState()
             systemState.notice = providerNotices[.claude]

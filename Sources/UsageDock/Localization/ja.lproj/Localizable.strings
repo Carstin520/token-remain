@@ -139,8 +139,8 @@
 "datasource.authorizing" = "確認中…";
 "datasource.open_provider_app" = "%1$@ を開く";
 "service.claude.authorization_required" = "TokenRemain に Claude ログイン情報への読み取り専用アクセスを許可してください";
-"service.claude.invalid_stored_credentials" = "Claude ログイン情報を認識できません。Claude アプリで再度ログインしてください";
-"service.claude.session_expired" = "Claude セッションの期限が切れました。Claude アプリで Code を開いて更新してください";
+"service.claude.invalid_stored_credentials" = "Claude ログイン情報を認識できません。ターミナルで claude を実行し /login で再ログインしてください";
+"service.claude.session_expired" = "Claude セッションの期限が切れました。ターミナルで claude を一度実行して更新してください";
 "service.codex.authorization_required" = "TokenRemain に Codex ログイン情報への読み取り専用アクセスを許可してください";
 "service.codex.invalid_stored_credentials" = "Codex ログイン情報を認識できません。ChatGPT または Codex で再度ログインしてください";
 "datasource.broken" = "データ連携切れ";
@@ -334,11 +334,12 @@
 "service.antigravity.not_logged_in" = "Antigravity が検出されません。TokenRemain がローカルのクォータサービスを読み取れるよう、Antigravity を開いたまま実行してください";
 "service.claude.api_rate_limited" = "Claude 使用量 API がレート制限中です。しばらくしてから再試行してください";
 "service.claude.api_rate_limited_minutes" = "Claude 使用量 API がレート制限中です。約%1$d分後に再試行してください";
-"service.claude.cli_not_found" = "オプションの Claude CLI フォールバックは利用できません。Claude アプリの Code でログインまたは更新してください";
+"service.claude.cli_not_found" = "Claude Code CLI が見つからないため自動更新できません。CLI をインストールするか、ターミナルで claude を実行してください";
 "alert.provider_signed_out.title" = "%@ からログアウトされています";
 "alert.provider_signed_out.body" = "TokenRemain は使用量を読み取れなくなりました。カードは最後に取得できた値を表示しています。%@ に再度ログインすると復旧します。";
 "service.claude.cli_timeout" = "Claude Code の使用量読み取りがタイムアウトしました。最新のキャッシュを表示しています";
-"service.claude.credentials_unavailable" = "利用可能な Claude 認証情報が見つかりません。Claude アプリで Code を開いてログインしてください";
+"service.claude.network_unreachable" = "現在 Claude に接続できません。最新のキャッシュを表示し、ネットワークまたはプロキシの復旧後に再試行します";
+"service.claude.credentials_unavailable" = "利用可能な Claude ログイン情報が見つかりません。ターミナルで claude を実行し /login でログインしてください";
 "service.claude.invalid_usage_output" = "Claude Code が認識可能な 5 時間 / 7 日の使用量を返しませんでした";
 "service.claude.probe_launch_failed" = "Claude Code 使用量プローブを起動できません:%1$@";
 "service.claude.rate_limited" = "Claude 使用量 API がレート制限中です。まもなく自動的に再試行します";

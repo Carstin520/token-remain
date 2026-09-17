@@ -143,8 +143,8 @@
 "datasource.authorizing" = "正在驗證…";
 "datasource.open_provider_app" = "開啟 %1$@";
 "service.claude.authorization_required" = "需要允許 TokenRemain 唯讀存取 Claude 登入憑證";
-"service.claude.invalid_stored_credentials" = "無法辨識 Claude 登入憑證；請在 Claude App 中重新登入";
-"service.claude.session_expired" = "Claude 登入已過期；請開啟 Claude App 的 Code 頁面完成續期";
+"service.claude.invalid_stored_credentials" = "無法辨識 Claude 登入憑證；請在終端機執行 claude 並輸入 /login 重新登入";
+"service.claude.session_expired" = "Claude 登入已過期；請在終端機執行一次 claude 完成續期";
 "service.codex.authorization_required" = "需要允許 TokenRemain 唯讀存取 Codex 登入憑證";
 "service.codex.invalid_stored_credentials" = "無法辨識 Codex 登入憑證；請在 ChatGPT 或 Codex 中重新登入";
 "datasource.broken" = "資料鏈失效";
@@ -338,11 +338,12 @@
 "service.antigravity.not_logged_in" = "未偵測到 Antigravity；請開啟並保持 Antigravity 執行，TokenRemain 會自動讀取其本機配額服務";
 "service.claude.api_rate_limited" = "Claude 用量 API 受速率限制，請稍後重試";
 "service.claude.api_rate_limited_minutes" = "Claude 用量 API 受速率限制，約 %1$d 分鐘後重試";
-"service.claude.cli_not_found" = "選用的 Claude CLI 備援不可用；請在 Claude App 的 Code 頁面登入或續期";
+"service.claude.cli_not_found" = "找不到 Claude Code 命令列，無法自動續期；請安裝 CLI 或在終端機執行 claude 登入";
 "alert.provider_signed_out.title" = "%@ 已登出";
 "alert.provider_signed_out.body" = "TokenRemain 已讀不到用量，卡片顯示的是最後一次成功的快照。重新登入 %@ 後自動恢復。";
 "service.claude.cli_timeout" = "Claude Code 用量讀取逾時，正在顯示最近的快取資料";
-"service.claude.credentials_unavailable" = "找不到可用的 Claude 登入憑證；請開啟 Claude App 的 Code 頁面登入";
+"service.claude.network_unreachable" = "目前無法連線 Claude 服務，正在顯示最近的快取；網路或代理恢復後會自動重試";
+"service.claude.credentials_unavailable" = "找不到可用的 Claude 登入憑證；請在終端機執行 claude 並輸入 /login";
 "service.claude.invalid_usage_output" = "Claude Code 未回傳可識別的 5 小時 / 7 天用量";
 "service.claude.probe_launch_failed" = "無法啟動 Claude Code 用量探針：%1$@";
 "service.claude.rate_limited" = "Claude 用量 API 受速率限制，稍後將自動重試";

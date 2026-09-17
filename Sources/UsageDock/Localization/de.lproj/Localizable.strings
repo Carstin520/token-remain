@@ -139,8 +139,8 @@
 "datasource.authorizing" = "Wird geprüft…";
 "datasource.open_provider_app" = "%1$@ öffnen";
 "service.claude.authorization_required" = "Erlaube TokenRemain den schreibgeschützten Zugriff auf deine Claude-Anmeldedaten";
-"service.claude.invalid_stored_credentials" = "Claude-Anmeldedaten wurden nicht erkannt; melde dich in der Claude-App erneut an";
-"service.claude.session_expired" = "Deine Claude-Sitzung ist abgelaufen; öffne Code in der Claude-App, um sie zu erneuern";
+"service.claude.invalid_stored_credentials" = "Claude-Anmeldedaten wurden nicht erkannt; führe claude im Terminal aus und melde dich mit /login erneut an";
+"service.claude.session_expired" = "Deine Claude-Sitzung ist abgelaufen; führe claude einmal im Terminal aus, um sie zu erneuern";
 "service.codex.authorization_required" = "Erlaube TokenRemain den schreibgeschützten Zugriff auf deine Codex-Anmeldedaten";
 "service.codex.invalid_stored_credentials" = "Codex-Anmeldedaten wurden nicht erkannt; melde dich in ChatGPT oder Codex erneut an";
 "datasource.broken" = "Verbindung unterbrochen";
@@ -334,11 +334,12 @@
 "service.antigravity.not_logged_in" = "Antigravity wurde nicht erkannt; öffne Antigravity und lasse es laufen, damit TokenRemain den lokalen Kontingentdienst lesen kann";
 "service.claude.api_rate_limited" = "Claude-Nutzungs-API gedrosselt; später erneut versuchen";
 "service.claude.api_rate_limited_minutes" = "Claude-Nutzungs-API gedrosselt; in ca. %1$d Min erneut versuchen";
-"service.claude.cli_not_found" = "Der optionale Claude-CLI-Fallback ist nicht verfügbar; bitte Code in der Claude-App öffnen und anmelden oder erneuern";
+"service.claude.cli_not_found" = "Claude-Code-CLI nicht gefunden, die Sitzung kann nicht automatisch erneuert werden; installiere die CLI oder führe claude im Terminal aus";
 "alert.provider_signed_out.title" = "%@ ist abgemeldet";
 "alert.provider_signed_out.body" = "TokenRemain kann deine Nutzung nicht mehr lesen – die Karten zeigen den letzten gültigen Stand. Melde dich wieder bei %@ an, um sie wiederherzustellen.";
 "service.claude.cli_timeout" = "Zeitüberschreitung beim Lesen der Claude-Code-Nutzung; letzter Cache wird angezeigt";
-"service.claude.credentials_unavailable" = "Keine nutzbaren Claude-Anmeldedaten gefunden; bitte Code in der Claude-App öffnen und anmelden";
+"service.claude.network_unreachable" = "Claude ist derzeit nicht erreichbar; letzter Cache wird angezeigt, neuer Versuch sobald Netzwerk oder Proxy zurück sind";
+"service.claude.credentials_unavailable" = "Keine nutzbare Claude-Anmeldung gefunden; führe claude im Terminal aus und melde dich mit /login an";
 "service.claude.invalid_usage_output" = "Claude Code lieferte keine erkennbare 5-Stunden-/7-Tage-Nutzung";
 "service.claude.probe_launch_failed" = "Claude-Code-Nutzungssonde konnte nicht gestartet werden: %1$@";
 "service.claude.rate_limited" = "Claude-Nutzungs-API gedrosselt; automatischer neuer Versuch in Kürze";
