@@ -3,7 +3,7 @@
 All notable product changes are recorded here. TokenRemain uses Semantic
 Versioning for public releases.
 
-## 1.3.9 — Unreleased
+## 1.3.9 — 2026-09-17
 
 ### Added
 
@@ -21,6 +21,14 @@ Versioning for public releases.
 
 ### Fixed
 
+- Claude's CLI quota probe selects a reachable route from process settings,
+  Claude settings, system/PAC proxies, the login shell, and direct access.
+  Unreachable routes retain the last snapshot; PAC and route checks are bounded
+  and cancellable, and CLI discovery also covers version-manager installations.
+- Claude usage reads retry one transient transport failure. Fresh cached quota
+  keeps brief network failures quiet without changing its timestamp; stale or
+  missing quota and sign-in failures still surface. Signed-out Keychain payloads
+  are distinguished from unreadable credentials, with updated recovery guidance.
 - Remove the Mac–Windows Direct Sync setup panel from Devices until its
   user-facing rollout is ready; local Mac and iCloud status remain available.
 - Limits cards have a taller shared baseline and let up to two quota windows
@@ -32,7 +40,7 @@ Versioning for public releases.
   (PR #54).
 - Isolated Claude accounts can read their configuration-directory-scoped
   Keychain credentials, with credential-file compatibility retained. Official
-  account login now runs on a PTY (PR #55; local validation in progress).
+  account login now runs on a PTY (PR #55).
 - Claude and Codex account sign-in can be cancelled and expires after five
   minutes, with a countdown in the quota card and a bounded session check.
   Failed launches, cancelled attempts, and timeouts clean up the owned process
