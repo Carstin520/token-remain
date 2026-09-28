@@ -28,7 +28,7 @@ description: 为 TokenRemain 改动按模块与实际副作用选择静态检查
 
 | 改动 | 最小相关入口 | 需要扩大的情况 |
 | --- | --- | --- |
-| 文档、规则、技能 | 检查 frontmatter、相对链接、路径、命令副作用和 diff；不为此构建应用 | 修改了验证配方时，只在可安全运行的范围内实跑，其他路径保留草稿状态 |
+| 文档、规则、技能 | `verify_agent_docs.sh` 检查 frontmatter、相对链接、锚点、技能链接和 R 编号；另查命令副作用和 diff；不为此构建应用 | 修改了验证配方时，只在可安全运行的范围内实跑，其他路径保留草稿状态 |
 | Provider/PTY | 发现对应 `Tests/UsageDockTests/` suite；重放已脱敏 `Fixtures/`；凭证路径加 Keychain 契约脚本 | 共享采集/缓存/账号路径变化扩大到相关消费者；真实 provider 状态需另做 D 验证 |
 | 刷新/共享 Store | 定向策略、缓存、通知测试；共享核心变化再跑完整 macOS suite | 比较用户设置、活跃/空闲/退避/过期状态；性能结论需要同条件实测 |
 | 同步 | SyncKit suite；桌面 Redactor/Fingerprint/DirectSync 相关测试；变更编译条件时检查对应构建 | 协议变更补旧 payload、新 payload、过期/重放/脱敏；跨端验收需要实际消费者证据 |
@@ -49,7 +49,12 @@ bash script/verify_keychain_read_contract.sh
 bash script/verify_launch_surface_isolation.sh
 bash script/verify_version_consistency.sh
 bash script/verify_automatic_update_contract.sh
+bash script/verify_website_release_contract.sh
+bash script/verify_agent_docs.sh
+bash script/verify_agent_lane_guard.sh
 ```
+
+`verify_website_release_contract.sh` 不带参数时只读本地文件；`--public` 会联网访问官网与 GitHub，不属于 S 级。`verify_agent_lane_guard.sh` 只在自己的临时目录里建 git 仓库并用 `gh` 替身。这些脚本也是 `.github/workflows/macos-validation.yml` 的 contracts job。
 
 变更 shell 脚本可用 `bash -n` 检查其语法；该检查不执行脚本，也不证明行为。
 

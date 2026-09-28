@@ -33,7 +33,7 @@ Codex 首次在该 worktree 运行前，用户在 Codex 中执行 `/hooks` 信�
 
 ## 2. 每次运行的固定步骤
 
-1. **预检。** 确认当前目录是 lane worktree 且 lane 身份成立；`git status --porcelain` 为空（不为空说明上次运行残留，停止并报告，不清理）；`git fetch origin` 后 `git switch --detach origin/main`；`gh auth status` 成功。任一项失败即以 `blocked` 结束。
+1. **预检。** 确认当前目录是 lane worktree 且 lane 身份成立；运行 `true tokenremain-lane-guard-canary`，它必须被护栏拦下（命令本身什么都不做），若执行成功说明 hook 未生效（例如 Codex 尚未信任 `.codex/hooks.json`），立即以 `blocked` 结束；`git status --porcelain` 为空（不为空说明上次运行残留，停止并报告，不清理）；`git fetch origin` 后 `git switch --detach origin/main`；`gh auth status` 成功。任一项失败即以 `blocked` 结束。
 2. **写预算。** 在运行记录开头写本 lane 的预算、停止条件和本次输入。
 3. **执行对应 lane。** 只做该节“允许的动作”列出的事。
 4. **收尾。** 删除本次创建的临时文件，确认 `git status --porcelain` 为空，写结果：`clean`（无事可做）、`changed`（产出 issue/PR/草稿）或 `blocked`（写明阻塞点和证据）。
