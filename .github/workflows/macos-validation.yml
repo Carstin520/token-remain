@@ -1,0 +1,107 @@
+name: macOS validation
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: macos-validation-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  # Pinned so an image update cannot silently change the SDK. The app uses
+  # macOS 26 Liquid Glass APIs, so it needs the Xcode 26 SDK.
+  DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+
+jobs:
+  swift:
+    name: Swift build and tests
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Show toolchain
+        run: |
+          test -d "$DEVELOPER_DIR" || { echo "::error::$DEVELOPER_DIR is missing from this runner image"; exit 1; }
+          sw_vers
+          xcodebuild -version
+          swift --version
+
+      - name: Build
+        run: swift build
+
+      - name: Test TokenRemainSyncKit
+        run: swift test --package-path Packages/TokenRemainSyncKit --no-parallel
+
+      - name: Test app
+        run: |
+          # Suites that need a real login keychain and interactive authorization
+          # are opt-in and stay off here: USAGEDOCK_KEYCHAIN_ACL_PROBE and
+          # USAGEDOCK_KEYCHAIN_SELFTEST are unset, so swift-testing reports them
+          # as skipped. Every other suite runs with its assertions unchanged.
+          echo "CI skips opt-in keychain suites: USAGEDOCK_KEYCHAIN_ACL_PROBE and USAGEDOCK_KEYCHAIN_SELFTEST are unset."
+          env -u USAGEDOCK_KEYCHAIN_ACL_PROBE -u USAGEDOCK_KEYCHAIN_SELFTEST swift test --no-parallel
+
+  contracts:
+    name: Source contracts and agent guardrails
+    runs-on: macos-26
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Keychain read contract
+        run: bash script/verify_keychain_read_contract.sh
+
+      - name: Launch surface isolation
+        run: bash script/verify_launch_surface_isolation.sh
+
+      - name: Version consistency
+        run: bash script/verify_version_consistency.sh
+
+      - name: Automatic update contract
+        run: bash script/verify_automatic_update_contract.sh
+
+      - name: Website release contract
+        run: bash script/verify_website_release_contract.sh
+
+      - name: Agent docs
+        run: bash script/verify_agent_docs.sh
+
+      - name: Agent lane guard
+        run: bash script/verify_agent_lane_guard.sh
+
+  broadcast:
+    name: Broadcast typecheck and tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: broadcast
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: broadcast/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
