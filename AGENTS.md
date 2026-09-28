@@ -110,7 +110,7 @@ R10 约束 agent 的工作预算；本条约束产品内的等待行为，两者
 
 ### R14. 自维护通道与常设授权
 
-交互会话按当前任务授权工作。无人值守通道（lane）是定时或脚本触发、无人实时监督的运行，只在专用 worktree `~/Developer/Desktop_Projects/UsageDock-agent`（从 `origin/main` 建出，普通 Dev 身份）中进行。lane 身份由环境变量 `TOKENREMAIN_AGENT_LANE=unattended` 或该 worktree 私有 git 目录中的标记文件 `tokenremain-agent-lane` 确立；各 lane 的触发、输入、预算、去重键和输出见 `.cursor/skills/maintain-tokenremain/SKILL.md`。
+交互会话按当前任务授权工作。无人值守通道（lane）是定时或脚本触发、无人实时监督的运行，只在专用 worktree `~/Developer/Desktop_Projects/UsageDock-agent`（从 `origin/main` 建出，普通 Dev 身份）中进行。lane 身份由环境变量 `TOKENREMAIN_AGENT_LANE=unattended` 或该 worktree 私有 git 目录中的标记文件 `tokenremain-agent-lane` 确立；各 lane 的触发、输入、预算、去重键和输出见 [maintain-tokenremain](.cursor/skills/maintain-tokenremain/SKILL.md)。
 
 | 动作 | 交互会话 | 无人值守 lane |
 | --- | --- | --- |

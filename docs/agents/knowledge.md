@@ -22,3 +22,15 @@
 | GitHub Actions | `macos-26` 为 arm64 GA 镜像，macOS 26.6.2（25G83），默认 Xcode 26.6（17F113），与本机开发环境一致 | 文档 github.com/actions/runner-images `macos-26-arm64-Readme.md`（镜像 20260907.0351.1） | 2026-09-28 |
 
 因为 Codex 定时任务与 Cursor hook 的环境变量继承都没有文档保证，lane 身份除环境变量外还认 worktree 私有 git 目录里的标记文件（R14）。
+
+<a id="upstream-baselines"></a>
+
+## 上游基线
+
+Lane B 比较这些基线与上游当前状态。基线变更需要人审阅后在独立 PR 中更新。
+
+| 上游 | 基线 | 来源 | 核实日期 |
+| --- | --- | --- | --- |
+| pstack（`cursor/plugins` 的 `pstack/`） | 见 [pstack-upstream.json](pstack-upstream.json)；处置表在 `.cursor/rules/tokenremain-pstack.mdc` | 本仓库审阅记录 | 2026-09-28 |
+| token-monitor（`Javis603/token-monitor`，MIT） | 移植时的上游提交未记录，状态为“未知”。已知移植落地于本仓库 `697e550`（2026-07-23，首次移植）与 `b4fc28d`（2026-08-04，扩展兼容）；Lane B 首次运行列出 2026-07-23 以来 `src/shared/*Limits.js` 的提交，由人确认基线后写回本表 | `Sources/UsageDock/Services/ExtendedProviderServices.swift` 文件头注释；`git log --follow` | 2026-09-28 |
+| ccusage（npm `@ccusage/ccusage-darwin-*`） | `Resources/Info.plist` 的 `TokenRemainBundledCCUsageVersion`；`script/verify_ccusage_freshness.sh --check` 只读比较 npm 最新版（写 `/tmp` 临时目录，陈旧时退出 1），`--update` 会改 `Vendor/`，属于发布任务 | 脚本源码 | 2026-09-28 |

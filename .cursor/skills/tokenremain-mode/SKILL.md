@@ -7,7 +7,9 @@ description: 在 TokenRemain 仓库维护 macOS、同步、Windows、网站或 b
 
 先读根目录 [AGENTS.md](../../../AGENTS.md) 和 [pstack 适配规则](../../rules/tokenremain-pstack.mdc)。本技能组织步骤，不新增写入、委派、提交或发布权限。默认产物是任务自己的本地 diff 和证据。
 
-在当前任务及其后续跟进中维持这些边界；用户更换任务时重新确认范围，用户退出本 mode 时停止套用流程。Cursor 才负责技能发现；不能声称仅写入文件就已完成插件安装或在其他宿主注册。
+在当前任务及其后续跟进中维持这些边界；用户更换任务时重新确认范围，用户退出本 mode 时停止套用流程。各宿主的技能发现方式见 [knowledge](../../../docs/agents/knowledge.md#host-capabilities)；不能声称仅写入文件就已完成插件安装或在其他宿主注册。
+
+无人值守运行（设置了 `TOKENREMAIN_AGENT_LANE=unattended`，或处在带 lane 标记的 worktree 中）不使用本技能，改用 [maintain-tokenremain](../maintain-tokenremain/SKILL.md)。
 
 ## 1. 写清任务合同
 
@@ -35,6 +37,7 @@ description: 在 TokenRemain 仓库维护 macOS、同步、Windows、网站或 b
 | UI | 确认真实表面；复现状态和操作；修改；同表面验证 | 原生工具的交互与状态证据，不能只给静态截图 |
 | 规则/文案 | 只改指定文件；校验链接、格式、约束一致性 | 无需产品构建；未经运行的验证配方明确标为草稿 |
 | 发布 | 先确认发布对象、精确 commit、渠道和既有权限；采用仓库发布流程 | 本地构建、签名、公证、公开下载、设备安装分别证明 |
+| 维护通道 | 交互会话中设置或调整 lane、审阅 lane 产出；按 [maintain-tokenremain](../maintain-tokenremain/SKILL.md) 与 R14 执行 | lane 定义与护栏自测结果；创建定时任务前向用户展示完整定义并取得同意 |
 
 可用时读取所需的 pstack leaf skill/playbook，只采用不冲突步骤；跳过上游步骤时注明对应项目限制或不适用原因。不要调用顶层 `/poteto-mode` 再返回本 mode，避免路由递归。pstack、`cursor-team-kit` 或特定模型不存在时，直接使用当前工具完成对应步骤并披露缺失；不自动安装或伪造技能执行。
 

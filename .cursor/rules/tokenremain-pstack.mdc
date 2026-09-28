@@ -9,7 +9,7 @@ alwaysApply: true
 
 ## 入口与执行
 
-维护任务优先使用 [tokenremain-mode](../skills/tokenremain-mode/SKILL.md)，验证使用 [verify-tokenremain](../skills/verify-tokenremain/SKILL.md)，无人值守 lane 使用 `maintain-tokenremain`。用户直接调用 `/poteto-mode` 或其他 pstack 技能时，本规则仍适用；不要递归互调两个 mode。
+维护任务优先使用 [tokenremain-mode](../skills/tokenremain-mode/SKILL.md)，验证使用 [verify-tokenremain](../skills/verify-tokenremain/SKILL.md)，无人值守 lane 使用 [maintain-tokenremain](../skills/maintain-tokenremain/SKILL.md)。用户直接调用 `/poteto-mode` 或其他 pstack 技能时，本规则仍适用；不要递归互调两个 mode。
 
 父代理把 AGENTS.md、对应技能路径、允许写入范围、已授予权限和验收条件交给子代理。无法确认子代理加载规则时，在任务说明中重述必要限制，不假定其自动继承。
 
