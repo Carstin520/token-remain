@@ -2,7 +2,7 @@
 
 用户让 TokenRemain 只留在菜单栏、不打开任何窗口时，应用保持存活，后台刷新不会顺带创建 Dashboard 或弹窗面板。issue #34 的崩溃就发生在这条无交互路径上。
 
-**状态：** `draft`
+**状态：** `verified @ 2026-09-28 74a1367 macOS 26.6.2 (25G83)`
 
 ## Sub-features
 
@@ -34,3 +34,5 @@ Preconditions:
 - 该崩溃不是每次触发（稳定性脚本注释记录了 5–8 秒与 37 秒两种复现时长），单轮通过是证据，不是证明。
 - `build_and_run.sh --verify` 只检查进程存在，不能证明隐藏状态正确。
 - `verify_launch_stability.sh` 会按名字停止进程并修改玻璃偏好，只在证明独占后使用。
+
+**实跑记录（2026-09-28）。** 覆盖 `hidden-idle` 与 `hidden-no-crash`；`launch-stability` 未运行，仍未验证。被测源码为 `74a1367`，产品代码与 `origin/main` 的 `c30f66f` 相同；arm64。以 `USAGEDOCK_INSTALL_DIR=<任务临时目录> bash script/build_and_run.sh run` 构建安装（未替换 `~/Applications` 下已安装的 Dev 应用），该模式会先正常启动一次，此实例按 PID 停止后再以 `--menu-bar-only` 启动。启动前无 `UsageDockDev` 实例、无 `USAGEDOCK_*` 环境变量。结果：+3 秒与 +98 秒时进程都存活，只拥有 4 个不在屏幕上的 1512×33 菜单栏尺寸窗口，没有 Dashboard 或弹窗面板窗口（CoreGraphics 窗口列表按 PID 过滤）；无新增 `UsageDockDev` 崩溃报告；运行中的生产实例未受影响。清理：只停止本次 PID，Dev 偏好导出前后无差异，任务安装目录已注销并删除。原始证据保存在该任务的临时目录，未入库。
