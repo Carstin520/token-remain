@@ -49,7 +49,7 @@
 - 📡&nbsp;AI Feed:精选 Anthropic、OpenAI 等官方账号动态,重大更新本机通知。
 - ⚡&nbsp;低能耗:后台 CPU 比 v1.2.2 降低 95%([测试方法](docs/performance-v1.2.3.md))。
 - 🎨&nbsp;macOS 26 Liquid Glass;菜单栏胶囊、跨空间浮窗。
-- 🌐&nbsp;简体中文、繁体中文、English、日本語、한국어、Deutsch、Español。
+- 🌐&nbsp;多语言界面:简体中文、繁体中文、English、日本語、한국어 等。
 
 <details>
 <summary><b>更多截图</b>(额度页、趋势页、iPhone 与 Apple Watch)</summary>
@@ -100,7 +100,7 @@ iPhone 版目前为 [TestFlight 公开测试](https://testflight.apple.com/join/
 | <img src="site/assets/providers/openrouter.svg" width="16" alt="" /> **OpenRouter** | 🔑 | Key 限额、Credits 与账户余额 |
 
 <details>
-<summary><b>另外 10 家</b>(token-monitor 兼容层)与本地成本来源</summary>
+<summary><b>另外 11 家扩展 Provider</b>与本地成本来源</summary>
 <br/>
 
 | 应用 | 接入方式 | | 应用 | 接入方式 |
@@ -110,6 +110,9 @@ iPhone 版目前为 [TestFlight 公开测试](https://testflight.apple.com/join/
 | <img src="site/assets/providers/minimax.svg" width="16" alt="" /> **MiniMax** | API Key | | <img src="site/assets/providers/volcengine.svg" width="16" alt="" /> **火山引擎** | AK:SK 签名 |
 | <img src="site/assets/providers/mimo.svg" width="16" alt="" /> **MiMo Code** | Cookie | | <img src="site/assets/providers/ollama.svg" width="16" alt="" /> **Ollama** | session Cookie |
 | <img src="site/assets/providers/zai.svg" width="16" alt="" /> **GLM Team** | API Key + Org + Project | | **第三方 API** | New API / 自定义余额接口 |
+| <img src="Sources/UsageDock/Resources/ProviderIcons/bailian.svg" width="16" alt="" /> **阿里云百炼 Token Plan** | 控制台 Cookie | | | |
+
+**Cookie 型服务怎么接入**:在浏览器登录对应网站后,从开发者工具复制请求里的 Cookie,粘贴到该服务的额度卡即可(也可用 `QODER_COOKIE`、`MIMO_COOKIE`、`OLLAMA_COOKIE` 环境变量提供)。Cookie 与 API Key 一样只存本机钥匙串;TokenRemain 从不读取浏览器自身的 Cookie 存储。Cookie 等同于登录凭证,请勿分享;退出网站登录后它会失效,需要重新粘贴。
 
 **本地成本来源**:内置 ccusage 动态发现 Claude Code、Codex、Gemini、Goose 等 15+ 种本地 Agent;Trae 只读取所选目录中的时间、模型与 token 计数。托管模型按官方标价估算,Ollama 等本地模型记零成本。
 
@@ -192,21 +195,9 @@ rm -rf ~/Library/Caches/com.jamesli.usagedock ~/Library/Application\ Support/com
 
 还有问题?请[提交 issue](https://github.com/Carstin520/token-remain/issues) 或查看[支持页](https://tokenremain.com/support)。
 
-## 开发
+## 参与开发
 
-需要 macOS 14+、完整 Xcode(不是仅 Command Line Tools),以及钥匙串中的一个 Apple Development 签名证书(在 Xcode 登录免费 Apple ID 即可生成)。
-
-```bash
-bash ./script/build_and_run.sh --verify
-```
-
-本地构建安装为独立的 `~/Applications/TokenRemain Dev.app`(Bundle ID `com.jamesli.usagedock.dev`),不会替换已安装的正式版。`UsageDock` 是项目内部代号。
-
-```bash
-DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test
-```
-
-`Sources/UsageDock/` 是菜单栏 App,`Packages/TokenRemainSyncKit/` 是加密同步协议,`broadcast/` 是 AI Feed 与下载计数的 [Cloudflare Workers 后端](broadcast/README.md),`site/` 是官网。
+欢迎提交 issue 与 PR。构建、测试、目录结构与代码约定见 [CONTRIBUTING.md](CONTRIBUTING.md);安全问题请按 [SECURITY.md](SECURITY.md) 私下报告,不要公开提交 issue。
 
 ## 下载趋势
 
@@ -221,6 +212,16 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test
 <sub>基线为截至 2026-08-07 的 163 次历史下载([明细](docs/download-baseline.md)),此后由匿名计数器逐日累计,不含任何个人数据。</sub>
 
 </div>
+
+## 致谢
+
+- [token-monitor](https://github.com/Javis603/token-monitor)(MIT)— 扩展 Provider 的额度读取逻辑移植自此项目,桌面浮窗与偏好设计也受其启发。
+- [ccusage](https://github.com/ryoppippi/ccusage)(MIT)— 随 App 内置,用于统计本地 Agent 的 token 用量。
+- [OpenUsage](https://github.com/robinebers/openusage)(MIT)— Claude 限额 API 直查的 provider 设计参考。
+- [LiteLLM](https://github.com/BerriAI/litellm) — 公开的模型价格表。
+- [Sparkle](https://github.com/sparkle-project/Sparkle)(MIT)— 签名自动更新。
+
+第三方版权与许可声明见 [NOTICE](NOTICE)。
 
 ## 许可
 

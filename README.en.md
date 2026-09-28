@@ -49,7 +49,7 @@
 - 📡&nbsp;AI Feed: curated posts from Anthropic, OpenAI and other official accounts, with local alerts for major updates.
 - ⚡&nbsp;Low energy: background CPU down 95% vs v1.2.2 ([method](docs/performance-v1.2.3.md)).
 - 🎨&nbsp;Liquid Glass on macOS 26; menu bar capsules and a floating window across Spaces.
-- 🌐&nbsp;English, 简体中文, 繁體中文, 日本語, 한국어, Deutsch, Español.
+- 🌐&nbsp;Localized interface: English, 简体中文, 繁體中文, 日本語, 한국어 and more.
 
 <details>
 <summary><b>More screenshots</b> (limits, trends, iPhone and Apple Watch)</summary>
@@ -100,7 +100,7 @@ The iPhone app is in [public TestFlight beta](https://testflight.apple.com/join/
 | <img src="site/assets/providers/openrouter.svg" width="16" alt="" /> **OpenRouter** | 🔑 | Key limits, credits and account balance |
 
 <details>
-<summary><b>10 more services</b> (token-monitor compatibility layer) and local cost sources</summary>
+<summary><b>11 more extended providers</b> and local cost sources</summary>
 <br/>
 
 | Service | Connection | | Service | Connection |
@@ -110,6 +110,9 @@ The iPhone app is in [public TestFlight beta](https://testflight.apple.com/join/
 | <img src="site/assets/providers/minimax.svg" width="16" alt="" /> **MiniMax** | API key | | <img src="site/assets/providers/volcengine.svg" width="16" alt="" /> **Volcengine** | AK:SK signing |
 | <img src="site/assets/providers/mimo.svg" width="16" alt="" /> **MiMo Code** | Cookie | | <img src="site/assets/providers/ollama.svg" width="16" alt="" /> **Ollama** | Session cookie |
 | <img src="site/assets/providers/zai.svg" width="16" alt="" /> **GLM Team** | API key + org + project | | **Third-party APIs** | New API / custom balance endpoint |
+| <img src="Sources/UsageDock/Resources/ProviderIcons/bailian.svg" width="16" alt="" /> **Alibaba Token Plan** | Console cookie | | | |
+
+**How cookie-based services connect:** sign in to the service's website, copy the request Cookie from your browser's developer tools and paste it into that service's quota card (or provide it via `QODER_COOKIE`, `MIMO_COOKIE` or `OLLAMA_COOKIE`). Cookies are stored only in your Mac's Keychain, like API keys; TokenRemain never reads your browser's own cookie store. A cookie is a sign-in credential — never share it; signing out of the website invalidates it, so paste a fresh one afterwards.
 
 **Local cost sources:** the bundled ccusage collector discovers 15+ local agents (Claude Code, Codex, Gemini, Goose, …); Trae contributes only timestamps, model names and token counts from a folder you select. Hosted models use official list-price estimates; local models like Ollama stay at zero cost.
 
@@ -192,21 +195,9 @@ Pasted keys can be removed in Keychain Access by searching for `com.jamesli.usag
 
 Still stuck? [Open an issue](https://github.com/Carstin520/token-remain/issues) or visit the [support page](https://tokenremain.com/support).
 
-## Development
+## Contributing
 
-You need macOS 14+, full Xcode (Command Line Tools alone won't do) and an Apple Development signing certificate in your Keychain (signing into Xcode with a free Apple ID creates one).
-
-```bash
-bash ./script/build_and_run.sh --verify
-```
-
-Local builds install as a separate `~/Applications/TokenRemain Dev.app` (bundle ID `com.jamesli.usagedock.dev`) and never replace the release app. `UsageDock` is the project's internal code name.
-
-```bash
-DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test
-```
-
-`Sources/UsageDock/` is the menu bar app, `Packages/TokenRemainSyncKit/` the encrypted-sync protocol, `broadcast/` the [Cloudflare Workers backend](broadcast/README.md) for AI Feed and download counts, and `site/` the website.
+Issues and pull requests are welcome. Build steps, tests, repository layout and conventions are in [CONTRIBUTING.md](CONTRIBUTING.md); please report security issues privately as described in [SECURITY.md](SECURITY.md), not in a public issue.
 
 ## Downloads over time
 
@@ -221,6 +212,16 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test
 <sub>Starts from 163 historical downloads as of 2026-08-07 ([breakdown](docs/download-baseline.md)) and grows via daily snapshots of an anonymous counter; no personal data involved.</sub>
 
 </div>
+
+## Acknowledgments
+
+- [token-monitor](https://github.com/Javis603/token-monitor) (MIT) — the extended providers' quota readers are ported from this project, which also inspired the floating window and preferences.
+- [ccusage](https://github.com/ryoppippi/ccusage) (MIT) — bundled with the app to count local agents' token usage.
+- [OpenUsage](https://github.com/robinebers/openusage) (MIT) — reference for the direct Claude quota API provider design.
+- [LiteLLM](https://github.com/BerriAI/litellm) — the public model price table.
+- [Sparkle](https://github.com/sparkle-project/Sparkle) (MIT) — signed app updates.
+
+Third-party copyright and license notices are in [NOTICE](NOTICE).
 
 ## License
 
