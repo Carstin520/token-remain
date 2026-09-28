@@ -1,136 +1,107 @@
 <div align="center">
 
-<img src="site/assets/mascot.gif" width="140" alt="TokenRemain mascot animation: remaining quota draining from 100% to 0%, expression changing along the way" />
+<a href="https://tokenremain.com"><img src="site/assets/mascot.gif" width="120" alt="TokenRemain mascot animation: remaining quota draining from 100% to 0%, expression changing along the way" /></a>
 
 # TokenRemain
 
-**Your AI quota, always in the Mac menu bar**
-
-Remaining quota, reset countdowns and today's cost for Claude Code, Codex, Cursor, Windsurf, Grok, GLM<br/>and **21+** AI coding tools — all in one place. Credentials stay on your machine: never refreshed, never uploaded.
-
-![macOS](https://img.shields.io/badge/macOS-14%2B_Sonoma-000?logo=apple&logoColor=white)
-![Universal](https://img.shields.io/badge/Universal-Apple_Silicon_%2B_Intel-7C5CFF)
-![Notarized](https://img.shields.io/badge/Apple-Notarized-34C759?logo=apple&logoColor=white)
-![Latest](https://img.shields.io/badge/latest-v1.3.9-22D3EE)
-![License](https://img.shields.io/badge/license-Apache--2.0-8A94A6)
-
-### [⬇️ Download TokenRemain.dmg](https://tokenremain.com)
-
-<sub>`v1.3.9` · build 36 · Universal (Apple Silicon + Intel) · macOS 14+</sub>
-
-[Website](https://tokenremain.com) · [Privacy Policy](https://tokenremain.com/privacy) · [Support](https://tokenremain.com/support) · [Report an issue](https://github.com/Carstin520/token-remain/issues) · [Changelog](CHANGELOG.md)
-
-[简体中文](README.md) · **English**
-
 </div>
 
----
-
-## ✨ What it does
-
-- 🧭 **One unified quota panel** — Claude/Codex official 5-hour · 7-day windows, Cursor's monthly billing cycle, Grok's weekly pool, GLM session/weekly windows — side by side with reset countdowns.
-- ⏱️ **Pace prediction** — Real window progress decides whether your current pace lasts until reset, with an ETA when it won't.
-- 💰 **Today's cost** — ccusage counts tokens from 15+ coding agents locally, estimated at official API list prices (not your subscription bill); usage details are never uploaded.
-- 🔐 **Optional encrypted sync** — When enabled, only an encrypted display snapshot enters your own private iCloud database, viewable on iPhone / Apple Watch.
-- 📡 **AI Feed** — A curated server-side feed of official posts from Anthropic, OpenAI and more; major updates trigger a local notification.
-- ⚡ **Tiny footprint** — Background CPU down 95%, attributed power down 77%, with data freshness unchanged ([method & boundaries](docs/performance-v1.2.3.md)).
-- 🎨 **Native feel** — Liquid Glass on macOS 26; menu-bar capsules, a floating window across Spaces, refresh every 1–30 minutes or manually.
-
-## 📸 Screenshots
-
-<table>
-  <tr>
-    <td align="center" width="62%">
-      <img src="site/assets/dashboard.jpg" alt="Dashboard overview" /><br/>
-      <sub><b>Dashboard · Overview</b></sub>
-    </td>
-    <td align="center" width="38%">
-      <img src="site/assets/popover.png" alt="Menu bar popover" /><br/>
-      <sub><b>Menu bar popover</b></sub>
-    </td>
-  </tr>
-</table>
-
-<table>
-  <tr>
-    <td align="center" width="50%">
-      <img src="site/assets/dash-limits.jpg" alt="Dashboard limits page" /><br/>
-      <sub><b>Dashboard · Limits & pace prediction</b></sub>
-    </td>
-    <td align="center" width="50%">
-      <img src="site/assets/dash-trends.jpg" alt="Dashboard trends page" /><br/>
-      <sub><b>Dashboard · Trends</b></sub>
-    </td>
-  </tr>
-</table>
+<h4 align="center">
+  <a href="https://tokenremain.com">Website</a> |
+  <a href="https://testflight.apple.com/join/DU3DrnhG">iPhone beta</a> |
+  <a href="https://tokenremain.com/privacy">Privacy</a> |
+  <a href="CHANGELOG.md">Changelog</a> |
+  <a href="https://github.com/Carstin520/token-remain/issues">Issues</a> |
+  <a href="README.md">简体中文</a>
+</h4>
 
 <div align="center">
-  <img src="site/assets/menubar.png" width="234" alt="Close-up of the menu bar capsule: Claude 89%, Codex 91%" /><br/>
-  <sub><b>Menu bar capsule</b> — choose which apps and percentages stay pinned</sub>
+  <h3>
+    Your AI coding quota, always in the Mac menu bar.<br/>
+    Credentials never leave your machine: read-only, never refreshed, never uploaded.
+  </h3>
 </div>
 
-### iPhone · Apple Watch (encrypted-sync companion)
+<p align="center">
+  <a href="https://github.com/Carstin520/token-remain/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/Carstin520/token-remain?label=latest&color=22D3EE" /></a>
+  <img alt="macOS 14+ · Universal" src="https://img.shields.io/badge/macOS_14%2B-Universal-000?logo=apple&logoColor=white" />
+  <img alt="Notarized by Apple" src="https://img.shields.io/badge/Apple-Notarized-34C759?logo=apple&logoColor=white" />
+  <a href="LICENSE"><img alt="Apache-2.0 license" src="https://img.shields.io/badge/license-Apache--2.0-8A94A6" /></a>
+</p>
 
-<table>
-  <tr>
-    <td align="center" width="27%">
-      <img src="site/assets/phone-overview.jpg" alt="iPhone overview page" /><br/>
-      <sub><b>Overview</b> — up to 16 Macs</sub>
-    </td>
-    <td align="center" width="27%">
-      <img src="site/assets/phone-trends.jpg" alt="iPhone trends page" /><br/>
-      <sub><b>Trends</b></sub>
-    </td>
-    <td align="center" width="27%">
-      <img src="site/assets/phone-aifeed.jpg" alt="iPhone AI Feed page" /><br/>
-      <sub><b>AI Feed</b></sub>
-    </td>
-    <td align="center" width="19%">
-      <img src="site/assets/watch-overview.png" alt="Apple Watch overview" /><br/>
-      <img src="site/assets/watch-feed.png" alt="Apple Watch AI Feed" /><br/>
-      <sub><b>Apple Watch</b></sub>
-    </td>
-  </tr>
-</table>
+<h3 align="center">
+  <a href="https://api.tokenremain.com/v1/downloads/macos">⬇️ Download TokenRemain.dmg</a>
+</h3>
 
-<table>
-  <tr>
-    <td align="center" width="34%">
-      <img src="site/assets/widget-s.png" alt="Small iPhone Home Screen widget" /><br/>
-      <sub><b>Small widget</b></sub>
-    </td>
-    <td align="center" width="66%">
-      <img src="site/assets/widget-m.png" alt="Medium iPhone Home Screen widget" /><br/>
-      <sub><b>Medium widget</b> — the tightest window right on the Home Screen</sub>
-    </td>
-  </tr>
-</table>
+<p align="center">
+  <img src="site/assets/dashboard.jpg" width="74%" alt="Dashboard overview: remaining quota, reset countdowns and today's cost across AI coding tools" />
+  <img src="site/assets/popover.png" width="24%" alt="Menu bar popover listing remaining quota per app" />
+</p>
+<p align="center"><sub>Remaining quota, reset countdowns and today's cost for Claude Code, Codex, Cursor, Grok, GLM and 21+ tools — on one screen.</sub></p>
 
-> Data is always published one-way and encrypted by the Mac; the mobile client is maintained separately, outside this repository's open-source scope.
+## Features
 
-## 🔌 Supported services
+- 🧭&nbsp;Quota windows from 21+ AI coding tools side by side, with reset countdowns.
+- ⏱️&nbsp;Pace prediction: tells you whether your current pace lasts until reset, with an ETA when it won't.
+- 💰&nbsp;Today's cost: counts tokens from 15+ coding agents locally, estimated at official API list prices.
+- 🔐&nbsp;Reads only credentials already on your Mac — no account, no telemetry, never refreshed, never uploaded.
+- 📱&nbsp;Optional encrypted sync to iPhone, Apple Watch and Home Screen widgets.
+- 📡&nbsp;AI Feed: curated posts from Anthropic, OpenAI and other official accounts, with local alerts for major updates.
+- ⚡&nbsp;Low energy: background CPU down 95% vs v1.2.2 ([method](docs/performance-v1.2.3.md)).
+- 🎨&nbsp;Liquid Glass on macOS 26; menu bar capsules and a floating window across Spaces.
+- 🌐&nbsp;English, 简体中文, 繁體中文, 日本語, 한국어, Deutsch, Español.
 
-Most services **connect automatically the moment you're signed in**: TokenRemain only reads credentials that already live on your machine. Claude/Codex work with the official desktop apps — no CLI required.
+<details>
+<summary><b>More screenshots</b> (limits, trends, iPhone and Apple Watch)</summary>
+<br/>
 
-### Native providers (11)
+<p align="center">
+  <img src="site/assets/dash-limits.jpg" width="49%" alt="Dashboard limits page with pace prediction" />
+  <img src="site/assets/dash-trends.jpg" width="49%" alt="Dashboard trends page" />
+</p>
+<p align="center">
+  <img src="site/assets/phone-overview.jpg" width="24%" alt="iPhone overview page, aggregating up to 16 Macs" />
+  <img src="site/assets/phone-trends.jpg" width="24%" alt="iPhone trends page" />
+  <img src="site/assets/phone-aifeed.jpg" width="24%" alt="iPhone AI Feed page" />
+  <img src="site/assets/watch-overview.png" width="16%" alt="Apple Watch overview" />
+</p>
+<p align="center">
+  <img src="site/assets/widget-s.png" width="30%" alt="Small iPhone Home Screen widget" />
+  <img src="site/assets/widget-m.png" width="60%" alt="Medium iPhone Home Screen widget" />
+</p>
 
-| Service | Connection | Notes |
+The iPhone app is in [public TestFlight beta](https://testflight.apple.com/join/DU3DrnhG). Data is published one-way and encrypted by the Mac; the mobile client source is outside this repository's open-source scope.
+
+</details>
+
+## Quick start
+
+1. [Download the DMG](https://api.tokenremain.com/v1/downloads/macos), drag TokenRemain into Applications and open it.
+2. The welcome screen scans your Mac for installed AI tools — tick the ones to track. TokenRemain reuses each tool's own sign-in, so there's nothing to log into; Claude/Codex work with the official desktop apps, no CLI required.
+3. For services that need an API key (Z.ai, OpenRouter, …), paste it straight into that service's quota card, or under "API key settings" on the Data Sources page. Keys stay in your Mac's Keychain.
+4. Adjust the quota refresh interval (1–30 minutes or manual) in Settings › Refresh & Sync, and pick which local agents count toward cost on the Data Sources page.
+
+## Supported services
+
+🟢 **Auto** = connected as soon as the tool is signed in · 🔑 **API key** = paste once, stored only in the macOS Keychain
+
+| Service | Connect | What it reads |
 | :-- | :-- | :-- |
-| <img src="site/assets/providers/claude-code.svg" width="16" alt="" /> **Claude Code** | 🟢 Auto | 5-hour / 7-day windows; third-party `ANTHROPIC_BASE_URL` attributed to its real API |
-| <img src="site/assets/providers/codex.svg" width="16" alt="" /> **Codex** | 🟢 Auto | 5-hour / 7-day windows; custom `base_url` attributed to its real API |
-| <img src="site/assets/providers/cursor.svg" width="16" alt="" /> **Cursor** | 🟢 Auto | Monthly billing-cycle quota with reset countdown |
-| <img src="site/assets/providers/grok.svg" width="16" alt="" /> **Grok** (xAI) | 🟢 Auto | Weekly pool remaining |
-| <img src="site/assets/providers/copilot.svg" width="16" alt="" /> **GitHub Copilot** | 🟢 Auto | Monthly credits |
-| <img src="site/assets/providers/devin.svg" width="16" alt="" /> **Devin** | 🟢 Auto | Daily / weekly quotas |
-| <img src="site/assets/providers/windsurf.png" width="16" alt="" /> **Windsurf** | 🟢 Auto | Daily / weekly quotas |
-| <img src="site/assets/providers/antigravity.svg" width="16" alt="" /> **Antigravity** | 🟢 Auto | Quota pools |
-| <img src="site/assets/providers/opencode.svg" width="16" alt="" /> **OpenCode** | 🟢 Auto | Local plan estimate; third-party providers attributed to their real API |
-| <img src="site/assets/providers/zai.svg" width="16" alt="" /> **Z.ai** (GLM Coding Plan) | 🔑 API key | Session / weekly windows plus MCP monthly pool |
-| <img src="site/assets/providers/openrouter.svg" width="16" alt="" /> **OpenRouter** | 🔑 API key | Key limits, credits and account balance |
+| <img src="site/assets/providers/claude-code.svg" width="16" alt="" /> **Claude Code** | 🟢 | 5-hour / 7-day windows; third-party `ANTHROPIC_BASE_URL` attributed to its real API |
+| <img src="site/assets/providers/codex.svg" width="16" alt="" /> **Codex** | 🟢 | 5-hour / 7-day windows; custom `base_url` attributed to its real API |
+| <img src="site/assets/providers/cursor.svg" width="16" alt="" /> **Cursor** | 🟢 | Monthly billing-cycle quota with reset countdown |
+| <img src="site/assets/providers/grok.svg" width="16" alt="" /> **Grok** (xAI) | 🟢 | Weekly pool remaining |
+| <img src="site/assets/providers/copilot.svg" width="16" alt="" /> **GitHub Copilot** | 🟢 | Monthly credits |
+| <img src="site/assets/providers/devin.svg" width="16" alt="" /> **Devin** | 🟢 | Daily / weekly quotas |
+| <img src="site/assets/providers/windsurf.png" width="16" alt="" /> **Windsurf** | 🟢 | Daily / weekly quotas |
+| <img src="site/assets/providers/antigravity.svg" width="16" alt="" /> **Antigravity** | 🟢 | Quota pools |
+| <img src="site/assets/providers/opencode.svg" width="16" alt="" /> **OpenCode** | 🟢 | Local plan estimate; third-party providers attributed to their real API |
+| <img src="site/assets/providers/zai.svg" width="16" alt="" /> **Z.ai** (GLM Coding Plan) | 🔑 | Session / weekly windows plus MCP monthly pool |
+| <img src="site/assets/providers/openrouter.svg" width="16" alt="" /> **OpenRouter** | 🔑 | Key limits, credits and account balance |
 
-> 🟢 **Auto** = connected as soon as the tool is signed in · 🔑 **API key** = paste a key once, stored only in the macOS Keychain
-
-### token-monitor compatibility layer (10)
+<details>
+<summary><b>10 more services</b> (token-monitor compatibility layer) and local cost sources</summary>
+<br/>
 
 | Service | Connection | | Service | Connection |
 | :-- | :-- | :-- | :-- | :-- |
@@ -140,49 +111,104 @@ Most services **connect automatically the moment you're signed in**: TokenRemain
 | <img src="site/assets/providers/mimo.svg" width="16" alt="" /> **MiMo Code** | Cookie | | <img src="site/assets/providers/ollama.svg" width="16" alt="" /> **Ollama** | Session cookie |
 | <img src="site/assets/providers/zai.svg" width="16" alt="" /> **GLM Team** | API key + org + project | | **Third-party APIs** | New API / custom balance endpoint |
 
-### Local token and cost sources
+**Local cost sources:** the bundled ccusage collector discovers 15+ local agents (Claude Code, Codex, Gemini, Goose, …); Trae contributes only timestamps, model names and token counts from a folder you select. Hosted models use official list-price estimates; local models like Ollama stay at zero cost.
 
-The bundled ccusage collector dynamically discovers 15+ local agents (Claude Code, Codex, Gemini, Goose, …), each togglable on the Data Sources page; Trae contributes only timestamps, model names and token counts from a folder you select. Hosted models use official list-price estimates; local models like Ollama stay at zero cost.
+</details>
 
-## 🔒 Data and privacy
-
-> Privacy isn't a promise — it's the architecture. Every line below is verifiable in the source.
+## Privacy
 
 ```
 Credentials already on your machine ──read-only──▶ Official provider APIs ──▶ Rendered & cached locally
 ```
 
-- **Read-only credentials, never refreshed** — Reads the tokens your tools already maintain, never writes back, never fights them for refresh tokens; background reads never trigger a system prompt.
-- **Manual keys live in the Keychain** — Pasted API keys are stored only in the macOS Keychain, never in source, build artifacts or logs.
-- **No account, no telemetry, no credential relay** — Quota queries go straight to official APIs; the website keeps only daily snapshots of one anonymous download total.
-- **Price updates never upload usage** — At most one bodyless GET per day fetches the public LiteLLM price table, carrying no local data.
-- **Cache and stats stay local** — Only with sync enabled does an encrypted display snapshot enter your own private iCloud database.
+Every claim links to the code or test that backs it:
 
-Details in the [privacy policy](https://tokenremain.com/privacy). Costs are API list-price estimates, not your subscription bill.
+- **Read-only credentials, never refreshed** — Reads the tokens your tools already maintain, never writes back, never competes for refresh tokens; background reads disable Keychain UI, so no system prompt appears. <sub>🔍 [contract script](script/verify_keychain_read_contract.sh) · [tests](Tests/UsageDockTests/KeychainReadTests.swift#L45) · [source](Sources/UsageDock/Services/ClaudeOAuthUsageService.swift#L9)</sub>
+- **Pasted keys stay in the local Keychain** — API keys go into the macOS Keychain and are barred from syncing to iCloud Keychain. <sub>🔍 [source](Sources/UsageDock/Services/KeychainSecretStore.swift#L176) · [tests](Tests/UsageDockTests/AppOwnedKeychainTests.swift#L15)</sub>
+- **No account, no telemetry, no credential relay** — Quota queries go straight to each provider's official API; the only dependencies are Sparkle and this repo's sync package, with no analytics SDK. <sub>🔍 [dependencies](Package.swift)</sub>
+- **Price updates carry no local data** — At most one GET per day, with no body, query string or auth header, fetches the public LiteLLM price table. <sub>🔍 [tests](Tests/UsageDockTests/CCUsagePricingServiceTests.swift#L19) · [contract script](script/verify_bundled_ccusage_contract.sh#L42)</sub>
+- **Sync is off by default and end-to-end encrypted** — When enabled, only an allowlisted display snapshot is AES-GCM encrypted on your Mac, then written to your own private iCloud database. <sub>🔍 [off-by-default test](Tests/UsageDockTests/CrossDeviceSyncDefaultsTests.swift#L8) · [field allowlist](Sources/UsageDock/Sync/MobileSnapshotRedactor.swift#L7) · [encryption](Packages/TokenRemainSyncKit/Sources/TokenRemainSyncKit/EncryptedSyncEnvelope.swift#L66)</sub>
 
-## 📡 AI Feed
+**Other network activity** (never carries credentials or usage): AI Feed fetches public posts from `api.tokenremain.com`; notifications are off by default and register a random install ID only when enabled. Service status reads the public endpoints of `status.openai.com` and `status.claude.com`. Update checks read a signed appcast on GitHub. Direct LAN sync listens on TCP 47831 and accepts only paired devices.
 
-`broadcast/` (Cloudflare Workers + D1 + Queues) curates original and quote posts from official X accounts in two tiers, serves `GET /v1/ai-feed` publicly, and sends one APNs digest per day in each device's time zone. Device registration uses only a random install ID; X / APNs secrets live exclusively in Worker Secrets. Full contract in [`docs/curated-feed-contract.md`](docs/curated-feed-contract.md) and [`broadcast/README.md`](broadcast/README.md).
+Details in the [privacy policy](https://tokenremain.com/privacy).
 
-## 🚀 Running locally
+## FAQ
+
+<details>
+<summary><b>A card says "Login not detected"</b></summary>
+<br/>
+
+TokenRemain never refreshes tokens; it only reads the sign-in state each tool saves. Sign in again in that tool and use it once, and the data comes back automatically. Some tools, such as Antigravity, need to be opened and used once before their credentials are written to disk.
+
+</details>
+
+<details>
+<summary><b>Claude shows "usage read timed out" or "Claude is unreachable"</b></summary>
+<br/>
+
+The card is showing the last good cached snapshot; TokenRemain retries once the network is back and never asks you to sign in over a network failure. The official API follows the system proxy. When an expired credential has to be renewed through the Claude Code CLI, TokenRemain tries, in order: the app's environment variables, the `env` block of Claude Code's `settings.json`, the system proxy (including PAC) and proxy variables exported by your login shell — and uses the first one that reaches `api.anthropic.com`. If it still doesn't recover, run `claude` in a terminal and execute `/usage` once.
+
+</details>
+
+<details>
+<summary><b>The top alert and the card show different percentages</b></summary>
+<br/>
+
+The alert reflects the tightest of all windows (usually the 7-day one), while the card header shows the 5-hour window — they're not the same window.
+
+</details>
+
+<details>
+<summary><b>Today's cost doesn't match my bill</b></summary>
+<br/>
+
+Cost is an estimate of local token usage at official API list prices. It shows the scale of your usage, not your subscription bill.
+
+</details>
+
+<details>
+<summary><b>A card is labeled "third-party API"</b></summary>
+<br/>
+
+When Claude Code has `ANTHROPIC_BASE_URL` set, or Codex has a custom `base_url`, the quota comes from the API actually serving you, and the card names it. If you use the official sign-in and still see this label, please [open an issue](https://github.com/Carstin520/token-remain/issues) with your redacted configuration.
+
+</details>
+
+<details>
+<summary><b>How do I uninstall completely?</b></summary>
+<br/>
+
+Quit TokenRemain and delete the app, then remove local preferences and caches:
+
+```bash
+defaults delete com.jamesli.usagedock
+rm -rf ~/Library/Caches/com.jamesli.usagedock ~/Library/Application\ Support/com.jamesli.usagedock
+```
+
+Pasted keys can be removed in Keychain Access by searching for `com.jamesli.usagedock`. If you enabled sync and want the iCloud data cleared, [contact support](https://tokenremain.com/support).
+
+</details>
+
+Still stuck? [Open an issue](https://github.com/Carstin520/token-remain/issues) or visit the [support page](https://tokenremain.com/support).
+
+## Development
+
+You need macOS 14+, full Xcode (Command Line Tools alone won't do) and an Apple Development signing certificate in your Keychain (signing into Xcode with a free Apple ID creates one).
 
 ```bash
 bash ./script/build_and_run.sh --verify
 ```
 
-Installs to `~/Applications/UsageDock.app`. This public repository contains only the macOS desktop client and its service, website and release support; mobile client source is maintained separately.
+Local builds install as a separate `~/Applications/TokenRemain Dev.app` (bundle ID `com.jamesli.usagedock.dev`) and never replace the release app. `UsageDock` is the project's internal code name.
 
-| Path | Contents |
-| :-- | :-- |
-| `Sources/UsageDock/` · `Package.swift` | SwiftPM menu bar app |
-| `Packages/TokenRemainSyncKit/` | Minimal encrypted-sync protocol package |
-| `broadcast/` | Cloudflare Workers backend (AI Feed + download counter) |
-| `site/` | Marketing site, privacy policy and support pages |
-| `docs/` | Release, privacy and architecture documents |
-| `design/` | Brand, palette and UI sources |
-| `script/` | Build, packaging and verification scripts |
+```bash
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test
+```
 
-## 📈 Downloads over time
+`Sources/UsageDock/` is the menu bar app, `Packages/TokenRemainSyncKit/` the encrypted-sync protocol, `broadcast/` the [Cloudflare Workers backend](broadcast/README.md) for AI Feed and download counts, and `site/` the website.
+
+## Downloads over time
 
 <div align="center">
 
@@ -192,22 +218,12 @@ Installs to `~/Applications/UsageDock.app`. This public repository contains only
   <img src="https://api.tokenremain.com/v1/downloads/chart.svg?theme=dark&amp;lang=en" width="920" alt="Cumulative website download chart, rendered from daily snapshots of the anonymous aggregate counter" />
 </picture>
 
-<sub>The total starts from the 163 historical `TokenRemain.dmg` downloads (as of 2026-08-07, [breakdown](docs/download-baseline.md)) and grows via daily snapshots of the website's anonymous counter; no personal data involved.</sub>
+<sub>Starts from 163 historical downloads as of 2026-08-07 ([breakdown](docs/download-baseline.md)) and grows via daily snapshots of an anonymous counter; no personal data involved.</sub>
 
 </div>
 
-## 📄 License
+## License
 
 Source code and source documentation are available under the [Apache License 2.0](LICENSE); the TokenRemain name, logos, icons, robot character and original design assets are not included — see the [brand and asset licensing terms](ASSET-LICENSE.md).
 
----
-
-<div align="center">
-<sub>
-
-TokenRemain is an independent app, not affiliated with, endorsed by, or sponsored by Anthropic, OpenAI, Anysphere, xAI, GitHub, Zhipu AI, or any other provider; service names and marks appear only to identify the services you can choose to connect.
-
-Publisher and support contact: Dongheng Li · jamescarstin520@gmail.com · © 2026
-
-</sub>
-</div>
+<sub>TokenRemain is an independent app, not affiliated with, endorsed by, or sponsored by Anthropic, OpenAI, Anysphere, xAI, GitHub, Zhipu AI, or any other provider; service names and marks appear only to identify the services you can choose to connect. Publisher and support contact: Dongheng Li · jamescarstin520@gmail.com · © 2026</sub>
