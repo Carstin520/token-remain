@@ -7,7 +7,7 @@ description: 为 TokenRemain 改动按模块与实际副作用选择静态检查
 
 先读 [AGENTS.md](../../../AGENTS.md)，尤其 R3、R4、R8、R9、R12、R13。以下路径和命令相对仓库根目录；执行前确认工作目录，检查当前脚本与环境，不能把历史命令列表当作永久安全白名单。
 
-**状态：验证路由与脚本行为已按 2026-09-05 源码检查；原生 UI 驱动配方尚未端到端实测，属于草稿。** 不得将其描述为已通过的自动化 UI harness。首次实跑一条功能后，记录环境、动作、结果、清理和仍存在的证据，再在明确规则维护任务中更新该路径状态；一个功能通过不代表所有功能通过。
+**状态：验证路由与脚本行为已按 2026-09-05 源码检查；原生 UI 驱动配方的状态逐项记在 [功能地图](features/README.md)，未实跑的功能保持 `draft`。** 不得将其描述为已通过的自动化 UI harness。首次实跑一条功能后，记录环境、动作、结果、清理和仍存在的证据，再在明确规则维护任务中更新该功能文件的状态；一个功能通过不代表所有功能通过。
 
 初次编写时实际执行了 `verify_keychain_read_contract.sh` 和 `verify_launch_surface_isolation.sh`，均通过。这只记录当时的静态契约结果，不是未来任务的通过凭证，也不代表完整测试或运行验收。
 
@@ -28,7 +28,7 @@ description: 为 TokenRemain 改动按模块与实际副作用选择静态检查
 
 | 改动 | 最小相关入口 | 需要扩大的情况 |
 | --- | --- | --- |
-| 文档、规则、技能 | 检查 frontmatter、相对链接、路径、命令副作用和 diff；不为此构建应用 | 修改了验证配方时，只在可安全运行的范围内实跑，其他路径保留草稿状态 |
+| 文档、规则、技能 | `verify_agent_docs.sh` 检查 frontmatter、相对链接、锚点、技能链接和 R 编号；另查命令副作用和 diff；不为此构建应用 | 修改了验证配方时，只在可安全运行的范围内实跑，其他路径保留草稿状态 |
 | Provider/PTY | 发现对应 `Tests/UsageDockTests/` suite；重放已脱敏 `Fixtures/`；凭证路径加 Keychain 契约脚本 | 共享采集/缓存/账号路径变化扩大到相关消费者；真实 provider 状态需另做 D 验证 |
 | 刷新/共享 Store | 定向策略、缓存、通知测试；共享核心变化再跑完整 macOS suite | 比较用户设置、活跃/空闲/退避/过期状态；性能结论需要同条件实测 |
 | 同步 | SyncKit suite；桌面 Redactor/Fingerprint/DirectSync 相关测试；变更编译条件时检查对应构建 | 协议变更补旧 payload、新 payload、过期/重放/脱敏；跨端验收需要实际消费者证据 |
@@ -49,7 +49,12 @@ bash script/verify_keychain_read_contract.sh
 bash script/verify_launch_surface_isolation.sh
 bash script/verify_version_consistency.sh
 bash script/verify_automatic_update_contract.sh
+bash script/verify_website_release_contract.sh
+bash script/verify_agent_docs.sh
+bash script/verify_agent_lane_guard.sh
 ```
+
+`verify_website_release_contract.sh` 不带参数时只读本地文件；`--public` 会联网访问官网与 GitHub，不属于 S 级。`verify_agent_lane_guard.sh` 只在自己的临时目录里建 git 仓库并用 `gh` 替身。这些脚本也是 `.github/workflows/macos-validation.yml` 的 contracts job。
 
 变更 shell 脚本可用 `bash -n` 检查其语法；该检查不执行脚本，也不证明行为。
 
@@ -107,15 +112,7 @@ bash script/build_and_run.sh --verify
 
 使用当前宿主实际提供的原生 macOS 控制能力，先观察可访问性树/屏幕再选择按钮，不编造 selector 或照抄坐标。仅有浏览器工具时无法据此验证 AppKit，标记对应路径未验证。
 
-| 功能 | 用户路径与可观察结果 | 边界 |
-| --- | --- | --- |
-| 隐藏启动 | 经授权在 Dev 实例运行 `--menu-bar-only`，保持不交互；核对没有意外 Dashboard/面板创建、进程存活及新增崩溃报告 | macOS 26 玻璃路径需该系统；不能仅以启动瞬间截图验收 |
-| 额度与刷新 | 打开菜单栏弹窗或 Dashboard，观察已配置 provider；仅在真实查询已授权时触发用户刷新，比较额度、池、时间与状态 | 不改账号、登录或绕过 Keychain；截图先脱敏，fixture 结果与真实请求分开 |
-| 登录/凭证等待 | 在隔离请求或已授权真实流程中观察等待、取消/超时、提示、控件恢复和再次尝试；核对迟到结果未提交 | 按 DB-001 区分取消与结果待确认；系统弹窗未被实际关闭时不声称已终止；不为模拟验收写入真实凭证或缓存 |
-| 窗口与外观 | 打开/关闭 Dashboard、菜单栏弹窗，按目标修改切换外观或尺寸状态，记录操作前后和重复交互 | 检查隐藏状态、尺寸反馈及可见回归；操作前保存偏好，结束恢复 |
-| 同步 | 仅在已有授权和对应构建/设备下，比较源端展示 DTO 与消费端显示及序列/时间状态 | 普通 Dev 不证明生产 CloudKit；无消费者只报告本地协议测试 |
-
-启动稳定性可用 `bash script/verify_launch_stability.sh`，但必须满足上面的独占条件，提前保存玻璃偏好是否存在、值及类型，并保证成功/失败后恢复。脚本默认每种玻璃两轮、每轮 90 秒；缩短只算 smoke，不替代原强度。旧系统可能输出 skipped 并退出 0，仍然是跳过。`--skip-build` 的现有指纹覆盖并不包含所有资源与共享包；涉及这些变更时重新构建并另外记录来源，不单靠 stamp。
+每个功能的用户路径、驱动步骤、可观察结果和边界在 [功能地图](features/README.md) 中各占一个文件，文件开头标注状态：`draft` 表示从未端到端实跑；`verified @ <日期> <HEAD> <OS>` 只记录那一次实跑的条件，不代表其他功能或之后的提交也通过。先读地图索引，再打开对应功能文件。
 
 ### Evidence 与 Cleanup
 
