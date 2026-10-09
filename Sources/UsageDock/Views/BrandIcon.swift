@@ -34,6 +34,13 @@ struct BrandIcon: View {
                 .scaledToFit()
                 .foregroundStyle(tint)
                 .accessibilityLabel(provider.rawValue)
+        case .thirdParty:
+            Image(nsImage: GenericRobotGlyph.image(size: 64))
+                .resizable()
+                .renderingMode(.template)
+                .scaledToFit()
+                .foregroundStyle(tint)
+                .accessibilityLabel(provider.displayName)
         case .codex:
             Canvas { context, size in
                 let rect = CGRect(origin: .zero, size: size)
@@ -90,6 +97,8 @@ struct BrandIcon: View {
             image = claudeImage().copy() as? NSImage
                 ?? NSImage(size: NSSize(width: size, height: size))
             image.isTemplate = true
+        case .thirdParty:
+            image = GenericRobotGlyph.image(size: size)
         case .codex:
             image = CodexBrandGlyph.colorImage(size: size)
             image.isTemplate = false
@@ -380,6 +389,34 @@ enum CodexBrandGlyph {
             return true
         }
         image.isTemplate = false
+        return image
+    }
+}
+
+/// Original neutral mark for user-configured services; not a vendor logo.
+/// One vector drawing serves both SwiftUI cards and AppKit status attachments.
+enum GenericRobotGlyph {
+    static func image(size: CGFloat) -> NSImage {
+        let image = NSImage(size: NSSize(width: size, height: size), flipped: true) { rect in
+            guard let context = NSGraphicsContext.current?.cgContext else { return false }
+            context.saveGState()
+            defer { context.restoreGState() }
+            context.translateBy(x: rect.minX, y: rect.minY)
+            context.scaleBy(x: rect.width, y: rect.height)
+            context.setFillColor(NSColor.black.cgColor)
+            context.addPath(CGPath(roundedRect: CGRect(x: 0.12, y: 0.26, width: 0.76, height: 0.60),
+                                   cornerWidth: 0.15, cornerHeight: 0.15, transform: nil))
+            context.fillPath()
+            context.fill(CGRect(x: 0.46, y: 0.13, width: 0.08, height: 0.18))
+            context.fillEllipse(in: CGRect(x: 0.41, y: 0.05, width: 0.18, height: 0.18))
+            context.setBlendMode(.clear)
+            for x in [0.29, 0.59] {
+                context.fillEllipse(in: CGRect(x: x, y: 0.44, width: 0.12, height: 0.14))
+            }
+            context.fill(CGRect(x: 0.34, y: 0.68, width: 0.32, height: 0.06))
+            return true
+        }
+        image.isTemplate = true
         return image
     }
 }
