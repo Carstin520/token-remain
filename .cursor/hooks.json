@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "hooks": {
+    "beforeShellExecution": [
+      {
+        "command": "script/agent_lane_guard.sh --host cursor"
+      }
+    ]
+  }
+}

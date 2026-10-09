@@ -1,0 +1,17 @@
+{
+  "description": "TokenRemain unattended-lane guard (AGENTS.md R14). It passes every command in interactive sessions.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$(git rev-parse --show-toplevel)/script/agent_lane_guard.sh\" --host codex",
+            "statusMessage": "Checking the lane guard"
+          }
+        ]
+      }
+    ]
+  }
+}
