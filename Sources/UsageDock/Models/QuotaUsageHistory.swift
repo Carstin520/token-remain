@@ -29,6 +29,24 @@ struct QuotaUsageHistory: Sendable, Codable, Equatable {
 
     var samples: [Sample]
 
+    init(samples: [Sample]) { self.samples = samples }
+
+    private enum CodingKeys: String, CodingKey { case samples, grokBotSamples }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        samples = try values.decode([Sample].self, forKey: .samples)
+        samples += try values.decodeIfPresent([Sample].self, forKey: .grokBotSamples) ?? []
+        samples.sort { $0.capturedAt < $1.capturedAt }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var values = encoder.container(keyedBy: CodingKeys.self)
+        try values.encode(samples.filter { $0.provider != .grokBot }, forKey: .samples)
+        let bot = samples.filter { $0.provider == .grokBot }
+        if !bot.isEmpty { try values.encode(bot, forKey: .grokBotSamples) }
+    }
+
     static let empty = QuotaUsageHistory(samples: [])
 
     var providers: [ProviderQuota.Provider] {

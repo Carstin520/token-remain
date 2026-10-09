@@ -766,3 +766,9 @@
 "prices.total" = "已报告总费用";
 "prices.other" = "其他 / 未拆分";
 "prices.unpriced_note" = "部分用量价格未知；有参考价时展示估算，不声称已知完整费用。";
+
+"grokbot.not_included" = "此账号未包含 Grok Bot 额度。";
+"grokbot.organization_managed" = "Grok Bot 额度由组织管理。";
+"grokbot.unavailable" = "无法读取 Grok Bot 额度，请稍后重试。";
+"grokbot.trial" = "试用到期：%@";
+"grokbot.detail" = "Grok Bot 的 Cursor 账号每周额度。请在 Cursor IDE 登录同一账号；仅只读凭证。与 Grok CLI、Cursor 月度额度分开，此接口不提供按量付费金额。";

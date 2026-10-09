@@ -27,6 +27,10 @@ struct BrandIcon: View {
     @ViewBuilder
     var body: some View {
         switch provider {
+        case .grokBot:
+            Image(systemName: "bubble.left.and.bubble.right.fill")
+                .resizable().scaledToFit().foregroundStyle(tint)
+                .accessibilityLabel(provider.displayName)
         case .claude:
             Image(nsImage: Self.claudeImage())
                 .resizable()
@@ -86,6 +90,9 @@ struct BrandIcon: View {
     ) -> NSImage {
         let image: NSImage
         switch provider {
+        case .grokBot:
+            image = NSImage(systemSymbolName: "bubble.left.and.bubble.right.fill", accessibilityDescription: "Grok Bot")!
+            image.isTemplate = true
         case .claude:
             image = claudeImage().copy() as? NSImage
                 ?? NSImage(size: NSSize(width: size, height: size))
@@ -120,7 +127,7 @@ struct BrandIcon: View {
 
     static func artwork(for provider: ProviderQuota.Provider) -> Artwork? {
         switch provider {
-        case .claude, .codex:
+        case .claude, .codex, .grokBot:
             return nil
         case .cursor:
             return Artwork(resourceName: "cursor", isTemplate: true)

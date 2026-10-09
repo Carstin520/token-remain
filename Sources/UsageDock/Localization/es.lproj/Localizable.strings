@@ -766,3 +766,9 @@
 "prices.total" = "Total informado";
 "prices.other" = "Otros / sin desglosar";
 "prices.unpriced_note" = "Parte del uso no tiene precio. Las estimaciones de referencia no representan un total completo.";
+
+"grokbot.not_included" = "Esta cuenta no incluye cuota de Grok Bot.";
+"grokbot.organization_managed" = "Tu organización administra la cuota de Grok Bot.";
+"grokbot.unavailable" = "Grok Bot no devolvió una cuota legible. Reintenta más tarde.";
+"grokbot.trial" = "Prueba hasta %@";
+"grokbot.detail" = "Cuota semanal de Grok Bot en la cuenta de Cursor. Inicia sesión en Cursor IDE con la misma cuenta; las credenciales son de solo lectura. Separada de Grok CLI y de la cuota mensual de Cursor. Este endpoint no informa gastos bajo demanda.";

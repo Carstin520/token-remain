@@ -755,7 +755,12 @@ export default {
     "prices.legacy_cache": "Older cache: %@ cached tokens have no read/write split.",
     "prices.total": "Reported total",
     "prices.other": "Other / unsplit",
-    "prices.unpriced_note": "Some usage is unpriced. Reference estimates are shown when available; no complete total is claimed."
+    "prices.unpriced_note": "Some usage is unpriced. Reference estimates are shown when available; no complete total is claimed.",
+    "grokbot.not_included": "Grok Bot is not included in this account.",
+    "grokbot.organization_managed": "Grok Bot usage is managed by your organization.",
+    "grokbot.unavailable": "Grok Bot did not return a readable quota. Retry later.",
+    "grokbot.trial": "Trial until %@",
+    "grokbot.detail": "Grok Bot weekly quota on the Cursor account. Sign in to Cursor IDE with the same account; credentials are read only. Separate from Grok CLI and Cursor monthly usage. On-demand spending is not reported by this endpoint."
   },
   "zh-Hans": {
     "widget.local_usage": "今日本地统计",
@@ -1512,7 +1517,12 @@ export default {
     "prices.legacy_cache": "旧缓存：%@ 个缓存 token 未区分读写。",
     "prices.total": "已报告总费用",
     "prices.other": "其他 / 未拆分",
-    "prices.unpriced_note": "部分用量价格未知；有参考价时展示估算，不声称已知完整费用。"
+    "prices.unpriced_note": "部分用量价格未知；有参考价时展示估算，不声称已知完整费用。",
+    "grokbot.not_included": "此账号未包含 Grok Bot 额度。",
+    "grokbot.organization_managed": "Grok Bot 额度由组织管理。",
+    "grokbot.unavailable": "无法读取 Grok Bot 额度，请稍后重试。",
+    "grokbot.trial": "试用到期：%@",
+    "grokbot.detail": "Grok Bot 的 Cursor 账号每周额度。请在 Cursor IDE 登录同一账号；仅只读凭证。与 Grok CLI、Cursor 月度额度分开，此接口不提供按量付费金额。"
   },
   "zh-Hant": {
     "widget.local_usage": "今日本機統計",
@@ -1856,7 +1866,7 @@ export default {
     "alert.provider_signed_out.body": "TokenRemain 已讀不到用量，卡片顯示的是最後一次成功的快照。重新登入 %@ 後自動恢復。",
     "service.claude.cli_timeout": "Claude Code 用量讀取逾時，正在顯示最近的快取資料",
     "service.claude.network_unreachable": "目前無法連線 Claude 服務，正在顯示最近的快取；網路或代理恢復後會自動重試",
-    "service.claude.credentials_unavailable": "未找到可读取的 Claude 登录。请打开官方 Claude 应用，或在数据来源添加 claude.ai Cookie。",
+    "service.claude.credentials_unavailable": "未找到可讀取的 Claude 登入。請開啟官方 Claude 應用程式，或在資料來源新增 claude.ai Cookie。",
     "service.claude.invalid_usage_output": "Claude Code 未回傳可識別的 5 小時 / 7 天用量",
     "service.claude.probe_launch_failed": "無法啟動 Claude Code 用量探針：%1$@",
     "service.claude.rate_limited": "Claude 用量 API 受速率限制，稍後將自動重試",
@@ -2243,19 +2253,19 @@ export default {
     "alibaba.error.response": "控制台傳回不支援的額度資料，請稍後重試。",
     "alibaba.error.request": "控制台無法讀取額度。請檢查帳號權限、地區及方案後重試。",
     "alibaba.error.network": "無法連線至控制台，請檢查網路後重試。",
-    "claude.logs.scan_limit": "Claude 日志目录扫描超出范围限制，请检查目录后重试。",
-    "claude.logs.title": "Claude 本地日志",
-    "claude.logs.note": "读取可用的 Code 与 Cowork 日志。桌面普通聊天、网页及手机聊天不提供本地 token 日志。价格未知不会隐藏 token。",
-    "claude.logs.add": "添加 Claude 配置目录",
-    "claude.logs.empty": "未找到本地 projects 目录。若使用自定义位置，请添加包含 projects 的配置目录。",
-    "claude.web.placeholder": "粘贴 claude.ai sessionKey 或 Cookie",
-    "claude.web.setup": "可选网页会话：粘贴自己的 claude.ai sessionKey，验证后仅存本机钥匙串。配置后默认 Claude 额度来自该网页账号，隔离 CLI 账号不受影响；移除后恢复本地 OAuth。",
-    "claude.web.organization": "组织 UUID（可选；多个组织时必填）",
-    "claude.web.invalid_cookie": "请输入有效 sessionKey；如需指定组织，请填写有效 UUID。",
-    "claude.web.expired": "Claude 网页 Cookie 已失效，请登录 claude.ai 并在数据来源替换 Cookie。",
-    "claude.web.forbidden": "Claude 网页访问被拒绝，可能需要浏览器验证。请打开 claude.ai 检查会话后重试。",
-    "claude.web.organization_required": "无法唯一确定组织，请填写 claude.ai 组织地址中的 UUID 后重新保存。",
-    "claude.web.invalid_response": "Claude 网页返回了无法识别的额度数据，保留上次用量，请稍后重试。",
+    "claude.logs.scan_limit": "Claude 日誌目錄掃描超出範圍限制，請檢查目錄後重試。",
+    "claude.logs.title": "Claude 本機日誌",
+    "claude.logs.note": "讀取可用的 Code 與 Cowork 日誌。桌面一般聊天、網頁及手機聊天不提供本機 token 日誌。價格未知不會隱藏 token。",
+    "claude.logs.add": "新增 Claude 設定目錄",
+    "claude.logs.empty": "未找到本機 projects 目錄。若使用自訂位置，請新增包含 projects 的設定目錄。",
+    "claude.web.placeholder": "貼上 claude.ai sessionKey 或 Cookie",
+    "claude.web.setup": "選用網頁工作階段：貼上自己的 claude.ai sessionKey，驗證後僅存本機鑰匙圈。設定後預設 Claude 額度來自該網頁帳號，隔離 CLI 帳號不受影響；移除後恢復本機 OAuth。",
+    "claude.web.organization": "組織 UUID（選填；多個組織時必填）",
+    "claude.web.invalid_cookie": "請輸入有效 sessionKey；如需指定組織，請填寫有效 UUID。",
+    "claude.web.expired": "Claude 網頁 Cookie 已失效，請登入 claude.ai 並在資料來源替換 Cookie。",
+    "claude.web.forbidden": "Claude 網頁存取遭拒，可能需要瀏覽器驗證。請開啟 claude.ai 檢查工作階段後重試。",
+    "claude.web.organization_required": "無法唯一確定組織，請填寫 claude.ai 組織網址中的 UUID 後重新儲存。",
+    "claude.web.invalid_response": "Claude 網頁傳回無法識別的額度資料，保留上次用量，請稍後重試。",
     "prices.title": "模型價格分析",
     "prices.reference_note": "按目前 API 標價估算，不等於訂閱帳單。ccusage 總費用保持不變；其他 / 未拆分為帶正負號的差額，可能來自歷史價、分級、快速模式、自訂價格或缺價。",
     "prices.no_table": "價格表暫不可用",
@@ -2269,7 +2279,12 @@ export default {
     "prices.legacy_cache": "舊快取：%@ 個快取 token 未區分讀寫。",
     "prices.total": "已回報總費用",
     "prices.other": "其他 / 未拆分",
-    "prices.unpriced_note": "部分用量價格未知；有參考價時顯示估算，不宣稱已知完整費用。"
+    "prices.unpriced_note": "部分用量價格未知；有參考價時顯示估算，不宣稱已知完整費用。",
+    "grokbot.not_included": "此帳號未包含 Grok Bot 額度。",
+    "grokbot.organization_managed": "Grok Bot 額度由組織管理。",
+    "grokbot.unavailable": "無法讀取 Grok Bot 額度，請稍後重試。",
+    "grokbot.trial": "試用到期：%@",
+    "grokbot.detail": "Grok Bot 的 Cursor 帳號每週額度。請在 Cursor IDE 登入同一帳號；僅唯讀憑證。與 Grok CLI、Cursor 每月額度分開，此介面不提供隨用隨付金額。"
   },
   "ja": {
     "widget.local_usage": "今日のローカル使用量",
@@ -3026,7 +3041,12 @@ export default {
     "prices.legacy_cache": "旧キャッシュ：%@ キャッシュトークンは読込・書込に分かれていません。",
     "prices.total": "報告済み合計",
     "prices.other": "その他・未分類",
-    "prices.unpriced_note": "一部の使用量は価格不明です。参考見積もりは完全な合計ではありません。"
+    "prices.unpriced_note": "一部の使用量は価格不明です。参考見積もりは完全な合計ではありません。",
+    "grokbot.not_included": "このアカウントには Grok Bot の利用枠が含まれていません。",
+    "grokbot.organization_managed": "Grok Bot の利用枠は組織が管理しています。",
+    "grokbot.unavailable": "Grok Bot の利用枠を読み取れません。後で再試行してください。",
+    "grokbot.trial": "試用期限：%@",
+    "grokbot.detail": "Cursor アカウントの Grok Bot 週間利用枠。同じアカウントで Cursor IDE にログインしてください。認証情報は読み取り専用です。Grok CLI や Cursor の月間利用枠とは別です。この API は従量料金を返しません。"
   },
   "ko": {
     "widget.local_usage": "오늘의 로컬 사용량",
@@ -3783,7 +3803,12 @@ export default {
     "prices.legacy_cache": "이전 캐시: 캐시 토큰 %@개는 읽기/쓰기가 구분되지 않습니다.",
     "prices.total": "보고된 합계",
     "prices.other": "기타 / 미분류",
-    "prices.unpriced_note": "일부 사용량의 가격을 알 수 없습니다. 참고 추정치는 완전한 합계가 아닙니다."
+    "prices.unpriced_note": "일부 사용량의 가격을 알 수 없습니다. 참고 추정치는 완전한 합계가 아닙니다.",
+    "grokbot.not_included": "이 계정에는 Grok Bot 할당량이 포함되지 않습니다.",
+    "grokbot.organization_managed": "조직에서 Grok Bot 할당량을 관리합니다.",
+    "grokbot.unavailable": "Grok Bot 할당량을 읽을 수 없습니다. 나중에 다시 시도하세요.",
+    "grokbot.trial": "체험 만료: %@",
+    "grokbot.detail": "Cursor 계정의 Grok Bot 주간 할당량입니다. 같은 계정으로 Cursor IDE에 로그인하세요. 인증 정보는 읽기 전용이며 Grok CLI 및 Cursor 월간 할당량과 별개입니다. 이 API는 종량제 지출을 제공하지 않습니다."
   },
   "es": {
     "widget.local_usage": "Uso local de hoy",
@@ -4540,7 +4565,12 @@ export default {
     "prices.legacy_cache": "Caché antiguo: %@ tokens sin separación de lectura/escritura.",
     "prices.total": "Total informado",
     "prices.other": "Otros / sin desglosar",
-    "prices.unpriced_note": "Parte del uso no tiene precio. Las estimaciones de referencia no representan un total completo."
+    "prices.unpriced_note": "Parte del uso no tiene precio. Las estimaciones de referencia no representan un total completo.",
+    "grokbot.not_included": "Esta cuenta no incluye cuota de Grok Bot.",
+    "grokbot.organization_managed": "Tu organización administra la cuota de Grok Bot.",
+    "grokbot.unavailable": "Grok Bot no devolvió una cuota legible. Reintenta más tarde.",
+    "grokbot.trial": "Prueba hasta %@",
+    "grokbot.detail": "Cuota semanal de Grok Bot en la cuenta de Cursor. Inicia sesión en Cursor IDE con la misma cuenta; las credenciales son de solo lectura. Separada de Grok CLI y de la cuota mensual de Cursor. Este endpoint no informa gastos bajo demanda."
   },
   "de": {
     "widget.local_usage": "Heutige lokale Nutzung",
@@ -5297,6 +5327,11 @@ export default {
     "prices.legacy_cache": "Alter Cache: %@ Cache-Tokens ohne Lese-/Schreibaufteilung.",
     "prices.total": "Gemeldete Summe",
     "prices.other": "Sonstiges / ungeteilt",
-    "prices.unpriced_note": "Ein Teil der Nutzung hat keinen Preis. Referenzschätzungen sind keine vollständige Gesamtsumme."
+    "prices.unpriced_note": "Ein Teil der Nutzung hat keinen Preis. Referenzschätzungen sind keine vollständige Gesamtsumme.",
+    "grokbot.not_included": "Dieses Konto enthält kein Grok-Bot-Kontingent.",
+    "grokbot.organization_managed": "Deine Organisation verwaltet das Grok-Bot-Kontingent.",
+    "grokbot.unavailable": "Grok Bot lieferte kein lesbares Kontingent. Versuche es später erneut.",
+    "grokbot.trial": "Testzugang bis %@",
+    "grokbot.detail": "Wöchentliches Grok-Bot-Kontingent des Cursor-Kontos. Melde dich mit demselben Konto in Cursor IDE an; Zugangsdaten werden nur gelesen. Getrennt von Grok CLI und Cursors Monatskontingent. Dieser Endpunkt meldet keine On-Demand-Kosten."
   }
 };

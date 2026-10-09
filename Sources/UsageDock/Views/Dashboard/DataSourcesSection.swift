@@ -213,6 +213,7 @@ struct DataSourcesSection: View {
         case .devin: return L10n.text("datasource.detail.devin")
         case .windsurf: return L10n.text("datasource.detail.windsurf")
         case .grok: return L10n.text("datasource.detail.grok")
+        case .grokBot: return L10n.text("grokbot.detail")
         case .openrouter: return L10n.text("datasource.detail.openrouter")
         case .antigravity: return L10n.text("datasource.detail.antigravity")
         case .opencode: return L10n.text("datasource.detail.opencode")

@@ -145,11 +145,13 @@ struct AlibabaTokenPlanTests {
 
     @Test func cancellationAndDeadlineReachTransportAndRetryWorks() async throws {
         let recorder = CancellationRecorder()
-        let slow = AlibabaTokenPlanUsageService(transport: { _ in
+        let transport: AlibabaTokenPlanUsageService.Transport = { _ in
+            await recorder.started()
             do { try await Task.sleep(for: .seconds(10)) }
             catch { await recorder.cancelled(); throw error }
             throw AlibabaTokenPlanError.unavailable
-        }, timeout: 0.03)
+        }
+        let slow = AlibabaTokenPlanUsageService(transport: transport, timeout: 0.03)
         let raw = try config().encoded()
         do {
             _ = try await slow.fetch(configuration: raw)
@@ -157,8 +159,16 @@ struct AlibabaTokenPlanTests {
         } catch { #expect(error is AsyncDeadline.Failure) }
         try await Task.sleep(for: .milliseconds(20))
         #expect(await recorder.count == 1)
-        let pending = Task { try await slow.fetch(configuration: raw) }
-        try await Task.sleep(for: .milliseconds(5))
+        // Cancellation and deadline are distinct scenarios. A 5ms scheduler
+        // sleep can exceed the 30ms deadline on CI before cancel() runs.
+        let cancellable = AlibabaTokenPlanUsageService(transport: transport, timeout: 10)
+        let pending = Task { try await cancellable.fetch(configuration: raw) }
+        defer { pending.cancel() }
+        let startDeadline = ContinuousClock.now.advanced(by: .seconds(2))
+        while await recorder.starts < 2, ContinuousClock.now < startDeadline {
+            try await Task.sleep(for: .milliseconds(1))
+        }
+        #expect(await recorder.starts == 2)
         pending.cancel()
         do { _ = try await pending.value; Issue.record("Expected cancellation") }
         catch { #expect(error is CancellationError) }
@@ -186,5 +196,7 @@ private actor RequestRecorder {
 }
 private actor CancellationRecorder {
     var count = 0
+    var starts = 0
+    func started() { starts += 1 }
     func cancelled() { count += 1 }
 }

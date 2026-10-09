@@ -6,6 +6,7 @@ enum PopoverWidget: String, CaseIterable, Codable, Identifiable {
     case codex
     case cursor
     case grok
+    case grokBot
     case zai
     case zaiTeam
     case copilot
@@ -69,6 +70,7 @@ enum PopoverWidget: String, CaseIterable, Codable, Identifiable {
         case .codex: return .codex
         case .cursor: return .cursor
         case .grok: return .grok
+        case .grokBot: return .grokBot
         case .zai: return .zai
         case .zaiTeam: return .zaiTeam
         case .copilot: return .copilot

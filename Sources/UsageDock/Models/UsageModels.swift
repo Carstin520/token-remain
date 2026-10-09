@@ -377,6 +377,7 @@ struct ProviderQuota: Sendable, Codable {
         case codex = "Codex"
         case cursor = "Cursor"
         case grok = "Grok"
+        case grokBot = "Grok Bot"
         case zai = "Z.ai"
         case zaiTeam = "GLM Team"
         case copilot = "Copilot"
@@ -399,7 +400,7 @@ struct ProviderQuota: Sendable, Codable {
         /// UI 展示与遍历用的稳定顺序(nonisolated,供任何上下文使用)。
         static let displayOrder: [Provider] = [
             .claude, .codex, .cursor, .copilot, .devin, .windsurf,
-            .grok, .openrouter, .antigravity, .opencode, .zai, .zaiTeam,
+            .grok, .grokBot, .openrouter, .antigravity, .opencode, .zai, .zaiTeam,
             .deepseek, .kimi, .minimax, .mimo, .alibabaTokenPlan, .qoder,
             .kiro, .volcengine, .ollama, .thirdParty
         ]
@@ -411,6 +412,7 @@ struct ProviderQuota: Sendable, Codable {
             case .codex: return "Codex"
             case .cursor: return "Cursor"
             case .grok: return "Grok"
+            case .grokBot: return "Grok Bot"
             case .zai: return "Z.ai"
             case .zaiTeam: return "GLM Team"
             case .copilot: return "Copilot"
@@ -908,6 +910,7 @@ extension ProviderQuota.Provider {
         case .codex: "codex"
         case .cursor: "cursor"
         case .grok: "grok"
+        case .grokBot: "grok-bot"
         case .zai: "zai"
         case .zaiTeam: "zaiteam"
         case .copilot: "copilot"

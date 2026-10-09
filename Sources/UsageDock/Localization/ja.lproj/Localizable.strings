@@ -766,3 +766,9 @@
 "prices.total" = "報告済み合計";
 "prices.other" = "その他・未分類";
 "prices.unpriced_note" = "一部の使用量は価格不明です。参考見積もりは完全な合計ではありません。";
+
+"grokbot.not_included" = "このアカウントには Grok Bot の利用枠が含まれていません。";
+"grokbot.organization_managed" = "Grok Bot の利用枠は組織が管理しています。";
+"grokbot.unavailable" = "Grok Bot の利用枠を読み取れません。後で再試行してください。";
+"grokbot.trial" = "試用期限：%@";
+"grokbot.detail" = "Cursor アカウントの Grok Bot 週間利用枠。同じアカウントで Cursor IDE にログインしてください。認証情報は読み取り専用です。Grok CLI や Cursor の月間利用枠とは別です。この API は従量料金を返しません。";
