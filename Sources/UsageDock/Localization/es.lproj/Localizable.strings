@@ -139,8 +139,8 @@
 "datasource.authorizing" = "Verificando…";
 "datasource.open_provider_app" = "Abrir %1$@";
 "service.claude.authorization_required" = "Permite a TokenRemain acceder en modo de solo lectura a tus credenciales de Claude";
-"service.claude.invalid_stored_credentials" = "No se reconocen las credenciales de Claude; ejecuta claude en la terminal e inicia sesión de nuevo con /login";
-"service.claude.session_expired" = "Tu sesión de Claude caducó; ejecuta claude una vez en la terminal para renovarla";
+"service.claude.invalid_stored_credentials" = "No se reconoce la sesión de Claude. Inicia sesión en la aplicación oficial o añade una Cookie de claude.ai en Fuentes de datos.";
+"service.claude.session_expired" = "La sesión de Claude caducó. Abre la aplicación oficial o añade una Cookie de claude.ai en Fuentes de datos. El inicio de escritorio puede no renovar las credenciales de Code.";
 "service.codex.authorization_required" = "Permite a TokenRemain acceder en modo de solo lectura a tus credenciales de Codex";
 "service.codex.invalid_stored_credentials" = "No se reconocen las credenciales de Codex; inicia sesión de nuevo en ChatGPT o Codex";
 "datasource.broken" = "Conexión interrumpida";
@@ -339,7 +339,7 @@
 "alert.provider_signed_out.body" = "TokenRemain ya no puede leer tu uso: las tarjetas muestran la última instantánea correcta. Vuelve a iniciar sesión en %@ para restaurarlo.";
 "service.claude.cli_timeout" = "La lectura de uso de Claude Code superó el tiempo de espera; se muestra la última caché";
 "service.claude.network_unreachable" = "No se puede conectar con Claude ahora; se muestra la última caché y se reintentará cuando vuelva la red o el proxy";
-"service.claude.credentials_unavailable" = "No se encontró una sesión de Claude utilizable; ejecuta claude en la terminal e inicia sesión con /login";
+"service.claude.credentials_unavailable" = "No se encuentra una sesión legible de Claude. Abre la aplicación oficial o añade una Cookie de claude.ai en Fuentes de datos.";
 "service.claude.invalid_usage_output" = "Claude Code no devolvió un uso reconocible de 5 horas / 7 días";
 "service.claude.probe_launch_failed" = "No se pudo iniciar la sonda de uso de Claude Code: %1$@";
 "service.claude.rate_limited" = "La API de uso de Claude está limitada; se reintentará automáticamente pronto";
@@ -737,3 +737,17 @@
 "alibaba.error.response" = "La consola devolvió datos no compatibles. Reintenta más tarde.";
 "alibaba.error.request" = "No se pudo leer la cuota. Revisa los permisos, la región y el plan.";
 "alibaba.error.network" = "No se pudo conectar. Revisa la red y reintenta.";
+
+"claude.logs.scan_limit" = "La búsqueda de carpetas de Claude superó el límite. Revisa las carpetas y reintenta.";
+"claude.logs.title" = "Registros locales de Claude";
+"claude.logs.note" = "Se cuentan los registros disponibles de Code y Cowork. Los chats normales de escritorio, web y móvil no proporcionan registros locales de tokens. Los precios desconocidos no ocultan tokens.";
+"claude.logs.add" = "Añadir carpeta de configuración de Claude";
+"claude.logs.empty" = "No se encontró una carpeta projects local. Si usas otra ubicación, elige la carpeta que contiene projects.";
+"claude.web.placeholder" = "Pega el sessionKey o Cookie de claude.ai";
+"claude.web.setup" = "Sesión web opcional: pega tu sessionKey de claude.ai. Tras validarlo, se guarda solo en el llavero de este Mac. La cuenta web sustituye la fuente Claude predeterminada; las cuentas CLI aisladas permanecen separadas. Elimínalo para volver a OAuth local.";
+"claude.web.organization" = "UUID de organización (opcional; necesario si hay varias)";
+"claude.web.invalid_cookie" = "Introduce un sessionKey válido y, si procede, el UUID de organización.";
+"claude.web.expired" = "La sesión web de Claude caducó. Inicia sesión en claude.ai y sustituye la Cookie en Fuentes de datos.";
+"claude.web.forbidden" = "El acceso web de Claude está bloqueado, quizá por una verificación del navegador. Comprueba tu sesión en claude.ai y reintenta.";
+"claude.web.organization_required" = "Introduce el UUID de la organización desde su dirección de claude.ai y vuelve a guardar.";
+"claude.web.invalid_response" = "Claude Web devolvió datos no compatibles. Se conservan los anteriores; reintenta más tarde.";

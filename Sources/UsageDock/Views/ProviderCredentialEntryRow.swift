@@ -50,6 +50,7 @@ struct ProviderCredentialEntryRow: View {
     let configuration: ProviderCredentialConfiguration
     @State private var credentialStatus: StoredCredentialStatus
     @State private var draft = ""
+    @State private var claudeOrganizationID = ""
     @StateObject private var action = AsyncViewAction()
     private var isSaving: Bool { action.isRunning }
     @State private var zaiRegion: ZAIAPIRegion
@@ -77,6 +78,15 @@ struct ProviderCredentialEntryRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
+            if provider == .claude {
+                Text(L10n.text("claude.web.setup"))
+                    .font(.system(size: 11))
+                    .foregroundStyle(DashboardTheme.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+                TextField(L10n.text("claude.web.organization"), text: $claudeOrganizationID)
+                    .textFieldStyle(.roundedBorder)
+                    .disabled(isSaving)
+            }
             if provider == .alibabaTokenPlan {
                 Picker(L10n.text("alibaba.region"), selection: $alibabaRegion) {
                     ForEach(AlibabaTokenPlanConfiguration.Region.allCases, id: \.self) { region in
@@ -142,6 +152,12 @@ struct ProviderCredentialEntryRow: View {
                             region: alibabaRegion, edition: alibabaEdition, cookie: credential
                         )
                         guard let encoded = try? config.encoded() else { return }
+                        credential = encoded
+                    }
+                    if provider == .claude, !claudeOrganizationID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        guard var parsed = try? ClaudeWebUsageService.Configuration.decode(credential) else { return }
+                        parsed.organizationID = claudeOrganizationID.trimmingCharacters(in: .whitespacesAndNewlines)
+                        guard let encoded = try? parsed.encoded() else { return }
                         credential = encoded
                     }
                     let submittedCredential = credential

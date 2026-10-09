@@ -336,13 +336,13 @@
 "alert.provider_signed_out.body" = "TokenRemain can no longer read your usage — the cards are showing the last good snapshot. Sign in to %@ again to restore it.";
 "service.claude.cli_timeout" = "Claude Code usage read timed out; showing the latest cached data";
 "service.claude.network_unreachable" = "Claude is unreachable right now; showing the latest cached data and retrying once the network or proxy is back";
-"service.claude.credentials_unavailable" = "No usable Claude login found; run claude in a terminal and sign in with /login";
-"service.claude.invalid_stored_credentials" = "Claude login credentials are not recognized; run claude in a terminal and sign in again with /login";
+"service.claude.credentials_unavailable" = "No readable Claude login. Open the official Claude app, or add a claude.ai Cookie in Data Sources.";
+"service.claude.invalid_stored_credentials" = "Claude login is not recognized. Sign in again with the official app, or add a claude.ai Cookie in Data Sources.";
 "service.claude.invalid_usage_output" = "Claude Code did not return recognizable 5-hour / 7-day usage";
 "service.claude.probe_launch_failed" = "Could not launch the Claude Code usage probe: %1$@";
 "service.claude.rate_limited" = "Claude usage API is rate limited; retrying automatically soon";
 "service.claude.rate_limited_minutes" = "Claude usage API is rate limited; retrying automatically in about %1$d min";
-"service.claude.session_expired" = "Your Claude session expired; run claude in a terminal once to renew it";
+"service.claude.session_expired" = "Claude login expired. Reopen your official Claude app and retry, or add a claude.ai Cookie in Data Sources. Desktop login may not renew Code credentials.";
 "service.codex.authorization_required" = "Allow TokenRemain read-only access to your Codex login credentials";
 "service.codex.invalid_stored_credentials" = "Codex login credentials are not recognized; sign in again in ChatGPT or Codex";
 "service.codex.not_logged_in" = "No Codex login credentials found; sign in with ChatGPT or Codex";
@@ -737,3 +737,17 @@
 "alibaba.error.response" = "The console returned an unsupported quota response. Retry later.";
 "alibaba.error.request" = "The console could not read this quota. Check account permissions, region and plan, then retry.";
 "alibaba.error.network" = "Could not connect to the console. Check the network and retry.";
+
+"claude.logs.scan_limit" = "Claude log discovery exceeded its directory budget. Remove oversized custom directories and retry.";
+"claude.logs.title" = "Claude local logs";
+"claude.logs.note" = "Code and Cowork logs are counted when available. Ordinary desktop chat, web and mobile chat do not expose local token logs. Unknown prices do not hide tokens.";
+"claude.logs.add" = "Add Claude config folder";
+"claude.logs.empty" = "No local projects folder found. Choose the folder containing projects if you use a custom location.";
+"claude.web.placeholder" = "Paste claude.ai sessionKey or Cookie";
+"claude.web.setup" = "Optional web session for desktop-only users: paste sessionKey from your own claude.ai session. Saved only in this Mac’s Keychain after validation. While configured, the web account replaces the default Claude quota source; isolated CLI accounts stay separate. Remove it to return to local OAuth.";
+"claude.web.organization" = "Organization UUID (optional; required for multiple organizations)";
+"claude.web.invalid_cookie" = "Enter a valid sessionKey and, if needed, an organization UUID.";
+"claude.web.expired" = "Claude web session expired. Sign in to claude.ai and replace the Cookie in Data Sources.";
+"claude.web.forbidden" = "Claude web access was blocked (possibly a browser challenge). Open claude.ai to check your session and retry.";
+"claude.web.organization_required" = "Choose an organization: enter its UUID from the claude.ai organization URL, then save again.";
+"claude.web.invalid_response" = "Claude web returned unsupported usage data. Previous usage is retained; retry later.";

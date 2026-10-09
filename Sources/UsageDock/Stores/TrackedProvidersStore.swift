@@ -86,6 +86,7 @@ final class TrackedProvidersStore: ObservableObject {
 
     static func requiresManualCredential(_ provider: ProviderQuota.Provider) -> Bool {
         switch provider {
+        case .claude: false // Web Cookie is optional; local app discovery still works.
         case .zai, .openrouter:
             true
         default:
@@ -409,7 +410,7 @@ final class TrackedProvidersStore: ObservableObject {
         home: URL,
         environment: [String: String]
     ) -> [Detection] {
-        ProviderSecretStore.descriptors.map { descriptor in
+        ProviderSecretStore.descriptors.filter { $0.provider != .claude }.map { descriptor in
             var store = ProviderSecretStore(provider: descriptor.provider)
             store.environment = environment
             let configured = store.load() != nil

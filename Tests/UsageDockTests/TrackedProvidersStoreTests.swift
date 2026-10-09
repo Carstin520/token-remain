@@ -87,7 +87,7 @@ struct TrackedProvidersStoreTests {
     func everyManualCredentialProviderIsVisibleForSetup() {
         let expected = Set(
             [.zai, .openrouter]
-                + ProviderSecretStore.descriptors.map(\.provider)
+                + ProviderSecretStore.descriptors.map(\.provider).filter { $0 != .claude }
         )
         let classified = Set(
             TrackedProvidersStore.allProviders.filter(

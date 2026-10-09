@@ -139,8 +139,8 @@
 "datasource.authorizing" = "Wird geprüft…";
 "datasource.open_provider_app" = "%1$@ öffnen";
 "service.claude.authorization_required" = "Erlaube TokenRemain den schreibgeschützten Zugriff auf deine Claude-Anmeldedaten";
-"service.claude.invalid_stored_credentials" = "Claude-Anmeldedaten wurden nicht erkannt; führe claude im Terminal aus und melde dich mit /login erneut an";
-"service.claude.session_expired" = "Deine Claude-Sitzung ist abgelaufen; führe claude einmal im Terminal aus, um sie zu erneuern";
+"service.claude.invalid_stored_credentials" = "Claude-Anmeldung nicht erkannt. Melde dich in der offiziellen App an oder füge ein claude.ai-Cookie unter Datenquellen hinzu.";
+"service.claude.session_expired" = "Claude-Anmeldung abgelaufen. Öffne die offizielle App erneut oder füge ein claude.ai-Cookie unter Datenquellen hinzu. Desktop-Anmeldung erneuert Code-Zugangsdaten möglicherweise nicht.";
 "service.codex.authorization_required" = "Erlaube TokenRemain den schreibgeschützten Zugriff auf deine Codex-Anmeldedaten";
 "service.codex.invalid_stored_credentials" = "Codex-Anmeldedaten wurden nicht erkannt; melde dich in ChatGPT oder Codex erneut an";
 "datasource.broken" = "Verbindung unterbrochen";
@@ -339,7 +339,7 @@
 "alert.provider_signed_out.body" = "TokenRemain kann deine Nutzung nicht mehr lesen – die Karten zeigen den letzten gültigen Stand. Melde dich wieder bei %@ an, um sie wiederherzustellen.";
 "service.claude.cli_timeout" = "Zeitüberschreitung beim Lesen der Claude-Code-Nutzung; letzter Cache wird angezeigt";
 "service.claude.network_unreachable" = "Claude ist derzeit nicht erreichbar; letzter Cache wird angezeigt, neuer Versuch sobald Netzwerk oder Proxy zurück sind";
-"service.claude.credentials_unavailable" = "Keine nutzbare Claude-Anmeldung gefunden; führe claude im Terminal aus und melde dich mit /login an";
+"service.claude.credentials_unavailable" = "Keine lesbare Claude-Anmeldung. Öffne die offizielle App oder füge ein claude.ai-Cookie unter Datenquellen hinzu.";
 "service.claude.invalid_usage_output" = "Claude Code lieferte keine erkennbare 5-Stunden-/7-Tage-Nutzung";
 "service.claude.probe_launch_failed" = "Claude-Code-Nutzungssonde konnte nicht gestartet werden: %1$@";
 "service.claude.rate_limited" = "Claude-Nutzungs-API gedrosselt; automatischer neuer Versuch in Kürze";
@@ -737,3 +737,17 @@
 "alibaba.error.response" = "Nicht unterstützte Kontingentdaten erhalten. Später erneut versuchen.";
 "alibaba.error.request" = "Kontingent konnte nicht gelesen werden. Berechtigungen, Region und Tarif prüfen.";
 "alibaba.error.network" = "Keine Verbindung zur Konsole. Netzwerk prüfen und erneut versuchen.";
+
+"claude.logs.scan_limit" = "Die Claude-Verzeichnissuche hat ihr Limit erreicht. Prüfe die Ordner und versuche es erneut.";
+"claude.logs.title" = "Lokale Claude-Protokolle";
+"claude.logs.note" = "Verfügbare Code- und Cowork-Protokolle werden gezählt. Normale Desktop-, Web- und Mobil-Chats liefern keine lokalen Token-Protokolle. Unbekannte Preise verbergen keine Tokens.";
+"claude.logs.add" = "Claude-Konfigurationsordner hinzufügen";
+"claude.logs.empty" = "Kein lokaler projects-Ordner gefunden. Wähle bei einem eigenen Speicherort den Ordner, der projects enthält.";
+"claude.web.placeholder" = "claude.ai sessionKey oder Cookie einfügen";
+"claude.web.setup" = "Optionale Web-Sitzung: Füge deinen claude.ai sessionKey ein. Nach der Prüfung wird er nur im lokalen Schlüsselbund gespeichert. Das Web-Konto ersetzt die Standard-Claude-Quelle; isolierte CLI-Konten bleiben getrennt. Entfernen aktiviert wieder lokales OAuth.";
+"claude.web.organization" = "Organisations-UUID (optional; bei mehreren erforderlich)";
+"claude.web.invalid_cookie" = "Gib einen gültigen sessionKey und bei Bedarf eine Organisations-UUID ein.";
+"claude.web.expired" = "Die Claude-Web-Sitzung ist abgelaufen. Melde dich bei claude.ai an und ersetze das Cookie unter Datenquellen.";
+"claude.web.forbidden" = "Claude-Webzugriff wurde blockiert, möglicherweise durch eine Browserprüfung. Prüfe die Sitzung auf claude.ai und versuche es erneut.";
+"claude.web.organization_required" = "Gib die UUID der gewünschten Organisation aus ihrer claude.ai-Adresse ein und speichere erneut.";
+"claude.web.invalid_response" = "Claude Web lieferte unbekannte Nutzungsdaten. Vorherige Werte bleiben erhalten; versuche es später erneut.";

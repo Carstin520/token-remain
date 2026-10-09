@@ -143,8 +143,8 @@
 "datasource.authorizing" = "正在驗證…";
 "datasource.open_provider_app" = "開啟 %1$@";
 "service.claude.authorization_required" = "需要允許 TokenRemain 唯讀存取 Claude 登入憑證";
-"service.claude.invalid_stored_credentials" = "無法辨識 Claude 登入憑證；請在終端機執行 claude 並輸入 /login 重新登入";
-"service.claude.session_expired" = "Claude 登入已過期；請在終端機執行一次 claude 完成續期";
+"service.claude.invalid_stored_credentials" = "无法识别 Claude 登录。请通过官方应用重新登录，或在数据来源添加 claude.ai Cookie。";
+"service.claude.session_expired" = "Claude 登录已过期。请打开官方 Claude 应用并重试，或在数据来源添加 claude.ai Cookie；桌面登录不一定会续期 Code 凭证。";
 "service.codex.authorization_required" = "需要允許 TokenRemain 唯讀存取 Codex 登入憑證";
 "service.codex.invalid_stored_credentials" = "無法辨識 Codex 登入憑證；請在 ChatGPT 或 Codex 中重新登入";
 "datasource.broken" = "資料鏈失效";
@@ -343,7 +343,7 @@
 "alert.provider_signed_out.body" = "TokenRemain 已讀不到用量，卡片顯示的是最後一次成功的快照。重新登入 %@ 後自動恢復。";
 "service.claude.cli_timeout" = "Claude Code 用量讀取逾時，正在顯示最近的快取資料";
 "service.claude.network_unreachable" = "目前無法連線 Claude 服務，正在顯示最近的快取；網路或代理恢復後會自動重試";
-"service.claude.credentials_unavailable" = "找不到可用的 Claude 登入憑證；請在終端機執行 claude 並輸入 /login";
+"service.claude.credentials_unavailable" = "未找到可读取的 Claude 登录。请打开官方 Claude 应用，或在数据来源添加 claude.ai Cookie。";
 "service.claude.invalid_usage_output" = "Claude Code 未回傳可識別的 5 小時 / 7 天用量";
 "service.claude.probe_launch_failed" = "無法啟動 Claude Code 用量探針：%1$@";
 "service.claude.rate_limited" = "Claude 用量 API 受速率限制，稍後將自動重試";
@@ -737,3 +737,17 @@
 "alibaba.error.response" = "控制台傳回不支援的額度資料，請稍後重試。";
 "alibaba.error.request" = "控制台無法讀取額度。請檢查帳號權限、地區及方案後重試。";
 "alibaba.error.network" = "無法連線至控制台，請檢查網路後重試。";
+
+"claude.logs.scan_limit" = "Claude 日志目录扫描超出范围限制，请检查目录后重试。";
+"claude.logs.title" = "Claude 本地日志";
+"claude.logs.note" = "读取可用的 Code 与 Cowork 日志。桌面普通聊天、网页及手机聊天不提供本地 token 日志。价格未知不会隐藏 token。";
+"claude.logs.add" = "添加 Claude 配置目录";
+"claude.logs.empty" = "未找到本地 projects 目录。若使用自定义位置，请添加包含 projects 的配置目录。";
+"claude.web.placeholder" = "粘贴 claude.ai sessionKey 或 Cookie";
+"claude.web.setup" = "可选网页会话：粘贴自己的 claude.ai sessionKey，验证后仅存本机钥匙串。配置后默认 Claude 额度来自该网页账号，隔离 CLI 账号不受影响；移除后恢复本地 OAuth。";
+"claude.web.organization" = "组织 UUID（可选；多个组织时必填）";
+"claude.web.invalid_cookie" = "请输入有效 sessionKey；如需指定组织，请填写有效 UUID。";
+"claude.web.expired" = "Claude 网页 Cookie 已失效，请登录 claude.ai 并在数据来源替换 Cookie。";
+"claude.web.forbidden" = "Claude 网页访问被拒绝，可能需要浏览器验证。请打开 claude.ai 检查会话后重试。";
+"claude.web.organization_required" = "无法唯一确定组织，请填写 claude.ai 组织地址中的 UUID 后重新保存。";
+"claude.web.invalid_response" = "Claude 网页返回了无法识别的额度数据，保留上次用量，请稍后重试。";

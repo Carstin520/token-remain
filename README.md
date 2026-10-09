@@ -77,7 +77,7 @@ iPhone 版目前为 [TestFlight 公开测试](https://testflight.apple.com/join/
 ## 快速上手
 
 1. [下载 DMG](https://api.tokenremain.com/v1/downloads/macos),把 TokenRemain 拖进「应用程序」后打开。
-2. 欢迎页会扫描本机已安装的 AI 工具,勾选要追踪的即可。凭证沿用各工具自己的登录,无需在 TokenRemain 里再登录;Claude/Codex 用官方桌面 App 即可,无需另装 CLI。
+2. 欢迎页会扫描本机已安装的 AI 工具,勾选要追踪的即可。凭证沿用各工具自己的登录,无需在 TokenRemain 里再登录;Codex 可沿用官方桌面 App 登录。Claude Code/Cowork 本地 token 统计无需额外 CLI；Claude 额度需可读取的 Code OAuth 登录或手动配置 claude.ai Cookie，桌面 App 登录不保证续期 Code 凭证。
 3. Z.ai、OpenRouter 等需要 API Key 的服务:直接在对应额度卡里粘贴,或在「数据来源」页的「API Key 设置」中填写。密钥只存本机钥匙串。
 4. 在「设置 › 刷新与同步」调整额度刷新频率(1–30 分钟或仅手动);在「数据来源」页选择纳入成本统计的本地 Agent。
 
@@ -228,3 +228,9 @@ rm -rf ~/Library/Caches/com.jamesli.usagedock ~/Library/Application\ Support/com
 源代码与源文档采用 [Apache License 2.0](LICENSE);TokenRemain 名称、Logo、图标、机器人形象与原创设计素材不在授权范围内,详见[品牌与素材许可说明](ASSET-LICENSE.md)。
 
 <sub>TokenRemain 是独立应用,与 Anthropic、OpenAI、Anysphere、xAI、GitHub、智谱 AI 或任何服务商均无隶属、背书或赞助关系;服务名称与标识仅用于标示你可选择接入的服务。发布者与支持联系人:Dongheng Li · jamescarstin520@gmail.com · © 2026</sub>
+
+### Claude 桌面用量与网页额度
+
+本地统计自动合并 `~/.claude`、`~/.config/claude`、继承的 `CLAUDE_CONFIG_DIR` 和 Claude Cowork 的 `.claude/projects` 目录；由内置 ccusage 离线读取并去重。数据来源页可查看发现的目录、添加包含 `projects` 的自定义配置目录。普通聊天、网页和手机会话不提供本地 token 日志；价格未知时仍保留 token。
+
+无 CLI 用户可以在数据来源的 Claude 行粘贴自己的 claude.ai `sessionKey` 或 Cookie。验证成功后只保存在本机、不参与 iCloud 钥匙串同步；不会导入浏览器 Cookie，也不会刷新第三方凭证。配置后默认 Claude 额度明确来自该网页账号，独立 CLI 账号仍使用各自凭证；移除 Cookie 恢复本地 OAuth。多个组织无法唯一匹配时需要填写目标组织 UUID。该网页接口非公开接口，访问质询、过期、网络失败均可能导致无法读取，旧额度保留原更新时间。

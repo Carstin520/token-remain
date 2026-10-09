@@ -48,6 +48,13 @@ struct CCUsageService {
         guard FileManager.default.isExecutableFile(atPath: executable.path) else {
             throw ServiceError.bundledExecutableMissing
         }
+        let directories = try await AsyncDeadline.run(timeout: 5) {
+            try ClaudeLogDirectories.discover()
+        }
+        var environment = ProcessInfo.processInfo.environment
+        if !directories.isEmpty {
+            environment["CLAUDE_CONFIG_DIR"] = directories.map(\.path).joined(separator: ",")
+        }
         let pricingConfigurationURL = await pricingService.configurationURL(now: now)
         let data: Data
         do {
@@ -57,6 +64,7 @@ struct CCUsageService {
                     since: since,
                     pricingConfigurationURL: pricingConfigurationURL
                 ),
+                environment: environment,
                 timeout: 30
             )
         } catch let error as URLError where error.code == .timedOut {

@@ -17,6 +17,10 @@ struct ProviderSecretStore {
     /// token-monitor 兼容的密钥/Cookie 型 provider 目录(Z.ai / OpenRouter
     /// 已有专用 store,不在此列)。
     static let descriptors: [Descriptor] = [
+        Descriptor(provider: .claude,
+                   envKeys: [],
+                   placeholder: L10n.text("claude.web.placeholder"),
+                   isCookie: true),
         Descriptor(provider: .deepseek,
                    envKeys: ["DEEPSEEK_API_KEY"],
                    placeholder: L10n.text("secret.placeholder.deepseek"),

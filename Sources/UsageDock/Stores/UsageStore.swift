@@ -139,7 +139,7 @@ final class UsageStore: ObservableObject {
     private let hostQuotaRouter: HostAppQuotaRoutingService
 
     private enum QuotaRefreshOutput {
-        case claude(Result<ProviderQuota, Error>)
+        case claude(UInt64, Result<ProviderQuota, Error>)
         case providerAccount(ProviderAccountProfile, Result<ProviderQuota, Error>)
         case codex(Result<ProviderQuota, Error>)
         case auxiliary(ProviderQuota.Provider, UInt64, Result<ProviderQuota, Error>)
@@ -755,8 +755,9 @@ final class UsageStore: ObservableObject {
         var errors: [String] = []
         await withTaskGroup(of: QuotaRefreshOutput.self) { group in
             if shouldRefreshClaude {
+                let revision = credentialRevisions[.claude, default: 0]
                 group.addTask {
-                    .claude(
+                    .claude(revision,
                         await result {
                             try await hostQuotaRouter.fetchClaude()
                         }
@@ -836,7 +837,8 @@ final class UsageStore: ObservableObject {
         errors: inout [String]
     ) {
         switch output {
-        case .claude(let claudeResult):
+        case .claude(let revision, let claudeResult):
+            guard !Task.isCancelled, revision == credentialRevisions[.claude, default: 0] else { return }
             lastClaudeAttempt = now
             switch claudeResult {
             case .success(let value):
@@ -1139,6 +1141,8 @@ final class UsageStore: ObservableObject {
         now: Date
     ) async throws -> ProviderQuota {
         switch provider {
+        case .claude:
+            return try await ClaudeWebUsageService().fetch(configuration: credential, now: now)
         case .zai:
             return try await ZAIUsageService().fetch(
                 apiKey: credential,
@@ -1209,6 +1213,7 @@ final class UsageStore: ObservableObject {
 
     nonisolated static func saveCredential(_ provider: ProviderQuota.Provider, _ credential: String) throws {
         switch provider {
+        case .claude: try ProviderSecretStore(provider: .claude).save(ClaudeWebUsageService.Configuration.decode(credential).encoded())
         case .zai: try ZAIKeyStore().save(credential)
         case .openrouter: try OpenRouterKeyStore().save(credential)
         default: try ProviderSecretStore(provider: provider).save(credential)
@@ -1231,7 +1236,12 @@ final class UsageStore: ObservableObject {
             providerNotices[provider] = error.localizedDescription
             return false
         }
-        await refreshKeyProvider(provider)
+        if provider == .claude {
+            assign(nil, to: .claude) // changing source must not retain the web account's quota
+            await refresh(forceCCUsage: false, forceClaude: true)
+        } else {
+            await refreshKeyProvider(provider)
+        }
         return true
     }
 

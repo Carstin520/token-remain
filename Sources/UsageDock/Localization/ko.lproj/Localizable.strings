@@ -139,8 +139,8 @@
 "datasource.authorizing" = "확인 중…";
 "datasource.open_provider_app" = "%1$@ 열기";
 "service.claude.authorization_required" = "TokenRemain에 Claude 로그인 자격 증명 읽기 전용 접근을 허용하세요";
-"service.claude.invalid_stored_credentials" = "Claude 로그인 정보를 인식할 수 없습니다. 터미널에서 claude를 실행하고 /login으로 다시 로그인하세요";
-"service.claude.session_expired" = "Claude 세션이 만료되었습니다. 터미널에서 claude를 한 번 실행해 갱신하세요";
+"service.claude.invalid_stored_credentials" = "Claude 로그인을 인식할 수 없습니다. 공식 앱에서 다시 로그인하거나 데이터 소스에 claude.ai Cookie를 추가하세요.";
+"service.claude.session_expired" = "Claude 로그인이 만료되었습니다. 공식 앱을 열거나 데이터 소스에 claude.ai Cookie를 추가하세요. 데스크톱 로그인으로 Code 인증 정보가 갱신되지 않을 수 있습니다.";
 "service.codex.authorization_required" = "TokenRemain에 Codex 로그인 자격 증명 읽기 전용 접근을 허용하세요";
 "service.codex.invalid_stored_credentials" = "Codex 로그인 자격 증명을 인식할 수 없습니다. ChatGPT 또는 Codex에서 다시 로그인하세요";
 "datasource.broken" = "데이터 연결 끊김";
@@ -339,7 +339,7 @@
 "alert.provider_signed_out.body" = "TokenRemain이 사용량을 읽을 수 없습니다. 카드는 마지막으로 성공한 스냅샷을 표시하고 있습니다. %@에 다시 로그인하면 복구됩니다.";
 "service.claude.cli_timeout" = "Claude Code 사용량 읽기 시간 초과. 최근 캐시를 표시합니다";
 "service.claude.network_unreachable" = "지금은 Claude에 연결할 수 없습니다. 최근 캐시를 표시하며 네트워크나 프록시가 복구되면 다시 시도합니다";
-"service.claude.credentials_unavailable" = "사용 가능한 Claude 로그인 정보가 없습니다. 터미널에서 claude를 실행하고 /login으로 로그인하세요";
+"service.claude.credentials_unavailable" = "읽을 수 있는 Claude 로그인이 없습니다. 공식 앱을 열거나 데이터 소스에 claude.ai Cookie를 추가하세요.";
 "service.claude.invalid_usage_output" = "Claude Code가 인식 가능한 5시간 / 7일 사용량을 반환하지 않았습니다";
 "service.claude.probe_launch_failed" = "Claude Code 사용량 프로브를 시작할 수 없습니다: %1$@";
 "service.claude.rate_limited" = "Claude 사용량 API 요청이 제한되었습니다. 잠시 후 자동으로 다시 시도합니다";
@@ -737,3 +737,17 @@
 "alibaba.error.response" = "지원되지 않는 할당량 데이터입니다. 나중에 재시도하세요.";
 "alibaba.error.request" = "할당량을 읽을 수 없습니다. 계정 권한, 지역, 요금제를 확인하세요.";
 "alibaba.error.network" = "연결할 수 없습니다. 네트워크를 확인하고 재시도하세요.";
+
+"claude.logs.scan_limit" = "Claude 폴더 검색 한도에 도달했습니다. 폴더를 확인하고 다시 시도하세요.";
+"claude.logs.title" = "Claude 로컬 로그";
+"claude.logs.note" = "사용 가능한 Code 및 Cowork 로그를 집계합니다. 일반 데스크톱 채팅, 웹 및 모바일은 로컬 토큰 로그를 제공하지 않습니다. 가격을 몰라도 토큰은 표시합니다.";
+"claude.logs.add" = "Claude 설정 폴더 추가";
+"claude.logs.empty" = "로컬 projects 폴더가 없습니다. 사용자 지정 위치를 사용하면 projects가 포함된 폴더를 선택하세요.";
+"claude.web.placeholder" = "claude.ai sessionKey 또는 Cookie 붙여넣기";
+"claude.web.setup" = "선택 사항인 웹 세션: 본인의 claude.ai sessionKey를 붙여넣으세요. 검증 후 이 Mac의 키체인에만 저장합니다. 웹 계정이 기본 Claude 할당량 소스를 대체하며 격리된 CLI 계정은 유지됩니다. 삭제하면 로컬 OAuth로 돌아갑니다.";
+"claude.web.organization" = "조직 UUID (선택 사항, 조직이 여러 개면 필수)";
+"claude.web.invalid_cookie" = "유효한 sessionKey와 필요한 경우 조직 UUID를 입력하세요.";
+"claude.web.expired" = "Claude 웹 세션이 만료되었습니다. claude.ai에 로그인하고 데이터 소스에서 Cookie를 교체하세요.";
+"claude.web.forbidden" = "Claude 웹 접근이 차단되었습니다. 브라우저 확인이 필요할 수 있습니다. claude.ai에서 세션을 확인하고 다시 시도하세요.";
+"claude.web.organization_required" = "claude.ai 조직 주소의 UUID를 입력하고 다시 저장하세요.";
+"claude.web.invalid_response" = "Claude 웹 사용량 데이터를 읽을 수 없습니다. 이전 값을 유지합니다. 나중에 다시 시도하세요.";

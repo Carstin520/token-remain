@@ -435,6 +435,9 @@ struct HostAppQuotaRoutingService: Sendable {
     }
 
     func fetchClaude() async throws -> ProviderQuota {
+        if let cookie = try ProviderSecretStore(provider: .claude).loadFromKeychain(interaction: .disallowed) {
+            return try await ClaudeWebUsageService().fetch(configuration: cookie)
+        }
         let route = detector.route(for: .claude)
         guard route.isExternal else { return try await ClaudeUsageService().fetch() }
         return try await fetchExternal(route)
