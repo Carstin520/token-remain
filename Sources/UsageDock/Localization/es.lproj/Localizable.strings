@@ -751,3 +751,18 @@
 "claude.web.forbidden" = "El acceso web de Claude está bloqueado, quizá por una verificación del navegador. Comprueba tu sesión en claude.ai y reintenta.";
 "claude.web.organization_required" = "Introduce el UUID de la organización desde su dirección de claude.ai y vuelve a guardar.";
 "claude.web.invalid_response" = "Claude Web devolvió datos no compatibles. Se conservan los anteriores; reintenta más tarde.";
+
+"prices.title" = "Precios por modelo";
+"prices.reference_note" = "Estimaciones con precios API actuales, no facturas de suscripción. El total de ccusage no cambia. Otros / sin desglosar muestra la diferencia con signo por precios históricos, tramos, modo rápido, precios personalizados o ausentes.";
+"prices.no_table" = "Tabla de precios no disponible";
+"prices.matched" = "Precio coincidente: %@";
+"prices.input" = "Entrada";
+"prices.output" = "Salida";
+"prices.read" = "Lectura de caché";
+"prices.write" = "Escritura de caché";
+"prices.unknown" = "Sin precio";
+"prices.unsplit" = "Sin desglosar";
+"prices.legacy_cache" = "Caché antiguo: %@ tokens sin separación de lectura/escritura.";
+"prices.total" = "Total informado";
+"prices.other" = "Otros / sin desglosar";
+"prices.unpriced_note" = "Parte del uso no tiene precio. Las estimaciones de referencia no representan un total completo.";

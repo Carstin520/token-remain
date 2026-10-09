@@ -751,3 +751,18 @@
 "claude.web.forbidden" = "Claude 웹 접근이 차단되었습니다. 브라우저 확인이 필요할 수 있습니다. claude.ai에서 세션을 확인하고 다시 시도하세요.";
 "claude.web.organization_required" = "claude.ai 조직 주소의 UUID를 입력하고 다시 저장하세요.";
 "claude.web.invalid_response" = "Claude 웹 사용량 데이터를 읽을 수 없습니다. 이전 값을 유지합니다. 나중에 다시 시도하세요.";
+
+"prices.title" = "모델 가격 분석";
+"prices.reference_note" = "현재 API 정가 기준 추정치이며 구독 청구액이 아닙니다. ccusage 합계는 유지됩니다. 기타 / 미분류는 과거 가격, 구간 요금, 고속 모드, 사용자 가격 또는 누락된 가격에 따른 부호 있는 차액입니다.";
+"prices.no_table" = "가격표를 사용할 수 없음";
+"prices.matched" = "일치하는 가격: %@";
+"prices.input" = "입력";
+"prices.output" = "출력";
+"prices.read" = "캐시 읽기";
+"prices.write" = "캐시 쓰기";
+"prices.unknown" = "가격 미정";
+"prices.unsplit" = "미분류";
+"prices.legacy_cache" = "이전 캐시: 캐시 토큰 %@개는 읽기/쓰기가 구분되지 않습니다.";
+"prices.total" = "보고된 합계";
+"prices.other" = "기타 / 미분류";
+"prices.unpriced_note" = "일부 사용량의 가격을 알 수 없습니다. 참고 추정치는 완전한 합계가 아닙니다.";

@@ -202,6 +202,18 @@ actor CCUsagePricingService {
         return storedPricing?.pricingOverrides ?? [:]
     }
 
+    struct AnalysisSnapshot: Sendable {
+        let prices: [String: PricingOverride]
+        let fetchedAt: Date?
+    }
+
+    /// Read-only reference prices for the analysis view. Viewing a model never
+    /// triggers a network request or sends model identifiers to the price host.
+    func cachedAnalysisSnapshot() -> AnalysisSnapshot {
+        loadCacheIfNeeded()
+        return AnalysisSnapshot(prices: storedPricing?.pricingOverrides ?? [:], fetchedAt: storedPricing?.fetchedAt)
+    }
+
     private func refreshIfNeeded(now: Date) async {
         if let storedPricing, Self.isFresh(storedPricing.fetchedAt, now: now) {
             return

@@ -13,7 +13,7 @@ struct TrendsSection: View {
 
     /// Real per-day history, oldest-first; nil / <2 days ⇒ honest empty state.
     private var trendDays: [DailyUsageHistory.Day]? {
-        guard let days = insights.history?.days, days.count >= 2 else { return nil }
+        guard let days = insights.history?.days, !days.isEmpty else { return nil }
         return days
     }
 

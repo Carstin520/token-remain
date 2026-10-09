@@ -234,3 +234,9 @@ rm -rf ~/Library/Caches/com.jamesli.usagedock ~/Library/Application\ Support/com
 本地统计自动合并 `~/.claude`、`~/.config/claude`、继承的 `CLAUDE_CONFIG_DIR` 和 Claude Cowork 的 `.claude/projects` 目录；由内置 ccusage 离线读取并去重。数据来源页可查看发现的目录、添加包含 `projects` 的自定义配置目录。普通聊天、网页和手机会话不提供本地 token 日志；价格未知时仍保留 token。
 
 无 CLI 用户可以在数据来源的 Claude 行粘贴自己的 claude.ai `sessionKey` 或 Cookie。验证成功后只保存在本机、不参与 iCloud 钥匙串同步；不会导入浏览器 Cookie，也不会刷新第三方凭证。配置后默认 Claude 额度明确来自该网页账号，独立 CLI 账号仍使用各自凭证；移除 Cookie 恢复本地 OAuth。多个组织无法唯一匹配时需要填写目标组织 UUID。该网页接口非公开接口，访问质询、过期、网络失败均可能导致无法读取，旧额度保留原更新时间。
+
+### 趋势中的模型价格分析
+
+趋势页按当前时间范围（或点选的单日）展示模型的输入、输出、缓存命中和缓存写入单价（USD / 1M tokens）、token 数与估算费用。单价来自已缓存的 LiteLLM 公共价格表，并标注获取时间；打开价格面板不发起网络请求。它是当前 API 标价的参考估算，不是订阅账单或第三方中转实际账单。
+
+ccusage 报告的总费用保持原值；分时、分档、快速模式、用户覆盖价格与缺失单价产生的正负差额显示为“其他 / 未拆分”。缺价不会当成免费；旧历史缓存无法区分缓存读写时保留原始合计并标为未拆分。沿用有界模型历史，合并的 `other` 行不猜测某个模型的单价。移动端同步格式不包含这些新增价格字段。

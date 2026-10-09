@@ -235,7 +235,9 @@ struct CCUsageService {
                 inputTokens: row.inputTokens,
                 outputTokens: row.outputTokens,
                 cacheTokens: row.cacheCreationTokens + row.cacheReadTokens,
-                cost: row.cost
+                cost: row.cost,
+                cacheReadTokens: row.cacheReadTokens,
+                cacheCreationTokens: row.cacheCreationTokens
             )
         })
     }

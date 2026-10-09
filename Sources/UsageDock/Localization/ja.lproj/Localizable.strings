@@ -751,3 +751,18 @@
 "claude.web.forbidden" = "Claude Web へのアクセスが拒否されました。ブラウザ認証の可能性があります。claude.ai で確認して再試行してください。";
 "claude.web.organization_required" = "claude.ai の組織 URL にある UUID を入力し、再度保存してください。";
 "claude.web.invalid_response" = "Claude Web の使用量データを読み取れません。前回の値を保持します。後で再試行してください。";
+
+"prices.title" = "モデル別価格分析";
+"prices.reference_note" = "現在の API 定価による見積もりで、サブスクリプション請求ではありません。ccusage 合計は変更しません。その他・未分類は過去の価格、段階料金、高速モード、カスタム価格、価格不明などによる符号付きの差額です。";
+"prices.no_table" = "価格表を取得できません";
+"prices.matched" = "対応する価格：%@";
+"prices.input" = "入力";
+"prices.output" = "出力";
+"prices.read" = "キャッシュ読込";
+"prices.write" = "キャッシュ書込";
+"prices.unknown" = "価格不明";
+"prices.unsplit" = "未分類";
+"prices.legacy_cache" = "旧キャッシュ：%@ キャッシュトークンは読込・書込に分かれていません。";
+"prices.total" = "報告済み合計";
+"prices.other" = "その他・未分類";
+"prices.unpriced_note" = "一部の使用量は価格不明です。参考見積もりは完全な合計ではありません。";

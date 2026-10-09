@@ -751,3 +751,18 @@
 "claude.web.forbidden" = "Claude-Webzugriff wurde blockiert, möglicherweise durch eine Browserprüfung. Prüfe die Sitzung auf claude.ai und versuche es erneut.";
 "claude.web.organization_required" = "Gib die UUID der gewünschten Organisation aus ihrer claude.ai-Adresse ein und speichere erneut.";
 "claude.web.invalid_response" = "Claude Web lieferte unbekannte Nutzungsdaten. Vorherige Werte bleiben erhalten; versuche es später erneut.";
+
+"prices.title" = "Modellpreise";
+"prices.reference_note" = "Schätzung mit aktuellen API-Listenpreisen, keine Abonnementrechnung. Die ccusage-Summe bleibt unverändert. Sonstiges / ungeteilt zeigt die vorzeichenbehaftete Differenz, etwa durch historische, gestaffelte, schnelle oder eigene Tarife und fehlende Preise.";
+"prices.no_table" = "Preistabelle nicht verfügbar";
+"prices.matched" = "Zugeordneter Preis: %@";
+"prices.input" = "Eingabe";
+"prices.output" = "Ausgabe";
+"prices.read" = "Cache lesen";
+"prices.write" = "Cache schreiben";
+"prices.unknown" = "Ohne Preis";
+"prices.unsplit" = "Ungeteilt";
+"prices.legacy_cache" = "Alter Cache: %@ Cache-Tokens ohne Lese-/Schreibaufteilung.";
+"prices.total" = "Gemeldete Summe";
+"prices.other" = "Sonstiges / ungeteilt";
+"prices.unpriced_note" = "Ein Teil der Nutzung hat keinen Preis. Referenzschätzungen sind keine vollständige Gesamtsumme.";
