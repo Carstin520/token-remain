@@ -43,7 +43,11 @@ struct ClaudeDesktopUsageTests {
         try record(2).write(to: cowork.appendingPathComponent("projects/fixture/cowork.jsonl"))
         let directories = try ClaudeLogDirectories.discover(home: home, environment: [:], additional: [])
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
-        let helper = root.appendingPathComponent("Vendor/ccusage/20.0.19/darwin-universal/ccusage")
+        let info = try PropertyListSerialization.propertyList(
+            from: Data(contentsOf: root.appendingPathComponent("Resources/Info.plist")), format: nil
+        ) as? [String: Any]
+        let helperVersion = try #require(info?["TokenRemainBundledCCUsageVersion"] as? String)
+        let helper = root.appendingPathComponent("Vendor/ccusage/\(helperVersion)/darwin-universal/ccusage")
         let output = try await ProcessRunner.run(helper.path,
             arguments: CCUsageService.commandArguments(since: "2026-01-10", timeZone: TimeZone(secondsFromGMT: 0)!),
             environment: ["HOME": home.path, "PATH": "/usr/bin:/bin",

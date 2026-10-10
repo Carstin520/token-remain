@@ -3,6 +3,25 @@
 All notable product changes are recorded here. TokenRemain uses Semantic
 Versioning for public releases.
 
+## 1.4.0 — 2026-10-10
+
+### Added
+
+- Include Claude Desktop/Cowork session logs in local usage totals, with custom
+  log directories and duplicate-session protection.
+- Support explicitly configured Claude web sessions for quota reads, with
+  organization selection, cancellation, timeouts and retry backoff.
+
+### Fixed
+
+- Update the bundled macOS ccusage helper to 20.0.28, verifying the matching
+  official wrapper's MIT notice when platform archives omit the license.
+- Preserve local Claude totals when Desktop log discovery is slow or reaches
+  its scan limit; distinguish rejected sessions from temporary web failures.
+- Render a neutral robot icon for third-party sources.
+- Reconcile website download counts with GitHub release downloads and restore
+  reproducible Broadcast dependency installation.
+
 ## 1.3.9 — 2026-09-17
 
 ### Added

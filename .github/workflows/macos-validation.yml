@@ -79,6 +79,9 @@ jobs:
       - name: Agent lane guard
         run: bash script/verify_agent_lane_guard.sh
 
+      - name: Offline ccusage license fallback tests
+        run: python3 script/test_ccusage_license.py
+
   broadcast:
     name: Broadcast typecheck and tests
     # broadcast/package.json pins @rolldown/binding-darwin-arm64 as a direct

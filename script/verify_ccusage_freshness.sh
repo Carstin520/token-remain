@@ -121,7 +121,7 @@ download_and_validate() {
   if printf '%s\n' "$archive_entries" | /usr/bin/grep -Eq '(^/|(^|/)\.\.(/|$))'; then
     fail "$package tarball contains an unsafe path"
   fi
-  for required_entry in package/bin/ccusage package/package.json package/LICENSE; do
+  for required_entry in package/bin/ccusage package/package.json; do
     printf '%s\n' "$archive_entries" | /usr/bin/grep -Fxq "$required_entry" \
       || fail "$package tarball is missing $required_entry"
   done
@@ -142,6 +142,54 @@ download_and_validate() {
   /bin/chmod +x "$package_binary"
   [[ "$(/usr/bin/lipo "$package_binary" -archs)" == "$expected_macho_arch" ]] \
     || fail "$package binary is not a $expected_macho_arch Mach-O executable"
+  # Recent platform packages omit LICENSE. Only the same-version official
+  # wrapper may supply it, after identity, integrity and license validation.
+  if [[ ! -f "$package_dir/LICENSE" ]]; then
+    download_same_version_license "$version"
+    /usr/bin/ditto "$WORK_DIR/license-$version/LICENSE" "$package_dir/LICENSE"
+  fi
+}
+
+download_same_version_license() {
+  local version="$1" directory metadata archive tarball actual_integrity
+  directory="$WORK_DIR/license-$version"
+  [[ ! -f "$directory/LICENSE" ]] || return 0
+  /bin/mkdir -p "$directory"
+  metadata="$directory/metadata.json"
+  archive="$directory/package.tgz"
+  /usr/bin/curl --fail --silent --show-error --max-time 15 \
+    "https://registry.npmjs.org/ccusage/$version" -o "$metadata" \
+    || fail "same-version official ccusage license metadata is unavailable"
+  validate_metadata "$metadata" ccusage ccusage
+  [[ "$(metadata_value "$metadata" version)" == "$version" ]] \
+    || fail "license package version does not match the native helpers"
+  tarball="$(metadata_value "$metadata" dist.tarball)"
+  /usr/bin/curl --fail --silent --show-error --max-time 60 "$tarball" -o "$archive" \
+    || fail "official ccusage license package download failed"
+  [[ "$(/usr/bin/shasum -a 1 "$archive" | /usr/bin/awk '{print $1}')" == "$(metadata_value "$metadata" dist.shasum)" ]] \
+    || fail "license package SHA-1 mismatch"
+  actual_integrity="sha512-$(/usr/bin/openssl dgst -sha512 -binary "$archive" | /usr/bin/openssl base64 -A)"
+  [[ "$actual_integrity" == "$(metadata_value "$metadata" dist.integrity)" ]] \
+    || fail "license package SHA-512 integrity mismatch"
+  # Read only two regular members without extracting archive paths or links.
+  /usr/bin/python3 - "$archive" "$version" "$directory/LICENSE" <<'PY' || fail "official same-version license package failed validation"
+import json, pathlib, sys, tarfile
+archive, version, destination = sys.argv[1:]
+with tarfile.open(archive) as package:
+    contents = {}
+    for name in ("package/package.json", "package/LICENSE"):
+        matches = [member for member in package.getmembers() if member.name == name]
+        if len(matches) != 1 or not matches[0].isfile() or matches[0].size > 65536:
+            raise SystemExit("license package requires unique, bounded regular metadata and LICENSE files")
+        contents[name] = package.extractfile(matches[0]).read()
+    metadata = json.loads(contents["package/package.json"])
+    if (metadata.get("name"), metadata.get("version"), metadata.get("license")) != ("ccusage", version, "MIT"):
+        raise SystemExit("license package identity, version or license mismatch")
+    license_text = contents["package/LICENSE"].decode("utf-8")
+    if "MIT License" not in license_text or "Permission is hereby granted" not in license_text or "Copyright" not in license_text:
+        raise SystemExit("official license package does not contain the expected MIT notice")
+    pathlib.Path(destination).write_bytes(contents["package/LICENSE"])
+PY
 }
 
 if [[ "$MODE" != "--check" && "$MODE" != "--local" && "$MODE" != "--update" ]]; then
@@ -196,8 +244,9 @@ UNIVERSAL_BINARY="$WORK_DIR/ccusage-universal"
 # Every judgement about the *candidate* release lives here, and the caller
 # runs it in a subshell so its `fail` ends the candidate, not the run. An
 # upstream packaging mistake must not block a release while the vendored
-# helper still verifies — 20.0.20 shipped without package/LICENSE, and the
-# only alternatives were shipping an unlicensed binary or shipping nothing.
+# helper still verifies. Since 20.0.20, some native packages omit LICENSE;
+# accept only their verified same-version wrapper notice, otherwise retain
+# the already verified vendored helper.
 validate_and_assemble_candidate() {
   download_and_validate "$ARM_METADATA" "$ARM_PACKAGE" "ccusage-darwin-arm64" arm64 arm64 "$ARM_DOWNLOAD_DIR"
   download_and_validate "$X64_METADATA" "$X64_PACKAGE" "ccusage-darwin-x64" x64 x86_64 "$X64_DOWNLOAD_DIR"
