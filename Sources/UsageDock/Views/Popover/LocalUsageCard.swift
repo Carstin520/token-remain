@@ -98,6 +98,13 @@ struct LocalUsageCard: View {
                 } else {
                     localUsageEmptyState
                 }
+                if insights.quota(for: .claude)?.primary.usedPercent ?? 0 > 0,
+                   !entries.contains(where: { $0.id == "claude" }) {
+                    Text(L10n.text("claude.logs.note"))
+                        .font(.system(size: 10))
+                        .usageDockAdaptiveForeground(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
 
                 spendTilesSection
             }

@@ -339,13 +339,13 @@
 "alert.provider_signed_out.body" = "TokenRemain 已读不到用量，卡片显示的是最后一次成功的快照。重新登录 %@ 后自动恢复。";
 "service.claude.cli_timeout" = "Claude Code 用量读取超时，正在显示最近缓存";
 "service.claude.network_unreachable" = "当前无法连接 Claude 服务，正在显示最近缓存；网络或代理恢复后自动重试";
-"service.claude.credentials_unavailable" = "未找到可用的 Claude 登录凭证；请在终端运行 claude 并执行 /login";
-"service.claude.invalid_stored_credentials" = "Claude 登录凭证格式无法识别；请在终端运行 claude 并执行 /login 重新登录";
+"service.claude.credentials_unavailable" = "未找到可读取的 Claude 登录。请打开官方 Claude 应用，或在数据来源添加 claude.ai Cookie。";
+"service.claude.invalid_stored_credentials" = "无法识别 Claude 登录。请通过官方应用重新登录，或在数据来源添加 claude.ai Cookie。";
 "service.claude.invalid_usage_output" = "Claude Code 未返回可识别的 5 小时 / 7 天用量";
 "service.claude.probe_launch_failed" = "无法启动 Claude Code 用量探针：%1$@";
 "service.claude.rate_limited" = "Claude 用量接口限流，稍后自动重试";
 "service.claude.rate_limited_minutes" = "Claude 用量接口限流，约 %1$d 分钟后自动重试";
-"service.claude.session_expired" = "Claude 登录已过期；请在终端运行一次 claude 完成续期";
+"service.claude.session_expired" = "Claude 登录已过期。请打开官方 Claude 应用并重试，或在数据来源添加 claude.ai Cookie；桌面登录不一定会续期 Code 凭证。";
 "service.codex.authorization_required" = "需要允许 TokenRemain 只读访问 Codex 登录凭证";
 "service.codex.invalid_stored_credentials" = "Codex 登录凭证格式无法识别；请打开 ChatGPT 或 Codex 重新登录";
 "service.codex.not_logged_in" = "未找到 Codex 登录凭证；请打开 ChatGPT 或 Codex 登录";
@@ -737,3 +737,17 @@
 "alibaba.error.response" = "控制台返回了不支持的额度数据，请稍后重试。";
 "alibaba.error.request" = "控制台未能读取额度。请检查账号权限、地域及套餐后重试。";
 "alibaba.error.network" = "无法连接控制台，请检查网络后重试。";
+
+"claude.logs.scan_limit" = "Claude 日志目录扫描超出范围限制，请检查目录后重试。";
+"claude.logs.title" = "Claude 本地日志";
+"claude.logs.note" = "读取可用的 Code 与 Cowork 日志。桌面普通聊天、网页及手机聊天不提供本地 token 日志。价格未知不会隐藏 token。";
+"claude.logs.add" = "添加 Claude 配置目录";
+"claude.logs.empty" = "未找到本地 projects 目录。若使用自定义位置，请添加包含 projects 的配置目录。";
+"claude.web.placeholder" = "粘贴 claude.ai sessionKey 或 Cookie";
+"claude.web.setup" = "可选网页会话：粘贴自己的 claude.ai sessionKey，验证后仅存本机钥匙串。配置后默认 Claude 额度来自该网页账号，隔离 CLI 账号不受影响；移除后恢复本地 OAuth。";
+"claude.web.organization" = "组织 UUID（可选；多个组织时必填）";
+"claude.web.invalid_cookie" = "请输入有效 sessionKey；如需指定组织，请填写有效 UUID。";
+"claude.web.expired" = "Claude 网页 Cookie 已失效，请登录 claude.ai 并在数据来源替换 Cookie。";
+"claude.web.forbidden" = "Claude 网页访问被拒绝，可能需要浏览器验证。请打开 claude.ai 检查会话后重试。";
+"claude.web.organization_required" = "无法唯一确定组织，请填写 claude.ai 组织地址中的 UUID 后重新保存。";
+"claude.web.invalid_response" = "Claude 网页返回了无法识别的额度数据，保留上次用量，请稍后重试。";

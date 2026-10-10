@@ -139,8 +139,8 @@
 "datasource.authorizing" = "確認中…";
 "datasource.open_provider_app" = "%1$@ を開く";
 "service.claude.authorization_required" = "TokenRemain に Claude ログイン情報への読み取り専用アクセスを許可してください";
-"service.claude.invalid_stored_credentials" = "Claude ログイン情報を認識できません。ターミナルで claude を実行し /login で再ログインしてください";
-"service.claude.session_expired" = "Claude セッションの期限が切れました。ターミナルで claude を一度実行して更新してください";
+"service.claude.invalid_stored_credentials" = "Claude のログインを認識できません。公式アプリで再ログインするか、データソースに claude.ai Cookie を追加してください。";
+"service.claude.session_expired" = "Claude のログイン期限が切れました。公式アプリを開くか、データソースに claude.ai Cookie を追加してください。デスクトップのログインでは Code 認証情報が更新されない場合があります。";
 "service.codex.authorization_required" = "TokenRemain に Codex ログイン情報への読み取り専用アクセスを許可してください";
 "service.codex.invalid_stored_credentials" = "Codex ログイン情報を認識できません。ChatGPT または Codex で再度ログインしてください";
 "datasource.broken" = "データ連携切れ";
@@ -339,7 +339,7 @@
 "alert.provider_signed_out.body" = "TokenRemain は使用量を読み取れなくなりました。カードは最後に取得できた値を表示しています。%@ に再度ログインすると復旧します。";
 "service.claude.cli_timeout" = "Claude Code の使用量読み取りがタイムアウトしました。最新のキャッシュを表示しています";
 "service.claude.network_unreachable" = "現在 Claude に接続できません。最新のキャッシュを表示し、ネットワークまたはプロキシの復旧後に再試行します";
-"service.claude.credentials_unavailable" = "利用可能な Claude ログイン情報が見つかりません。ターミナルで claude を実行し /login でログインしてください";
+"service.claude.credentials_unavailable" = "読み取り可能な Claude ログインがありません。公式アプリを開くか、データソースに claude.ai Cookie を追加してください。";
 "service.claude.invalid_usage_output" = "Claude Code が認識可能な 5 時間 / 7 日の使用量を返しませんでした";
 "service.claude.probe_launch_failed" = "Claude Code 使用量プローブを起動できません:%1$@";
 "service.claude.rate_limited" = "Claude 使用量 API がレート制限中です。まもなく自動的に再試行します";
@@ -737,3 +737,17 @@
 "alibaba.error.response" = "未対応の割り当てデータです。後で再試行してください。";
 "alibaba.error.request" = "割り当てを取得できません。権限、地域、プランを確認してください。";
 "alibaba.error.network" = "接続できません。ネットワークを確認して再試行してください。";
+
+"claude.logs.scan_limit" = "Claude のフォルダ検索が上限に達しました。フォルダを確認して再試行してください。";
+"claude.logs.title" = "Claude のローカルログ";
+"claude.logs.note" = "利用可能な Code と Cowork のログを集計します。通常のデスクトップチャット、Web、モバイルにはローカルトークンログがありません。価格不明でもトークンを表示します。";
+"claude.logs.add" = "Claude 設定フォルダを追加";
+"claude.logs.empty" = "ローカルの projects フォルダがありません。別の場所を使う場合は projects を含むフォルダを選択してください。";
+"claude.web.placeholder" = "claude.ai の sessionKey または Cookie を貼り付け";
+"claude.web.setup" = "任意の Web セッション：自分の claude.ai sessionKey を貼り付けます。検証後、この Mac のキーチェーンだけに保存します。Web アカウントを既定の Claude 取得元にし、分離 CLI アカウントは変更しません。削除するとローカル OAuth に戻ります。";
+"claude.web.organization" = "組織 UUID（任意、複数組織の場合は必須）";
+"claude.web.invalid_cookie" = "有効な sessionKey と、必要に応じて組織 UUID を入力してください。";
+"claude.web.expired" = "Claude Web セッションの期限が切れました。claude.ai にログインし、データソースで Cookie を更新してください。";
+"claude.web.forbidden" = "Claude Web へのアクセスが拒否されました。ブラウザ認証の可能性があります。claude.ai で確認して再試行してください。";
+"claude.web.organization_required" = "claude.ai の組織 URL にある UUID を入力し、再度保存してください。";
+"claude.web.invalid_response" = "Claude Web の使用量データを読み取れません。前回の値を保持します。後で再試行してください。";

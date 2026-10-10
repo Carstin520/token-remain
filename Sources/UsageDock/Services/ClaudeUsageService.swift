@@ -75,6 +75,9 @@ struct ClaudeUsageService {
     /// 服务端明确限流(429)时不降级:PTY 的 /usage 走同一个接口,
     /// 换个马甲重试只会延长限流。
     func fetch(forceScopedUsageProbe: Bool = false) async throws -> ProviderQuota {
+        if configurationDirectory == nil, let cookie = try ProviderSecretStore(provider: .claude).loadFromKeychain(interaction: .disallowed) {
+            return try await ClaudeWebUsageService().fetch(configuration: cookie)
+        }
         let logger = Logger(subsystem: "com.jamesli.usagedock", category: "ClaudeUsage")
         let environment = profileEnvironment
         var accessTokenBeforeProbe: String?

@@ -48,6 +48,11 @@ struct CCUsageService {
         guard FileManager.default.isExecutableFile(atPath: executable.path) else {
             throw ServiceError.bundledExecutableMissing
         }
+        let directories = try await Self.claudeLogDirectories()
+        var environment = ProcessInfo.processInfo.environment
+        if !directories.isEmpty {
+            environment["CLAUDE_CONFIG_DIR"] = directories.map(\.path).joined(separator: ",")
+        }
         let pricingConfigurationURL = await pricingService.configurationURL(now: now)
         let data: Data
         do {
@@ -57,6 +62,7 @@ struct CCUsageService {
                     since: since,
                     pricingConfigurationURL: pricingConfigurationURL
                 ),
+                environment: environment,
                 timeout: 30
             )
         } catch let error as URLError where error.code == .timedOut {
@@ -70,6 +76,24 @@ struct CCUsageService {
             return try Self.parseSnapshot(data, now: now)
         } catch {
             throw ServiceError.invalidOutput
+        }
+    }
+
+    /// A desktop scan that hits its entry limit or deadline must not take the
+    /// default, environment and user-added directories down with it. Data
+    /// Sources reports the incomplete scan on its own.
+    static func claudeLogDirectories(
+        timeout: TimeInterval = 5,
+        discover: @escaping @Sendable (_ scanDesktopSessions: Bool) throws -> [URL] = {
+            try ClaudeLogDirectories.discover(scanDesktopSessions: $0)
+        }
+    ) async throws -> [URL] {
+        do {
+            return try await AsyncDeadline.run(timeout: timeout) { try discover(true) }
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            return (try? discover(false)) ?? []
         }
     }
 

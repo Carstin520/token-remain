@@ -53,6 +53,8 @@ struct DataSourcesSection: View {
                 }
             }
 
+            DashboardCard { ClaudeLogDirectoriesRow(store: store) }
+
             if let errorMessage {
                 DashboardCard {
                     VStack(alignment: .leading, spacing: 8) {
@@ -174,6 +176,10 @@ struct DataSourcesSection: View {
         switch provider {
         case .claude, .codex:
             ProviderAuthorizationRow(store: store, provider: provider)
+            if provider == .claude, let configuration = ProviderCredentialConfiguration.resolve(for: provider) {
+                ProviderCredentialEntryRow(store: store, provider: provider, configuration: configuration)
+                    .padding(.top, 8)
+            }
         default:
             if let configuration = ProviderCredentialConfiguration.resolve(for: provider) {
                 ProviderCredentialEntryRow(

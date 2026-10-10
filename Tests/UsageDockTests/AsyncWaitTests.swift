@@ -91,8 +91,8 @@ struct AsyncWaitTests {
 @Suite("Credential and initial quota waiting state", .serialized, .timeLimit(.minutes(1)))
 @MainActor
 struct CredentialWaitStateTests {
-    @Test("Timeout preserves the previous credential and quota even after a late successful result")
-    func timedOutValidation() async throws {
+    @Test("Timeout preserves the previous credential and quota even after a late successful result", arguments: [ProviderQuota.Provider.deepseek, .claude])
+    func timedOutValidation(provider: ProviderQuota.Provider) async throws {
         let gate = DelayedValidation()
         let writes = CredentialWrites()
         let fixture = try Fixture(timeout: 0.05, writes: writes, validate: { provider, credential, _ in
@@ -100,21 +100,21 @@ struct CredentialWaitStateTests {
             return sampleQuota(provider, used: credential == "previous-demo" ? 20 : 99)
         })
         defer { fixture.remove() }
-        #expect(await fixture.store.saveAPIKey("previous-demo", for: .deepseek))
-        #expect(await fixture.store.saveAPIKey("delayed-demo", for: .deepseek) == false)
+        #expect(await fixture.store.saveAPIKey("previous-demo", for: provider))
+        #expect(await fixture.store.saveAPIKey("delayed-demo", for: provider) == false)
         #expect(writes.values == ["previous-demo"])
-        #expect(fixture.store.quotaValue(for: .deepseek)?.primary.usedPercent == 20)
-        #expect(fixture.store.providerNotices[.deepseek] == L10n.text("operation.timed_out"))
+        #expect(fixture.store.quotaValue(for: provider)?.primary.usedPercent == 20)
+        #expect(fixture.store.providerNotices[provider] == L10n.text("operation.timed_out"))
         await gate.release()
         try await Task.sleep(for: .milliseconds(30))
         #expect(writes.values == ["previous-demo"])
-        #expect(fixture.store.quotaValue(for: .deepseek)?.primary.usedPercent == 20)
-        #expect(await fixture.store.saveAPIKey("retry-demo", for: .deepseek))
+        #expect(fixture.store.quotaValue(for: provider)?.primary.usedPercent == 20)
+        #expect(await fixture.store.saveAPIKey("retry-demo", for: provider))
         #expect(writes.values == ["previous-demo", "retry-demo"])
     }
 
-    @Test("Cancelling validation prevents a late Keychain write and permits immediate retry")
-    func cancelledValidation() async throws {
+    @Test("Cancelling validation prevents a late Keychain write and permits immediate retry", arguments: [ProviderQuota.Provider.deepseek, .claude])
+    func cancelledValidation(provider: ProviderQuota.Provider) async throws {
         let gate = DelayedValidation()
         let writes = CredentialWrites()
         let fixture = try Fixture(writes: writes, validate: { provider, credential, _ in
@@ -122,17 +122,17 @@ struct CredentialWaitStateTests {
             return sampleQuota(provider, used: 30)
         })
         defer { fixture.remove() }
-        let task = Task { await fixture.store.saveAPIKey("delayed-demo", for: .deepseek) }
+        let task = Task { await fixture.store.saveAPIKey("delayed-demo", for: provider) }
         try await waitUntil { await gate.started }
         task.cancel()
         #expect(await task.value == false)
         #expect(writes.values.isEmpty)
-        #expect(fixture.store.providerNotices[.deepseek] == L10n.text("operation.cancelled"))
-        #expect(await fixture.store.saveAPIKey("retry-demo", for: .deepseek))
+        #expect(fixture.store.providerNotices[provider] == L10n.text("operation.cancelled"))
+        #expect(await fixture.store.saveAPIKey("retry-demo", for: provider))
         await gate.release()
         try await Task.sleep(for: .milliseconds(30))
         #expect(writes.values == ["retry-demo"])
-        #expect(fixture.store.providerNotices[.deepseek] == nil)
+        #expect(fixture.store.providerNotices[provider] == nil)
     }
 
     @Test("A failed validation does not save the submitted credential")

@@ -27,6 +27,14 @@ enum ProviderSessionAlerts {
                 return false
             }
         }
+        if let web = error as? ClaudeWebUsageService.ServiceError {
+            switch web {
+            case .expired, .invalidCookie:
+                return true
+            case .forbidden, .organizationRequired, .invalidResponse, .requestFailed, .rateLimited:
+                return false
+            }
+        }
         if let codex = error as? CodexAPIUsageService.APIError {
             switch codex {
             case .notLoggedIn, .tokenExpired, .invalidStoredCredentials:
