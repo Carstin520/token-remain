@@ -361,7 +361,10 @@ final class TrackedProvidersStore: ObservableObject {
             detection(.windsurf, installed: windsurfInstalled,
                       found: L10n.text("provider.detect.windsurf.found"),
                       hint: L10n.format("provider.detect.install_login_hint", "Windsurf")),
-            detection(.grokBot, installed: cursorInstalled,
+            // A Cursor install does not prove Grok Bot access. Treating it as a
+            // detection would announce Grok Bot to every Cursor user on upgrade
+            // and pre-select it during onboarding, so it stays opt-in.
+            detection(.grokBot, installed: false,
                       found: L10n.text("grokbot.detail"),
                       hint: L10n.text("grokbot.detail")),
             detection(.grok, installed: grokInstalled,

@@ -15,6 +15,24 @@ struct PopoverLayoutStoreTests {
         #expect(PopoverWidget.aiFeed.title == "AI动态")
     }
 
+    @Test("Grok Bot starts hidden but stays reachable from the + menu for new and upgraded layouts")
+    func grokBotIsAvailableAfterUpgrade() throws {
+        let fresh = PopoverLayoutStore(defaults: testDefaults())
+        #expect(fresh.order.contains(.grokBot))
+        #expect(fresh.availableWidgets.contains(.grokBot))
+        #expect(!fresh.visibleWidgets.contains(.grokBot))
+
+        let defaults = testDefaults()
+        let previous = PopoverWidget.allCases.filter { $0 != .grokBot }.map(\.rawValue)
+        let saved = try JSONSerialization.data(withJSONObject: [
+            "order": previous, "hidden": [String](), "pinned": [String](), "known": previous
+        ])
+        defaults.set(saved, forKey: PopoverLayoutStore.defaultsKey)
+        let upgraded = PopoverLayoutStore(defaults: defaults)
+        #expect(upgraded.visibleWidgets == previous.compactMap(PopoverWidget.init(rawValue:)))
+        #expect(upgraded.availableWidgets == [.grokBot])
+    }
+
     @Test("A second signed-in account earns its own popover row")
     func multipleEnabledAccountsShowSeparateRows() {
         let current = ProviderAccountSnapshot(
