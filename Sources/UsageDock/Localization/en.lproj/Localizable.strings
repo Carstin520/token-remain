@@ -751,3 +751,18 @@
 "claude.web.forbidden" = "Claude web access was blocked (possibly a browser challenge). Open claude.ai to check your session and retry.";
 "claude.web.organization_required" = "Choose an organization: enter its UUID from the claude.ai organization URL, then save again.";
 "claude.web.invalid_response" = "Claude web returned unsupported usage data. Previous usage is retained; retry later.";
+
+"prices.title" = "Model price analysis";
+"prices.reference_note" = "Current API list-price estimates, not subscription bills. The ccusage total is unchanged. Other / unsplit is the signed difference, including historical, tiered, fast-mode, custom prices and missing rates.";
+"prices.no_table" = "Price table unavailable";
+"prices.matched" = "Matched price: %@";
+"prices.input" = "Input";
+"prices.output" = "Output";
+"prices.read" = "Cache read";
+"prices.write" = "Cache write";
+"prices.unknown" = "Unpriced";
+"prices.unsplit" = "Unsplit";
+"prices.legacy_cache" = "Older cache: %@ cached tokens have no read/write split.";
+"prices.total" = "Reported total";
+"prices.other" = "Other / unsplit";
+"prices.unpriced_note" = "Some usage is unpriced. Reference estimates are shown when available; no complete total is claimed.";

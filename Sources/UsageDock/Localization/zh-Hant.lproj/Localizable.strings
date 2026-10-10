@@ -751,3 +751,18 @@
 "claude.web.forbidden" = "Claude 网页访问被拒绝，可能需要浏览器验证。请打开 claude.ai 检查会话后重试。";
 "claude.web.organization_required" = "无法唯一确定组织，请填写 claude.ai 组织地址中的 UUID 后重新保存。";
 "claude.web.invalid_response" = "Claude 网页返回了无法识别的额度数据，保留上次用量，请稍后重试。";
+
+"prices.title" = "模型價格分析";
+"prices.reference_note" = "按目前 API 標價估算，不等於訂閱帳單。ccusage 總費用保持不變；其他 / 未拆分為帶正負號的差額，可能來自歷史價、分級、快速模式、自訂價格或缺價。";
+"prices.no_table" = "價格表暫不可用";
+"prices.matched" = "匹配價格：%@";
+"prices.input" = "輸入";
+"prices.output" = "輸出";
+"prices.read" = "快取命中";
+"prices.write" = "快取寫入";
+"prices.unknown" = "未定價";
+"prices.unsplit" = "未拆分";
+"prices.legacy_cache" = "舊快取：%@ 個快取 token 未區分讀寫。";
+"prices.total" = "已回報總費用";
+"prices.other" = "其他 / 未拆分";
+"prices.unpriced_note" = "部分用量價格未知；有參考價時顯示估算，不宣稱已知完整費用。";

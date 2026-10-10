@@ -474,6 +474,9 @@ struct DailyUsageHistory: Sendable, Codable {
         let inputTokens: Int64
         let outputTokens: Int64
         let cacheTokens: Int64
+        /// Nil means an older cache (or aggregated source) did not preserve the split.
+        let cacheReadTokens: Int64?
+        let cacheCreationTokens: Int64?
         let cost: Double
         /// Number of concrete model identifiers represented by this row.
         /// Named rows remain one; the bounded `other` row carries its tail size.
@@ -485,18 +488,22 @@ struct DailyUsageHistory: Sendable, Codable {
             outputTokens: Int64,
             cacheTokens: Int64,
             cost: Double,
-            constituentCount: Int = 1
+            constituentCount: Int = 1,
+            cacheReadTokens: Int64? = nil,
+            cacheCreationTokens: Int64? = nil
         ) {
             self.id = id
             self.inputTokens = inputTokens
             self.outputTokens = outputTokens
             self.cacheTokens = cacheTokens
+            self.cacheReadTokens = cacheReadTokens
+            self.cacheCreationTokens = cacheCreationTokens
             self.cost = cost
             self.constituentCount = max(1, constituentCount)
         }
 
         private enum CodingKeys: String, CodingKey {
-            case id, inputTokens, outputTokens, cacheTokens, cost, constituentCount
+            case id, inputTokens, outputTokens, cacheTokens, cost, constituentCount, cacheReadTokens, cacheCreationTokens
         }
 
         init(from decoder: Decoder) throws {
@@ -505,6 +512,8 @@ struct DailyUsageHistory: Sendable, Codable {
             inputTokens = try container.decode(Int64.self, forKey: .inputTokens)
             outputTokens = try container.decode(Int64.self, forKey: .outputTokens)
             cacheTokens = try container.decode(Int64.self, forKey: .cacheTokens)
+            cacheReadTokens = try container.decodeIfPresent(Int64.self, forKey: .cacheReadTokens)
+            cacheCreationTokens = try container.decodeIfPresent(Int64.self, forKey: .cacheCreationTokens)
             cost = try container.decode(Double.self, forKey: .cost)
             constituentCount = max(
                 1,
@@ -574,6 +583,11 @@ struct DailyUsageHistory: Sendable, Codable {
         }
     }
 
+    static func sumKnown(_ lhs: Int64?, _ rhs: Int64?) -> Int64? {
+        guard let lhs, let rhs else { return nil }
+        return lhs + rhs
+    }
+
     /// Keep the local cache economically bounded even when a relay reports many
     /// short-lived model aliases. Seven named rows plus one aggregated tail is
     /// enough for the on-demand Dashboard detail without growing sync payloads.
@@ -590,7 +604,9 @@ struct DailyUsageHistory: Sendable, Codable {
                 outputTokens: (previous?.outputTokens ?? 0) + max(0, row.outputTokens),
                 cacheTokens: (previous?.cacheTokens ?? 0) + max(0, row.cacheTokens),
                 cost: (previous?.cost ?? 0) + max(0, row.cost),
-                constituentCount: max(previous?.constituentCount ?? 1, row.constituentCount)
+                constituentCount: max(previous?.constituentCount ?? 1, row.constituentCount),
+                cacheReadTokens: previous == nil ? row.cacheReadTokens : sumKnown(previous?.cacheReadTokens, row.cacheReadTokens),
+                cacheCreationTokens: previous == nil ? row.cacheCreationTokens : sumKnown(previous?.cacheCreationTokens, row.cacheCreationTokens)
             )
         }
 
@@ -617,7 +633,9 @@ struct DailyUsageHistory: Sendable, Codable {
                 outputTokens: firstTail.outputTokens,
                 cacheTokens: firstTail.cacheTokens,
                 cost: firstTail.cost,
-                constituentCount: firstTail.constituentCount
+                constituentCount: firstTail.constituentCount,
+                cacheReadTokens: firstTail.cacheReadTokens,
+                cacheCreationTokens: firstTail.cacheCreationTokens
             )
         ) { result, row in
             ModelUsage(
@@ -626,7 +644,9 @@ struct DailyUsageHistory: Sendable, Codable {
                 outputTokens: result.outputTokens + row.outputTokens,
                 cacheTokens: result.cacheTokens + row.cacheTokens,
                 cost: result.cost + row.cost,
-                constituentCount: result.constituentCount + row.constituentCount
+                constituentCount: result.constituentCount + row.constituentCount,
+                cacheReadTokens: sumKnown(result.cacheReadTokens, row.cacheReadTokens),
+                cacheCreationTokens: sumKnown(result.cacheCreationTokens, row.cacheCreationTokens)
             )
         }
         return other.totalTokens > 0 || other.cost > 0 ? kept + [other] : kept

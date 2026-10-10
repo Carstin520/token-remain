@@ -40,6 +40,20 @@ enum L10n {
     /// domain strings deterministic there and is also the final safety net if
     /// an installed localization is missing a key.
     private static let fallback: [String: String] = [
+        "prices.title": "模型价格分析",
+        "prices.reference_note": "按当前 API 标价估算，不等于订阅账单。ccusage 总费用保持不变；其他 / 未拆分为带正负号的差额，可能来自历史价、分档、快速模式、自定义价格或缺价。",
+        "prices.no_table": "价格表暂不可用",
+        "prices.matched": "匹配价格：%@",
+        "prices.input": "输入",
+        "prices.output": "输出",
+        "prices.read": "缓存命中",
+        "prices.write": "缓存写入",
+        "prices.unknown": "未定价",
+        "prices.unsplit": "未拆分",
+        "prices.legacy_cache": "旧缓存：%@ 个缓存 token 未区分读写。",
+        "prices.total": "已报告总费用",
+        "prices.other": "其他 / 未拆分",
+        "prices.unpriced_note": "部分用量价格未知；有参考价时展示估算，不声称已知完整费用。",
         "claude.web.invalid_response": "Claude 网页返回了无法识别的额度数据，保留上次用量，请稍后重试。",
         "claude.web.organization_required": "无法唯一确定组织，请填写 claude.ai 组织地址中的 UUID 后重新保存。",
         "claude.web.forbidden": "Claude 网页访问被拒绝，可能需要浏览器验证。请打开 claude.ai 检查会话后重试。",

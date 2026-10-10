@@ -49,6 +49,7 @@ struct UsageTrendCard: View {
     let preferredAgentIDs: Set<String>?
     var excludedAgentIDs: Set<String> = []
 
+    @State private var prices = CCUsagePricingService.AnalysisSnapshot(prices: [:], fetchedAt: nil)
     @State private var range: TrendRange = .twoWeeks
     @State private var metric: TrendMetric = .tokens
     @State private var pinnedDayID: Date?
@@ -90,6 +91,12 @@ struct UsageTrendCard: View {
                 )
                     .frame(height: 208)
 
+                PriceAnalysisPanel(
+                    days: shown.first(where: { $0.id == pinnedDayID }).map { [$0] } ?? shown,
+                    agentIDs: visibleAgentIDs,
+                    snapshot: prices
+                )
+
                 if let pinnedDay = shown.first(where: { $0.id == pinnedDayID }) {
                     TrendModelBreakdownPanel(
                         breakdown: .make(
@@ -104,6 +111,11 @@ struct UsageTrendCard: View {
             }
         }
         .frame(maxWidth: .infinity)
+        .task(id: capturedAt) {
+            let value = await CCUsagePricingService.shared.cachedAnalysisSnapshot()
+            guard !Task.isCancelled else { return }
+            prices = value
+        }
         .onChange(of: range) { _, _ in pinnedDayID = nil }
     }
 
