@@ -244,10 +244,12 @@ struct CCUsagePricingServiceTests {
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .deletingLastPathComponent()
-        let executable = root.appending(path: "Vendor/ccusage/20.0.19/darwin-universal/ccusage")
-        guard FileManager.default.isExecutableFile(atPath: executable.path) else {
-            return
-        }
+        let info = try PropertyListSerialization.propertyList(
+            from: Data(contentsOf: root.appendingPathComponent("Resources/Info.plist")), format: nil
+        ) as? [String: Any]
+        let helperVersion = try #require(info?["TokenRemainBundledCCUsageVersion"] as? String)
+        let executable = root.appending(path: "Vendor/ccusage/\(helperVersion)/darwin-universal/ccusage")
+        try #require(FileManager.default.isExecutableFile(atPath: executable.path))
         let fixture = FileManager.default.temporaryDirectory
             .appending(path: "usagedock-openclaw-price-\(UUID().uuidString)", directoryHint: .isDirectory)
         let sessions = fixture.appending(
