@@ -34,6 +34,7 @@ struct ClaudeWebUsageService: Sendable {
 
     enum ServiceError: LocalizedError {
         case invalidCookie, expired, forbidden, organizationRequired, invalidResponse, requestFailed(Int)
+        case rateLimited(retryAfterSeconds: Int?)
         var errorDescription: String? {
             switch self {
             case .invalidCookie: L10n.text("claude.web.invalid_cookie")
@@ -42,7 +43,15 @@ struct ClaudeWebUsageService: Sendable {
             case .organizationRequired: L10n.text("claude.web.organization_required")
             case .invalidResponse: L10n.text("claude.web.invalid_response")
             case .requestFailed(let status): L10n.format("service.common.request_failed_plain", "Claude Web", status)
+            case .rateLimited(let seconds): ClaudeUsageService.ServiceError.rateLimited(retryAfterSeconds: seconds).errorDescription
             }
+        }
+
+        /// Same budget as the OAuth source: the system Claude card polls claude.ai
+        /// through whichever source is configured.
+        var retryDelay: TimeInterval {
+            if case .rateLimited(let seconds?) = self { return max(60, TimeInterval(seconds)) }
+            return 300
         }
     }
 
@@ -81,6 +90,7 @@ struct ClaudeWebUsageService: Sendable {
                 case 200: return data
                 case 401: throw ServiceError.expired
                 case 403: throw ServiceError.forbidden // challenge != proven expired session
+                case 429: throw ServiceError.rateLimited(retryAfterSeconds: ClaudeOAuthUsageService.retryAfterSeconds(http, now: now))
                 default: throw ServiceError.requestFailed(http.statusCode)
                 }
             }

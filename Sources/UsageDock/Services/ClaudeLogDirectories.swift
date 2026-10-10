@@ -9,7 +9,8 @@ enum ClaudeLogDirectories {
         home: URL = FileManager.default.homeDirectoryForCurrentUser,
         environment: [String: String] = ProcessInfo.processInfo.environment,
         additional: [String] = UserDefaults.standard.stringArray(forKey: defaultsKey) ?? [],
-        maximumEntries: Int = 10_000
+        maximumEntries: Int = 10_000,
+        scanDesktopSessions: Bool = true
     ) throws -> [URL] {
         let fm = FileManager.default
         var candidates = [home.appendingPathComponent(".claude"), home.appendingPathComponent(".config/claude")]
@@ -19,7 +20,8 @@ enum ClaudeLogDirectories {
         candidates += additional.map { URL(fileURLWithPath: $0) }
         let base = home.appendingPathComponent("Library/Application Support/Claude")
         var visited = 0
-        for name in ["local-agent-mode-sessions", "claude-code-sessions"] {
+        let sessionRoots = scanDesktopSessions ? ["local-agent-mode-sessions", "claude-code-sessions"] : []
+        for name in sessionRoots {
             let root = base.appendingPathComponent(name)
             guard let entries = fm.enumerator(at: root, includingPropertiesForKeys: [.isDirectoryKey, .isSymbolicLinkKey],
                                               options: [.skipsPackageDescendants]) else { continue }

@@ -871,19 +871,16 @@ final class UsageStore: ObservableObject {
                     // 只有用户能修的失败必须主动出声,不能只写在弹窗里等人来看。
                     sessionAlerts.report(error: error, for: .claude, now: now)
                 }
-                if let serviceError = error as? ClaudeUsageService.ServiceError {
+                if let backoff = Self.claudeRetryBackoff(for: error) {
                     claudeConsecutiveFailures = min(claudeConsecutiveFailures + 1, 9)
                     // 服务端给出明确 Retry-After 时以服务端为准,不再放大;
                     // 其余失败(尤其 PTY 探针超时)按连续次数翻倍退避。
-                    let delay: TimeInterval
-                    if case .rateLimited(let seconds) = serviceError, seconds != nil {
-                        delay = serviceError.retryDelay
-                    } else {
-                        delay = AdaptiveRefreshPolicy.escalatedRetryDelay(
-                            base: serviceError.retryDelay,
+                    let delay = backoff.serverMandated
+                        ? backoff.base
+                        : AdaptiveRefreshPolicy.escalatedRetryDelay(
+                            base: backoff.base,
                             consecutiveFailures: claudeConsecutiveFailures
                         )
-                    }
                     let retryAfter = now.addingTimeInterval(delay)
                     claudeRetryAfter = retryAfter
                     UserDefaults.standard.set(retryAfter, forKey: claudeRetryAfterKey)
@@ -1631,6 +1628,21 @@ final class UsageStore: ObservableObject {
 
     nonisolated static func invalidatesCachedQuota(_ error: Error) -> Bool {
         error is HostAppQuotaRoutingError
+    }
+
+    /// The system Claude card is served by the OAuth path or an explicit web
+    /// session. Both back off; otherwise a rejected Cookie polls claude.ai on
+    /// every refresh cycle.
+    nonisolated static func claudeRetryBackoff(for error: Error) -> (base: TimeInterval, serverMandated: Bool)? {
+        if let error = error as? ClaudeUsageService.ServiceError {
+            if case .rateLimited(let seconds) = error, seconds != nil { return (error.retryDelay, true) }
+            return (error.retryDelay, false)
+        }
+        if let error = error as? ClaudeWebUsageService.ServiceError {
+            if case .rateLimited(let seconds) = error, seconds != nil { return (error.retryDelay, true) }
+            return (error.retryDelay, false)
+        }
+        return nil
     }
 
     deinit {

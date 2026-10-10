@@ -100,7 +100,51 @@ struct ClaudeDesktopUsageTests {
             Issue.record("Expected HTTP failure")
         } catch ClaudeWebUsageService.ServiceError.expired { #expect(status == 401) }
         catch ClaudeWebUsageService.ServiceError.forbidden { #expect(status == 403) }
+        catch ClaudeWebUsageService.ServiceError.rateLimited(let seconds) { #expect(status == 429); #expect(seconds == nil) }
         catch ClaudeWebUsageService.ServiceError.requestFailed(let code) { #expect(code == status) }
+    }
+
+    @Test func rateLimitHonorsRetryAfterAndBacksOffWithoutEscalation() async throws {
+        do {
+            _ = try await ClaudeWebUsageService().fetch(configuration: "fixture-session") { request in
+                (Data(), HTTPURLResponse(url: request.url!, statusCode: 429, httpVersion: nil, headerFields: ["Retry-After": "900"])!)
+            }
+            Issue.record("Expected rate limit")
+        } catch let error as ClaudeWebUsageService.ServiceError {
+            guard case .rateLimited(let seconds) = error else { Issue.record("Expected rate limit, got \(error)"); return }
+            #expect(seconds == 900)
+            let backoff = try #require(UsageStore.claudeRetryBackoff(for: error))
+            #expect(backoff.base == 900)
+            #expect(backoff.serverMandated)
+            #expect(!ProviderSessionAlerts.requiresSignIn(error))
+        }
+    }
+
+    @Test func webFailuresBackOffAndOnlyRejectedSessionsAskToSignIn() throws {
+        let failures: [ClaudeWebUsageService.ServiceError] = [
+            .expired, .invalidCookie, .forbidden, .organizationRequired, .invalidResponse, .requestFailed(503)
+        ]
+        for failure in failures {
+            let backoff = try #require(UsageStore.claudeRetryBackoff(for: failure))
+            #expect(backoff.base == 300)
+            #expect(!backoff.serverMandated)
+        }
+        #expect(failures.map(ProviderSessionAlerts.requiresSignIn) == [true, true, false, false, false, false])
+        #expect(UsageStore.claudeRetryBackoff(for: URLError(.notConnectedToInternet)) == nil)
+    }
+
+    @Test func incompleteDesktopScanFallsBackToConfiguredDirectories() async throws {
+        let configured = [URL(fileURLWithPath: "/fixture/.claude")]
+        let limited = try await CCUsageService.claudeLogDirectories { scanDesktop in
+            if scanDesktop { throw ClaudeLogDirectories.DiscoveryError.limitReached }
+            return configured
+        }
+        #expect(limited == configured)
+        let slow = try await CCUsageService.claudeLogDirectories(timeout: 0.05) { scanDesktop in
+            if scanDesktop { Thread.sleep(forTimeInterval: 0.5) }
+            return scanDesktop ? [URL(fileURLWithPath: "/fixture/late")] : configured
+        }
+        #expect(slow == configured)
     }
 
     @Test func timeoutCancelsRequestAndAllowsRetry() async throws {
