@@ -766,3 +766,9 @@
 "prices.total" = "보고된 합계";
 "prices.other" = "기타 / 미분류";
 "prices.unpriced_note" = "일부 사용량의 가격을 알 수 없습니다. 참고 추정치는 완전한 합계가 아닙니다.";
+
+"grokbot.not_included" = "이 계정에는 Grok Bot 할당량이 포함되지 않습니다.";
+"grokbot.organization_managed" = "조직에서 Grok Bot 할당량을 관리합니다.";
+"grokbot.unavailable" = "Grok Bot 할당량을 읽을 수 없습니다. 나중에 다시 시도하세요.";
+"grokbot.trial" = "체험 만료: %@";
+"grokbot.detail" = "Cursor 계정의 Grok Bot 주간 할당량입니다. 같은 계정으로 Cursor IDE에 로그인하세요. 인증 정보는 읽기 전용이며 Grok CLI 및 Cursor 월간 할당량과 별개입니다. 이 API는 종량제 지출을 제공하지 않습니다.";

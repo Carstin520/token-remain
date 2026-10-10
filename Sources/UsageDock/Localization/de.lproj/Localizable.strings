@@ -766,3 +766,9 @@
 "prices.total" = "Gemeldete Summe";
 "prices.other" = "Sonstiges / ungeteilt";
 "prices.unpriced_note" = "Ein Teil der Nutzung hat keinen Preis. Referenzschätzungen sind keine vollständige Gesamtsumme.";
+
+"grokbot.not_included" = "Dieses Konto enthält kein Grok-Bot-Kontingent.";
+"grokbot.organization_managed" = "Deine Organisation verwaltet das Grok-Bot-Kontingent.";
+"grokbot.unavailable" = "Grok Bot lieferte kein lesbares Kontingent. Versuche es später erneut.";
+"grokbot.trial" = "Testzugang bis %@";
+"grokbot.detail" = "Wöchentliches Grok-Bot-Kontingent des Cursor-Kontos. Melde dich mit demselben Konto in Cursor IDE an; Zugangsdaten werden nur gelesen. Getrennt von Grok CLI und Cursors Monatskontingent. Dieser Endpunkt meldet keine On-Demand-Kosten.";

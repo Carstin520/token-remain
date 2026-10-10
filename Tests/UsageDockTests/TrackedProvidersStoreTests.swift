@@ -261,6 +261,24 @@ struct TrackedProvidersStoreTests {
         #expect(store.applyAutomaticDetections([claude]).isEmpty)
     }
 
+    @Test("A Cursor install never announces or pre-selects Grok Bot")
+    func cursorInstallDoesNotDetectGrokBot() throws {
+        let home = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(
+            at: home.appendingPathComponent("Library/Application Support/Cursor"),
+            withIntermediateDirectories: true
+        )
+        defer { try? FileManager.default.removeItem(at: home) }
+        let detections = TrackedProvidersStore.automaticDetections(home: home, environment: [:])
+        #expect(detections.first { $0.provider == .cursor }?.installed == true)
+        #expect(detections.first { $0.provider == .grokBot }?.installed == false)
+
+        let store = TrackedProvidersStore(defaults: testDefaults())
+        store.completeOnboarding(enabled: [.cursor])
+        store.applyAutomaticDetections(detections.filter { $0.provider != .grokBot })
+        #expect(store.applyAutomaticDetections(detections).isEmpty)
+    }
+
     @Test("Installations found while TokenRemain was closed are compared with the saved baseline")
     func offlineInstallationIsSuggestedOnNextLaunch() {
         let defaults = testDefaults()

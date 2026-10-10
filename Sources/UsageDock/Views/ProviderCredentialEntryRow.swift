@@ -155,7 +155,9 @@ struct ProviderCredentialEntryRow: View {
                         credential = encoded
                     }
                     if provider == .claude, !claudeOrganizationID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        guard var parsed = try? ClaudeWebUsageService.Configuration.decode(credential) else { return }
+                        // Preserve invalid input for the store validator so the user receives an error.
+                        var parsed = (try? ClaudeWebUsageService.Configuration.decode(credential))
+                            ?? .init(sessionKey: credential)
                         parsed.organizationID = claudeOrganizationID.trimmingCharacters(in: .whitespacesAndNewlines)
                         guard let encoded = try? parsed.encoded() else { return }
                         credential = encoded

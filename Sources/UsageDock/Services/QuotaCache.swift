@@ -11,7 +11,7 @@ struct QuotaCache: Sendable {
         }
 
         enum CodingKeys: String, CodingKey {
-            case quotas
+            case quotas, grokBot
             // v1 逐字段键
             case claude, codex, cursor, grok, zai
             case copilot, devin, openrouter, antigravity, opencode
@@ -26,6 +26,7 @@ struct QuotaCache: Sendable {
                         map[provider] = value
                     }
                 }
+                if let quota = try container.decodeIfPresent(ProviderQuota.self, forKey: .grokBot) { map[.grokBot] = quota }
                 byProvider = map
                 return
             }
@@ -46,8 +47,9 @@ struct QuotaCache: Sendable {
 
         func encode(to encoder: Encoder) throws {
             var container = encoder.container(keyedBy: CodingKeys.self)
-            let raw = Dictionary(uniqueKeysWithValues: byProvider.map { ($0.key.rawValue, $0.value) })
+            let raw = Dictionary(uniqueKeysWithValues: byProvider.filter { $0.key != .grokBot }.map { ($0.key.rawValue, $0.value) })
             try container.encode(raw, forKey: .quotas)
+            try container.encodeIfPresent(byProvider[.grokBot], forKey: .grokBot)
         }
     }
 

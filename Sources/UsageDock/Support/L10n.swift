@@ -40,6 +40,11 @@ enum L10n {
     /// domain strings deterministic there and is also the final safety net if
     /// an installed localization is missing a key.
     private static let fallback: [String: String] = [
+        "grokbot.not_included": "此账号未包含 Grok Bot 额度。",
+        "grokbot.organization_managed": "Grok Bot 额度由组织管理。",
+        "grokbot.unavailable": "无法读取 Grok Bot 额度，请稍后重试。",
+        "grokbot.trial": "试用到期：%@",
+        "grokbot.detail": "Grok Bot 的 Cursor 账号每周额度。请在 Cursor IDE 登录同一账号；仅只读凭证。与 Grok CLI、Cursor 月度额度分开，此接口不提供按量付费金额。",
         "prices.title": "模型价格分析",
         "prices.reference_note": "按当前 API 标价估算，不等于订阅账单。ccusage 总费用保持不变；其他 / 未拆分为带正负号的差额，可能来自历史价、分档、快速模式、自定义价格或缺价。",
         "prices.no_table": "价格表暂不可用",

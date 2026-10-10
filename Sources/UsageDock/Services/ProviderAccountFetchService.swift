@@ -87,6 +87,8 @@ struct ProviderAccountFetchService: Sendable {
                 membershipType: credential.field("membershipType"),
                 now: now
             )
+        case .grokBot:
+            throw FetchError.unsupportedProvider("Grok Bot")
         case .grok:
             return try await GrokUsageService().fetch(
                 token: try secret(profile, override: credentialOverride).value,

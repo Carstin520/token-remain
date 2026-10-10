@@ -90,6 +90,7 @@ enum AppStoreSandboxProviderAudit {
         case .codex: return try await CodexUsageService().fetch(preferAPI: true)
         case .cursor: return try await CursorUsageService().fetch()
         case .grok: return try await GrokUsageService().fetch()
+        case .grokBot: return try await GrokBotUsageService().fetch()
         case .zai: return try await ZAIUsageService().fetch()
         case .zaiTeam: return try await ZAITeamUsageService().fetch()
         case .copilot: return try await CopilotUsageService().fetch()

@@ -766,3 +766,9 @@
 "prices.total" = "Reported total";
 "prices.other" = "Other / unsplit";
 "prices.unpriced_note" = "Some usage is unpriced. Reference estimates are shown when available; no complete total is claimed.";
+
+"grokbot.not_included" = "Grok Bot is not included in this account.";
+"grokbot.organization_managed" = "Grok Bot usage is managed by your organization.";
+"grokbot.unavailable" = "Grok Bot did not return a readable quota. Retry later.";
+"grokbot.trial" = "Trial until %@";
+"grokbot.detail" = "Grok Bot weekly quota on the Cursor account. Sign in to Cursor IDE with the same account; credentials are read only. Separate from Grok CLI and Cursor monthly usage. On-demand spending is not reported by this endpoint.";

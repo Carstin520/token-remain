@@ -200,6 +200,7 @@ enum MobileSnapshotRedactor {
         case .codex: "codex"
         case .cursor: "cursor"
         case .grok: "grok"
+        case .grokBot: "grok-bot" // excluded by the released mobile provider allowlist
         case .zai: "zai"
         case .zaiTeam: "zaiteam"
         case .copilot: "copilot"

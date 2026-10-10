@@ -7,7 +7,7 @@ struct BrandIconRenderTests {
     @Test("Branded providers have explicit artwork; shared products reuse only their real brand")
     func authenticArtworkCoverage() throws {
         let resourceProviders = ProviderQuota.Provider.displayOrder.filter {
-            $0 != .claude && $0 != .codex && $0 != .thirdParty
+            $0 != .claude && $0 != .codex && $0 != .thirdParty && $0 != .grokBot
         }
         var resourceNames = Set<String>()
 

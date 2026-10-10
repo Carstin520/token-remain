@@ -91,6 +91,7 @@ iPhone 版目前为 [TestFlight 公开测试](https://testflight.apple.com/join/
 | <img src="site/assets/providers/codex.svg" width="16" alt="" /> **Codex** | 🟢 | 5 小时 / 7 天窗口;自定义 `base_url` 标注实际 API |
 | <img src="site/assets/providers/cursor.svg" width="16" alt="" /> **Cursor** | 🟢 | 月度账期额度与重置倒计时 |
 | <img src="site/assets/providers/grok.svg" width="16" alt="" /> **Grok**(xAI)| 🟢 | 周池剩余额度 |
+| **Grok Bot** | 🟢 | 独立额度池；只读同账号 Cursor 登录，显示服务端重置时间 |
 | <img src="site/assets/providers/copilot.svg" width="16" alt="" /> **GitHub Copilot** | 🟢 | 月度 Credits |
 | <img src="site/assets/providers/devin.svg" width="16" alt="" /> **Devin** | 🟢 | 日 / 周配额 |
 | <img src="site/assets/providers/windsurf.png" width="16" alt="" /> **Windsurf** | 🟢 | 日 / 周配额 |
@@ -240,3 +241,7 @@ rm -rf ~/Library/Caches/com.jamesli.usagedock ~/Library/Application\ Support/com
 趋势页按当前时间范围（或点选的单日）展示模型的输入、输出、缓存命中和缓存写入单价（USD / 1M tokens）、token 数与估算费用。单价来自已缓存的 LiteLLM 公共价格表，并标注获取时间；打开价格面板不发起网络请求。它是当前 API 标价的参考估算，不是订阅账单或第三方中转实际账单。
 
 ccusage 报告的总费用保持原值；分时、分档、快速模式、用户覆盖价格与缺失单价产生的正负差额显示为“其他 / 未拆分”。缺价不会当成免费；旧历史缓存无法区分缓存读写时保留原始合计并标为未拆分。沿用有界模型历史，合并的 `other` 行不猜测某个模型的单价。移动端同步格式不包含这些新增价格字段。
+
+### Grok Bot 额度
+
+macOS 可在数据来源勾选 Grok Bot，沿用同一账号的 Cursor IDE 本地登录；不刷新凭证。它与 Cursor IDE、Grok CLI 分别展示，不把 Cursor 的余额当成 Grok Bot 额度。无赠送额度、组织管理、试用和接口异常分别处理；试用到期日不会冒充重置时间，未公开接口不能提供的 On-demand 金额不作估算。此新来源暂不进入移动同步，Windows 本批保持现有功能。

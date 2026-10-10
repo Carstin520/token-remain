@@ -88,7 +88,7 @@ extension ProviderQuota.Provider {
                 credentialKind: .keychainSecret,
                 allowsLocalActivation: false
             )
-        case .opencode, .kiro, .alibabaTokenPlan:
+        case .opencode, .kiro, .alibabaTokenPlan, .grokBot:
             nil
         }
     }
