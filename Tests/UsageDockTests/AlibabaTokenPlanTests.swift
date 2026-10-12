@@ -145,11 +145,12 @@ struct AlibabaTokenPlanTests {
 
     @Test func cancellationAndDeadlineReachTransportAndRetryWorks() async throws {
         let recorder = CancellationRecorder()
-        let slow = AlibabaTokenPlanUsageService(transport: { _ in
+        let slowTransport: AlibabaTokenPlanUsageService.Transport = { _ in
             do { try await Task.sleep(for: .seconds(10)) }
             catch { await recorder.cancelled(); throw error }
             throw AlibabaTokenPlanError.unavailable
-        }, timeout: 0.03)
+        }
+        let slow = AlibabaTokenPlanUsageService(transport: slowTransport, timeout: 0.03)
         let raw = try config().encoded()
         do {
             _ = try await slow.fetch(configuration: raw)
@@ -157,7 +158,11 @@ struct AlibabaTokenPlanTests {
         } catch { #expect(error is AsyncDeadline.Failure) }
         try await Task.sleep(for: .milliseconds(20))
         #expect(await recorder.count == 1)
-        let pending = Task { try await slow.fetch(configuration: raw) }
+        // Cancellation runs against a deadline far beyond the cancel point.
+        // Sharing the 30 ms deadline above raced it: a CI runner oversleeping
+        // the 5 ms wait let the deadline fire first and report `.timedOut`.
+        let patient = AlibabaTokenPlanUsageService(transport: slowTransport, timeout: 10)
+        let pending = Task { try await patient.fetch(configuration: raw) }
         try await Task.sleep(for: .milliseconds(5))
         pending.cancel()
         do { _ = try await pending.value; Issue.record("Expected cancellation") }
