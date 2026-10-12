@@ -3,6 +3,29 @@
 All notable product changes are recorded here. TokenRemain uses Semantic
 Versioning for public releases.
 
+## 1.4.1 — 2026-10-13
+
+### Added
+
+- Add Account Management to the Dashboard, with provider monitoring controls,
+  per-account enablement, renaming, credential updates and confirmed removal.
+- Offer an opt-in combined view for same-plan accounts, requiring renewed
+  consent when the account group changes.
+- Let users choose the two providers shown in the Dock icon, with a live preview
+  and the existing Claude/Codex pair retained as the default.
+
+### Fixed
+
+- Update the bundled Universal ccusage helper to 20.0.30, verifying official
+  package integrity and the matching MIT license.
+- Keep the menu-bar popup key while open so Liquid Glass remains active, and
+  dismiss it when focus moves to another application.
+- Allow the floating widget to become key when clicked, activating its glass
+  appearance without taking focus when first shown.
+- Exclude unmonitored providers from aggregate quota displays and account
+  refreshes while retaining saved readings for when monitoring resumes.
+- Remove decorative corner marks and dot clusters from Dashboard cards.
+
 ## 1.4.0 — 2026-10-10
 
 ### Added
