@@ -3,7 +3,8 @@ import SwiftUI
 
 /// Head-only 3D pixel-pet artwork used for the live macOS Dock icon and any
 /// large in-app brand presentation. The expression follows the lower provider;
-/// Claude remains orange and Codex remains blue in the two independent meters.
+/// each of the two independent meters carries its provider's color (Claude
+/// orange and Codex blue by default — the user picks the pair in Settings).
 struct TokenRemainHeadLogo: View {
     let claudeRemaining: Double?
     let codexRemaining: Double?
@@ -39,6 +40,13 @@ struct TokenRemainHeadLogo: View {
 }
 
 enum TokenRemainHeadLogoArtwork {
+    /// One meter on the head: which provider it belongs to and how much of the
+    /// headline window is left. A slot without data draws no row.
+    struct Slot: Equatable {
+        let provider: ProviderQuota.Provider
+        let remainingPercent: Double?
+    }
+
     private struct MeterRow {
         let remainingPercent: Double
         let color: NSColor
@@ -56,20 +64,48 @@ enum TokenRemainHeadLogoArtwork {
     private static let trackColor = NSColor(srgbRed: 29.0 / 255.0, green: 38.0 / 255.0, blue: 61.0 / 255.0, alpha: 0.96)
     private static let borderColor = NSColor(srgbRed: 69.0 / 255.0, green: 82.0 / 255.0, blue: 116.0 / 255.0, alpha: 0.9)
 
-    /// Stable identity of the artwork for a pair of remaining percentages.
-    /// Two equal keys always render pixel-identical images, so callers can
-    /// skip redundant `applicationIconImage` assignments (each one forces a
-    /// full Dock tile redraw even when the image object is unchanged).
+    /// Claude and Codex keep the meter colors the icon shipped with; every
+    /// other provider uses its stable theme accent, the same hue its quota
+    /// meters carry everywhere else in the app.
+    static func meterColor(for provider: ProviderQuota.Provider) -> NSColor {
+        switch provider {
+        case .claude: return claudeColor
+        case .codex: return codexColor
+        default: return NSColor(DashboardTheme.accent(for: provider))
+        }
+    }
+
+    /// The historical pairing, kept for callers that still think in it.
+    static func slots(claudeRemaining: Double?, codexRemaining: Double?) -> [Slot] {
+        [
+            Slot(provider: .claude, remainingPercent: claudeRemaining),
+            Slot(provider: .codex, remainingPercent: codexRemaining)
+        ]
+    }
+
+    /// The expression follows whichever selected provider is lower.
+    static func moodRemaining(_ slots: [Slot]) -> Double? {
+        slots.compactMap(\.remainingPercent).min()
+    }
+
+    static func renderKey(claudeRemaining: Double?, codexRemaining: Double?) -> String {
+        renderKey(slots: slots(claudeRemaining: claudeRemaining, codexRemaining: codexRemaining))
+    }
+
+    /// Stable identity of the artwork for a set of slots. Two equal keys
+    /// always render pixel-identical images, so callers can skip redundant
+    /// `applicationIconImage` assignments (each one forces a full Dock tile
+    /// redraw even when the image object is unchanged).
     /// 每条量表的档位必须带上 provider 前缀:Claude 单条 45% 是橙色,
     /// Codex 单条 45% 是蓝色,光凭档位序列无法区分这两张图。
-    static func renderKey(claudeRemaining: Double?, codexRemaining: Double?) -> String {
-        let moodRemaining = [claudeRemaining, codexRemaining].compactMap { $0 }.min()
-        let state = TokenRemainLogoState.resolve(remainingPercent: moodRemaining)
-        func level(_ prefix: String, _ remaining: Double?) -> String {
-            guard let remaining else { return "\(prefix)_" }
-            return "\(prefix)\(TokenRemainLogoMeter.filledSegments(remainingPercent: remaining) ?? -1)"
+    static func renderKey(slots: [Slot]) -> String {
+        let state = TokenRemainLogoState.resolve(remainingPercent: moodRemaining(slots))
+        let levels = slots.map { slot -> String in
+            guard let remaining = slot.remainingPercent else { return "\(slot.provider.rawValue)_" }
+            let filled = TokenRemainLogoMeter.filledSegments(remainingPercent: remaining) ?? -1
+            return "\(slot.provider.rawValue)\(filled)"
         }
-        return "head-\(state.rawValue)-\(level("c", claudeRemaining))-\(level("x", codexRemaining))"
+        return (["head", state.rawValue] + levels).joined(separator: "-")
     }
 
     static func image(
@@ -77,10 +113,21 @@ enum TokenRemainHeadLogoArtwork {
         codexRemaining: Double?,
         size: CGFloat = 1024
     ) -> NSImage {
-        let moodRemaining = [claudeRemaining, codexRemaining].compactMap { $0 }.min()
+        image(
+            slots: slots(claudeRemaining: claudeRemaining, codexRemaining: codexRemaining),
+            size: size
+        )
+    }
+
+    static func image(slots: [Slot], size: CGFloat = 1024) -> NSImage {
+        let moodRemaining = moodRemaining(slots)
         let state = TokenRemainLogoState.resolve(remainingPercent: moodRemaining)
-        let rows = meterRows(claudeRemaining: claudeRemaining, codexRemaining: codexRemaining)
-        let key = renderKey(claudeRemaining: claudeRemaining, codexRemaining: codexRemaining)
+        let rows = slots.compactMap { slot in
+            slot.remainingPercent.map {
+                MeterRow(remainingPercent: $0, color: meterColor(for: slot.provider))
+            }
+        }
+        let key = renderKey(slots: slots)
         let cacheKey = "\(key)-\(Int(size.rounded()))" as NSString
         if let cached = imageCache.object(forKey: cacheKey) {
             return cached
@@ -134,16 +181,6 @@ enum TokenRemainHeadLogoArtwork {
     /// Exercises the same unflipped AppKit renderer as the production Dock icon.
     static func renderSourceUprightForTesting(_ source: NSImage, size: CGFloat) -> NSImage {
         render(source: source, rows: [], size: size)
-    }
-
-    private static func meterRows(
-        claudeRemaining: Double?,
-        codexRemaining: Double?
-    ) -> [MeterRow] {
-        [
-            claudeRemaining.map { MeterRow(remainingPercent: $0, color: claudeColor) },
-            codexRemaining.map { MeterRow(remainingPercent: $0, color: codexColor) }
-        ].compactMap { $0 }
     }
 
     private static func drawMeters(_ rows: [MeterRow], in rect: NSRect) {

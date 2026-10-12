@@ -47,6 +47,10 @@ final class PreferencesStore: ObservableObject {
     static let refreshKey = "tokenRemain.refreshMinutes.v1"
     static let floatingKey = "tokenRemain.floatingWidget.v1"
     static let dockIconHiddenKey = "tokenRemain.dockIconHidden.v1"
+    static let dockLogoProvidersKey = "tokenRemain.dockLogoProviders.v1"
+
+    /// Dock 头像两条量表的出厂组合,也是老用户升级后的观感。
+    static let defaultDockLogoProviders: [ProviderQuota.Provider] = [.claude, .codex]
 
     static let defaultPopoverBackgroundOpacity = 0.62
     static let popoverBackgroundOpacityRange = 0.0...1.0
@@ -80,6 +84,8 @@ final class PreferencesStore: ObservableObject {
     @Published private(set) var floatingWidgetEnabled: Bool
     /// 隐藏 Dock 与应用切换器里的应用图标；菜单栏入口保持可用。
     @Published private(set) var dockIconHidden: Bool
+    /// Dock 头像上下两条量表各对应的应用:恰好两个且互不相同,顺序即上下。
+    @Published private(set) var dockLogoProviders: [ProviderQuota.Provider]
 
     private let defaults: UserDefaults
 
@@ -110,6 +116,10 @@ final class PreferencesStore: ObservableObject {
         refreshMinutes = storedMinutes.map { Self.refreshChoices.contains($0) ? $0 : 5 } ?? 5
         floatingWidgetEnabled = defaults.bool(forKey: Self.floatingKey)
         dockIconHidden = defaults.bool(forKey: Self.dockIconHiddenKey)
+        dockLogoProviders = Self.validDockLogoProviders(
+            (defaults.array(forKey: Self.dockLogoProvidersKey) as? [String])?
+                .compactMap(ProviderQuota.Provider.init(rawValue:))
+        ) ?? Self.defaultDockLogoProviders
     }
 
     func isInMenuBar(_ provider: ProviderQuota.Provider) -> Bool {
@@ -126,6 +136,32 @@ final class PreferencesStore: ObservableObject {
         }
         menuBarProviders = ProviderQuota.Provider.displayOrder.filter(set.contains)
         defaults.set(menuBarProviders.map(\.rawValue), forKey: Self.menuBarKey)
+    }
+
+    /// 给某条量表换应用。选中的应用若已在另一条上,两条互换——用户要的
+    /// 是"这一条显示它",不该因为撞车被拒绝,也不能出现两条同一应用。
+    func setDockLogoProvider(_ provider: ProviderQuota.Provider, slot: Int) {
+        guard dockLogoProviders.indices.contains(slot) else { return }
+        var providers = dockLogoProviders
+        if let existing = providers.firstIndex(of: provider), existing != slot {
+            providers.swapAt(existing, slot)
+        } else {
+            providers[slot] = provider
+        }
+        guard providers != dockLogoProviders else { return }
+        dockLogoProviders = providers
+        defaults.set(providers.map(\.rawValue), forKey: Self.dockLogoProvidersKey)
+    }
+
+    /// 存储值只有在恰好两个、互不相同且都能识别时才采用;降级/升级带来的
+    /// 未知 provider 或被手改的值整体回到出厂组合,不拼凑半个组合。
+    static func validDockLogoProviders(
+        _ providers: [ProviderQuota.Provider]?
+    ) -> [ProviderQuota.Provider]? {
+        guard let providers,
+              providers.count == defaultDockLogoProviders.count,
+              Set(providers).count == providers.count else { return nil }
+        return providers
     }
 
     func setMenuBarDisplayMode(_ mode: MenuBarDisplayMode) {

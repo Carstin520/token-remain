@@ -46,6 +46,26 @@ enum StatusBarPresentation {
         return UsageFormatting.percent(remaining)
     }
 
+    /// One meter per selected provider, in the user's top-to-bottom order.
+    /// Each meter shows that provider's headline window — the same value the
+    /// menu-bar text shows for it.
+    @MainActor
+    static func headLogoSlots(
+        providers: [ProviderQuota.Provider],
+        strategy: QuotaSummaryStrategy,
+        quota: (ProviderQuota.Provider) -> ProviderQuota?
+    ) -> [TokenRemainHeadLogoArtwork.Slot] {
+        providers.map { provider in
+            TokenRemainHeadLogoArtwork.Slot(
+                provider: provider,
+                remainingPercent: UsageStore.logoQuotaSelection(
+                    from: [quota(provider)],
+                    strategy: strategy
+                )?.remainingPercent
+            )
+        }
+    }
+
     static func tooltipProviderLabel(
         _ provider: ProviderQuota.Provider,
         quota: ProviderQuota?,
@@ -214,6 +234,11 @@ final class StatusBarController: NSObject {
             .store(in: &cancellables)
 
         PreferencesStore.shared.$dockIconHidden
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.updateStatusImage() }
+            .store(in: &cancellables)
+
+        PreferencesStore.shared.$dockLogoProviders
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.updateStatusImage() }
             .store(in: &cancellables)
@@ -417,21 +442,15 @@ final class StatusBarController: NSObject {
             return (provider, remaining)
         }
 
-        let claudeRemaining = UsageStore.logoQuotaSelection(
-            from: [store.headlineQuota(for: .claude, strategy: summaryStrategy)],
-            strategy: summaryStrategy
-        )?.remainingPercent
-        let codexRemaining = UsageStore.logoQuotaSelection(
-            from: [store.headlineQuota(for: .codex, strategy: summaryStrategy)],
-            strategy: summaryStrategy
-        )?.remainingPercent
+        let logoSlots = StatusBarPresentation.headLogoSlots(
+            providers: PreferencesStore.shared.dockLogoProviders,
+            strategy: summaryStrategy,
+            quota: { store.headlineQuota(for: $0, strategy: summaryStrategy) }
+        )
         let state = TokenRemainLogoState.resolve(
-            remainingPercent: [claudeRemaining, codexRemaining].compactMap { $0 }.min()
+            remainingPercent: TokenRemainHeadLogoArtwork.moodRemaining(logoSlots)
         )
-        let dockIconKey = TokenRemainHeadLogoArtwork.renderKey(
-            claudeRemaining: claudeRemaining,
-            codexRemaining: codexRemaining
-        )
+        let dockIconKey = TokenRemainHeadLogoArtwork.renderKey(slots: logoSlots)
         let dockIconHidden = PreferencesStore.shared.dockIconHidden
 
         let insights = UsageInsights(
@@ -441,7 +460,7 @@ final class StatusBarController: NSObject {
             daily: nil
         )
         // 菜单栏文字维持用户自选项;Dock logo 的表情与双进度条只比较
-        // Claude/Codex，其他 provider 仍出现在 tooltip 与面板里。
+        // 设置里选定的两个应用，其他 provider 仍出现在 tooltip 与面板里。
         var tooltipLines = [
             "TokenRemain · \(state.accessibilityDescription)",
             insights.decisionHeadline()
@@ -510,8 +529,7 @@ final class StatusBarController: NSObject {
         } else if dockIconKey != lastDockIconKey {
             lastDockIconKey = dockIconKey
             NSApp.applicationIconImage = TokenRemainHeadLogoArtwork.image(
-                claudeRemaining: claudeRemaining,
-                codexRemaining: codexRemaining,
+                slots: logoSlots,
                 size: 256
             )
         }

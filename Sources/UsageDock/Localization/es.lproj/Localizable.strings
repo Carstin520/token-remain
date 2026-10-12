@@ -398,6 +398,10 @@
 "settings.general" = "General";
 "settings.show_dock_icon" = "Mostrar icono en el Dock";
 "settings.show_dock_icon_hint" = "Mantén TokenRemain visible en el Dock y el selector de apps; si lo desactivas, seguirá disponible en la barra de menús";
+"settings.dock_logo_title" = "Medidores del icono del Dock";
+"settings.dock_logo_hint" = "Elige qué dos apps siguen los medidores del icono del Dock; su expresión sigue a la más baja";
+"settings.dock_logo_top" = "Arriba";
+"settings.dock_logo_bottom" = "Abajo";
 "settings.login_item_note" = "Usa el gestor de ítems de inicio nativo de macOS";
 "settings.manual_only" = "Solo manual";
 "settings.menubar_hidden" = "No se muestra en la barra de menús";
