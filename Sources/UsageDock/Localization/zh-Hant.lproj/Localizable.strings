@@ -402,6 +402,10 @@
 "settings.general" = "一般";
 "settings.show_dock_icon" = "在 Dock 中顯示圖示";
 "settings.show_dock_icon_hint" = "同時在 Dock 和 App 切換器中顯示 TokenRemain；關閉後仍可從選單列開啟";
+"settings.dock_logo_title" = "Dock 圖示進度條";
+"settings.dock_logo_hint" = "選擇 Dock 圖示上兩條進度條對應的 App，表情跟隨其中較低的一個";
+"settings.dock_logo_top" = "上方";
+"settings.dock_logo_bottom" = "下方";
 "settings.login_item_note" = "使用 macOS 原生登入項目管理";
 "settings.manual_only" = "僅手動";
 "settings.menubar_hidden" = "未顯示在選單列";
@@ -719,6 +723,40 @@
 
 "operation.timed_out" = "操作逾時，請重試。";
 "operation.cancelled" = "操作已取消，可以重試。";
+
+// Optional combined account quota
+"accounts.combined.toggle" = "合併同額度帳號";
+"accounts.combined.confirm_title" = "合併這些帳號？";
+"accounts.combined.confirm" = "確認並合併";
+"accounts.combined.confirm_body" = "方案：%1$@。帳號：%2$@。請確認它們是不同的訂閱帳號，且額度容量相同。每個帳號計為 100%%；同一帳號重複登入不能重複計入。應用程式無法核驗絕對容量或自動去重登入，各帳號仍獨立重設。此設定僅影響額度卡片，Dock 和提醒繼續採用額度最緊張的帳號。";
+"accounts.combined.changed" = "帳號組或方案已變更，請關閉後重新開啟，確認新的帳號組。";
+"accounts.combined.summary" = "%1$d 個帳號 · %2$@ · 獨立重設";
+"accounts.combined.remaining" = "剩餘 %1$@ / %2$@";
+"accounts.combined.reset" = "%1$@ 後重設";
+"accounts.combined.reset_unknown" = "重設時間未知";
+"accounts.combined.next_reset" = "下次重設：%1$@ 後 · 恢復 %2$@";
+"accounts.combined.updated" = "最早的讀數：%1$@";
+"accounts.combined.unavailable.accounts" = "至少需要兩個已啟用的獨立帳號項目。";
+"accounts.combined.unavailable.readings" = "等待所有帳號傳回可用額度，暫時保留分帳號顯示。";
+"accounts.combined.unavailable.plans" = "只能合併方案等級明確且相同的帳號。";
+"accounts.combined.unavailable.windows" = "額度視窗或單位不同，或已過重設時間；取得相容讀數前分帳號顯示。";
+
+// Account management
+"nav.accounts" = "帳戶管理";
+"section.accounts.subtitle" = "依 AI 應用程式管理帳戶，並選擇要監控的應用程式。";
+"accounts.management.monitoring_note" = "停止監控後，將暫停此應用程式下所有帳戶的額度擷取。已儲存的帳戶會保留，方便日後恢復。";
+"accounts.management.single_source" = "此應用程式使用目前登入，或在「資料來源」中設定的憑證。";
+"accounts.management.monitoring" = "監控中";
+"accounts.management.stopped" = "已停止監控";
+"accounts.management.stop" = "停止監控";
+"accounts.management.start" = "開始監控";
+"accounts.management.stop_named" = "停止監控 %1$@";
+"accounts.management.start_named" = "開始監控 %1$@";
+"accounts.management.system_note" = "預設帳戶：透過「資料來源」或官方應用程式管理。停止監控請使用上方的應用程式開關。";
+"accounts.management.active" = "帳戶已啟用";
+"accounts.management.paused" = "帳戶已暫停";
+"accounts.management.remove_named" = "移除帳戶 %1$@";
+"accounts.management.more_named" = "%1$@ 的更多操作";
 
 /* Alibaba Token Plan */
 "alibaba.region" = "地區";

@@ -375,6 +375,10 @@ struct DashboardView: View {
             )
         case .devices:
             DevicesSection(insights: insights)
+        case .accounts:
+            AccountsSection(store: store, tracked: tracked) {
+                navigator.selection = .dataSources
+            }
         case .dataSources:
             DataSourcesSection(
                 store: store,

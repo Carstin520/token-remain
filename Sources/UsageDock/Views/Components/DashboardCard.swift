@@ -32,7 +32,6 @@ struct DashboardCard<Content: View>: View {
                     fallbackBackground: background
                 )
         )
-        .pixelTicks(cornerRadius: cornerRadius)
     }
 
     /// `Glass.interactive()` is applied to the surface as well, but its

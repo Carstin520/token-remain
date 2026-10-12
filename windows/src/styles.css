@@ -95,22 +95,9 @@ nav svg { width: 16px; height: 16px; }
 .content-section { display: grid; gap: 14px; margin-top: 16px; }
 .error-banner { margin-top: 14px; padding: 11px 14px; border: 1px solid rgba(255, 107, 107, .36); border-radius: 8px; color: #f0aaa8; background: rgba(111, 39, 42, .18); font-size: 12px; }
 
-/* Card chrome shared by every panel: surface fill, 1px border, pixel corner
-   ticks (the Mac's PixelTickOverlay as layered gradients). */
+/* Card chrome shared by every panel: surface fill, 1px border. */
 .dashboard-panel, .settings-card, .metric-card, .provider-card, .feed-post {
   position: relative; border: 1px solid var(--border); border-radius: 14px; background: var(--surface);
-}
-.dashboard-panel::after, .settings-card::after, .metric-card::after, .provider-card::after {
-  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: .9;
-  background-image:
-    linear-gradient(var(--border), var(--border)), linear-gradient(var(--border), var(--border)),
-    linear-gradient(var(--border), var(--border)), linear-gradient(var(--border), var(--border)),
-    linear-gradient(var(--border), var(--border)), linear-gradient(var(--border), var(--border)),
-    linear-gradient(var(--border), var(--border)), linear-gradient(var(--border), var(--border));
-  background-repeat: no-repeat;
-  background-size: 4px 1px, 1px 4px, 4px 1px, 1px 4px, 4px 1px, 1px 4px, 4px 1px, 1px 4px;
-  background-position: 5px 5px, 5px 5px, calc(100% - 5px) 5px, calc(100% - 4px) 5px,
-    5px calc(100% - 5px), 5px calc(100% - 4px), calc(100% - 5px) calc(100% - 5px), calc(100% - 4px) calc(100% - 5px);
 }
 .dashboard-panel { min-width: 0; padding: 14px 16px; }
 .settings-card { padding: 14px 16px; }

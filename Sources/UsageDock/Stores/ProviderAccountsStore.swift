@@ -16,15 +16,20 @@ final class ProviderAccountsStore {
 
     private let defaults: UserDefaults
     private let rootDirectory: URL
+    private let deleteSecret: (ProviderAccountProfile) throws -> Void
     private(set) var profiles: [ProviderAccountProfile]
     private(set) var selections: [ProviderQuota.Provider: ProviderAccountSelection]
 
     init(
         defaults: UserDefaults = .standard,
-        rootDirectory: URL? = nil
+        rootDirectory: URL? = nil,
+        deleteSecret: @escaping (ProviderAccountProfile) throws -> Void = { profile in
+            try ProviderAccountSecretStore(provider: profile.provider, accountID: profile.id).delete()
+        }
     ) {
         self.defaults = defaults
         self.rootDirectory = rootDirectory ?? Self.defaultRootDirectory()
+        self.deleteSecret = deleteSecret
 
         if let data = defaults.data(forKey: Self.profilesKey),
            let decoded = try? JSONDecoder().decode([ProviderAccountProfile].self, from: data) {
@@ -148,10 +153,7 @@ final class ProviderAccountsStore {
         if let path = removed.configurationDirectory {
             removeManagedDirectoryIfSafe(URL(fileURLWithPath: path))
         }
-        try? ProviderAccountSecretStore(
-            provider: removed.provider,
-            accountID: removed.id
-        ).delete()
+        try? deleteSecret(removed)
         for provider in ProviderQuota.Provider.displayOrder {
             if selections[provider] == .account(id) {
                 selections[provider] = .all

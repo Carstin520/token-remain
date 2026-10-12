@@ -19,6 +19,36 @@ struct PreferencesStoreTests {
         #expect(store.refreshInterval == 300)
         #expect(!store.floatingWidgetEnabled)
         #expect(!store.dockIconHidden)
+        #expect(store.dockLogoProviders == [.claude, .codex])
+    }
+
+    @Test("Dock logo slots persist, swap on collision and reject malformed stored pairs")
+    func dockLogoProviders() {
+        let defaults = testDefaults()
+        let store = PreferencesStore(defaults: defaults)
+
+        store.setDockLogoProvider(.cursor, slot: 1)
+        #expect(store.dockLogoProviders == [.claude, .cursor])
+        #expect(PreferencesStore(defaults: defaults).dockLogoProviders == [.claude, .cursor])
+
+        // Picking the app the other meter already shows swaps the two rather
+        // than producing a duplicate pair.
+        store.setDockLogoProvider(.cursor, slot: 0)
+        #expect(store.dockLogoProviders == [.cursor, .claude])
+        #expect(PreferencesStore(defaults: defaults).dockLogoProviders == [.cursor, .claude])
+
+        store.setDockLogoProvider(.zai, slot: 2)
+        #expect(store.dockLogoProviders == [.cursor, .claude])
+
+        for malformed: [String] in [
+            ["claude"],
+            ["claude", "claude"],
+            ["claude", "codex", "cursor"],
+            ["claude", "future-provider"]
+        ] {
+            defaults.set(malformed, forKey: PreferencesStore.dockLogoProvidersKey)
+            #expect(PreferencesStore(defaults: defaults).dockLogoProviders == [.claude, .codex])
+        }
     }
 
     @Test("Quota summary defaults to shortest window and persists alternatives")

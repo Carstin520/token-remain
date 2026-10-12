@@ -115,9 +115,9 @@ struct ProviderAccountSnapshot: Identifiable, Sendable {
     var isRefreshing: Bool { state.isRefreshing }
 }
 
-/// Pure account-group derivations for the UI. Percentage windows are never
-/// added: providers do not expose the absolute token capacity needed for a
-/// meaningful total. Native-currency balances are summed only within a currency.
+/// Default account summaries keep percentages separate: absolute capacity is
+/// unavailable. CombinedAccountQuota handles explicit same-capacity display
+/// with group-specific consent. Balances are summed only within a currency.
 struct ProviderAccountSummary: Sendable {
     let accountCount: Int
     let availableCount: Int

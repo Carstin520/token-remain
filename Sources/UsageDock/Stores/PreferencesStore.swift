@@ -23,6 +23,8 @@ enum PopoverGlassStyle: String, CaseIterable, Identifiable, Sendable {
 final class PreferencesStore: ObservableObject {
     static let shared = PreferencesStore()
 
+    static let combinedAccountConsentKey = "tokenRemain.combinedAccountConsent.v1"
+
     static let menuBarKey = "tokenRemain.menuBarProviders.v1"
     static let menuBarDisplayModeKey = "tokenRemain.menuBarDisplayMode.v1"
     static let popoverGlassStyleKey = "tokenRemain.popoverGlassStyle.v1"
@@ -47,6 +49,10 @@ final class PreferencesStore: ObservableObject {
     static let refreshKey = "tokenRemain.refreshMinutes.v1"
     static let floatingKey = "tokenRemain.floatingWidget.v1"
     static let dockIconHiddenKey = "tokenRemain.dockIconHidden.v1"
+    static let dockLogoProvidersKey = "tokenRemain.dockLogoProviders.v1"
+
+    /// Dock 头像两条量表的出厂组合,也是老用户升级后的观感。
+    static let defaultDockLogoProviders: [ProviderQuota.Provider] = [.claude, .codex]
 
     static let defaultPopoverBackgroundOpacity = 0.62
     static let popoverBackgroundOpacityRange = 0.0...1.0
@@ -80,11 +86,16 @@ final class PreferencesStore: ObservableObject {
     @Published private(set) var floatingWidgetEnabled: Bool
     /// 隐藏 Dock 与应用切换器里的应用图标；菜单栏入口保持可用。
     @Published private(set) var dockIconHidden: Bool
+    /// Dock 头像上下两条量表各对应的应用:恰好两个且互不相同,顺序即上下。
+    @Published private(set) var dockLogoProviders: [ProviderQuota.Provider]
+
+    @Published private(set) var combinedAccountConsent: [String: String]
 
     private let defaults: UserDefaults
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+        combinedAccountConsent = defaults.dictionary(forKey: Self.combinedAccountConsentKey) as? [String: String] ?? [:]
         if let raw = defaults.array(forKey: Self.menuBarKey) as? [String] {
             menuBarProviders = raw.compactMap(ProviderQuota.Provider.init(rawValue:))
         } else {
@@ -110,6 +121,19 @@ final class PreferencesStore: ObservableObject {
         refreshMinutes = storedMinutes.map { Self.refreshChoices.contains($0) ? $0 : 5 } ?? 5
         floatingWidgetEnabled = defaults.bool(forKey: Self.floatingKey)
         dockIconHidden = defaults.bool(forKey: Self.dockIconHiddenKey)
+        dockLogoProviders = Self.validDockLogoProviders(
+            (defaults.array(forKey: Self.dockLogoProvidersKey) as? [String])?
+                .compactMap(ProviderQuota.Provider.init(rawValue:))
+        ) ?? Self.defaultDockLogoProviders
+    }
+
+    func setCombinedAccountConsent(_ fingerprint: String?, for provider: ProviderQuota.Provider) {
+        combinedAccountConsent[provider.rawValue] = fingerprint
+        defaults.set(combinedAccountConsent, forKey: Self.combinedAccountConsentKey)
+    }
+
+    func combinesAccounts(for provider: ProviderQuota.Provider, group: CombinedAccountQuota) -> Bool {
+        combinedAccountConsent[provider.rawValue] == group.consentFingerprint
     }
 
     func isInMenuBar(_ provider: ProviderQuota.Provider) -> Bool {
@@ -126,6 +150,32 @@ final class PreferencesStore: ObservableObject {
         }
         menuBarProviders = ProviderQuota.Provider.displayOrder.filter(set.contains)
         defaults.set(menuBarProviders.map(\.rawValue), forKey: Self.menuBarKey)
+    }
+
+    /// 给某条量表换应用。选中的应用若已在另一条上,两条互换——用户要的
+    /// 是"这一条显示它",不该因为撞车被拒绝,也不能出现两条同一应用。
+    func setDockLogoProvider(_ provider: ProviderQuota.Provider, slot: Int) {
+        guard dockLogoProviders.indices.contains(slot) else { return }
+        var providers = dockLogoProviders
+        if let existing = providers.firstIndex(of: provider), existing != slot {
+            providers.swapAt(existing, slot)
+        } else {
+            providers[slot] = provider
+        }
+        guard providers != dockLogoProviders else { return }
+        dockLogoProviders = providers
+        defaults.set(providers.map(\.rawValue), forKey: Self.dockLogoProvidersKey)
+    }
+
+    /// 存储值只有在恰好两个、互不相同且都能识别时才采用;降级/升级带来的
+    /// 未知 provider 或被手改的值整体回到出厂组合,不拼凑半个组合。
+    static func validDockLogoProviders(
+        _ providers: [ProviderQuota.Provider]?
+    ) -> [ProviderQuota.Provider]? {
+        guard let providers,
+              providers.count == defaultDockLogoProviders.count,
+              Set(providers).count == providers.count else { return nil }
+        return providers
     }
 
     func setMenuBarDisplayMode(_ mode: MenuBarDisplayMode) {

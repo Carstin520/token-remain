@@ -257,6 +257,10 @@ struct SettingsSection: View {
                         isOn: dockIconVisibleBinding
                     )
 
+                    if !preferences.dockIconHidden {
+                        dockLogoSettings
+                    }
+
                     Divider().overlay(DashboardSurface.border)
 
                     preferenceToggle(
@@ -294,6 +298,82 @@ struct SettingsSection: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// The two meters on the Dock head, each bound to any app the user tracks.
+    /// The preview is the real Dock artwork with live values, so a choice is
+    /// confirmed on the spot rather than by looking down at the Dock.
+    private var dockLogoSettings: some View {
+        HStack(alignment: .center, spacing: 14) {
+            Image(nsImage: TokenRemainHeadLogoArtwork.image(slots: dockLogoSlots, size: 128))
+                .resizable()
+                .interpolation(.high)
+                .frame(width: 56, height: 56)
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 8) {
+                preferenceLabel(
+                    title: L10n.text("settings.dock_logo_title"),
+                    detail: L10n.text("settings.dock_logo_hint")
+                )
+                // Side by side when they fit; long translations stack instead
+                // of truncating the slot names.
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 10) { dockLogoSlotPickers }
+                    VStack(alignment: .leading, spacing: 6) { dockLogoSlotPickers }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private var dockLogoSlotPickers: some View {
+        dockLogoSlotPicker(slot: 0, title: L10n.text("settings.dock_logo_top"))
+        dockLogoSlotPicker(slot: 1, title: L10n.text("settings.dock_logo_bottom"))
+    }
+
+    private var dockLogoSlots: [TokenRemainHeadLogoArtwork.Slot] {
+        let strategy = preferences.quotaSummaryStrategy
+        return StatusBarPresentation.headLogoSlots(
+            providers: preferences.dockLogoProviders,
+            strategy: strategy,
+            quota: { store.headlineQuota(for: $0, strategy: strategy) }
+        )
+    }
+
+    /// Tracked apps, plus whatever is already selected so a provider the user
+    /// stopped tracking still reads as the current choice instead of blank.
+    private var dockLogoCandidates: [ProviderQuota.Provider] {
+        let selected = Set(preferences.dockLogoProviders)
+        let available = Set(tracked.enabledOrdered).union(selected)
+        return ProviderQuota.Provider.displayOrder.filter(available.contains)
+    }
+
+    private func dockLogoSlotPicker(slot: Int, title: String) -> some View {
+        let selection = Binding<ProviderQuota.Provider>(
+            get: { preferences.dockLogoProviders[slot] },
+            set: { preferences.setDockLogoProvider($0, slot: slot) }
+        )
+        return HStack(spacing: 6) {
+            Circle()
+                .fill(Color(nsColor: TokenRemainHeadLogoArtwork.meterColor(for: selection.wrappedValue)))
+                .frame(width: 7, height: 7)
+                .accessibilityHidden(true)
+            Text(title)
+                .font(.system(size: 11))
+                .foregroundStyle(DashboardTheme.secondaryText)
+                .lineLimit(1)
+            Picker(title, selection: selection) {
+                ForEach(dockLogoCandidates, id: \.self) { provider in
+                    Text(provider.displayName).tag(provider)
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .fixedSize()
+            .accessibilityLabel(title)
+        }
     }
 
     /// Appearance lives in General because it is the first thing a user reaches

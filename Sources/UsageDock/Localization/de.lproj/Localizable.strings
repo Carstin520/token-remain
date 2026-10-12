@@ -398,6 +398,10 @@
 "settings.general" = "Allgemein";
 "settings.show_dock_icon" = "Dock-Symbol anzeigen";
 "settings.show_dock_icon_hint" = "TokenRemain im Dock und App-Umschalter anzeigen; ausgeschaltet bleibt es über die Menüleiste erreichbar";
+"settings.dock_logo_title" = "Anzeigen im Dock-Symbol";
+"settings.dock_logo_hint" = "Wähle, welchen zwei Apps die Anzeigen im Dock-Symbol folgen; der Ausdruck folgt der niedrigeren";
+"settings.dock_logo_top" = "Oben";
+"settings.dock_logo_bottom" = "Unten";
 "settings.login_item_note" = "Verwendet die native macOS-Anmeldeobjektverwaltung";
 "settings.manual_only" = "Nur manuell";
 "settings.menubar_hidden" = "Nicht in der Menüleiste";
@@ -719,6 +723,40 @@
 
 "operation.timed_out" = "Der Vorgang hat zu lange gedauert. Bitte erneut versuchen.";
 "operation.cancelled" = "Der Vorgang wurde abgebrochen. Sie können es erneut versuchen.";
+
+// Optional combined account quota
+"accounts.combined.toggle" = "Konten mit gleicher Kapazität zusammenfassen";
+"accounts.combined.confirm_title" = "Diese Konten zusammenfassen?";
+"accounts.combined.confirm" = "Bestätigen und zusammenfassen";
+"accounts.combined.confirm_body" = "Tarif: %1$@. Konten: %2$@. Bestätigen Sie, dass dies verschiedene Abonnements mit gleicher Kontingentkapazität sind. Jedes Konto zählt als 100%%; doppelte Anmeldungen desselben Kontos dürfen nicht doppelt zählen. Die App kann weder absolute Kapazität noch doppelte Anmeldungen prüfen. Rücksetzungen bleiben unabhängig. Dies gilt nur für Kontingentkarten; Dock und Warnungen verwenden weiterhin das knappste Konto.";
+"accounts.combined.changed" = "Konten oder Tarif geändert. Schalten Sie die Option aus und wieder ein, um die neue Gruppe zu bestätigen.";
+"accounts.combined.summary" = "%1$d Konten · %2$@ · unabhängige Rücksetzungen";
+"accounts.combined.remaining" = "Verbleibend %1$@ / %2$@";
+"accounts.combined.reset" = "Rücksetzung in %1$@";
+"accounts.combined.reset_unknown" = "Rücksetzungszeit unbekannt";
+"accounts.combined.next_reset" = "Nächste Rücksetzung in %1$@ · gibt %2$@ zurück";
+"accounts.combined.updated" = "Ältester Messwert: %1$@";
+"accounts.combined.unavailable.accounts" = "Mindestens zwei aktivierte, unterschiedliche Kontoeinträge erforderlich.";
+"accounts.combined.unavailable.readings" = "Warten auf gültige Kontingente aller Konten. Konten bleiben einzeln sichtbar.";
+"accounts.combined.unavailable.plans" = "Nur gleiche, eindeutig identifizierte Tarifstufen können zusammengefasst werden.";
+"accounts.combined.unavailable.windows" = "Zeiträume oder Einheiten unterscheiden sich oder die Rücksetzung ist erfolgt. Bis zu kompatiblen Messwerten bleiben Konten getrennt.";
+
+// Account management
+"nav.accounts" = "Kontoverwaltung";
+"section.accounts.subtitle" = "Konten nach KI-App verwalten und zu überwachende Apps auswählen.";
+"accounts.management.monitoring_note" = "Wenn die Überwachung gestoppt wird, werden keine Kontingente mehr für die Konten dieser App abgerufen. Gespeicherte Konten bleiben für eine spätere Fortsetzung erhalten.";
+"accounts.management.single_source" = "Diese App verwendet die aktuelle Anmeldung oder die unter Datenquellen konfigurierten Zugangsdaten.";
+"accounts.management.monitoring" = "Überwachung aktiv";
+"accounts.management.stopped" = "Überwachung gestoppt";
+"accounts.management.stop" = "Überwachung stoppen";
+"accounts.management.start" = "Überwachung starten";
+"accounts.management.stop_named" = "Überwachung von %1$@ stoppen";
+"accounts.management.start_named" = "Überwachung von %1$@ starten";
+"accounts.management.system_note" = "Standardkonto: Verwaltung über Datenquellen oder die offizielle App. Die Überwachung lässt sich oben für die App stoppen.";
+"accounts.management.active" = "Konto aktiviert";
+"accounts.management.paused" = "Konto pausiert";
+"accounts.management.remove_named" = "Konto %1$@ entfernen";
+"accounts.management.more_named" = "Weitere Aktionen für %1$@";
 
 /* Alibaba Token Plan */
 "alibaba.region" = "Region";

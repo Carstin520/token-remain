@@ -17,9 +17,9 @@ struct QuotaCard: View {
     var serviceStatus: ProviderServiceStatus?
     /// Provider 级状态说明(如 Cursor 登录过期的恢复提示)。
     var notice: String?
-    /// Supplied by Dashboard Limits so manually configured providers can be
-    /// connected in-place on their first empty quota card.
-    var store: UsageStore? = nil
+    /// Observe managed-account changes even when the system quota stays nil.
+    /// The Dashboard owns this store; cards never create a collector.
+    @ObservedObject var store: UsageStore
     @ObservedObject var preferences: PreferencesStore = .shared
 
     /// Managed-account alerts are card-local: renaming and removal must not open
@@ -48,8 +48,11 @@ struct QuotaCard: View {
     /// 少量信息增加内层滚动。更多窗口/多账户配置仍走固定槽位+
     /// 滚动,避免单个多池 provider 抬高整行网格。
     private var usesBoundedContentLayout: Bool {
+        if let combined = combinedAccountQuota {
+            return visibleCombinedWindows(combined).count <= 2 && combined.accountCount <= 3
+        }
         guard let quota, !showsAccountOverview else { return false }
-        if let store, store.isAddingProviderAccount(provider) { return false }
+        if store.isAddingProviderAccount(provider) { return false }
         let visibleWindowCount = 1 + (quota.secondary == nil ? 0 : 1)
             + Self.scopedWindows(in: quota, preferences: preferences).count
         return visibleWindowCount <= 2
@@ -125,7 +128,7 @@ struct QuotaCard: View {
             TextField(L10n.text("accounts.rename_placeholder"), text: $pendingRenameText)
             Button(L10n.text("action.cancel"), role: .cancel) { pendingRenameID = nil }
             Button(L10n.text("action.save")) {
-                store?.renameProviderAccount(id, to: pendingRenameText)
+                store.renameProviderAccount(id, to: pendingRenameText)
                 pendingRenameID = nil
             }
         } message: { _ in
@@ -138,7 +141,7 @@ struct QuotaCard: View {
         ) { id in
             Button(L10n.text("action.cancel"), role: .cancel) { pendingRemoveID = nil }
             Button(L10n.text("accounts.remove_confirm"), role: .destructive) {
-                store?.removeProviderAccount(id)
+                store.removeProviderAccount(id)
                 pendingRemoveID = nil
             }
         } message: { id in
@@ -180,14 +183,14 @@ struct QuotaCard: View {
 
     @ViewBuilder
     private var quotaContent: some View {
-        if supportsMultipleAccounts, let store,
+        if supportsMultipleAccounts,
            store.isAddingProviderAccount(provider) {
             AccountAddProgressRow(
                 credentialKind: multiAccountCapability?.credentialKind,
                 deadline: store.accountLoginDeadlines[provider],
                 onCancel: { store.cancelProviderAccountLogin(provider) }
             )
-        } else if let message = store?.accountManagementNotice(for: provider) {
+        } else if let message = store.accountManagementNotice(for: provider) {
             Label(message, systemImage: "info.circle")
                 .font(.system(size: 11))
                 .foregroundStyle(DashboardTheme.secondaryText)
@@ -258,7 +261,7 @@ struct QuotaCard: View {
                 .font(.system(size: 10))
                 .foregroundStyle(isStale ? DashboardTheme.warning : DashboardTheme.mutedText)
             }
-        } else if let credentialConfiguration, let store {
+        } else if let credentialConfiguration {
             VStack(alignment: .leading, spacing: 8) {
                 Text(
                     L10n.text(
@@ -352,7 +355,7 @@ struct QuotaCard: View {
     /// Providers without one (currently OpenCode and Kiro) keep exactly their
     /// previous header and content, including the absence of an Add button.
     private var multiAccountCapability: ProviderMultiAccountCapability? {
-        store == nil ? nil : provider.multiAccountCapability
+        provider.multiAccountCapability
     }
 
     private var supportsMultipleAccounts: Bool {
@@ -369,12 +372,12 @@ struct QuotaCard: View {
     /// Includes disabled managed accounts on purpose: a paused account must stay
     /// discoverable in the menu even though it leaves the all-account summary.
     private var accountSnapshots: [ProviderAccountSnapshot] {
-        guard supportsMultipleAccounts, let store else { return [] }
+        guard supportsMultipleAccounts else { return [] }
         return store.accountSnapshots(for: provider)
     }
 
     private var accountSelection: ProviderAccountSelection {
-        store?.accountSelection(for: provider) ?? .all
+        store.accountSelection(for: provider)
     }
 
     private var selectedAccount: ProviderAccountSnapshot? {
@@ -389,6 +392,21 @@ struct QuotaCard: View {
         return accountSnapshots.count > 1
     }
 
+    private var combinedAccountQuota: CombinedAccountQuota? {
+        guard showsAccountOverview,
+              let group = try? CombinedAccountQuota.evaluate(accountSnapshots).get(),
+              preferences.combinesAccounts(for: provider, group: group) else { return nil }
+        return group
+    }
+
+    private func visibleCombinedWindows(_ group: CombinedAccountQuota) -> [CombinedAccountQuota.Window] {
+        guard let first = accountSnapshots.first(where: { $0.profile.isEnabled && $0.quota != nil })?.quota else {
+            return group.windows
+        }
+        let visibleScopes = Set(Self.scopedWindows(in: first, preferences: preferences).map { "scoped:\($0.scopeID)" })
+        return group.windows.filter { !$0.id.hasPrefix("scoped:") || visibleScopes.contains($0.id) }
+    }
+
     private func accountName(for id: ProviderAccountID) -> String {
         accountSnapshots.first { $0.id == id }?.profile.accountDisplayName
             ?? L10n.text("accounts.untitled")
@@ -396,9 +414,9 @@ struct QuotaCard: View {
 
     @ViewBuilder
     private var accountControls: some View {
-        if supportsMultipleAccounts, let store {
+        if supportsMultipleAccounts {
             HStack(spacing: 5) {
-                if accountSnapshots.count > 1 {
+                if accountSnapshots.count > 1 || accountSnapshots.contains(where: { !$0.profile.isSystem }) {
                     accountMenu(store: store)
                 }
                 addAccountButton(store: store)
@@ -439,7 +457,7 @@ struct QuotaCard: View {
         let isAll = selection == .all
         let summary = store.accountSummary(for: provider)
         let label = isAll
-            ? L10n.format("accounts.chip_all", summary.accountCount)
+            ? L10n.format("accounts.chip_all", combinedAccountQuota?.accountCount ?? summary.accountCount)
             : (selectedAccount?.profile.accountDisplayName ?? L10n.text("accounts.untitled"))
 
         return Menu {
@@ -571,62 +589,75 @@ struct QuotaCard: View {
 
     @ViewBuilder
     private var accountOverview: some View {
-        if let store {
+        CombinedAccountControl(provider: provider, snapshots: accountSnapshots, preferences: preferences)
+        if let group = combinedAccountQuota {
+            CombinedAccountQuotaView(group: group, windows: visibleCombinedWindows(group), provider: provider)
             let summary = store.accountSummary(for: provider)
-            let enabled = accountSnapshots.filter(\.profile.isEnabled)
-
-            HStack(spacing: 8) {
-                Text(L10n.format(
-                    "accounts.summary_available",
-                    summary.availableCount,
-                    summary.accountCount
-                ))
-                .numericFont(10.5, .semibold)
-                .foregroundStyle(DashboardTheme.secondaryText)
-                Spacer(minLength: 6)
-                if summary.lowAccountCount > 0 {
-                    Text(L10n.format("accounts.summary_low", summary.lowAccountCount))
-                        .numericFont(10.5, .semibold)
-                        .foregroundStyle(DashboardTheme.warning)
-                }
-                if let lowest = summary.lowestRemainingPercent {
-                    Text(L10n.format("accounts.summary_lowest", UsageFormatting.percent(lowest)))
-                        .numericFont(10.5, .semibold)
-                        .foregroundStyle(DashboardTheme.text)
-                }
+            if summary.lowAccountCount > 0 {
+                Text(L10n.format("accounts.summary_low", summary.lowAccountCount))
+                    .font(.system(size: 10.5)).foregroundStyle(DashboardTheme.warning)
             }
+        } else {
+            separateAccountOverview
+        }
+    }
 
-            ForEach(summary.balancesByCurrency.keys.sorted(), id: \.self) { currency in
-                HStack {
-                    Text(L10n.format("accounts.balance_combined", currency))
-                        .font(.system(size: 10.5))
-                        .foregroundStyle(DashboardTheme.secondaryText)
-                    Spacer()
-                    Text(QuotaBalance(
-                        amount: summary.balancesByCurrency[currency] ?? 0,
-                        currencyCode: currency
-                    ).displayText)
-                    .numericFont(11, .semibold)
+    @ViewBuilder
+    private var separateAccountOverview: some View {
+        let summary = store.accountSummary(for: provider)
+        let enabled = accountSnapshots.filter(\.profile.isEnabled)
+
+        HStack(spacing: 8) {
+            Text(L10n.format(
+                "accounts.summary_available",
+                summary.availableCount,
+                summary.accountCount
+            ))
+            .numericFont(10.5, .semibold)
+            .foregroundStyle(DashboardTheme.secondaryText)
+            Spacer(minLength: 6)
+            if summary.lowAccountCount > 0 {
+                Text(L10n.format("accounts.summary_low", summary.lowAccountCount))
+                    .numericFont(10.5, .semibold)
+                    .foregroundStyle(DashboardTheme.warning)
+            }
+            if let lowest = summary.lowestRemainingPercent {
+                Text(L10n.format("accounts.summary_lowest", UsageFormatting.percent(lowest)))
+                    .numericFont(10.5, .semibold)
                     .foregroundStyle(DashboardTheme.text)
-                }
             }
+        }
 
-            ForEach(enabled) { snapshot in
-                Divider().overlay(DashboardSurface.border)
-                AccountDigestRow(
-                    snapshot: snapshot,
-                    provider: provider,
-                    select: { store.setAccountSelection(.account(snapshot.id), for: provider) }
-                )
-                .contextMenu { accountActions(snapshot, store: store) }
-            }
-
-            if enabled.isEmpty {
-                Text(L10n.text("accounts.all_disabled"))
-                    .font(.system(size: 11))
+        ForEach(summary.balancesByCurrency.keys.sorted(), id: \.self) { currency in
+            HStack {
+                Text(L10n.format("accounts.balance_combined", currency))
+                    .font(.system(size: 10.5))
                     .foregroundStyle(DashboardTheme.secondaryText)
-                    .fixedSize(horizontal: false, vertical: true)
+                Spacer()
+                Text(QuotaBalance(
+                    amount: summary.balancesByCurrency[currency] ?? 0,
+                    currencyCode: currency
+                ).displayText)
+                .numericFont(11, .semibold)
+                .foregroundStyle(DashboardTheme.text)
             }
+        }
+
+        ForEach(enabled) { snapshot in
+            Divider().overlay(DashboardSurface.border)
+            AccountDigestRow(
+                snapshot: snapshot,
+                provider: provider,
+                select: { store.setAccountSelection(.account(snapshot.id), for: provider) }
+            )
+            .contextMenu { accountActions(snapshot, store: store) }
+        }
+
+        if enabled.isEmpty {
+            Text(L10n.text("accounts.all_disabled"))
+                .font(.system(size: 11))
+                .foregroundStyle(DashboardTheme.secondaryText)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -796,7 +827,7 @@ private struct AccountDigestRow: View {
 /// Official browser sign-in runs outside the app and credential checks run
 /// against the provider, so the card states plainly which one it is waiting on
 /// instead of looking frozen.
-private struct AccountAddProgressRow: View {
+struct AccountAddProgressRow: View {
     let credentialKind: ProviderAccountCredentialKind?
     let deadline: Date?
     let onCancel: () -> Void

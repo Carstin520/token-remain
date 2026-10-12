@@ -258,6 +258,9 @@ final class UsageStore: ObservableObject {
         for provider: ProviderQuota.Provider,
         strategy: QuotaSummaryStrategy
     ) -> ProviderQuota? {
+        // Keep saved account readings for resuming, but never surface them in
+        // Dock or other aggregate headlines while this app is not monitored.
+        guard tracked.isEnabled(provider) else { return nil }
         let enabled = accountSnapshots(for: provider).filter(\.profile.isEnabled)
         let quotas = enabled.compactMap(\.quota)
         if enabled.count > 1 {
@@ -1474,9 +1477,11 @@ final class UsageStore: ObservableObject {
     }
 
     func setProviderAccountEnabled(_ enabled: Bool, id: ProviderAccountID) {
+        guard let profile = providerAccountProfiles.first(where: { $0.id == id }),
+              !profile.isSystem else { return }
         providerAccountsStore.setEnabled(enabled, for: id)
         providerAccountProfiles = providerAccountsStore.allProfiles
-        if enabled {
+        if enabled && tracked.isEnabled(profile.provider) {
             Task { await refreshProviderAccount(id) }
         } else {
             var state = providerAccountStates[id] ?? ProviderAccountState()
@@ -1495,7 +1500,7 @@ final class UsageStore: ObservableObject {
 
     func refreshProviderAccount(_ id: ProviderAccountID) async {
         guard let profile = providerAccountProfiles.first(where: { $0.id == id }),
-              profile.isEnabled else { return }
+              profile.isEnabled, tracked.isEnabled(profile.provider) else { return }
         if profile.isSystem {
             switch profile.provider {
             case .claude:

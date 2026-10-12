@@ -26,6 +26,71 @@ final class TokenRemainLogoTests: XCTestCase {
         )
     }
 
+    func testDockRenderKeyFollowsTheSelectedProviderPair() {
+        typealias Slot = TokenRemainHeadLogoArtwork.Slot
+        // The historical convenience API is the default pair, not a separate
+        // rendering path.
+        XCTAssertEqual(
+            TokenRemainHeadLogoArtwork.renderKey(claudeRemaining: 45, codexRemaining: 12),
+            TokenRemainHeadLogoArtwork.renderKey(slots: [
+                Slot(provider: .claude, remainingPercent: 45),
+                Slot(provider: .codex, remainingPercent: 12)
+            ])
+        )
+        // Same values on a different pair, or the same pair swapped top and
+        // bottom, is a different picture and must not be deduplicated away.
+        let claudeCursor = TokenRemainHeadLogoArtwork.renderKey(slots: [
+            Slot(provider: .claude, remainingPercent: 45),
+            Slot(provider: .cursor, remainingPercent: 12)
+        ])
+        XCTAssertNotEqual(
+            claudeCursor,
+            TokenRemainHeadLogoArtwork.renderKey(claudeRemaining: 45, codexRemaining: 12)
+        )
+        XCTAssertNotEqual(
+            claudeCursor,
+            TokenRemainHeadLogoArtwork.renderKey(slots: [
+                Slot(provider: .cursor, remainingPercent: 12),
+                Slot(provider: .claude, remainingPercent: 45)
+            ])
+        )
+        XCTAssertEqual(
+            TokenRemainHeadLogoArtwork.moodRemaining([
+                Slot(provider: .grok, remainingPercent: nil),
+                Slot(provider: .cursor, remainingPercent: 12)
+            ]),
+            12
+        )
+    }
+
+    func testDockMeterColorsKeepClaudeAndCodexArtwork() {
+        let claude = TokenRemainHeadLogoArtwork.meterColor(for: .claude).usingColorSpace(.sRGB)
+        let codex = TokenRemainHeadLogoArtwork.meterColor(for: .codex).usingColorSpace(.sRGB)
+        XCTAssertEqual(claude.map { Int(($0.redComponent * 255).rounded()) }, 217)
+        XCTAssertEqual(codex.map { Int(($0.blueComponent * 255).rounded()) }, 251)
+        XCTAssertNotNil(TokenRemainHeadLogoArtwork.meterColor(for: .cursor).usingColorSpace(.sRGB))
+    }
+
+    @MainActor
+    func testHeadLogoSlotsFollowTheUsersOrderAndHeadlineWindow() {
+        let cursor = ProviderQuota(
+            provider: .cursor,
+            primary: QuotaWindow(usedPercent: 30, windowMinutes: 43_200, resetsAt: nil),
+            secondary: nil,
+            planName: nil,
+            capturedAt: .now
+        )
+        let slots = StatusBarPresentation.headLogoSlots(
+            providers: [.cursor, .claude],
+            strategy: .shortestWindow,
+            quota: { $0 == .cursor ? cursor : nil }
+        )
+        XCTAssertEqual(slots, [
+            TokenRemainHeadLogoArtwork.Slot(provider: .cursor, remainingPercent: 70),
+            TokenRemainHeadLogoArtwork.Slot(provider: .claude, remainingPercent: nil)
+        ])
+    }
+
     func testLiveSecondCountdownOnlyInsideTheFinalHour() {
         let now = Date(timeIntervalSince1970: 1_784_966_400)
         // 已过期的重置时间必须走静态展示,不允许钉住秒级刷新。

@@ -87,12 +87,6 @@ struct AIFeedPostCard: View {
                         .accessibilityHidden(true)
                 }
             }
-            .pixelTicks(
-                cornerRadius: 13,
-                color: post.priority == .normal
-                    ? surfaces.border
-                    : priorityAccent.opacity(0.76)
-            )
             .animation(
                 accessibilityReduceMotion ? nil : .easeOut(duration: 0.16),
                 value: isHovering

@@ -399,6 +399,10 @@
 "settings.general" = "General";
 "settings.show_dock_icon" = "Show icon in Dock";
 "settings.show_dock_icon_hint" = "Keep TokenRemain visible in the Dock and app switcher; when off, it remains available from the menu bar";
+"settings.dock_logo_title" = "Dock icon meters";
+"settings.dock_logo_hint" = "Choose which two apps the meters on the Dock icon follow; its expression follows the lower one";
+"settings.dock_logo_top" = "Top";
+"settings.dock_logo_bottom" = "Bottom";
 "settings.login_item_note" = "Uses the native macOS login-item manager";
 "settings.manual_only" = "Manual only";
 "settings.menubar_hidden" = "Not shown in the menu bar";
@@ -719,6 +723,40 @@
 
 "operation.timed_out" = "The operation timed out. Please try again.";
 "operation.cancelled" = "The operation was cancelled. You can try again.";
+
+// Optional combined account quota
+"accounts.combined.toggle" = "Combine equal-capacity accounts";
+"accounts.combined.confirm_title" = "Combine these accounts?";
+"accounts.combined.confirm" = "Confirm and combine";
+"accounts.combined.confirm_body" = "Plan: %1$@. Accounts: %2$@. Confirm these are different subscriptions with equal quota capacity. Each account counts as 100%%; signing into the same account twice must not count twice. The app cannot verify absolute capacity or deduplicate logins. Resets remain independent. This affects quota cards only; Dock and alerts still use the tightest account.";
+"accounts.combined.changed" = "The account group or plan changed. Turn this off and on again to confirm the new group.";
+"accounts.combined.summary" = "%1$d accounts · %2$@ · independent resets";
+"accounts.combined.remaining" = "Remaining %1$@ / %2$@";
+"accounts.combined.reset" = "Resets in %1$@";
+"accounts.combined.reset_unknown" = "Reset time unavailable";
+"accounts.combined.next_reset" = "Next reset in %1$@ · restores %2$@";
+"accounts.combined.updated" = "Oldest reading: %1$@";
+"accounts.combined.unavailable.accounts" = "At least two enabled, distinct account entries are needed.";
+"accounts.combined.unavailable.readings" = "Waiting for all accounts to report usable quota. Separate accounts remain visible.";
+"accounts.combined.unavailable.plans" = "Only matching, clearly identified plan tiers can be combined.";
+"accounts.combined.unavailable.windows" = "Windows or units differ, or a reset has passed. Showing separate accounts until compatible readings arrive.";
+
+// Account management
+"nav.accounts" = "Account Management";
+"section.accounts.subtitle" = "Manage accounts by AI app and choose which apps to monitor.";
+"accounts.management.monitoring_note" = "Stopping monitoring pauses quota collection for every account in this app. Saved accounts are kept so you can resume later.";
+"accounts.management.single_source" = "This app uses its current login or credentials configured in Data Sources.";
+"accounts.management.monitoring" = "Monitoring enabled";
+"accounts.management.stopped" = "Monitoring stopped";
+"accounts.management.stop" = "Stop monitoring";
+"accounts.management.start" = "Start monitoring";
+"accounts.management.stop_named" = "Stop monitoring %1$@";
+"accounts.management.start_named" = "Start monitoring %1$@";
+"accounts.management.system_note" = "Default account: managed through Data Sources or the official app. To stop monitoring it, use the app control above.";
+"accounts.management.active" = "Account enabled";
+"accounts.management.paused" = "Account paused";
+"accounts.management.remove_named" = "Remove account %1$@";
+"accounts.management.more_named" = "More actions for %1$@";
 
 /* Alibaba Token Plan */
 "alibaba.region" = "Region";
