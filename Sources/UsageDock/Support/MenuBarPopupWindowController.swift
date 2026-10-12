@@ -79,6 +79,7 @@ final class MenuBarPopupWindowController: NSWindowController {
     private weak var anchorButton: NSStatusBarButton?
     private var localEventMonitor: Any?
     private var globalEventMonitor: Any?
+    private var resignKeyObserver: NSObjectProtocol?
     private var pendingContentSize: NSSize?
     private var contentSizeUpdateScheduled = false
 
@@ -120,7 +121,14 @@ final class MenuBarPopupWindowController: NSWindowController {
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
         panel.isReleasedWhenClosed = false
         panel.hidesOnDeactivate = false
-        panel.becomesKeyOnlyIfNeeded = true
+        // Glass only renders its live, refracting look in the key window;
+        // anywhere else it falls back to a dulled inactive variant (measured on
+        // macOS 26.6 — `Glass.clear` loses nearly all of its transparency).
+        // With `becomesKeyOnlyIfNeeded` the panel did take key on
+        // `makeKeyAndOrderFront` but gave it up again on the next run-loop
+        // turn, and clicks on ordinary content never reclaimed it — so the
+        // glass came and went depending on which control was last touched.
+        panel.becomesKeyOnlyIfNeeded = false
         panel.animationBehavior = .utilityWindow
 
         hosting.view.wantsLayer = true
@@ -130,6 +138,26 @@ final class MenuBarPopupWindowController: NSWindowController {
 
         sizeRelay.onSizeChange = { [weak self] size in
             self?.scheduleContentSizeUpdate(size)
+        }
+
+        // A popup that is no longer key can only show the inactive glass, so
+        // it should not stay on screen: Command-Tab, Spotlight or another
+        // panel taking focus close it the way a transient `NSPopover` closes.
+        // Mouse clicks elsewhere are already handled by the event monitors.
+        resignKeyObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.didResignKeyNotification,
+            object: panel,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.windowDidResignKey()
+            }
+        }
+    }
+
+    deinit {
+        if let resignKeyObserver {
+            NotificationCenter.default.removeObserver(resignKeyObserver)
         }
     }
 
@@ -180,6 +208,15 @@ final class MenuBarPopupWindowController: NSWindowController {
         // take key status without stealing the app-level focus.
         window.makeKeyAndOrderFront(nil)
         installEventMonitors()
+        // Taking key from an inactive app is not guaranteed on the first
+        // attempt (seen at launch). One retry on the next turn; after that the
+        // popup is still usable, just with the inactive glass.
+        DispatchQueue.main.async { [weak self] in
+            guard let self, let window = self.window, self.isShown, !window.isKeyWindow else {
+                return
+            }
+            window.makeKey()
+        }
 
         // SwiftUI reports its measured scroll height on the next update pass.
         // Re-anchor after that size arrives so the popup remains attached to
@@ -192,6 +229,17 @@ final class MenuBarPopupWindowController: NSWindowController {
     func performClose() {
         removeEventMonitors()
         window?.orderOut(nil)
+    }
+
+    private func windowDidResignKey() {
+        guard isShown else { return }
+        // If a click on the status item is what took key away, leave it to
+        // `togglePopover`, which closes the popup itself; closing here first
+        // would make that toggle reopen it.
+        if let event = NSApp.currentEvent, eventTargetsAnchor(event) {
+            return
+        }
+        performClose()
     }
 
     private func scheduleContentSizeUpdate(_ size: NSSize) {

@@ -48,7 +48,13 @@ final class FloatingWidgetWindowController: NSWindowController, NSWindowDelegate
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.isReleasedWhenClosed = false
         panel.hidesOnDeactivate = false
-        panel.becomesKeyOnlyIfNeeded = true
+        // Glass renders its live look only in the key window, and no public
+        // API keeps it live in an unfocused one. Showing still never steals
+        // focus (`orderFrontRegardless`), but any click on the widget now makes
+        // it key so its glass comes alive while the user works with it; with
+        // `becomesKeyOnlyIfNeeded` ordinary clicks never did, and the widget
+        // never showed anything but the inactive glass.
+        panel.becomesKeyOnlyIfNeeded = false
         if #available(macOS 26.0, *) {
             // The SwiftUI canvas and card glass now own the selected Frosted or
             // Clear treatment; an opaque AppKit window would erase the change.
