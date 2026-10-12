@@ -724,6 +724,40 @@
 "operation.timed_out" = "操作がタイムアウトしました。もう一度お試しください。";
 "operation.cancelled" = "操作をキャンセルしました。もう一度お試しいただけます。";
 
+// Optional combined account quota
+"accounts.combined.toggle" = "同じ容量のアカウントを合算";
+"accounts.combined.confirm_title" = "これらのアカウントを合算しますか？";
+"accounts.combined.confirm" = "確認して合算";
+"accounts.combined.confirm_body" = "プラン：%1$@。アカウント：%2$@。利用枠の容量が同じ、別々のサブスクリプションであることを確認してください。各アカウントを100%%として扱います。同じアカウントへの重複ログインは加算できません。アプリは絶対容量やログインの重複を確認できません。リセットは個別のままです。利用枠カードにのみ適用し、Dockと通知は残量が最も少ないアカウントを使います。";
+"accounts.combined.changed" = "アカウント構成またはプランが変わりました。一度オフにして再度オンにし、新しい構成を確認してください。";
+"accounts.combined.summary" = "%1$d アカウント · %2$@ · 個別リセット";
+"accounts.combined.remaining" = "残り %1$@ / %2$@";
+"accounts.combined.reset" = "%1$@ 後にリセット";
+"accounts.combined.reset_unknown" = "リセット時刻は不明";
+"accounts.combined.next_reset" = "次のリセットまで %1$@ · %2$@ 回復";
+"accounts.combined.updated" = "最も古い取得時刻：%1$@";
+"accounts.combined.unavailable.accounts" = "有効な別々のアカウントが2件以上必要です。";
+"accounts.combined.unavailable.readings" = "すべてのアカウントの有効な利用枠を待っています。個別表示を維持します。";
+"accounts.combined.unavailable.plans" = "同じプラン階層が明確なアカウントのみ合算できます。";
+"accounts.combined.unavailable.windows" = "期間や単位が異なるか、リセット時刻を過ぎています。対応するデータを取得するまで個別表示します。";
+
+// Account management
+"nav.accounts" = "アカウント管理";
+"section.accounts.subtitle" = "AIアプリごとにアカウントを管理し、監視するアプリを選択します。";
+"accounts.management.monitoring_note" = "監視を停止すると、このアプリのすべてのアカウントで利用枠の取得を一時停止します。保存済みアカウントは保持され、後で再開できます。";
+"accounts.management.single_source" = "このアプリは現在のログイン、またはデータソースで設定した認証情報を使用します。";
+"accounts.management.monitoring" = "監視中";
+"accounts.management.stopped" = "監視停止中";
+"accounts.management.stop" = "監視を停止";
+"accounts.management.start" = "監視を開始";
+"accounts.management.stop_named" = "%1$@ の監視を停止";
+"accounts.management.start_named" = "%1$@ の監視を開始";
+"accounts.management.system_note" = "既定のアカウント：データソースまたは公式アプリで管理します。監視を停止するには、上のアプリ操作を使用してください。";
+"accounts.management.active" = "アカウント有効";
+"accounts.management.paused" = "アカウント一時停止中";
+"accounts.management.remove_named" = "アカウント %1$@ を削除";
+"accounts.management.more_named" = "%1$@ のその他の操作";
+
 /* Alibaba Token Plan */
 "alibaba.region" = "リージョン";
 "alibaba.region.china" = "中国本土";

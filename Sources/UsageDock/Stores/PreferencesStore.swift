@@ -23,6 +23,8 @@ enum PopoverGlassStyle: String, CaseIterable, Identifiable, Sendable {
 final class PreferencesStore: ObservableObject {
     static let shared = PreferencesStore()
 
+    static let combinedAccountConsentKey = "tokenRemain.combinedAccountConsent.v1"
+
     static let menuBarKey = "tokenRemain.menuBarProviders.v1"
     static let menuBarDisplayModeKey = "tokenRemain.menuBarDisplayMode.v1"
     static let popoverGlassStyleKey = "tokenRemain.popoverGlassStyle.v1"
@@ -87,10 +89,13 @@ final class PreferencesStore: ObservableObject {
     /// Dock 头像上下两条量表各对应的应用:恰好两个且互不相同,顺序即上下。
     @Published private(set) var dockLogoProviders: [ProviderQuota.Provider]
 
+    @Published private(set) var combinedAccountConsent: [String: String]
+
     private let defaults: UserDefaults
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+        combinedAccountConsent = defaults.dictionary(forKey: Self.combinedAccountConsentKey) as? [String: String] ?? [:]
         if let raw = defaults.array(forKey: Self.menuBarKey) as? [String] {
             menuBarProviders = raw.compactMap(ProviderQuota.Provider.init(rawValue:))
         } else {
@@ -120,6 +125,15 @@ final class PreferencesStore: ObservableObject {
             (defaults.array(forKey: Self.dockLogoProvidersKey) as? [String])?
                 .compactMap(ProviderQuota.Provider.init(rawValue:))
         ) ?? Self.defaultDockLogoProviders
+    }
+
+    func setCombinedAccountConsent(_ fingerprint: String?, for provider: ProviderQuota.Provider) {
+        combinedAccountConsent[provider.rawValue] = fingerprint
+        defaults.set(combinedAccountConsent, forKey: Self.combinedAccountConsentKey)
+    }
+
+    func combinesAccounts(for provider: ProviderQuota.Provider, group: CombinedAccountQuota) -> Bool {
+        combinedAccountConsent[provider.rawValue] == group.consentFingerprint
     }
 
     func isInMenuBar(_ provider: ProviderQuota.Provider) -> Bool {

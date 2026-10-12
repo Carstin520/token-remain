@@ -724,6 +724,40 @@
 "operation.timed_out" = "操作超时，请重试。";
 "operation.cancelled" = "操作已取消，可以重试。";
 
+// Optional combined account quota
+"accounts.combined.toggle" = "合并同额度账号";
+"accounts.combined.confirm_title" = "合并这些账号？";
+"accounts.combined.confirm" = "确认并合并";
+"accounts.combined.confirm_body" = "套餐：%1$@。账号：%2$@。请确认它们是不同的订阅账号，且额度容量相同。每个账号计为 100%%；同一账号重复登录不能重复计入。应用无法核验绝对容量或自动去重登录，各账号仍独立重置。此设置仅影响额度卡片，Dock 和提醒继续采用最紧张账号。";
+"accounts.combined.changed" = "账号组或套餐已变化，请关闭后重新开启，确认新的账号组。";
+"accounts.combined.summary" = "%1$d 个账号 · %2$@ · 独立重置";
+"accounts.combined.remaining" = "剩余 %1$@ / %2$@";
+"accounts.combined.reset" = "%1$@ 后重置";
+"accounts.combined.reset_unknown" = "重置时间未知";
+"accounts.combined.next_reset" = "下次重置：%1$@ 后 · 恢复 %2$@";
+"accounts.combined.updated" = "最早的读数：%1$@";
+"accounts.combined.unavailable.accounts" = "至少需要两个已启用的独立账号条目。";
+"accounts.combined.unavailable.readings" = "等待所有账号返回可用额度，暂时保留分账号显示。";
+"accounts.combined.unavailable.plans" = "只能合并套餐档位明确且相同的账号。";
+"accounts.combined.unavailable.windows" = "额度窗口或单位不同，或已过重置时间；在获得兼容读数前分账号显示。";
+
+// Account management
+"nav.accounts" = "账号管理";
+"section.accounts.subtitle" = "按 AI 应用管理账号，并选择需要监控的应用。";
+"accounts.management.monitoring_note" = "停止监控后，将暂停此应用下所有账号的额度采集。已保存的账号会保留，方便以后恢复。";
+"accounts.management.single_source" = "此应用使用当前登录，或在「数据来源」中配置的凭证。";
+"accounts.management.monitoring" = "监控中";
+"accounts.management.stopped" = "已停止监控";
+"accounts.management.stop" = "停止监控";
+"accounts.management.start" = "开始监控";
+"accounts.management.stop_named" = "停止监控 %1$@";
+"accounts.management.start_named" = "开始监控 %1$@";
+"accounts.management.system_note" = "默认账号：通过「数据来源」或官方应用管理。停止监控请使用上方的应用开关。";
+"accounts.management.active" = "账号已启用";
+"accounts.management.paused" = "账号已暂停";
+"accounts.management.remove_named" = "移除账号 %1$@";
+"accounts.management.more_named" = "%1$@ 的更多操作";
+
 /* Alibaba Token Plan */
 "alibaba.region" = "地域";
 "alibaba.region.china" = "国内";

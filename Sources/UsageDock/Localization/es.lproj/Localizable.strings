@@ -724,6 +724,40 @@
 "operation.timed_out" = "La operación ha agotado el tiempo de espera. Inténtalo de nuevo.";
 "operation.cancelled" = "La operación se ha cancelado. Puedes intentarlo de nuevo.";
 
+// Optional combined account quota
+"accounts.combined.toggle" = "Combinar cuentas de igual capacidad";
+"accounts.combined.confirm_title" = "¿Combinar estas cuentas?";
+"accounts.combined.confirm" = "Confirmar y combinar";
+"accounts.combined.confirm_body" = "Plan: %1$@. Cuentas: %2$@. Confirma que son suscripciones distintas con la misma capacidad. Cada cuenta cuenta como 100%%; iniciar sesión dos veces en la misma cuenta no debe duplicarla. La app no puede verificar la capacidad absoluta ni eliminar inicios duplicados. Los reinicios siguen siendo independientes. Solo afecta a las tarjetas; Dock y alertas siguen usando la cuenta con menos cuota.";
+"accounts.combined.changed" = "El grupo o plan cambió. Desactiva y vuelve a activar para confirmar el nuevo grupo.";
+"accounts.combined.summary" = "%1$d cuentas · %2$@ · reinicios independientes";
+"accounts.combined.remaining" = "Restante %1$@ / %2$@";
+"accounts.combined.reset" = "Se reinicia en %1$@";
+"accounts.combined.reset_unknown" = "Hora de reinicio desconocida";
+"accounts.combined.next_reset" = "Próximo reinicio en %1$@ · recupera %2$@";
+"accounts.combined.updated" = "Lectura más antigua: %1$@";
+"accounts.combined.unavailable.accounts" = "Se necesitan al menos dos cuentas distintas activadas.";
+"accounts.combined.unavailable.readings" = "Esperando cuotas válidas de todas las cuentas. Se muestran por separado.";
+"accounts.combined.unavailable.plans" = "Solo se combinan niveles de plan iguales y claramente identificados.";
+"accounts.combined.unavailable.windows" = "Las ventanas o unidades difieren, o ya pasó el reinicio. Se muestran por separado hasta recibir lecturas compatibles.";
+
+// Account management
+"nav.accounts" = "Gestión de cuentas";
+"section.accounts.subtitle" = "Gestiona las cuentas por aplicación de IA y elige cuáles supervisar.";
+"accounts.management.monitoring_note" = "Al detener la supervisión, se pausa la consulta de cuotas de todas las cuentas de esta aplicación. Las cuentas guardadas se conservan para poder reanudarla.";
+"accounts.management.single_source" = "Esta aplicación usa la sesión actual o las credenciales configuradas en Fuentes de datos.";
+"accounts.management.monitoring" = "Supervisión activa";
+"accounts.management.stopped" = "Supervisión detenida";
+"accounts.management.stop" = "Detener supervisión";
+"accounts.management.start" = "Iniciar supervisión";
+"accounts.management.stop_named" = "Detener supervisión de %1$@";
+"accounts.management.start_named" = "Iniciar supervisión de %1$@";
+"accounts.management.system_note" = "Cuenta predeterminada: se gestiona en Fuentes de datos o en la aplicación oficial. Para detener la supervisión, usa el control de la aplicación de arriba.";
+"accounts.management.active" = "Cuenta habilitada";
+"accounts.management.paused" = "Cuenta en pausa";
+"accounts.management.remove_named" = "Eliminar cuenta %1$@";
+"accounts.management.more_named" = "Más acciones para %1$@";
+
 /* Alibaba Token Plan */
 "alibaba.region" = "Región";
 "alibaba.region.china" = "China continental";

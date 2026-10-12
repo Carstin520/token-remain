@@ -724,6 +724,40 @@
 "operation.timed_out" = "작업 시간이 초과되었습니다. 다시 시도해 주세요.";
 "operation.cancelled" = "작업이 취소되었습니다. 다시 시도할 수 있습니다.";
 
+// Optional combined account quota
+"accounts.combined.toggle" = "동일 용량 계정 합산";
+"accounts.combined.confirm_title" = "이 계정들을 합산할까요?";
+"accounts.combined.confirm" = "확인 후 합산";
+"accounts.combined.confirm_body" = "요금제: %1$@. 계정: %2$@. 할당량 용량이 같은 서로 다른 구독인지 확인하세요. 각 계정은 100%%로 계산하며 같은 계정의 중복 로그인은 중복 계산할 수 없습니다. 앱은 절대 용량이나 로그인 중복을 확인할 수 없습니다. 초기화는 개별적으로 유지됩니다. 할당량 카드에만 적용되며 Dock과 알림은 잔여량이 가장 적은 계정을 사용합니다.";
+"accounts.combined.changed" = "계정 그룹 또는 요금제가 변경되었습니다. 껐다가 다시 켜서 새 그룹을 확인하세요.";
+"accounts.combined.summary" = "%1$d개 계정 · %2$@ · 개별 초기화";
+"accounts.combined.remaining" = "남은 양 %1$@ / %2$@";
+"accounts.combined.reset" = "%1$@ 후 초기화";
+"accounts.combined.reset_unknown" = "초기화 시간 알 수 없음";
+"accounts.combined.next_reset" = "다음 초기화까지 %1$@ · %2$@ 복원";
+"accounts.combined.updated" = "가장 오래된 확인: %1$@";
+"accounts.combined.unavailable.accounts" = "서로 다른 활성 계정이 두 개 이상 필요합니다.";
+"accounts.combined.unavailable.readings" = "모든 계정의 유효한 할당량을 기다리는 중입니다. 개별 표시를 유지합니다.";
+"accounts.combined.unavailable.plans" = "동일하고 명확하게 식별된 요금제 등급만 합산할 수 있습니다.";
+"accounts.combined.unavailable.windows" = "기간이나 단위가 다르거나 초기화 시간이 지났습니다. 호환되는 값이 도착할 때까지 개별 표시합니다.";
+
+// Account management
+"nav.accounts" = "계정 관리";
+"section.accounts.subtitle" = "AI 앱별로 계정을 관리하고 모니터링할 앱을 선택합니다.";
+"accounts.management.monitoring_note" = "모니터링을 중지하면 이 앱의 모든 계정에서 할당량 수집이 일시 중지됩니다. 저장된 계정은 유지되므로 나중에 다시 시작할 수 있습니다.";
+"accounts.management.single_source" = "이 앱은 현재 로그인 또는 데이터 소스에서 설정한 인증 정보를 사용합니다.";
+"accounts.management.monitoring" = "모니터링 중";
+"accounts.management.stopped" = "모니터링 중지됨";
+"accounts.management.stop" = "모니터링 중지";
+"accounts.management.start" = "모니터링 시작";
+"accounts.management.stop_named" = "%1$@ 모니터링 중지";
+"accounts.management.start_named" = "%1$@ 모니터링 시작";
+"accounts.management.system_note" = "기본 계정: 데이터 소스 또는 공식 앱에서 관리합니다. 모니터링을 중지하려면 위의 앱 제어를 사용하세요.";
+"accounts.management.active" = "계정 활성화됨";
+"accounts.management.paused" = "계정 일시 중지됨";
+"accounts.management.remove_named" = "%1$@ 계정 제거";
+"accounts.management.more_named" = "%1$@ 추가 작업";
+
 /* Alibaba Token Plan */
 "alibaba.region" = "지역";
 "alibaba.region.china" = "중국 본토";
