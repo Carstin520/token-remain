@@ -138,3 +138,30 @@
 "trends.model_detail_accumulating" = "Model detail accumulates from this version onward; older cached days cannot be backfilled.";
 "trends.model_io_format" = "In %1$@ · Out %2$@ · Cache %3$@";
 "trends.tooltip_click_hint" = "Click for model detail";
+
+/* Usage page: token mix, model speed, display currency */
+"composition.input" = "Ввод";
+"composition.output" = "Вывод";
+"composition.cache_write" = "Запись в кэш";
+"composition.cache_read" = "Чтение из кэша";
+"composition.cache_unsplit" = "Кэш";
+"composition.range_title" = "Состав токенов · последние %d дн.";
+"composition.day_title" = "Состав токенов · %@";
+"trends.model_io_split_format" = "Ввод %1$@ · Вывод %2$@ · Запись в кэш %3$@ · Чтение кэша %4$@";
+"trends.model_tps_format" = "≈%@ tok/s";
+"trends.model_tps_help" = "Средняя скорость вывода: выходные токены, делённые на время от запроса до последнего фрагмента; оценивается по временным меткам локальных журналов сеансов и включает задержку до первого токена.";
+"trends.model_tps_note" = "tok/s оценивается локально по временным меткам журналов Claude Code и Codex и включает задержку до первого токена.";
+"usage.provider_cost_amount_accessibility" = "%1$@, %2$@ токенов, %3$@, %4$@ стоимости";
+"settings.currency_title" = "Валюта";
+"settings.currency_display" = "Валюта отображения расходов";
+"settings.currency_hint" = "Расходы оцениваются в долларах США по прейскурантным ценам API и пересчитываются по ежедневным справочным курсам. Официальные суммы счетов и балансы остаются в валюте расчётов.";
+"settings.currency_rate" = "1 USD = %1$@ %2$@";
+"settings.currency_updated" = "Обновлено %@";
+"settings.currency_refresh" = "Обновить курс";
+"settings.currency_fallback" = "Курса пока нет; расходы показаны в USD.";
+"settings.currency_attribution" = "Курсы: ExchangeRate-API";
+"currency.error_invalid" = "Сервис курсов вернул непригодные данные. Сохранены последние курсы.";
+"currency.error_throttled" = "Курсы только что запрошены. Повторите через несколько секунд.";
+"currency.error_timeout" = "Истекло время запроса курсов. Сохранены последние курсы.";
+"currency.error_network" = "Не удалось подключиться к сервису курсов. Сохранены последние курсы.";
+"quota.model_speed_help" = "%1$@ · средняя скорость вывода за последние %2$d дн., оценка по временным меткам локальных журналов (с задержкой до первого токена).";

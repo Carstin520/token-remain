@@ -160,7 +160,10 @@ struct DashboardView: View {
         .background { UsageDockCanvasBackground() }
         .preferredColorScheme(.dark)
         .tint(DashboardTheme.violet)
-        .task { store.start() }
+        .task {
+            store.start()
+            CurrencyStore.shared.refreshIfStale()
+        }
     }
 
     // MARK: - Sidebar
@@ -371,7 +374,8 @@ struct DashboardView: View {
                     Task { await store.refresh(forceCCUsage: true, forceClaude: false) }
                 },
                 tracked: tracked,
-                disabledLocalUsageSourceIDs: store.disabledLocalUsageSourceIDs
+                disabledLocalUsageSourceIDs: store.disabledLocalUsageSourceIDs,
+                throughput: store.modelThroughput
             )
         case .devices:
             DevicesSection(insights: insights)

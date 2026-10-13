@@ -86,6 +86,8 @@ final class UsageStore: ObservableObject {
     }
     @Published private(set) var daily: DailyUsage?
     @Published private(set) var history: DailyUsageHistory?
+    /// Locally estimated per-model output speed; empty until the first scan.
+    @Published private(set) var modelThroughput: ModelThroughputSnapshot = .empty
     @Published private(set) var quotaUsageHistory: QuotaUsageHistory = .empty
     /// Official public service status for providers that publish a dedicated
     /// coding-product component (currently Claude Code and Codex).
@@ -109,6 +111,8 @@ final class UsageStore: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     private var refreshTask: Task<Void, Never>?
     private var historyRefreshTask: Task<Void, Never>?
+    private var throughputTask: Task<Void, Never>?
+    private var throughputClaudeDirectories: (urls: [URL], resolvedAt: Date)?
     private var lastCCUsageRefresh: Date?
     private var lastClaudeAttempt: Date?
     private var lastCodexAPIAttempt: Date?
@@ -543,6 +547,11 @@ final class UsageStore: ObservableObject {
             return (profile.id, ProviderAccountState(quota: cached))
         })
         history = historyCache.load()
+        Task { @MainActor [weak self] in
+            let cached = await ModelThroughputService.shared.cachedSnapshot()
+            guard let self, self.modelThroughput == .empty else { return }
+            self.modelThroughput = cached
+        }
         discoveredLocalUsageSourceIDs.formUnion(
             history?.days.flatMap(\.agents).map { LocalUsageSourceCatalog.canonicalID($0.id) } ?? []
         )
@@ -966,6 +975,9 @@ final class UsageStore: ObservableObject {
     /// this entry point so showing local totals does not also trigger network
     /// provider requests.
     func refreshLocalUsage(force: Bool = true) {
+        // Costs shown on any surface use the display rate; checking here keeps
+        // it current for menu-bar-only users. Cheap and self-throttled.
+        CurrencyStore.shared.refreshIfStale()
         scheduleCCUsageRefresh(force: force)
     }
 
@@ -1026,10 +1038,38 @@ final class UsageStore: ObservableObject {
             if let merged {
                 latestLocalUsageSnapshot = merged
                 applyLocalUsageSnapshot(merged)
+                scheduleThroughputRefresh(now: now)
             } else if daily == nil {
                 localUsageStatus = .failed(errors.joined(separator: "\n"))
             }
             historyErrorMessage = errors.isEmpty ? nil : errors.joined(separator: "\n")
+        }
+    }
+
+    /// Rides the ccusage cadence instead of owning a timer. Each pass reads
+    /// only bytes appended since the last one, at utility priority, bounded by
+    /// the service's byte and time budget; the UI never waits on it.
+    private func scheduleThroughputRefresh(now: Date) {
+        guard throughputTask == nil else { return }
+        throughputTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            defer { throughputTask = nil }
+            let directories: [URL]
+            if let cached = throughputClaudeDirectories,
+               now.timeIntervalSince(cached.resolvedAt) < 3_600 {
+                directories = cached.urls
+            } else {
+                directories = (try? await CCUsageService.claudeLogDirectories()) ?? []
+                throughputClaudeDirectories = (directories, now)
+            }
+            // A local source the user turned off is not read for speed either.
+            let roots = ModelThroughputService.defaultRoots(claudeConfigDirectories: directories)
+                .filter { self.isLocalUsageSourceEnabled($0.kind.rawValue) }
+            let snapshot = await Task.detached(priority: .utility) {
+                await ModelThroughputService.shared.refresh(roots: roots, now: now)
+            }.value
+            guard !Task.isCancelled, snapshot != modelThroughput else { return }
+            modelThroughput = snapshot
         }
     }
 

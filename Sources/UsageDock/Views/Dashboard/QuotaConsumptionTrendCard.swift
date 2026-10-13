@@ -66,7 +66,7 @@ struct QuotaConsumptionTrendCard: View {
             Text(L10n.text("trends.quota_history"))
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .font(DashboardTheme.Typo.mono(9))
+        .font(DashboardTheme.Typo.numeric(9)).monospacedDigit()
         .foregroundStyle(DashboardTheme.mutedText)
         .textCase(.uppercase)
         .accessibilityHidden(true)

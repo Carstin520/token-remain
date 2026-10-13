@@ -138,3 +138,30 @@
 "trends.model_detail_accumulating" = "Model detail accumulates from this version onward; older cached days cannot be backfilled.";
 "trends.model_io_format" = "In %1$@ · Out %2$@ · Cache %3$@";
 "trends.tooltip_click_hint" = "Click for model detail";
+
+/* Usage page: token mix, model speed, display currency */
+"composition.input" = "الإدخال";
+"composition.output" = "الإخراج";
+"composition.cache_write" = "كتابة ذاكرة التخزين المؤقت";
+"composition.cache_read" = "قراءة ذاكرة التخزين المؤقت";
+"composition.cache_unsplit" = "ذاكرة التخزين المؤقت";
+"composition.range_title" = "تركيبة الرموز · آخر %d يوم";
+"composition.day_title" = "تركيبة الرموز · %@";
+"trends.model_io_split_format" = "إدخال %1$@ · إخراج %2$@ · كتابة مؤقتة %3$@ · قراءة مؤقتة %4$@";
+"trends.model_tps_format" = "≈%@ tok/s";
+"trends.model_tps_help" = "متوسط سرعة الإخراج: رموز الإخراج مقسومة على الوقت من الطلب حتى آخر جزء، مقدّرة من الطوابع الزمنية لسجلات الجلسات المحلية، وتشمل زمن الوصول إلى أول رمز.";
+"trends.model_tps_note" = "تُقدَّر tok/s محليًا من الطوابع الزمنية لسجلات Claude Code وCodex وتشمل زمن الوصول إلى أول رمز.";
+"usage.provider_cost_amount_accessibility" = "%1$@، %2$@ رمز، %3$@، %4$@ من التكلفة";
+"settings.currency_title" = "العملة";
+"settings.currency_display" = "عملة عرض التكلفة";
+"settings.currency_hint" = "تُقدَّر التكاليف بالدولار الأمريكي وفق أسعار قائمة API ثم تُحوَّل بأسعار صرف مرجعية يومية. تبقى المبالغ المفوترة والأرصدة الرسمية بعملة الفوترة.";
+"settings.currency_rate" = "1 USD = %1$@ %2$@";
+"settings.currency_updated" = "تم التحديث %@";
+"settings.currency_refresh" = "تحديث السعر";
+"settings.currency_fallback" = "لا يوجد سعر صرف بعد؛ تُعرض التكاليف بالدولار الأمريكي.";
+"settings.currency_attribution" = "الأسعار من ExchangeRate-API";
+"currency.error_invalid" = "أعادت خدمة أسعار الصرف بيانات غير صالحة. يتم الاحتفاظ بآخر الأسعار.";
+"currency.error_throttled" = "طُلبت الأسعار للتو. حاول مرة أخرى بعد بضع ثوانٍ.";
+"currency.error_timeout" = "انتهت مهلة طلب أسعار الصرف. يتم الاحتفاظ بآخر الأسعار.";
+"currency.error_network" = "تعذّر الوصول إلى خدمة أسعار الصرف. يتم الاحتفاظ بآخر الأسعار.";
+"quota.model_speed_help" = "%1$@ · متوسط سرعة الإخراج خلال آخر %2$d أيام، مقدّر من الطوابع الزمنية للسجلات المحلية (يشمل زمن الوصول إلى أول رمز).";

@@ -10,6 +10,7 @@ struct OverviewSection: View {
     let onRetryCCUsage: () -> Void
     @ObservedObject var feedStore: AIFeedStore
     @ObservedObject var preferences: PreferencesStore = .shared
+    @ObservedObject private var currencyStore = CurrencyStore.shared
     let errorMessage: String?
 
     var body: some View {
@@ -75,7 +76,7 @@ struct OverviewSection: View {
                 )
                 MetricCard(
                     label: L10n.text("usage.today_est_cost"),
-                    value: insights.totalCost.map { String(format: "$%.2f", $0) } ?? "—",
+                    value: insights.totalCost.map { currencyStore.display.amount(usd: $0) } ?? "—",
                     caption: insights.unpricedModels.isEmpty
                         ? L10n.text("usage.api_price_estimate")
                         : L10n.text("usage.price_unavailable"),

@@ -152,6 +152,21 @@ enum DashboardTheme {
     /// high / danger (paired with a "‼" glyph at the call site).
     static let danger = Color(hex: 0xFF6B6B)
 
+    // MARK: - Token composition
+    // Token kinds, not providers: none of these reuse a provider accent. Cache
+    // read is usually the bulk of the total, so it gets the recessive slate and
+    // input / output stay legible beside it.
+
+    static func compositionColor(_ kind: TokenComposition.Kind) -> Color {
+        switch kind {
+        case .input: return Color(hex: 0x9B8AFB)
+        case .output: return Color(hex: 0x3ECFE0)
+        case .cacheWrite: return Color(hex: 0xD9A35B)
+        case .cacheRead: return Color(hex: 0x66707F)
+        case .cacheUnsplit: return Color(hex: 0x8A919C)
+        }
+    }
+
     /// The stable theme accent for a provider's quota meter and comparisons.
     static func accent(for provider: ProviderQuota.Provider) -> Color {
         switch provider {

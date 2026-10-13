@@ -138,3 +138,30 @@
 "trends.model_detail_accumulating" = "Model detail accumulates from this version onward; older cached days cannot be backfilled.";
 "trends.model_io_format" = "In %1$@ · Out %2$@ · Cache %3$@";
 "trends.tooltip_click_hint" = "Click for model detail";
+
+/* Usage page: token mix, model speed, display currency */
+"composition.input" = "Entrée";
+"composition.output" = "Sortie";
+"composition.cache_write" = "Écriture cache";
+"composition.cache_read" = "Lecture cache";
+"composition.cache_unsplit" = "Cache";
+"composition.range_title" = "Composition des tokens · %d derniers jours";
+"composition.day_title" = "Composition des tokens · %@";
+"trends.model_io_split_format" = "Entrée %1$@ · Sortie %2$@ · Écriture cache %3$@ · Lecture cache %4$@";
+"trends.model_tps_format" = "≈%@ tok/s";
+"trends.model_tps_help" = "Vitesse moyenne de sortie : tokens de sortie divisés par le temps entre la requête et le dernier fragment, estimée à partir des horodatages des journaux locaux. Inclut le délai du premier token.";
+"trends.model_tps_note" = "Les tok/s sont estimés localement à partir des horodatages des journaux Claude Code et Codex et incluent le délai du premier token.";
+"usage.provider_cost_amount_accessibility" = "%1$@, %2$@ tokens, %3$@, %4$@ du coût";
+"settings.currency_title" = "Devise";
+"settings.currency_display" = "Devise d'affichage des coûts";
+"settings.currency_hint" = "Les coûts sont estimés en USD selon les prix publics de l'API, puis convertis avec des taux de référence quotidiens. Les montants facturés et soldes officiels restent dans leur devise de facturation.";
+"settings.currency_rate" = "1 USD = %1$@ %2$@";
+"settings.currency_updated" = "Mis à jour %@";
+"settings.currency_refresh" = "Actualiser le taux";
+"settings.currency_fallback" = "Pas encore de taux ; les coûts sont affichés en USD.";
+"settings.currency_attribution" = "Taux par ExchangeRate-API";
+"currency.error_invalid" = "Le service de taux de change a renvoyé des données inutilisables. Les derniers taux sont conservés.";
+"currency.error_throttled" = "Les taux viennent d'être demandés. Réessayez dans quelques secondes.";
+"currency.error_timeout" = "La demande de taux de change a expiré. Les derniers taux sont conservés.";
+"currency.error_network" = "Impossible de joindre le service de taux de change. Les derniers taux sont conservés.";
+"quota.model_speed_help" = "%1$@ · vitesse moyenne de sortie sur les %2$d derniers jours, estimée à partir des horodatages des journaux locaux (délai du premier token inclus).";

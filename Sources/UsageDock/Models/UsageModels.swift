@@ -473,7 +473,14 @@ struct DailyUsageHistory: Sendable, Codable {
         let id: String
         let inputTokens: Int64
         let outputTokens: Int64
+        /// Cache creation plus cache read. Kept as the total so caches written
+        /// before the split existed still decode and sum correctly.
         let cacheTokens: Int64
+        /// Cache creation ("write") and cache read halves of `cacheTokens`.
+        /// Both are nil when the row predates the split, so the Dashboard can
+        /// say "cache" instead of inventing a write/read ratio.
+        let cacheWriteTokens: Int64?
+        let cacheReadTokens: Int64?
         let cost: Double
         /// Number of concrete model identifiers represented by this row.
         /// Named rows remain one; the bounded `other` row carries its tail size.
@@ -485,7 +492,9 @@ struct DailyUsageHistory: Sendable, Codable {
             outputTokens: Int64,
             cacheTokens: Int64,
             cost: Double,
-            constituentCount: Int = 1
+            constituentCount: Int = 1,
+            cacheWriteTokens: Int64? = nil,
+            cacheReadTokens: Int64? = nil
         ) {
             self.id = id
             self.inputTokens = inputTokens
@@ -493,27 +502,81 @@ struct DailyUsageHistory: Sendable, Codable {
             self.cacheTokens = cacheTokens
             self.cost = cost
             self.constituentCount = max(1, constituentCount)
+            if let cacheWriteTokens, let cacheReadTokens,
+               cacheWriteTokens + cacheReadTokens == cacheTokens {
+                self.cacheWriteTokens = cacheWriteTokens
+                self.cacheReadTokens = cacheReadTokens
+            } else {
+                self.cacheWriteTokens = nil
+                self.cacheReadTokens = nil
+            }
         }
 
         private enum CodingKeys: String, CodingKey {
-            case id, inputTokens, outputTokens, cacheTokens, cost, constituentCount
+            case id, inputTokens, outputTokens, cacheTokens, cacheWriteTokens, cacheReadTokens
+            case cost, constituentCount
         }
 
         init(from decoder: Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
-            id = try container.decode(String.self, forKey: .id)
-            inputTokens = try container.decode(Int64.self, forKey: .inputTokens)
-            outputTokens = try container.decode(Int64.self, forKey: .outputTokens)
-            cacheTokens = try container.decode(Int64.self, forKey: .cacheTokens)
-            cost = try container.decode(Double.self, forKey: .cost)
-            constituentCount = max(
-                1,
-                try container.decodeIfPresent(Int.self, forKey: .constituentCount) ?? 1
+            self.init(
+                id: try container.decode(String.self, forKey: .id),
+                inputTokens: try container.decode(Int64.self, forKey: .inputTokens),
+                outputTokens: try container.decode(Int64.self, forKey: .outputTokens),
+                cacheTokens: try container.decode(Int64.self, forKey: .cacheTokens),
+                cost: try container.decode(Double.self, forKey: .cost),
+                constituentCount: try container.decodeIfPresent(Int.self, forKey: .constituentCount) ?? 1,
+                cacheWriteTokens: try container.decodeIfPresent(Int64.self, forKey: .cacheWriteTokens),
+                cacheReadTokens: try container.decodeIfPresent(Int64.self, forKey: .cacheReadTokens)
             )
+        }
+
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(id, forKey: .id)
+            try container.encode(inputTokens, forKey: .inputTokens)
+            try container.encode(outputTokens, forKey: .outputTokens)
+            try container.encode(cacheTokens, forKey: .cacheTokens)
+            try container.encodeIfPresent(cacheWriteTokens, forKey: .cacheWriteTokens)
+            try container.encodeIfPresent(cacheReadTokens, forKey: .cacheReadTokens)
+            try container.encode(cost, forKey: .cost)
+            try container.encode(constituentCount, forKey: .constituentCount)
         }
 
         var totalTokens: Int64 {
             inputTokens + outputTokens + cacheTokens
+        }
+
+        /// Sums two rows under `id`. The cache split survives only when both
+        /// sides carry it; otherwise the merged row honestly reports one total.
+        func adding(_ other: ModelUsage, id: String, constituentCount: Int) -> ModelUsage {
+            ModelUsage(
+                id: id,
+                inputTokens: inputTokens + max(0, other.inputTokens),
+                outputTokens: outputTokens + max(0, other.outputTokens),
+                cacheTokens: cacheTokens + max(0, other.cacheTokens),
+                cost: cost + max(0, other.cost),
+                constituentCount: constituentCount,
+                cacheWriteTokens: cacheWriteTokens.flatMap { lhs in
+                    other.cacheWriteTokens.map { lhs + max(0, $0) }
+                },
+                cacheReadTokens: cacheReadTokens.flatMap { lhs in
+                    other.cacheReadTokens.map { lhs + max(0, $0) }
+                }
+            )
+        }
+
+        func renamed(_ id: String) -> ModelUsage {
+            ModelUsage(
+                id: id,
+                inputTokens: max(0, inputTokens),
+                outputTokens: max(0, outputTokens),
+                cacheTokens: max(0, cacheTokens),
+                cost: max(0, cost),
+                constituentCount: constituentCount,
+                cacheWriteTokens: cacheWriteTokens.map { max(0, $0) },
+                cacheReadTokens: cacheReadTokens.map { max(0, $0) }
+            )
         }
     }
 
@@ -583,15 +646,15 @@ struct DailyUsageHistory: Sendable, Codable {
         for row in rows {
             let id = row.id.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
             guard !id.isEmpty, id != "<synthetic>" else { continue }
-            let previous = merged[id]
-            merged[id] = ModelUsage(
-                id: id,
-                inputTokens: (previous?.inputTokens ?? 0) + max(0, row.inputTokens),
-                outputTokens: (previous?.outputTokens ?? 0) + max(0, row.outputTokens),
-                cacheTokens: (previous?.cacheTokens ?? 0) + max(0, row.cacheTokens),
-                cost: (previous?.cost ?? 0) + max(0, row.cost),
-                constituentCount: max(previous?.constituentCount ?? 1, row.constituentCount)
-            )
+            if let previous = merged[id] {
+                merged[id] = previous.adding(
+                    row,
+                    id: id,
+                    constituentCount: max(previous.constituentCount, row.constituentCount)
+                )
+            } else {
+                merged[id] = row.renamed(id)
+            }
         }
 
         let carriedOther = merged.removeValue(forKey: "other")
@@ -609,27 +672,21 @@ struct DailyUsageHistory: Sendable, Codable {
         let namedCount = max(0, cap - 1)
         let kept = Array(ordered.prefix(namedCount))
         let tail = Array(ordered.dropFirst(namedCount)) + [carriedOther].compactMap { $0 }
-        guard let firstTail = tail.first else { return kept }
-        let other = tail.dropFirst().reduce(
-            ModelUsage(
+        guard let other = mergedTail(tail) else { return kept }
+        return other.totalTokens > 0 || other.cost > 0 ? kept + [other] : kept
+    }
+
+    /// Folds a non-empty tail into one `other` row whose constituent count is
+    /// the number of concrete models it represents.
+    static func mergedTail(_ tail: [ModelUsage]) -> ModelUsage? {
+        guard let first = tail.first else { return nil }
+        return tail.dropFirst().reduce(first.renamed("other")) { result, row in
+            result.adding(
+                row,
                 id: "other",
-                inputTokens: firstTail.inputTokens,
-                outputTokens: firstTail.outputTokens,
-                cacheTokens: firstTail.cacheTokens,
-                cost: firstTail.cost,
-                constituentCount: firstTail.constituentCount
-            )
-        ) { result, row in
-            ModelUsage(
-                id: "other",
-                inputTokens: result.inputTokens + row.inputTokens,
-                outputTokens: result.outputTokens + row.outputTokens,
-                cacheTokens: result.cacheTokens + row.cacheTokens,
-                cost: result.cost + row.cost,
                 constituentCount: result.constituentCount + row.constituentCount
             )
         }
-        return other.totalTokens > 0 || other.cost > 0 ? kept + [other] : kept
     }
 
     struct Day: Sendable, Codable, Identifiable {

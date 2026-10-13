@@ -789,3 +789,30 @@
 "claude.web.forbidden" = "Claude web access was blocked (possibly a browser challenge). Open claude.ai to check your session and retry.";
 "claude.web.organization_required" = "Choose an organization: enter its UUID from the claude.ai organization URL, then save again.";
 "claude.web.invalid_response" = "Claude web returned unsupported usage data. Previous usage is retained; retry later.";
+
+/* Usage page: token mix, model speed, display currency */
+"composition.input" = "Input";
+"composition.output" = "Output";
+"composition.cache_write" = "Cache write";
+"composition.cache_read" = "Cache read";
+"composition.cache_unsplit" = "Cache";
+"composition.range_title" = "Token mix · last %d days";
+"composition.day_title" = "Token mix · %@";
+"trends.model_io_split_format" = "In %1$@ · Out %2$@ · Cache write %3$@ · Cache read %4$@";
+"trends.model_tps_format" = "≈%@ tok/s";
+"trends.model_tps_help" = "Average output speed: output tokens divided by the time from request to last chunk, estimated from local session-log timestamps. Includes time to first token.";
+"trends.model_tps_note" = "tok/s is estimated locally from Claude Code and Codex log timestamps and includes time to first token.";
+"usage.provider_cost_amount_accessibility" = "%1$@, %2$@ tokens, %3$@, %4$@ of cost";
+"settings.currency_title" = "Currency";
+"settings.currency_display" = "Cost display currency";
+"settings.currency_hint" = "Estimates are calculated in USD from API list prices and converted with daily reference rates. Official billed amounts and balances stay in their billing currency.";
+"settings.currency_rate" = "1 USD = %1$@ %2$@";
+"settings.currency_updated" = "Updated %@";
+"settings.currency_refresh" = "Refresh rate";
+"settings.currency_fallback" = "No exchange rate yet; costs are shown in USD.";
+"settings.currency_attribution" = "Rates by ExchangeRate-API";
+"currency.error_invalid" = "The exchange-rate service returned unusable data. The last rates are kept.";
+"currency.error_throttled" = "Rates were just requested. Try again in a few seconds.";
+"currency.error_timeout" = "The exchange-rate request timed out. The last rates are kept.";
+"currency.error_network" = "Couldn't reach the exchange-rate service. The last rates are kept.";
+"quota.model_speed_help" = "%1$@ · average output speed over the last %2$d days, estimated from local log timestamps (includes time to first token).";

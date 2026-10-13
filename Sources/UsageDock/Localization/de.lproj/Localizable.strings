@@ -789,3 +789,30 @@
 "claude.web.forbidden" = "Claude-Webzugriff wurde blockiert, möglicherweise durch eine Browserprüfung. Prüfe die Sitzung auf claude.ai und versuche es erneut.";
 "claude.web.organization_required" = "Gib die UUID der gewünschten Organisation aus ihrer claude.ai-Adresse ein und speichere erneut.";
 "claude.web.invalid_response" = "Claude Web lieferte unbekannte Nutzungsdaten. Vorherige Werte bleiben erhalten; versuche es später erneut.";
+
+/* Usage page: token mix, model speed, display currency */
+"composition.input" = "Eingabe";
+"composition.output" = "Ausgabe";
+"composition.cache_write" = "Cache-Schreiben";
+"composition.cache_read" = "Cache-Lesen";
+"composition.cache_unsplit" = "Cache";
+"composition.range_title" = "Token-Zusammensetzung · letzte %d Tage";
+"composition.day_title" = "Token-Zusammensetzung · %@";
+"trends.model_io_split_format" = "Ein %1$@ · Aus %2$@ · Cache schreiben %3$@ · Cache lesen %4$@";
+"trends.model_tps_format" = "≈%@ tok/s";
+"trends.model_tps_help" = "Durchschnittliche Ausgabegeschwindigkeit: Ausgabe-Tokens geteilt durch die Zeit von der Anfrage bis zum letzten Teil, geschätzt aus lokalen Sitzungsprotokoll-Zeitstempeln. Enthält die Zeit bis zum ersten Token.";
+"trends.model_tps_note" = "tok/s wird lokal aus Zeitstempeln der Claude-Code- und Codex-Protokolle geschätzt und enthält die Zeit bis zum ersten Token.";
+"usage.provider_cost_amount_accessibility" = "%1$@, %2$@ Tokens, %3$@, %4$@ der Kosten";
+"settings.currency_title" = "Währung";
+"settings.currency_display" = "Währung für Kosten";
+"settings.currency_hint" = "Kosten werden in USD anhand der API-Listenpreise geschätzt und mit täglichen Referenzkursen umgerechnet. Offizielle Rechnungsbeträge und Guthaben bleiben in ihrer Abrechnungswährung.";
+"settings.currency_rate" = "1 USD = %1$@ %2$@";
+"settings.currency_updated" = "Aktualisiert %@";
+"settings.currency_refresh" = "Kurs aktualisieren";
+"settings.currency_fallback" = "Noch kein Wechselkurs; Kosten werden in USD angezeigt.";
+"settings.currency_attribution" = "Kurse von ExchangeRate-API";
+"currency.error_invalid" = "Der Wechselkursdienst lieferte unbrauchbare Daten. Die letzten Kurse bleiben erhalten.";
+"currency.error_throttled" = "Kurse wurden gerade abgefragt. Bitte in einigen Sekunden erneut versuchen.";
+"currency.error_timeout" = "Die Wechselkursabfrage hat das Zeitlimit überschritten. Die letzten Kurse bleiben erhalten.";
+"currency.error_network" = "Der Wechselkursdienst ist nicht erreichbar. Die letzten Kurse bleiben erhalten.";
+"quota.model_speed_help" = "%1$@ · durchschnittliche Ausgabegeschwindigkeit der letzten %2$d Tage, geschätzt aus lokalen Protokoll-Zeitstempeln (inkl. Zeit bis zum ersten Token).";

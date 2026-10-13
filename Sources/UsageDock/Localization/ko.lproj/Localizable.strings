@@ -789,3 +789,30 @@
 "claude.web.forbidden" = "Claude 웹 접근이 차단되었습니다. 브라우저 확인이 필요할 수 있습니다. claude.ai에서 세션을 확인하고 다시 시도하세요.";
 "claude.web.organization_required" = "claude.ai 조직 주소의 UUID를 입력하고 다시 저장하세요.";
 "claude.web.invalid_response" = "Claude 웹 사용량 데이터를 읽을 수 없습니다. 이전 값을 유지합니다. 나중에 다시 시도하세요.";
+
+/* Usage page: token mix, model speed, display currency */
+"composition.input" = "입력";
+"composition.output" = "출력";
+"composition.cache_write" = "캐시 쓰기";
+"composition.cache_read" = "캐시 읽기";
+"composition.cache_unsplit" = "캐시";
+"composition.range_title" = "토큰 구성 · 최근 %d일";
+"composition.day_title" = "토큰 구성 · %@";
+"trends.model_io_split_format" = "입력 %1$@ · 출력 %2$@ · 캐시 쓰기 %3$@ · 캐시 읽기 %4$@";
+"trends.model_tps_format" = "≈%@ tok/s";
+"trends.model_tps_help" = "평균 출력 속도: 출력 토큰 수 ÷ 요청부터 마지막 출력까지의 시간. 로컬 세션 로그 타임스탬프로 추정하며 첫 토큰 지연 시간을 포함합니다.";
+"trends.model_tps_note" = "tok/s는 Claude Code와 Codex 로컬 로그 타임스탬프로 추정하며 첫 토큰 지연 시간을 포함합니다.";
+"usage.provider_cost_amount_accessibility" = "%1$@, %2$@ tokens, %3$@, 비용의 %4$@";
+"settings.currency_title" = "통화";
+"settings.currency_display" = "비용 표시 통화";
+"settings.currency_hint" = "비용은 API 정가 기준 미국 달러로 추정한 뒤 일일 기준 환율로 환산합니다. 공식 청구 금액과 잔액은 청구 통화로 유지됩니다.";
+"settings.currency_rate" = "1 USD = %1$@ %2$@";
+"settings.currency_updated" = "%@ 업데이트";
+"settings.currency_refresh" = "환율 새로 고침";
+"settings.currency_fallback" = "아직 환율이 없어 비용을 미국 달러로 표시합니다.";
+"settings.currency_attribution" = "환율 제공: ExchangeRate-API";
+"currency.error_invalid" = "환율 서비스가 사용할 수 없는 데이터를 반환했습니다. 이전 환율을 유지합니다.";
+"currency.error_throttled" = "방금 환율을 요청했습니다. 몇 초 후 다시 시도하세요.";
+"currency.error_timeout" = "환율 요청 시간이 초과되었습니다. 이전 환율을 유지합니다.";
+"currency.error_network" = "환율 서비스에 연결할 수 없습니다. 이전 환율을 유지합니다.";
+"quota.model_speed_help" = "%1$@ · 최근 %2$d일 평균 출력 속도. 로컬 로그 타임스탬프로 추정하며 첫 토큰 지연 시간을 포함합니다.";

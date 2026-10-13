@@ -138,3 +138,30 @@
 "trends.model_detail_accumulating" = "Model detail accumulates from this version onward; older cached days cannot be backfilled.";
 "trends.model_io_format" = "In %1$@ · Out %2$@ · Cache %3$@";
 "trends.tooltip_click_hint" = "Click for model detail";
+
+/* Usage page: token mix, model speed, display currency */
+"composition.input" = "Girdi";
+"composition.output" = "Çıktı";
+"composition.cache_write" = "Önbellek yazma";
+"composition.cache_read" = "Önbellek okuma";
+"composition.cache_unsplit" = "Önbellek";
+"composition.range_title" = "Token bileşimi · son %d gün";
+"composition.day_title" = "Token bileşimi · %@";
+"trends.model_io_split_format" = "Girdi %1$@ · Çıktı %2$@ · Önbellek yazma %3$@ · Önbellek okuma %4$@";
+"trends.model_tps_format" = "≈%@ tok/s";
+"trends.model_tps_help" = "Ortalama çıktı hızı: çıktı tokenları ÷ istekten son parçaya kadar geçen süre; yerel oturum günlüğü zaman damgalarından tahmin edilir ve ilk tokena kadar geçen süreyi içerir.";
+"trends.model_tps_note" = "tok/s, Claude Code ve Codex yerel günlük zaman damgalarından tahmin edilir ve ilk tokena kadar geçen süreyi içerir.";
+"usage.provider_cost_amount_accessibility" = "%1$@, %2$@ token, %3$@, maliyetin %4$@ kadarı";
+"settings.currency_title" = "Para birimi";
+"settings.currency_display" = "Maliyet para birimi";
+"settings.currency_hint" = "Maliyetler API liste fiyatlarıyla USD olarak tahmin edilir ve günlük referans kurlarla çevrilir. Resmî fatura tutarları ve bakiyeler fatura para biriminde kalır.";
+"settings.currency_rate" = "1 USD = %1$@ %2$@";
+"settings.currency_updated" = "Güncellendi: %@";
+"settings.currency_refresh" = "Kuru yenile";
+"settings.currency_fallback" = "Henüz kur yok; maliyetler USD olarak gösteriliyor.";
+"settings.currency_attribution" = "Kurlar: ExchangeRate-API";
+"currency.error_invalid" = "Döviz kuru hizmeti kullanılamaz veri döndürdü. Son kurlar korunuyor.";
+"currency.error_throttled" = "Kurlar az önce istendi. Birkaç saniye sonra tekrar deneyin.";
+"currency.error_timeout" = "Döviz kuru isteği zaman aşımına uğradı. Son kurlar korunuyor.";
+"currency.error_network" = "Döviz kuru hizmetine ulaşılamadı. Son kurlar korunuyor.";
+"quota.model_speed_help" = "%1$@ · son %2$d günün ortalama çıktı hızı; yerel günlük zaman damgalarından tahmin edilir (ilk tokena kadar geçen süre dahil).";

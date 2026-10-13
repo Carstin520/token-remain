@@ -11,6 +11,7 @@ struct UsageCostCompositionCard: View {
     let localUsageStatus: UsageStore.LocalUsageStatus
     let isRefreshing: Bool
     let onRetry: () -> Void
+    @ObservedObject private var currencyStore = CurrencyStore.shared
     @State private var hoveredRingSegmentID: String?
     @State private var hoveredRowID: String?
 
@@ -38,6 +39,7 @@ struct UsageCostCompositionCard: View {
                         ForEach(entries) { entry in
                             ProviderUsageRow(
                                 usage: entry,
+                                currency: currencyStore.display,
                                 share: insights.totalCost == nil
                                     ? nil
                                     : insights.costShare(for: entry),
@@ -121,7 +123,13 @@ struct UsageCostCompositionCard: View {
         .frame(width: 88, height: 88)
         .padding(10)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(L10n.format("usage.today_est_cost_accessibility", insights.totalCost.map { L10n.format("usage.usd_amount", $0) } ?? L10n.text("common.no_data")))
+        .accessibilityLabel(L10n.format("usage.today_est_cost_accessibility", insights.totalCost.map { costAccessibility($0) } ?? L10n.text("common.no_data")))
+    }
+
+    private func costAccessibility(_ usd: Double) -> String {
+        currencyStore.display.isUSD
+            ? L10n.format("usage.usd_amount", usd)
+            : currencyStore.display.amount(usd: usd)
     }
 
     private var hoveredEntry: UsageInsights.ProviderUsage? {
@@ -136,10 +144,10 @@ struct UsageCostCompositionCard: View {
     private var ringCenterText: String {
         if let entry = hoveredEntry {
             return entry.hasCompletePricing
-                ? String(format: "$%.2f", entry.cost)
+                ? currencyStore.display.amount(usd: entry.cost)
                 : L10n.text("usage.price_unavailable")
         }
-        return insights.totalCost.map { String(format: "$%.2f", $0) } ?? "—"
+        return insights.totalCost.map { currencyStore.display.amount(usd: $0) } ?? "—"
     }
 
     private var ringCenterCaption: String {
@@ -158,13 +166,14 @@ struct UsageCostCompositionCard: View {
 /// tokens and dollars read as supporting detail.
 private struct ProviderUsageRow: View {
     let usage: UsageInsights.ProviderUsage
+    let currency: CurrencyDisplay
     let share: Double?
     let isHighlighted: Bool
     let onHover: (Bool) -> Void
 
     var body: some View {
         let costText = usage.hasCompletePricing
-            ? String(format: "$%.2f", usage.cost)
+            ? currency.amount(usd: usage.cost)
             : L10n.text("usage.price_unavailable")
         HStack(spacing: 8) {
             Circle()
@@ -210,13 +219,21 @@ private struct ProviderUsageRow: View {
         .animation(.easeOut(duration: 0.14), value: isHighlighted)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(usage.hasCompletePricing && share != nil
-            ? L10n.format(
-                "usage.provider_cost_accessibility",
-                usage.displayName,
-                UsageFormatting.compactNumber(usage.tokens),
-                usage.cost,
-                UsageFormatting.percent(share ?? 0)
-            )
+            ? (currency.isUSD
+                ? L10n.format(
+                    "usage.provider_cost_accessibility",
+                    usage.displayName,
+                    UsageFormatting.compactNumber(usage.tokens),
+                    usage.cost,
+                    UsageFormatting.percent(share ?? 0)
+                )
+                : L10n.format(
+                    "usage.provider_cost_amount_accessibility",
+                    usage.displayName,
+                    UsageFormatting.compactNumber(usage.tokens),
+                    currency.amount(usd: usage.cost),
+                    UsageFormatting.percent(share ?? 0)
+                ))
             : L10n.format(
                 "usage.provider_price_unavailable_accessibility",
                 usage.displayName,

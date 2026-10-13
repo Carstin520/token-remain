@@ -8,6 +8,7 @@ struct LocalUsageCard: View {
     let isRefreshing: Bool
     let onRetry: () -> Void
     @ObservedObject var layout: PopoverLayoutStore
+    @ObservedObject private var currencyStore = CurrencyStore.shared
 
     @State private var hoveredProviderID: String?
 
@@ -33,7 +34,7 @@ struct LocalUsageCard: View {
                     onMoveDown: { layout.moveDown(.localUsage) }
                 ) {
                     if let totalCost = insights.totalCost {
-                        Text(L10n.usd(totalCost))
+                        Text(currencyStore.display.localizedAmount(usd: totalCost))
                             .numericFont(15, .bold)
                             .usageDockAdaptiveForeground(.primary)
                             .lineLimit(1)
@@ -180,7 +181,7 @@ struct LocalUsageCard: View {
                             .font(.system(size: 11, weight: .medium))
                             .usageDockAdaptiveForeground(.secondary)
                         Spacer(minLength: 8)
-                        Text("\(tile.cost.map(UsageFormatting.compactUSD) ?? L10n.text("usage.price_unavailable")) · \(UsageFormatting.compactNumber(tile.tokens)) tokens")
+                        Text("\(tile.cost.map { currencyStore.display.compact(usd: $0) } ?? L10n.text("usage.price_unavailable")) · \(UsageFormatting.compactNumber(tile.tokens)) tokens")
                             .numericFont(11)
                             .usageDockAdaptiveForeground(.primary)
                     }
@@ -208,7 +209,9 @@ struct LocalUsageCard: View {
 
     private var ringCenterText: String? {
         hoveredEntry.map {
-            $0.hasCompletePricing ? L10n.usd($0.cost) : L10n.text("usage.price_unavailable")
+            $0.hasCompletePricing
+                ? currencyStore.display.localizedAmount(usd: $0.cost)
+                : L10n.text("usage.price_unavailable")
         }
     }
 
@@ -219,7 +222,7 @@ struct LocalUsageCard: View {
     private func providerRow(_ entry: UsageInsights.ProviderUsage) -> some View {
         let isHovered = hoveredProviderID == entry.id
         let costText = entry.hasCompletePricing
-            ? L10n.usd(entry.cost)
+            ? currencyStore.display.localizedAmount(usd: entry.cost)
             : L10n.text("usage.price_unavailable")
         return HStack(spacing: 6) {
             Circle()

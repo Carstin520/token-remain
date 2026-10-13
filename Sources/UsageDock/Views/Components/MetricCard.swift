@@ -13,12 +13,12 @@ struct MetricCard: View {
         DashboardCard(padding: 15, cornerRadius: 14) {
             VStack(alignment: .leading, spacing: 0) {
                 Text(label)
-                    .font(.system(size: 10))
+                    .font(.system(size: 11))
                     .foregroundStyle(DashboardTheme.secondaryText)
                 Text(value)
-                    .numericFont(23, .semibold)
+                    .numericFont(20, .semibold)
                     .foregroundStyle(valueColor)
-                    .padding(.top, 9)
+                    .padding(.top, 8)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
                 if let caption {

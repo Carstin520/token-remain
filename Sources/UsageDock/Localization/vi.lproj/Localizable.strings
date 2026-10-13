@@ -138,3 +138,30 @@
 "trends.model_detail_accumulating" = "Model detail accumulates from this version onward; older cached days cannot be backfilled.";
 "trends.model_io_format" = "In %1$@ · Out %2$@ · Cache %3$@";
 "trends.tooltip_click_hint" = "Click for model detail";
+
+/* Usage page: token mix, model speed, display currency */
+"composition.input" = "Đầu vào";
+"composition.output" = "Đầu ra";
+"composition.cache_write" = "Ghi bộ nhớ đệm";
+"composition.cache_read" = "Đọc bộ nhớ đệm";
+"composition.cache_unsplit" = "Bộ nhớ đệm";
+"composition.range_title" = "Thành phần token · %d ngày qua";
+"composition.day_title" = "Thành phần token · %@";
+"trends.model_io_split_format" = "Vào %1$@ · Ra %2$@ · Ghi đệm %3$@ · Đọc đệm %4$@";
+"trends.model_tps_format" = "≈%@ tok/s";
+"trends.model_tps_help" = "Tốc độ đầu ra trung bình: số token đầu ra chia cho thời gian từ lúc gửi yêu cầu đến đoạn cuối, ước tính từ dấu thời gian nhật ký phiên cục bộ. Bao gồm thời gian đến token đầu tiên.";
+"trends.model_tps_note" = "tok/s được ước tính cục bộ từ dấu thời gian nhật ký Claude Code và Codex, bao gồm thời gian đến token đầu tiên.";
+"usage.provider_cost_amount_accessibility" = "%1$@, %2$@ token, %3$@, %4$@ chi phí";
+"settings.currency_title" = "Tiền tệ";
+"settings.currency_display" = "Tiền tệ hiển thị chi phí";
+"settings.currency_hint" = "Chi phí được ước tính bằng USD theo giá niêm yết API và quy đổi theo tỷ giá tham chiếu hằng ngày. Số tiền hóa đơn và số dư chính thức giữ nguyên đơn vị tiền thanh toán.";
+"settings.currency_rate" = "1 USD = %1$@ %2$@";
+"settings.currency_updated" = "Cập nhật %@";
+"settings.currency_refresh" = "Làm mới tỷ giá";
+"settings.currency_fallback" = "Chưa có tỷ giá; chi phí đang hiển thị bằng USD.";
+"settings.currency_attribution" = "Tỷ giá từ ExchangeRate-API";
+"currency.error_invalid" = "Dịch vụ tỷ giá trả về dữ liệu không dùng được. Giữ tỷ giá gần nhất.";
+"currency.error_throttled" = "Vừa yêu cầu tỷ giá. Hãy thử lại sau vài giây.";
+"currency.error_timeout" = "Yêu cầu tỷ giá đã hết thời gian. Giữ tỷ giá gần nhất.";
+"currency.error_network" = "Không kết nối được dịch vụ tỷ giá. Giữ tỷ giá gần nhất.";
+"quota.model_speed_help" = "%1$@ · tốc độ đầu ra trung bình %2$d ngày qua, ước tính từ dấu thời gian nhật ký cục bộ (gồm thời gian đến token đầu tiên).";
