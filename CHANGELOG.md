@@ -3,7 +3,7 @@
 All notable product changes are recorded here. TokenRemain uses Semantic
 Versioning for public releases.
 
-## 1.5.0 — 2026-10-13
+## 1.4.2 — 2026-10-13
 
 ### Added
 
