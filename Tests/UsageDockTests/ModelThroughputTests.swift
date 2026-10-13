@@ -381,3 +381,38 @@ struct ModelThroughputBudgetTests {
         #expect(await ModelThroughputService(cacheDirectory: cache).cachedSnapshot() == complete)
     }
 }
+
+@Suite("Model throughput cache writes")
+struct ModelThroughputCacheWriteTests {
+    @Test("A pass with no new log bytes leaves the cache file untouched")
+    func unchangedPassSkipsWrite() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appending(path: "writes-\(UUID().uuidString)", directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let projects = root.appending(path: "projects/p", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: projects, withIntermediateDirectories: true)
+        let iso = ISO8601DateFormatter()
+        iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let start = Date().addingTimeInterval(-600)
+        let lines = [
+            #"{"type":"user","timestamp":"\#(iso.string(from: start))"}"#,
+            #"{"type":"assistant","message":{"id":"m","model":"x","usage":{"output_tokens":50}},"timestamp":"\#(iso.string(from: start.addingTimeInterval(2)))"}"#,
+            #"{"type":"user","timestamp":"\#(iso.string(from: start.addingTimeInterval(3)))"}"#
+        ]
+        try Data((lines.joined(separator: "\n") + "\n").utf8).write(to: projects.appending(path: "s.jsonl"))
+        let cacheDirectory = root.appending(path: "cache")
+        let cacheFile = cacheDirectory.appending(path: "model-throughput-v1.json")
+        let roots = [ModelThroughputService.Root(url: root.appending(path: "projects"), kind: .claude)]
+        let service = ModelThroughputService(cacheDirectory: cacheDirectory)
+
+        _ = await service.refresh(roots: roots)
+        let written = try #require(try FileManager.default.attributesOfItem(atPath: cacheFile.path)[.modificationDate] as? Date)
+        // Backdate the cache so any rewrite would visibly move its timestamp.
+        let backdated = written.addingTimeInterval(-3_600)
+        try FileManager.default.setAttributes([.modificationDate: backdated], ofItemAtPath: cacheFile.path)
+
+        _ = await service.refresh(roots: roots)
+        let after = try #require(try FileManager.default.attributesOfItem(atPath: cacheFile.path)[.modificationDate] as? Date)
+        #expect(abs(after.timeIntervalSince(backdated)) < 1)
+    }
+}

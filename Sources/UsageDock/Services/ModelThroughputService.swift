@@ -145,7 +145,7 @@ actor ModelThroughputService {
     static let idleFinalizeAfter: TimeInterval = 120
     private static let cacheSchemaVersion = 1
 
-    private struct FileState: Codable {
+    private struct FileState: Codable, Equatable {
         var kind: LogKind
         var offset: Int64
         var modifiedAt: Date
@@ -204,6 +204,7 @@ actor ModelThroughputService {
         let deadline = clock().addingTimeInterval(timeBudget)
         let discovery = discoverFiles(roots: roots, modifiedAfter: earliest, deadline: deadline)
         var remainingBytes = byteBudget
+        let before = files
 
         // Newest first, so a budget-limited backlog fills today's numbers before
         // older days.
@@ -244,7 +245,8 @@ actor ModelThroughputService {
             let present = Set(discovery.files.map { Self.fileKey($0.url) })
             files = files.filter { present.contains($0.key) }
         }
-        save()
+        // Most passes find no new bytes; skip rewriting an identical cache.
+        if files != before { save() }
         return aggregate()
     }
 
