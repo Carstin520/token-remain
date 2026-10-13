@@ -975,6 +975,9 @@ final class UsageStore: ObservableObject {
     /// this entry point so showing local totals does not also trigger network
     /// provider requests.
     func refreshLocalUsage(force: Bool = true) {
+        // Costs shown on any surface use the display rate; checking here keeps
+        // it current for menu-bar-only users. Cheap and self-throttled.
+        CurrencyStore.shared.refreshIfStale()
         scheduleCCUsageRefresh(force: force)
     }
 

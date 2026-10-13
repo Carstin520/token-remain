@@ -161,11 +161,27 @@ actor ModelThroughputService {
 
     private let fileManager: FileManager
     private let cacheURL: URL
+    private let byteBudget: Int
+    private let timeBudget: TimeInterval
+    private let chunkBytes: Int
+    /// Injected so tests can drive the deadline deterministically.
+    private let clock: @Sendable () -> Date
     private var files: [String: FileState] = [:]
     private var didLoadCache = false
 
-    init(cacheDirectory: URL? = nil, fileManager: FileManager = .default) {
+    init(
+        cacheDirectory: URL? = nil,
+        fileManager: FileManager = .default,
+        byteBudget: Int = ModelThroughputService.bytesPerRefresh,
+        timeBudget: TimeInterval = ModelThroughputService.secondsPerRefresh,
+        chunkBytes: Int = ModelThroughputService.chunkBytes,
+        clock: @escaping @Sendable () -> Date = { Date() }
+    ) {
         self.fileManager = fileManager
+        self.byteBudget = max(1, byteBudget)
+        self.timeBudget = timeBudget
+        self.chunkBytes = max(1, chunkBytes)
+        self.clock = clock
         let directory = cacheDirectory ?? fileManager
             .urls(for: .cachesDirectory, in: .userDomainMask)
             .first!
@@ -182,17 +198,18 @@ actor ModelThroughputService {
     func refresh(roots: [Root], now: Date = .now) -> ModelThroughputSnapshot {
         loadCacheIfNeeded()
         let earliest = now.addingTimeInterval(-Double(Self.retentionDays) * 86_400)
-        let discovered = discoverFiles(roots: roots, modifiedAfter: earliest)
-        let deadline = Date().addingTimeInterval(Self.secondsPerRefresh)
-        var byteBudget = Self.bytesPerRefresh
-        var keep = Set<String>()
+        // The deadline covers discovery as well as reading, and is checked
+        // between chunks, so one large log cannot hold a pass past it; the
+        // overshoot is at most one chunk's parse.
+        let deadline = clock().addingTimeInterval(timeBudget)
+        let discovery = discoverFiles(roots: roots, modifiedAfter: earliest, deadline: deadline)
+        var remainingBytes = byteBudget
 
         // Newest first, so a budget-limited backlog fills today's numbers before
         // older days.
-        for file in discovered.sorted(by: { $0.modifiedAt > $1.modifiedAt }) {
+        for file in discovery.files.sorted(by: { $0.modifiedAt > $1.modifiedAt }) {
             let key = Self.fileKey(file.url)
-            keep.insert(key)
-            guard !Task.isCancelled else { break }
+            guard !Task.isCancelled, clock() < deadline else { break }
             var state = files[key] ?? FileState(
                 kind: file.kind,
                 offset: 0,
@@ -204,9 +221,9 @@ actor ModelThroughputService {
                 // contribution would otherwise be counted twice.
                 state = FileState(kind: file.kind, offset: 0, modifiedAt: .distantPast, buckets: [:])
             }
-            if file.size > state.offset, byteBudget > 0, Date() < deadline {
-                let consumed = read(file: file, state: &state, maximumBytes: byteBudget)
-                byteBudget -= consumed
+            if file.size > state.offset, remainingBytes > 0 {
+                let consumed = read(file: file, state: &state, maximumBytes: remainingBytes, deadline: deadline)
+                remainingBytes -= consumed
             }
             if state.offset >= file.size,
                now.timeIntervalSince(file.modifiedAt) >= Self.idleFinalizeAfter,
@@ -219,7 +236,14 @@ actor ModelThroughputService {
             Self.prune(&state.buckets, earliest: earliest)
             files[key] = state
         }
-        files = files.filter { keep.contains($0.key) }
+        // Forget a file only when a complete discovery no longer finds it
+        // (deleted or aged out). A pass cut short by the deadline, the file
+        // cap or cancellation keeps every earlier state; dropping them would
+        // re-read those logs from byte 0 and double the work next time.
+        if discovery.isComplete, !Task.isCancelled {
+            let present = Set(discovery.files.map { Self.fileKey($0.url) })
+            files = files.filter { present.contains($0.key) }
+        }
         save()
         return aggregate()
     }
@@ -233,7 +257,11 @@ actor ModelThroughputService {
         let modifiedAt: Date
     }
 
-    private func discoverFiles(roots: [Root], modifiedAfter earliest: Date) -> [DiscoveredFile] {
+    private func discoverFiles(
+        roots: [Root],
+        modifiedAfter earliest: Date,
+        deadline: Date
+    ) -> (files: [DiscoveredFile], isComplete: Bool) {
         let keys: [URLResourceKey] = [
             .isRegularFileKey, .isSymbolicLinkKey, .fileSizeKey, .contentModificationDateKey
         ]
@@ -246,7 +274,9 @@ actor ModelThroughputService {
                 options: [.skipsHiddenFiles, .skipsPackageDescendants]
             ) else { continue }
             while let url = enumerator.nextObject() as? URL {
-                guard result.count < Self.maximumFiles, !Task.isCancelled else { return result }
+                guard result.count < Self.maximumFiles,
+                      !Task.isCancelled,
+                      clock() < deadline else { return (result, false) }
                 guard url.pathExtension == "jsonl",
                       let values = try? url.resourceValues(forKeys: Set(keys)),
                       values.isSymbolicLink != true,
@@ -259,12 +289,17 @@ actor ModelThroughputService {
                 result.append(DiscoveredFile(url: url, kind: root.kind, size: Int64(size), modifiedAt: modified))
             }
         }
-        return result
+        return (result, true)
     }
 
     /// Reads whole lines from `state.offset`, leaving a trailing partial line
     /// for the next scan. Returns the number of bytes read.
-    private func read(file: DiscoveredFile, state: inout FileState, maximumBytes: Int) -> Int {
+    private func read(
+        file: DiscoveredFile,
+        state: inout FileState,
+        maximumBytes: Int,
+        deadline: Date
+    ) -> Int {
         guard let handle = try? FileHandle(forReadingFrom: file.url) else { return 0 }
         defer { try? handle.close() }
         do {
@@ -274,15 +309,15 @@ actor ModelThroughputService {
         }
         var consumed = 0
         var pending = Data()
-        while consumed < maximumBytes, !Task.isCancelled {
-            let want = min(Self.chunkBytes, maximumBytes - consumed)
+        while consumed < maximumBytes, !Task.isCancelled, clock() < deadline {
+            let want = min(chunkBytes, maximumBytes - consumed)
             guard let chunk = try? handle.read(upToCount: want), !chunk.isEmpty else { break }
             consumed += chunk.count
             pending.append(chunk)
             guard let lastNewline = pending.lastIndex(of: 0x0A) else {
                 // A single line larger than the chunk keeps accumulating; give
                 // up on pathological lines rather than buffering without bound.
-                if pending.count > Self.chunkBytes * 4 {
+                if pending.count > max(chunkBytes, Self.chunkBytes) * 4 {
                     state.offset += Int64(pending.count)
                     pending.removeAll(keepingCapacity: false)
                 }

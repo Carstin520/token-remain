@@ -26,6 +26,9 @@ final class CurrencyStore: ObservableObject {
     private let defaults: UserDefaults
     private let service: ExchangeRateService
     private var refreshTask: Task<Void, Never>?
+    /// Automatic checks arrive with every local-usage refresh; this keeps a
+    /// failing or offline source to one attempt per back-off interval.
+    private var lastAutomaticAttempt: Date?
 
     init(defaults: UserDefaults = .standard, service: ExchangeRateService = .shared) {
         self.defaults = defaults
@@ -53,25 +56,34 @@ final class CurrencyStore: ObservableObject {
         defaults.set(currency.rawValue, forKey: Self.selectionKey)
         if currency == .usd {
             if case .failed = status { status = .idle }
-        } else {
-            refreshIfStale()
+        } else if !ExchangeRateService.isFresh(rates, now: .now) {
+            // Choosing a currency is an explicit action: it is not held back
+            // by the automatic back-off, only by the short manual throttle.
+            refresh(manual: true)
         }
     }
 
-    /// Cheap to call from any surface that shows costs; a no-op for USD or
-    /// while the cached table is fresh.
+    /// Called on every local-usage refresh (background loop, menu-bar and
+    /// floating-widget presentation, Dashboard), so a stale or missing rate is
+    /// retried even when the Dashboard is never opened. A no-op for USD,
+    /// while the table is fresh, or within the automatic back-off.
     func refreshIfStale(now: Date = .now) {
         guard selected != .usd,
               !ExchangeRateService.isFresh(rates, now: now) else { return }
-        refresh(manual: false)
+        if let lastAutomaticAttempt {
+            let since = now.timeIntervalSince(lastAutomaticAttempt)
+            if since >= 0, since < ExchangeRateService.automaticRetryInterval { return }
+        }
+        lastAutomaticAttempt = now
+        refresh(manual: false, now: now)
     }
 
-    func refresh(manual: Bool = true) {
+    func refresh(manual: Bool = true, now: Date = .now) {
         guard refreshTask == nil else { return }
         status = .loading
         refreshTask = Task { @MainActor [weak self, service] in
             do {
-                let updated = try await service.fetch(manual: manual)
+                let updated = try await service.fetch(now: now, manual: manual)
                 guard let self else { return }
                 rates = updated
                 status = .idle

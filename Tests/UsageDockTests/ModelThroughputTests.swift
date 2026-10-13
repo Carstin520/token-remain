@@ -279,3 +279,105 @@ struct ModelSpeedSummaryTests {
         #expect(ModelSpeedSummary.make(history: history, throughput: throughput, agentID: "cursor", now: now) == nil)
     }
 }
+
+/// Advances a fixed step every time the service reads the clock, so deadline
+/// behavior is deterministic instead of depending on machine speed.
+private final class SteppingClock: @unchecked Sendable {
+    private let lock = NSLock()
+    private var current: Date
+    private let step: TimeInterval
+
+    init(start: Date, step: TimeInterval) {
+        current = start
+        self.step = step
+    }
+
+    func now() -> Date {
+        lock.lock()
+        defer { lock.unlock() }
+        current = current.addingTimeInterval(step)
+        return current
+    }
+}
+
+@Suite("Model throughput budget")
+struct ModelThroughputBudgetTests {
+    private func line(_ type: String, _ time: String, id: String = "") -> String {
+        type == "user"
+            ? #"{"type":"user","message":{"content":"x"},"timestamp":"\#(time)"}"#
+            : #"{"type":"assistant","message":{"id":"\#(id)","model":"claude-opus-5-5","usage":{"output_tokens":100}},"timestamp":"\#(time)"}"#
+    }
+
+    private func makeLog(responses: Int, in root: URL, now: Date) throws {
+        let projects = root.appending(path: "projects/p", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: projects, withIntermediateDirectories: true)
+        let iso = ISO8601DateFormatter()
+        iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let base = now.addingTimeInterval(-3_600)
+        var text = ""
+        for index in 0..<responses {
+            let start = base.addingTimeInterval(Double(index) * 2)
+            text += line("user", iso.string(from: start)) + "\n"
+            text += line("assistant", iso.string(from: start.addingTimeInterval(1)), id: "m\(index)") + "\n"
+        }
+        text += line("user", iso.string(from: base.addingTimeInterval(Double(responses) * 2))) + "\n"
+        try Data(text.utf8).write(to: projects.appending(path: "session.jsonl"))
+    }
+
+    private func samples(_ snapshot: ModelThroughputSnapshot) -> Int {
+        snapshot.buckets.values.reduce(0) { $0 + $1.samples }
+    }
+
+    @Test("A pass stops at the deadline mid-file and later passes finish without double counting")
+    func deadlineStopsMidFile() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appending(path: "budget-\(UUID().uuidString)", directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let now = Date()
+        try makeLog(responses: 2_000, in: root, now: now)
+        let roots = [ModelThroughputService.Root(url: root.appending(path: "projects"), kind: .claude)]
+
+        // Every clock read costs one second against a 10-second budget, and a
+        // 4 KB chunk holds only a few dozen responses: the file cannot finish
+        // in one pass, however fast the machine is.
+        let clock = SteppingClock(start: now, step: 1)
+        let service = ModelThroughputService(
+            cacheDirectory: root.appending(path: "cache"),
+            timeBudget: 10,
+            chunkBytes: 4_096,
+            clock: { clock.now() }
+        )
+        let first = await service.refresh(roots: roots, now: now)
+        #expect(samples(first) > 0)
+        #expect(samples(first) < 2_000)
+
+        var latest = first
+        for _ in 0..<500 where samples(latest) < 2_000 {
+            latest = await service.refresh(roots: roots, now: now)
+        }
+        #expect(samples(latest) == 2_000)
+
+        let reference = ModelThroughputService(cacheDirectory: root.appending(path: "reference"))
+        #expect(await reference.refresh(roots: roots, now: now) == latest)
+    }
+
+    @Test("A pass cut short during discovery keeps earlier progress")
+    func truncatedDiscoveryKeepsState() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appending(path: "budget-\(UUID().uuidString)", directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let now = Date()
+        try makeLog(responses: 10, in: root, now: now)
+        let roots = [ModelThroughputService.Root(url: root.appending(path: "projects"), kind: .claude)]
+        let cache = root.appending(path: "cache")
+
+        let complete = await ModelThroughputService(cacheDirectory: cache).refresh(roots: roots, now: now)
+        #expect(samples(complete) == 10)
+
+        // A zero budget ends the pass before discovery finds anything; the
+        // cached state must survive rather than be pruned as "deleted".
+        let starved = ModelThroughputService(cacheDirectory: cache, timeBudget: 0)
+        #expect(await starved.refresh(roots: roots, now: now) == complete)
+        #expect(await ModelThroughputService(cacheDirectory: cache).cachedSnapshot() == complete)
+    }
+}

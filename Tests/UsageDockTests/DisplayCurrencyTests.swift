@@ -115,3 +115,96 @@ struct DisplayCurrencyTests {
         #expect(store.display == .usd)
     }
 }
+
+/// Counts requests and fails the first `failures` of them.
+private final class RateStub: @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+    private let failures: Int
+
+    init(failures: Int) { self.failures = failures }
+
+    var requests: Int {
+        lock.lock(); defer { lock.unlock() }
+        return count
+    }
+
+    func respond(_ request: URLRequest) throws -> (Data, HTTPURLResponse) {
+        lock.lock()
+        count += 1
+        let attempt = count
+        lock.unlock()
+        if attempt <= failures { throw URLError(.notConnectedToInternet) }
+        let body = Data(#"{"result":"success","base_code":"USD","rates":{"CNY":7.2}}"#.utf8)
+        return (body, HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
+    }
+}
+
+@Suite("Display currency refresh")
+@MainActor
+struct CurrencyRefreshTests {
+    private func settle(_ store: CurrencyStore) async {
+        for _ in 0..<200 where store.status == .loading {
+            try? await Task.sleep(nanoseconds: 5_000_000)
+        }
+    }
+
+    @Test("Automatic checks retry a failed first request after the back-off, not before")
+    func retriesAfterBackoff() async throws {
+        let suite = "currency-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set("CNY", forKey: CurrencyStore.selectionKey)
+        let directory = FileManager.default.temporaryDirectory
+            .appending(path: "rates-\(UUID().uuidString)", directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let stub = RateStub(failures: 1)
+        let service = ExchangeRateService(cacheDirectory: directory) { try stub.respond($0) }
+
+        // init makes the first automatic attempt, which fails.
+        let store = CurrencyStore(defaults: defaults, service: service)
+        await settle(store)
+        #expect(stub.requests == 1)
+        #expect(store.isFallingBackToUSD)
+
+        // Frequent refresh calls inside the back-off do not hit the network.
+        let start = Date()
+        for minute in 1...29 {
+            store.refreshIfStale(now: start.addingTimeInterval(Double(minute) * 60))
+            await settle(store)
+        }
+        #expect(stub.requests == 1)
+
+        store.refreshIfStale(now: start.addingTimeInterval(31 * 60))
+        await settle(store)
+        #expect(stub.requests == 2)
+        #expect(store.display.currency == .cny)
+        #expect(store.status == .idle)
+    }
+
+    @Test("An expired table is refreshed by the next automatic check")
+    func refreshesExpiredRates() async throws {
+        let suite = "currency-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set("CNY", forKey: CurrencyStore.selectionKey)
+        let directory = FileManager.default.temporaryDirectory
+            .appending(path: "rates-\(UUID().uuidString)", directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let stub = RateStub(failures: 0)
+        let service = ExchangeRateService(cacheDirectory: directory) { try stub.respond($0) }
+
+        let store = CurrencyStore(defaults: defaults, service: service)
+        await settle(store)
+        #expect(stub.requests == 1)
+        let fetchedAt = try #require(store.rates?.fetchedAt)
+
+        store.refreshIfStale(now: fetchedAt.addingTimeInterval(60))
+        await settle(store)
+        #expect(stub.requests == 1)
+
+        store.refreshIfStale(now: fetchedAt.addingTimeInterval(13 * 3_600))
+        await settle(store)
+        #expect(stub.requests == 2)
+    }
+}
