@@ -127,21 +127,15 @@ img{max-width:100%}
 }
 .badge .dot{width:5px;height:5px;border-radius:1px;background:var(--cyan)}
 
-/* pixel corner ticks: top-left + bottom-right only */
-.ticked{position:relative}
-.ticked::before,.ticked::after{
-  content:"";position:absolute;width:9px;height:9px;pointer-events:none;
-}
-.ticked::before{top:-1px;left:-1px;border-top:2px solid var(--border);border-left:2px solid var(--border)}
-.ticked::after{bottom:-1px;right:-1px;border-bottom:2px solid var(--border);border-right:2px solid var(--border)}
+/* Cards carry no corner ornaments: TokenRemain 1.4.1 removed the pixel corner
+   ticks from every in-app card, and the site follows the product. Depth comes
+   from a hairline top highlight instead. */
+.feat,.prov,.priv,.fact,.step,.limit-card,.ledger,.lab,.sp-item,.feed-panel,.stat,.new-card{box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}
 
-/* card hover: lift + tick brighten (motion-safe only) */
+/* card hover: lift (motion-safe only) */
 @media (prefers-reduced-motion:no-preference){
   .lift{transition:transform .28s cubic-bezier(.2,.7,.3,1),border-color .28s ease,box-shadow .28s ease}
-  .lift:hover{transform:translateY(-3px);border-color:color-mix(in srgb,var(--cyan-dim) 55%,var(--border));box-shadow:0 14px 34px -20px rgba(0,0,0,.9)}
-  .lift.ticked::before,.lift.ticked::after{transition:border-color .28s ease}
-  .lift.ticked:hover::before{border-color:var(--cyan-dim)}
-  .lift.ticked:hover::after{border-color:var(--violet-dim)}
+  .lift:hover{transform:translateY(-3px);border-color:color-mix(in srgb,var(--cyan-dim) 55%,var(--border));box-shadow:0 14px 34px -20px rgba(0,0,0,.9),inset 0 1px 0 rgba(255,255,255,.05)}
 }
 
 /* ============ topbar ============ */
@@ -324,7 +318,7 @@ nav .links a:hover{color:var(--text);text-decoration:none}
   border-radius:5px;padding:3px 8px;white-space:nowrap;flex:none;
 }
 .pop-ban b{display:block;font-size:12px;line-height:1.35;font-weight:600;color:var(--text)}
-.pop-ban span{display:block;font-family:var(--mono);font-size:10.5px;line-height:1.4;color:var(--text-dim)}
+.pop-ban span{display:block;font-size:11px;font-variant-numeric:tabular-nums;line-height:1.4;color:var(--text-dim)}
 
 /* provider cards */
 .pop-pn{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:var(--text)}
@@ -333,7 +327,7 @@ nav .links a:hover{color:var(--text);text-decoration:none}
 .pop-pin{color:var(--text-mute);flex:none}
 .pop-meta{margin-top:5px}
 .pop-meta .w{font-size:11.5px;color:var(--text-dim)}
-.pop-meta .r{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text)}
+.pop-meta .r{display:flex;align-items:center;gap:5px;font-size:13.5px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--text)}
 .pop-warn{display:var(--warn);color:var(--danger);flex:none}
 .pop-seg{position:relative;height:6px;margin-top:7px;background:var(--pop-track);
   -webkit-mask-image:var(--segmask);mask-image:var(--segmask);
@@ -348,7 +342,7 @@ nav .links a:hover{color:var(--text);text-decoration:none}
 
 /* local usage */
 .pop-utitle{font-size:14px;font-weight:600;color:var(--text)}
-.pop-utotal{font-family:var(--mono);font-size:16px;font-weight:700;color:var(--text)}
+.pop-utotal{font-size:16px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--text)}
 .pop-split{display:flex;align-items:center;gap:14px;margin:8px 0 0}
 .pop-donut{width:54px;height:54px;flex:none;border-radius:50%;
   background:conic-gradient(var(--pop-c) 0 var(--donut),var(--pop-x) var(--donut) 100%);
@@ -361,12 +355,12 @@ nav .links a:hover{color:var(--text);text-decoration:none}
 .pop-lg .n1{background:var(--lg1)}
 .pop-lg .n2{background:var(--lg2)}
 .pop-lg .nm{flex:1;min-width:0;font-size:12px;color:var(--text)}
-.pop-lg .tk{font-family:var(--mono);font-size:10.5px;color:var(--text-dim)}
-.pop-lg .pc{font-family:var(--mono);font-size:11.5px;font-weight:700;color:var(--text);min-width:42px;text-align:right}
+.pop-lg .tk{font-size:11px;font-variant-numeric:tabular-nums;color:var(--text-dim)}
+.pop-lg .pc{font-size:12px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--text);min-width:42px;text-align:right}
 .pop-rule{height:1px;background:rgba(233,237,245,.08);margin:9px 0 7px}
 .pop-stat{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:1px 0}
 .pop-stat .l{font-size:11.5px;color:var(--text-dim)}
-.pop-stat .v{font-family:var(--mono);font-size:11.5px;color:var(--text)}
+.pop-stat .v{font-size:11.5px;font-variant-numeric:tabular-nums;color:var(--text)}
 .pop-trend{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:6px}
 .pop-trend .l{font-size:11.5px;color:var(--text-dim);flex:none}
 .pop-spark{display:flex;align-items:flex-end;gap:2px;height:18px;flex:1;max-width:180px}
@@ -376,7 +370,7 @@ nav .links a:hover{color:var(--text);text-decoration:none}
 
 /* AI feed */
 .pop-fmeta{display:flex;align-items:center;gap:8px;flex:none}
-.pop-count{font-family:var(--mono);font-size:10px;letter-spacing:.04em;color:var(--text-mute)}
+.pop-count{font-size:10.5px;font-variant-numeric:tabular-nums;color:var(--text-mute)}
 .pop-fsub{margin-top:5px;font-size:11.5px;color:var(--text-dim)}
 .pop-fitem{display:flex;align-items:flex-start;gap:9px;padding:7px 0 6px}
 .pop-fitem+.pop-fitem{border-top:1px solid rgba(233,237,245,.07)}
@@ -385,7 +379,7 @@ nav .links a:hover{color:var(--text);text-decoration:none}
 .pop-fitem .b{flex:1;min-width:0}
 .pop-fitem .h{display:flex;align-items:baseline;gap:7px}
 .pop-fitem .s{font-size:11.5px;font-weight:700;color:var(--text)}
-.pop-fitem .t{font-family:var(--mono);font-size:10px;color:var(--text-mute)}
+.pop-fitem .t{font-size:10.5px;font-variant-numeric:tabular-nums;color:var(--text-mute)}
 .pop-fitem .x{font-size:11.5px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pop-fitem .a{color:var(--text-mute);flex:none;margin-top:4px}
 
@@ -416,6 +410,79 @@ html[lang^="zh"] .pop{--nc:14;--nx:4;--donut:12.7%;--lg1:var(--pop-x);--lg2:var(
 .chip2{bottom:-4px;left:-13%;transform:translateZ(140px)}
 .chip3{top:30%;left:-17%;transform:translateZ(55px)}
 .chip4{bottom:-42px;right:-3%;transform:translateZ(110px)}
+
+/* ============ key numbers strip ============ */
+.stats{
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;
+  background:color-mix(in srgb,var(--surface) 82%,transparent);
+  border:1px solid var(--border);border-radius:14px;overflow:hidden;
+  margin-top:28px;position:relative;z-index:2;
+}
+.stat{padding:20px 22px;border-right:1px solid color-mix(in srgb,var(--border) 70%,transparent);box-shadow:none}
+.stat:last-child{border-right:none}
+.stat b{display:block;font-size:30px;line-height:1.15;font-weight:650;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:var(--text)}
+.stat b em{font-style:normal;color:var(--cyan)}
+.stat span{display:block;margin-top:4px;color:var(--text-dim);font-size:13px;line-height:1.45}
+
+/* ============ what's new in 1.4 — bento ============ */
+.new-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.new-card{
+  position:relative;overflow:hidden;
+  background:linear-gradient(160deg,color-mix(in srgb,var(--surface2) 70%,var(--surface)),var(--surface) 60%);
+  border:1px solid var(--border);border-radius:14px;padding:22px 22px 20px;
+}
+.new-card.wide{grid-column:span 2}
+.new-card.full{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px;align-items:center}
+.new-card .glyph{font-family:var(--mono);font-size:11px;font-weight:800;letter-spacing:.14em;color:var(--violet);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.new-card .glyph i{font-style:normal;color:var(--text-mute);font-weight:700;letter-spacing:.08em}
+.new-card h3{font-size:17px;font-weight:700;margin-bottom:6px;letter-spacing:-.005em}
+.new-card p{color:var(--text-dim);font-size:13.5px;line-height:1.65}
+.new-card p code{font-family:var(--mono);font-size:12px;color:var(--cyan-dim)}
+/* token mix demo: same four series and order as the app's composition strip */
+.mix{margin-top:18px;padding:14px 16px;background:rgba(7,11,18,.45);border:1px solid color-mix(in srgb,var(--border) 70%,transparent);border-radius:10px}
+.mix-head{display:flex;justify-content:space-between;align-items:baseline;font-size:12.5px;color:var(--text-dim);margin-bottom:9px}
+.mix-head b{color:var(--text);font-weight:600;font-variant-numeric:tabular-nums}
+.mix-bar{display:flex;height:8px;border-radius:4px;overflow:hidden;background:#3A4252;gap:2px}
+.mix-bar i{display:block;height:100%}
+.mix-legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:10px;font-size:12px;color:var(--text-dim)}
+.mix-legend>span{display:inline-flex;align-items:center;gap:6px;font-variant-numeric:tabular-nums}
+.mix-legend>span::before{content:"";width:8px;height:8px;border-radius:2px;background:var(--c)}
+.mix-legend b{color:var(--text);font-weight:600}
+.mix-rows{display:grid;gap:9px;margin-top:14px;padding-top:12px;border-top:1px solid color-mix(in srgb,var(--border) 60%,transparent)}
+.mix-row{display:grid;grid-template-columns:120px minmax(0,1fr) 52px;gap:12px;align-items:center;font-size:12px}
+.mix-row .nm{display:flex;align-items:center;gap:7px;color:var(--text);font-weight:600;white-space:nowrap}
+.mix-row .nm i{width:3px;height:12px;border-radius:2px}
+.mix-row .mix-bar{height:5px}
+.mix-row b{text-align:right;font-weight:600;color:var(--text);font-variant-numeric:tabular-nums}
+.models{margin-top:16px;display:grid;gap:9px}
+.model{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;font-size:12.5px}
+.model .nm{font-weight:600;color:var(--text)}
+.model .tps{justify-self:start;font-size:11px;color:var(--text-dim);background:var(--surface3);border-radius:6px;padding:1px 7px;font-variant-numeric:tabular-nums}
+.model .tk{color:var(--text);font-weight:600;font-variant-numeric:tabular-nums}
+.model .bar{grid-column:1/-1;height:3px;border-radius:2px;background:#3A4252;overflow:hidden;margin-top:-4px}
+.model .bar i{display:block;height:100%;border-radius:2px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:16px}
+.chips span{font-size:11.5px;font-weight:600;color:var(--text-dim);background:var(--surface3);border:1px solid color-mix(in srgb,var(--border) 70%,transparent);border-radius:6px;padding:2px 8px;font-variant-numeric:tabular-nums}
+.chips span.on{color:var(--ink);background:var(--cyan);border-color:var(--cyan)}
+.acct{margin-top:16px;display:grid;gap:8px}
+.acct div{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--text);padding:7px 10px;background:rgba(7,11,18,.4);border-radius:8px}
+.acct img{width:15px;height:15px}
+.acct .tg{margin-left:auto;width:26px;height:15px;border-radius:8px;background:var(--success);position:relative;flex:none}
+.acct .tg::after{content:"";position:absolute;top:2px;right:2px;width:11px;height:11px;border-radius:50%;background:#fff}
+.acct .tg.off{background:var(--surface3)}
+.acct .tg.off::after{right:auto;left:2px;background:var(--text-mute)}
+.acct .dim{color:var(--text-mute)}
+.dockmeter{margin-top:16px;display:flex;align-items:center;gap:14px}
+.dockmeter img{width:58px;height:58px;border-radius:13px;flex:none}
+.dockmeter .sel{display:grid;gap:6px;font-size:12px;color:var(--text-dim)}
+.dockmeter .sel>span{display:flex;align-items:center;gap:7px}
+.dockmeter .sel b{color:var(--text);font-weight:600;background:var(--surface3);border-radius:6px;padding:1px 8px}
+
+/* frameless window screenshots: the captured macOS window already has its own
+   rounded corners and transparency, so it sits directly on the page */
+figure.shot.bare{background:none;border:none;padding:0;overflow:visible}
+figure.shot.bare .dash-viewport{background:none;border-radius:12px;overflow:visible;filter:drop-shadow(0 30px 60px rgba(0,0,0,.55))}
+figure.shot.bare figcaption{padding-top:18px}
 
 /* ============ sections ============ */
 section{padding:84px 0}
@@ -546,7 +613,7 @@ figure.shot figcaption .cap{color:var(--text-dim);font-size:13.5px}
 }
 .pin-stage>*{position:relative}
 .pin-zoom{transform:scale(var(--zoom,1));transform-origin:50% 46%;will-change:transform}
-#dashTrack{height:330vh}
+#dashTrack{height:400vh}
 /* stacked exactly like the device screens (.dev-screen .scr): the first slide
    defines the box in normal flow, the rest overlay it absolutely — no grid
    involved, so no browser/cache state can ever unstack the slides */
@@ -953,12 +1020,21 @@ footer.site .disclaimer{
   .feed-split{grid-template-columns:1fr;gap:30px}
   .lab-stage{gap:30px;padding:30px 22px 26px}
   .tray{grid-template-columns:repeat(3,1fr)}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr));margin-top:72px}
+  .stat:nth-child(2){border-right:none}
+  .stat:nth-child(-n+2){border-bottom:1px solid color-mix(in srgb,var(--border) 70%,transparent)}
+  .new-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .new-card.full{grid-template-columns:1fr;gap:18px}
 }
 @media (max-width:560px){
   .feat-sub{grid-template-columns:1fr}
   .prov-grid,.priv-grid{grid-template-columns:1fr}
   .prov.featp{grid-column:span 1}
   .tray{grid-template-columns:repeat(2,1fr)}
+  .stat{padding:16px}
+  .stat b{font-size:24px}
+  .new-grid{grid-template-columns:1fr}
+  .new-card.wide{grid-column:span 1}
 }
 /* scroll reveal — motion only when allowed */
 @media (prefers-reduced-motion:no-preference){
@@ -984,7 +1060,7 @@ footer.site .disclaimer{
       <button class="navBtn" id="navBtn" type="button" aria-expanded="false" aria-controls="navLinks" aria-label="Menu / 菜单">MENU</button>
       <span class="links" id="navLinks">
         <a href="#download" data-i18n="nav-dl">Download</a>
-        <a href="#release-13" data-i18n="nav-new">What's new</a>
+        <a href="#new" data-i18n="nav-new">What's new</a>
         <a href="#screens" data-i18n="nav-screens">Screens</a>
         <a href="#providers" data-i18n="nav-providers">Providers</a>
         <a href="#feed" data-i18n="nav-feed">AI Feed</a>
@@ -1004,11 +1080,11 @@ footer.site .disclaimer{
   <!-- ================= hero ================= -->
   <header class="hero" id="download">
     <div>
-      <span class="badge" data-i18n="h-badge"><span class="dot"></span>Version 1.3 · Mac release + iPhone beta</span>
+      <span class="badge" data-i18n="h-badge"><span class="dot"></span>Version 1.4 · Mac release + iPhone beta</span>
       <h1 data-i18n="h-h1">Your AI quotas,<br><span class="accent">right in the menu bar</span>.</h1>
       <p class="sub" data-i18n="h-sub">
         Remaining quota and reset countdowns for <strong>Claude Code, Codex, Cursor, Windsurf, Grok, GLM</strong>
-        and <strong>21+ services</strong>, all in one place.
+        and <strong>21+ services</strong> — plus where today's tokens went, how fast each model answered and what it would cost.
         Provider credentials stay on your Mac. If you enable Apple-device sync, only an allowlisted AES-256-GCM encrypted quota snapshot moves through your own iCloud account.
       </p>
       <div class="cta-row">
@@ -1148,31 +1224,86 @@ footer.site .disclaimer{
     </div>
   </header>
 
-  <!-- ================= 1.3 release ================= -->
-  <section id="release-13">
-    <p class="eyebrow" data-num="1.3">Latest Release</p>
-    <h2 data-i18n="n-h2">Multiple Claude accounts, one popover</h2>
-    <p class="lede" data-i18n="n-lede">Version 1.3 adds isolated Claude account profiles and puts the popover's Liquid Glass under your control — while credentials keep living where they always have: in each tool's own storage.</p>
-    <div class="feat-sub">
-      <div class="feat ticked lift">
-        <div class="glyph">ACCOUNTS</div>
-        <h3 data-i18n="n1t">Isolated Claude account profiles</h3>
-        <p data-i18n="n1d">Sign in through the official Claude CLI and keep each account separate: refresh, rename, pause or remove any profile on its own, with currency-safe balance summaries. Credentials are never copied into TokenRemain storage.</p>
+  <!-- ================= key numbers ================= -->
+  <div class="stats" aria-label="TokenRemain at a glance / TokenRemain 速览">
+    <div class="stat"><b>21<em>+</em></b><span data-i18n="st-a">AI coding tools and services with quota windows</span></div>
+    <div class="stat"><b>15<em>+</em></b><span data-i18n="st-b">local coding agents counted offline by ccusage</span></div>
+    <div class="stat"><b>13</b><span data-i18n="st-c">display currencies for API list-price estimates</span></div>
+    <div class="stat"><b>0</b><span data-i18n="st-d">credentials refreshed, copied or uploaded</span></div>
+  </div>
+
+  <!-- ================= 1.4 release ================= -->
+  <section id="new">
+    <p class="eyebrow" data-num="1.4">Latest Release</p>
+    <h2 data-i18n="n-h2">See where every token goes</h2>
+    <p class="lede" data-i18n="n-lede">TokenRemain 1.4 adds a token-level view of your usage — what was input, output and cache, and how fast each model answered — plus an Account Management page, display currencies and Dock meters you choose. All of it computed on your Mac.</p>
+    <div class="new-grid">
+      <div class="new-card wide lift">
+        <div class="glyph">TOKEN MIX <i>1.4.2</i></div>
+        <h3 data-i18n="n1t">Input, output and cache, counted apart</h3>
+        <p data-i18n="n1d">Trends splits every range — or any day you click — into input, output, cache write and cache read, and each model row gets its own composition bar. Older history keeps an unsplit cache total instead of guessing.</p>
+        <div class="mix" aria-hidden="true">
+          <div class="mix-head"><span data-i18n="n1-mix">Token mix · last 14 days</span><b>1.39B</b></div>
+          <div class="mix-bar"><i style="width:3.3%;min-width:4px;background:var(--violet)"></i><i style="width:.4%;min-width:3px;background:var(--cyan)"></i><i style="width:.2%;min-width:3px;background:var(--warning)"></i><i style="flex:1;background:#5A6475"></i></div>
+          <div class="mix-legend">
+            <span style="--c:var(--violet)"><span data-i18n="n1-in">Input</span> <b>3.3%</b></span>
+            <span style="--c:var(--cyan)"><span data-i18n="n1-out">Output</span> <b>0.4%</b></span>
+            <span style="--c:var(--warning)"><span data-i18n="n1-cw">Cache write</span> <b>0.2%</b></span>
+            <span style="--c:#5A6475"><span data-i18n="n1-cr">Cache read</span> <b>96.1%</b></span>
+          </div>
+          <div class="mix-rows">
+            <div class="mix-row"><span class="nm"><i style="background:var(--claude-logo)"></i>opus-5-5</span><span class="mix-bar"><i style="width:.5%;min-width:3px;background:var(--cyan)"></i><i style="width:2.9%;min-width:3px;background:var(--warning)"></i><i style="flex:1;background:#5A6475"></i></span><b>52.3M</b></div>
+            <div class="mix-row"><span class="nm"><i style="background:#6E86D6"></i>gpt-6-astra</span><span class="mix-bar"><i style="width:2.3%;min-width:3px;background:var(--violet)"></i><i style="width:.4%;min-width:3px;background:var(--cyan)"></i><i style="flex:1;background:#5A6475"></i></span><b>91.5M</b></div>
+            <div class="mix-row"><span class="nm"><i style="background:#6E86D6"></i>gpt-5.6-luna</span><span class="mix-bar"><i style="width:8.8%;min-width:3px;background:var(--violet)"></i><i style="width:.5%;min-width:3px;background:var(--cyan)"></i><i style="flex:1;background:#5A6475"></i></span><b>1.5M</b></div>
+          </div>
+        </div>
       </div>
-      <div class="feat ticked lift">
-        <div class="glyph">GLASS</div>
-        <h3 data-i18n="n2t">Liquid Glass, your way</h3>
-        <p data-i18n="n2d">Choose frosted or clear Liquid Glass for the menu-bar popover and tune its backdrop opacity independently — the same live glass you see at the top of this page.</p>
+      <div class="new-card lift">
+        <div class="glyph">TOK/S <i>1.4.2</i></div>
+        <h3 data-i18n="n2t">Output speed, measured locally</h3>
+        <p data-i18n="n2d">End-to-end tokens per second for each model, estimated from Claude Code and Codex session timestamps. Only appended log bytes are read, with a time and size budget.</p>
+        <div class="models" aria-hidden="true">
+          <div class="model"><span class="nm">opus-5-5</span><span class="tps">≈100 tok/s</span><span class="tk">52.3M</span><span class="bar"><i style="width:100%;background:var(--claude-logo)"></i></span></div>
+          <div class="model"><span class="nm">gpt-6-astra</span><span class="tps">≈27.8 tok/s</span><span class="tk">91.5M</span><span class="bar"><i style="width:60.6%;background:#6E86D6"></i></span></div>
+          <div class="model"><span class="nm">gpt-5.6-luna</span><span class="tps">≈76.3 tok/s</span><span class="tk">1.5M</span><span class="bar"><i style="width:4%;background:#6E86D6"></i></span></div>
+        </div>
       </div>
-      <div class="feat ticked lift">
-        <div class="glyph">CONTRAST</div>
-        <h3 data-i18n="n3t">Readable on any glass</h3>
-        <p data-i18n="n3d">Primary, secondary and muted text stay on protected light foregrounds in both glass styles, while provider identity and semantic warning colors come through untouched.</p>
+      <div class="new-card lift">
+        <div class="glyph">ACCOUNTS <i>1.4.1</i></div>
+        <h3 data-i18n="n3t">Account Management</h3>
+        <p data-i18n="n3d">One page for every tracked app: switch monitoring per app, pause or rename accounts, update credentials, and opt in to a combined view for same-plan accounts.</p>
+        <div class="acct" aria-hidden="true">
+          <div><img src="assets/providers/claude-code.svg" alt="">Claude · <span data-i18n="n3-a">Work</span><span class="tg"></span></div>
+          <div><img src="assets/providers/claude-code.svg" alt="">Claude · <span data-i18n="n3-b">Personal</span><span class="tg"></span></div>
+          <div><img src="assets/providers/codex.svg" alt=""><span class="dim">Codex · <span data-i18n="n3-c">Side project</span></span><span class="tg off"></span></div>
+        </div>
       </div>
-      <div class="feat ticked lift">
-        <div class="glyph">SYNC-SAFE</div>
-        <h3 data-i18n="n4t">Sturdier snapshots and profiles</h3>
-        <p data-i18n="n4d">A malformed scoped-limit row can no longer reject an otherwise valid encrypted mobile snapshot, and managed Claude profiles never fall back to the system account's credentials.</p>
+      <div class="new-card lift">
+        <div class="glyph">CURRENCY <i>1.4.2</i></div>
+        <h3 data-i18n="n4t">Costs in your currency</h3>
+        <p data-i18n="n4d">Show API list-price estimates in 13 currencies using daily public reference rates. Official bills and balances always stay in their billing currency; with USD selected, no rate request is made.</p>
+        <div class="chips" aria-hidden="true"><span>USD</span><span class="on">CNY</span><span>EUR</span><span>JPY</span><span>GBP</span><span>HKD</span><span>TWD</span><span>KRW</span><span>AUD</span><span>CAD</span><span>SGD</span><span>CHF</span><span>INR</span></div>
+      </div>
+      <div class="new-card lift">
+        <div class="glyph">DOCK <i>1.4.1</i></div>
+        <h3 data-i18n="n5t">Dock meters you pick</h3>
+        <p data-i18n="n5d">The Dock icon's two meters can follow any tracked apps, with a live preview in Settings. Claude and Codex remain the default pair.</p>
+        <div class="dockmeter" aria-hidden="true">
+          <img src="assets/brand/appicon-mac.png" width="512" height="512" alt="" loading="lazy">
+          <div class="sel"><span><span data-i18n="n5-top">Top</span> <b>Claude</b></span><span><span data-i18n="n5-bot">Bottom</span> <b>Cursor</b></span></div>
+        </div>
+      </div>
+      <div class="new-card full lift">
+        <div>
+          <div class="glyph">CLAUDE <i>1.4.0</i></div>
+          <h3 data-i18n="n6t">Claude Desktop and Cowork, counted</h3>
+          <p data-i18n="n6d">Local totals now merge Claude Desktop and Cowork session logs with your Claude Code folders, deduplicated, with custom log folders on the Data Sources page.</p>
+        </div>
+        <div>
+          <div class="glyph">WEB SESSION <i>1.4.0</i></div>
+          <h3 data-i18n="n7t">Claude quota without the CLI</h3>
+          <p data-i18n="n7d">Paste your own claude.ai session on the Data Sources page to read Claude quota directly — kept in the local Keychain, with organization selection, cancellation, timeouts and retry backoff.</p>
+        </div>
       </div>
     </div>
   </section>
@@ -1181,27 +1312,30 @@ footer.site .disclaimer{
   <section id="screens">
     <p class="eyebrow" data-num="01">Real UI</p>
     <h2 data-i18n="s-h2">Mac, iPhone, wrist — one design language</h2>
-    <p class="lede" data-i18n="s-lede">You've met the menu bar popover above — rendered live in your browser, not a screenshot — everything below is a <strong style="color:var(--text)">live screenshot of the latest build</strong>: the desktop Dashboard, the redesigned iPhone app and the Apple Watch glances. Numbers are SF Mono on every surface; decoration is gone, hierarchy comes from type. The iPhone and watch shots run the built-in demo scenario, so they carry its DEMO mark.</p>
+    <p class="lede" data-i18n="s-lede">You've met the menu bar popover above — rendered live in your browser, not a screenshot. Everything below is a <strong style="color:var(--text)">real screenshot</strong>: the Mac Dashboard is TokenRemain 1.4.2 running on real usage data; the iPhone and Apple Watch shots run the built-in demo scenario, so they carry its DEMO mark. Numbers use tabular system digits, and hierarchy comes from type rather than decoration.</p>
     <div class="shot-grid">
       <div class="pin-track" id="dashTrack">
         <div class="pin-stage">
           <div class="stage-dim" aria-hidden="true"></div>
           <div class="pin-zoom dash-zoom">
-            <figure class="shot ticked">
+            <figure class="shot bare">
               <span class="dash-viewport">
-                <img class="on" src="assets/dash-overview.jpg" width="2360" height="1520" alt="TokenRemain Dashboard overview page: KPI row with lowest remaining, today's tokens and estimated cost, usage donut, official quotas and risk panel" loading="lazy"
-                     data-shot-en="assets/dash-overview.jpg" data-shot-zh="assets/dash-overview-zh.jpg">
-                <img src="assets/dash-limits.jpg" width="2360" height="1520" alt="TokenRemain Dashboard limits page: per-provider official quota windows with segment bars, reset countdowns and pace warnings" loading="lazy"
-                     data-shot-en="assets/dash-limits.jpg" data-shot-zh="assets/dash-limits-zh.jpg">
-                <img src="assets/dash-trends.jpg" width="2360" height="1520" alt="TokenRemain Dashboard trends page: stacked daily token bars per provider and quota-consumption sparklines across recent days" loading="lazy"
-                     data-shot-en="assets/dash-trends.jpg" data-shot-zh="assets/dash-trends-zh.jpg">
+                <img class="on" src="assets/dash-overview.webp" width="2360" height="1520" alt="TokenRemain Dashboard overview page: lowest remaining quota, today's tokens and estimated cost, usage donut by provider, official quotas and risk notes" loading="lazy"
+                     data-shot-en="assets/dash-overview.webp" data-shot-zh="assets/dash-overview-zh.webp">
+                <img src="assets/dash-limits.webp" width="2360" height="1520" alt="TokenRemain Dashboard limits page: per-provider official quota windows with segment bars, reset countdowns and pace reserve" loading="lazy"
+                     data-shot-en="assets/dash-limits.webp" data-shot-zh="assets/dash-limits-zh.webp">
+                <img src="assets/dash-trends.webp" width="2360" height="1520" alt="TokenRemain Dashboard trends page: stacked daily token bars per provider, a token-mix strip and quota-consumption curves" loading="lazy"
+                     data-shot-en="assets/dash-trends.webp" data-shot-zh="assets/dash-trends-zh.webp">
+                <img src="assets/dash-models.webp" width="2360" height="1520" alt="TokenRemain Dashboard model detail for one day: token mix plus per-model usage with locally estimated tokens per second" loading="lazy"
+                     data-shot-en="assets/dash-models.webp" data-shot-zh="assets/dash-models-zh.webp">
               </span>
               <figcaption class="stage-cap dash-cap">
-                <div class="stage-dots" aria-hidden="true"><i class="on"></i><i></i><i></i></div>
+                <div class="stage-dots" aria-hidden="true"><i class="on"></i><i></i><i></i><i></i></div>
                 <div class="stage-slides">
-                  <p class="slide on"><span class="tag" data-i18n="cap-dash-t">Dashboard · Overview</span><span class="cap" data-i18n="cap-dash-c">Real local usage: today's tokens and estimated cost split by provider, with official quota progress and risk hints beside them.</span></p>
-                  <p class="slide"><span class="tag" data-i18n="cap-dash2-t">Dashboard · Limits</span><span class="cap" data-i18n="cap-dash2-c">The Limits page: every provider's official windows — 5-hour and 7-day progress, reset countdowns, and pace warnings that flag running ahead of budget.</span></p>
-                  <p class="slide"><span class="tag" data-i18n="cap-dash3-t">Dashboard · Trends</span><span class="cap" data-i18n="cap-dash3-c">The Trends page: stacked daily token bars per provider plus quota-consumption curves, so weekly rhythm and spikes stand out at a glance. Click any day for a per-model input / output / cache breakdown.</span></p>
+                  <p class="slide on"><span class="tag" data-i18n="cap-dash-t">Dashboard · Overview</span><span class="cap" data-i18n="cap-dash-c">Real local usage: today's tokens and estimated cost split by provider, with official quota progress, the projected runway and risk notes beside them.</span></p>
+                  <p class="slide"><span class="tag" data-i18n="cap-dash2-t">Dashboard · Limits</span><span class="cap" data-i18n="cap-dash2-c">Every provider's official windows — 5-hour, 7-day and monthly pools — with reset countdowns and a pace reserve that turns red, with a run-out ETA, when you're ahead of budget.</span></p>
+                  <p class="slide"><span class="tag" data-i18n="cap-dash3-t">Dashboard · Trends</span><span class="cap" data-i18n="cap-dash3-c">Stacked daily token bars per provider, the token mix for the range and quota-consumption curves, so weekly rhythm and spikes stand out at a glance.</span></p>
+                  <p class="slide"><span class="tag" data-i18n="cap-dash4-t">Trends · Model detail</span><span class="cap" data-i18n="cap-dash4-c">Click any day: input, output, cache write and cache read for that day, each model's share, and its output speed estimated from local session logs.</span></p>
                 </div>
               </figcaption>
             </figure>
@@ -1247,7 +1381,7 @@ footer.site .disclaimer{
         </div>
       </div>
       <div class="shot-row2" style="grid-template-columns:1fr">
-        <figure class="shot widgets row ticked lift">
+        <figure class="shot widgets row lift">
           <img src="assets/widget-m.png" width="1144" height="562" alt="TokenRemain medium Home Screen widget: lowest remaining 46%, LOW risk badge, robot mascot, Codex and Claude bars, reset countdown" loading="lazy"
                data-shot-en="assets/widget-m.png" data-shot-zh="assets/widget-m-zh.png">
           <img src="assets/widget-s.png" width="562" height="562" alt="TokenRemain small Home Screen widget: lowest remaining 46%, per-provider bars and reset countdown" loading="lazy"
@@ -1303,6 +1437,7 @@ footer.site .disclaimer{
           <span><img class="brand-logo" src="assets/providers/qoder.svg" alt="">Qoder</span>
           <span><img class="brand-logo" src="assets/providers/kiro.svg" alt="">Kiro</span>
           <span><img class="brand-logo" src="assets/providers/volcengine.svg" alt=""><span data-i18n="pv-volc">Volcengine</span></span>
+          <span><img class="brand-logo" src="assets/providers/bailian.svg" alt=""><span data-i18n="pv-bailian">Alibaba Token Plan</span></span>
           <span><img class="brand-logo mono" src="assets/providers/ollama.svg" alt="">Ollama</span>
         </div>
       </div>
@@ -1317,28 +1452,28 @@ footer.site .disclaimer{
     <p class="lede" data-i18n="fe-lede">A curated feed of AI-industry posts, read straight inside the app — a full reading tab on iPhone with an on-device archive, a glance page on Apple Watch, a panel on the Mac Dashboard. Quota, rate-limit and reset changes get <strong style="color:var(--text)">pinned to the top and pushed as notifications</strong>; ordinary industry chatter stays quiet below. No X account, no login, no keyword soup.</p>
     <div class="feed-split">
       <div class="feed-facts">
-        <div class="fact ticked lift">
+        <div class="fact lift">
           <span class="fk">ROSTER</span>
           <div>
             <h3 data-i18n="fe1t">A fixed, curated roster — not an algorithm</h3>
             <p data-i18n="fe1d">Tier one follows official and first-party voices (<code>@claudeai</code>, <code>@AnthropicAI</code>, <code>@OpenAI</code>, <code>@sama</code>…) checked every 10 minutes. Tier two rotates a fixed 12-account whitelist ranked by real engagement. Original posts only — replies, reposts and quotes are rejected.</p>
           </div>
         </div>
-        <div class="fact ticked lift">
+        <div class="fact lift">
           <span class="fk">PRIORITY</span>
           <div>
             <h3 data-i18n="fe2t">Two priorities that actually matter</h3>
             <p data-i18n="fe2d"><strong style="color:var(--text)">TOKEN RESET</strong> — quota, rate-limit or reset changes; <strong style="color:var(--text)">MAJOR UPDATE</strong> — big model, API or price moves. Both are pinned and trigger a notification. Everything else scrolls by quietly as NORMAL.</p>
           </div>
         </div>
-        <div class="fact ticked lift">
+        <div class="fact lift">
           <span class="fk">ZERO-CRED</span>
           <div>
             <h3 data-i18n="fe3t">Reads like a public bulletin board</h3>
             <p data-i18n="fe3d">The app fetches the curated result as public data from the TokenRemain broadcast service. Your provider credentials, usage numbers and identity are never attached to the request — the feed doesn't know who you are.</p>
           </div>
         </div>
-        <div class="fact ticked lift">
+        <div class="fact lift">
           <span class="fk">NOTIFY</span>
           <div>
             <h3 data-i18n="fe4t">Notifications on your terms</h3>
@@ -1347,7 +1482,7 @@ footer.site .disclaimer{
         </div>
       </div>
       <div>
-        <div class="feed-panel ticked" role="img" aria-label="Illustration of the AI Feed panel with pinned priority items / AI Feed 面板示意，含置顶优先级条目">
+        <div class="feed-panel" role="img" aria-label="Illustration of the AI Feed panel with pinned priority items / AI Feed 面板示意，含置顶优先级条目">
           <div class="feed-head">
             <span class="ttl">AI FEED</span>
             <span class="live"><i></i><span data-i18n="fe-live">CHECKED EVERY 10 MIN</span></span>
@@ -1403,34 +1538,34 @@ footer.site .disclaimer{
       </div>
     </div>
     <div class="priv-grid">
-      <div class="priv ticked lift">
+      <div class="priv lift">
         <div class="row"><span class="ck">✓</span><h3 data-i18n="pr1t">Read-only credentials, never refreshed</h3></div>
         <p data-i18n="pr1d">Reads the access tokens your tools already maintain. Refresh tokens are never touched, nothing is written back — no fighting Claude Code or Cursor for their sessions.</p>
       </div>
-      <div class="priv ticked lift">
+      <div class="priv lift">
         <div class="row"><span class="ck">✓</span><h3 data-i18n="pr2t">Keys live in the Keychain</h3></div>
         <p data-i18n="pr2d">Manually added API keys (Z.ai, OpenRouter…) are stored only in the macOS Keychain — never in source, bundles or logs.</p>
       </div>
-      <div class="priv ticked lift">
+      <div class="priv lift">
         <div class="row"><span class="ck">✓</span><h3 data-i18n="pr3t">No credential relay</h3></div>
         <p data-i18n="pr3d">Quota queries go straight to each provider's official API. The public feed, push service, and aggregate download counter never receive provider credentials; optional Apple-device sync uses your private iCloud database.</p>
       </div>
-      <div class="priv ticked lift">
+      <div class="priv lift">
         <div class="row"><span class="ck">✓</span><h3 data-i18n="pr4t">No behavioral tracking</h3></div>
         <p data-i18n="pr4d">No telemetry, ads, cookies, or analytics SDK. The website keeps only one anonymous aggregate Mac download count.</p>
       </div>
-      <div class="priv ticked lift">
+      <div class="priv lift">
         <div class="row"><span class="ck">✓</span><h3 data-i18n="pr5t">No account required</h3></div>
         <p data-i18n="pr5d">You never sign up for TokenRemain — being signed in to your local tools is enough.</p>
       </div>
-      <div class="priv ticked lift">
+      <div class="priv lift">
         <div class="row"><span class="ck">✓</span><h3 data-i18n="pr6t">Cache and stats stay local</h3></div>
         <p data-i18n="pr6d">Mac caches and cost statistics stay local. Only when you enable sync does an allowlisted, encrypted display snapshot enter your private iCloud database.</p>
       </div>
     </div>
 
     <!-- where each byte lives -->
-    <div class="ledger ticked">
+    <div class="ledger">
       <div class="led stay">
         <span class="lh"><i></i><span data-i18n="lg1h">Stays on your Mac</span></span>
         <ul>
@@ -1438,7 +1573,7 @@ footer.site .disclaimer{
           <li data-i18n="lg1b"><strong>API keys</strong> — macOS Keychain only.</li>
           <li data-i18n="lg1c"><strong>Usage cache &amp; cost stats</strong> — computed and kept locally.</li>
         </ul>
-        <span class="ln" data-i18n="lg1n">Default state. Nothing here requires the network beyond the providers' own APIs.</span>
+        <span class="ln" data-i18n="lg1n">Default state. Beyond the providers' own APIs, only the public price table — and public exchange rates if you pick a non-USD currency — are fetched, with nothing attached.</span>
       </div>
       <div class="led icloud">
         <span class="lh"><i></i><span data-i18n="lg2h">Your iCloud — optional</span></span>
@@ -1474,7 +1609,7 @@ footer.site .disclaimer{
     <h2 data-i18n="br-h2">A logo that works for a living</h2>
     <p class="lede" data-i18n="br-lede">The robot isn't decoration — <strong style="color:var(--text)">its face is a gauge</strong>. One mascot drives the popover, Dashboard, iPhone app and widgets; your lowest remaining quota picks one of its eleven expressions. Meet them all:</p>
 
-    <div class="lab ticked">
+    <div class="lab">
       <div class="lab-stage">
         <img id="moodImg" src="assets/brand/head/head-70.png" width="256" height="256" alt="TokenRemain robot head, calm expression at 70% remaining">
         <div class="lab-read">
@@ -1528,13 +1663,13 @@ footer.site .disclaimer{
     <h2 data-i18n="lm-h2">Known limits of the Mac release</h2>
     <p class="lede" data-i18n="lm-lede">The notarized Mac release is available now. These limits are deliberate trade-offs — data safety always outranks feature coverage.</p>
     </div>
-    <div class="limit-card ticked">
+    <div class="limit-card">
       <div class="head"><span class="sym">!</span><span data-i18n="lm-head">Known limitations</span></div>
       <ul>
         <li><span class="k" data-i18n="lmk1">CHIP</span><span data-i18n="lm1"><strong>Universal Mac build</strong> — supports Apple Silicon (arm64) and Intel (x86_64).</span></li>
         <li><span class="k" data-i18n="lmk2">OS</span><span data-i18n="lm2">Requires <strong>macOS 14 Sonoma or later</strong>; macOS 26 gets native Liquid Glass, 14/15 fall back to the dark card style.</span></li>
         <li><span class="k" data-i18n="lmk3">DIST</span><span data-i18n="lm3"><strong>The public DMG is Developer ID signed and Apple notarized.</strong> It is currently distributed outside the Mac App Store.</span></li>
-        <li><span class="k" data-i18n="lmk4">DEPS</span><span data-i18n="lm4">Direct quota queries need the <strong>matching tools signed in on this Mac</strong> (Claude Code, Codex CLI, Cursor…); services that aren't signed in show setup hints. Z.ai is the only one that needs a pasted API key.</span></li>
+        <li><span class="k" data-i18n="lmk4">DEPS</span><span data-i18n="lm4">Direct quota queries need the <strong>matching tools signed in on this Mac</strong> (Claude Code, Codex CLI, Cursor…); services that aren't signed in show setup hints. Key-based services such as Z.ai, OpenRouter and DeepSeek need an API key pasted once.</span></li>
         <li><span class="k" data-i18n="lmk5">EST</span><span data-i18n="lm5">Cost figures are <strong>API list-price estimates</strong>, not your subscription bill; when a credential expires, data pauses and the app tells you how to recover.</span></li>
       </ul>
     </div>
@@ -1546,22 +1681,22 @@ footer.site .disclaimer{
     <p class="eyebrow" data-num="07">Features</p>
     <h2 data-i18n="ft-h2">Keep your pace in hand</h2>
     <div class="feat-sub">
-      <div class="feat ticked lift">
+      <div class="feat lift">
         <div class="glyph">PACE</div>
         <h3 data-i18n="ft1t">Pace prediction</h3>
         <p data-i18n="ft1d">Real window progress plus official reset times decide whether you'll make it to reset — with an ETA when you won't.</p>
       </div>
-      <div class="feat ticked lift">
+      <div class="feat lift">
         <div class="glyph">MENU BAR</div>
         <h3 data-i18n="ft2t">Menu bar &amp; floating window</h3>
-        <p data-i18n="ft2d">Choose which apps show in the menu bar; refresh every 1/5/15/30 min or manually; a floating window stays on top across Spaces.</p>
+        <p data-i18n="ft2d">Choose which apps show in the menu bar and on the Dock icon's two meters; refresh every 1/5/15/30 min or manually; a floating window stays on top across Spaces.</p>
       </div>
-      <div class="feat ticked lift">
+      <div class="feat lift">
         <div class="glyph">COST</div>
         <h3 data-i18n="ft3t">Today's cost estimate</h3>
-        <p data-i18n="ft3d">ccusage counts today's tokens and estimated API cost, split by provider, all computed locally.</p>
+        <p data-i18n="ft3d">ccusage counts today's tokens and estimated API cost by provider and model — input, output and cache apart, in your display currency — all computed locally.</p>
       </div>
-      <div class="feat ticked lift">
+      <div class="feat lift">
         <div class="glyph">AI FEED</div>
         <h3 data-i18n="ft4t">AI feed</h3>
         <p data-i18n="ft4d">Quota resets, rate-limit changes and major model releases get pinned and trigger local macOS notifications. <a href="#feed" data-i18n-skip>→</a></p>
@@ -1584,14 +1719,14 @@ footer.site .disclaimer{
       </div>
       <div class="step lift">
         <h3 data-i18n="st3t">Open and choose your providers</h3>
-        <p data-i18n="st3d">Launch TokenRemain from Applications, choose the local tools you use, and optionally enable Apple-device sync and daily AI feed notifications.</p>
+        <p data-i18n="st3d">Launch TokenRemain from Applications and tick the local tools it found. Paste API keys where needed, then optionally enable Apple-device sync and AI Feed notifications.</p>
       </div>
     </div>
   </section>
 
   <!-- ================= repo ================= -->
   <section>
-    <div class="repo-band ticked">
+    <div class="repo-band">
       <div class="txt">
         <h2 data-i18n="rp-h2">All source, in the open</h2>
         <p data-i18n="rp-p">How credentials are read and where data goes — every line is auditable. Issues and PRs welcome.<br><code>github.com/Carstin520/token-remain</code></p>
@@ -1623,10 +1758,10 @@ footer.site .disclaimer{
 <script>
 /* ---------- i18n: English inline (default), Chinese dictionary ---------- */
 var ZH={
-  "nav-dl":"下载","nav-new":"1.3 新功能","nav-screens":"界面","nav-providers":"支持的服务","nav-feed":"AI 动态","nav-privacy":"隐私","nav-brand":"品牌","nav-policy":"隐私政策","nav-support":"支持","nav-limits":"限制",
-  "h-badge":"<span class=\"dot\"></span>1.3 正式版 · Mac 发布 + iPhone 测试",
+  "nav-dl":"下载","nav-new":"1.4 新功能","nav-screens":"界面","nav-providers":"支持的服务","nav-feed":"AI 动态","nav-privacy":"隐私","nav-brand":"品牌","nav-policy":"隐私政策","nav-support":"支持","nav-limits":"限制",
+  "h-badge":"<span class=\"dot\"></span>1.4 正式版 · Mac 发布 + iPhone 测试",
   "h-h1":"你的 AI 额度，<br><span class=\"accent\">常驻菜单栏</span>。",
-  "h-sub":"一处看全 <strong>Claude Code、Codex、Cursor、Windsurf、Grok、GLM</strong> 等 <strong>21+ 服务</strong>的剩余额度与重置倒计时。Provider 凭证始终留在 Mac；启用 Apple 设备同步后，只有经过白名单过滤并使用 AES-256-GCM 加密的额度快照会通过你自己的 iCloud 账户传输。",
+  "h-sub":"一处看全 <strong>Claude Code、Codex、Cursor、Windsurf、Grok、GLM</strong> 等 <strong>21+ 服务</strong>的剩余额度与重置倒计时，还能看清今天的 Token 花在哪、每个模型跑得多快、折合多少钱。Provider 凭证始终留在 Mac；启用 Apple 设备同步后，只有经过白名单过滤并使用 AES-256-GCM 加密的额度快照会通过你自己的 iCloud 账户传输。",
   "h-dl":"下载 Mac 版","h-ios":"加入 iPhone TestFlight","h-gh":"GitHub 仓库",
   "h-hint":"Mac 版已签名并通过 Apple 公证；iPhone 测试版需 iOS 18+、Mac 伴侣 App 与同一 iCloud 账号。",
   "chip-grok":"Grok 周池",
@@ -1646,17 +1781,25 @@ var ZH={
   "pop-f1s":"Claude","pop-f1t":"13 小时 18 分钟","pop-f1x":"The Claude Security plugin fo…",
   "pop-f2s":"Simon Willison","pop-f2t":"7 小时 27 分钟","pop-f2x":"I wrote about the completely …",
   "pop-open":"打开 Dashboard","pop-quit":"设置 · 退出",
-  "n-h2":"多个 Claude 账号，同一个弹窗",
-  "n-lede":"1.3 带来相互隔离的 Claude 多账号档案，并把弹窗的 Liquid Glass 交给你调节——凭证依旧留在各工具自己的存储里，TokenRemain 绝不复制一份。",
-  "n1t":"Claude 多账号隔离档案","n1d":"通过官方 Claude CLI 登录，每个账号独立管理：单独刷新、重命名、暂停或移除，汇总余额按币种安全展示。凭证绝不会被复制进 TokenRemain 的存储。",
-  "n2t":"Liquid Glass 由你定","n2d":"菜单栏弹窗可选磨砂或透明两种 Liquid Glass 风格，背景不透明度独立可调——就是你在本页顶部看到的那块实时玻璃。",
-  "n3t":"任何玻璃上都清晰可读","n3d":"两种玻璃风格下，主文字、次要文字与弱化文字都保持受保护的浅色前景；provider 身份色与语义警示色原样呈现。",
-  "n4t":"快照与档案更稳固","n4d":"个别损坏的模型限额行不再让整份有效的加密移动快照被拒收；受管理的 Claude 档案也绝不会回落到系统账号的凭证与配置。",
+  "st-a":"家 AI 编码工具与服务的额度窗口","st-b":"种本地编码 Agent，由 ccusage 离线统计","st-c":"种显示币种，用于 API 标价估算","st-d":"个凭证被刷新、复制或上传",
+  "n-h2":"每个 Token 去了哪，一目了然",
+  "n-lede":"TokenRemain 1.4 带来 Token 级的用量视图——哪些是输入、输出与缓存，每个模型回答得多快——再加上账号管理页、显示币种和可自选的 Dock 仪表。全部在你的 Mac 本地计算。",
+  "n1t":"输入、输出与缓存，分开统计","n1d":"趋势页把任意时间范围——或你点击的那一天——拆成输入、输出、缓存写入与缓存读取，每个模型行也有自己的构成条。旧历史保留未拆分的缓存总量，不做猜测。",
+  "n1-mix":"Token 构成 · 近 14 天","n1-in":"输入","n1-out":"输出","n1-cw":"缓存写入","n1-cr":"缓存读取",
+  "n2t":"输出速度，本机实测","n2d":"根据 Claude Code 与 Codex 会话时间戳，估算每个模型的端到端每秒输出 Token 数。只读取日志新追加的部分，并有时间与数据量上限。",
+  "n3t":"账号管理","n3d":"所有追踪应用集中在一页：按应用开关监控，暂停或重命名账号、更新凭证；同套餐账号可选合并查看。",
+  "n3-a":"工作","n3-b":"个人","n3-c":"副业项目",
+  "n4t":"用你的币种看成本","n4d":"API 标价估算支持 13 种显示币种，使用每日公开参考汇率换算。官方账单与余额始终保持原币种；选择 USD 时不会请求汇率。",
+  "n5t":"Dock 仪表由你挑","n5d":"Dock 图标上的两条仪表可以跟随任意已追踪应用，设置里实时预览；默认仍是 Claude 与 Codex。",
+  "n5-top":"上方","n5-bot":"下方",
+  "n6t":"Claude 桌面版与 Cowork 计入统计","n6d":"本地统计合并 Claude 桌面版、Cowork 会话日志与 Claude Code 目录并自动去重；「数据来源」页可添加自定义日志目录。",
+  "n7t":"没有 CLI 也能看 Claude 额度","n7d":"在「数据来源」页粘贴你自己的 claude.ai 会话即可直接读取 Claude 额度——只存本机钥匙串，支持组织选择、取消、超时与退避重试。",
   "s-h2":"Mac、iPhone、手腕，同一套设计语言",
-  "s-lede":"菜单栏弹窗在上方已经见过——那是浏览器实时渲染的真实组件，不是截图；下面全部是<strong style=\"color:var(--text)\">正在运行的最新版实机截图</strong>：桌面 Dashboard、重新设计的 iPhone 版与 Apple Watch 速览。所有屏幕的数字统一使用 SF Mono；装饰全部退场，层级只来自字号与留白。iPhone 与手表截图跑的是内置演示场景，所以带着 DEMO 标记。",
-  "cap-dash-t":"Dashboard · 概览","cap-dash-c":"真实本地用量：今日 Token 与估算成本按服务商拆分，旁边是官方额度实时进度与风险提示。",
-  "cap-dash2-t":"Dashboard · 额度","cap-dash2-c":"额度页：每个服务商的官方窗口——5 小时 / 7 天进度、重置倒计时，以及用量超前时的节奏预警。",
-  "cap-dash3-t":"Dashboard · 趋势","cap-dash3-c":"趋势页：按服务商堆叠的每日 Token 柱状图与额度消耗曲线，一眼看出每周节奏与用量高峰。点击任意一天可展开按模型的输入 / 输出 / 缓存明细。",
+  "s-lede":"菜单栏弹窗在上方已经见过——那是浏览器实时渲染的真实组件，不是截图。下面全部是<strong style=\"color:var(--text)\">真实截图</strong>：Mac Dashboard 来自运行真实用量数据的 TokenRemain 1.4.2；iPhone 与 Apple Watch 截图跑的是内置演示场景，所以带着 DEMO 标记。数字使用等宽的系统数字，层级来自字号与留白，而不是装饰。",
+  "cap-dash-t":"Dashboard · 概览","cap-dash-c":"真实本地用量：今日 Token 与估算成本按服务商拆分，旁边是官方额度进度、预计可用时长与风险提示。",
+  "cap-dash2-t":"Dashboard · 额度","cap-dash2-c":"每个服务商的官方窗口——5 小时、7 天与月度额度池——附重置倒计时；用量超前时节奏余量变红，并给出预计用尽时间。",
+  "cap-dash3-t":"Dashboard · 趋势","cap-dash3-c":"按服务商堆叠的每日 Token 柱状图、所选范围的 Token 构成与额度消耗曲线，一眼看出每周节奏与用量高峰。",
+  "cap-dash4-t":"趋势 · 模型明细","cap-dash4-c":"点击任意一天：当天的输入、输出、缓存写入与缓存读取，各模型用量占比，以及根据本机会话日志估算的输出速度。",
   "cap-pov-t":"iPhone · 概览","cap-pov-c":"今日 Token 完整数字领衔，配估算成本与「超过全球 N% 用户」评价；额度结论与风险徽章紧随其后。长按拖拽任意卡片即可重排页面。",
   "cap-paf-t":"iPhone · AI 资讯","cap-paf-c":"精选动态升级为独立标签页：时间线阅读流，额度/Token 与重大更新芯片置顶，本机归档你见过的每条动态。",
   "cap-ptr-t":"iPhone · 趋势","cap-ptr-c":"同步历史上的剩余额度曲线，加每日堆叠：7 / 14 / 30 天与 Tokens / 费用双口径。",
@@ -1679,7 +1822,7 @@ var ZH={
   "pv-oc-d":"Go 套餐继续本地估算；配置第三方 provider 时保持 OpenCode 身份，并标明实际 API 额度来源。",
   "pv-3p-n":"第三方 API",
   "pv-3p-d":"New API 兼容账户余额 API 或自定义余额接口。配置只存钥匙串。",
-  "pv-compat-n":"更多服务 · 含 token-monitor 兼容接入","pv-volc":"火山引擎",
+  "pv-compat-n":"更多服务 · 含 token-monitor 兼容接入","pv-volc":"火山引擎","pv-bailian":"阿里云百炼 Token Plan",
   "pv-note":"各服务的凭证位置与接口方式在仓库 <code>README</code> 有完整说明；节奏预测基于真实窗口进度与官方重置时间，判断当前用量能否撑到重置。",
   "fe-h2":"影响额度的 AI 动态，替你排好序",
   "fe-lede":"应用内置一条精选的 AI 行业动态流——iPhone 上是带本机归档的独立阅读标签页，Apple Watch 上是速览页，Mac 上是 Dashboard 面板。额度、速率限制与重置变化会<strong style=\"color:var(--text)\">自动置顶并推送通知</strong>；普通行业消息安静地排在下面。不需要 X 账号、不用登录、没有关键词轰炸。",
@@ -1708,7 +1851,7 @@ var ZH={
   "lg1a":"<strong>Provider 凭证</strong>——原地读取，绝不外拷。",
   "lg1b":"<strong>API Key</strong>——只存 macOS 钥匙串。",
   "lg1c":"<strong>用量缓存与成本统计</strong>——本地计算、本地保存。",
-  "lg1n":"这是默认状态。除各服务官方接口外，不需要任何网络。",
+  "lg1n":"这是默认状态。除各服务官方接口外，只会拉取公开价格表——选择非 USD 币种时再加公开汇率——请求不附带任何本机数据。",
   "lg2h":"你的 iCloud——可选",
   "lg2a":"<strong>白名单额度快照</strong>——百分比、倒计时、风险等级。",
   "lg2b":"<strong>AES-256-GCM 加密</strong>后才进入你的私有数据库。",
@@ -1732,17 +1875,17 @@ var ZH={
   "lmk1":"芯片","lm1":"<strong>Universal Mac 构建</strong>，同时支持 Apple Silicon（arm64）与 Intel（x86_64）。",
   "lmk2":"系统","lm2":"需要 <strong>macOS 14 Sonoma 或更高</strong>；macOS 26 可启用原生 Liquid Glass 样式，14/15 自动回退深色卡片。",
   "lmk3":"分发","lm3":"<strong>公开 DMG 已使用 Developer ID 签名并通过 Apple 公证。</strong> 当前通过 Mac App Store 之外的官网渠道分发。",
-  "lmk4":"依赖","lm4":"额度直查依赖<strong>本机已登录的对应工具</strong>（Claude Code、Codex CLI、Cursor 等）；未登录的服务会显示接入指引。Z.ai 是唯一需要手动粘贴 API Key 的服务。",
+  "lmk4":"依赖","lm4":"额度直查依赖<strong>本机已登录的对应工具</strong>（Claude Code、Codex CLI、Cursor 等）；未登录的服务会显示接入指引。Z.ai、OpenRouter、DeepSeek 等按 Key 接入的服务需要粘贴一次 API Key。",
   "lmk5":"估算","lm5":"成本数字是 <strong>API 标价估算</strong>，不等于订阅账单；部分服务凭证过期时数据会暂停更新并提示恢复方法。",
   "ft-h2":"把节奏握在手里",
   "ft1t":"节奏预测","ft1d":"基于真实窗口进度与官方重置时间判断能否撑到重置，可能提前用尽时给出预计时长。",
-  "ft2t":"菜单栏与浮窗","ft2d":"菜单栏显示哪些应用自选；刷新 1/5/15/30 分钟或仅手动；桌面浮窗跨空间常驻。",
-  "ft3t":"今日成本估算","ft3d":"ccusage 统计今日 token 与估算 API 成本，按服务商拆分，全部本地计算。",
+  "ft2t":"菜单栏与浮窗","ft2d":"菜单栏与 Dock 图标双仪表显示哪些应用自选；刷新 1/5/15/30 分钟或仅手动；桌面浮窗跨空间常驻。",
+  "ft3t":"今日成本估算","ft3d":"ccusage 统计今日 Token 与估算 API 成本，按服务商和模型拆分，输入、输出与缓存分开，可用你的显示币种，全部本地计算。",
   "ft4t":"AI 动态聚合","ft4d":"额度重置、速率限制变化与重大模型更新自动置顶并触发 macOS 本地通知。 <a href=\"#feed\">→</a>",
   "in-h2":"下载与安装",
   "st1t":"下载已公证 DMG","st1d":"使用页面顶部的官方下载按钮。安装包已使用 Developer ID 签名并通过 Apple 公证。",
   "st2t":"拖入“应用程序”","st2d":"打开 DMG，把 TokenRemain 拖到“应用程序”快捷方式。",
-  "st3t":"打开并选择 Provider","st3d":"从“应用程序”启动 TokenRemain，选择你使用的本地工具，并按需启用 Apple 设备同步与每日 AI 动态通知。",
+  "st3t":"打开并选择 Provider","st3d":"从“应用程序”启动 TokenRemain，勾选它发现的本地工具；需要时粘贴 API Key，再按需启用 Apple 设备同步与 AI 动态通知。",
   "rp-h2":"源码全部公开",
   "rp-p":"凭证怎么读、数据去了哪，代码里一行行可查。Issue 与 PR 都欢迎。<br><code>github.com/Carstin520/token-remain</code>",
   "rp-btn":"打开仓库",
