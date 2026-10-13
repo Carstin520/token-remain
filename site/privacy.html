@@ -33,7 +33,7 @@
       <p class="eyebrow">Private by design</p>
       <h1>Privacy Policy</h1>
       <p class="intro">TokenRemain is a local-first quota viewer. Provider credentials remain on the Mac. Apple-device sync is optional and carries only an allowlisted, application-encrypted display snapshot through the user's own iCloud account.</p>
-      <div class="meta"><span>Effective July 23, 2026</span><span>Publisher: Dongheng Li</span></div>
+      <div class="meta"><span>Effective July 23, 2026 · Updated October 13, 2026</span><span>Publisher: Dongheng Li</span></div>
       <article>
         <section>
           <h2>Summary</h2>
@@ -44,6 +44,8 @@
           <p>Depending on the providers enabled, TokenRemain may read local configuration files, local databases, command-line output, localhost services, or credentials already stored by those tools. It may send authenticated requests directly to a selected provider to retrieve quota or usage information.</p>
           <p>Provider credentials—including access tokens, API keys, cookies, and account sessions—remain on the Mac. TokenRemain does not upload them to iCloud or a TokenRemain-operated server, refresh third-party OAuth tokens, or upload prompts, projects, conversations, account names, email addresses, or request-level history.</p>
           <p>To keep cost estimates current, TokenRemain sends a fixed, bodyless GET request at most once per day to download the complete public LiteLLM model-pricing table from GitHub. The request contains no Provider credential, model identifier, token count, prompt, project, conversation, Trae trajectory, or usage history. GitHub may receive ordinary connection metadata such as the IP address and request time. The validated table is cached locally; ccusage and Trae trajectory parsing stay on the Mac.</p>
+          <p>If the user chooses a display currency other than USD, TokenRemain sends a fixed GET request without a query string, cookie, or credential to the public ExchangeRate-API endpoint (<code>open.er-api.com</code>) to fetch daily reference rates, refreshing roughly every 12 hours and backing off after a failure. The request contains no usage, cost, or account data, and the rates are cached locally. With USD selected, no exchange-rate request is made.</p>
+          <p>Output-speed estimates are computed on the Mac from timestamps and token counters in local Claude Code and Codex session logs. Prompts, responses, and file contents in those logs are not extracted, stored, or uploaded.</p>
           <p>Settings, quota caches, aggregate history, and optional feed data are stored locally for dashboards, trends, alerts, and offline states.</p>
         </section>
         <section class="callout">
@@ -107,7 +109,7 @@
       <p class="eyebrow">隐私优先的架构</p>
       <h1>隐私政策</h1>
       <p class="intro">TokenRemain 是本地优先的额度查看工具。Provider 凭证始终留在 Mac。Apple 设备同步完全可选，只会通过用户自己的 iCloud 账户传输经过白名单过滤与应用层加密的展示快照。</p>
-      <div class="meta"><span>生效日期：2026 年 7 月 23 日</span><span>发布者：Dongheng Li</span></div>
+      <div class="meta"><span>生效日期：2026 年 7 月 23 日 · 更新于 2026 年 10 月 13 日</span><span>发布者：Dongheng Li</span></div>
       <article>
         <section>
           <h2>摘要</h2>
@@ -118,6 +120,8 @@
           <p>根据用户启用的 Provider，TokenRemain 可能读取本地配置文件、数据库、命令行输出、localhost 服务，或这些工具已保存的凭证，也可能直接向所选 Provider 发送认证请求以获取额度或用量。</p>
           <p>Access token、API key、cookie 和账号会话等 Provider 凭证始终留在 Mac。TokenRemain 不会把它们上传到 iCloud 或 TokenRemain 运营的服务器，不代替第三方工具刷新 OAuth token，也不上传提示词、项目、对话、账号名、邮箱或逐请求历史。</p>
           <p>为保持费用估算准确，TokenRemain 每天最多一次向 GitHub 发出固定且无请求正文的 GET 请求，下载完整的公开 LiteLLM 模型价格表。请求不包含 Provider 凭证、模型标识、Token 数、提示词、项目、对话、Trae 轨迹或用量历史；GitHub 可能收到 IP 地址和请求时间等普通连接元数据。通过校验的价格表只缓存在本机，ccusage 与 Trae 轨迹解析均在 Mac 本地完成。</p>
+          <p>如果用户选择 USD 以外的显示币种，TokenRemain 向公开的 ExchangeRate-API 端点（<code>open.er-api.com</code>）发出固定的 GET 请求获取每日参考汇率，约每 12 小时刷新一次，失败后按退避间隔重试；请求不带查询参数、Cookie 或凭证，也不包含任何用量、费用或账号数据，汇率只缓存在本机。选择 USD 时不会发出汇率请求。</p>
+          <p>输出速度估算在 Mac 本地完成，只使用本机 Claude Code 与 Codex 会话日志中的时间戳和 Token 计数；不会提取、保存或上传日志中的提示词、回复或文件内容。</p>
           <p>设置、额度缓存、聚合历史与可选精选内容保存在本地，用于 Dashboard、趋势、提醒和离线状态。</p>
         </section>
         <section class="callout">
