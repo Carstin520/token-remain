@@ -789,3 +789,30 @@
 "claude.web.forbidden" = "Claude 网页访问被拒绝，可能需要浏览器验证。请打开 claude.ai 检查会话后重试。";
 "claude.web.organization_required" = "无法唯一确定组织，请填写 claude.ai 组织地址中的 UUID 后重新保存。";
 "claude.web.invalid_response" = "Claude 网页返回了无法识别的额度数据，保留上次用量，请稍后重试。";
+
+/* Usage page: token mix, model speed, display currency */
+"composition.input" = "輸入";
+"composition.output" = "輸出";
+"composition.cache_write" = "快取寫入";
+"composition.cache_read" = "快取讀取";
+"composition.cache_unsplit" = "快取";
+"composition.range_title" = "Token 構成 · 近 %d 天";
+"composition.day_title" = "Token 構成 · %@";
+"trends.model_io_split_format" = "輸入 %1$@ · 輸出 %2$@ · 快取寫入 %3$@ · 快取讀取 %4$@";
+"trends.model_tps_format" = "≈%@ tok/s";
+"trends.model_tps_help" = "平均輸出速度：輸出 token 數 ÷ 從發出請求到最後一段輸出的時間，依本機工作階段日誌時間戳估算，包含首字延遲。";
+"trends.model_tps_note" = "tok/s 依 Claude Code 與 Codex 本機日誌時間戳估算，包含首字延遲。";
+"usage.provider_cost_amount_accessibility" = "%1$@，%2$@ tokens，%3$@，佔成本 %4$@";
+"settings.currency_title" = "貨幣";
+"settings.currency_display" = "費用顯示幣別";
+"settings.currency_hint" = "費用依 API 牌價以美元估算，再按每日參考匯率換算。官方帳單金額與餘額維持其結算幣別。";
+"settings.currency_rate" = "1 USD = %1$@ %2$@";
+"settings.currency_updated" = "更新於 %@";
+"settings.currency_refresh" = "重新整理匯率";
+"settings.currency_fallback" = "尚無匯率，費用暫以美元顯示。";
+"settings.currency_attribution" = "匯率來源：ExchangeRate-API";
+"currency.error_invalid" = "匯率服務傳回無法使用的資料，繼續使用上次的匯率。";
+"currency.error_throttled" = "剛剛已請求匯率，請幾秒後再試。";
+"currency.error_timeout" = "匯率請求逾時，繼續使用上次的匯率。";
+"currency.error_network" = "無法連線匯率服務，繼續使用上次的匯率。";
+"quota.model_speed_help" = "%1$@ · 近 %2$d 天平均輸出速度，依本機日誌時間戳估算（包含首字延遲）。";

@@ -7,17 +7,32 @@ import SwiftUI
 /// - Body text and labels use **system SF**. There is no third-party pixel
 ///   font — the pixel feel comes from chrome, not glyphs.
 /// - **Every numeral** (percentages, token counts, costs, countdowns, clock
-///   times) renders in **SF Mono** with tabular digits: `.system(design:
-///   .monospaced)` + `.monospacedDigit()`.
-/// - SF Mono has no CJK glyphs, so the monospaced face is applied only to
-///   numeric `Text` views. zh-Hans labels stay system SF; a mixed line
-///   (e.g. `剩余 46%`) is fine — the digits render SF Mono and the Chinese
-///   characters fall back to the system CJK face.
+///   times) renders in **SF Pro with tabular digits** (`.monospacedDigit()`),
+///   so columns still align while values read like body text. Heavy weights
+///   are capped at semibold: bold SF Mono at KPI sizes was hard to read.
+/// - SF Mono remains only for chrome that is meant to look technical: the
+///   uppercase meta badges and the brand wordmark.
+/// - A mixed line (e.g. `剩余 46%`) is fine — CJK characters use the system
+///   CJK face either way.
 extension DashboardTheme {
     enum Typo {
-        /// SF Mono at an explicit size — the face for all numeral-bearing text.
+        /// SF Mono at an explicit size — badges and the wordmark only.
         static func mono(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
             .system(size: size, weight: weight, design: .monospaced)
+        }
+
+        /// SF Pro for numeral-bearing text; pair with `.monospacedDigit()`.
+        static func numeric(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
+            .system(size: size, weight: readable(weight))
+        }
+
+        /// Bold and heavier numerals crowd at small sizes; semibold keeps the
+        /// emphasis without the smear.
+        static func readable(_ weight: Font.Weight) -> Font.Weight {
+            switch weight {
+            case .bold, .heavy, .black: .semibold
+            default: weight
+            }
         }
 
         /// System SF for body/labels/captions.
@@ -36,11 +51,11 @@ extension DashboardTheme {
 }
 
 extension View {
-    /// Numeral styling: SF Mono face + tabular digits. Use for any `Text` that
+    /// Numeral styling: SF Pro + tabular digits. Use for any `Text` that
     /// carries numbers (%, token counts, costs, countdowns, clock times). Safe on
     /// mixed number+CJK lines — Chinese falls back to the system CJK face.
     func numericFont(_ size: CGFloat, _ weight: Font.Weight = .regular) -> some View {
-        font(DashboardTheme.Typo.mono(size, weight)).monospacedDigit()
+        font(DashboardTheme.Typo.numeric(size, weight)).monospacedDigit()
     }
 
     /// The monospaced brand wordmark face.

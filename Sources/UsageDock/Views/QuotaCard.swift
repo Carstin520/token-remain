@@ -1070,6 +1070,9 @@ struct QuotaWindowRow: View {
     var showsDetails = true
     var scopeName: String?
     var remainingBalance: QuotaBalance? = nil
+    /// Most-used model's local output speed, shown at the end of the reset
+    /// line. Callers pass it to one row per provider only.
+    var modelSpeed: ModelSpeedSummary? = nil
 
     /// Scoped rows are named by their call site; a general window can also
     /// name itself when it represents one pool of a split cycle (Cursor).
@@ -1125,8 +1128,14 @@ struct QuotaWindowRow: View {
                             .font(.system(size: 9))
                         if let resetsAt = window.resetsAt {
                             QuotaResetLabel(resetsAt: resetsAt, referenceDate: context.date)
+                                .layoutPriority(1)
                         } else {
                             Text(L10n.text("quota.reset_pending"))
+                                .layoutPriority(1)
+                        }
+                        if let modelSpeed {
+                            Spacer(minLength: 8)
+                            ModelSpeedLabel(speed: modelSpeed)
                         }
                     }
                     .font(.system(size: 10))
@@ -1207,6 +1216,32 @@ struct QuotaWindowRow: View {
 /// 重置时间标签。距重置不足一小时才以秒级滚动倒计时;此时它是整个
 /// 卡片里唯一按 1 秒刷新的叶子视图,重排被限制在这一小段文本内。
 /// 一小时以上按分钟粒度显示,由外层 60 秒时间线驱动即可。
+/// `gpt-6-astra · ≈26 tok/s`. The model name gives way first when space is
+/// tight; the speed itself never truncates.
+private struct ModelSpeedLabel: View {
+    let speed: ModelSpeedSummary
+
+    var body: some View {
+        let help = L10n.format("quota.model_speed_help", speed.displayName, ModelSpeedSummary.windowDays)
+        HStack(spacing: 4) {
+            Text(speed.displayName)
+                .lineLimit(1)
+                .truncationMode(.middle)
+            Text("·")
+            Text(L10n.format("trends.model_tps_format", TrendModelBreakdownPanel.speedLabel(speed.tokensPerSecond)))
+                .numericFont(10, .medium)
+                .usageDockAdaptiveForeground(.primary)
+                .fixedSize()
+        }
+        .font(.system(size: 10))
+        .usageDockAdaptiveForeground(.secondary)
+        .help(help)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(help)
+        .accessibilityValue(L10n.format("trends.model_tps_format", TrendModelBreakdownPanel.speedLabel(speed.tokensPerSecond)))
+    }
+}
+
 private struct QuotaResetLabel: View {
     let resetsAt: Date
     /// 外层 60 秒时间线的当前时刻,同时决定秒级/分钟级两种模式的切换。

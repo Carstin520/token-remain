@@ -13,6 +13,11 @@ struct TrendDayModelBreakdown: Equatable {
         let share: Double
         let isUnpriced: Bool
         let constituentCount: Int
+        /// Measured input/output/cache split for this row.
+        let composition: TokenComposition
+        /// Locally estimated end-to-end output speed; nil for the merged
+        /// `other` row and for models without enough timed responses.
+        let tokensPerSecond: Double?
 
         var totalTokens: Int64 { inputTokens + outputTokens + cacheTokens }
     }
@@ -30,7 +35,8 @@ struct TrendDayModelBreakdown: Equatable {
         day: DailyUsageHistory.Day,
         agentIDs: [String],
         metric: TrendMetric,
-        namedLimit: Int = 5
+        namedLimit: Int = 5,
+        throughput: ModelThroughputSnapshot = .empty
     ) -> Self {
         let byID = Dictionary(uniqueKeysWithValues: day.agents.map { ($0.id.lowercased(), $0) })
         let groups = agentIDs.compactMap { requestedID -> AgentGroup? in
@@ -59,32 +65,7 @@ struct TrendDayModelBreakdown: Equatable {
             let tail = Array(named.dropFirst(max(0, namedLimit)))
                 + agent.models.filter { $0.id == "other" }
             let otherIsUnpriced = tail.contains(where: isUnpriced)
-            let displayedModels: [DailyUsageHistory.ModelUsage]
-            if tail.isEmpty {
-                displayedModels = kept
-            } else {
-                let firstTail = tail[0]
-                let other = tail.dropFirst().reduce(
-                    DailyUsageHistory.ModelUsage(
-                        id: "other",
-                        inputTokens: firstTail.inputTokens,
-                        outputTokens: firstTail.outputTokens,
-                        cacheTokens: firstTail.cacheTokens,
-                        cost: firstTail.cost,
-                        constituentCount: firstTail.constituentCount
-                    )
-                ) { partial, row in
-                    DailyUsageHistory.ModelUsage(
-                        id: "other",
-                        inputTokens: partial.inputTokens + row.inputTokens,
-                        outputTokens: partial.outputTokens + row.outputTokens,
-                        cacheTokens: partial.cacheTokens + row.cacheTokens,
-                        cost: partial.cost + row.cost,
-                        constituentCount: partial.constituentCount + row.constituentCount
-                    )
-                }
-                displayedModels = kept + [other]
-            }
+            let displayedModels = kept + [DailyUsageHistory.mergedTail(tail)].compactMap { $0 }
             let metricTotal = displayedModels.reduce(0.0) { partial, model in
                 partial + (metric == .tokens ? Double(model.totalTokens) : model.cost)
             }
@@ -99,7 +80,11 @@ struct TrendDayModelBreakdown: Equatable {
                     cost: model.cost,
                     share: metricTotal > 0 ? metricValue / metricTotal : 0,
                     isUnpriced: model.id == "other" ? otherIsUnpriced : isUnpriced(model),
-                    constituentCount: model.constituentCount
+                    constituentCount: model.constituentCount,
+                    composition: TokenComposition(model: model),
+                    tokensPerSecond: model.id == "other"
+                        ? nil
+                        : throughput.tokensPerSecond(day: day.date, agentID: agentID, modelID: model.id)
                 )
             }
             return AgentGroup(
@@ -125,7 +110,12 @@ struct TrendDayModelBreakdown: Equatable {
 struct TrendModelBreakdownPanel: View {
     let breakdown: TrendDayModelBreakdown
     let metric: TrendMetric
+    var currency: CurrencyDisplay = .usd
     let onClose: () -> Void
+
+    private var showsThroughputNote: Bool {
+        breakdown.groups.contains { group in group.rows.contains { $0.tokensPerSecond != nil } }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -151,6 +141,8 @@ struct TrendModelBreakdownPanel: View {
                     .foregroundStyle(DashboardTheme.mutedText)
                     .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
             } else {
+                // Two apps with three models each fit without an inner
+                // scroll; only unusually long model lists scroll (DB-002).
                 ScrollView(.vertical) {
                     VStack(alignment: .leading, spacing: 12) {
                         ForEach(breakdown.groups) { group in
@@ -159,8 +151,15 @@ struct TrendModelBreakdownPanel: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .frame(maxHeight: 190)
+                .frame(maxHeight: 300)
                 .scrollIndicators(.automatic)
+
+                if showsThroughputNote {
+                    Text(L10n.text("trends.model_tps_note"))
+                        .font(.system(size: 10))
+                        .foregroundStyle(DashboardTheme.mutedText)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
         }
         .padding(11)
@@ -189,36 +188,76 @@ struct TrendModelBreakdownPanel: View {
     }
 
     private func modelRow(_ row: TrendDayModelBreakdown.ModelRow, color: Color) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 8) {
                 Capsule().fill(color.opacity(0.78)).frame(width: 3, height: 16)
                 Text(row.displayName)
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(DashboardTheme.text)
                     .lineLimit(1)
                     .help(row.id)
+                if let tokensPerSecond = row.tokensPerSecond {
+                    Text(L10n.format("trends.model_tps_format", Self.speedLabel(tokensPerSecond)))
+                        .numericFont(10, .medium)
+                        .foregroundStyle(DashboardTheme.secondaryText)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 1)
+                        .background(DashboardSurface.surface3, in: Capsule())
+                        .help(L10n.text("trends.model_tps_help"))
+                        .fixedSize()
+                }
                 Spacer(minLength: 8)
                 Text(primaryValue(row))
-                    .numericFont(10, .semibold)
+                    .numericFont(11, .semibold)
                     .foregroundStyle(DashboardTheme.text)
                 Text(UsageFormatting.percent(row.share * 100))
-                    .numericFont(9, .medium)
+                    .numericFont(10)
                     .foregroundStyle(DashboardTheme.mutedText)
-                    .frame(width: 40, alignment: .trailing)
+                    .frame(width: 42, alignment: .trailing)
             }
-            Text(
-                L10n.format(
-                    "trends.model_io_format",
-                    UsageFormatting.compactNumber(row.inputTokens),
-                    UsageFormatting.compactNumber(row.outputTokens),
-                    UsageFormatting.compactNumber(row.cacheTokens)
-                )
-            )
-            .numericFont(9)
-            .foregroundStyle(DashboardTheme.mutedText)
+            VStack(alignment: .leading, spacing: 3) {
+                TokenCompositionBar(composition: row.composition, height: 3)
+                    .help(Self.compositionHelp(row.composition))
+                Text(ioLine(row))
+                    .numericFont(10)
+                    .foregroundStyle(DashboardTheme.mutedText)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             .padding(.leading, 11)
         }
         .accessibilityElement(children: .combine)
+    }
+
+    private func ioLine(_ row: TrendDayModelBreakdown.ModelRow) -> String {
+        let composition = row.composition
+        guard composition.cacheUnsplit == 0 else {
+            return L10n.format(
+                "trends.model_io_format",
+                UsageFormatting.compactNumber(row.inputTokens),
+                UsageFormatting.compactNumber(row.outputTokens),
+                UsageFormatting.compactNumber(row.cacheTokens)
+            )
+        }
+        return L10n.format(
+            "trends.model_io_split_format",
+            UsageFormatting.compactNumber(composition.input),
+            UsageFormatting.compactNumber(composition.output),
+            UsageFormatting.compactNumber(composition.cacheWrite),
+            UsageFormatting.compactNumber(composition.cacheRead)
+        )
+    }
+
+    static func compositionHelp(_ composition: TokenComposition) -> String {
+        composition.parts
+            .map { "\($0.kind.label) \(TokenCompositionStrip.shareLabel($0.share))" }
+            .joined(separator: " · ")
+    }
+
+    static func speedLabel(_ tokensPerSecond: Double) -> String {
+        tokensPerSecond >= 100
+            ? String(format: "%.0f", tokensPerSecond)
+            : String(format: "%.1f", tokensPerSecond)
     }
 
     private func primaryValue(_ row: TrendDayModelBreakdown.ModelRow) -> String {
@@ -226,7 +265,7 @@ struct TrendModelBreakdownPanel: View {
         case .tokens:
             return UsageFormatting.compactNumber(row.totalTokens)
         case .cost:
-            return String(format: "$%.2f%@", row.cost, row.isUnpriced ? "*" : "")
+            return currency.amount(usd: row.cost) + (row.isUnpriced ? "*" : "")
         }
     }
 }

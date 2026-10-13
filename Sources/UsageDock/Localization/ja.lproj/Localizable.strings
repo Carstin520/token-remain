@@ -789,3 +789,30 @@
 "claude.web.forbidden" = "Claude Web へのアクセスが拒否されました。ブラウザ認証の可能性があります。claude.ai で確認して再試行してください。";
 "claude.web.organization_required" = "claude.ai の組織 URL にある UUID を入力し、再度保存してください。";
 "claude.web.invalid_response" = "Claude Web の使用量データを読み取れません。前回の値を保持します。後で再試行してください。";
+
+/* Usage page: token mix, model speed, display currency */
+"composition.input" = "入力";
+"composition.output" = "出力";
+"composition.cache_write" = "キャッシュ書き込み";
+"composition.cache_read" = "キャッシュ読み取り";
+"composition.cache_unsplit" = "キャッシュ";
+"composition.range_title" = "トークン構成 · 直近 %d 日";
+"composition.day_title" = "トークン構成 · %@";
+"trends.model_io_split_format" = "入力 %1$@ · 出力 %2$@ · キャッシュ書き込み %3$@ · キャッシュ読み取り %4$@";
+"trends.model_tps_format" = "≈%@ tok/s";
+"trends.model_tps_help" = "平均出力速度：出力トークン数 ÷ リクエストから最後の出力までの時間。ローカルのセッションログのタイムスタンプから推定し、最初のトークンまでの待ち時間を含みます。";
+"trends.model_tps_note" = "tok/s は Claude Code と Codex のローカルログのタイムスタンプから推定し、最初のトークンまでの待ち時間を含みます。";
+"usage.provider_cost_amount_accessibility" = "%1$@、%2$@ tokens、%3$@、コストの%4$@";
+"settings.currency_title" = "通貨";
+"settings.currency_display" = "費用の表示通貨";
+"settings.currency_hint" = "費用は API 定価に基づき米ドルで推定し、日次の参考レートで換算します。公式の請求額と残高は請求通貨のまま表示します。";
+"settings.currency_rate" = "1 USD = %1$@ %2$@";
+"settings.currency_updated" = "更新 %@";
+"settings.currency_refresh" = "レートを更新";
+"settings.currency_fallback" = "レートがまだないため、費用は米ドルで表示しています。";
+"settings.currency_attribution" = "レート提供：ExchangeRate-API";
+"currency.error_invalid" = "為替レートサービスから使用できないデータが返されました。前回のレートを使用します。";
+"currency.error_throttled" = "レートを取得したばかりです。数秒後にもう一度お試しください。";
+"currency.error_timeout" = "為替レートの取得がタイムアウトしました。前回のレートを使用します。";
+"currency.error_network" = "為替レートサービスに接続できません。前回のレートを使用します。";
+"quota.model_speed_help" = "%1$@ · 直近 %2$d 日間の平均出力速度。ローカルログのタイムスタンプから推定（最初のトークンまでの待ち時間を含む）。";

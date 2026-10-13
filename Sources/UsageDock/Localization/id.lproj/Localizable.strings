@@ -138,3 +138,30 @@
 "trends.model_detail_accumulating" = "Model detail accumulates from this version onward; older cached days cannot be backfilled.";
 "trends.model_io_format" = "In %1$@ · Out %2$@ · Cache %3$@";
 "trends.tooltip_click_hint" = "Click for model detail";
+
+/* Usage page: token mix, model speed, display currency */
+"composition.input" = "Input";
+"composition.output" = "Output";
+"composition.cache_write" = "Tulis cache";
+"composition.cache_read" = "Baca cache";
+"composition.cache_unsplit" = "Cache";
+"composition.range_title" = "Komposisi token · %d hari terakhir";
+"composition.day_title" = "Komposisi token · %@";
+"trends.model_io_split_format" = "Input %1$@ · Output %2$@ · Tulis cache %3$@ · Baca cache %4$@";
+"trends.model_tps_format" = "≈%@ tok/s";
+"trends.model_tps_help" = "Kecepatan output rata-rata: token output dibagi waktu dari permintaan hingga potongan terakhir, diperkirakan dari stempel waktu log sesi lokal. Termasuk waktu hingga token pertama.";
+"trends.model_tps_note" = "tok/s diperkirakan secara lokal dari stempel waktu log Claude Code dan Codex dan termasuk waktu hingga token pertama.";
+"usage.provider_cost_amount_accessibility" = "%1$@, %2$@ token, %3$@, %4$@ dari biaya";
+"settings.currency_title" = "Mata uang";
+"settings.currency_display" = "Mata uang tampilan biaya";
+"settings.currency_hint" = "Biaya diperkirakan dalam USD dari harga daftar API lalu dikonversi dengan kurs referensi harian. Jumlah tagihan dan saldo resmi tetap dalam mata uang penagihannya.";
+"settings.currency_rate" = "1 USD = %1$@ %2$@";
+"settings.currency_updated" = "Diperbarui %@";
+"settings.currency_refresh" = "Segarkan kurs";
+"settings.currency_fallback" = "Belum ada kurs; biaya ditampilkan dalam USD.";
+"settings.currency_attribution" = "Kurs dari ExchangeRate-API";
+"currency.error_invalid" = "Layanan kurs mengembalikan data yang tidak dapat digunakan. Kurs terakhir dipertahankan.";
+"currency.error_throttled" = "Kurs baru saja diminta. Coba lagi dalam beberapa detik.";
+"currency.error_timeout" = "Permintaan kurs melewati batas waktu. Kurs terakhir dipertahankan.";
+"currency.error_network" = "Tidak dapat menghubungi layanan kurs. Kurs terakhir dipertahankan.";
+"quota.model_speed_help" = "%1$@ · kecepatan output rata-rata %2$d hari terakhir, diperkirakan dari stempel waktu log lokal (termasuk waktu hingga token pertama).";

@@ -138,3 +138,30 @@
 "trends.model_detail_accumulating" = "Model detail accumulates from this version onward; older cached days cannot be backfilled.";
 "trends.model_io_format" = "In %1$@ · Out %2$@ · Cache %3$@";
 "trends.tooltip_click_hint" = "Click for model detail";
+
+/* Usage page: token mix, model speed, display currency */
+"composition.input" = "Input";
+"composition.output" = "Output";
+"composition.cache_write" = "Scrittura cache";
+"composition.cache_read" = "Lettura cache";
+"composition.cache_unsplit" = "Cache";
+"composition.range_title" = "Composizione token · ultimi %d giorni";
+"composition.day_title" = "Composizione token · %@";
+"trends.model_io_split_format" = "Input %1$@ · Output %2$@ · Scrittura cache %3$@ · Lettura cache %4$@";
+"trends.model_tps_format" = "≈%@ tok/s";
+"trends.model_tps_help" = "Velocità media di output: token di output divisi per il tempo dalla richiesta all'ultimo frammento, stimata dai timestamp dei log locali. Include il tempo al primo token.";
+"trends.model_tps_note" = "I tok/s sono stimati localmente dai timestamp dei log di Claude Code e Codex e includono il tempo al primo token.";
+"usage.provider_cost_amount_accessibility" = "%1$@, %2$@ token, %3$@, %4$@ del costo";
+"settings.currency_title" = "Valuta";
+"settings.currency_display" = "Valuta per i costi";
+"settings.currency_hint" = "I costi sono stimati in USD dai prezzi di listino delle API e convertiti con tassi di riferimento giornalieri. Importi fatturati e saldi ufficiali restano nella valuta di fatturazione.";
+"settings.currency_rate" = "1 USD = %1$@ %2$@";
+"settings.currency_updated" = "Aggiornato %@";
+"settings.currency_refresh" = "Aggiorna tasso";
+"settings.currency_fallback" = "Nessun tasso disponibile; i costi sono mostrati in USD.";
+"settings.currency_attribution" = "Tassi di ExchangeRate-API";
+"currency.error_invalid" = "Il servizio dei tassi di cambio ha restituito dati non utilizzabili. Restano gli ultimi tassi.";
+"currency.error_throttled" = "I tassi sono appena stati richiesti. Riprova tra qualche secondo.";
+"currency.error_timeout" = "La richiesta dei tassi di cambio è scaduta. Restano gli ultimi tassi.";
+"currency.error_network" = "Impossibile raggiungere il servizio dei tassi di cambio. Restano gli ultimi tassi.";
+"quota.model_speed_help" = "%1$@ · velocità media di output negli ultimi %2$d giorni, stimata dai timestamp dei log locali (incluso il tempo al primo token).";

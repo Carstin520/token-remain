@@ -10,6 +10,8 @@ struct TrendsSection: View {
     let onRetryCCUsage: () -> Void
     @ObservedObject var tracked: TrackedProvidersStore
     let disabledLocalUsageSourceIDs: Set<String>
+    var throughput: ModelThroughputSnapshot = .empty
+    @ObservedObject private var currencyStore = CurrencyStore.shared
 
     /// Real per-day history, oldest-first; nil / <2 days ⇒ honest empty state.
     private var trendDays: [DailyUsageHistory.Day]? {
@@ -33,7 +35,8 @@ struct TrendsSection: View {
                     days: trendDays,
                     capturedAt: insights.history?.capturedAt,
                     preferredAgentIDs: preferredAgentIDs,
-                    excludedAgentIDs: disabledLocalUsageSourceIDs
+                    excludedAgentIDs: disabledLocalUsageSourceIDs,
+                    throughput: throughput
                 )
                 if !insights.historyUnpricedModels.isEmpty {
                     Label(
@@ -111,12 +114,12 @@ struct TrendsSection: View {
                         .foregroundStyle(DashboardTheme.secondaryText)
                 } else {
                     InfoRow(label: L10n.text("usage.today_tokens"), value: insights.totalTokens.map { UsageFormatting.compactNumber($0) } ?? "—")
-                    InfoRow(label: L10n.text("usage.today_est_cost"), value: insights.totalCost.map { String(format: "$%.2f", $0) } ?? "—")
+                    InfoRow(label: L10n.text("usage.today_est_cost"), value: insights.totalCost.map { currencyStore.display.amount(usd: $0) } ?? "—")
                     Divider().overlay(DashboardSurface.border)
                     ForEach(insights.providerUsage) { usage in
                         InfoRow(
                             label: usage.displayName,
-                            value: "\(UsageFormatting.compactNumber(usage.tokens)) · \(usage.hasCompletePricing ? String(format: "$%.2f", usage.cost) : L10n.text("usage.price_unavailable"))"
+                            value: "\(UsageFormatting.compactNumber(usage.tokens)) · \(usage.hasCompletePricing ? currencyStore.display.amount(usd: usage.cost) : L10n.text("usage.price_unavailable"))"
                         )
                     }
                 }

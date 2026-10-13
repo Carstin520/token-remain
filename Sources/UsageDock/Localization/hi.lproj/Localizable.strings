@@ -138,3 +138,30 @@
 "trends.model_detail_accumulating" = "Model detail accumulates from this version onward; older cached days cannot be backfilled.";
 "trends.model_io_format" = "In %1$@ · Out %2$@ · Cache %3$@";
 "trends.tooltip_click_hint" = "Click for model detail";
+
+/* Usage page: token mix, model speed, display currency */
+"composition.input" = "इनपुट";
+"composition.output" = "आउटपुट";
+"composition.cache_write" = "कैश लेखन";
+"composition.cache_read" = "कैश पठन";
+"composition.cache_unsplit" = "कैश";
+"composition.range_title" = "टोकन संरचना · पिछले %d दिन";
+"composition.day_title" = "टोकन संरचना · %@";
+"trends.model_io_split_format" = "इनपुट %1$@ · आउटपुट %2$@ · कैश लेखन %3$@ · कैश पठन %4$@";
+"trends.model_tps_format" = "≈%@ tok/s";
+"trends.model_tps_help" = "औसत आउटपुट गति: आउटपुट टोकन ÷ अनुरोध से अंतिम हिस्से तक का समय, स्थानीय सत्र लॉग के टाइमस्टैम्प से अनुमानित। पहले टोकन तक का समय शामिल है।";
+"trends.model_tps_note" = "tok/s का अनुमान Claude Code और Codex लॉग के टाइमस्टैम्प से स्थानीय रूप से लगाया जाता है और इसमें पहले टोकन तक का समय शामिल है।";
+"usage.provider_cost_amount_accessibility" = "%1$@, %2$@ टोकन, %3$@, लागत का %4$@";
+"settings.currency_title" = "मुद्रा";
+"settings.currency_display" = "लागत प्रदर्शन मुद्रा";
+"settings.currency_hint" = "लागत का अनुमान API सूची मूल्यों से USD में लगाया जाता है और दैनिक संदर्भ दरों से बदला जाता है। आधिकारिक बिल राशि और शेष अपनी बिलिंग मुद्रा में रहते हैं।";
+"settings.currency_rate" = "1 USD = %1$@ %2$@";
+"settings.currency_updated" = "%@ को अपडेट";
+"settings.currency_refresh" = "दर रीफ़्रेश करें";
+"settings.currency_fallback" = "अभी कोई विनिमय दर नहीं; लागत USD में दिखाई जा रही है।";
+"settings.currency_attribution" = "दरें: ExchangeRate-API";
+"currency.error_invalid" = "विनिमय दर सेवा ने अनुपयोगी डेटा लौटाया। पिछली दरें रखी गई हैं।";
+"currency.error_throttled" = "दरें अभी मांगी गई थीं। कुछ सेकंड बाद फिर कोशिश करें।";
+"currency.error_timeout" = "विनिमय दर अनुरोध का समय समाप्त हुआ। पिछली दरें रखी गई हैं।";
+"currency.error_network" = "विनिमय दर सेवा से कनेक्ट नहीं हो सका। पिछली दरें रखी गई हैं।";
+"quota.model_speed_help" = "%1$@ · पिछले %2$d दिनों की औसत आउटपुट गति, स्थानीय लॉग टाइमस्टैम्प से अनुमानित (पहले टोकन तक का समय शामिल)।";

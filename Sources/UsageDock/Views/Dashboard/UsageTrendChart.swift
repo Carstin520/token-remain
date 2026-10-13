@@ -48,6 +48,8 @@ struct UsageTrendCard: View {
     var capturedAt: Date?
     let preferredAgentIDs: Set<String>?
     var excludedAgentIDs: Set<String> = []
+    var throughput: ModelThroughputSnapshot = .empty
+    @ObservedObject private var currencyStore = CurrencyStore.shared
 
     @State private var range: TrendRange = .twoWeeks
     @State private var metric: TrendMetric = .tokens
@@ -86,18 +88,24 @@ struct UsageTrendCard: View {
                     days: shown,
                     metric: metric,
                     visibleAgentIDs: visibleAgentIDs,
+                    currency: currencyStore.display,
                     pinnedDayID: $pinnedDayID
                 )
                     .frame(height: 208)
 
-                if let pinnedDay = shown.first(where: { $0.id == pinnedDayID }) {
+                let pinnedDay = shown.first(where: { $0.id == pinnedDayID })
+                compositionStrip(pinnedDay: pinnedDay)
+
+                if let pinnedDay {
                     TrendModelBreakdownPanel(
                         breakdown: .make(
                             day: pinnedDay,
                             agentIDs: availableAgentIDs.filter(visibleAgentIDs.contains),
-                            metric: metric
+                            metric: metric,
+                            throughput: throughput
                         ),
                         metric: metric,
+                        currency: currencyStore.display,
                         onClose: { pinnedDayID = nil }
                     )
                 }
@@ -105,6 +113,24 @@ struct UsageTrendCard: View {
         }
         .frame(maxWidth: .infinity)
         .onChange(of: range) { _, _ in pinnedDayID = nil }
+    }
+
+    /// Token mix for the pinned day, or the whole visible range otherwise.
+    /// One strip that follows the selection, instead of two summaries.
+    @ViewBuilder
+    private func compositionStrip(pinnedDay: DailyUsageHistory.Day?) -> some View {
+        let composition = TokenComposition(
+            days: pinnedDay.map { [$0] } ?? shown,
+            agentIDs: visibleAgentIDs
+        )
+        if composition.total > 0 {
+            TokenCompositionStrip(
+                title: pinnedDay.map {
+                    L10n.format("composition.day_title", UsageTrendChart.fullDayLabel($0.date))
+                } ?? L10n.format("composition.range_title", range.rawValue),
+                composition: composition
+            )
+        }
     }
 
     private var controls: some View {
@@ -169,6 +195,7 @@ struct UsageTrendChart: View {
     let days: [DailyUsageHistory.Day]
     let metric: TrendMetric
     let visibleAgentIDs: Set<String>
+    var currency: CurrencyDisplay = .usd
     @Binding var pinnedDayID: Date?
 
     @State private var activeIndex: Int?
@@ -189,7 +216,7 @@ struct UsageTrendChart: View {
     private func value(_ day: DailyUsageHistory.Day, agentID: String) -> Double {
         metric == .tokens
             ? Double(day.tokens(forAgentID: agentID))
-            : day.cost(forAgentID: agentID)
+            : currency.convert(day.cost(forAgentID: agentID))
     }
 
     private func total(_ day: DailyUsageHistory.Day) -> Double {
@@ -354,9 +381,10 @@ struct UsageTrendChart: View {
                 .accessibilityHidden(true)
 
             Text(axisLabel(niceMax * fraction))
-                .font(DashboardTheme.Typo.mono(9))
+                .font(DashboardTheme.Typo.numeric(9)).monospacedDigit()
                 .foregroundStyle(DashboardTheme.mutedText)
                 .lineLimit(1)
+                .minimumScaleFactor(0.75)
                 .frame(width: leftGutter - 8, alignment: .trailing)
                 .position(x: (leftGutter - 8) / 2, y: y)
                 .accessibilityHidden(true)
@@ -368,7 +396,7 @@ struct UsageTrendChart: View {
         // Thin from the most recent day so today is always labeled.
         if (days.count - 1 - index) % strideForCount == 0 {
             Text(Self.dayMonthLabel(day.date))
-                .font(DashboardTheme.Typo.mono(9))
+                .font(DashboardTheme.Typo.numeric(9)).monospacedDigit()
                 .foregroundStyle(DashboardTheme.secondaryText)
                 .lineLimit(1)
                 .fixedSize()
@@ -434,9 +462,7 @@ struct UsageTrendChart: View {
         case .tokens:
             return Self.compactAxisTokens(value)
         case .cost:
-            return value >= 100
-                ? String(format: "$%.0f", value)
-                : String(format: "$%.1f", value)
+            return currency.axisLabel(value)
         }
     }
 
@@ -461,7 +487,7 @@ struct UsageTrendChart: View {
     private func valueLabel(_ value: Double) -> String {
         switch metric {
         case .tokens: return UsageFormatting.compactNumber(Int64(value.rounded()))
-        case .cost: return String(format: "$%.2f", value)
+        case .cost: return currency.formatConverted(value)
         }
     }
 

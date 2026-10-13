@@ -188,6 +188,7 @@ struct SettingsSection: View {
     @ObservedObject var launchAtLogin: LaunchAtLoginManager
     @ObservedObject var preferences: PreferencesStore = .shared
     @ObservedObject var tracked: TrackedProvidersStore = .shared
+    @ObservedObject var currencyStore: CurrencyStore = .shared
     @State private var selectedCategory: SettingsCategory = .general
 
     var body: some View {
@@ -296,8 +297,98 @@ struct SettingsSection: View {
                     }
                 }
             }
+
+            currencySettings
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var currencySettings: some View {
+        DashboardCard {
+            VStack(alignment: .leading, spacing: 12) {
+                PanelHeader(title: L10n.text("settings.currency_title"))
+                HStack(alignment: .center, spacing: 16) {
+                    preferenceLabel(
+                        title: L10n.text("settings.currency_display"),
+                        detail: L10n.text("settings.currency_hint")
+                    )
+                    Spacer(minLength: 16)
+                    Picker("", selection: currencyBinding) {
+                        ForEach(DisplayCurrency.allCases) { currency in
+                            Text("\(currency.rawValue) · \(currency.localizedName())").tag(currency)
+                        }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                    .frame(width: 220)
+                    .accessibilityLabel(L10n.text("settings.currency_display"))
+                    .accessibilityHint(L10n.text("settings.currency_hint"))
+                }
+
+                if currencyStore.selected != .usd {
+                    Divider().overlay(DashboardSurface.border)
+                    currencyRateStatus
+                }
+            }
+        }
+    }
+
+    /// Rate, freshness and the one action a user can take. While a refresh is
+    /// in flight the previous rate stays visible; failure keeps it too.
+    private var currencyRateStatus: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .center, spacing: 10) {
+                if let rate = currencyStore.rates?.rate(for: currencyStore.selected) {
+                    Text(L10n.format("settings.currency_rate", Self.rateLabel(rate), currencyStore.selected.rawValue))
+                        .numericFont(12, .semibold)
+                        .foregroundStyle(DashboardTheme.text)
+                    if let rates = currencyStore.rates {
+                        Text(L10n.format(
+                            "settings.currency_updated",
+                            (rates.publishedAt ?? rates.fetchedAt).formatted(date: .abbreviated, time: .shortened)
+                        ))
+                        .font(.system(size: 11))
+                        .foregroundStyle(DashboardTheme.secondaryText)
+                    }
+                } else {
+                    Label(L10n.text("settings.currency_fallback"), systemImage: "exclamationmark.triangle.fill")
+                        .font(.system(size: 11))
+                        .foregroundStyle(DashboardTheme.warning)
+                }
+                Spacer(minLength: 8)
+                if currencyStore.status == .loading {
+                    ProgressView().controlSize(.small)
+                }
+                Button(L10n.text("settings.currency_refresh")) {
+                    currencyStore.refresh()
+                }
+                .disabled(currencyStore.status == .loading)
+            }
+
+            if case .failed(let message) = currencyStore.status {
+                Label(message, systemImage: "exclamationmark.triangle.fill")
+                    .font(.system(size: 11))
+                    .foregroundStyle(DashboardTheme.warning)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Link(L10n.text("settings.currency_attribution"), destination: ExchangeRateService.attributionURL)
+                .font(.system(size: 10))
+                .foregroundStyle(DashboardTheme.mutedText)
+        }
+    }
+
+    private static func rateLabel(_ rate: Double) -> String {
+        if rate >= 100 { return String(format: "%.2f", rate) }
+        if rate >= 1 { return String(format: "%.4f", rate) }
+        return String(format: "%.6f", rate)
+    }
+
+    private var currencyBinding: Binding<DisplayCurrency> {
+        Binding(
+            get: { currencyStore.selected },
+            set: { currencyStore.select($0) }
+        )
     }
 
     /// The two meters on the Dock head, each bound to any app the user tracks.
@@ -397,7 +488,7 @@ struct SettingsSection: View {
                         Spacer(minLength: 12)
 
                         Text(backgroundLightnessLabel)
-                            .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                            .numericFont(12, .semibold)
                             .foregroundStyle(DashboardTheme.secondaryText)
                             .frame(width: 46, alignment: .trailing)
                     }
