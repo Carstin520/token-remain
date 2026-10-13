@@ -3,6 +3,26 @@
 All notable product changes are recorded here. TokenRemain uses Semantic
 Versioning for public releases.
 
+## 1.4.2 — 2026-10-13
+
+### Added
+
+- Show measured input, output, cache-write and cache-read token composition
+  in Trends and model details; retain an unsplit cache total for older history.
+- Estimate per-model output speed locally from Claude Code and Codex session
+  timestamps, with incremental scanning and bounded processing.
+- Offer display currencies for API list-price estimates, using cached public
+  reference rates while keeping official billed amounts in their billing currency.
+
+### Improved
+
+- Use system numerals with tabular digits and lighter weights for clearer
+  usage values throughout the Dashboard and menu-bar panel.
+- Refresh stale or missing exchange rates for menu-bar-only users with
+  automatic retry backoff.
+- Enforce the log-scan deadline during discovery and file reads, preserve
+  interrupted progress, and avoid rewriting an unchanged throughput cache.
+
 ## 1.4.1 — 2026-10-13
 
 ### Added
