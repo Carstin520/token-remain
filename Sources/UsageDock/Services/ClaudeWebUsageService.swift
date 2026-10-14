@@ -17,9 +17,7 @@ struct ClaudeWebUsageService: Sendable {
                 }
                 config = parsed
             } else {
-                let pieces = trimmed.split(separator: ";").map { $0.trimmingCharacters(in: .whitespaces) }
-                let token = pieces.first(where: { $0.hasPrefix("sessionKey=") }).map { String($0.dropFirst(11)) } ?? trimmed
-                config = Self(sessionKey: token)
+                config = Self(sessionKey: sessionKeyValue(in: trimmed).map(String.init) ?? trimmed)
             }
             guard !config.sessionKey.isEmpty, config.sessionKey.utf8.count <= 8192,
                   config.sessionKey.unicodeScalars.allSatisfy({ $0.value > 32 && $0.value < 127 && $0 != ";" }),
@@ -30,10 +28,63 @@ struct ClaudeWebUsageService: Sendable {
         }
 
         func encoded() throws -> String { String(decoding: try JSONEncoder().encode(self), as: UTF8.self) }
+
+        /// The `sessionKey` value inside whatever the user copied: a raw Cookie
+        /// string, a `Cookie:` request header or a "Copy as cURL" command. The
+        /// name must start a cookie pair so `xsessionKey=` never matches.
+        static func sessionKeyValue(in text: String) -> Substring? {
+            var searchStart = text.startIndex
+            while let range = text.range(of: "sessionKey=", range: searchStart..<text.endIndex) {
+                let startsPair = range.lowerBound == text.startIndex
+                    || text[text.index(before: range.lowerBound)].isWhitespace
+                    || ";:'\"".contains(text[text.index(before: range.lowerBound)])
+                if startsPair {
+                    let value = text[range.upperBound...].prefix { !$0.isWhitespace && !";'\"".contains($0) }
+                    if !value.isEmpty { return value }
+                }
+                searchStart = range.upperBound
+            }
+            return nil
+        }
+
+        /// Clipboard import accepts only text that is recognisably a claude.ai
+        /// session, so an unrelated copied secret never lands in the field.
+        static func recognizedCredential(in text: String) -> String? {
+            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            let candidate = sessionKeyValue(in: trimmed).map(String.init)
+                ?? (trimmed.hasPrefix("sk-ant-sid") ? trimmed : nil)
+            guard let candidate, (try? decode(candidate)) != nil else { return nil }
+            return candidate
+        }
+    }
+
+    /// An organization the session can read, offered when the account belongs
+    /// to more than one so the user picks by name instead of copying a UUID.
+    struct OrganizationChoice: Equatable, Hashable, Sendable, Identifiable {
+        let id: String
+        let name: String?
+
+        /// Names are not unique (two "Personal" workspaces are common), so a
+        /// repeated name carries a short id suffix to stay distinguishable.
+        static func labels(for choices: [Self]) -> [String: String] {
+            let names = choices.map { $0.name?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "" }
+            var labels: [String: String] = [:]
+            for (choice, name) in zip(choices, names) {
+                if name.isEmpty {
+                    labels[choice.id] = choice.id
+                } else if names.filter({ $0 == name }).count > 1 {
+                    labels[choice.id] = "\(name) (\(choice.id.prefix(8)))"
+                } else {
+                    labels[choice.id] = name
+                }
+            }
+            return labels
+        }
     }
 
     enum ServiceError: LocalizedError {
-        case invalidCookie, expired, forbidden, organizationRequired, invalidResponse, requestFailed(Int)
+        case invalidCookie, expired, forbidden, invalidResponse, requestFailed(Int)
+        case organizationRequired([OrganizationChoice])
         case rateLimited(retryAfterSeconds: Int?)
         var errorDescription: String? {
             switch self {
@@ -95,7 +146,7 @@ struct ClaudeWebUsageService: Sendable {
                 }
             }
             let organizationsData = try await read("organizations")
-            struct Organization: Decodable { let uuid: String; let capabilities: [String]? }
+            struct Organization: Decodable { let uuid: String; let name: String?; let capabilities: [String]? }
             guard let organizations = try? JSONDecoder().decode([Organization].self, from: organizationsData) else {
                 throw ServiceError.invalidResponse
             }
@@ -105,7 +156,16 @@ struct ClaudeWebUsageService: Sendable {
                let selected = organizations.first(where: { $0.uuid == id }) { organization = selected }
             else if configuration.organizationID == nil, eligible.count == 1 { organization = eligible[0] }
             else if configuration.organizationID == nil, organizations.count == 1 { organization = organizations[0] }
-            else { throw ServiceError.organizationRequired }
+            else {
+                // Chat-capable organizations first: those are the ones with a
+                // usage page, the others are API-only workspaces.
+                let ordered = eligible + organizations.filter { $0.capabilities?.contains("chat") != true }
+                throw ServiceError.organizationRequired(ordered.compactMap { organization in
+                    UUID(uuidString: organization.uuid) == nil
+                        ? nil
+                        : OrganizationChoice(id: organization.uuid, name: organization.name)
+                })
+            }
             guard UUID(uuidString: organization.uuid) != nil else { throw ServiceError.invalidResponse }
             let data = try await read("organizations/\(organization.uuid)/usage")
             var quota = try ClaudeOAuthUsageParser.parse(data, now: now)

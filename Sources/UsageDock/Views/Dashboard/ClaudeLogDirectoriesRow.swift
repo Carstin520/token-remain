@@ -14,17 +14,25 @@ struct ClaudeLogDirectoriesRow: View {
             Text(L10n.text("claude.logs.note"))
                 .font(.system(size: 11)).foregroundStyle(DashboardTheme.secondaryText)
                 .fixedSize(horizontal: false, vertical: true)
-            ForEach(directories, id: \.path) { directory in
+            // Discovered folders are summarised, not listed: desktop Code and
+            // Cowork sessions each bring their own `.claude` folder, and a wall
+            // of session UUID paths tells the user nothing they can act on.
+            // Only folders the user added are listed, so they can be removed,
+            // including one that no longer exists.
+            if let summary {
+                Text(summary)
+                    .font(.system(size: 11)).foregroundStyle(DashboardTheme.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            ForEach(custom, id: \.self) { path in
                 HStack(alignment: .top) {
-                    Text(directory.path).font(.system(size: 10, design: .monospaced))
+                    Text(Self.abbreviated(path)).font(.system(size: 10, design: .monospaced))
                         .textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 4)
-                    if custom.contains(directory.path) {
-                        Button(L10n.text("action.remove")) {
-                            custom.removeAll { $0 == directory.path }
-                            persist()
-                        }.buttonStyle(.plain)
-                    }
+                    Button(L10n.text("action.remove")) {
+                        custom.removeAll { $0 == path }
+                        persist()
+                    }.buttonStyle(.plain)
                 }
             }
             if directories.isEmpty { Text(L10n.text("claude.logs.empty")).font(.system(size: 11)) }
@@ -53,6 +61,26 @@ struct ClaudeLogDirectoriesRow: View {
             }
             persist()
         }
+    }
+
+    private var summary: String? {
+        let customPaths = Set(custom)
+        let sessionRoot = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Application Support/Claude").standardizedFileURL.path + "/"
+        let discovered = directories.filter { !customPaths.contains($0.path) }
+        let sessions = discovered.filter { $0.path.hasPrefix(sessionRoot) }.count
+        let readsCLI = discovered.count > sessions
+        switch (readsCLI, sessions) {
+        case (false, 0): return nil
+        case (true, 0): return L10n.text("claude.logs.summary_cli")
+        case (false, _): return L10n.format("claude.logs.summary_sessions", sessions)
+        case (true, _): return L10n.format("claude.logs.summary_cli_and_sessions", sessions)
+        }
+    }
+
+    static func abbreviated(_ path: String) -> String {
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        return path == home || path.hasPrefix(home + "/") ? "~" + path.dropFirst(home.count) : path
     }
 
     private func persist() {

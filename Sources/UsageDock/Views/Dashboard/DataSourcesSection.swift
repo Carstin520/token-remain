@@ -246,7 +246,6 @@ private struct ProviderAuthorizationRow: View {
 
     private var appName: String {
         switch provider {
-        case .claude: "Claude"
         case .codex: "ChatGPT / Codex"
         default: provider.displayName
         }
@@ -270,7 +269,10 @@ private struct ProviderAuthorizationRow: View {
                     Button(L10n.text("action.cancel")) { action.cancel() }
                 }
 
-                if ProviderDesktopAppService.applicationURL(for: provider) != nil {
+                // Claude's desktop app keeps its sign-in to itself, so opening it
+                // never restores Claude Code's login; the Cookie setup below is
+                // the in-app alternative. Codex's app does share its login.
+                if provider != .claude, ProviderDesktopAppService.applicationURL(for: provider) != nil {
                     Button(L10n.format("datasource.open_provider_app", appName)) {
                         ProviderDesktopAppService.open(provider)
                     }

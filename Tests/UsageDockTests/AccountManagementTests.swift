@@ -142,6 +142,22 @@ struct AccountManagementTests {
         #expect(!store.providerAccountProfiles.contains { $0.id == id })
     }
 
+    @Test("Account management lists an app only while its quota is recent")
+    func signedInMeansARecentQuota() {
+        let now = Date()
+        func quota(capturedAt: Date) -> ProviderQuota {
+            ProviderQuota(
+                provider: .deepseek,
+                primary: QuotaWindow(usedPercent: 30, windowMinutes: 300, resetsAt: nil),
+                secondary: nil, planName: "Test", capturedAt: capturedAt
+            )
+        }
+        #expect(AccountsSection.isSignedIn(quota(capturedAt: now.addingTimeInterval(-3_600)), now: now))
+        // A cached snapshot from a credential removed days ago is not a login.
+        #expect(!AccountsSection.isSignedIn(quota(capturedAt: now.addingTimeInterval(-3 * 86_400)), now: now))
+        #expect(!AccountsSection.isSignedIn(nil, now: now))
+    }
+
     nonisolated private static func quota(_ provider: ProviderQuota.Provider) -> ProviderQuota {
         ProviderQuota(
             provider: provider,

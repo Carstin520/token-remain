@@ -135,6 +135,31 @@ struct CredentialWaitStateTests {
         #expect(fixture.store.providerNotices[provider] == nil)
     }
 
+    @Test("Closing the Cookie guide mid-validation never saves the pasted session")
+    func closingCookieGuideCancelsValidation() async throws {
+        let gate = DelayedValidation()
+        let writes = CredentialWrites()
+        // A deadline far beyond the wait below, so only cancellation (not the
+        // validation timeout) can end the save.
+        let fixture = try Fixture(timeout: 30, writes: writes, validate: { provider, _, _ in
+            await gate.wait()
+            return sampleQuota(provider, used: 30)
+        })
+        defer { fixture.remove() }
+        let session = ClaudeCookieGuideSession()
+        session.action.start {
+            _ = await fixture.store.saveAPIKey("guide-fixture-session", for: .claude)
+        }
+        try await waitUntil { await gate.started }
+        // What the guide window does in `windowWillClose`.
+        session.end()
+        try await waitUntil { @MainActor in !session.action.isRunning }
+        await gate.release()
+        try await Task.sleep(for: .milliseconds(30))
+        #expect(writes.values.isEmpty)
+        #expect(fixture.store.quotaValue(for: .claude) == nil)
+    }
+
     @Test("A failed validation does not save the submitted credential")
     func failedValidation() async throws {
         let writes = CredentialWrites()
@@ -143,6 +168,31 @@ struct CredentialWaitStateTests {
         #expect(await fixture.store.saveAPIKey("demo-value", for: .deepseek) == false)
         #expect(writes.values.isEmpty)
         #expect(fixture.store.providerNotices[.deepseek] != nil)
+    }
+
+    @Test("An ambiguous claude.ai session offers its organizations without saving, then saves the chosen one")
+    func ambiguousClaudeSessionOffersOrganizations() async throws {
+        let writes = CredentialWrites()
+        let choices = [
+            ClaudeWebUsageService.OrganizationChoice(id: "11111111-1111-4111-8111-111111111111", name: "Team"),
+            ClaudeWebUsageService.OrganizationChoice(id: "22222222-2222-4222-8222-222222222222", name: "Personal")
+        ]
+        let fixture = try Fixture(writes: writes, validate: { provider, credential, _ in
+            guard try ClaudeWebUsageService.Configuration.decode(credential).organizationID != nil else {
+                throw ClaudeWebUsageService.ServiceError.organizationRequired(choices)
+            }
+            return sampleQuota(provider, used: 20)
+        })
+        defer { fixture.remove() }
+        #expect(!(await fixture.store.saveAPIKey("fixture-session", for: .claude)))
+        #expect(fixture.store.claudeWebOrganizationChoices == choices)
+        #expect(writes.values.isEmpty)
+
+        var chosen = try ClaudeWebUsageService.Configuration.decode("fixture-session")
+        chosen.organizationID = choices[1].id
+        #expect(await fixture.store.saveAPIKey(try chosen.encoded(), for: .claude))
+        #expect(fixture.store.claudeWebOrganizationChoices.isEmpty)
+        #expect(writes.values.count == 1)
     }
 
     @Test("Adding a secret account times out without publishing an unfinished profile")

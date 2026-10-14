@@ -197,7 +197,10 @@ struct UsageMenuView: View {
                 serviceStatus: store.serviceStatuses[provider],
                 notice: store.providerNotices[provider],
                 store: store,
-                layout: layout
+                layout: layout,
+                onSignInWithCookie: {
+                    ClaudeCookieGuideWindowController.shared.show(store: store, openingSite: true)
+                }
             )
         }
     }

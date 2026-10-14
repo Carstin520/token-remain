@@ -6,28 +6,96 @@ struct AccountsSection: View {
     @ObservedObject var store: UsageStore
     @ObservedObject var tracked: TrackedProvidersStore
     let openDataSources: () -> Void
+    /// Apps picked from "Add App" during this visit. They stay on the page
+    /// while the user sets them up, before their first successful read.
+    @State private var revealed: Set<ProviderQuota.Provider> = []
+
+    /// A login that last produced a quota within this window still counts as
+    /// signed in. It rides out network blips and rate limits, while a cached
+    /// snapshot from a key removed long ago no longer keeps a card alive.
+    static let signedInFreshness: TimeInterval = 24 * 3_600
+
+    /// Only apps signed in right now get a card: a monitored app with a recent
+    /// quota, or one holding saved accounts (so a paused one can be resumed).
+    /// "Connected once" is not enough: a long-dead login or a stopped app would
+    /// bring back the empty cards this page is meant to drop. Everything else
+    /// waits in the Add App menu.
+    private var visibleProviders: [ProviderQuota.Provider] {
+        tracked.order.filter { provider in
+            revealed.contains(provider)
+                || (tracked.isEnabled(provider) && Self.isSignedIn(store.quotaValue(for: provider)))
+                || store.providerAccountProfiles.contains { $0.provider == provider && !$0.isSystem }
+        }
+    }
+
+    static func isSignedIn(_ quota: ProviderQuota?, now: Date = .now) -> Bool {
+        guard let quota else { return false }
+        return now.timeIntervalSince(quota.capturedAt) < signedInFreshness
+    }
+
+    private var addableProviders: [ProviderQuota.Provider] {
+        let visible = Set(visibleProviders)
+        return tracked.order.filter { !visible.contains($0) }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            SectionTitleHeader(
-                title: DashboardSection.accounts.title,
-                subtitle: DashboardSection.accounts.subtitle
-            )
+            HStack(alignment: .top) {
+                SectionTitleHeader(
+                    title: DashboardSection.accounts.title,
+                    subtitle: DashboardSection.accounts.subtitle
+                )
+                if !addableProviders.isEmpty {
+                    addAppMenu
+                        .padding(.top, 6)
+                }
+            }
             // Applies to every app's switch alike, so it is said once here
             // rather than repeated in each card.
             Text(L10n.text("accounts.management.monitoring_note"))
                 .font(.system(size: 11))
                 .foregroundStyle(DashboardTheme.secondaryText)
                 .fixedSize(horizontal: false, vertical: true)
-            ForEach(tracked.order, id: \.self) { provider in
-                ProviderAccountManagementCard(
-                    provider: provider,
-                    store: store,
-                    tracked: tracked,
-                    openDataSources: openDataSources
-                )
+            if visibleProviders.isEmpty {
+                Text(L10n.text("accounts.management.no_connected"))
+                    .font(.system(size: 12))
+                    .foregroundStyle(DashboardTheme.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            // Same adaptive grid as Limits, so a card is as wide as a quota
+            // card and a typical one- or two-account app fills a short tile.
+            LazyVGrid(
+                columns: [GridItem(.adaptive(minimum: 300, maximum: 460), spacing: 14, alignment: .top)],
+                alignment: .leading,
+                spacing: 14
+            ) {
+                ForEach(visibleProviders, id: \.self) { provider in
+                    ProviderAccountManagementCard(
+                        provider: provider,
+                        store: store,
+                        tracked: tracked,
+                        openDataSources: openDataSources
+                    )
+                    .frame(maxWidth: .infinity, alignment: .top)
+                }
             }
         }
+    }
+
+    private var addAppMenu: some View {
+        Menu {
+            ForEach(addableProviders, id: \.self) { provider in
+                Button(provider.displayName) {
+                    revealed.insert(provider)
+                    tracked.setEnabled(provider, true)
+                }
+            }
+        } label: {
+            Label(L10n.text("accounts.management.add_app"), systemImage: "plus")
+        }
+        .menuStyle(.button)
+        .fixedSize()
+        .accessibilityLabel(L10n.text("accounts.management.add_app"))
     }
 }
 
@@ -41,6 +109,10 @@ private struct ProviderAccountManagementCard: View {
     @State private var renamedText = ""
     @State private var editingProfile: ProviderAccountProfile?
     @State private var isPresentingSetup = false
+    @State private var showsAllAccounts = false
+    /// Rows shown before "Show all": enough for the common case, so only a
+    /// genuinely long account list costs a click.
+    private static let collapsedAccountLimit = 3
 
     private var isMonitoring: Bool { tracked.isEnabled(provider) }
 
@@ -54,7 +126,7 @@ private struct ProviderAccountManagementCard: View {
         DashboardCard {
             VStack(alignment: .leading, spacing: 0) {
                 header
-                    .padding(.bottom, 12)
+                    .padding(.bottom, 10)
 
                 CombinedAccountControl(provider: provider, snapshots: store.accountSnapshots(for: provider)) {
                     store.setAccountSelection(.all, for: provider)
@@ -63,13 +135,29 @@ private struct ProviderAccountManagementCard: View {
                 if profiles.isEmpty {
                     rowDivider
                     Text(L10n.text("accounts.management.single_source"))
-                        .font(.system(size: 11))
+                        .font(.system(size: 10.5))
                         .foregroundStyle(DashboardTheme.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
                 } else {
-                    ForEach(profiles) { profile in
+                    let shown = showsAllAccounts ? profiles : Array(profiles.prefix(Self.collapsedAccountLimit))
+                    ForEach(shown) { profile in
                         rowDivider
                         accountRow(profile)
+                    }
+                    if profiles.count > Self.collapsedAccountLimit {
+                        Button {
+                            withAnimation(.snappy) { showsAllAccounts.toggle() }
+                        } label: {
+                            Label(
+                                showsAllAccounts
+                                    ? L10n.text("accounts.management.show_fewer")
+                                    : L10n.format("accounts.management.show_all", profiles.count),
+                                systemImage: showsAllAccounts ? "chevron.up" : "chevron.down"
+                            )
+                            .font(.system(size: 11))
+                        }
+                        .buttonStyle(.link)
+                        .padding(.top, 8)
                     }
                 }
 
@@ -141,7 +229,7 @@ private struct ProviderAccountManagementCard: View {
         HStack(alignment: .center, spacing: 12) {
             BrandIcon(provider: provider)
                 .foregroundStyle(DashboardTheme.text)
-                .frame(width: 18, height: 18)
+                .frame(width: 16, height: 16)
                 .accessibilityHidden(true)
             HStack(spacing: 8) {
                 Text(provider.displayName)
@@ -160,6 +248,7 @@ private struct ProviderAccountManagementCard: View {
             ))
             .labelsHidden()
             .toggleStyle(.switch)
+            .controlSize(.small)
             .tint(DashboardTheme.violet)
             .help(L10n.text(isMonitoring
                 ? "accounts.management.stop" : "accounts.management.start"))
@@ -182,7 +271,7 @@ private struct ProviderAccountManagementCard: View {
     }
 
     private var rowDivider: some View {
-        Divider().overlay(DashboardSurface.border).padding(.vertical, 12)
+        Divider().overlay(DashboardSurface.border).padding(.vertical, 8)
     }
 
     /// One line per account: who it is and its state on the left; the enable
@@ -190,22 +279,22 @@ private struct ProviderAccountManagementCard: View {
     /// reads as a list instead of a wall of buttons.
     private func accountRow(_ profile: ProviderAccountProfile) -> some View {
         let isLive = isMonitoring && (profile.isSystem || profile.isEnabled)
-        return HStack(alignment: .top, spacing: 12) {
+        return HStack(alignment: .top, spacing: 10) {
             Circle()
                 .fill(isLive ? DashboardTheme.success : DashboardTheme.mutedText)
-                .frame(width: 8, height: 8)
+                .frame(width: 7, height: 7)
                 .padding(.top, 5)
                 .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(profile.accountDisplayName)
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(DashboardTheme.text)
                     .fixedSize(horizontal: false, vertical: true)
                 Text(L10n.text(profile.isSystem
                     ? "accounts.management.system_note"
                     : (profile.isEnabled ? "accounts.management.active" : "accounts.management.paused")))
-                    .font(.system(size: 11))
-                    .foregroundStyle(DashboardTheme.secondaryText)
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(DashboardTheme.mutedText)
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 12)
@@ -273,6 +362,7 @@ private struct ProviderAccountManagementCard: View {
                     Label(L10n.text("accounts.add"), systemImage: "plus")
                 }
                 .usageDockActionButtonStyle()
+                .controlSize(.small)
                 .disabled(!isMonitoring || store.isAddingProviderAccount(provider))
             }
             Spacer(minLength: 0)

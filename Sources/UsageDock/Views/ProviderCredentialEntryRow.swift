@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// Shared metadata for providers whose first connection requires a pasted
@@ -51,6 +52,7 @@ struct ProviderCredentialEntryRow: View {
     @State private var credentialStatus: StoredCredentialStatus
     @State private var draft = ""
     @State private var claudeOrganizationID = ""
+    @State private var clipboardUnrecognized = false
     @StateObject private var action = AsyncViewAction()
     private var isSaving: Bool { action.isRunning }
     @State private var zaiRegion: ZAIAPIRegion
@@ -79,13 +81,7 @@ struct ProviderCredentialEntryRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
             if provider == .claude {
-                Text(L10n.text("claude.web.setup"))
-                    .font(.system(size: 11))
-                    .foregroundStyle(DashboardTheme.secondaryText)
-                    .fixedSize(horizontal: false, vertical: true)
-                TextField(L10n.text("claude.web.organization"), text: $claudeOrganizationID)
-                    .textFieldStyle(.roundedBorder)
-                    .disabled(isSaving)
+                claudeWebSetup
             }
             if provider == .alibabaTokenPlan {
                 Picker(L10n.text("alibaba.region"), selection: $alibabaRegion) {
@@ -145,28 +141,7 @@ struct ProviderCredentialEntryRow: View {
                         ? L10n.text("action.replace")
                         : L10n.text("action.save")
                 ) {
-                    var credential = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-                    guard !credential.isEmpty else { return }
-                    if provider == .alibabaTokenPlan {
-                        let config = AlibabaTokenPlanConfiguration(
-                            region: alibabaRegion, edition: alibabaEdition, cookie: credential
-                        )
-                        guard let encoded = try? config.encoded() else { return }
-                        credential = encoded
-                    }
-                    if provider == .claude, !claudeOrganizationID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        guard var parsed = try? ClaudeWebUsageService.Configuration.decode(credential) else { return }
-                        parsed.organizationID = claudeOrganizationID.trimmingCharacters(in: .whitespacesAndNewlines)
-                        guard let encoded = try? parsed.encoded() else { return }
-                        credential = encoded
-                    }
-                    let submittedCredential = credential
-                    action.start {
-                        let saved = await store.saveAPIKey(submittedCredential, for: provider)
-                        guard !Task.isCancelled else { return }
-                        if saved { draft = "" }
-                        reloadCredentialStatus()
-                    }
+                    saveDraft()
                 }
                 .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSaving)
 
@@ -210,9 +185,127 @@ struct ProviderCredentialEntryRow: View {
             }
         }
         .onDisappear { action.cancel() }
+        .onChange(of: store.claudeWebOrganizationChoices) { _, choices in
+            // A new session brings its own list; a choice from the previous one
+            // must not be submitted with it.
+            if !choices.contains(where: { $0.id == claudeOrganizationID }) {
+                claudeOrganizationID = ""
+            }
+        }
         .controlSize(.small)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(L10n.format("datasource.api_key_settings", provider.displayName))
+    }
+
+    /// claude.ai session setup. The step-by-step instructions live in the
+    /// guide panel that "Open claude.ai" brings up beside the browser; the row
+    /// keeps only the entry points. No browser storage is read, and the
+    /// clipboard is read once per click, never watched.
+    @ViewBuilder
+    private var claudeWebSetup: some View {
+        Text(L10n.text("claude.web.summary"))
+            .font(.system(size: 11))
+            .foregroundStyle(DashboardTheme.secondaryText)
+            .fixedSize(horizontal: false, vertical: true)
+        HStack(spacing: 8) {
+            Button(L10n.text("claude.web.open_site")) {
+                ClaudeCookieGuideWindowController.shared.show(store: store, openingSite: true)
+            }
+            Button(L10n.text("claude.web.paste_clipboard")) {
+                pasteClaudeCredentialFromClipboard()
+            }
+            .disabled(isSaving)
+        }
+        if clipboardUnrecognized {
+            Text(L10n.text("claude.web.clipboard_unrecognized"))
+                .font(.system(size: 10.5))
+                .foregroundStyle(DashboardTheme.warning)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        // Choosing needs a session to apply it to: the draft still in the
+        // field, or one already saved. A list raised by the guide's own paste
+        // has neither here, and the guide offers it itself.
+        let choices = store.claudeWebOrganizationChoices
+        if !choices.isEmpty,
+           !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || credentialStatus == .available {
+            let labels = ClaudeWebUsageService.OrganizationChoice.labels(for: choices)
+            Picker(
+                L10n.text("claude.web.organization"),
+                selection: Binding(
+                    get: { claudeOrganizationID },
+                    set: { chosen in
+                        claudeOrganizationID = chosen
+                        guard !chosen.isEmpty else { return }
+                        chooseClaudeOrganization(chosen)
+                    }
+                )
+            ) {
+                Text(L10n.text("claude.web.organization_prompt")).tag("")
+                ForEach(choices) { choice in
+                    Text(labels[choice.id] ?? choice.id).tag(choice.id)
+                }
+            }
+            .disabled(isSaving)
+        }
+    }
+
+    private func pasteClaudeCredentialFromClipboard() {
+        guard let text = NSPasteboard.general.string(forType: .string),
+              let credential = ClaudeWebUsageService.Configuration.recognizedCredential(in: text) else {
+            clipboardUnrecognized = true
+            return
+        }
+        clipboardUnrecognized = false
+        claudeOrganizationID = ""
+        draft = credential
+        saveDraft()
+    }
+
+    /// A pasted draft is still in the field after an ambiguous validation, so
+    /// it is re-submitted with the organization. Without a draft the choice
+    /// applies to the session already saved in the Keychain.
+    private func chooseClaudeOrganization(_ organizationID: String) {
+        if draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            action.start {
+                _ = await store.chooseStoredClaudeWebOrganization(organizationID)
+                guard !Task.isCancelled else { return }
+                claudeOrganizationID = ""
+                reloadCredentialStatus()
+            }
+        } else {
+            saveDraft()
+        }
+    }
+
+    private func saveDraft() {
+        var credential = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !credential.isEmpty else { return }
+        if provider == .alibabaTokenPlan {
+            let config = AlibabaTokenPlanConfiguration(
+                region: alibabaRegion, edition: alibabaEdition, cookie: credential
+            )
+            guard let encoded = try? config.encoded() else { return }
+            credential = encoded
+        }
+        if provider == .claude {
+            clipboardUnrecognized = false
+            if !claudeOrganizationID.isEmpty {
+                guard var parsed = try? ClaudeWebUsageService.Configuration.decode(credential) else { return }
+                parsed.organizationID = claudeOrganizationID
+                guard let encoded = try? parsed.encoded() else { return }
+                credential = encoded
+            }
+        }
+        let submittedCredential = credential
+        action.start {
+            let saved = await store.saveAPIKey(submittedCredential, for: provider)
+            guard !Task.isCancelled else { return }
+            if saved {
+                draft = ""
+                claudeOrganizationID = ""
+            }
+            reloadCredentialStatus()
+        }
     }
 
     private var canReplaceCredential: Bool {
