@@ -591,6 +591,12 @@ mkdir -p "$APP_RESOURCES/ProviderIcons"
 /usr/bin/rsync -a --delete --delete-excluded --exclude='*.svg' --exclude='README.md' \
   "$ROOT_DIR/Sources/UsageDock/Resources/ProviderIcons/" "$APP_RESOURCES/ProviderIcons/"
 cp "$ROOT_DIR/Sources/UsageDock/Resources/TokenRemain.icns" "$APP_RESOURCES/TokenRemain.icns"
+# macOS 26+ draws the Icon Composer icon; a release must never ship without it.
+if [[ "$SYNC_RELEASE_MODE" == "1" ]]; then
+  "$ROOT_DIR/script/compile_app_icon.sh" "$APP_RESOURCES" --required
+else
+  "$ROOT_DIR/script/compile_app_icon.sh" "$APP_RESOURCES"
+fi
 cp -R "$ROOT_DIR/Sources/UsageDock/Resources/TokenRemainHeadStates" "$APP_RESOURCES/"
 cp -R "$ROOT_DIR/Sources/UsageDock/Resources/TokenRemainFullBodyStates" "$APP_RESOURCES/"
 [[ -x "$CCUSAGE_SOURCE" ]] || {

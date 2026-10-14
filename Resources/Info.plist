@@ -35,6 +35,8 @@
   </array>
   <key>CFBundleIconFile</key>
   <string>TokenRemain.icns</string>
+  <key>CFBundleIconName</key>
+  <string>AppIcon</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
 	<key>CFBundleShortVersionString</key>
