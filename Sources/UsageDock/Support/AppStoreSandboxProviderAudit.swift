@@ -107,6 +107,11 @@ enum AppStoreSandboxProviderAudit {
         case .kiro: return try await KiroUsageService().fetch()
         case .volcengine: return try await VolcengineUsageService().fetch()
         case .ollama: return try await OllamaUsageService().fetch()
+        case .muse: return try await MuseUsageService().fetch()
+        case .museCode: return try await MuseCodeUsageService().fetch()
+        case .amp: return try await AmpUsageService().fetch()
+        case .factory: return try await FactoryUsageService().fetch()
+        case .augment: return try await AugmentUsageService().fetch()
         case .thirdParty: return try await ThirdPartyUsageService().fetch()
         }
     }

@@ -446,7 +446,10 @@ struct ExtendedProvidersTests {
         store.environment = ["DEEPSEEK_API_KEY": " sk-ds "]
         #expect(store.load() == "sk-ds")
         #expect(ProviderSecretStore.descriptor(for: .kiro) == nil)
-        #expect(ProviderSecretStore.descriptors.count == 11)
+        #expect(ProviderSecretStore.descriptors.count == 16)
+        for provider in [ProviderQuota.Provider.muse, .museCode, .amp, .factory, .augment] {
+            #expect(ProviderCredentialConfiguration.resolve(for: provider)?.isCookie == true)
+        }
         #expect(ProviderSecretStore.descriptor(for: .alibabaTokenPlan)?.envKeys.isEmpty == true)
         #expect(ProviderCredentialConfiguration.resolve(for: .alibabaTokenPlan)?.isCookie == true)
         #expect(ProviderCredentialConfiguration.resolve(for: .zai)?.isCookie == false)

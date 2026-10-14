@@ -105,6 +105,8 @@
 "quota.extra_usage" = "Zusatznutzung";
 "quota.spent" = "%@ ausgegeben";
 "quota.official_spend" = "Offizielle Ausgaben";
+"quota.models_this_cycle" = "Modelle in diesem Zeitraum";
+"quota.models_more" = "+%1$d weitere";
 "quota.account_balance" = "Kontostand";
 "quota.spend_week" = "Diese Woche";
 "quota.spend_month" = "Dieser Monat";
@@ -616,8 +618,8 @@
 "settings.quota_summary_hint" = "Wähle, welches Kontingentfenster auf Kontoebene in Menüleiste, Dock und Dashboard priorisiert wird; Modellkontingente bleiben ausgeschlossen.";
 "settings.quota_summary_shortest" = "Kürzestes Fenster (Standard)";
 "settings.quota_summary_tightest" = "Geringstes Restkontingent";
-"settings.antigravity_3p" = "Show Antigravity third-party pools";
-"settings.antigravity_3p_hint" = "Show the optional Claude/third-party 5-hour and weekly pools; hidden by default.";
+"settings.antigravity_3p" = "Show Antigravity Claude / GPT pools";
+"settings.antigravity_3p_hint" = "Show the Claude and GPT-OSS 5-hour and weekly pools next to Gemini; shown by default.";
 "trends.model_other_format" = "Other (%1$d models)";
 "trends.model_detail_tag" = "MODEL DETAIL";
 "trends.model_detail_accumulating" = "Model detail accumulates from this version onward; older cached days cannot be backfilled.";
@@ -777,6 +779,10 @@
 "accounts.management.remove_named" = "Konto %1$@ entfernen";
 "accounts.management.more_named" = "Weitere Aktionen für %1$@";
 "accounts.management.add_app" = "App hinzufügen";
+"accounts.management.remove_app" = "Entfernen";
+"accounts.management.remove_app_named" = "%@ aus der Kontoverwaltung entfernen";
+"accounts.management.remove_app_title" = "%@ entfernen?";
+"accounts.management.remove_app_message" = "Die Überwachung von %@ wird beendet und die Karte entfernt. Gespeicherte Konten und Schlüssel bleiben erhalten; über „App hinzufügen“ machst du später genau dort weiter.";
 "accounts.management.no_connected" = "Noch keine angemeldeten Apps. Mit „App hinzufügen“ beginnst du die Überwachung.";
 "accounts.management.show_all" = "Alle %d Konten anzeigen";
 "accounts.management.show_fewer" = "Weniger anzeigen";
@@ -871,3 +877,31 @@
 "currency.error_timeout" = "Die Wechselkursabfrage hat das Zeitlimit überschritten. Die letzten Kurse bleiben erhalten.";
 "currency.error_network" = "Der Wechselkursdienst ist nicht erreichbar. Die letzten Kurse bleiben erhalten.";
 "quota.model_speed_help" = "%1$@ · durchschnittliche Ausgabegeschwindigkeit der letzten %2$d Tage, geschätzt aus lokalen Protokoll-Zeitstempeln (inkl. Zeit bis zum ersten Token).";
+
+/* Web Cookie guide and web-session providers */
+"cookieguide.title" = "%@ mit einem Browser-Cookie verbinden";
+"cookieguide.summary" = "Nutzt deine eigene %@-Websitzung: im Browser anmelden, den Cookie-Header der Seitenanfrage kopieren und hier einfügen.";
+"cookieguide.open" = "Schritt-für-Schritt-Anleitung öffnen";
+"cookieguide.reopen" = "%@ erneut öffnen";
+"cookieguide.step1.title" = "Bei %@ anmelden";
+"cookieguide.step1.body" = "%@ wurde in deinem Browser geöffnet. Melde dich an, falls noch nicht geschehen, und bleib auf dieser Seite.";
+"cookieguide.step2.body.chromium" = "Drücke auf der %@-Seite ⌥⌘I oder klicke mit der rechten Maustaste und wähle Untersuchen.";
+"cookieguide.step2.body.safari" = "Öffne zuerst Safari-Einstellungen → Erweitert und aktiviere „Funktionen für Webentwickler anzeigen“. Drücke dann auf der %@-Seite ⌥⌘I.";
+"cookieguide.step2.body.firefox" = "Drücke auf der %@-Seite ⌥⌘I oder klicke mit der rechten Maustaste und wähle Untersuchen.";
+"cookieguide.step3.title" = "Cookie-Header der Seitenanfrage finden";
+"cookieguide.step3.body.chromium" = "Öffne den Tab Network und drücke ⌘R zum Neuladen. Klicke auf die erste Anfrage namens %@ (Typ document), öffne Headers → Request Headers und suche die Zeile cookie.";
+"cookieguide.step3.body.safari" = "Öffne den Tab Netzwerk und drücke ⌘R zum Neuladen. Wähle das erste %@-Dokument, öffne Header und suche Cookie unter Anfrage.";
+"cookieguide.step3.body.firefox" = "Öffne den Tab Netzwerkanalyse und drücke ⌘R zum Neuladen. Wähle die erste %@-Dokumentanfrage, öffne Kopfzeilen und suche Cookie unter Anfragekopfzeilen.";
+"cookieguide.step4.title" = "Kopieren und hier einfügen";
+"cookieguide.step4.body" = "Klicke mit der rechten Maustaste auf die Zeile cookie und wähle Wert kopieren (Rechtsklick auf die Anfrage → Als cURL kopieren geht auch), dann auf Aus Zwischenablage einfügen. TokenRemain prüft ihn vor dem Speichern einmal bei %@.";
+"cookieguide.connected" = "Verbunden. Die Nutzung von %@ kommt jetzt aus dieser Browsersitzung.";
+"cookieguide.clipboard_unrecognized" = "Die Zwischenablage enthält weder einen Cookie-Header noch einen cURL-Befehl. Kopiere den cookie-Wert aus den Anfrage-Headern und versuche es erneut.";
+"cookieguide.privacy" = "Nur im Schlüsselbund von TokenRemain gespeichert. Er wirkt wie ein Passwort: niemals teilen. Wenn die Website dich abmeldet, füge einen neuen ein.";
+"cookieguide.invalid_cookie" = "Das sieht nicht nach einem Cookie-Header aus. Kopiere den cookie-Wert aus den Headern der Seitenanfrage.";
+"secret.placeholder.muse" = "Nach der Anmeldung den muse.ai-Cookie-Header einfügen";
+"secret.placeholder.muse_code" = "Nach der Anmeldung den dev.meta.ai-Cookie-Header einfügen";
+"secret.placeholder.amp" = "Nach der Anmeldung den ampcode.com-Cookie-Header einfügen";
+"secret.placeholder.factory" = "Nach der Anmeldung den app.factory.ai-Cookie-Header einfügen";
+"secret.placeholder.augment" = "Nach der Anmeldung den app.augmentcode.com-Cookie-Header einfügen";
+"service.muse.session_expired" = "muse.ai hat diese Sitzung abgemeldet. Melde dich bei muse.ai an und füge einen neuen Cookie ein.";
+"service.muse.action_not_found" = "Die Abodaten wurden auf der muse.ai-Seite nicht gefunden. muse.ai hat sich eventuell geändert; aktualisiere, um es erneut zu versuchen.";

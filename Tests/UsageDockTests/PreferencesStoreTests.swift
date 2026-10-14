@@ -14,7 +14,7 @@ struct PreferencesStoreTests {
         #expect(store.popoverBackgroundOpacity == PreferencesStore.defaultPopoverBackgroundOpacity)
         #expect(store.quotaSummaryStrategy == .shortestWindow)
         #expect(!store.showCodexSparkQuotaInMenuBarWidget)
-        #expect(!store.showAntigravityThirdPartyQuota)
+        #expect(store.showAntigravityThirdPartyQuota)
         #expect(store.refreshMinutes == 5)
         #expect(store.refreshInterval == 300)
         #expect(!store.floatingWidgetEnabled)
@@ -61,11 +61,13 @@ struct PreferencesStoreTests {
         #expect(PreferencesStore(defaults: defaults).quotaSummaryStrategy == .shortestWindow)
     }
 
-    @Test("Antigravity third-party pools default off and persist")
+    @Test("Antigravity Claude/GPT pools default on and persist an opt-out")
     func antigravityThirdPartyPreference() {
         let defaults = testDefaults()
         let store = PreferencesStore(defaults: defaults)
-        #expect(!store.showAntigravityThirdPartyQuota)
+        #expect(store.showAntigravityThirdPartyQuota)
+        store.setShowAntigravityThirdPartyQuota(false)
+        #expect(!PreferencesStore(defaults: defaults).showAntigravityThirdPartyQuota)
         store.setShowAntigravityThirdPartyQuota(true)
         #expect(PreferencesStore(defaults: defaults).showAntigravityThirdPartyQuota)
     }
@@ -164,12 +166,13 @@ struct PreferencesStoreTests {
             isExpanded: true,
             preferences: fresh
         ).map(\.scopeID) == ["antigravity_3p_5h"])
-        // 从未用过 → 默认隐藏。
+        // 从未用过也显示:Claude/GPT 与 Gemini 是并列的两组额度,剩余
+        // 100% 本身就是用户要看的信息。
         #expect(PopoverQuotaWidget.scopedWindows(
             in: antigravityQuota(thirdPartyUsedPercent: 0),
             isExpanded: true,
             preferences: fresh
-        ).isEmpty)
+        ).map(\.scopeID) == ["antigravity_3p_5h"])
         // 3P 池仍然跟随展开态:收起时不显示。
         #expect(PopoverQuotaWidget.scopedWindows(
             in: antigravityQuota(thirdPartyUsedPercent: 25),
@@ -507,7 +510,7 @@ struct PreferencesStoreTests {
             scopedWindows: [
                 ScopedQuotaWindow(
                     scopeID: "antigravity_3p_5h",
-                    displayName: "Claude / Third-party",
+                    displayName: "Claude / GPT",
                     window: QuotaWindow(
                         usedPercent: thirdPartyUsedPercent,
                         windowMinutes: 300,

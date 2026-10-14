@@ -82,6 +82,8 @@ struct ProviderCredentialEntryRow: View {
         VStack(alignment: .leading, spacing: 7) {
             if provider == .claude {
                 claudeWebSetup
+            } else if let guideSpec {
+                webCookieSetup(guideSpec)
             }
             if provider == .alibabaTokenPlan {
                 Picker(L10n.text("alibaba.region"), selection: $alibabaRegion) {
@@ -247,6 +249,51 @@ struct ProviderCredentialEntryRow: View {
             }
             .disabled(isSaving)
         }
+    }
+
+    /// Cookie-only providers other than Claude: the steps live in the guide
+    /// panel; the row keeps the entry points. Alibaba's spec follows the
+    /// region and edition currently chosen above.
+    private var guideSpec: WebCookieGuideSpec? {
+        if provider == .alibabaTokenPlan {
+            return .alibaba(region: alibabaRegion, edition: alibabaEdition)
+        }
+        return WebCookieGuideSpec.spec(for: provider)
+    }
+
+    @ViewBuilder
+    private func webCookieSetup(_ spec: WebCookieGuideSpec) -> some View {
+        Text(L10n.format("cookieguide.summary", spec.host))
+            .font(.system(size: 11))
+            .foregroundStyle(DashboardTheme.secondaryText)
+            .fixedSize(horizontal: false, vertical: true)
+        HStack(spacing: 8) {
+            Button(L10n.text("cookieguide.open")) {
+                WebCookieGuideWindowController.shared.show(store: store, spec: spec, openingSite: true)
+            }
+            Button(L10n.text("claude.web.paste_clipboard")) {
+                pasteCookieFromClipboard()
+            }
+            .disabled(isSaving)
+        }
+        if clipboardUnrecognized {
+            Text(L10n.text("cookieguide.clipboard_unrecognized"))
+                .font(.system(size: 10.5))
+                .foregroundStyle(DashboardTheme.warning)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    /// The field holds the bare header; `saveDraft` wraps it where needed.
+    private func pasteCookieFromClipboard() {
+        guard let text = NSPasteboard.general.string(forType: .string),
+              let header = WebCookieHeader.extract(fromClipboard: text) else {
+            clipboardUnrecognized = true
+            return
+        }
+        clipboardUnrecognized = false
+        draft = header
+        saveDraft()
     }
 
     private func pasteClaudeCredentialFromClipboard() {

@@ -18,13 +18,15 @@ struct AccountsSection: View {
     /// Only apps signed in right now get a card: a monitored app with a recent
     /// quota, or one holding saved accounts (so a paused one can be resumed).
     /// "Connected once" is not enough: a long-dead login or a stopped app would
-    /// bring back the empty cards this page is meant to drop. Everything else
-    /// waits in the Add App menu.
+    /// bring back the empty cards this page is meant to drop. A card the user
+    /// removed stays gone until the app is added again. Everything else waits
+    /// in the Add App menu.
     private var visibleProviders: [ProviderQuota.Provider] {
         tracked.order.filter { provider in
             revealed.contains(provider)
-                || (tracked.isEnabled(provider) && Self.isSignedIn(store.quotaValue(for: provider)))
-                || store.providerAccountProfiles.contains { $0.provider == provider && !$0.isSystem }
+                || (!tracked.isHiddenFromManagement(provider)
+                    && ((tracked.isEnabled(provider) && Self.isSignedIn(store.quotaValue(for: provider)))
+                        || store.providerAccountProfiles.contains { $0.provider == provider && !$0.isSystem }))
         }
     }
 
@@ -74,7 +76,11 @@ struct AccountsSection: View {
                         provider: provider,
                         store: store,
                         tracked: tracked,
-                        openDataSources: openDataSources
+                        openDataSources: openDataSources,
+                        onRemove: {
+                            revealed.remove(provider)
+                            tracked.removeFromManagement(provider)
+                        }
                     )
                     .frame(maxWidth: .infinity, alignment: .top)
                 }
@@ -104,7 +110,9 @@ private struct ProviderAccountManagementCard: View {
     @ObservedObject var store: UsageStore
     @ObservedObject var tracked: TrackedProvidersStore
     let openDataSources: () -> Void
+    let onRemove: () -> Void
     @State private var pendingRemoval: ProviderAccountProfile?
+    @State private var confirmingAppRemoval = false
     @State private var pendingRename: ProviderAccountProfile?
     @State private var renamedText = ""
     @State private var editingProfile: ProviderAccountProfile?
@@ -202,6 +210,15 @@ private struct ProviderAccountManagementCard: View {
             ))
         }
         .alert(
+            L10n.format("accounts.management.remove_app_title", provider.displayName),
+            isPresented: $confirmingAppRemoval
+        ) {
+            Button(L10n.text("action.cancel"), role: .cancel) {}
+            Button(L10n.text("accounts.management.remove_app"), role: .destructive) { onRemove() }
+        } message: {
+            Text(L10n.format("accounts.management.remove_app_message", provider.displayName))
+        }
+        .alert(
             L10n.text("accounts.rename_title"),
             isPresented: Binding(
                 get: { pendingRename != nil },
@@ -254,6 +271,18 @@ private struct ProviderAccountManagementCard: View {
                 ? "accounts.management.stop" : "accounts.management.start"))
             .accessibilityHint(L10n.format(isMonitoring
                 ? "accounts.management.stop_named" : "accounts.management.start_named", provider.displayName))
+            Button {
+                confirmingAppRemoval = true
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(DashboardTheme.mutedText)
+                    .frame(width: 18, height: 18)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help(L10n.format("accounts.management.remove_app_named", provider.displayName))
+            .accessibilityLabel(L10n.format("accounts.management.remove_app_named", provider.displayName))
         }
     }
 

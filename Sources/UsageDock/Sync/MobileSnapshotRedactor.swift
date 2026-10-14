@@ -218,6 +218,12 @@ enum MobileSnapshotRedactor {
         case .kiro: "kiro"
         case .volcengine: "volcengine"
         case .ollama: "ollama"
+        // Desktop-only: not in SyncedProviderID.supportedOnCurrentMobile.
+        case .muse: "muse"
+        case .museCode: "muse-code"
+        case .amp: "amp"
+        case .factory: "factory"
+        case .augment: "augment"
         case .thirdParty: "thirdparty"
         }
     }

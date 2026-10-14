@@ -158,6 +158,31 @@ struct AccountManagementTests {
         #expect(!AccountsSection.isSignedIn(nil, now: now))
     }
 
+    @Test("Removing an app card stops it, survives relaunch, and keeps every saved account")
+    func removingAnAppCard() throws {
+        let fixture = try Fixture(providers: [.openrouter, .claude])
+        fixture.tracked.removeFromManagement(.openrouter)
+
+        #expect(!fixture.tracked.isEnabled(.openrouter))
+        #expect(fixture.tracked.isHiddenFromManagement(.openrouter))
+        #expect(fixture.tracked.isEnabled(.claude))
+        // Non-destructive: accounts and their keys stay for a later re-add.
+        #expect(fixture.accounts.profiles == fixture.profiles)
+        #expect(fixture.deletedSecrets.ids.isEmpty)
+
+        let relaunched = TrackedProvidersStore(defaults: fixture.defaults)
+        #expect(relaunched.isHiddenFromManagement(.openrouter))
+        #expect(!relaunched.isEnabled(.openrouter))
+
+        // Adding it back (Add App, a detection prompt, the switch) restores it.
+        relaunched.setEnabled(.openrouter, true)
+        #expect(!relaunched.isHiddenFromManagement(.openrouter))
+        #expect(!TrackedProvidersStore(defaults: fixture.defaults).isHiddenFromManagement(.openrouter))
+        // Stopping alone never hides a card.
+        relaunched.setEnabled(.claude, false)
+        #expect(!relaunched.isHiddenFromManagement(.claude))
+    }
+
     nonisolated private static func quota(_ provider: ProviderQuota.Provider) -> ProviderQuota {
         ProviderQuota(
             provider: provider,

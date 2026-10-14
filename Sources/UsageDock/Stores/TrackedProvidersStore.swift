@@ -13,6 +13,7 @@ final class TrackedProvidersStore: ObservableObject {
     static let orderKey = "tokenRemain.trackedProvidersOrder.v1"
     static let connectedKey = "tokenRemain.connectedProviders.v1"
     static let detectedInstallationsKey = "tokenRemain.detectedInstallations.v1"
+    static let managementHiddenKey = "tokenRemain.accountManagementHidden.v1"
     static let detectionMonitoringIntervalSeconds: TimeInterval = 5 * 60
 
     /// UI 展示与遍历用的稳定顺序。
@@ -27,6 +28,10 @@ final class TrackedProvidersStore: ObservableObject {
     /// TokenRemain 运行期间新出现、且用户尚未追踪的本机应用。Dashboard
     /// 消费这条队列并逐个询问，扫描本身只做本地文件存在性检查。
     @Published private(set) var pendingDetectionSuggestions: [Detection] = []
+    /// Apps the user removed from Account Management. A removed app is also
+    /// stopped; turning monitoring back on anywhere brings its card back.
+    /// Saved accounts and credentials are never touched by removal.
+    @Published private(set) var hiddenFromManagement: Set<ProviderQuota.Provider>
 
     private let defaults: UserDefaults
     private var detectionTask: Task<Void, Never>?
@@ -48,6 +53,8 @@ final class TrackedProvidersStore: ObservableObject {
         connected = Set(rawConnected.compactMap(ProviderQuota.Provider.init(rawValue:)))
         let savedOrder = (defaults.array(forKey: Self.orderKey) as? [String]) ?? []
         order = Self.mergedOrder(savedOrder)
+        let rawHidden = (defaults.array(forKey: Self.managementHiddenKey) as? [String]) ?? []
+        hiddenFromManagement = Set(rawHidden.compactMap(ProviderQuota.Provider.init(rawValue:)))
     }
 
     /// enabled 中按稳定顺序排列的 provider 列表。
@@ -116,10 +123,24 @@ final class TrackedProvidersStore: ObservableObject {
         if isOn {
             enabled.insert(provider)
             pendingDetectionSuggestions.removeAll { $0.provider == provider }
+            if hiddenFromManagement.remove(provider) != nil { persistHidden() }
         } else {
             enabled.remove(provider)
         }
         persistEnabled()
+    }
+
+    func isHiddenFromManagement(_ provider: ProviderQuota.Provider) -> Bool {
+        hiddenFromManagement.contains(provider)
+    }
+
+    /// Removes the app's Account Management card: monitoring stops and the app
+    /// returns to "Add App". Nothing is deleted, so adding it back resumes
+    /// with the same saved accounts and keys.
+    func removeFromManagement(_ provider: ProviderQuota.Provider) {
+        setEnabled(provider, false)
+        guard hiddenFromManagement.insert(provider).inserted else { return }
+        persistHidden()
     }
 
     /// Moves a provider card ahead of another provider and persists the full
@@ -216,6 +237,13 @@ final class TrackedProvidersStore: ObservableObject {
 
     private func persistEnabled() {
         defaults.set(Self.allProviders.filter(enabled.contains).map(\.rawValue), forKey: Self.enabledKey)
+    }
+
+    private func persistHidden() {
+        defaults.set(
+            Self.allProviders.filter(hiddenFromManagement.contains).map(\.rawValue),
+            forKey: Self.managementHiddenKey
+        )
     }
 
     private func persistOrder() {

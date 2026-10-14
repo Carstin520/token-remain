@@ -178,6 +178,7 @@ final class UsageStore: ObservableObject {
         .cursor, .grok, .zai, .zaiTeam, .copilot, .devin, .windsurf,
         .openrouter, .antigravity, .opencode,
         .deepseek, .kimi, .minimax, .mimo, .alibabaTokenPlan, .qoder, .kiro, .volcengine, .ollama,
+        .muse, .museCode, .amp, .factory, .augment,
         .thirdParty
     ]
 
@@ -410,6 +411,11 @@ final class UsageStore: ObservableObject {
         case .kiro: return { try await KiroUsageService().fetch() }
         case .volcengine: return { try await VolcengineUsageService().fetch() }
         case .ollama: return { try await OllamaUsageService().fetch() }
+        case .muse: return { try await MuseUsageService().fetch() }
+        case .museCode: return { try await MuseCodeUsageService().fetch() }
+        case .amp: return { try await AmpUsageService().fetch() }
+        case .factory: return { try await FactoryUsageService().fetch() }
+        case .augment: return { try await AugmentUsageService().fetch() }
         case .thirdParty: return { try await ThirdPartyUsageService().fetch() }
         case .claude, .codex: return nil
         }
@@ -1226,6 +1232,16 @@ final class UsageStore: ObservableObject {
             return try await VolcengineUsageService().fetch(credentials: credential, now: now)
         case .ollama:
             return try await OllamaUsageService().fetch(cookie: credential, now: now)
+        case .muse:
+            return try await MuseUsageService().fetch(cookie: credential, now: now)
+        case .museCode:
+            return try await MuseCodeUsageService().fetch(cookie: credential, now: now)
+        case .amp:
+            return try await AmpUsageService().fetch(cookie: credential, now: now)
+        case .factory:
+            return try await FactoryUsageService().fetch(cookie: credential, now: now)
+        case .augment:
+            return try await AugmentUsageService().fetch(cookie: credential, now: now)
         case .zaiTeam:
             return try await ZAITeamUsageService().fetch(configuration: credential, now: now)
         case .thirdParty:

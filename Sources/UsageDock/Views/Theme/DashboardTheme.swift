@@ -191,6 +191,11 @@ enum DashboardTheme {
         case .volcengine: return Color(hex: 0x6BA3C4)    // muted volcano sky
         case .ollama: return Color(hex: 0xCBD5E1)        // light slate
         case .alibabaTokenPlan: return Color(hex: 0xC89468)
+        case .muse: return Color(hex: 0x6E8FD8)          // muted Meta blue
+        case .museCode: return Color(hex: 0x8C7BD8)      // muted Meta violet
+        case .amp: return Color(hex: 0xD48A5C)           // muted amp orange
+        case .factory: return Color(hex: 0x9AA4B2)       // muted steel
+        case .augment: return Color(hex: 0x6FB59A)       // muted jade
         case .thirdParty: return Color(hex: 0x7C91A8)
         }
     }

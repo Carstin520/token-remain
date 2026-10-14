@@ -359,6 +359,31 @@ struct AntigravityUsageParserTests {
         // observedAt 必须落在 3P 行上:一次刷新只回 gemini 桶时,缺时间戳
         // 的 scoped 行会被 retainingActiveScopedWindows 当作过期清掉。
         #expect(quota.uniqueScopedWindows.allSatisfy { $0.observedAt == now })
+        // 两组模型额度各自标名:Gemini 行与 Claude/GPT 行在卡片上可区分。
+        #expect(quota.primary.poolName == "Gemini")
+        #expect(quota.secondary?.poolName == "Gemini")
+        #expect(quota.uniqueScopedWindows.allSatisfy {
+            $0.displayName == "Claude / GPT" && $0.window.poolName == nil
+        })
+    }
+
+    @Test("Unused Claude/GPT pool stays visible by default, explicit opt-out wins")
+    @MainActor
+    func thirdPartyPoolVisibleWhenReported() throws {
+        let payload = """
+        {"groups": [{"buckets": [
+          {"bucketId": "gemini-5h", "remainingFraction": 0.5},
+          {"bucketId": "3p-5h", "remainingFraction": 1.0},
+          {"bucketId": "3p-weekly", "remainingFraction": 1.0}
+        ]}]}
+        """
+        let quota = try AntigravityUsageParser.parse(Data(payload.utf8))
+        let defaults = UserDefaults(suiteName: "AntigravityPoolVisibility-\(UUID().uuidString)")!
+        let preferences = PreferencesStore(defaults: defaults)
+        #expect(QuotaCard.scopedWindows(in: quota, preferences: preferences).count == 2)
+
+        preferences.setShowAntigravityThirdPartyQuota(false)
+        #expect(QuotaCard.scopedWindows(in: quota, preferences: preferences).isEmpty)
     }
 
     @Test("Unknown bucket IDs are skipped instead of guessing a window")
