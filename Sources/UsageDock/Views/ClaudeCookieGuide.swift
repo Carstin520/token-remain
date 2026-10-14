@@ -1,73 +1,6 @@
 import AppKit
 import SwiftUI
 
-/// Hosts the claude.ai Cookie guide in a floating panel. Opening claude.ai
-/// brings the browser to the front, so a sheet on the Dashboard would sit
-/// behind it exactly when the user needs it; the panel stays above the browser
-/// while they follow the steps there.
-@MainActor
-final class ClaudeCookieGuideWindowController: NSWindowController, NSWindowDelegate {
-    static let shared = ClaudeCookieGuideWindowController()
-
-    private init() {
-        let panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: ClaudeCookieGuideView.width, height: ClaudeCookieGuideView.height),
-            styleMask: [.titled, .closable, .fullSizeContentView],
-            backing: .buffered,
-            defer: true
-        )
-        panel.title = L10n.text("claude.guide.title")
-        panel.titleVisibility = .hidden
-        panel.titlebarAppearsTransparent = true
-        panel.appearance = NSAppearance(named: .darkAqua)
-        panel.backgroundColor = NSColor(
-            srgbRed: 0x0D / 255, green: 0x0E / 255, blue: 0x10 / 255, alpha: 1
-        )
-        panel.isMovableByWindowBackground = true
-        panel.level = .floating
-        panel.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
-        panel.hidesOnDeactivate = false
-        panel.isReleasedWhenClosed = false
-        super.init(window: panel)
-        panel.delegate = self
-    }
-
-    @available(*, unavailable)
-    required init?(coder: NSCoder) { fatalError("init(coder:) is unavailable") }
-
-    /// Starts the guide from its first step and, when asked, opens claude.ai in
-    /// the user's default browser. Reopening restarts the flow rather than
-    /// resuming a half-finished paste.
-    func show(store: UsageStore, openingSite: Bool) {
-        guard let panel = window else { return }
-        panel.contentViewController = NSHostingController(
-            rootView: ClaudeCookieGuideView(
-                store: store,
-                browser: .systemDefault,
-                onClose: { [weak self] in self?.close() }
-            )
-        )
-        panel.setContentSize(NSSize(width: ClaudeCookieGuideView.width, height: ClaudeCookieGuideView.height))
-        if let screen = NSScreen.main ?? NSScreen.screens.first {
-            let visible = screen.visibleFrame
-            panel.setFrameOrigin(NSPoint(
-                x: visible.maxX - panel.frame.width - 24,
-                y: visible.maxY - panel.frame.height - 24
-            ))
-        }
-        panel.orderFrontRegardless()
-        if openingSite {
-            ClaudeCookieGuideView.openClaudeSite()
-        }
-    }
-
-    /// Dropping the hosted view releases its action, which cancels a validation
-    /// still in flight instead of letting it save after the guide is gone.
-    func windowWillClose(_ notification: Notification) {
-        window?.contentViewController = nil
-    }
-}
-
 /// Which browser's developer tools the steps describe. Only the labels and
 /// panel names differ; the cookie is the same `sessionKey` in every browser.
 enum ClaudeCookieGuideBrowser: String, CaseIterable, Identifiable {
@@ -114,6 +47,10 @@ struct ClaudeCookieGuideView: View {
 
     @ObservedObject var store: UsageStore
     @State var browser: ClaudeCookieGuideBrowser
+    /// Owned by the guide's window session, not by this view: closing the
+    /// window must cancel a validation in flight at once, and SwiftUI gives no
+    /// promise about when it releases a view's `@StateObject`.
+    @ObservedObject var action: AsyncViewAction
     let onClose: () -> Void
 
     @State private var step = 0
@@ -122,7 +59,6 @@ struct ClaudeCookieGuideView: View {
     @State private var clipboardUnrecognized = false
     @State private var submitError: String?
     @State private var connected = false
-    @StateObject private var action = AsyncViewAction()
 
     static func openClaudeSite() {
         if let url = URL(string: "https://claude.ai") {
@@ -195,6 +131,7 @@ struct ClaudeCookieGuideView: View {
         .frame(width: Self.width, height: Self.height, alignment: .topLeading)
         .background(DashboardTheme.canvas)
         .controlSize(.regular)
+        .onDisappear { action.cancel() }
         .onChange(of: store.claudeWebOrganizationChoices) { _, choices in
             if !choices.contains(where: { $0.id == organizationID }) {
                 organizationID = ""
