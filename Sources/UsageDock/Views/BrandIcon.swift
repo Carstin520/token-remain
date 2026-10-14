@@ -133,7 +133,7 @@ struct BrandIcon: View {
             return nil
         case .cursor:
             return Artwork(resourceName: "cursor", isTemplate: true)
-        case .grok:
+        case .grok, .grokBot:
             return Artwork(
                 resourceName: "grok",
                 isTemplate: true,

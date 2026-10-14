@@ -155,6 +155,7 @@
 "datasource.detail.devin" = "Direct SeatManagement API query (read-only local Devin credentials)";
 "datasource.detail.windsurf" = "Direct Windsurf SeatManagement API query (read-only local Windsurf login)";
 "datasource.detail.grok" = "Direct weekly-pool quota API query (read-only ~/.grok/auth.json)";
+"datasource.detail.grok_bot" = "Direct weekly-usage API query (read-only Cursor IDE login; Grok Bot must use the same Cursor account)";
 "datasource.detail.kiro" = "Parses the kiro-cli /usage report (local subprocess)";
 "datasource.detail.ollama" = "Local Ollama run state and model info (fully local)";
 "datasource.detail.opencode" = "Estimates the Go plan quota by scanning the local database (fully local, no network)";
@@ -315,6 +316,8 @@
 "provider.detect.found_credentials" = "Found configured %1$@ credentials";
 "provider.detect.grok.found" = "Found the Grok CLI or local login credentials";
 "provider.detect.grok.hint" = "Run grok once and sign in to connect automatically";
+"provider.detect.grok_bot.found" = "Found the Grok Bot app";
+"provider.detect.grok_bot.hint" = "Install Grok Bot, then sign in to Cursor with the same Cursor account to connect automatically";
 "provider.detect.install_login_hint" = "Install and sign in to %1$@ to connect automatically";
 "provider.detect.kiro.found" = "Found Kiro";
 "provider.detect.kiro.hint" = "Install the Kiro CLI and sign in to connect automatically";
@@ -392,6 +395,9 @@
 "service.devin.token_rejected" = "Devin rejected the current credentials (HTTP %1$d); sign in to Devin again to recover";
 "service.grok.not_logged_in" = "No Grok CLI login detected; run grok once and sign in to connect automatically";
 "service.grok.stale_login" = "Grok has been idle and its login credentials expired; run grok once to resume quota refresh";
+"service.grok_bot.not_logged_in" = "Grok Bot usage is read through the Cursor IDE login; sign in to Cursor with the same account you use in Grok Bot";
+"service.grok_bot.no_weekly_allowance" = "This Cursor account has no Grok Bot weekly allowance";
+"service.grok_bot.pooled_allowance" = "This account uses a pooled team allowance, which Grok Bot doesn't report as a weekly percentage";
 "service.kiro.not_installed" = "kiro-cli not detected; install the Kiro CLI and sign in to connect automatically";
 "service.opencode.no_usage" = "No OpenCode Go usage recorded on this Mac yet; it appears after you use OpenCode once";
 "service.opencode.not_installed" = "OpenCode not detected; install and sign in to OpenCode Go to connect automatically";

@@ -200,6 +200,8 @@ enum MobileSnapshotRedactor {
         case .codex: "codex"
         case .cursor: "cursor"
         case .grok: "grok"
+        // Desktop-only until published consumers support this provider.
+        case .grokBot: "grok-bot"
         case .zai: "zai"
         case .zaiTeam: "zaiteam"
         case .copilot: "copilot"

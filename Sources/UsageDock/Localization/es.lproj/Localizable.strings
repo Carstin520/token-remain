@@ -160,6 +160,7 @@
 "datasource.detail.devin" = "Consulta directa de la API SeatManagement (credenciales locales de Devin de solo lectura)";
 "datasource.detail.windsurf" = "Consulta directa de la API SeatManagement de Windsurf (inicio de sesión local de solo lectura)";
 "datasource.detail.grok" = "Consulta directa de la API de cuota del fondo semanal (solo lectura de ~/.grok/auth.json)";
+"datasource.detail.grok_bot" = "Consulta directa a la API de uso semanal (inicio de sesión local de Cursor solo lectura; Grok Bot debe usar la misma cuenta de Cursor)";
 "datasource.detail.kiro" = "Analiza el informe /usage de kiro-cli (subproceso local)";
 "datasource.detail.ollama" = "Estado de ejecución e información de modelos de Ollama local (totalmente local)";
 "datasource.detail.opencode" = "Estima la cuota del plan Go escaneando la base de datos local (totalmente local, sin red)";
@@ -319,6 +320,8 @@
 "provider.detect.found_credentials" = "Se detectaron credenciales de %1$@ configuradas";
 "provider.detect.grok.found" = "Se detectó Grok CLI o credenciales locales";
 "provider.detect.grok.hint" = "Ejecuta grok una vez e inicia sesión para conectarlo automáticamente";
+"provider.detect.grok_bot.found" = "Se detectó la app Grok Bot";
+"provider.detect.grok_bot.hint" = "Instala Grok Bot e inicia sesión en Cursor con la misma cuenta de Cursor para conectar automáticamente";
 "provider.detect.install_login_hint" = "Instala %1$@ e inicia sesión para conectarlo automáticamente";
 "provider.detect.kiro.found" = "Se detectó Kiro";
 "provider.detect.kiro.hint" = "Instala Kiro CLI e inicia sesión para conectarlo automáticamente";
@@ -391,6 +394,9 @@
 "service.devin.token_rejected" = "Devin rechazó las credenciales actuales (HTTP %1$d); vuelve a iniciar sesión en Devin para recuperarlo";
 "service.grok.not_logged_in" = "No se detectó inicio de sesión en Grok CLI; ejecuta grok una vez e inicia sesión para conectarlo automáticamente";
 "service.grok.stale_login" = "Grok lleva tiempo sin usarse y sus credenciales han caducado; ejecuta grok una vez para reanudar la actualización de cuota";
+"service.grok_bot.not_logged_in" = "El uso de Grok Bot se lee a través del inicio de sesión de Cursor; inicia sesión en Cursor con la misma cuenta que usas en Grok Bot";
+"service.grok_bot.no_weekly_allowance" = "Esta cuenta de Cursor no tiene asignación semanal de Grok Bot";
+"service.grok_bot.pooled_allowance" = "Esta cuenta usa una asignación compartida del equipo, que Grok Bot no muestra como porcentaje semanal";
 "service.kiro.not_installed" = "No se detectó kiro-cli; instala Kiro CLI e inicia sesión para conectarlo automáticamente";
 "service.opencode.no_usage" = "Este Mac aún no tiene registros de uso de OpenCode Go; aparecerán tras usar OpenCode una vez";
 "service.opencode.not_installed" = "No se detectó OpenCode; instala OpenCode Go e inicia sesión para conectarlo automáticamente";

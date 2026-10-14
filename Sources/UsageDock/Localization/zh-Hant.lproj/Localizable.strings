@@ -164,6 +164,7 @@
 "datasource.detail.devin" = "SeatManagement API 直接查詢（唯讀本機 Devin 憑證）";
 "datasource.detail.windsurf" = "Windsurf SeatManagement API 直接查詢（唯讀本機 Windsurf 登入狀態）";
 "datasource.detail.grok" = "週池額度 API 直接查詢（唯讀 ~/.grok/auth.json）";
+"datasource.detail.grok_bot" = "週額度介面直查（唯讀 Cursor 本機登入狀態；Grok Bot 需登入同一 Cursor 帳戶）";
 "datasource.detail.kiro" = "解析 kiro-cli /usage 報告（本機子程序）";
 "datasource.detail.ollama" = "本機 Ollama 執行狀態與模型資訊（純本機）";
 "datasource.detail.opencode" = "掃描本機資料庫估算 Go 方案額度（純本機，無網路）";
@@ -323,6 +324,8 @@
 "provider.detect.found_credentials" = "偵測到已設定的 %1$@ 憑證";
 "provider.detect.grok.found" = "偵測到 Grok CLI 或本機登入憑證";
 "provider.detect.grok.hint" = "執行一次 grok 並登入後即自動接入";
+"provider.detect.grok_bot.found" = "偵測到 Grok Bot 應用程式";
+"provider.detect.grok_bot.hint" = "安裝 Grok Bot，並在 Cursor 中登入同一個 Cursor 帳戶後自動接入";
 "provider.detect.install_login_hint" = "安裝並登入 %1$@ 後即自動接入";
 "provider.detect.kiro.found" = "偵測到 Kiro";
 "provider.detect.kiro.hint" = "安裝 Kiro CLI 並登入後即自動接入";
@@ -395,6 +398,9 @@
 "service.devin.token_rejected" = "Devin 拒絕了目前的憑證（HTTP %1$d）；重新登入 Devin 後即可恢復";
 "service.grok.not_logged_in" = "未偵測到 Grok CLI 登入；執行一次 grok 並登入後即自動接入";
 "service.grok.stale_login" = "Grok 長時間未使用，登入憑證已過期；執行一次 grok 即可恢復額度更新";
+"service.grok_bot.not_logged_in" = "Grok Bot 用量透過 Cursor 本機登入狀態讀取；請在 Cursor 中登入與 Grok Bot 相同的帳戶";
+"service.grok_bot.no_weekly_allowance" = "目前 Cursor 帳戶沒有 Grok Bot 週額度";
+"service.grok_bot.pooled_allowance" = "目前帳戶使用團隊共用額度池，Grok Bot 不提供週百分比";
 "service.kiro.not_installed" = "未偵測到 kiro-cli；安裝 Kiro CLI 並登入後即自動接入";
 "service.opencode.no_usage" = "這台 Mac 尚無 OpenCode Go 用量紀錄；使用一次 OpenCode 後就會出現";
 "service.opencode.not_installed" = "未偵測到 OpenCode；安裝並登入 OpenCode Go 後即自動接入";

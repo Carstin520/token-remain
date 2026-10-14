@@ -175,7 +175,7 @@ final class UsageStore: ObservableObject {
     /// Claude / Codex 之外、只有 API(或本地扫描)一条直查路径的 provider,
     /// 统一走 5 分钟节奏的批量抓取。
     nonisolated static let auxProviders: [ProviderQuota.Provider] = [
-        .cursor, .grok, .zai, .zaiTeam, .copilot, .devin, .windsurf,
+        .cursor, .grok, .grokBot, .zai, .zaiTeam, .copilot, .devin, .windsurf,
         .openrouter, .antigravity, .opencode,
         .deepseek, .kimi, .minimax, .mimo, .alibabaTokenPlan, .qoder, .kiro, .volcengine, .ollama,
         .thirdParty
@@ -393,6 +393,7 @@ final class UsageStore: ObservableObject {
         switch provider {
         case .cursor: return { try await CursorUsageService().fetch() }
         case .grok: return { try await GrokUsageService().fetch() }
+        case .grokBot: return { try await GrokBotUsageService().fetch() }
         case .zai: return { try await ZAIUsageService().fetch() }
         case .zaiTeam: return { try await ZAITeamUsageService().fetch() }
         case .copilot: return { try await CopilotUsageService().fetch() }

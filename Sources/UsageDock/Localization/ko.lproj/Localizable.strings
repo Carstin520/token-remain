@@ -160,6 +160,7 @@
 "datasource.detail.devin" = "SeatManagement API 직접 조회 (로컬 Devin 자격 증명 읽기 전용)";
 "datasource.detail.windsurf" = "Windsurf SeatManagement API 직접 조회(로컬 Windsurf 로그인 읽기 전용)";
 "datasource.detail.grok" = "주간 풀 할당량 API 직접 조회 (~/.grok/auth.json 읽기 전용)";
+"datasource.detail.grok_bot" = "주간 사용량 API 직접 조회(로컬 Cursor 로그인 상태 읽기 전용, Grok Bot도 같은 Cursor 계정으로 로그인 필요)";
 "datasource.detail.kiro" = "kiro-cli /usage 보고서 파싱 (로컬 하위 프로세스)";
 "datasource.detail.ollama" = "로컬 Ollama 실행 상태 및 모델 정보 (완전 로컬)";
 "datasource.detail.opencode" = "로컬 데이터베이스 스캔으로 Go 플랜 할당량 추정 (완전 로컬, 네트워크 없음)";
@@ -319,6 +320,8 @@
 "provider.detect.found_credentials" = "구성된 %1$@ 자격 증명 감지됨";
 "provider.detect.grok.found" = "Grok CLI 또는 로컬 로그인 정보 감지됨";
 "provider.detect.grok.hint" = "grok을 한 번 실행하고 로그인하면 자동으로 연결됩니다";
+"provider.detect.grok_bot.found" = "Grok Bot 앱 감지됨";
+"provider.detect.grok_bot.hint" = "Grok Bot을 설치하고 같은 Cursor 계정으로 Cursor에 로그인하면 자동으로 연결";
 "provider.detect.install_login_hint" = "%1$@ 설치 후 로그인하면 자동으로 연결됩니다";
 "provider.detect.kiro.found" = "Kiro 감지됨";
 "provider.detect.kiro.hint" = "Kiro CLI를 설치하고 로그인하면 자동으로 연결됩니다";
@@ -391,6 +394,9 @@
 "service.devin.token_rejected" = "Devin이 현재 자격 증명을 거부했습니다 (HTTP %1$d). Devin에 다시 로그인하면 복구됩니다";
 "service.grok.not_logged_in" = "Grok CLI 로그인이 감지되지 않았습니다. grok을 한 번 실행하고 로그인하면 자동으로 연결됩니다";
 "service.grok.stale_login" = "Grok을 오래 사용하지 않아 로그인 자격 증명이 만료되었습니다. grok을 한 번 실행하면 할당량 새로 고침이 재개됩니다";
+"service.grok_bot.not_logged_in" = "Grok Bot 사용량은 Cursor 로그인 상태로 읽습니다. Grok Bot과 같은 계정으로 Cursor에 로그인하세요";
+"service.grok_bot.no_weekly_allowance" = "이 Cursor 계정에는 Grok Bot 주간 한도가 없습니다";
+"service.grok_bot.pooled_allowance" = "이 계정은 팀 공유 한도를 사용하며, Grok Bot은 주간 비율을 제공하지 않습니다";
 "service.kiro.not_installed" = "kiro-cli가 감지되지 않았습니다. Kiro CLI를 설치하고 로그인하면 자동으로 연결됩니다";
 "service.opencode.no_usage" = "이 Mac에 아직 OpenCode Go 사용량 기록이 없습니다. OpenCode를 한 번 사용하면 표시됩니다";
 "service.opencode.not_installed" = "OpenCode가 감지되지 않았습니다. OpenCode Go를 설치하고 로그인하면 자동으로 연결됩니다";

@@ -19,6 +19,9 @@ struct BrandIconRenderTests {
             let inserted = resourceNames.insert(artwork.resourceName).inserted
             if provider == .zaiTeam {
                 #expect(!inserted && artwork.resourceName == "zai")
+            } else if provider == .grokBot {
+                // Grok Bot is a Grok-branded app (SpaceXAI on Cursor's backend).
+                #expect(!inserted && artwork.resourceName == "grok")
             } else {
                 #expect(inserted, "\(provider.displayName) reuses another provider's brand resource")
             }
@@ -31,7 +34,7 @@ struct BrandIconRenderTests {
             #expect(FileManager.default.fileExists(atPath: resourceURL.path))
         }
 
-        #expect(resourceNames.count == resourceProviders.count - 1)
+        #expect(resourceNames.count == resourceProviders.count - 2)
         #expect(BrandIcon.artwork(for: .thirdParty) == nil)
     }
 
