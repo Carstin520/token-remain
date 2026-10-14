@@ -174,6 +174,7 @@ enum DashboardTheme {
         case .codex: return codexAccent
         case .cursor: return cursorAccent
         case .grok: return grokAccent
+        case .grokBot: return Color(hex: 0xD6C38E)       // pale wheat, Grok family
         case .zai: return zaiAccent
         case .zaiTeam: return Color(hex: 0x5A82D1)
         case .copilot: return copilotAccent

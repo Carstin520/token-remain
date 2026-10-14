@@ -366,6 +366,10 @@ final class TrackedProvidersStore: ObservableObject {
             )
         let grokInstalled = exists(".grok/auth.json")
             || executableExists("grok", homeCandidates: [".local/bin/grok"])
+        // Grok Bot（com.anysphere.sand）跑在 Cursor 后端；只做存在性检查，
+        // 不触碰它自己加密保存的 sand-secrets.json。
+        let grokBotInstalled = appExists("Grok Bot.app")
+            || exists("Library/Application Support/Grok Bot")
         let kiroInstalled = KiroUsageService.cliPath(home: home, environment: environment) != nil
             || exists("Applications/Kiro.app")
             || fileManager.fileExists(atPath: "/Applications/Kiro.app")
@@ -392,6 +396,9 @@ final class TrackedProvidersStore: ObservableObject {
             detection(.grok, installed: grokInstalled,
                       found: L10n.text("provider.detect.grok.found"),
                       hint: L10n.text("provider.detect.grok.hint")),
+            detection(.grokBot, installed: grokBotInstalled,
+                      found: L10n.text("provider.detect.grok_bot.found"),
+                      hint: L10n.text("provider.detect.grok_bot.hint")),
             detection(.antigravity, installed: antigravityInstalled,
                       found: L10n.text("provider.detect.antigravity.found"),
                       hint: L10n.format("provider.detect.install_login_hint", "Antigravity")),

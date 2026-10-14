@@ -162,6 +162,7 @@
 "datasource.detail.devin" = "SeatManagement API を直接照会(ローカルの Devin 認証情報は読み取り専用)";
 "datasource.detail.windsurf" = "Windsurf SeatManagement API を直接照会（ローカルの Windsurf ログインは読み取り専用）";
 "datasource.detail.grok" = "週次プールのクォータ API を直接照会(~/.grok/auth.json は読み取り専用)";
+"datasource.detail.grok_bot" = "週次使用量 API を直接照会(ローカルの Cursor ログイン状態は読み取り専用。Grok Bot も同じ Cursor アカウントでログインが必要)";
 "datasource.detail.kiro" = "kiro-cli の /usage レポートを解析(ローカルサブプロセス)";
 "datasource.detail.ollama" = "ローカル Ollama の実行状態とモデル情報(完全ローカル)";
 "datasource.detail.opencode" = "ローカルデータベースをスキャンして Go プランのクォータを推定(完全ローカル、ネットワーク不使用)";
@@ -321,6 +322,8 @@
 "provider.detect.found_credentials" = "設定済みの%1$@認証情報を検出";
 "provider.detect.grok.found" = "Grok CLI またはローカル認証情報を検出";
 "provider.detect.grok.hint" = "grok を一度実行してログインすると自動的に接続";
+"provider.detect.grok_bot.found" = "Grok Bot アプリを検出";
+"provider.detect.grok_bot.hint" = "Grok Bot をインストールし、同じ Cursor アカウントで Cursor にログインすると自動的に接続";
 "provider.detect.install_login_hint" = "%1$@をインストールしてログインすると自動的に接続";
 "provider.detect.kiro.found" = "Kiro を検出";
 "provider.detect.kiro.hint" = "Kiro CLI をインストールしてログインすると自動的に接続";
@@ -393,6 +396,9 @@
 "service.devin.token_rejected" = "Devin が現在の認証情報を拒否しました(HTTP %1$d)。Devin に再ログインすると復旧します";
 "service.grok.not_logged_in" = "Grok CLI のログインが見つかりません。grok を一度実行してログインすると自動的に接続されます";
 "service.grok.stale_login" = "Grok が長期間使われておらず、ログイン認証情報の有効期限が切れました。grok を一度実行すると上限の更新が再開されます";
+"service.grok_bot.not_logged_in" = "Grok Bot の使用量は Cursor のログイン状態から読み取ります。Grok Bot と同じアカウントで Cursor にログインしてください";
+"service.grok_bot.no_weekly_allowance" = "この Cursor アカウントには Grok Bot の週次枠がありません";
+"service.grok_bot.pooled_allowance" = "このアカウントはチーム共有の枠を使用しており、Grok Bot は週次の割合を提供しません";
 "service.kiro.not_installed" = "kiro-cli が見つかりません。Kiro CLI をインストールしてログインすると自動的に接続されます";
 "service.opencode.no_usage" = "この Mac にはまだ OpenCode Go の使用記録がありません。OpenCode を一度使うと表示されます";
 "service.opencode.not_installed" = "OpenCode が見つかりません。OpenCode Go をインストールしてログインすると自動的に接続されます";

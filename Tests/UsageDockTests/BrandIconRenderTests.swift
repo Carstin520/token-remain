@@ -10,7 +10,8 @@ struct BrandIconRenderTests {
         // render the generic fallback glyph rather than an invented logo.
         let unbrandedProviders: Set<ProviderQuota.Provider> = [.factory, .augment]
         // Products of the same brand share that brand's real mark.
-        let sharedBrand: [ProviderQuota.Provider: String] = [.zaiTeam: "zai", .museCode: "muse"]
+        // Grok Bot is a Grok-branded app (SpaceXAI on Cursor's backend).
+        let sharedBrand: [ProviderQuota.Provider: String] = [.zaiTeam: "zai", .museCode: "muse", .grokBot: "grok"]
         let resourceProviders = ProviderQuota.Provider.displayOrder.filter {
             $0 != .claude && $0 != .codex && $0 != .thirdParty && !unbrandedProviders.contains($0)
         }

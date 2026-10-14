@@ -162,6 +162,7 @@
 "datasource.detail.devin" = "Direktabfrage der SeatManagement-API (lokale Devin-Anmeldedaten nur lesend)";
 "datasource.detail.windsurf" = "Direktabfrage der Windsurf-SeatManagement-API (lokale Windsurf-Anmeldung nur lesend)";
 "datasource.detail.grok" = "Direktabfrage der Wochenpool-Kontingent-API (nur Lesen von ~/.grok/auth.json)";
+"datasource.detail.grok_bot" = "Direktabfrage der Wochennutzungs-API (lokale Cursor-Anmeldung nur lesend; Grok Bot muss dasselbe Cursor-Konto verwenden)";
 "datasource.detail.kiro" = "Wertet den /usage-Bericht von kiro-cli aus (lokaler Unterprozess)";
 "datasource.detail.ollama" = "Lokaler Ollama-Laufstatus und Modellinfos (rein lokal)";
 "datasource.detail.opencode" = "Schätzt das Go-Plan-Kontingent per Scan der lokalen Datenbank (rein lokal, ohne Netzwerk)";
@@ -321,6 +322,8 @@
 "provider.detect.found_credentials" = "Konfigurierte Zugangsdaten für %1$@ erkannt";
 "provider.detect.grok.found" = "Grok CLI oder lokale Anmeldedaten erkannt";
 "provider.detect.grok.hint" = "grok einmal ausführen und anmelden – Verbindung erfolgt automatisch";
+"provider.detect.grok_bot.found" = "Grok-Bot-App erkannt";
+"provider.detect.grok_bot.hint" = "Grok Bot installieren und in Cursor mit demselben Cursor-Konto anmelden – Verbindung erfolgt automatisch";
 "provider.detect.install_login_hint" = "%1$@ installieren und anmelden – Verbindung erfolgt automatisch";
 "provider.detect.kiro.found" = "Kiro erkannt";
 "provider.detect.kiro.hint" = "Kiro CLI installieren und anmelden – Verbindung erfolgt automatisch";
@@ -393,6 +396,9 @@
 "service.devin.token_rejected" = "Devin hat die aktuellen Anmeldedaten abgelehnt (HTTP %1$d); erneut bei Devin anmelden";
 "service.grok.not_logged_in" = "Keine Grok-CLI-Anmeldung erkannt; grok einmal ausführen und anmelden – Verbindung erfolgt automatisch";
 "service.grok.stale_login" = "Grok wurde lange nicht genutzt und die Anmeldedaten sind abgelaufen; grok einmal ausführen, um die Kontingent-Aktualisierung fortzusetzen";
+"service.grok_bot.not_logged_in" = "Die Grok-Bot-Nutzung wird über die Cursor-Anmeldung gelesen; in Cursor mit demselben Konto wie in Grok Bot anmelden";
+"service.grok_bot.no_weekly_allowance" = "Dieses Cursor-Konto hat kein wöchentliches Grok-Bot-Kontingent";
+"service.grok_bot.pooled_allowance" = "Dieses Konto nutzt ein gemeinsames Team-Kontingent, das Grok Bot nicht als Wochenprozentsatz ausweist";
 "service.kiro.not_installed" = "kiro-cli nicht erkannt; Kiro CLI installieren und anmelden – Verbindung erfolgt automatisch";
 "service.opencode.no_usage" = "Noch keine OpenCode-Go-Nutzung auf diesem Mac; erscheint nach der ersten OpenCode-Nutzung";
 "service.opencode.not_installed" = "OpenCode nicht erkannt; OpenCode Go installieren und anmelden – Verbindung erfolgt automatisch";
