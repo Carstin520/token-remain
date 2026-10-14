@@ -7,11 +7,22 @@ import SwiftUI
 struct OnboardingView: View {
     @ObservedObject var tracked: TrackedProvidersStore
     var robotAnimated = true
+    /// Starts the claude.ai Cookie guide once onboarding completes with the
+    /// Cookie source chosen. The view itself never touches credentials.
+    var onChooseClaudeCookie: () -> Void = {}
+
+    /// How the system Claude card should be read. The CLI login stays the
+    /// default; the Cookie only replaces it once the user saves one.
+    enum ClaudeSource { case cli, cookie }
 
     @State private var detections: [TrackedProvidersStore.Detection] = []
     @State private var selection: Set<ProviderQuota.Provider> = []
     /// 用户通过 "+" 手动加入列表的未检测到应用,保持行可见、可再取消。
     @State private var manuallyAdded: Set<ProviderQuota.Provider> = []
+    /// Second step, shown only when Claude is being tracked: which login to read.
+    @State private var showsClaudeSourceStep = false
+    @State private var claudeSource: ClaudeSource = .cli
+    @State private var claudeCLIInstalled = true
 
     /// 主列表只放检测到的应用 + 用户手动添加的;其余收进 "+" 菜单,
     /// 列表短而相关,又不会把"没列出来"误读成"不支持"。
@@ -24,6 +35,24 @@ struct OnboardingView: View {
     }
 
     var body: some View {
+        Group {
+            if showsClaudeSourceStep {
+                claudeSourceStep
+            } else {
+                providerStep
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(DashboardSurface.canvas)
+        .preferredColorScheme(.dark)
+        .onAppear {
+            guard detections.isEmpty else { return }
+            detections = TrackedProvidersStore.detections()
+            selection = Set(detections.filter(\.installed).map(\.provider))
+        }
+    }
+
+    private var providerStep: some View {
         VStack(spacing: 0) {
             Spacer(minLength: 24)
 
@@ -63,7 +92,12 @@ struct OnboardingView: View {
 
             VStack(spacing: 8) {
                 Button {
-                    tracked.completeOnboarding(enabled: selection)
+                    if selection.contains(.claude) {
+                        claudeCLIInstalled = ProviderCLIExecutableResolver.resolve(named: "claude") != nil
+                        showsClaudeSourceStep = true
+                    } else {
+                        finish()
+                    }
                 } label: {
                     Text(selection.isEmpty ? L10n.text("onboarding.start_without") : L10n.format("onboarding.start_tracking", selection.count))
                         .font(.system(size: 14, weight: .semibold))
@@ -79,13 +113,166 @@ struct OnboardingView: View {
             }
             .padding(.bottom, 28)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(DashboardSurface.canvas)
-        .preferredColorScheme(.dark)
-        .onAppear {
-            guard detections.isEmpty else { return }
-            detections = TrackedProvidersStore.detections()
-            selection = Set(detections.filter(\.installed).map(\.provider))
+    }
+
+    private func finish() {
+        tracked.completeOnboarding(enabled: selection)
+        if selection.contains(.claude), claudeSource == .cookie {
+            onChooseClaudeCookie()
+        }
+    }
+
+    /// Claude has two ways in and each fails differently, so the choice is
+    /// made up front with its trade-offs rather than discovered when the card
+    /// stops updating. Nothing here is irreversible: Data Sources offers both.
+    private var claudeSourceStep: some View {
+        VStack(spacing: 0) {
+            Spacer(minLength: 24)
+
+            VStack(spacing: 10) {
+                BrandIcon(provider: .claude)
+                    .foregroundStyle(DashboardTheme.claudeBrand)
+                    .frame(width: 36, height: 36)
+                Text(L10n.text("onboarding.claude_source.title"))
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(DashboardTheme.text)
+                    .multilineTextAlignment(.center)
+                Text(L10n.text("onboarding.claude_source.subtitle"))
+                    .font(.system(size: 13))
+                    .foregroundStyle(DashboardTheme.secondaryText)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 460)
+            }
+            .padding(.bottom, 22)
+
+            HStack(alignment: .top, spacing: 14) {
+                claudeSourceCard(
+                    .cli,
+                    icon: "terminal",
+                    prefix: "onboarding.claude_source.cli",
+                    pros: 2, cons: 2,
+                    recommended: true
+                )
+                claudeSourceCard(
+                    .cookie,
+                    icon: "globe",
+                    prefix: "onboarding.claude_source.cookie",
+                    pros: 2, cons: 3,
+                    recommended: false
+                )
+            }
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: 760)
+            .padding(.horizontal, 24)
+
+            if claudeSource == .cli, !claudeCLIInstalled {
+                Label(L10n.text("onboarding.claude_source.cli_missing"), systemImage: "exclamationmark.triangle.fill")
+                    .font(.system(size: 12))
+                    .foregroundStyle(DashboardTheme.warning)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: 720)
+                    .padding(.top, 14)
+            }
+
+            Spacer(minLength: 20)
+
+            VStack(spacing: 8) {
+                Button {
+                    finish()
+                } label: {
+                    Text(
+                        claudeSource == .cookie
+                            ? L10n.text("onboarding.claude_source.start_cookie")
+                            : L10n.format("onboarding.start_tracking", selection.count)
+                    )
+                    .font(.system(size: 14, weight: .semibold))
+                    .frame(maxWidth: 300)
+                    .padding(.vertical, 8)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(DashboardTheme.purple)
+
+                Button(L10n.text("onboarding.back")) { showsClaudeSourceStep = false }
+                    .buttonStyle(.plain)
+                    .font(.system(size: 12))
+                    .foregroundStyle(DashboardTheme.secondaryText)
+            }
+            .padding(.bottom, 28)
+        }
+    }
+
+    private func claudeSourceCard(
+        _ source: ClaudeSource,
+        icon: String,
+        prefix: String,
+        pros: Int,
+        cons: Int,
+        recommended: Bool
+    ) -> some View {
+        let isOn = claudeSource == source
+        return Button {
+            claudeSource = source
+        } label: {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 8) {
+                    Image(systemName: icon)
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(DashboardTheme.text)
+                    Text(L10n.text("\(prefix).title"))
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(DashboardTheme.text)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if recommended {
+                        TagPill(text: L10n.text("onboarding.claude_source.recommended"))
+                    }
+                    Spacer(minLength: 8)
+                    Image(systemName: isOn ? "checkmark.circle.fill" : "circle")
+                        .font(.system(size: 20))
+                        .foregroundStyle(isOn ? DashboardTheme.success : DashboardTheme.mutedText)
+                }
+                Text(L10n.text("\(prefix).summary"))
+                    .font(.system(size: 12))
+                    .foregroundStyle(DashboardTheme.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+                Divider().overlay(DashboardSurface.border)
+                ForEach(1...pros, id: \.self) { index in
+                    tradeOff(L10n.text("\(prefix).pro\(index)"), symbol: "checkmark.circle.fill", color: DashboardTheme.success)
+                }
+                ForEach(1...cons, id: \.self) { index in
+                    tradeOff(L10n.text("\(prefix).con\(index)"), symbol: "exclamationmark.circle.fill", color: DashboardTheme.warning)
+                }
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(isOn ? DashboardSurface.surface2 : DashboardSurface.surface)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(
+                                isOn
+                                    ? AnyShapeStyle(DashboardTheme.purple.opacity(0.5))
+                                    : AnyShapeStyle(DashboardSurface.border),
+                                lineWidth: 1
+                            )
+                    )
+            )
+            .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(L10n.text("\(prefix).title"))
+        .accessibilityAddTraits(isOn ? .isSelected : [])
+    }
+
+    private func tradeOff(_ text: String, symbol: String, color: Color) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 7) {
+            Image(systemName: symbol)
+                .font(.system(size: 11))
+                .foregroundStyle(color)
+            Text(text)
+                .font(.system(size: 12))
+                .foregroundStyle(DashboardTheme.text)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 

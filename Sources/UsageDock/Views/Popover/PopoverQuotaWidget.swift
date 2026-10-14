@@ -10,6 +10,9 @@ struct PopoverQuotaWidget: View {
     @ObservedObject var store: UsageStore
     @ObservedObject var layout: PopoverLayoutStore
     @ObservedObject var preferences: PreferencesStore = .shared
+    /// Opens the claude.ai Cookie setup. Offered only on the system Claude
+    /// card while it needs signing in; isolated accounts sign in elsewhere.
+    var onSignInWithCookie: (() -> Void)?
 
     /// Speed of this provider's most-used model from local logs; nil for
     /// providers without a log reader or without enough timed responses.
@@ -152,10 +155,11 @@ struct PopoverQuotaWidget: View {
                         remainingWindows: Array(orderedWindows.dropFirst()),
                         accountName: nil,
                         trailingNotice: notice,
+                        offersCookieSignIn: offersCookieSignIn,
                         modelSpeed: modelSpeed
                     )
                 } else if let notice {
-                    noticeRow(notice)
+                    noticeRow(notice, offersCookieSignIn: offersCookieSignIn)
                 } else {
                     loadingRow
                 }
@@ -206,6 +210,7 @@ struct PopoverQuotaWidget: View {
         remainingWindows: [(window: QuotaWindow, remainingBalance: QuotaBalance?)],
         accountName: String?,
         trailingNotice: String?,
+        offersCookieSignIn: Bool = false,
         modelSpeed: ModelSpeedSummary? = nil
     ) -> some View {
         // This first row is deliberately stable across both states:
@@ -269,7 +274,7 @@ struct PopoverQuotaWidget: View {
             freshnessRow(quota)
         }
         if let trailingNotice {
-            noticeRow(trailingNotice)
+            noticeRow(trailingNotice, offersCookieSignIn: offersCookieSignIn)
         }
     }
 
@@ -314,11 +319,20 @@ struct PopoverQuotaWidget: View {
         .accessibilityValue(text)
     }
 
-    private func noticeRow(_ notice: String) -> some View {
+    private var offersCookieSignIn: Bool {
+        provider == .claude && store.claudeNeedsSignIn && onSignInWithCookie != nil
+    }
+
+    @ViewBuilder
+    private func noticeRow(_ notice: String, offersCookieSignIn: Bool = false) -> some View {
         Label(notice, systemImage: "moon.zzz.fill")
             .font(.system(size: 11))
             .usageDockAdaptiveForeground(.secondary)
             .fixedSize(horizontal: false, vertical: true)
+        if offersCookieSignIn, let onSignInWithCookie {
+            Button(L10n.text("claude.web.sign_in_with_cookie"), action: onSignInWithCookie)
+                .controlSize(.small)
+        }
     }
 
     private func freshnessRow(_ quota: ProviderQuota) -> some View {

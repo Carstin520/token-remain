@@ -49,6 +49,14 @@ final class UsageStore: ObservableObject {
     /// 刻意不进全局错误条:"未接入某工具"是卡片语境的信息,
     /// 不该像故障一样反复告警。
     @Published private(set) var providerNotices: [ProviderQuota.Provider: String] = [:]
+    /// Organizations offered when a claude.ai session belongs to several. Set
+    /// by a validation or refresh that stopped at `organizationRequired`, and
+    /// cleared by any other outcome so a stale picker never outlives it.
+    @Published private(set) var claudeWebOrganizationChoices: [ClaudeWebUsageService.OrganizationChoice] = []
+    /// The system Claude source last failed in a way only signing in again
+    /// fixes (same policy as the signed-out notification), so the quota card
+    /// can offer the claude.ai Cookie setup instead of only describing it.
+    @Published private(set) var claudeNeedsSignIn = false
     /// A credential replacement/clear retires reads started for the previous account.
     private var credentialRevisions: [ProviderQuota.Provider: UInt64] = [:]
     /// Additive multi-account state. The provider-keyed `localQuotas` remains
@@ -856,6 +864,10 @@ final class UsageStore: ObservableObject {
             case .success(let value):
                 assign(value, to: .claude)
                 providerNotices[.claude] = nil
+                claudeNeedsSignIn = false
+                if value.attribution?.routeIdentifier.hasPrefix("claude-web:") == true {
+                    claudeWebOrganizationChoices = []
+                }
                 claudeRetryAfter = nil
                 claudeConsecutiveFailures = 0
                 sessionAlerts.reportHealthy(.claude)
@@ -864,6 +876,13 @@ final class UsageStore: ObservableObject {
             case .failure(let error):
                 if Self.invalidatesCachedQuota(error) {
                     assign(nil, to: .claude)
+                }
+                claudeNeedsSignIn = ProviderSessionAlerts.requiresSignIn(error)
+                // Only a stored web session's outcome speaks for the picker. An
+                // OAuth failure (no web session saved yet) must not hide the
+                // choices a user is picking from mid-setup.
+                if error is ClaudeWebUsageService.ServiceError {
+                    claudeWebOrganizationChoices = Self.claudeWebOrganizationChoices(in: error)
                 }
                 // 一次网络抖动不值得在卡片上挂到下一轮成功:缓存还新鲜时
                 // 只留日志。缓存过时后照常出声,用户才知道数据真的停了。
@@ -1227,6 +1246,7 @@ final class UsageStore: ObservableObject {
         credentialRevisions[provider, default: 0] &+= 1
         let revision = credentialRevisions[provider, default: 0]
         providerNotices[provider] = nil
+        if provider == .claude { claudeWebOrganizationChoices = [] }
         do {
             // Validate against the selected provider before touching an older
             // Keychain item. This is essential when repairing a stale ACL,
@@ -1240,6 +1260,7 @@ final class UsageStore: ObservableObject {
             try credentialSave(provider, normalized)
             // Also retire background reads that started while validation was running.
             credentialRevisions[provider, default: 0] &+= 1
+            if provider == .claude { claudeNeedsSignIn = false }
             assign(quota, to: provider)
             providerNotices[provider] = nil
             quotaCache.save(currentSnapshot())
@@ -1247,8 +1268,37 @@ final class UsageStore: ObservableObject {
         } catch {
             guard revision == credentialRevisions[provider, default: 0] else { return false }
             providerNotices[provider] = AsyncDeadline.message(for: error)
+            if provider == .claude { claudeWebOrganizationChoices = Self.claudeWebOrganizationChoices(in: error) }
             return false
         }
+    }
+
+    /// Re-saves the stored claude.ai session with the chosen organization, for
+    /// a session that became ambiguous after it was saved. The secret is read
+    /// from the app-owned Keychain item without a prompt and never reaches the
+    /// view; validation runs before the item is replaced, as in `saveAPIKey`.
+    @discardableResult
+    func chooseStoredClaudeWebOrganization(_ organizationID: String) async -> Bool {
+        do {
+            guard let stored = try Self.storedPastedCredential(for: .claude, interaction: .disallowed) else {
+                throw StoredCredentialActionError.missing(ProviderQuota.Provider.claude.displayName)
+            }
+            var configuration = try ClaudeWebUsageService.Configuration.decode(stored)
+            configuration.organizationID = organizationID
+            return await saveAPIKey(try configuration.encoded(), for: .claude)
+        } catch {
+            providerNotices[.claude] = AsyncDeadline.message(for: error)
+            return false
+        }
+    }
+
+    nonisolated static func claudeWebOrganizationChoices(
+        in error: Error
+    ) -> [ClaudeWebUsageService.OrganizationChoice] {
+        guard case .organizationRequired(let choices)? = error as? ClaudeWebUsageService.ServiceError else {
+            return []
+        }
+        return choices
     }
 
     nonisolated static func saveCredential(_ provider: ProviderQuota.Provider, _ credential: String) throws {
@@ -1277,6 +1327,7 @@ final class UsageStore: ObservableObject {
             return false
         }
         if provider == .claude {
+            claudeWebOrganizationChoices = []
             assign(nil, to: .claude) // changing source must not retain the web account's quota
             await refresh(forceCCUsage: false, forceClaude: true)
         } else {

@@ -70,6 +70,43 @@ struct ClaudeDesktopUsageTests {
         }
     }
 
+    @Test func cookieParsingAcceptsCommonCopyFormats() throws {
+        for copied in [
+            "sessionKey=fixture-session",
+            "Cookie: sessionKey=fixture-session; other=c",
+            "curl 'https://claude.ai/api/organizations' -H 'cookie: a=b; sessionKey=fixture-session'",
+            "curl 'https://claude.ai/' -b 'sessionKey=fixture-session'"
+        ] {
+            #expect(try ClaudeWebUsageService.Configuration.decode(copied).sessionKey == "fixture-session")
+        }
+        // A cookie whose name merely ends in sessionKey is a different cookie.
+        #expect(ClaudeWebUsageService.Configuration.sessionKeyValue(in: "xsessionKey=other") == nil)
+    }
+
+    @Test func clipboardImportAcceptsOnlyRecognisableSessions() {
+        typealias Configuration = ClaudeWebUsageService.Configuration
+        #expect(Configuration.recognizedCredential(in: "  sk-ant-sid01-fixture\n") == "sk-ant-sid01-fixture")
+        #expect(Configuration.recognizedCredential(in: "a=b; sessionKey=fixture-session") == "fixture-session")
+        // Unrelated clipboard text, including other secrets, never fills the field.
+        #expect(Configuration.recognizedCredential(in: "sk-proj-unrelated-fixture") == nil)
+        #expect(Configuration.recognizedCredential(in: "hello world") == nil)
+        #expect(Configuration.recognizedCredential(in: "") == nil)
+    }
+
+    @Test func repeatedOrganizationNamesStayDistinguishable() {
+        typealias Choice = ClaudeWebUsageService.OrganizationChoice
+        let labels = Choice.labels(for: [
+            Choice(id: "11111111-1111-4111-8111-111111111111", name: "Personal"),
+            Choice(id: "22222222-2222-4222-8222-222222222222", name: "Personal"),
+            Choice(id: "33333333-3333-4333-8333-333333333333", name: "Team"),
+            Choice(id: "44444444-4444-4444-8444-444444444444", name: nil)
+        ])
+        #expect(labels["11111111-1111-4111-8111-111111111111"] == "Personal (11111111)")
+        #expect(labels["22222222-2222-4222-8222-222222222222"] == "Personal (22222222)")
+        #expect(labels["33333333-3333-4333-8333-333333333333"] == "Team")
+        #expect(labels["44444444-4444-4444-8444-444444444444"] == "44444444-4444-4444-8444-444444444444")
+    }
+
     @Test func webQuotaUsesOnlySelectedOrganizationAndPreservesMissingReset() async throws {
         let id = "11111111-1111-4111-8111-111111111111"
         let quota = try await ClaudeWebUsageService().fetch(configuration: "fixture-session") { request in
@@ -94,6 +131,26 @@ struct ClaudeDesktopUsageTests {
             }
             Issue.record("Expected organization selection")
         } catch ClaudeWebUsageService.ServiceError.organizationRequired {}
+    }
+
+    @Test func ambiguousSessionOffersNamedChoicesWithChatOrganizationsFirst() async throws {
+        do {
+            _ = try await ClaudeWebUsageService().fetch(configuration: "fixture-session") { request in
+                let data = Data("""
+                [{"uuid":"11111111-1111-4111-8111-111111111111","name":"API workspace","capabilities":["api"]},
+                 {"uuid":"not-a-uuid","name":"Broken","capabilities":["chat"]},
+                 {"uuid":"22222222-2222-4222-8222-222222222222","name":"Team","capabilities":["chat"]},
+                 {"uuid":"33333333-3333-4333-8333-333333333333","name":"Personal","capabilities":["chat"]}]
+                """.utf8)
+                return (data, HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
+            }
+            Issue.record("Expected organization selection")
+        } catch let error as ClaudeWebUsageService.ServiceError {
+            guard case .organizationRequired(let choices) = error else { Issue.record("Unexpected \(error)"); return }
+            #expect(choices.map(\.name) == ["Team", "Personal", "API workspace"])
+            #expect(UsageStore.claudeWebOrganizationChoices(in: error) == choices)
+        }
+        #expect(UsageStore.claudeWebOrganizationChoices(in: ClaudeWebUsageService.ServiceError.expired).isEmpty)
     }
 
     @Test(arguments: [401, 403, 429, 500]) func httpFailuresAreDistinct(status: Int) async throws {
@@ -126,7 +183,7 @@ struct ClaudeDesktopUsageTests {
 
     @Test func webFailuresBackOffAndOnlyRejectedSessionsAskToSignIn() throws {
         let failures: [ClaudeWebUsageService.ServiceError] = [
-            .expired, .invalidCookie, .forbidden, .organizationRequired, .invalidResponse, .requestFailed(503)
+            .expired, .invalidCookie, .forbidden, .organizationRequired([]), .invalidResponse, .requestFailed(503)
         ]
         for failure in failures {
             let backoff = try #require(UsageStore.claudeRetryBackoff(for: failure))

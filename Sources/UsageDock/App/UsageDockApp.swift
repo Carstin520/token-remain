@@ -24,6 +24,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var launchAtLogin = LaunchAtLoginManager()
     private var statusBarController: StatusBarController?
     private var feedNotificationObserver: NSObjectProtocol?
+    private var dataSourcesNotificationObserver: NSObjectProtocol?
     private var dockIconCancellable: AnyCancellable?
     func applicationDidFinishLaunching(_ notification: Notification) {
         let arguments = ProcessInfo.processInfo.arguments
@@ -67,6 +68,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ) { [weak self] _ in
             Task { @MainActor [weak self] in
                 self?.statusBarController?.showDashboard(section: .overview)
+            }
+        }
+        dataSourcesNotificationObserver = NotificationCenter.default.addObserver(
+            forName: .tokenRemainOpenDataSources,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.statusBarController?.showDashboard(section: .dataSources)
             }
         }
 #if TOKENREMAIN_CLOUD_SYNC

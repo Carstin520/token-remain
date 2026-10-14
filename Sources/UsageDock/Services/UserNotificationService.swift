@@ -4,6 +4,7 @@ import UserNotifications
 
 extension Notification.Name {
     static let tokenRemainOpenAIFeed = Notification.Name("tokenRemain.openAIFeed")
+    static let tokenRemainOpenDataSources = Notification.Name("tokenRemain.openDataSources")
 }
 
 /// The app's single owner of `UNUserNotificationCenter`. Only one delegate can
@@ -84,6 +85,8 @@ final class UserNotificationService: NSObject, UNUserNotificationCenterDelegate,
         content.title = L10n.format("alert.provider_signed_out.title", provider.displayName)
         content.body = L10n.format("alert.provider_signed_out.body", provider.displayName)
         content.sound = .default
+        // Signing in again happens in Data Sources, so the banner opens it.
+        content.userInfo = ["route": "dataSources"]
 
         // A stable identifier per provider replaces any earlier copy instead of
         // stacking a new banner on every reminder.
@@ -120,6 +123,8 @@ final class UserNotificationService: NSObject, UNUserNotificationCenterDelegate,
             NSWorkspace.shared.open(url)
         } else if response.notification.request.content.userInfo["route"] as? String == "feed" {
             NotificationCenter.default.post(name: .tokenRemainOpenAIFeed, object: nil)
+        } else if response.notification.request.content.userInfo["route"] as? String == "dataSources" {
+            NotificationCenter.default.post(name: .tokenRemainOpenDataSources, object: nil)
         }
         completionHandler()
     }
