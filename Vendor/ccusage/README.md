@@ -6,14 +6,14 @@ without requiring Node.js, npm, or a first-launch package download.
 
 - arm64 package: `@ccusage/ccusage-darwin-arm64`
 - x86_64 package: `@ccusage/ccusage-darwin-x64`
-- Version: `20.0.30`
+- Version: `20.0.31`
 - Platform: Universal macOS (arm64 + x86_64), minimum macOS 14
 - License: MIT; see `LICENSE`
-- arm64 npm source: `https://registry.npmjs.org/@ccusage/ccusage-darwin-arm64/-/ccusage-darwin-arm64-20.0.30.tgz`
-- x86_64 npm source: `https://registry.npmjs.org/@ccusage/ccusage-darwin-x64/-/ccusage-darwin-x64-20.0.30.tgz`
-- arm64 SHA-256: `e01a8e7ace8b6836c0ce1f25813c88cb48526f70b90ecbe077faec80e0468032`
-- x86_64 SHA-256: `8f421a8d66578072cdc13e814fe10d53694505ee505f4eaeb0d780610ff42e83`
-- Universal SHA-256: `780e3d98527a0a13270b1ec053ace79ce7e6e1fb40698c27d5f1764c6406bbce`
+- arm64 npm source: `https://registry.npmjs.org/@ccusage/ccusage-darwin-arm64/-/ccusage-darwin-arm64-20.0.31.tgz`
+- x86_64 npm source: `https://registry.npmjs.org/@ccusage/ccusage-darwin-x64/-/ccusage-darwin-x64-20.0.31.tgz`
+- arm64 SHA-256: `fdec60203b05f3331deae72850d40ea6d948a0ae3e8cfb7e3b0a104a3b0f32bb`
+- x86_64 SHA-256: `b64995b6eb198c53bbf19142c06d0c9c2c2be931e8db873d53e0aeeed00cebd1`
+- Universal SHA-256: `4acccd8aaecfb56528ce406caaba9228342554eb3418b9f5656c0e2ac386a13d`
 
 The release build copies the executable to `TokenRemain.app/Contents/Helpers`,
 signs it with the same identity as the application, and verifies its version and
