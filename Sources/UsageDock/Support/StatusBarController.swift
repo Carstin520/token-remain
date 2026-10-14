@@ -530,7 +530,8 @@ final class StatusBarController: NSObject {
             lastDockIconKey = dockIconKey
             NSApp.applicationIconImage = TokenRemainHeadLogoArtwork.image(
                 slots: logoSlots,
-                size: 256
+                size: 256,
+                style: .dockTile
             )
         }
     }

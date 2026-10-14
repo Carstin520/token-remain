@@ -396,7 +396,7 @@ struct SettingsSection: View {
     /// confirmed on the spot rather than by looking down at the Dock.
     private var dockLogoSettings: some View {
         HStack(alignment: .center, spacing: 14) {
-            Image(nsImage: TokenRemainHeadLogoArtwork.image(slots: dockLogoSlots, size: 128))
+            Image(nsImage: TokenRemainHeadLogoArtwork.image(slots: dockLogoSlots, size: 128, style: .dockTile))
                 .resizable()
                 .interpolation(.high)
                 .frame(width: 56, height: 56)

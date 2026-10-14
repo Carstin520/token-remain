@@ -341,4 +341,93 @@ final class TokenRemainLogoTests: XCTestCase {
         XCTAssertEqual(selection?.windowMinutes, 300)
         XCTAssertEqual(selection?.remainingPercent, 8)
     }
+
+    // MARK: - macOS 26 app icon
+
+    private var repositoryRoot: URL {
+        URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+    }
+
+    /// The bundled Icon Composer icon and the running Dock tile are drawn by
+    /// different code; the same navy in both is what keeps launching the app
+    /// from visibly swapping its icon.
+    func testIconComposerFillMatchesTheRuntimeDockTile() throws {
+        let iconURL = repositoryRoot.appending(path: "Resources/AppIcon.icon")
+        let json = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: Data(contentsOf: iconURL.appending(path: "icon.json"))) as? [String: Any]
+        )
+        let fill = try XCTUnwrap((json["fill"] as? [String: Any])?["solid"] as? String)
+        let components = try XCTUnwrap(fill.split(separator: ":").last)
+            .split(separator: ",").compactMap { Double($0) }
+        XCTAssertEqual(components.count, 4)
+        let tile = TokenRemainHeadLogoArtwork.dockTileFill
+        XCTAssertEqual(components[0], tile.red, accuracy: 0.002)
+        XCTAssertEqual(components[1], tile.green, accuracy: 0.002)
+        XCTAssertEqual(components[2], tile.blue, accuracy: 0.002)
+
+        // Every layer must point at an image that ships in the package.
+        let groups = try XCTUnwrap(json["groups"] as? [[String: Any]])
+        let images = groups.flatMap { ($0["layers"] as? [[String: Any]]) ?? [] }
+            .compactMap { $0["image-name"] as? String }
+        XCTAssertFalse(images.isEmpty)
+        for image in images {
+            XCTAssertTrue(
+                FileManager.default.fileExists(atPath: iconURL.appending(path: "Assets/\(image)").path),
+                "missing AppIcon.icon asset \(image)"
+            )
+        }
+    }
+
+    /// macOS 26+ picks the compiled icon by name; older systems keep the
+    /// full-resolution icns, which actool's own fallback icns would downgrade.
+    func testInfoPlistNamesTheIconComposerIconAndKeepsTheIcnsFallback() throws {
+        let plist = try XCTUnwrap(
+            NSDictionary(contentsOf: repositoryRoot.appending(path: "Resources/Info.plist")) as? [String: Any]
+        )
+        XCTAssertEqual(plist["CFBundleIconName"] as? String, "AppIcon")
+        XCTAssertEqual(plist["CFBundleIconFile"] as? String, "TokenRemain.icns")
+    }
+
+    func testDockTileDrawsTheIconShapeWhileTheBareLogoStaysTransparent() throws {
+        let size = NSSize(width: 256, height: 256)
+        // A transparent source stands in for the robot: only the tile shows.
+        let source = NSImage(size: size, flipped: false) { _ in true }
+
+        // Rasterize into an explicit sRGB context: a TIFF round trip tags the
+        // bitmap with a device space and shifts the color being checked.
+        func color(_ image: NSImage, x: Int, y: Int) throws -> NSColor {
+            let width = Int(size.width), height = Int(size.height)
+            var pixels = [UInt8](repeating: 0, count: width * height * 4)
+            let context = try XCTUnwrap(CGContext(
+                data: &pixels, width: width, height: height, bitsPerComponent: 8,
+                bytesPerRow: width * 4, space: XCTUnwrap(CGColorSpace(name: CGColorSpace.sRGB)),
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+            ))
+            NSGraphicsContext.saveGraphicsState()
+            NSGraphicsContext.current = NSGraphicsContext(cgContext: context, flipped: false)
+            image.draw(in: NSRect(origin: .zero, size: size))
+            NSGraphicsContext.restoreGraphicsState()
+            // Row 0 of the buffer is the top of the image.
+            let index = ((height - 1 - y) * width + x) * 4
+            let alpha = Double(pixels[index + 3]) / 255
+            func channel(_ offset: Int) -> Double {
+                alpha == 0 ? 0 : Double(pixels[index + offset]) / 255 / alpha
+            }
+            return NSColor(srgbRed: channel(0), green: channel(1), blue: channel(2), alpha: alpha)
+        }
+
+        let tile = TokenRemainHeadLogoArtwork.renderDockTileForTesting(source, size: size.width)
+        // Outside the 824/1024 shape: transparent, as on any macOS icon grid.
+        XCTAssertEqual(try color(tile, x: 4, y: 128).alphaComponent, 0, accuracy: 0.01)
+        XCTAssertEqual(try color(tile, x: 30, y: 30).alphaComponent, 0, accuracy: 0.01)
+        // Inside it: the Icon Composer navy.
+        let inside = try color(tile, x: 128, y: 128)
+        XCTAssertEqual(inside.alphaComponent, 1, accuracy: 0.01)
+        XCTAssertEqual(inside.redComponent, TokenRemainHeadLogoArtwork.dockTileFill.red, accuracy: 0.02)
+        XCTAssertEqual(inside.blueComponent, TokenRemainHeadLogoArtwork.dockTileFill.blue, accuracy: 0.02)
+
+        let bare = TokenRemainHeadLogoArtwork.renderSourceUprightForTesting(source, size: size.width)
+        XCTAssertEqual(try color(bare, x: 128, y: 128).alphaComponent, 0, accuracy: 0.01)
+    }
 }

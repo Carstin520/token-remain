@@ -119,7 +119,32 @@ enum TokenRemainHeadLogoArtwork {
         )
     }
 
-    static func image(slots: [Slot], size: CGFloat = 1024) -> NSImage {
+    /// How the artwork sits on its canvas.
+    enum Style: String {
+        /// Transparent around the robot, for in-app brand presentations.
+        case bare
+        /// The running Dock icon. macOS 26+ draws the bundled Icon Composer
+        /// icon (Resources/AppIcon.icon) on the system icon shape but shows an
+        /// `applicationIconImage` exactly as given, so this draws the same
+        /// navy shape itself; otherwise the icon loses its tile the moment the
+        /// app launches.
+        case dockTile
+    }
+
+    /// The Icon Composer fill of `Resources/AppIcon.icon`, sampled from the
+    /// static master. A test keeps the two in step.
+    static let dockTileFill = (red: 8.0 / 255, green: 20.0 / 255, blue: 49.0 / 255)
+
+    /// Apple's macOS icon grid: an 824-point shape centred on a 1024 canvas.
+    static let dockTileInset: CGFloat = 100.0 / 1024
+    static let dockTileCornerRadius: CGFloat = 185.4 / 1024
+
+    /// The master composes its art inside an older tile inset by this much;
+    /// the Dock tile maps that square onto its own shape, as the `.icon`
+    /// foreground layer does (script/extract_app_icon_foreground.swift).
+    static let masterTileInset: CGFloat = 46.0 / 1024
+
+    static func image(slots: [Slot], size: CGFloat = 1024, style: Style = .bare) -> NSImage {
         let moodRemaining = moodRemaining(slots)
         let state = TokenRemainLogoState.resolve(remainingPercent: moodRemaining)
         let rows = slots.compactMap { slot in
@@ -128,7 +153,7 @@ enum TokenRemainHeadLogoArtwork {
             }
         }
         let key = renderKey(slots: slots)
-        let cacheKey = "\(key)-\(Int(size.rounded()))" as NSString
+        let cacheKey = "\(key)-\(style.rawValue)-\(Int(size.rounded()))" as NSString
         if let cached = imageCache.object(forKey: cacheKey) {
             return cached
         }
@@ -137,7 +162,9 @@ enum TokenRemainHeadLogoArtwork {
             return state.image(size: size, remainingPercent: moodRemaining)
         }
 
-        let image = render(source: source, rows: rows, size: size)
+        let image = style == .dockTile
+            ? renderDockTile(source: source, rows: rows, size: size)
+            : render(source: source, rows: rows, size: size)
         image.isTemplate = false
         imageCache.setObject(image, forKey: cacheKey)
         return image
@@ -169,6 +196,46 @@ enum TokenRemainHeadLogoArtwork {
         }
     }
 
+    private static func renderDockTile(
+        source: NSImage,
+        rows: [MeterRow],
+        size: CGFloat
+    ) -> NSImage {
+        let dimensions = NSSize(width: size, height: size)
+        return NSImage(size: dimensions, flipped: false) { rect in
+            guard let graphics = NSGraphicsContext.current else { return false }
+            graphics.shouldAntialias = true
+            graphics.imageInterpolation = .high
+
+            let body = rect.insetBy(dx: size * dockTileInset, dy: size * dockTileInset)
+            let shape = NSBezierPath(
+                roundedRect: body,
+                xRadius: size * dockTileCornerRadius,
+                yRadius: size * dockTileCornerRadius
+            )
+            // The master's tile square maps onto `body`; its full canvas is
+            // that square grown back by the master's own inset.
+            let masterScale = body.width / (1 - 2 * masterTileInset)
+            let content = body.insetBy(
+                dx: -masterScale * masterTileInset,
+                dy: -masterScale * masterTileInset
+            )
+            NSGraphicsContext.saveGraphicsState()
+            shape.addClip()
+            NSColor(
+                srgbRed: dockTileFill.red,
+                green: dockTileFill.green,
+                blue: dockTileFill.blue,
+                alpha: 1
+            ).setFill()
+            body.fill()
+            source.draw(in: content, from: .zero, operation: .sourceOver, fraction: 1)
+            drawMeters(rows, in: content)
+            NSGraphicsContext.restoreGraphicsState()
+            return true
+        }
+    }
+
     private static func sourceImage(for state: TokenRemainLogoState) -> NSImage? {
         guard let url = AppResourceBundle.bundle.url(
             forResource: state.rawValue,
@@ -181,6 +248,12 @@ enum TokenRemainHeadLogoArtwork {
     /// Exercises the same unflipped AppKit renderer as the production Dock icon.
     static func renderSourceUprightForTesting(_ source: NSImage, size: CGFloat) -> NSImage {
         render(source: source, rows: [], size: size)
+    }
+
+    /// The Dock-tile renderer with an injected source, since SwiftPM tests do
+    /// not bundle the head-state PNGs.
+    static func renderDockTileForTesting(_ source: NSImage, size: CGFloat) -> NSImage {
+        renderDockTile(source: source, rows: [], size: size)
     }
 
     private static func drawMeters(_ rows: [MeterRow], in rect: NSRect) {

@@ -30,4 +30,11 @@ sips -z 512 512 "$MASTER_ICON" --out "$ICONSET/icon_512x512.png" >/dev/null
 cp "$MASTER_ICON" "$ICONSET/icon_512x512@2x.png"
 
 iconutil -c icns "$ICONSET" -o "$APP_ICON"
+
+# macOS 26+ icon: the same master as an Icon Composer foreground layer. If the
+# printed navy changes, update `fill` in AppIcon.icon/icon.json and
+# TokenRemainHeadLogoArtwork.dockTileFill together; TokenRemainLogoTests fails
+# while those two disagree.
+xcrun swift "$ROOT_DIR/script/extract_app_icon_foreground.swift" \
+  "$MASTER_ICON" "$ROOT_DIR/Resources/AppIcon.icon/Assets/foreground.png"
 echo "Built mood states and the dual-meter macOS app icon"
