@@ -3,6 +3,27 @@
 All notable product changes are recorded here. TokenRemain uses Semantic
 Versioning for public releases.
 
+## 1.4.3 — 2026-10-14
+
+### Improved
+
+- Guide Claude Desktop-only users through claude.ai Cookie setup, with browser-specific
+  instructions, clipboard import and named organization selection.
+- Explain Claude Code CLI and web-session options during onboarding, and open
+  Data Sources from signed-out notifications.
+- Keep Account Management compact with an Add App menu and summarize discovered
+  Claude Code/Cowork logs while retaining removable custom folders.
+- Ship an Icon Composer app icon and a matching navy tile for the live Dock icon
+  and Settings preview, retaining the legacy icns resource.
+
+### Fixed
+
+- Update the bundled Universal ccusage helper to 20.0.31 with verified official
+  package integrity and license metadata.
+- Correct Claude login guidance to distinguish the desktop app from Claude Code.
+- Cancel pending Cookie validation when its guide closes or reopens, preventing
+  late credential saves, and keep guide-window sizing under AppKit control.
+
 ## 1.4.2 — 2026-10-13
 
 ### Added

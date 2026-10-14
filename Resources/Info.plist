@@ -40,11 +40,11 @@
   <key>CFBundlePackageType</key>
   <string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.4.2</string>
+	<string>1.4.3</string>
 	<key>CFBundleVersion</key>
-	<string>39</string>
+	<string>40</string>
 	<key>TokenRemainBundledCCUsageVersion</key>
-	<string>20.0.30</string>
+	<string>20.0.31</string>
 	<key>LSMinimumSystemVersion</key>
   <string>14.0</string>
   <key>LSUIElement</key>
