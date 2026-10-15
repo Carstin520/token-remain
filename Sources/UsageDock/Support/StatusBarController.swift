@@ -192,7 +192,7 @@ final class StatusBarController: NSObject {
             button.action = #selector(togglePopover)
             button.sendAction(on: [.leftMouseUp])
             button.imagePosition = .noImage
-            button.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
+            button.font = Self.statusFont
         }
 
         // 任意额度数据变化都重绘菜单栏(objectWillChange 覆盖全部 provider,
@@ -491,26 +491,7 @@ final class StatusBarController: NSObject {
         guard fingerprint != lastStatusFingerprint else { return }
         lastStatusFingerprint = fingerprint
 
-        let iconSize: CGFloat = 13
-        let font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
-        let attributes: [NSAttributedString.Key: Any] = [
-            .font: font,
-            .foregroundColor: NSColor.labelColor
-        ]
-        let title = NSMutableAttributedString()
-        if segments.isEmpty {
-            title.append(NSAttributedString(string: "TR", attributes: attributes))
-        }
-        for (index, segment) in segments.enumerated() {
-            if index > 0 {
-                let separator = displayMode == .compact ? " " : " · "
-                title.append(NSAttributedString(string: separator, attributes: attributes))
-            }
-            title.append(Self.statusIcon(segment.0, size: iconSize))
-            if displayMode != .compact {
-                title.append(NSAttributedString(string: " \(segment.1)", attributes: attributes))
-            }
-        }
+        let title = Self.statusTitle(segments: segments, displayMode: displayMode)
 
         statusItem.button?.image = nil
         statusItem.button?.attributedTitle = title
@@ -536,18 +517,41 @@ final class StatusBarController: NSObject {
         }
     }
 
+    static var statusFont: NSFont { .monospacedDigitSystemFont(ofSize: 12, weight: .regular) }
+
+    static func statusTitle(
+        segments: [(ProviderQuota.Provider, String)],
+        displayMode: MenuBarDisplayMode
+    ) -> NSAttributedString {
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: statusFont,
+            .foregroundColor: NSColor.labelColor
+        ]
+        let title = NSMutableAttributedString()
+        if segments.isEmpty { title.append(NSAttributedString(string: "TR", attributes: attributes)) }
+        for (index, segment) in segments.enumerated() {
+            if index > 0 {
+                title.append(NSAttributedString(string: displayMode == .compact ? " " : " · ", attributes: attributes))
+            }
+            title.append(statusIcon(segment.0, size: 13))
+            if displayMode != .compact {
+                title.append(NSAttributedString(string: " \(segment.1)", attributes: attributes))
+            }
+        }
+        return title
+    }
+
     static func statusIcon(
         _ provider: ProviderQuota.Provider,
         size: CGFloat
     ) -> NSAttributedString {
-        // Normalize size/padding first, then let the cell apply template-image
-        // colors for the current appearance. Assigning attachment.image draws
-        // the black template pixels literally on dark menu-bar backgrounds.
         let image = BrandIcon.menuBarImage(for: provider, size: size)
-
         let attachment = NSTextAttachment()
-        attachment.attachmentCell = NSTextAttachmentCell(imageCell: image)
-        attachment.bounds = NSRect(x: 0, y: -2, width: size, height: size)
-        return NSAttributedString(attachment: attachment)
+        attachment.image = image
+        // Center on the digits' cap height, not the line box's descender space.
+        attachment.bounds = NSRect(x: 0, y: (statusFont.capHeight - size) / 2, width: size, height: size)
+        let result = NSMutableAttributedString(attachment: attachment)
+        result.addAttribute(.font, value: statusFont, range: NSRange(location: 0, length: result.length))
+        return result
     }
 }

@@ -3,6 +3,13 @@
 All notable product changes are recorded here. TokenRemain uses Semantic
 Versioning for public releases.
 
+## Unreleased
+
+### Improved
+
+- Unify menu-bar provider icons in blue, normalize visible glyph sizes and align
+  them with SF Pro tabular numerals while preserving original brand colors elsewhere.
+
 ## 1.4.3 — 2026-10-14
 
 ### Improved
