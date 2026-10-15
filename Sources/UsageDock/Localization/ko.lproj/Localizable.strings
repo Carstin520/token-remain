@@ -911,3 +911,9 @@
 "secret.placeholder.augment" = "로그인 후 app.augmentcode.com Cookie 헤더를 붙여 넣으세요";
 "service.muse.session_expired" = "muse.ai가 이 세션을 로그아웃했습니다. muse.ai에 다시 로그인하고 새 Cookie를 붙여 넣으세요.";
 "service.muse.action_not_found" = "muse.ai 페이지에서 구독 정보를 찾지 못했습니다. muse.ai가 변경되었을 수 있으니 새로고침해 다시 시도하세요.";
+"alert.provider_cookie_expired.title" = "%@ 세션이 만료됨";
+"alert.provider_cookie_expired.body" = "붙여 넣은 %@ 웹 세션이 더 이상 유효하지 않아 카드에 마지막으로 성공한 값이 표시됩니다. 데이터 소스를 열고 새 Cookie를 붙여 넣으세요. 안내가 단계별로 도와줍니다.";
+"muse_code.team" = "팀";
+"muse_code.team_automatic" = "자동(구독이 있는 첫 번째 팀)";
+"service.muse_code.team_no_quota" = "선택한 팀 %@에는 Muse Code 구독이 없습니다. 데이터 소스에서 다른 팀을 선택하세요.";
+"amp.cli_hint" = "Amp CLI로 로그인했다면 해당 API 키를 읽기 전용으로 자동 사용합니다. 아래 Cookie는 CLI가 없을 때만 필요합니다.";

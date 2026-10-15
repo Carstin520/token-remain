@@ -911,3 +911,9 @@
 "secret.placeholder.augment" = "登录后粘贴 app.augmentcode.com 的 Cookie 请求头";
 "service.muse.session_expired" = "muse.ai 已让此会话退出登录。请在 muse.ai 重新登录并粘贴新的 Cookie。";
 "service.muse.action_not_found" = "未能在 muse.ai 页面中找到订阅数据，muse.ai 可能已改版；请刷新重试。";
+"alert.provider_cookie_expired.title" = "%@ 会话已过期";
+"alert.provider_cookie_expired.body" = "你粘贴的 %@ 网页会话已失效，卡片显示的是最后一次成功的快照。请打开“数据源”粘贴新的 Cookie，指引会一步步带你完成。";
+"muse_code.team" = "团队";
+"muse_code.team_automatic" = "自动（第一个有订阅的团队）";
+"service.muse_code.team_no_quota" = "所选团队 %@ 没有 Muse Code 订阅，请在“数据源”中选择其他团队。";
+"amp.cli_hint" = "已用 Amp CLI 登录？会自动、只读地使用它的 API Key，只有没装 CLI 时才需要下面的 Cookie。";

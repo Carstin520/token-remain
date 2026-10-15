@@ -911,3 +911,9 @@
 "secret.placeholder.augment" = "サインイン後に app.augmentcode.com の Cookie ヘッダーを貼り付け";
 "service.muse.session_expired" = "muse.ai がこのセッションをサインアウトしました。muse.ai に再度サインインし、新しい Cookie を貼り付けてください。";
 "service.muse.action_not_found" = "muse.ai のページでサブスクリプション情報が見つかりませんでした。muse.ai が変更された可能性があります。更新して再試行してください。";
+"alert.provider_cookie_expired.title" = "%@ のセッションが期限切れです";
+"alert.provider_cookie_expired.body" = "貼り付けた %@ のウェブセッションが無効になったため、カードには最後に取得できた値が表示されています。データソースを開いて新しい Cookie を貼り付けてください。ガイドが手順を案内します。";
+"muse_code.team" = "チーム";
+"muse_code.team_automatic" = "自動（サブスクリプションのある最初のチーム）";
+"service.muse_code.team_no_quota" = "選択したチーム %@ には Muse Code のサブスクリプションがありません。データソースで別のチームを選んでください。";
+"amp.cli_hint" = "Amp CLI でサインイン済みなら、その API キーを読み取り専用で自動的に使います。下の Cookie は CLI がない場合だけ必要です。";

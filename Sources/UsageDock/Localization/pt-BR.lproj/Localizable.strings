@@ -199,3 +199,9 @@
 "accounts.management.remove_app_named" = "Remove %@ from Account Management";
 "accounts.management.remove_app_title" = "Remove %@?";
 "accounts.management.remove_app_message" = "Monitoring for %@ stops and its card is removed. Saved accounts and keys are kept, so adding it back from Add App picks up where you left off.";
+"alert.provider_cookie_expired.title" = "%@ session expired";
+"alert.provider_cookie_expired.body" = "The %@ web session you pasted is no longer accepted, so the card shows the last good snapshot. Open Data Sources and paste a fresh Cookie — the guide walks you through it.";
+"muse_code.team" = "Team";
+"muse_code.team_automatic" = "Automatic (first team with a subscription)";
+"service.muse_code.team_no_quota" = "The selected team %@ has no Muse Code subscription. Choose another team in Data Sources.";
+"amp.cli_hint" = "Signed in with the Amp CLI? Its API key is used automatically and read-only, so the Cookie below is only needed without the CLI.";

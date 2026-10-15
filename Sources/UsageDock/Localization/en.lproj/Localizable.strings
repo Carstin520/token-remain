@@ -911,3 +911,9 @@
 "secret.placeholder.augment" = "Paste your app.augmentcode.com Cookie header after signing in";
 "service.muse.session_expired" = "muse.ai signed this session out. Sign in at muse.ai and paste a fresh Cookie.";
 "service.muse.action_not_found" = "Couldn’t find muse.ai’s subscription data on the page. muse.ai may have changed; refresh to retry.";
+"alert.provider_cookie_expired.title" = "%@ session expired";
+"alert.provider_cookie_expired.body" = "The %@ web session you pasted is no longer accepted, so the card shows the last good snapshot. Open Data Sources and paste a fresh Cookie — the guide walks you through it.";
+"muse_code.team" = "Team";
+"muse_code.team_automatic" = "Automatic (first team with a subscription)";
+"service.muse_code.team_no_quota" = "The selected team %@ has no Muse Code subscription. Choose another team in Data Sources.";
+"amp.cli_hint" = "Signed in with the Amp CLI? Its API key is used automatically and read-only, so the Cookie below is only needed without the CLI.";

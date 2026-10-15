@@ -893,7 +893,13 @@ export default {
     "secret.placeholder.factory": "Paste your app.factory.ai Cookie header after signing in",
     "secret.placeholder.augment": "Paste your app.augmentcode.com Cookie header after signing in",
     "service.muse.session_expired": "muse.ai signed this session out. Sign in at muse.ai and paste a fresh Cookie.",
-    "service.muse.action_not_found": "Couldn’t find muse.ai’s subscription data on the page. muse.ai may have changed; refresh to retry."
+    "service.muse.action_not_found": "Couldn’t find muse.ai’s subscription data on the page. muse.ai may have changed; refresh to retry.",
+    "alert.provider_cookie_expired.title": "%@ session expired",
+    "alert.provider_cookie_expired.body": "The %@ web session you pasted is no longer accepted, so the card shows the last good snapshot. Open Data Sources and paste a fresh Cookie — the guide walks you through it.",
+    "muse_code.team": "Team",
+    "muse_code.team_automatic": "Automatic (first team with a subscription)",
+    "service.muse_code.team_no_quota": "The selected team %@ has no Muse Code subscription. Choose another team in Data Sources.",
+    "amp.cli_hint": "Signed in with the Amp CLI? Its API key is used automatically and read-only, so the Cookie below is only needed without the CLI."
   },
   "zh-Hans": {
     "widget.local_usage": "今日本地统计",
@@ -1788,7 +1794,13 @@ export default {
     "secret.placeholder.factory": "登录后粘贴 app.factory.ai 的 Cookie 请求头",
     "secret.placeholder.augment": "登录后粘贴 app.augmentcode.com 的 Cookie 请求头",
     "service.muse.session_expired": "muse.ai 已让此会话退出登录。请在 muse.ai 重新登录并粘贴新的 Cookie。",
-    "service.muse.action_not_found": "未能在 muse.ai 页面中找到订阅数据，muse.ai 可能已改版；请刷新重试。"
+    "service.muse.action_not_found": "未能在 muse.ai 页面中找到订阅数据，muse.ai 可能已改版；请刷新重试。",
+    "alert.provider_cookie_expired.title": "%@ 会话已过期",
+    "alert.provider_cookie_expired.body": "你粘贴的 %@ 网页会话已失效，卡片显示的是最后一次成功的快照。请打开“数据源”粘贴新的 Cookie，指引会一步步带你完成。",
+    "muse_code.team": "团队",
+    "muse_code.team_automatic": "自动（第一个有订阅的团队）",
+    "service.muse_code.team_no_quota": "所选团队 %@ 没有 Muse Code 订阅，请在“数据源”中选择其他团队。",
+    "amp.cli_hint": "已用 Amp CLI 登录？会自动、只读地使用它的 API Key，只有没装 CLI 时才需要下面的 Cookie。"
   },
   "zh-Hant": {
     "widget.local_usage": "今日本機統計",
@@ -2683,7 +2695,13 @@ export default {
     "secret.placeholder.factory": "登入後貼上 app.factory.ai 的 Cookie 標頭",
     "secret.placeholder.augment": "登入後貼上 app.augmentcode.com 的 Cookie 標頭",
     "service.muse.session_expired": "muse.ai 已將此工作階段登出。請在 muse.ai 重新登入並貼上新的 Cookie。",
-    "service.muse.action_not_found": "無法在 muse.ai 頁面中找到訂閱資料，muse.ai 可能已改版；請重新整理再試。"
+    "service.muse.action_not_found": "無法在 muse.ai 頁面中找到訂閱資料，muse.ai 可能已改版；請重新整理再試。",
+    "alert.provider_cookie_expired.title": "%@ 工作階段已過期",
+    "alert.provider_cookie_expired.body": "你貼上的 %@ 網頁工作階段已失效，卡片顯示的是最後一次成功的快照。請開啟「資料來源」貼上新的 Cookie，指引會一步步帶你完成。",
+    "muse_code.team": "團隊",
+    "muse_code.team_automatic": "自動（第一個有訂閱的團隊）",
+    "service.muse_code.team_no_quota": "所選團隊 %@ 沒有 Muse Code 訂閱，請在「資料來源」中選擇其他團隊。",
+    "amp.cli_hint": "已用 Amp CLI 登入？會自動、唯讀地使用它的 API Key，只有沒裝 CLI 時才需要下方的 Cookie。"
   },
   "ja": {
     "widget.local_usage": "今日のローカル使用量",
@@ -3578,7 +3596,13 @@ export default {
     "secret.placeholder.factory": "サインイン後に app.factory.ai の Cookie ヘッダーを貼り付け",
     "secret.placeholder.augment": "サインイン後に app.augmentcode.com の Cookie ヘッダーを貼り付け",
     "service.muse.session_expired": "muse.ai がこのセッションをサインアウトしました。muse.ai に再度サインインし、新しい Cookie を貼り付けてください。",
-    "service.muse.action_not_found": "muse.ai のページでサブスクリプション情報が見つかりませんでした。muse.ai が変更された可能性があります。更新して再試行してください。"
+    "service.muse.action_not_found": "muse.ai のページでサブスクリプション情報が見つかりませんでした。muse.ai が変更された可能性があります。更新して再試行してください。",
+    "alert.provider_cookie_expired.title": "%@ のセッションが期限切れです",
+    "alert.provider_cookie_expired.body": "貼り付けた %@ のウェブセッションが無効になったため、カードには最後に取得できた値が表示されています。データソースを開いて新しい Cookie を貼り付けてください。ガイドが手順を案内します。",
+    "muse_code.team": "チーム",
+    "muse_code.team_automatic": "自動（サブスクリプションのある最初のチーム）",
+    "service.muse_code.team_no_quota": "選択したチーム %@ には Muse Code のサブスクリプションがありません。データソースで別のチームを選んでください。",
+    "amp.cli_hint": "Amp CLI でサインイン済みなら、その API キーを読み取り専用で自動的に使います。下の Cookie は CLI がない場合だけ必要です。"
   },
   "ko": {
     "widget.local_usage": "오늘의 로컬 사용량",
@@ -4473,7 +4497,13 @@ export default {
     "secret.placeholder.factory": "로그인 후 app.factory.ai Cookie 헤더를 붙여 넣으세요",
     "secret.placeholder.augment": "로그인 후 app.augmentcode.com Cookie 헤더를 붙여 넣으세요",
     "service.muse.session_expired": "muse.ai가 이 세션을 로그아웃했습니다. muse.ai에 다시 로그인하고 새 Cookie를 붙여 넣으세요.",
-    "service.muse.action_not_found": "muse.ai 페이지에서 구독 정보를 찾지 못했습니다. muse.ai가 변경되었을 수 있으니 새로고침해 다시 시도하세요."
+    "service.muse.action_not_found": "muse.ai 페이지에서 구독 정보를 찾지 못했습니다. muse.ai가 변경되었을 수 있으니 새로고침해 다시 시도하세요.",
+    "alert.provider_cookie_expired.title": "%@ 세션이 만료됨",
+    "alert.provider_cookie_expired.body": "붙여 넣은 %@ 웹 세션이 더 이상 유효하지 않아 카드에 마지막으로 성공한 값이 표시됩니다. 데이터 소스를 열고 새 Cookie를 붙여 넣으세요. 안내가 단계별로 도와줍니다.",
+    "muse_code.team": "팀",
+    "muse_code.team_automatic": "자동(구독이 있는 첫 번째 팀)",
+    "service.muse_code.team_no_quota": "선택한 팀 %@에는 Muse Code 구독이 없습니다. 데이터 소스에서 다른 팀을 선택하세요.",
+    "amp.cli_hint": "Amp CLI로 로그인했다면 해당 API 키를 읽기 전용으로 자동 사용합니다. 아래 Cookie는 CLI가 없을 때만 필요합니다."
   },
   "es": {
     "widget.local_usage": "Uso local de hoy",
@@ -5368,7 +5398,13 @@ export default {
     "secret.placeholder.factory": "Pega el encabezado Cookie de app.factory.ai tras iniciar sesión",
     "secret.placeholder.augment": "Pega el encabezado Cookie de app.augmentcode.com tras iniciar sesión",
     "service.muse.session_expired": "muse.ai cerró esta sesión. Inicia sesión en muse.ai y pega una cookie nueva.",
-    "service.muse.action_not_found": "No se encontraron los datos de suscripción en la página de muse.ai. Puede que muse.ai haya cambiado; actualiza para reintentar."
+    "service.muse.action_not_found": "No se encontraron los datos de suscripción en la página de muse.ai. Puede que muse.ai haya cambiado; actualiza para reintentar.",
+    "alert.provider_cookie_expired.title": "La sesión de %@ caducó",
+    "alert.provider_cookie_expired.body": "La sesión web de %@ que pegaste ya no se acepta, así que la tarjeta muestra la última lectura correcta. Abre Fuentes de datos y pega una cookie nueva; la guía te lleva paso a paso.",
+    "muse_code.team": "Equipo",
+    "muse_code.team_automatic": "Automático (primer equipo con suscripción)",
+    "service.muse_code.team_no_quota": "El equipo seleccionado %@ no tiene suscripción a Muse Code. Elige otro equipo en Fuentes de datos.",
+    "amp.cli_hint": "¿Has iniciado sesión con la CLI de Amp? Su clave de API se usa automáticamente y en solo lectura; la cookie de abajo solo hace falta sin la CLI."
   },
   "de": {
     "widget.local_usage": "Heutige lokale Nutzung",
@@ -6263,6 +6299,12 @@ export default {
     "secret.placeholder.factory": "Nach der Anmeldung den app.factory.ai-Cookie-Header einfügen",
     "secret.placeholder.augment": "Nach der Anmeldung den app.augmentcode.com-Cookie-Header einfügen",
     "service.muse.session_expired": "muse.ai hat diese Sitzung abgemeldet. Melde dich bei muse.ai an und füge einen neuen Cookie ein.",
-    "service.muse.action_not_found": "Die Abodaten wurden auf der muse.ai-Seite nicht gefunden. muse.ai hat sich eventuell geändert; aktualisiere, um es erneut zu versuchen."
+    "service.muse.action_not_found": "Die Abodaten wurden auf der muse.ai-Seite nicht gefunden. muse.ai hat sich eventuell geändert; aktualisiere, um es erneut zu versuchen.",
+    "alert.provider_cookie_expired.title": "%@-Sitzung abgelaufen",
+    "alert.provider_cookie_expired.body": "Die eingefügte %@-Websitzung wird nicht mehr akzeptiert, daher zeigt die Karte den letzten gültigen Stand. Öffne Datenquellen und füge einen neuen Cookie ein – die Anleitung führt dich durch.",
+    "muse_code.team": "Team",
+    "muse_code.team_automatic": "Automatisch (erstes Team mit Abo)",
+    "service.muse_code.team_no_quota": "Das gewählte Team %@ hat kein Muse-Code-Abo. Wähle in Datenquellen ein anderes Team.",
+    "amp.cli_hint": "Mit der Amp-CLI angemeldet? Ihr API-Schlüssel wird automatisch und nur lesend verwendet; der Cookie unten ist nur ohne CLI nötig."
   }
 };

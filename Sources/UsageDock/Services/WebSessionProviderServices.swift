@@ -12,21 +12,69 @@ import Foundation
 /// 5-hour request window plus a weekly limit, both as weighted usage. Read from
 /// the dev.meta.ai usage page's own GET endpoints with the web session. The
 /// CLI's `POST /muse-code/key` is deliberately not used: it may mint an API key.
+///
+/// Quota is per team. With a team chosen in Data Sources only that team is
+/// read — the numbers never silently switch to another team. Without a choice
+/// (or when the chosen team is gone) the first team carrying a subscription
+/// quota is used, as before.
 struct MuseCodeUsageService {
     static let origin = URL(string: "https://dev.meta.ai")!
-    /// Teams tried in order; the first one carrying a subscription quota wins.
+    /// Teams tried in automatic mode; the first one carrying a quota wins.
     static let maxTeams = 3
+
+    var teamStore = MuseCodeTeamStore()
+    /// GET of a dev.meta.ai path with the session Cookie; injectable for tests.
+    var get: @Sendable (_ path: String, _ cookie: String) async throws -> Data = { path, cookie in
+        try await ExtendedHTTP.request(
+            .museCode,
+            url: URL(string: path, relativeTo: MuseCodeUsageService.origin)!.absoluteURL,
+            headers: WebSessionCookie.headers(cookie: cookie, origin: MuseCodeUsageService.origin),
+            followRedirects: false
+        )
+    }
+
+    enum ServiceError: LocalizedError, Sendable, Equatable {
+        case selectedTeamHasNoQuota(String)
+
+        var errorDescription: String? {
+            switch self {
+            case .selectedTeamHasNoQuota(let name):
+                L10n.format("service.muse_code.team_no_quota", name)
+            }
+        }
+    }
 
     func fetch(cookie: String? = nil, now: Date = .now) async throws -> ProviderQuota {
         let header = try WebSessionCookie.load(.museCode, supplied: cookie)
-        let teams = try MuseCodeUsageParser.teamIDs(try await get("/api/portal/teams", cookie: header))
+        let teams = try MuseCodeUsageParser.teams(try await get("/api/portal/teams", header))
         guard !teams.isEmpty else { throw ExtendedProviderError.invalidResponse(.museCode) }
+        teamStore.saveKnownTeams(teams)
+
+        let label = teams.count > 1
+        if let selectedID = teamStore.selectedTeamID() {
+            if let team = teams.first(where: { $0.id == selectedID }) {
+                let data = try await get("/api/portal/teams/\(team.id)/subscription-quota", header)
+                guard let quota = try MuseCodeUsageParser.parseQuota(
+                    data, teamName: label ? team.name : nil, now: now
+                ) else {
+                    throw ServiceError.selectedTeamHasNoQuota(team.name)
+                }
+                return quota
+            }
+            // The chosen team is gone (left or renamed id): back to automatic.
+            teamStore.saveSelectedTeamID(nil)
+        }
+
         var lastError: Error = ExtendedProviderError.invalidResponse(.museCode)
         for team in teams.prefix(Self.maxTeams) {
             try Task.checkCancellation()
             do {
-                let data = try await get("/api/portal/teams/\(team)/subscription-quota", cookie: header)
-                if let quota = try MuseCodeUsageParser.parseQuota(data, now: now) { return quota }
+                let data = try await get("/api/portal/teams/\(team.id)/subscription-quota", header)
+                if let quota = try MuseCodeUsageParser.parseQuota(
+                    data, teamName: label ? team.name : nil, now: now
+                ) {
+                    return quota
+                }
             } catch let error as ExtendedProviderError {
                 if case .secretRejected = error { throw error }
                 lastError = error
@@ -34,27 +82,62 @@ struct MuseCodeUsageService {
         }
         throw lastError
     }
+}
 
-    private func get(_ path: String, cookie: String) async throws -> Data {
-        try await ExtendedHTTP.request(
-            .museCode,
-            url: URL(string: path, relativeTo: Self.origin)!.absoluteURL,
-            headers: WebSessionCookie.headers(cookie: cookie, origin: Self.origin),
-            followRedirects: false
-        )
+/// The Muse Code team choice and the team list last seen. Neither is a
+/// credential, so both live in UserDefaults; the session Cookie stays in the
+/// app-owned Keychain.
+struct MuseCodeTeam: Codable, Sendable, Equatable, Identifiable {
+    let id: String
+    let name: String
+}
+
+struct MuseCodeTeamStore: Sendable {
+    static let selectedKey = "tokenRemain.museCode.selectedTeam.v1"
+    static let knownTeamsKey = "tokenRemain.museCode.knownTeams.v1"
+
+    var defaults: @Sendable () -> UserDefaults = { .standard }
+
+    func selectedTeamID() -> String? {
+        defaults().string(forKey: Self.selectedKey)
+    }
+
+    func saveSelectedTeamID(_ id: String?) {
+        if let id { defaults().set(id, forKey: Self.selectedKey) } else { defaults().removeObject(forKey: Self.selectedKey) }
+    }
+
+    func knownTeams() -> [MuseCodeTeam] {
+        guard let data = defaults().data(forKey: Self.knownTeamsKey) else { return [] }
+        return (try? JSONDecoder().decode([MuseCodeTeam].self, from: data)) ?? []
+    }
+
+    func saveKnownTeams(_ teams: [MuseCodeTeam]) {
+        guard let data = try? JSONEncoder().encode(teams) else { return }
+        defaults().set(data, forKey: Self.knownTeamsKey)
+    }
+
+    /// Clearing the Cookie forgets the account's teams and the choice with it.
+    func clear() {
+        defaults().removeObject(forKey: Self.selectedKey)
+        defaults().removeObject(forKey: Self.knownTeamsKey)
     }
 }
 
 enum MuseCodeUsageParser {
-    static func teamIDs(_ data: Data) throws -> [String] {
+    static func teams(_ data: Data) throws -> [MuseCodeTeam] {
         guard let body = ExtendedHTTP.json(data), let teams = body["teams"] as? [[String: Any]] else {
             throw ExtendedProviderError.invalidResponse(.museCode)
         }
-        return teams.compactMap { numericID($0["team_id"]) }
+        return teams.compactMap { item in
+            guard let id = numericID(item["team_id"]) else { return nil }
+            let name = (item["team_name"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+            return MuseCodeTeam(id: id, name: name?.isEmpty == false ? name! : id)
+        }
     }
 
     /// nil = this team has no subscription quota (try the next team).
-    static func parseQuota(_ data: Data, now: Date = .now) throws -> ProviderQuota? {
+    /// `teamName` is shown beside the plan when the account has several teams.
+    static func parseQuota(_ data: Data, teamName: String? = nil, now: Date = .now) throws -> ProviderQuota? {
         guard let body = ExtendedHTTP.json(data) else {
             throw ExtendedProviderError.invalidResponse(.museCode)
         }
@@ -70,6 +153,7 @@ enum MuseCodeUsageParser {
         let windowReset = date(quota["window_resets_at"]).flatMap { $0 > now ? $0 : nil }
         if windowReset == nil { windowPercent = 0 }
         let tier = (quota["tier"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let plan = [tier?.isEmpty == false ? tier : nil, teamName].compactMap { $0 }.joined(separator: " · ")
         return ProviderQuota(
             provider: .museCode,
             primary: QuotaWindow(
@@ -78,7 +162,7 @@ enum MuseCodeUsageParser {
                 resetsAt: windowReset
             ),
             secondary: QuotaWindow(usedPercent: weeklyPercent, windowMinutes: 10_080, resetsAt: weeklyReset),
-            planName: tier?.isEmpty == false ? tier : nil,
+            planName: plan.isEmpty ? nil : plan,
             capturedAt: now
         )
     }
@@ -116,22 +200,54 @@ enum MuseCodeUsageParser {
 
 // MARK: - Amp (ampcode.com)
 
-/// Amp's balance summary — the same text `amp usage` prints — read through the
-/// web app's internal API with the session cookie. Falls back to the Amp Free
-/// object embedded in the settings page when the API answers without it.
+/// Amp's balance summary — the same text `amp usage` prints. The Amp CLI's own
+/// API key is preferred (`AMP_API_KEY`, then the CLI's `secrets.json`), read
+/// only and never written back. Without it, the pasted ampcode.com session
+/// Cookie reads the same summary through the web app's internal API, with the
+/// Amp Free object embedded in the settings page as the last fallback.
 struct AmpUsageService {
     static let origin = URL(string: "https://ampcode.com")!
     static let settingsURL = URL(string: "https://ampcode.com/settings")!
     static let balanceURL = URL(string: "https://ampcode.com/api/internal?userDisplayBalanceInfo")!
+    private static let balanceBody = Data(#"{"method":"userDisplayBalanceInfo","params":{}}"#.utf8)
 
+    var cliCredential: @Sendable () -> String? = { AmpCLICredentialReader().load() }
+
+    /// `cookie` is set when Data Sources validates a pasted Cookie: that path
+    /// must test the Cookie itself, not the CLI key.
     func fetch(cookie: String? = nil, now: Date = .now) async throws -> ProviderQuota {
-        let header = try WebSessionCookie.load(.amp, supplied: cookie)
+        if cookie == nil, let apiKey = cliCredential() {
+            do {
+                return try await fetchWithAPIKey(apiKey, now: now)
+            } catch let error as ExtendedProviderError {
+                // A rejected CLI key falls back to a saved Cookie when there is one.
+                guard case .secretRejected = error,
+                      ProviderSecretStore(provider: .amp).load() != nil else { throw error }
+            }
+        }
+        return try await fetchWithCookie(try WebSessionCookie.load(.amp, supplied: cookie), now: now)
+    }
+
+    private func fetchWithAPIKey(_ apiKey: String, now: Date) async throws -> ProviderQuota {
+        let data = try await ExtendedHTTP.request(
+            .amp, url: Self.balanceURL, method: "POST",
+            headers: [
+                "Authorization": "Bearer \(apiKey)",
+                "Accept": "application/json",
+                "Content-Type": "application/json"
+            ],
+            body: Self.balanceBody, followRedirects: false
+        )
+        return try AmpUsageParser.parseBalanceResponse(data, now: now)
+    }
+
+    private func fetchWithCookie(_ header: String, now: Date) async throws -> ProviderQuota {
         var headers = WebSessionCookie.headers(cookie: header, origin: Self.origin)
         headers["Referer"] = Self.settingsURL.absoluteString
         headers["Content-Type"] = "application/json"
-        let body = Data(#"{"method":"userDisplayBalanceInfo","params":{}}"#.utf8)
         if let data = try? await ExtendedHTTP.request(
-            .amp, url: Self.balanceURL, method: "POST", headers: headers, body: body, followRedirects: false
+            .amp, url: Self.balanceURL, method: "POST", headers: headers, body: Self.balanceBody,
+            followRedirects: false
         ), let quota = try? AmpUsageParser.parseBalanceResponse(data, now: now) {
             return quota
         }
@@ -142,6 +258,56 @@ struct AmpUsageService {
             .amp, url: Self.settingsURL, headers: pageHeaders, followRedirects: false
         )
         return try AmpUsageParser.parseSettingsPage(String(decoding: page, as: UTF8.self), now: now)
+    }
+}
+
+/// Read-only discovery of the Amp CLI's API key: `AMP_API_KEY`, then
+/// `$XDG_DATA_HOME/amp/secrets.json` (default `~/.local/share/amp`), whose key
+/// the CLI stores as `apiKey@https://ampcode.com/`. Never written, refreshed or
+/// logged; the value stays in memory for the one request.
+struct AmpCLICredentialReader {
+    var environment: [String: String] = ProcessInfo.processInfo.environment
+    var home: URL = FileManager.default.homeDirectoryForCurrentUser
+    static let maxFileBytes = 64 * 1024
+
+    var secretsURL: URL {
+        let base = environment["XDG_DATA_HOME"].flatMap { $0.isEmpty ? nil : URL(fileURLWithPath: $0) }
+            ?? home.appending(path: ".local/share")
+        return base.appending(path: "amp/secrets.json")
+    }
+
+    func load() -> String? {
+        if let key = normalized(environment["AMP_API_KEY"]) { return key }
+        guard let attributes = try? FileManager.default.attributesOfItem(atPath: secretsURL.path),
+              (attributes[.size] as? NSNumber)?.intValue ?? 0 <= Self.maxFileBytes,
+              let data = try? Data(contentsOf: secretsURL) else { return nil }
+        return Self.apiKey(fromSecrets: data)
+    }
+
+    /// Whether a CLI key is available, for detection; never returns the key.
+    var isAvailable: Bool { load() != nil }
+
+    /// Prefers the ampcode.com entry, then any other `apiKey…` entry.
+    static func apiKey(fromSecrets data: Data) -> String? {
+        guard let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else { return nil }
+        let candidates = object
+            .filter { $0.key.hasPrefix("apiKey") }
+            .sorted { lhs, rhs in
+                let l = lhs.key.contains("ampcode.com"), r = rhs.key.contains("ampcode.com")
+                return l != r ? l : lhs.key < rhs.key
+            }
+        for (_, value) in candidates {
+            if let key = (value as? String)?.trimmingCharacters(in: .whitespacesAndNewlines),
+               !key.isEmpty, !key.contains(where: \.isWhitespace) {
+                return key
+            }
+        }
+        return nil
+    }
+
+    private func normalized(_ value: String?) -> String? {
+        let text = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return text.isEmpty ? nil : text
     }
 }
 

@@ -58,6 +58,8 @@ struct ProviderCredentialEntryRow: View {
     @State private var zaiRegion: ZAIAPIRegion
     @State private var alibabaRegion: AlibabaTokenPlanConfiguration.Region
     @State private var alibabaEdition: AlibabaTokenPlanConfiguration.Edition
+    @State private var museCodeTeams: [MuseCodeTeam] = []
+    @State private var museCodeTeamID = ""
 
     init(
         store: UsageStore,
@@ -84,6 +86,15 @@ struct ProviderCredentialEntryRow: View {
                 claudeWebSetup
             } else if let guideSpec {
                 webCookieSetup(guideSpec)
+            }
+            if provider == .museCode, museCodeTeams.count > 1 {
+                museCodeTeamPicker
+            }
+            if provider == .amp {
+                Text(L10n.text("amp.cli_hint"))
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(DashboardTheme.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             if provider == .alibabaTokenPlan {
                 Picker(L10n.text("alibaba.region"), selection: $alibabaRegion) {
@@ -152,6 +163,7 @@ struct ProviderCredentialEntryRow: View {
                         action.start {
                             _ = await store.clearAPIKey(for: provider)
                             reloadCredentialStatus()
+                            reloadMuseCodeTeams()
                         }
                     }
                     .disabled(isSaving)
@@ -186,6 +198,7 @@ struct ProviderCredentialEntryRow: View {
                     .foregroundStyle(DashboardTheme.warning)
             }
         }
+        .onAppear { reloadMuseCodeTeams() }
         .onDisappear { action.cancel() }
         .onChange(of: store.claudeWebOrganizationChoices) { _, choices in
             // A new session brings its own list; a choice from the previous one
@@ -284,6 +297,44 @@ struct ProviderCredentialEntryRow: View {
         }
     }
 
+    /// Quota is per team. Shown once the account is known to have several;
+    /// "Automatic" keeps the first team that has a subscription.
+    private var museCodeTeamPicker: some View {
+        HStack(spacing: 8) {
+            Text(L10n.text("muse_code.team"))
+                .font(.system(size: 10.5))
+                .foregroundStyle(DashboardTheme.secondaryText)
+            Picker(
+                L10n.text("muse_code.team"),
+                selection: Binding(
+                    get: { museCodeTeamID },
+                    set: { chosen in
+                        museCodeTeamID = chosen
+                        action.start {
+                            await store.setMuseCodeTeam(chosen.isEmpty ? nil : chosen)
+                            reloadMuseCodeTeams()
+                        }
+                    }
+                )
+            ) {
+                Text(L10n.text("muse_code.team_automatic")).tag("")
+                ForEach(museCodeTeams) { team in
+                    Text(team.name).tag(team.id)
+                }
+            }
+            .labelsHidden()
+            .frame(maxWidth: 260)
+            .disabled(isSaving)
+        }
+    }
+
+    private func reloadMuseCodeTeams() {
+        guard provider == .museCode else { return }
+        let teamStore = MuseCodeTeamStore()
+        museCodeTeams = teamStore.knownTeams()
+        museCodeTeamID = teamStore.selectedTeamID() ?? ""
+    }
+
     /// The field holds the bare header; `saveDraft` wraps it where needed.
     private func pasteCookieFromClipboard() {
         guard let text = NSPasteboard.general.string(forType: .string),
@@ -352,6 +403,7 @@ struct ProviderCredentialEntryRow: View {
                 claudeOrganizationID = ""
             }
             reloadCredentialStatus()
+            reloadMuseCodeTeams()
         }
     }
 

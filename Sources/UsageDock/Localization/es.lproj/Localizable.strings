@@ -911,3 +911,9 @@
 "secret.placeholder.augment" = "Pega el encabezado Cookie de app.augmentcode.com tras iniciar sesión";
 "service.muse.session_expired" = "muse.ai cerró esta sesión. Inicia sesión en muse.ai y pega una cookie nueva.";
 "service.muse.action_not_found" = "No se encontraron los datos de suscripción en la página de muse.ai. Puede que muse.ai haya cambiado; actualiza para reintentar.";
+"alert.provider_cookie_expired.title" = "La sesión de %@ caducó";
+"alert.provider_cookie_expired.body" = "La sesión web de %@ que pegaste ya no se acepta, así que la tarjeta muestra la última lectura correcta. Abre Fuentes de datos y pega una cookie nueva; la guía te lleva paso a paso.";
+"muse_code.team" = "Equipo";
+"muse_code.team_automatic" = "Automático (primer equipo con suscripción)";
+"service.muse_code.team_no_quota" = "El equipo seleccionado %@ no tiene suscripción a Muse Code. Elige otro equipo en Fuentes de datos.";
+"amp.cli_hint" = "¿Has iniciado sesión con la CLI de Amp? Su clave de API se usa automáticamente y en solo lectura; la cookie de abajo solo hace falta sin la CLI.";

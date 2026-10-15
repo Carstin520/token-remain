@@ -151,7 +151,8 @@ struct MuseCodeUsageTests {
 
     @Test("Team quota maps to the 5-hour window and the weekly limit")
     func parsesQuota() throws {
-        #expect(try MuseCodeUsageParser.teamIDs(Data(#"{"teams":[{"team_id":"42","team_name":"Me"},{"team_id":"x"}]}"#.utf8)) == ["42"])
+        #expect(try MuseCodeUsageParser.teams(Data(#"{"teams":[{"team_id":"42","team_name":"Me"},{"team_id":7},{"team_id":"x"}]}"#.utf8))
+            == [MuseCodeTeam(id: "42", name: "Me"), MuseCodeTeam(id: "7", name: "7")])
         let body = #"{"subscription_quota":{"tier":"High Usage","window_weighted_used":"250","window_weighted_limit":"1000","window_resets_at":1790003600,"window_duration_secs":18000,"weekly_weighted_used":"3000","weekly_weighted_limit":"10000","weekly_resets_at":1790500000}}"#
         let quota = try #require(try MuseCodeUsageParser.parseQuota(Data(body.utf8), now: now))
         #expect(quota.provider == .museCode)
@@ -170,6 +171,116 @@ struct MuseCodeUsageTests {
         #expect(quota.primary.usedPercent == 0)
         #expect(quota.primary.resetsAt == nil)
         #expect(try MuseCodeUsageParser.parseQuota(Data(#"{"subscription_quota":null}"#.utf8), now: now) == nil)
+    }
+}
+
+@Suite("Muse Code teams")
+struct MuseCodeTeamTests {
+    private let now = Date(timeIntervalSince1970: 1_790_000_000)
+    private static let teams = #"{"teams":[{"team_id":"1","team_name":"Personal"},{"team_id":"2","team_name":"Acme"}]}"#
+    private static func quota(_ used: Int) -> String {
+        #"{"subscription_quota":{"tier":"Power Usage","window_weighted_used":"\#(used)","window_weighted_limit":"100","window_resets_at":1790003600,"window_duration_secs":18000,"weekly_weighted_used":"1","weekly_weighted_limit":"10","weekly_resets_at":1790500000}}"#
+    }
+
+    private func service(_ store: MuseCodeTeamStore, team1: String = #"{"subscription_quota":null}"#) -> MuseCodeUsageService {
+        var service = MuseCodeUsageService(teamStore: store)
+        service.get = { path, _ in
+            switch path {
+            case "/api/portal/teams": return Data(Self.teams.utf8)
+            case "/api/portal/teams/1/subscription-quota": return Data(team1.utf8)
+            case "/api/portal/teams/2/subscription-quota": return Data(Self.quota(40).utf8)
+            default: throw ExtendedProviderError.requestFailed(.museCode, 404)
+            }
+        }
+        return service
+    }
+
+    private func store() -> MuseCodeTeamStore {
+        let defaults = UserDefaults(suiteName: "MuseCodeTeams-\(UUID().uuidString)")!
+        return MuseCodeTeamStore(defaults: { defaults })
+    }
+
+    @Test("Automatic uses the first team with a quota and remembers the team list")
+    func automatic() async throws {
+        let teamStore = store()
+        let quota = try await service(teamStore).fetch(cookie: "s=fake", now: now)
+        #expect(quota.primary.usedPercent == 40)
+        #expect(quota.planName == "Power Usage · Acme")
+        #expect(teamStore.knownTeams().map(\.name) == ["Personal", "Acme"])
+    }
+
+    @Test("A chosen team is read alone and never silently swapped")
+    func chosenTeam() async throws {
+        let teamStore = store()
+        teamStore.saveSelectedTeamID("1")
+        await #expect(throws: MuseCodeUsageService.ServiceError.selectedTeamHasNoQuota("Personal")) {
+            try await service(teamStore).fetch(cookie: "s=fake", now: now)
+        }
+        let chosen = try await service(teamStore, team1: Self.quota(10)).fetch(cookie: "s=fake", now: now)
+        #expect(chosen.primary.usedPercent == 10)
+        #expect(chosen.planName == "Power Usage · Personal")
+    }
+
+    @Test("A vanished team falls back to automatic; clearing forgets everything")
+    func vanishedTeam() async throws {
+        let teamStore = store()
+        teamStore.saveSelectedTeamID("99")
+        let quota = try await service(teamStore).fetch(cookie: "s=fake", now: now)
+        #expect(quota.planName == "Power Usage · Acme")
+        #expect(teamStore.selectedTeamID() == nil)
+        teamStore.clear()
+        #expect(teamStore.knownTeams().isEmpty)
+    }
+}
+
+@Suite("Cookie session reminders")
+struct CookieSessionReminderTests {
+    @Test("Only an expired or rejected pasted session asks for a fresh Cookie")
+    func reminderPolicy() {
+        #expect(ProviderSessionAlerts.requiresSignIn(ExtendedProviderError.secretRejected(.amp, 401)))
+        #expect(ProviderSessionAlerts.requiresSignIn(ExtendedProviderError.secretRejected(.qoder, 403)))
+        #expect(ProviderSessionAlerts.requiresSignIn(MuseUsageService.ServiceError.sessionExpired))
+        #expect(ProviderSessionAlerts.requiresSignIn(AlibabaTokenPlanError.authentication))
+        // API keys, never-configured sources and transient failures stay quiet.
+        #expect(!ProviderSessionAlerts.requiresSignIn(ExtendedProviderError.secretRejected(.deepseek, 401)))
+        #expect(!ProviderSessionAlerts.requiresSignIn(ExtendedProviderError.notConfigured(.muse)))
+        #expect(!ProviderSessionAlerts.requiresSignIn(ExtendedProviderError.requestFailed(.factory, 503)))
+        #expect(!ProviderSessionAlerts.requiresSignIn(MuseUsageService.ServiceError.actionNotFound))
+        #expect(!ProviderSessionAlerts.requiresSignIn(AlibabaTokenPlanError.network))
+    }
+}
+
+@Suite("Amp CLI credential")
+struct AmpCLICredentialTests {
+    private func home(secrets: String?) throws -> URL {
+        let root = FileManager.default.temporaryDirectory.appending(path: "amp-cli-\(UUID().uuidString)")
+        if let secrets {
+            let dir = root.appending(path: ".local/share/amp")
+            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            try Data(secrets.utf8).write(to: dir.appending(path: "secrets.json"))
+        }
+        return root
+    }
+
+    @Test("The environment wins, then the ampcode.com entry of secrets.json")
+    func readsKey() throws {
+        let root = try home(secrets: #"{"apiKey@https://other.example/":"other","apiKey@https://ampcode.com/":"fake-amp-key"}"#)
+        #expect(AmpCLICredentialReader(environment: [:], home: root).load() == "fake-amp-key")
+        #expect(AmpCLICredentialReader(environment: ["AMP_API_KEY": " env-key "], home: root).load() == "env-key")
+        #expect(AmpCLICredentialReader(environment: [:], home: try home(secrets: nil)).load() == nil)
+        #expect(AmpCLICredentialReader(environment: [:], home: try home(secrets: "not json")).load() == nil)
+        let xdg = root.appending(path: ".local/share").path
+        #expect(AmpCLICredentialReader(environment: ["XDG_DATA_HOME": xdg], home: URL(fileURLWithPath: "/nonexistent")).load()
+            == "fake-amp-key")
+    }
+
+    @Test("Detection counts a CLI login as connected without a Cookie")
+    @MainActor
+    func detection() throws {
+        let root = try home(secrets: #"{"apiKey@https://ampcode.com/":"fake-amp-key"}"#)
+        let amp = TrackedProvidersStore.detections(home: root, environment: [:], applicationDirectories: [])
+            .first { $0.provider == .amp }
+        #expect(amp?.installed == true)
     }
 }
 

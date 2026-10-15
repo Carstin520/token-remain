@@ -82,8 +82,13 @@ final class UserNotificationService: NSObject, UNUserNotificationCenterDelegate,
         }
 
         let content = UNMutableNotificationContent()
-        content.title = L10n.format("alert.provider_signed_out.title", provider.displayName)
-        content.body = L10n.format("alert.provider_signed_out.body", provider.displayName)
+        // Claude's web Cookie is optional beside its CLI login, so it keeps the
+        // generic sign-in wording; Cookie-only apps need a fresh paste.
+        let cookieOnly = provider != .claude
+            && ProviderSecretStore.descriptor(for: provider)?.isCookie == true
+        let prefix = cookieOnly ? "alert.provider_cookie_expired" : "alert.provider_signed_out"
+        content.title = L10n.format("\(prefix).title", provider.displayName)
+        content.body = L10n.format("\(prefix).body", provider.displayName)
         content.sound = .default
         // Signing in again happens in Data Sources, so the banner opens it.
         content.userInfo = ["route": "dataSources"]

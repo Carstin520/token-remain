@@ -911,3 +911,9 @@
 "secret.placeholder.augment" = "Nach der Anmeldung den app.augmentcode.com-Cookie-Header einfügen";
 "service.muse.session_expired" = "muse.ai hat diese Sitzung abgemeldet. Melde dich bei muse.ai an und füge einen neuen Cookie ein.";
 "service.muse.action_not_found" = "Die Abodaten wurden auf der muse.ai-Seite nicht gefunden. muse.ai hat sich eventuell geändert; aktualisiere, um es erneut zu versuchen.";
+"alert.provider_cookie_expired.title" = "%@-Sitzung abgelaufen";
+"alert.provider_cookie_expired.body" = "Die eingefügte %@-Websitzung wird nicht mehr akzeptiert, daher zeigt die Karte den letzten gültigen Stand. Öffne Datenquellen und füge einen neuen Cookie ein – die Anleitung führt dich durch.";
+"muse_code.team" = "Team";
+"muse_code.team_automatic" = "Automatisch (erstes Team mit Abo)";
+"service.muse_code.team_no_quota" = "Das gewählte Team %@ hat kein Muse-Code-Abo. Wähle in Datenquellen ein anderes Team.";
+"amp.cli_hint" = "Mit der Amp-CLI angemeldet? Ihr API-Schlüssel wird automatisch und nur lesend verwendet; der Cookie unten ist nur ohne CLI nötig.";

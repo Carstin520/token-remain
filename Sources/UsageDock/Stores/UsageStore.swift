@@ -1343,6 +1343,7 @@ final class UsageStore: ObservableObject {
             providerNotices[provider] = error.localizedDescription
             return false
         }
+        if provider == .museCode { MuseCodeTeamStore().clear() }
         if provider == .claude {
             claudeWebOrganizationChoices = []
             assign(nil, to: .claude) // changing source must not retain the web account's quota
@@ -1351,6 +1352,13 @@ final class UsageStore: ObservableObject {
             await refreshKeyProvider(provider)
         }
         return true
+    }
+
+    /// The Muse Code team is non-secret account metadata (nil = automatic).
+    /// Persist it beside the Cookie and re-read that one account at once.
+    func setMuseCodeTeam(_ teamID: String?) async {
+        MuseCodeTeamStore().saveSelectedTeamID(teamID)
+        await refreshKeyProvider(.museCode)
     }
 
     /// Region selection is non-secret account metadata. Persist it separately
@@ -1668,11 +1676,17 @@ final class UsageStore: ObservableObject {
         assign: (ProviderQuota) -> Void
     ) {
         guard let result else { return }
+        // Pasted web sessions expire on the site's schedule; remind (daily at
+        // most) to paste a fresh one. Claude reports its own session above.
+        let tracksCookieSession = provider != .claude
+            && ProviderSecretStore.descriptor(for: provider)?.isCookie == true
         switch result {
         case .success(let value):
             assign(value)
             providerNotices[provider] = nil
+            if tracksCookieSession { sessionAlerts.reportHealthy(provider) }
         case .failure(let error):
+            if tracksCookieSession { sessionAlerts.report(error: error, for: provider) }
             let credentialIssue = storedCredentialReadIssue(for: provider)
             if credentialIssue == nil, Self.invalidatesCachedQuota(error) {
                 self.assign(nil, to: provider)
