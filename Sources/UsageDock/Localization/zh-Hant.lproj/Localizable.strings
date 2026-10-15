@@ -448,6 +448,8 @@
 "settings.menubar_mode_hint" = "選擇已勾選 App 如何使用選單列空間。";
 "settings.menubar_mode_minimal" = "極簡";
 "settings.menubar_mode_minimal_description" = "只顯示已勾選 App 中剩餘額度最低的一項。";
+"settings.menubar_icon_color" = "選單列彩色圖示";
+"settings.menubar_icon_color_hint" = "顯示各 App logo 的原本顏色。關閉時圖示為單色，隨選單列深淺色自動變為白色或黑色。";
 "settings.menubar_mode_not_selected" = "未選取";
 "settings.menubar_mode_selected" = "已選取";
 "settings.menubar_mode_title" = "顯示模式";

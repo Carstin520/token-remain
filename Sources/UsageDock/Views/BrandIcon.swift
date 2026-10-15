@@ -10,6 +10,14 @@ struct BrandIcon: View {
     struct Artwork: Equatable {
         let resourceName: String
         let isTemplate: Bool
+        /// Extra inner padding applied only when rasterizing the menu-bar
+        /// attachment. Zero keeps the vendor canvas. Grok's Lobe mark is a
+        /// diagonal that touches the PNG edges, so it needs room or the 13pt
+        /// status-item glyph sits off the percent baseline.
+        var menuBarPaddingRatio: CGFloat = 0
+        /// Hand-made template for monochrome menu bars, for full-color tiles
+        /// whose silhouette cannot be derived from the colored artwork.
+        var monochromeResourceName: String?
     }
 
     let provider: ProviderQuota.Provider
@@ -110,109 +118,100 @@ struct BrandIcon: View {
         return image
     }
 
-    static let menuBarBlue = NSColor(srgbRed: 0x4D / 255, green: 0x6B / 255, blue: 0xFE / 255, alpha: 1)
+    /// Official color of single-color marks whose bundled artwork is a
+    /// template. Marks whose brand is black/white stay appearance-adaptive.
+    static func menuBarBrandTint(for provider: ProviderQuota.Provider) -> NSColor? {
+        switch provider {
+        case .claude:
+            return NSColor(srgbRed: 0xD9 / 255, green: 0x77 / 255, blue: 0x57 / 255, alpha: 1)
+        default:
+            return nil
+        }
+    }
 
-    @MainActor private static var menuBarImages: [String: NSImage] = [:]
-
-    /// Status items use one blue and one visible bounding size, independent of
-    /// vendor canvas padding. Other app surfaces retain the original artwork.
-    @MainActor
+    /// Rasterizes a status-item glyph whose point size matches the attachment
+    /// bounds and leaves breathing room around edge-flush marks such as Grok.
+    /// Monochrome glyphs are templates colored later by the status item's
+    /// attachment cell; `colored` keeps each brand's own palette instead.
     static func menuBarImage(
         for provider: ProviderQuota.Provider,
-        size: CGFloat
+        size: CGFloat,
+        colored: Bool = false
     ) -> NSImage {
-        let key = "\(provider.rawValue):\(size)"
-        if let cached = menuBarImages[key] { return cached }
-        let source = provider == .codex
-            ? CodexBrandGlyph.monochromeImage(size: 64)
-            : image(for: provider, size: 64)
+        var source = image(for: provider, size: size)
+        if !colored, !source.isTemplate {
+            if provider == .codex {
+                source = CodexBrandGlyph.monochromeImage(size: size)
+            } else if let name = artwork(for: provider)?.monochromeResourceName,
+                      let url = resourceURL(for: Artwork(resourceName: name, isTemplate: true)),
+                      let template = NSImage(contentsOf: url) {
+                template.isTemplate = true
+                source = template
+            } else {
+                source = monochromeMask(image(for: provider, size: 64)) ?? source
+            }
+        }
+        let paddingRatio = artwork(for: provider)?.menuBarPaddingRatio ?? 0
+        let rendered = rasterizeForMenuBar(source, pointSize: size, paddingRatio: paddingRatio)
+        guard colored, let tint = menuBarBrandTint(for: provider) else { return rendered }
+        let tinted = NSImage(size: rendered.size, flipped: false) { rect in
+            rendered.draw(in: rect)
+            tint.setFill()
+            rect.fill(using: .sourceAtop)
+            return true
+        }
+        tinted.isTemplate = false
+        return tinted
+    }
+
+    /// Turns full-color artwork into a template alpha mask. White details
+    /// enclosed by colored ink (Kiro's ghost on its tile) become transparent
+    /// cutouts so the mark stays readable instead of collapsing into a solid
+    /// block; free-standing white strokes (Kimi's K, Windsurf) stay ink.
+    static func monochromeMask(_ source: NSImage) -> NSImage? {
+        let pixels = 128
         let colorSpace = CGColorSpace(name: CGColorSpace.sRGB)!
         let format = CGBitmapInfo.byteOrder32Big.rawValue | CGImageAlphaInfo.premultipliedLast.rawValue
-        var proposed = NSRect(x: 0, y: 0, width: 64, height: 64)
+        var proposed = NSRect(origin: .zero, size: source.size)
         guard let original = source.cgImage(forProposedRect: &proposed, context: nil, hints: nil),
-              let mask = CGContext(data: nil, width: 128, height: 128, bitsPerComponent: 8,
-                                   bytesPerRow: 128 * 4, space: colorSpace, bitmapInfo: format),
-              let data = mask.data?.assumingMemoryBound(to: UInt8.self) else { return source }
-        mask.draw(original, in: CGRect(x: 0, y: 0, width: 128, height: 128))
-        func colorize(_ bytes: UnsafeMutablePointer<UInt8>, at offset: Int) {
-            let alpha = Int(bytes[offset + 3])
-            bytes[offset] = UInt8((0x4D * alpha + 127) / 255)
-            bytes[offset + 1] = UInt8((0x6B * alpha + 127) / 255)
-            bytes[offset + 2] = UInt8((0xFE * alpha + 127) / 255)
-        }
-        let hasNonWhiteInk = (0..<(128 * 128)).contains { pixel in
-            let offset = pixel * 4
-            let alpha = Int(data[offset + 3])
-            return alpha > 128 && (0..<3).contains { Int(data[offset + $0]) < Int(Double(alpha) * 0.9) }
-        }
-        var minX = 128, minY = 128, maxX = -1, maxY = -1
-        for y in 0..<128 {
-            for x in 0..<128 {
-                let offset = y * mask.bytesPerRow + x * 4
-                let alpha = Int(data[offset + 3])
+              let context = CGContext(data: nil, width: pixels, height: pixels, bitsPerComponent: 8,
+                                      bytesPerRow: pixels * 4, space: colorSpace, bitmapInfo: format),
+              let data = context.data?.assumingMemoryBound(to: UInt8.self) else { return nil }
+        context.interpolationQuality = .high
+        context.draw(original, in: CGRect(x: 0, y: 0, width: pixels, height: pixels))
+        let rowBytes = context.bytesPerRow
+        var white = [Bool](repeating: false, count: pixels * pixels)
+        var ink = [Bool](repeating: false, count: pixels * pixels)
+        for y in 0..<pixels {
+            for x in 0..<pixels {
+                let offset = y * rowBytes + x * 4
+                let alpha = Double(data[offset + 3])
                 guard alpha > 0 else { continue }
-                let components = (0..<3).map { Int(data[offset + $0]) }
-                // White tile details become transparent cutouts. Work on a
-                // known RGBA buffer so all source color spaces behave alike.
-                if !source.isTemplate, hasNonWhiteInk, Double(components.min()!) > Double(alpha) * 0.92,
-                   Double(components.max()! - components.min()!) < Double(alpha) * 0.08 {
-                    data[offset + 3] = 0
-                    continue
-                }
-                colorize(data, at: offset)
-                guard alpha > 38 else { continue }
-                minX = min(minX, x); minY = min(minY, y)
-                maxX = max(maxX, x); maxY = max(maxY, y)
+                let channels = (0..<3).map { Double(data[offset + $0]) }
+                let isWhite = channels.min()! > alpha * 0.92 && channels.max()! - channels.min()! < alpha * 0.08
+                white[y * pixels + x] = isWhite
+                ink[y * pixels + x] = !isWhite && alpha > 128
             }
         }
-        guard maxX >= minX, maxY >= minY,
-              let cropped = mask.makeImage()?.cropping(to: CGRect(
-                x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1
-              )) else { return source }
-        let pixels = max(1, Int((size * 2).rounded()))
-        guard let output = CGContext(data: nil, width: pixels, height: pixels, bitsPerComponent: 8,
-                                     bytesPerRow: pixels * 4, space: colorSpace, bitmapInfo: format) else { return source }
-        let scale = CGFloat(pixels) / CGFloat(max(cropped.width, cropped.height))
-        let width = CGFloat(cropped.width) * scale, height = CGFloat(cropped.height) * scale
-        output.interpolationQuality = .high
-        output.draw(cropped, in: CGRect(x: (CGFloat(pixels) - width) / 2, y: (CGFloat(pixels) - height) / 2,
-                                       width: width, height: height))
-        // Thin outer strokes can disappear at menu-bar size. Fit once more
-        // using the pixels that are actually visible at the target resolution.
-        if let bytes = output.data?.assumingMemoryBound(to: UInt8.self) {
-            var bounds = CGRect.null
-            for y in 0..<pixels {
-                for x in 0..<pixels where bytes[y * output.bytesPerRow + x * 4 + 3] > 38 {
-                    bounds = bounds.union(CGRect(x: x, y: y, width: 1, height: 1))
-                }
-            }
-            if !bounds.isNull,
-               (max(bounds.width, bounds.height) < CGFloat(pixels - 1)
-                || abs(bounds.midX - CGFloat(pixels) / 2) > 1
-                || abs(bounds.midY - CGFloat(pixels) / 2) > 1),
-               let fitted = output.makeImage()?.cropping(to: bounds) {
-                let factor = CGFloat(pixels) / max(bounds.width, bounds.height)
-                let width = bounds.width * factor, height = bounds.height * factor
-                output.clear(CGRect(x: 0, y: 0, width: pixels, height: pixels))
-                output.draw(fitted, in: CGRect(x: (CGFloat(pixels) - width) / 2, y: (CGFloat(pixels) - height) / 2,
-                                              width: width, height: height))
+        // Colored ink on all four sides marks a white pixel as a tile detail.
+        func enclosed(_ x: Int, _ y: Int) -> Bool {
+            (0..<x).contains { ink[y * pixels + $0] }
+                && (x + 1..<pixels).contains { ink[y * pixels + $0] }
+                && (0..<y).contains { ink[$0 * pixels + x] }
+                && (y + 1..<pixels).contains { ink[$0 * pixels + x] }
+        }
+        for y in 0..<pixels {
+            for x in 0..<pixels {
+                let offset = y * rowBytes + x * 4
+                guard data[offset + 3] > 0 else { continue }
+                if white[y * pixels + x], enclosed(x, y) { data[offset + 3] = 0 }
+                // Premultiplied black: the template only uses alpha.
+                data[offset] = 0; data[offset + 1] = 0; data[offset + 2] = 0
             }
         }
-        // Resampling may overshoot premultiplied color channels at edges.
-        // Reapply the same blue to the final alpha mask, including antialiasing.
-        if let bytes = output.data?.assumingMemoryBound(to: UInt8.self) {
-            for y in 0..<pixels {
-                for x in 0..<pixels { colorize(bytes, at: y * output.bytesPerRow + x * 4) }
-            }
-        }
-        guard let rendered = output.makeImage() else { return source }
-        let representation = NSBitmapImageRep(cgImage: rendered)
-        representation.size = NSSize(width: size, height: size)
-        let image = NSImage(size: representation.size)
-        image.addRepresentation(representation)
-        // Blue is baked into the pixels, so AppKit must not recolor this image.
-        image.isTemplate = false
-        menuBarImages[key] = image
+        guard let mask = context.makeImage() else { return nil }
+        let image = NSImage(cgImage: mask, size: source.size)
+        image.isTemplate = true
         return image
     }
 
@@ -222,8 +221,18 @@ struct BrandIcon: View {
             return nil
         case .cursor:
             return Artwork(resourceName: "cursor", isTemplate: true)
-        case .grok, .grokBot:
-            return Artwork(resourceName: "grok", isTemplate: true)
+        case .grokBot:
+            return Artwork(
+                resourceName: "grok-bot",
+                isTemplate: false,
+                monochromeResourceName: "grok-bot-mono"
+            )
+        case .grok:
+            return Artwork(
+                resourceName: "grok",
+                isTemplate: true,
+                menuBarPaddingRatio: 0.14
+            )
         case .zai, .zaiTeam:
             return Artwork(resourceName: "zai", isTemplate: true)
         case .copilot:
@@ -342,6 +351,56 @@ struct BrandIcon: View {
         }
     }
 
+    /// Draws `source` into a 2× bitmap of `pointSize`. When `paddingRatio` is
+    /// positive, the mark is scaled into a centered inner square so spikes
+    /// that touch the vendor canvas no longer flush against neighboring text.
+    static func rasterizeForMenuBar(
+        _ source: NSImage,
+        pointSize: CGFloat,
+        paddingRatio: CGFloat
+    ) -> NSImage {
+        let scale: CGFloat = 2
+        let pixels = max(1, Int((pointSize * scale).rounded()))
+        guard let rep = NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: pixels,
+            pixelsHigh: pixels,
+            bitsPerSample: 8,
+            samplesPerPixel: 4,
+            hasAlpha: true,
+            isPlanar: false,
+            colorSpaceName: .deviceRGB,
+            bytesPerRow: 0,
+            bitsPerPixel: 0
+        ) else {
+            return source
+        }
+        rep.size = NSSize(width: pointSize, height: pointSize)
+
+        // The bitmap context is sized in points (`rep.size`), not pixels.
+        let clampedPad = min(max(paddingRatio, 0), 0.4)
+        let pad = clampedPad * pointSize
+        let inner = max(1, pointSize - 2 * pad)
+        let dest = NSRect(x: pad, y: pad, width: inner, height: inner)
+
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
+        NSGraphicsContext.current?.imageInterpolation = .high
+        source.draw(
+            in: dest,
+            from: .zero,
+            operation: .sourceOver,
+            fraction: 1,
+            respectFlipped: false,
+            hints: [.interpolation: NSImageInterpolation.high]
+        )
+        NSGraphicsContext.restoreGraphicsState()
+
+        let image = NSImage(size: NSSize(width: pointSize, height: pointSize))
+        image.addRepresentation(rep)
+        image.isTemplate = source.isTemplate
+        return image
+    }
 
     private static func fallbackImage(
         for provider: ProviderQuota.Provider,

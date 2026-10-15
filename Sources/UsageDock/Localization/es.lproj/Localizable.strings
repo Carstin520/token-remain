@@ -444,6 +444,8 @@
 "settings.menubar_mode_hint" = "Elige cómo usan el espacio de la barra de menús las apps seleccionadas.";
 "settings.menubar_mode_minimal" = "Mínimo";
 "settings.menubar_mode_minimal_description" = "Muestra solo la app seleccionada con menos cuota restante.";
+"settings.menubar_icon_color" = "Iconos de color en la barra de menús";
+"settings.menubar_icon_color_hint" = "Muestra los colores de marca originales de cada app. Si está desactivado, los iconos son monocromos y siguen el aspecto claro u oscuro de la barra de menús.";
 "settings.menubar_mode_not_selected" = "No seleccionado";
 "settings.menubar_mode_selected" = "Seleccionado";
 "settings.menubar_mode_title" = "Modo de visualización";

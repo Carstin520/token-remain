@@ -27,6 +27,7 @@ final class PreferencesStore: ObservableObject {
 
     static let menuBarKey = "tokenRemain.menuBarProviders.v1"
     static let menuBarDisplayModeKey = "tokenRemain.menuBarDisplayMode.v1"
+    static let menuBarIconsColoredKey = "tokenRemain.menuBarIconsColored.v1"
     static let popoverGlassStyleKey = "tokenRemain.popoverGlassStyle.v1"
     /// 逃生阀:在 macOS 26 上强制退回 legacy NSPopover。没有对应的设置项,
     /// 只在系统侧玻璃回归时给用户一条不必整版降级的自救路径。
@@ -68,6 +69,8 @@ final class PreferencesStore: ObservableObject {
     @Published private(set) var menuBarProviders: [ProviderQuota.Provider]
     /// 菜单栏所选 provider 的呈现密度。默认完整显示以兼容历史行为。
     @Published private(set) var menuBarDisplayMode: MenuBarDisplayMode
+    /// 菜单栏图标使用各品牌原色;默认关闭，统一为随系统外观变化的单色图标。
+    @Published private(set) var menuBarIconsColored: Bool
     /// 菜单栏弹窗使用带雾化采样的毛玻璃，或无雾化层的透明玻璃。
     @Published private(set) var popoverGlassStyle: PopoverGlassStyle
     /// 菜单栏弹窗深色底衬的不透明度；卡片与文字不受影响。
@@ -103,6 +106,7 @@ final class PreferencesStore: ObservableObject {
         }
         menuBarDisplayMode = defaults.string(forKey: Self.menuBarDisplayModeKey)
             .flatMap(MenuBarDisplayMode.init(rawValue:)) ?? .full
+        menuBarIconsColored = defaults.bool(forKey: Self.menuBarIconsColoredKey)
         popoverGlassStyle = defaults.string(forKey: Self.popoverGlassStyleKey)
             .flatMap(PopoverGlassStyle.init(rawValue:)) ?? .frosted
         let storedPopoverOpacity = defaults.object(forKey: Self.popoverBackgroundOpacityKey) as? Double
@@ -181,6 +185,11 @@ final class PreferencesStore: ObservableObject {
     func setMenuBarDisplayMode(_ mode: MenuBarDisplayMode) {
         menuBarDisplayMode = mode
         defaults.set(mode.rawValue, forKey: Self.menuBarDisplayModeKey)
+    }
+
+    func setMenuBarIconsColored(_ colored: Bool) {
+        menuBarIconsColored = colored
+        defaults.set(colored, forKey: Self.menuBarIconsColoredKey)
     }
 
     func setPopoverGlassStyle(_ style: PopoverGlassStyle) {

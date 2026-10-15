@@ -10,8 +10,7 @@ struct BrandIconRenderTests {
         // render the generic fallback glyph rather than an invented logo.
         let unbrandedProviders: Set<ProviderQuota.Provider> = [.factory, .augment]
         // Products of the same brand share that brand's real mark.
-        // Grok Bot is a Grok-branded app (SpaceXAI on Cursor's backend).
-        let sharedBrand: [ProviderQuota.Provider: String] = [.zaiTeam: "zai", .museCode: "muse", .grokBot: "grok"]
+        let sharedBrand: [ProviderQuota.Provider: String] = [.zaiTeam: "zai", .museCode: "muse"]
         let resourceProviders = ProviderQuota.Provider.displayOrder.filter {
             $0 != .claude && $0 != .codex && $0 != .thirdParty && !unbrandedProviders.contains($0)
         }
@@ -39,6 +38,10 @@ struct BrandIconRenderTests {
             )
             #expect(resourceURL.pathExtension == "png")
             #expect(FileManager.default.fileExists(atPath: resourceURL.path))
+            if let monochrome = artwork.monochromeResourceName {
+                #expect(!artwork.isTemplate, "\(provider.displayName) only needs a template for color artwork")
+                #expect(BrandIcon.resourceURL(for: .init(resourceName: monochrome, isTemplate: true)) != nil)
+            }
         }
 
         #expect(resourceNames.count == resourceProviders.count - sharedBrand.count)
@@ -93,45 +96,213 @@ struct BrandIconRenderTests {
         }
     }
 
-    @Test("All status glyphs use one blue, equal visible size and centered slots", arguments: [13.0, 64.0])
+    @Test("Grok menu-bar glyph is inset so the diagonal mark does not flush the canvas", arguments: [13.0, 64.0])
     @MainActor
-    func uniformMenuBarGlyphs(size: Double) throws {
-        let expected = try #require(BrandIcon.menuBarBlue.usingColorSpace(.deviceRGB))
-        for provider in ProviderQuota.Provider.displayOrder {
-            let menu = BrandIcon.menuBarImage(for: provider, size: size)
-            // Inspect the shipped sRGB bitmap directly. AppKit's TIFF export
-            // can tone-map it into an HDR calibrated space on newer displays.
-            let bitmap = try #require(menu.representations.first as? NSBitmapImageRep)
+    func grokMenuBarImageIsPadded(size: Double) throws {
+        let raw = BrandIcon.image(for: .grok, size: size)
+        for colored in [false, true] {
+            let menu = BrandIcon.menuBarImage(for: .grok, size: size, colored: colored)
+            let rawPad = try #require(minPaddingRatio(of: raw))
+            let menuPad = try #require(minPaddingRatio(of: menu))
+            #expect(rawPad < 0.03, "Grok's Lobe PNG should still touch the canvas (got \(rawPad))")
+            #expect(menuPad > 0.10, "menu-bar Grok glyph should keep inner padding (got \(menuPad))")
             #expect(menu.size == NSSize(width: size, height: size))
-            #expect(!menu.isTemplate, "AppKit must not recolor the blue glyph")
+            #expect(menu.isTemplate)
+
+            let tiff = try #require(menu.tiffRepresentation)
+            let bitmap = try #require(NSBitmapImageRep(data: tiff))
             #expect(bitmap.pixelsWide == Int(size * 2))
             #expect(bitmap.pixelsHigh == Int(size * 2))
-            var bounds = NSRect.null
-            var visible = 0
-            var maxColorError: CGFloat = 0
-            var pixel = [UInt](repeating: 0, count: bitmap.samplesPerPixel)
-            let alphaIndex = bitmap.bitmapFormat.contains(.alphaFirst) ? 0 : 3
-            let redIndex = alphaIndex == 0 ? 1 : 0
-            for y in 0..<bitmap.pixelsHigh {
-                for x in 0..<bitmap.pixelsWide {
-                    // Compare encoded sRGB channels rather than NSColor's
-                    // display/HDR adaptation; alpha still governs visible bounds.
-                    bitmap.getPixel(&pixel, atX: x, y: y)
-                    guard pixel[alphaIndex] > 38 else { continue }
-                    let divisor = bitmap.bitmapFormat.contains(.alphaNonpremultiplied)
-                        ? CGFloat(255) : CGFloat(pixel[alphaIndex])
-                    visible += 1
-                    bounds = bounds.union(NSRect(x: x, y: y, width: 1, height: 1))
-                    maxColorError = max(maxColorError, abs(CGFloat(pixel[redIndex]) / divisor - expected.redComponent),
-                                        abs(CGFloat(pixel[redIndex + 1]) / divisor - expected.greenComponent),
-                                        abs(CGFloat(pixel[redIndex + 2]) / divisor - expected.blueComponent))
-                }
+        }
+    }
+
+    @Test("Menu-bar rasterization keeps Claude and Codex filling their canvas", arguments: [13.0, 64.0])
+    @MainActor
+    func menuBarRasterizationDoesNotShrinkAlreadyPaddedMarks(size: Double) throws {
+        for provider in [ProviderQuota.Provider.claude, .codex] {
+            let raw = BrandIcon.image(for: provider, size: size)
+            let rawPad = try #require(minPaddingRatio(of: raw))
+            for colored in [false, true] {
+                let menu = BrandIcon.menuBarImage(for: provider, size: size, colored: colored)
+                let menuPad = try #require(minPaddingRatio(of: menu))
+                #expect(
+                    abs(menuPad - rawPad) < 0.06,
+                    "\(provider.displayName) padding drifted from \(rawPad) to \(menuPad) (colored: \(colored))"
+                )
             }
-            #expect(maxColorError < 0.03, "\(provider) color error: \(maxColorError)")
-            #expect(visible > 5, "\(provider) must remain visible")
-            #expect(abs(max(bounds.width, bounds.height) - size * 2) <= 1, "\(provider) visible size: \(bounds)")
-            #expect(abs(bounds.midX - size) <= 1, "\(provider) horizontal centering")
-            #expect(abs(bounds.midY - size) <= 1, "\(provider) vertical centering")
+        }
+    }
+
+    @Test("Status title keeps the monospaced font and enlarged icons drawn by an attachment cell")
+    @MainActor
+    func statusTitleKeepsOriginalMetrics() throws {
+        #expect(StatusBarController.statusFont == NSFont.monospacedSystemFont(ofSize: 12, weight: .regular))
+        #expect(StatusBarController.statusIconSize > 13, "Icons are enlarged from the original 13pt slot")
+        for colored in [false, true] {
+            let title = StatusBarController.statusTitle(
+                segments: [(.claude, "99%"), (.codex, "52%")],
+                displayMode: .full,
+                coloredIcons: colored
+            )
+            #expect(title.string.hasSuffix(" 52%"))
+            #expect(title.attribute(.font, at: 2, effectiveRange: nil) as? NSFont == StatusBarController.statusFont)
+            let attachment = try #require(title.attribute(.attachment, at: 0, effectiveRange: nil) as? NSTextAttachment)
+            // Template colors are applied by the attachment cell.
+            #expect(attachment.attachmentCell is StatusIconAttachmentCell)
+        }
+    }
+
+    @Test("Status title narrows only its spaces, keeping numerals tabular", arguments: [MenuBarDisplayMode.full, .compact])
+    @MainActor
+    func statusTitleTightensSpaces(mode: MenuBarDisplayMode) throws {
+        let segments: [(ProviderQuota.Provider, String)] = [(.claude, "55%"), (.codex, "83%")]
+        let title = StatusBarController.statusTitle(segments: segments, displayMode: mode, coloredIcons: false)
+        let text = title.string as NSString
+        var spaces = 0
+        for index in 0..<text.length {
+            let kern = title.attribute(.kern, at: index, effectiveRange: nil) as? CGFloat
+            if text.character(at: index) == 0x20 {
+                spaces += 1
+                #expect(kern == StatusBarController.statusSpaceKern)
+            } else {
+                #expect(kern == nil, "Only spaces are narrowed; found kern at \(index)")
+            }
+        }
+        #expect(spaces == (mode == .full ? 4 : 1))
+        let font = StatusBarController.statusFont
+        let space = NSAttributedString(string: " ", attributes: [.font: font]).size().width
+        let iconWidth = 2 * StatusBarController.statusIconSize
+        let digitsWidth = mode == .full ? NSAttributedString(string: "55%·83%", attributes: [.font: font]).size().width : 0
+        let narrowed = iconWidth + digitsWidth + CGFloat(spaces) * (space + StatusBarController.statusSpaceKern)
+        #expect(abs(title.size().width - narrowed) < 1, "width \(title.size().width) vs \(narrowed)")
+    }
+
+    @Test("Status icons are drawn centered on the numerals without moving the numerals", arguments: [1, 2])
+    @MainActor
+    func statusIconsCenterOnNumerals(scale: Int) throws {
+        for appearance in [NSAppearance.Name.aqua, .darkAqua] {
+            for provider in [ProviderQuota.Provider.claude, .codex] {
+                let title = StatusBarController.statusTitle(segments: [(provider, "88%")], displayMode: .full, coloredIcons: false)
+                let attachment = try #require(title.attribute(.attachment, at: 0, effectiveRange: nil) as? NSTextAttachment)
+                let cell = try #require(attachment.attachmentCell as? StatusIconAttachmentCell)
+                let drop = cell.drawingDrop
+                let centered = try inkCenters(title, appearance: appearance, scale: scale)
+                cell.drawingDrop = 0
+                let onBaseline = try inkCenters(title, appearance: appearance, scale: scale)
+                cell.drawingDrop = drop
+
+                #expect(centered.digitRows == onBaseline.digitRows, "\(provider) numerals moved: \(onBaseline.digitRows) -> \(centered.digitRows)")
+                // Default cell layout leaves the glyph well above the numerals.
+                #expect(onBaseline.icon - onBaseline.digits < -2, "\(provider) baseline layout: \(onBaseline)")
+                #expect(abs(centered.icon - centered.digits) <= 0.5, "\(provider) center drift at \(scale)x \(appearance.rawValue): \(centered)")
+            }
+        }
+    }
+
+    /// Vertical ink centers in points (downward positive) of the icon slot and
+    /// of the numerals to its right.
+    @MainActor
+    private func inkCenters(
+        _ title: NSAttributedString,
+        appearance: NSAppearance.Name,
+        scale: Int
+    ) throws -> (icon: CGFloat, digits: CGFloat, digitRows: ClosedRange<Int>) {
+        let bitmap = try renderAttachment(title, appearance: appearance, scale: scale)
+        let iconEnd = (8 + Int(StatusBarController.statusIconSize) + 1) * scale
+        var icon = (Int.max, Int.min), digits = (Int.max, Int.min)
+        for y in 0..<bitmap.pixelsHigh {
+            for x in 0..<bitmap.pixelsWide {
+                let color = try #require(bitmap.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB))
+                let luminance = (color.redComponent + color.greenComponent + color.blueComponent) / 3
+                guard appearance == .darkAqua ? luminance > 0.5 : luminance < 0.5 else { continue }
+                if x < iconEnd { icon = (min(icon.0, y), max(icon.1, y)) } else { digits = (min(digits.0, y), max(digits.1, y)) }
+            }
+        }
+        #expect(icon.0 <= icon.1 && digits.0 <= digits.1, "icon and numerals must both draw")
+        let center = { (range: (Int, Int)) in CGFloat(range.0 + range.1) / 2 / CGFloat(scale) }
+        return (center(icon), center(digits), digits.0...max(digits.0, digits.1))
+    }
+
+    @Test("Monochrome is the default and every provider renders a template glyph", arguments: [13.0, 64.0])
+    @MainActor
+    func monochromeGlyphsAreTemplates(size: Double) throws {
+        for provider in ProviderQuota.Provider.displayOrder {
+            let menu = BrandIcon.menuBarImage(for: provider, size: size)
+            #expect(menu.isTemplate, "\(provider.displayName) must follow the menu-bar appearance")
+            #expect(menu.size == NSSize(width: size, height: size))
+            let coverage = try alphaCoverage(of: menu)
+            #expect(coverage > 0.03, "\(provider.displayName) monochrome glyph looks empty (\(coverage))")
+            // White tile details must become cutouts, not a solid square.
+            #expect(coverage < 0.97, "\(provider.displayName) monochrome glyph is a solid block (\(coverage))")
+        }
+    }
+
+    @Test("Brand-color mode keeps vendor palettes and tints only single-color brand marks")
+    @MainActor
+    func brandColorGlyphsKeepTheirPalette() throws {
+        for provider in ProviderQuota.Provider.displayOrder {
+            let menu = BrandIcon.menuBarImage(for: provider, size: StatusBarController.statusIconSize, colored: true)
+            let raw = BrandIcon.image(for: provider, size: StatusBarController.statusIconSize)
+            if BrandIcon.menuBarBrandTint(for: provider) != nil {
+                #expect(!menu.isTemplate, "\(provider.displayName) brand tint must not be recolored by AppKit")
+            } else {
+                #expect(menu.isTemplate == raw.isTemplate, "\(provider.displayName) changed template state")
+            }
+        }
+    }
+
+    @Test("Actual status attachments stay visible through light/dark/light transitions", arguments: [1, 2])
+    @MainActor
+    func statusAttachmentsFollowAppearance(scale: Int) throws {
+        for colored in [false, true] {
+            for provider in ProviderQuota.Provider.displayOrder {
+                guard BrandIcon.menuBarImage(for: provider, size: StatusBarController.statusIconSize, colored: colored).isTemplate else { continue }
+                // Reuse the same attachment, as the status title does when only the
+                // appearance changes and the quota fingerprint stays unchanged.
+                let attachment = StatusBarController.statusIcon(provider, size: StatusBarController.statusIconSize, colored: colored)
+                var contrasts: [CGFloat] = []
+                for appearance in [NSAppearance.Name.aqua, .darkAqua, .aqua] {
+                    let bitmap = try renderAttachment(attachment, appearance: appearance, scale: scale)
+                    // Integrate contrast so antialiased thin strokes count at 1x;
+                    // a hard per-pixel cutoff incorrectly discards visible strokes.
+                    var contrast: CGFloat = 0
+                    for y in 0..<bitmap.pixelsHigh {
+                        for x in 0..<bitmap.pixelsWide {
+                            let color = try #require(bitmap.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB))
+                            let luminance = (color.redComponent + color.greenComponent + color.blueComponent) / 3
+                            contrast += appearance == .darkAqua ? luminance : 1 - luminance
+                        }
+                    }
+                    contrasts.append(contrast)
+                    #expect(
+                        contrast > CGFloat(5 * scale * scale),
+                        "\(provider.displayName) attachment is invisible in \(appearance.rawValue) at \(scale)x"
+                    )
+                }
+                #expect(contrasts[1] > contrasts[0] * 0.75, "Dark appearance must retain the visible mark")
+                #expect(abs(contrasts[2] - contrasts[0]) < 0.01, "Returning to light must restore the same mark")
+            }
+        }
+    }
+
+    @Test("Monochrome attachments draw no color; brand-color attachments keep it", arguments: [1, 2])
+    @MainActor
+    func attachmentColorFollowsSetting(scale: Int) throws {
+        for provider in [ProviderQuota.Provider.claude, .codex, .deepseek, .kiro] {
+            for appearance in [NSAppearance.Name.aqua, .darkAqua] {
+                let mono = try coloredPixels(
+                    renderAttachment(StatusBarController.statusIcon(provider, size: StatusBarController.statusIconSize), appearance: appearance, scale: scale)
+                )
+                let colored = try coloredPixels(
+                    renderAttachment(
+                        StatusBarController.statusIcon(provider, size: StatusBarController.statusIconSize, colored: true),
+                        appearance: appearance,
+                        scale: scale
+                    )
+                )
+                #expect(mono == 0, "\(provider.displayName) monochrome glyph drew \(mono) colored pixels")
+                #expect(colored > 5 * scale * scale, "\(provider.displayName) lost its brand color")
+            }
         }
     }
 
@@ -139,78 +310,45 @@ struct BrandIconRenderTests {
     @MainActor
     func statusTitlePreview() throws {
         guard let directory = ProcessInfo.processInfo.environment["USAGEDOCK_STATUS_PREVIEW_DIR"] else { return }
-        let title = StatusBarController.statusTitle(
-            segments: [(.codex, "94%"), (.zai, "¥12.34"), (.deepseek, "¥56.78")], displayMode: .full
-        )
-        let bitmap = try renderAttachment(title, appearance: .darkAqua, scale: 2, width: Int(ceil(title.size().width)) + 16)
-        let data = try #require(bitmap.representation(using: .png, properties: [:]))
-        try data.write(to: URL(fileURLWithPath: directory).appendingPathComponent("状态栏预览.png"))
-    }
-
-    @Test("Status numerals use Apple SF Pro with tabular digits")
-    @MainActor
-    func nativeNumericFont() throws {
-        let font = StatusBarController.statusFont
-        #expect(font == NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .regular))
-        #expect(font.fontName != NSFont.monospacedSystemFont(ofSize: 12, weight: .regular).fontName)
-        #expect(NSAttributedString(string: "111", attributes: [.font: font]).size().width
-            == NSAttributedString(string: "888", attributes: [.font: font]).size().width)
-        let title = StatusBarController.statusTitle(segments: [(.zai, "¥12.34")], displayMode: .full)
-        #expect(title.attribute(.font, at: 2, effectiveRange: nil) as? NSFont == font)
-    }
-
-    @Test("Rendered status icons share the digits' vertical center in light and dark appearances", arguments: [1, 2])
-    @MainActor
-    func statusTitleAlignment(scale: Int) throws {
-        for appearance in [NSAppearance.Name.aqua, .darkAqua] {
-            for provider in ProviderQuota.Provider.displayOrder {
-                let title = StatusBarController.statusTitle(segments: [(provider, "888")], displayMode: .full)
-                let bitmap = try renderAttachment(title, appearance: appearance, scale: scale)
-                var iconBounds = NSRect.null
-                var digitBounds = NSRect.null
-                for y in 0..<bitmap.pixelsHigh {
-                    for x in 0..<bitmap.pixelsWide {
-                        let color = try #require(bitmap.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB))
-                        let pixel = NSRect(x: x, y: y, width: 1, height: 1)
-                        if color.blueComponent > color.redComponent + 0.2,
-                           color.blueComponent > color.greenComponent + 0.2 {
-                            iconBounds = iconBounds.union(pixel)
-                        } else if x > 22 * scale {
-                            let luminance = (color.redComponent + color.greenComponent + color.blueComponent) / 3
-                            if appearance == .darkAqua ? luminance > 0.6 : luminance < 0.4 {
-                                digitBounds = digitBounds.union(pixel)
-                            }
-                        }
-                    }
-                }
-                #expect(!iconBounds.isNull && !digitBounds.isNull, "\(provider) must draw icon and digits")
-                #expect(abs(iconBounds.midY - digitBounds.midY) <= CGFloat(scale), "\(provider) center drift: \(iconBounds.midY) vs \(digitBounds.midY) at \(scale)x")
+        let segments: [(ProviderQuota.Provider, String)] = ProviderQuota.Provider.displayOrder.map { ($0, "88%") }
+        for colored in [false, true] {
+            for appearance in [NSAppearance.Name.aqua, .darkAqua] {
+                let title = StatusBarController.statusTitle(segments: segments, displayMode: .full, coloredIcons: colored)
+                let attachment = NSMutableAttributedString(attributedString: title)
+                attachment.addAttribute(.foregroundColor, value: appearance == .darkAqua ? NSColor.white : .black,
+                                        range: NSRange(location: 0, length: attachment.length))
+                let bitmap = try renderAttachment(
+                    attachment, appearance: appearance, scale: 2, width: Int(ceil(title.size().width)) + 16
+                )
+                let data = try #require(bitmap.representation(using: .png, properties: [:]))
+                let name = "status-\(colored ? "color" : "mono")-\(appearance == .darkAqua ? "dark" : "light").png"
+                try data.write(to: URL(fileURLWithPath: directory).appendingPathComponent(name))
             }
         }
     }
 
-    @Test("Blue attachments retain their hue through light/dark/light changes", arguments: [1, 2])
-    @MainActor
-    func blueAttachmentsFollowAppearance(scale: Int) throws {
-        for provider in ProviderQuota.Provider.displayOrder {
-            let attachment = StatusBarController.statusIcon(provider, size: 13)
-            var counts: [Int] = []
-            for appearance in [NSAppearance.Name.aqua, .darkAqua, .aqua] {
-                let bitmap = try renderAttachment(attachment, appearance: appearance, scale: scale)
-                var bluePixels = 0
-                for y in 0..<bitmap.pixelsHigh {
-                    for x in 0..<bitmap.pixelsWide {
-                        let color = try #require(bitmap.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB))
-                        if color.blueComponent > color.redComponent + 0.2,
-                           color.blueComponent > color.greenComponent + 0.2 { bluePixels += 1 }
-                    }
-                }
-                #expect(bluePixels > 5 * scale * scale, "\(provider) must remain blue and visible")
-                counts.append(bluePixels)
+    private func coloredPixels(_ bitmap: NSBitmapImageRep) throws -> Int {
+        var count = 0
+        for y in 0..<bitmap.pixelsHigh {
+            for x in 0..<bitmap.pixelsWide {
+                let color = try #require(bitmap.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB))
+                let components = [color.redComponent, color.greenComponent, color.blueComponent]
+                if components.max()! - components.min()! > 0.2 { count += 1 }
             }
-            #expect(abs(counts[0] - counts[1]) <= 5 * scale * scale)
-            #expect(counts[0] == counts[2])
         }
+        return count
+    }
+
+    private func alphaCoverage(of image: NSImage) throws -> Double {
+        let tiff = try #require(image.tiffRepresentation)
+        let bitmap = try #require(NSBitmapImageRep(data: tiff))
+        var opaque = 0
+        for y in 0..<bitmap.pixelsHigh {
+            for x in 0..<bitmap.pixelsWide {
+                if let color = bitmap.colorAt(x: x, y: y), color.alphaComponent > 0.5 { opaque += 1 }
+            }
+        }
+        return Double(opaque) / Double(max(1, bitmap.pixelsWide * bitmap.pixelsHigh))
     }
 
     @MainActor
@@ -247,4 +385,30 @@ struct BrandIconRenderTests {
         return bitmap
     }
 
+    private func minPaddingRatio(of image: NSImage) -> CGFloat? {
+        guard let tiff = image.tiffRepresentation,
+              let bitmap = NSBitmapImageRep(data: tiff) else {
+            return nil
+        }
+        let width = bitmap.pixelsWide
+        let height = bitmap.pixelsHigh
+        var minX = width
+        var minY = height
+        var maxX = -1
+        var maxY = -1
+        for y in 0..<height {
+            for x in 0..<width {
+                guard let color = bitmap.colorAt(x: x, y: y), color.alphaComponent > 0.08 else {
+                    continue
+                }
+                minX = min(minX, x)
+                minY = min(minY, y)
+                maxX = max(maxX, x)
+                maxY = max(maxY, y)
+            }
+        }
+        guard maxX >= 0 else { return nil }
+        let pad = min(minX, minY, width - 1 - maxX, height - 1 - maxY)
+        return CGFloat(pad) / CGFloat(max(width, height))
+    }
 }
