@@ -178,13 +178,13 @@
 "datasource.credential_missing" = "%1$@ 没有已保存的钥匙串凭据。";
 "datasource.credential_read_failed" = "TokenRemain 无法读取已保存的凭据。请再次粘贴以替换。";
 "datasource.name_grok" = "Grok（xAI）";
-"datasource.name_zai" = "Z.ai（GLM Coding Plan）";
+"datasource.name_zai" = "Z.ai / 智谱";
 "datasource.none_connected" = "尚无成功连接过的数据来源";
 "datasource.openrouter_key_placeholder" = "粘贴 OpenRouter API Key（openrouter.ai → Keys 页生成）";
 "datasource.open_provider_app" = "打开 %1$@";
 "datasource.status_title" = "数据来源状态";
 "datasource.visibility_note" = "已连接过的应用会保留在这里供诊断；Claude/Codex 可显式授权只读凭证访问，其他凭据型服务也可在此完成首次配置。";
-"datasource.zai_key_placeholder" = "粘贴 Z.ai API Key（z.ai → API Keys 页生成）";
+"datasource.zai_key_placeholder" = "粘贴 Z.ai / 智谱 API Key";
 "date.month_day" = "%1$d月%2$d日";
 "devices.active_sources" = "活跃数据源";
 "devices.device_name" = "设备名称";
@@ -703,7 +703,7 @@
 "accounts.credential.placeholder.aksk" = "粘贴 AccessKeyId:SecretAccessKey";
 "accounts.credential.hint.cursor" = "要追踪的那个 Cursor 账户的 Access Token。";
 "accounts.credential.hint.grok" = "Grok 的 Access Token（即 ~/.grok/auth.json 中保存的 token）。";
-"accounts.credential.hint.zai" = "Z.ai API Key（z.ai → API Keys 页生成）；需要指定区域时用 JSON 形式。";
+"accounts.credential.hint.zai" = "普通 Key 默认查询 Coding Plan；国内 API 余额请用 JSON，指定 region: china、queryMode: balance。";
 "accounts.credential.hint.zai_team" = "GLM Team 的 JSON 配置，含 apiKey、organization、project。";
 "accounts.credential.hint.copilot" = "具有 Copilot 权限的 GitHub OAuth Token。";
 "accounts.credential.hint.devin" = "Devin API Key；使用自建 API 服务器时用 JSON 形式。";
@@ -917,3 +917,11 @@
 "muse_code.team_automatic" = "自动（第一个有订阅的团队）";
 "service.muse_code.team_no_quota" = "所选团队 %@ 没有 Muse Code 订阅，请在“数据源”中选择其他团队。";
 "amp.cli_hint" = "已用 Amp CLI 登录？会自动、只读地使用它的 API Key，只有没装 CLI 时才需要下面的 Cookie。";
+
+"datasource.zai_query_mode" = "查询内容";
+
+"datasource.zai_api_balance" = "API 余额";
+
+"service.zai.balance_requires_china" = "API 余额查询仅支持中国区域。";
+
+"service.zai.balance_query_failed" = "智谱 API 余额查询失败。请重试或检查 API Key 的权限。";

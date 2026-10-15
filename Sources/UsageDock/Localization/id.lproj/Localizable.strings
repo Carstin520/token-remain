@@ -205,3 +205,17 @@
 "muse_code.team_automatic" = "Automatic (first team with a subscription)";
 "service.muse_code.team_no_quota" = "The selected team %@ has no Muse Code subscription. Choose another team in Data Sources.";
 "amp.cli_hint" = "Signed in with the Amp CLI? Its API key is used automatically and read-only, so the Cookie below is only needed without the CLI.";
+
+"datasource.zai_query_mode" = "Kueri";
+
+"datasource.zai_api_balance" = "Saldo API";
+
+"service.zai.balance_requires_china" = "Saldo API hanya tersedia untuk wilayah Tiongkok.";
+
+"service.zai.balance_query_failed" = "Kueri saldo API BigModel gagal. Coba lagi atau periksa izin kunci API.";
+
+"datasource.name_zai" = "Z.ai / BigModel";
+
+"datasource.zai_key_placeholder" = "Tempel kunci API Z.ai / BigModel Anda";
+
+"accounts.credential.hint.zai" = "Kunci biasa mengueri Coding Plan. Untuk saldo API Tiongkok, gunakan JSON dengan region: china dan queryMode: balance.";

@@ -205,3 +205,17 @@
 "muse_code.team_automatic" = "Automatic (first team with a subscription)";
 "service.muse_code.team_no_quota" = "The selected team %@ has no Muse Code subscription. Choose another team in Data Sources.";
 "amp.cli_hint" = "Signed in with the Amp CLI? Its API key is used automatically and read-only, so the Cookie below is only needed without the CLI.";
+
+"datasource.zai_query_mode" = "Truy vấn";
+
+"datasource.zai_api_balance" = "Số dư API";
+
+"service.zai.balance_requires_china" = "Chỉ có thể truy vấn số dư API cho khu vực Trung Quốc.";
+
+"service.zai.balance_query_failed" = "Truy vấn số dư API BigModel thất bại. Hãy thử lại hoặc kiểm tra quyền của khóa API.";
+
+"datasource.name_zai" = "Z.ai / BigModel";
+
+"datasource.zai_key_placeholder" = "Dán khóa API Z.ai / BigModel";
+
+"accounts.credential.hint.zai" = "Khóa thuần truy vấn Coding Plan. Để xem số dư API Trung Quốc, dùng JSON với region: china và queryMode: balance.";

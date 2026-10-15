@@ -385,7 +385,11 @@ final class UsageStore: ObservableObject {
         _ lhs: ProviderQuota,
         _ rhs: ProviderQuota
     ) -> Bool {
-        lhs.attribution?.routeIdentifier == rhs.attribution?.routeIdentifier
+        if lhs.provider == .zai, rhs.provider == .zai,
+           (lhs.primary.windowMinutes == 0) != (rhs.primary.windowMinutes == 0) {
+            return false
+        }
+        return lhs.attribution?.routeIdentifier == rhs.attribution?.routeIdentifier
     }
 
     private static func auxFetcher(
@@ -1364,8 +1368,15 @@ final class UsageStore: ObservableObject {
     /// Region selection is non-secret account metadata. Persist it separately
     /// from the API key and immediately re-query the same single Z.ai account.
     func setZAIRegion(_ region: ZAIAPIRegion) async {
+        credentialRevisions[.zai, default: 0] &+= 1
         ZAIRegionStore().save(region)
         await refreshKeyProvider(.zai)
+    }
+
+    func setZAIQueryMode(_ mode: ZAIQueryMode) async {
+        credentialRevisions[.zai, default: 0] &+= 1
+        ZAIQueryModeStore().save(mode)
+        await refreshKeyProvider(.zai, preservingCachedQuota: true)
     }
 
     /// 由数据源页的明确用户操作触发。与后台刷新不同，这条路径允许 macOS
@@ -1656,13 +1667,16 @@ final class UsageStore: ObservableObject {
         providerAccountQuotaCache.save(currentProviderAccountQuotas())
     }
 
-    private func refreshKeyProvider(_ provider: ProviderQuota.Provider) async {
+    private func refreshKeyProvider(
+        _ provider: ProviderQuota.Provider,
+        preservingCachedQuota: Bool = false
+    ) async {
         let revision = credentialRevisions[provider, default: 0]
         let results = await Self.fetchAux(providers: [provider])
         guard !Task.isCancelled, revision == credentialRevisions[provider, default: 0],
               let fetchResult = results[provider] else { return }
         apply(fetchResult, to: provider) { self.assign($0, to: provider) }
-        if case .failure = fetchResult,
+        if !preservingCachedQuota, case .failure = fetchResult,
            storedCredentialReadIssue(for: provider) == nil {
             // Key 被清空后旧数据已无意义,不再展示。
             assign(nil, to: provider)

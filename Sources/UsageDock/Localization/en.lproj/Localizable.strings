@@ -175,13 +175,13 @@
 "datasource.credential_missing" = "%1$@ has no saved Keychain credential.";
 "datasource.credential_read_failed" = "TokenRemain couldn't read the saved credential. Paste it again to replace it.";
 "datasource.name_grok" = "Grok (xAI)";
-"datasource.name_zai" = "Z.ai (GLM Coding Plan)";
+"datasource.name_zai" = "Z.ai / BigModel";
 "datasource.none_connected" = "No data source has connected successfully yet";
 "datasource.openrouter_key_placeholder" = "Paste your OpenRouter API key (create one at openrouter.ai → Keys)";
 "datasource.open_provider_app" = "Open %1$@";
 "datasource.status_title" = "Data Source Status";
 "datasource.visibility_note" = "Previously connected apps stay here for diagnostics. Authorize read-only Claude/Codex access or complete other credential setup here.";
-"datasource.zai_key_placeholder" = "Paste your Z.ai API key (create one at z.ai → API Keys)";
+"datasource.zai_key_placeholder" = "Paste your Z.ai / BigModel API key";
 "date.month_day" = "%1$d/%2$d";
 "devices.active_sources" = "Active data sources";
 "devices.device_name" = "Device name";
@@ -703,7 +703,7 @@
 "accounts.credential.placeholder.aksk" = "Paste AccessKeyId:SecretAccessKey";
 "accounts.credential.hint.cursor" = "Cursor access token for the account you want to track.";
 "accounts.credential.hint.grok" = "Grok access token (the token stored in ~/.grok/auth.json).";
-"accounts.credential.hint.zai" = "Z.ai API key from z.ai → API Keys. Use the JSON form to pin the region.";
+"accounts.credential.hint.zai" = "A plain key queries Coding Plan. For China API balance, use JSON with region: china and queryMode: balance.";
 "accounts.credential.hint.zai_team" = "GLM Team JSON configuration with apiKey, organization, and project.";
 "accounts.credential.hint.copilot" = "GitHub OAuth token with Copilot access.";
 "accounts.credential.hint.devin" = "Devin API key. Use the JSON form for a self-hosted API server.";
@@ -917,3 +917,11 @@
 "muse_code.team_automatic" = "Automatic (first team with a subscription)";
 "service.muse_code.team_no_quota" = "The selected team %@ has no Muse Code subscription. Choose another team in Data Sources.";
 "amp.cli_hint" = "Signed in with the Amp CLI? Its API key is used automatically and read-only, so the Cookie below is only needed without the CLI.";
+
+"datasource.zai_query_mode" = "Query";
+
+"datasource.zai_api_balance" = "API Balance";
+
+"service.zai.balance_requires_china" = "API balance is available only for the China region.";
+
+"service.zai.balance_query_failed" = "BigModel API balance query failed. Please retry or check your API key permissions.";

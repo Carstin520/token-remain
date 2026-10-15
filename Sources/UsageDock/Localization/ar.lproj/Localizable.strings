@@ -205,3 +205,17 @@
 "muse_code.team_automatic" = "Automatic (first team with a subscription)";
 "service.muse_code.team_no_quota" = "The selected team %@ has no Muse Code subscription. Choose another team in Data Sources.";
 "amp.cli_hint" = "Signed in with the Amp CLI? Its API key is used automatically and read-only, so the Cookie below is only needed without the CLI.";
+
+"datasource.zai_query_mode" = "الاستعلام";
+
+"datasource.zai_api_balance" = "رصيد API";
+
+"service.zai.balance_requires_china" = "الاستعلام عن رصيد API متاح لمنطقة الصين فقط.";
+
+"service.zai.balance_query_failed" = "فشل الاستعلام عن رصيد BigModel API. أعد المحاولة أو تحقق من أذونات مفتاح API.";
+
+"datasource.name_zai" = "Z.ai / BigModel";
+
+"datasource.zai_key_placeholder" = "الصق مفتاح Z.ai / BigModel API";
+
+"accounts.credential.hint.zai" = "المفتاح العادي يستعلم عن Coding Plan. لرصيد API في الصين، استخدم JSON مع region: china وqueryMode: balance.";

@@ -184,12 +184,12 @@
 "datasource.credential_missing" = "%1$@ 沒有已儲存的鑰匙圈憑證。";
 "datasource.credential_read_failed" = "TokenRemain 無法讀取已儲存的憑證。請再次貼上以替換。";
 "datasource.name_grok" = "Grok（xAI）";
-"datasource.name_zai" = "Z.ai（GLM Coding Plan）";
+"datasource.name_zai" = "Z.ai / 智譜";
 "datasource.none_connected" = "尚無成功連線過的資料來源";
 "datasource.openrouter_key_placeholder" = "貼上 OpenRouter API Key（於 openrouter.ai → Keys 頁面產生）";
 "datasource.status_title" = "資料來源狀態";
 "datasource.visibility_note" = "曾連線過的 App 會保留在此供診斷；可明確授權唯讀存取 Claude/Codex 憑證，其他憑證型服務也可在此完成首次設定。";
-"datasource.zai_key_placeholder" = "貼上 Z.ai API Key（於 z.ai → API Keys 頁面產生）";
+"datasource.zai_key_placeholder" = "貼上 Z.ai / 智譜 API Key";
 "date.month_day" = "%1$d月%2$d日";
 "devices.active_sources" = "使用中的資料來源";
 "devices.device_name" = "裝置名稱";
@@ -703,7 +703,7 @@
 "accounts.credential.placeholder.aksk" = "貼上 AccessKeyId:SecretAccessKey";
 "accounts.credential.hint.cursor" = "要追蹤的那個 Cursor 帳戶的 Access Token。";
 "accounts.credential.hint.grok" = "Grok 的 Access Token（即 ~/.grok/auth.json 中保存的 token）。";
-"accounts.credential.hint.zai" = "Z.ai API Key（z.ai → API Keys 頁產生）；需要指定區域時使用 JSON 形式。";
+"accounts.credential.hint.zai" = "一般 Key 預設查詢 Coding Plan；中國 API 餘額請用 JSON，指定 region: china、queryMode: balance。";
 "accounts.credential.hint.zai_team" = "GLM Team 的 JSON 設定，含 apiKey、organization、project。";
 "accounts.credential.hint.copilot" = "具有 Copilot 權限的 GitHub OAuth Token。";
 "accounts.credential.hint.devin" = "Devin API Key；使用自建 API 伺服器時採用 JSON 形式。";
@@ -917,3 +917,11 @@
 "muse_code.team_automatic" = "自動（第一個有訂閱的團隊）";
 "service.muse_code.team_no_quota" = "所選團隊 %@ 沒有 Muse Code 訂閱，請在「資料來源」中選擇其他團隊。";
 "amp.cli_hint" = "已用 Amp CLI 登入？會自動、唯讀地使用它的 API Key，只有沒裝 CLI 時才需要下方的 Cookie。";
+
+"datasource.zai_query_mode" = "查詢內容";
+
+"datasource.zai_api_balance" = "API 餘額";
+
+"service.zai.balance_requires_china" = "API 餘額查詢僅支援中國區域。";
+
+"service.zai.balance_query_failed" = "智譜 API 餘額查詢失敗。請重試或檢查 API Key 的權限。";

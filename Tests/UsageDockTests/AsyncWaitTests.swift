@@ -91,7 +91,7 @@ struct AsyncWaitTests {
 @Suite("Credential and initial quota waiting state", .serialized, .timeLimit(.minutes(1)))
 @MainActor
 struct CredentialWaitStateTests {
-    @Test("Timeout preserves the previous credential and quota even after a late successful result", arguments: [ProviderQuota.Provider.deepseek, .claude])
+    @Test("Timeout preserves the previous credential and quota even after a late successful result", arguments: [ProviderQuota.Provider.deepseek, .claude, .zai])
     func timedOutValidation(provider: ProviderQuota.Provider) async throws {
         let gate = DelayedValidation()
         let writes = CredentialWrites()
@@ -113,7 +113,7 @@ struct CredentialWaitStateTests {
         #expect(writes.values == ["previous-demo", "retry-demo"])
     }
 
-    @Test("Cancelling validation prevents a late Keychain write and permits immediate retry", arguments: [ProviderQuota.Provider.deepseek, .claude])
+    @Test("Cancelling validation prevents a late Keychain write and permits immediate retry", arguments: [ProviderQuota.Provider.deepseek, .claude, .zai])
     func cancelledValidation(provider: ProviderQuota.Provider) async throws {
         let gate = DelayedValidation()
         let writes = CredentialWrites()
@@ -313,6 +313,26 @@ struct CredentialWaitStateTests {
         try await Task.sleep(for: .milliseconds(20))
         #expect(writes.values == ["good-fixture-config"])
         #expect(fixture.store.quotaValue(for: .alibabaTokenPlan)?.capturedAt == capturedAt)
+    }
+
+    @Test("Failed balance validation retains the last successful amount, timestamp and cached snapshot")
+    func balanceFailurePreservesFreshness() async throws {
+        let writes = CredentialWrites()
+        let capturedAt = Date(timeIntervalSince1970: 1_800_000_000)
+        let fixture = try Fixture(writes: writes, validate: { _, credential, _ in
+            if credential == "rejected-fixture" { throw ZAIUsageService.ServiceError.keyRejected(401) }
+            return try ZAIBalanceParser.parse(Data(#"{"success":true,"data":{"availableBalance":5.25}}"#.utf8), now: capturedAt)
+        })
+        defer { fixture.remove() }
+        #expect(await fixture.store.saveAPIKey("good-fixture", for: .zai))
+        #expect(!(await fixture.store.saveAPIKey("rejected-fixture", for: .zai)))
+        #expect(writes.values == ["good-fixture"])
+        #expect(fixture.store.quotaValue(for: .zai)?.remainingBalance?.amount == 5.25)
+        #expect(fixture.store.quotaValue(for: .zai)?.capturedAt == capturedAt)
+        let data = try Data(contentsOf: fixture.root.appending(path: "quota-cache.json"))
+        let cache = try JSONDecoder().decode(QuotaCache.Snapshot.self, from: data)
+        #expect(cache.byProvider[.zai]?.capturedAt == capturedAt)
+        #expect(cache.byProvider[.zai]?.remainingBalance?.amount == 5.25)
     }
 
     @MainActor

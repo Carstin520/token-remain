@@ -10,6 +10,12 @@ Versioning for public releases.
 - Unify menu-bar provider icons in blue, normalize visible glyph sizes and align
   them with SF Pro tabular numerals while preserving original brand colors elsewhere.
 
+### Added
+
+- Query prepaid CNY API balances with ordinary BigModel keys using the explicit
+  China / API Balance option, independently of GLM Coding Plan subscriptions.
+  Multi-account credentials can select the same mode with `queryMode: "balance"`.
+
 ## 1.4.3 — 2026-10-14
 
 ### Improved
