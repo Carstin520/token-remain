@@ -444,6 +444,8 @@
 "settings.menubar_mode_hint" = "Festlegen, wie die ausgewählten Apps den Platz in der Menüleiste nutzen.";
 "settings.menubar_mode_minimal" = "Minimal";
 "settings.menubar_mode_minimal_description" = "Nur die ausgewählte App mit dem geringsten Restkontingent anzeigen.";
+"settings.menubar_icon_color" = "Farbige Menüleisten-Symbole";
+"settings.menubar_icon_color_hint" = "Zeigt die ursprünglichen Markenfarben jeder App. Ausgeschaltet sind die Symbole einfarbig und folgen dem hellen oder dunklen Erscheinungsbild der Menüleiste.";
 "settings.menubar_mode_not_selected" = "Nicht ausgewählt";
 "settings.menubar_mode_selected" = "Ausgewählt";
 "settings.menubar_mode_title" = "Anzeigemodus";

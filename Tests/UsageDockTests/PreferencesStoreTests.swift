@@ -10,6 +10,7 @@ struct PreferencesStoreTests {
         let store = PreferencesStore(defaults: testDefaults())
         #expect(store.menuBarProviders == [.claude, .codex])
         #expect(store.menuBarDisplayMode == .full)
+        #expect(!store.menuBarIconsColored)
         #expect(store.popoverGlassStyle == .frosted)
         #expect(store.popoverBackgroundOpacity == PreferencesStore.defaultPopoverBackgroundOpacity)
         #expect(store.quotaSummaryStrategy == .shortestWindow)
@@ -542,6 +543,16 @@ struct PreferencesStoreTests {
 
         defaults.set("future-mode", forKey: PreferencesStore.menuBarDisplayModeKey)
         #expect(PreferencesStore(defaults: defaults).menuBarDisplayMode == .full)
+    }
+
+    @Test("Menu bar brand-color icons are opt-in and persist")
+    func menuBarIconsColored() {
+        let defaults = testDefaults()
+        PreferencesStore(defaults: defaults).setMenuBarIconsColored(true)
+        #expect(PreferencesStore(defaults: defaults).menuBarIconsColored)
+
+        PreferencesStore(defaults: defaults).setMenuBarIconsColored(false)
+        #expect(!PreferencesStore(defaults: defaults).menuBarIconsColored)
     }
 
     @Test("Popover background opacity persists and stays within the valid range")

@@ -445,6 +445,8 @@
 "settings.menubar_mode_hint" = "Choose how the selected apps use menu bar space.";
 "settings.menubar_mode_minimal" = "Minimal";
 "settings.menubar_mode_minimal_description" = "Show only the selected app with the least quota remaining.";
+"settings.menubar_icon_color" = "Colored menu bar icons";
+"settings.menubar_icon_color_hint" = "Show each app's original brand colors. When off, icons are monochrome and follow the menu bar's light or dark appearance.";
 "settings.menubar_mode_not_selected" = "Not selected";
 "settings.menubar_mode_selected" = "Selected";
 "settings.menubar_mode_title" = "Display mode";

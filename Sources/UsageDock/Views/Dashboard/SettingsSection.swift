@@ -51,6 +51,7 @@ private struct FlowToggleRow: View {
 /// before the user applies it.
 private struct MenuBarDisplayModePicker: View {
     let selectedMode: MenuBarDisplayMode
+    let coloredIcons: Bool
     let select: (MenuBarDisplayMode) -> Void
 
     private let columns = [
@@ -77,7 +78,7 @@ private struct MenuBarDisplayModePicker: View {
                                 )
                         }
 
-                        MenuBarModePreview(mode: mode)
+                        MenuBarModePreview(mode: mode, coloredIcons: coloredIcons)
 
                         Text(description(for: mode))
                             .font(.system(size: 10.5))
@@ -133,6 +134,7 @@ private struct MenuBarDisplayModePicker: View {
 
 private struct MenuBarModePreview: View {
     let mode: MenuBarDisplayMode
+    let coloredIcons: Bool
 
     private var segments: [(ProviderQuota.Provider, String?)] {
         switch mode {
@@ -154,9 +156,14 @@ private struct MenuBarModePreview: View {
                         .font(.system(size: 11, design: .monospaced))
                         .foregroundStyle(Color.white.opacity(0.82))
                 }
-                BrandIcon(provider: segment.0, color: .white)
+                // The same glyphs the status item draws, so the preview
+                // follows the monochrome / brand-color setting.
+                let icon = BrandIcon.menuBarImage(for: segment.0, size: 14, colored: coloredIcons)
+                Image(nsImage: icon)
+                    .resizable()
+                    .renderingMode(icon.isTemplate ? .template : .original)
                     .foregroundStyle(.white)
-                    .frame(width: 13, height: 13)
+                    .frame(width: 14, height: 14)
                 if let value = segment.1 {
                     Text(value)
                         .font(.system(size: 11, weight: .medium, design: .monospaced))
@@ -541,7 +548,19 @@ struct SettingsSection: View {
                     )
                     MenuBarDisplayModePicker(
                         selectedMode: preferences.menuBarDisplayMode,
+                        coloredIcons: preferences.menuBarIconsColored,
                         select: { preferences.setMenuBarDisplayMode($0) }
+                    )
+
+                    Divider().overlay(DashboardSurface.border)
+
+                    preferenceToggle(
+                        title: L10n.text("settings.menubar_icon_color"),
+                        detail: L10n.text("settings.menubar_icon_color_hint"),
+                        isOn: Binding(
+                            get: { preferences.menuBarIconsColored },
+                            set: { preferences.setMenuBarIconsColored($0) }
+                        )
                     )
                 }
             }

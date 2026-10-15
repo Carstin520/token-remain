@@ -444,6 +444,8 @@
 "settings.menubar_mode_hint" = "選択したアプリがメニューバーの領域をどう使うか選びます。";
 "settings.menubar_mode_minimal" = "最小";
 "settings.menubar_mode_minimal_description" = "選択した中で残りの割り当てが最も少ないアプリだけを表示します。";
+"settings.menubar_icon_color" = "メニューバーのカラーアイコン";
+"settings.menubar_icon_color_hint" = "各アプリのロゴを本来のブランドカラーで表示します。オフのときはモノクロで、メニューバーのライト／ダーク表示に合わせて白または黒になります。";
 "settings.menubar_mode_not_selected" = "未選択";
 "settings.menubar_mode_selected" = "選択済み";
 "settings.menubar_mode_title" = "表示モード";

@@ -3,6 +3,20 @@
 All notable product changes are recorded here. TokenRemain uses Semantic
 Versioning for public releases.
 
+## Unreleased
+
+### Fixed
+
+- Restore the menu-bar layout from before 1.4.4: monospaced numerals and
+  appearance-adaptive icons instead of the uniform blue glyphs. Icons are
+  slightly larger, centered on the numerals, and the spacing is tighter.
+- Use the official Grok Bot and Muse logos.
+
+### Added
+
+- Settings › Menu Bar can show each app's original brand colors. Icons are
+  monochrome by default and follow the menu bar's light or dark appearance.
+
 ## 1.4.4 — 2026-10-15
 
 ### Improved

@@ -448,6 +448,8 @@
 "settings.menubar_mode_hint" = "选择已勾选应用如何占用菜单栏空间。";
 "settings.menubar_mode_minimal" = "极简";
 "settings.menubar_mode_minimal_description" = "只显示已勾选应用中剩余额度最低的一项。";
+"settings.menubar_icon_color" = "菜单栏彩色图标";
+"settings.menubar_icon_color_hint" = "显示各应用 logo 的原本颜色。关闭时图标为单色，随菜单栏深浅色自动变为白色或黑色。";
 "settings.menubar_mode_not_selected" = "未选择";
 "settings.menubar_mode_selected" = "已选择";
 "settings.menubar_mode_title" = "显示模式";

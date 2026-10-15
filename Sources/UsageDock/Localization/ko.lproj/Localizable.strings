@@ -444,6 +444,8 @@
 "settings.menubar_mode_hint" = "선택한 앱이 메뉴 막대 공간을 사용하는 방식을 고르세요.";
 "settings.menubar_mode_minimal" = "최소";
 "settings.menubar_mode_minimal_description" = "선택한 앱 중 남은 할당량이 가장 적은 앱만 표시합니다.";
+"settings.menubar_icon_color" = "메뉴 막대 컬러 아이콘";
+"settings.menubar_icon_color_hint" = "각 앱 로고를 원래 브랜드 색상으로 표시합니다. 끄면 단색 아이콘이 메뉴 막대의 라이트/다크 모드에 맞춰 흰색 또는 검은색으로 표시됩니다.";
 "settings.menubar_mode_not_selected" = "선택 안 됨";
 "settings.menubar_mode_selected" = "선택됨";
 "settings.menubar_mode_title" = "표시 모드";

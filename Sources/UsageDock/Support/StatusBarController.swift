@@ -228,6 +228,11 @@ final class StatusBarController: NSObject {
             .sink { [weak self] _ in self?.updateStatusImage() }
             .store(in: &cancellables)
 
+        PreferencesStore.shared.$menuBarIconsColored
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.updateStatusImage() }
+            .store(in: &cancellables)
+
         PreferencesStore.shared.$quotaSummaryStrategy
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.updateStatusImage() }
@@ -429,6 +434,7 @@ final class StatusBarController: NSObject {
             }
         )
         let displayMode = PreferencesStore.shared.menuBarDisplayMode
+        let coloredIcons = PreferencesStore.shared.menuBarIconsColored
         let displayedProviders = StatusBarPresentation.displayedProviders(
             mode: displayMode,
             selected: selectedProviders,
@@ -482,6 +488,7 @@ final class StatusBarController: NSObject {
         // 先算显示指纹,不变就整体跳过,避免反复重建富文本与 Dock 重绘。
         let fingerprint = [
             displayMode.rawValue,
+            coloredIcons ? "icons-colored" : "icons-monochrome",
             summaryStrategy.rawValue,
             segments.map { "\($0.0.rawValue):\($0.1)" }.joined(separator: ","),
             dockIconKey,
@@ -491,7 +498,11 @@ final class StatusBarController: NSObject {
         guard fingerprint != lastStatusFingerprint else { return }
         lastStatusFingerprint = fingerprint
 
-        let title = Self.statusTitle(segments: segments, displayMode: displayMode)
+        let title = Self.statusTitle(
+            segments: segments,
+            displayMode: displayMode,
+            coloredIcons: coloredIcons
+        )
 
         statusItem.button?.image = nil
         statusItem.button?.attributedTitle = title
@@ -517,25 +528,43 @@ final class StatusBarController: NSObject {
         }
     }
 
-    static var statusFont: NSFont { .monospacedDigitSystemFont(ofSize: 12, weight: .regular) }
+    static var statusFont: NSFont { .monospacedSystemFont(ofSize: 12, weight: .regular) }
+    /// Brand marks sit inside padded vendor canvases, so the glyph needs a
+    /// slightly larger slot than the 12pt numerals to read at the same weight.
+    static let statusIconSize: CGFloat = 15
+    /// Narrows each space in the status title by about half its width.
+    static let statusSpaceKern: CGFloat = -3.5
 
     static func statusTitle(
         segments: [(ProviderQuota.Provider, String)],
-        displayMode: MenuBarDisplayMode
+        displayMode: MenuBarDisplayMode,
+        coloredIcons: Bool
     ) -> NSAttributedString {
         let attributes: [NSAttributedString.Key: Any] = [
             .font: statusFont,
             .foregroundColor: NSColor.labelColor
         ]
+        // A monospaced space is as wide as a digit; narrow only the spaces so
+        // the item stays compact while the numerals keep their tabular width.
+        var gapAttributes = attributes
+        gapAttributes[.kern] = statusSpaceKern
+        let gap = NSAttributedString(string: " ", attributes: gapAttributes)
         let title = NSMutableAttributedString()
-        if segments.isEmpty { title.append(NSAttributedString(string: "TR", attributes: attributes)) }
+        if segments.isEmpty {
+            title.append(NSAttributedString(string: "TR", attributes: attributes))
+        }
         for (index, segment) in segments.enumerated() {
             if index > 0 {
-                title.append(NSAttributedString(string: displayMode == .compact ? " " : " · ", attributes: attributes))
+                title.append(gap)
+                if displayMode != .compact {
+                    title.append(NSAttributedString(string: "·", attributes: attributes))
+                    title.append(gap)
+                }
             }
-            title.append(statusIcon(segment.0, size: 13))
+            title.append(statusIcon(segment.0, size: statusIconSize, colored: coloredIcons))
             if displayMode != .compact {
-                title.append(NSAttributedString(string: " \(segment.1)", attributes: attributes))
+                title.append(gap)
+                title.append(NSAttributedString(string: segment.1, attributes: attributes))
             }
         }
         return title
@@ -543,15 +572,34 @@ final class StatusBarController: NSObject {
 
     static func statusIcon(
         _ provider: ProviderQuota.Provider,
-        size: CGFloat
+        size: CGFloat,
+        colored: Bool = false
     ) -> NSAttributedString {
-        let image = BrandIcon.menuBarImage(for: provider, size: size)
+        // Normalize size/padding first, then let the cell apply template-image
+        // colors for the current appearance. Assigning attachment.image draws
+        // the black template pixels literally on dark menu-bar backgrounds.
+        let image = BrandIcon.menuBarImage(for: provider, size: size, colored: colored)
+
         let attachment = NSTextAttachment()
-        attachment.image = image
-        // Center on the digits' cap height, not the line box's descender space.
-        attachment.bounds = NSRect(x: 0, y: (statusFont.capHeight - size) / 2, width: size, height: size)
-        let result = NSMutableAttributedString(attachment: attachment)
-        result.addAttribute(.font, value: statusFont, range: NSRange(location: 0, length: result.length))
-        return result
+        let cell = StatusIconAttachmentCell(imageCell: image)
+        // The cell lays the glyph out on the baseline. Draw it lower so it is
+        // centered on the numerals' cap height, snapped to half points for
+        // Retina menu bars.
+        cell.drawingDrop = ((size - statusFont.capHeight) / 2 * 2).rounded() / 2
+        attachment.attachmentCell = cell
+        return NSAttributedString(attachment: attachment)
+    }
+}
+
+/// An attachment cell ignores `NSTextAttachment.bounds` and sits its image on
+/// the baseline, well above the numerals. Moving the layout slot instead
+/// (`cellBaselineOffset`) would grow the line box and shift the numerals, so
+/// only the drawing moves; layout and the numerals stay exactly in place.
+final class StatusIconAttachmentCell: NSTextAttachmentCell {
+    var drawingDrop: CGFloat = 0
+
+    override func draw(withFrame cellFrame: NSRect, in controlView: NSView?) {
+        let flipped = NSGraphicsContext.current?.isFlipped ?? controlView?.isFlipped ?? false
+        super.draw(withFrame: cellFrame.offsetBy(dx: 0, dy: flipped ? drawingDrop : -drawingDrop), in: controlView)
     }
 }
