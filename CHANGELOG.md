@@ -11,6 +11,7 @@ Versioning for public releases.
   appearance-adaptive icons instead of the uniform blue glyphs. Icons are
   slightly larger, centered on the numerals, and the spacing is tighter.
 - Use the official Grok Bot and Muse logos.
+- Keep Windsurf and Kimi menu-bar marks readable in light and dark appearances, including brand-color mode.
 
 ### Added
 
