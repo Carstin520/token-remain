@@ -56,6 +56,7 @@ struct ProviderCredentialEntryRow: View {
     @StateObject private var action = AsyncViewAction()
     private var isSaving: Bool { action.isRunning }
     @State private var zaiRegion: ZAIAPIRegion
+    @State private var zaiQueryMode: ZAIQueryMode
     @State private var alibabaRegion: AlibabaTokenPlanConfiguration.Region
     @State private var alibabaEdition: AlibabaTokenPlanConfiguration.Edition
 
@@ -71,6 +72,7 @@ struct ProviderCredentialEntryRow: View {
             initialValue: ProviderCredentialConfiguration.storedCredentialStatus(for: provider)
         )
         _zaiRegion = State(initialValue: ZAIRegionStore().load())
+        _zaiQueryMode = State(initialValue: ZAIQueryModeStore().load())
         let alibabaConfig = provider == .alibabaTokenPlan
             ? ProviderSecretStore(provider: provider).load().flatMap { try? AlibabaTokenPlanConfiguration.decode($0) }
             : nil
@@ -123,6 +125,23 @@ struct ProviderCredentialEntryRow: View {
                     .labelsHidden()
                     .pickerStyle(.segmented)
                     .frame(maxWidth: 230)
+                    .disabled(isSaving)
+                }
+                if zaiRegion == .china {
+                    Picker(
+                        L10n.text("datasource.zai_query_mode"),
+                        selection: Binding(
+                            get: { zaiQueryMode },
+                            set: { newMode in
+                                zaiQueryMode = newMode
+                                action.start { await store.setZAIQueryMode(newMode) }
+                            }
+                        )
+                    ) {
+                        ForEach(ZAIQueryMode.allCases, id: \.self) { mode in
+                            Text(mode.displayName).tag(mode)
+                        }
+                    }
                     .disabled(isSaving)
                 }
             }

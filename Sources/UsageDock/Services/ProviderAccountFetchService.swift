@@ -44,6 +44,7 @@ enum ProviderAccountProcessEnvironment {
 /// receive an explicit credential and therefore cannot accidentally fall back
 /// to another account's global environment, config file, IPC session or keychain.
 struct ProviderAccountFetchService: Sendable {
+    var zaiUsageService: @Sendable () -> ZAIUsageService = { ZAIUsageService() }
     enum FetchError: LocalizedError {
         case unsupportedProvider(String)
         case missingProfileDirectory
@@ -96,9 +97,21 @@ struct ProviderAccountFetchService: Sendable {
             let credential = try secret(profile, override: credentialOverride)
             let region = credential.field("region").flatMap(ZAIAPIRegion.parse)
                 ?? ZAIRegionStore().load()
-            return try await ZAIUsageService().fetch(
+            // Old account credentials keep their Coding Plan contract even
+            // when the single-account data source selects API balance.
+            let queryMode: ZAIQueryMode
+            if let rawMode = credential.field("queryMode") {
+                guard let mode = ZAIQueryMode(rawValue: rawMode) else {
+                    throw ZAIUsageService.ServiceError.invalidResponse
+                }
+                queryMode = mode
+            } else {
+                queryMode = .codingPlan
+            }
+            return try await zaiUsageService().fetch(
                 apiKey: credential.value,
                 region: region,
+                queryMode: queryMode,
                 now: now
             )
         case .zaiTeam:

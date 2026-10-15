@@ -165,3 +165,17 @@
 "currency.error_timeout" = "La demande de taux de change a expiré. Les derniers taux sont conservés.";
 "currency.error_network" = "Impossible de joindre le service de taux de change. Les derniers taux sont conservés.";
 "quota.model_speed_help" = "%1$@ · vitesse moyenne de sortie sur les %2$d derniers jours, estimée à partir des horodatages des journaux locaux (délai du premier token inclus).";
+
+"datasource.zai_query_mode" = "Requête";
+
+"datasource.zai_api_balance" = "Solde API";
+
+"service.zai.balance_requires_china" = "Le solde API est disponible uniquement pour la région Chine.";
+
+"service.zai.balance_query_failed" = "La requête du solde API BigModel a échoué. Réessayez ou vérifiez les autorisations de la clé API.";
+
+"datasource.name_zai" = "Z.ai / BigModel";
+
+"datasource.zai_key_placeholder" = "Collez votre clé API Z.ai / BigModel";
+
+"accounts.credential.hint.zai" = "Une clé seule interroge Coding Plan. Pour le solde API en Chine, utilisez JSON avec region: china et queryMode: balance.";

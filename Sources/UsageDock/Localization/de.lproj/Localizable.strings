@@ -177,12 +177,12 @@
 "datasource.credential_missing" = "Für %1$@ sind keine Zugangsdaten im Schlüsselbund gespeichert.";
 "datasource.credential_read_failed" = "TokenRemain konnte die gespeicherten Zugangsdaten nicht lesen. Füge sie erneut ein, um sie zu ersetzen.";
 "datasource.name_grok" = "Grok (xAI)";
-"datasource.name_zai" = "Z.ai (GLM Coding Plan)";
+"datasource.name_zai" = "Z.ai / BigModel";
 "datasource.none_connected" = "Noch keine Datenquelle erfolgreich verbunden";
 "datasource.openrouter_key_placeholder" = "OpenRouter API Key einfügen (unter openrouter.ai → Keys erstellen)";
 "datasource.status_title" = "Status der Datenquellen";
 "datasource.visibility_note" = "Bereits verbundene Apps bleiben zur Diagnose sichtbar. Hier kann der Lesezugriff auf Claude/Codex erlaubt und die übrige Ersteinrichtung abgeschlossen werden.";
-"datasource.zai_key_placeholder" = "Z.ai API Key einfügen (unter z.ai → API Keys erstellen)";
+"datasource.zai_key_placeholder" = "Z.ai- / BigModel-API-Schlüssel einfügen";
 "date.month_day" = "%2$d.%1$d.";
 "devices.active_sources" = "Aktive Datenquellen";
 "devices.device_name" = "Gerätename";
@@ -684,7 +684,7 @@
 "accounts.credential.placeholder.aksk" = "AccessKeyId:SecretAccessKey einfügen";
 "accounts.credential.hint.cursor" = "Cursor Access Token des Kontos, das verfolgt werden soll.";
 "accounts.credential.hint.grok" = "Grok Access Token (das Token aus ~/.grok/auth.json).";
-"accounts.credential.hint.zai" = "Z.ai API-Key (z.ai → API Keys). Die JSON-Form legt die Region fest.";
+"accounts.credential.hint.zai" = "Ein einfacher Schlüssel fragt Coding Plan ab. Für API-Guthaben in China JSON mit region: china und queryMode: balance verwenden.";
 "accounts.credential.hint.zai_team" = "GLM-Team-JSON-Konfiguration mit apiKey, organization und project.";
 "accounts.credential.hint.copilot" = "GitHub-OAuth-Token mit Copilot-Zugriff.";
 "accounts.credential.hint.devin" = "Devin API-Key. Für einen selbst gehosteten API-Server die JSON-Form verwenden.";
@@ -871,3 +871,11 @@
 "currency.error_timeout" = "Die Wechselkursabfrage hat das Zeitlimit überschritten. Die letzten Kurse bleiben erhalten.";
 "currency.error_network" = "Der Wechselkursdienst ist nicht erreichbar. Die letzten Kurse bleiben erhalten.";
 "quota.model_speed_help" = "%1$@ · durchschnittliche Ausgabegeschwindigkeit der letzten %2$d Tage, geschätzt aus lokalen Protokoll-Zeitstempeln (inkl. Zeit bis zum ersten Token).";
+
+"datasource.zai_query_mode" = "Abfrage";
+
+"datasource.zai_api_balance" = "API-Guthaben";
+
+"service.zai.balance_requires_china" = "API-Guthaben kann nur für die Region China abgefragt werden.";
+
+"service.zai.balance_query_failed" = "Das BigModel-API-Guthaben konnte nicht abgefragt werden. Erneut versuchen oder die Berechtigungen des API-Schlüssels prüfen.";

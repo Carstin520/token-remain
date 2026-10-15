@@ -165,3 +165,17 @@
 "currency.error_timeout" = "Döviz kuru isteği zaman aşımına uğradı. Son kurlar korunuyor.";
 "currency.error_network" = "Döviz kuru hizmetine ulaşılamadı. Son kurlar korunuyor.";
 "quota.model_speed_help" = "%1$@ · son %2$d günün ortalama çıktı hızı; yerel günlük zaman damgalarından tahmin edilir (ilk tokena kadar geçen süre dahil).";
+
+"datasource.zai_query_mode" = "Sorgu";
+
+"datasource.zai_api_balance" = "API Bakiyesi";
+
+"service.zai.balance_requires_china" = "API bakiyesi yalnızca Çin bölgesinde sorgulanabilir.";
+
+"service.zai.balance_query_failed" = "BigModel API bakiyesi sorgulanamadı. Yeniden deneyin veya API anahtarı izinlerini kontrol edin.";
+
+"datasource.name_zai" = "Z.ai / BigModel";
+
+"datasource.zai_key_placeholder" = "Z.ai / BigModel API anahtarınızı yapıştırın";
+
+"accounts.credential.hint.zai" = "Düz anahtar Coding Plan sorgular. Çin API bakiyesi için region: china ve queryMode: balance içeren JSON kullanın.";

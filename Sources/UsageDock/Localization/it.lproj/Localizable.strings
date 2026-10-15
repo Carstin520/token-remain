@@ -165,3 +165,17 @@
 "currency.error_timeout" = "La richiesta dei tassi di cambio è scaduta. Restano gli ultimi tassi.";
 "currency.error_network" = "Impossibile raggiungere il servizio dei tassi di cambio. Restano gli ultimi tassi.";
 "quota.model_speed_help" = "%1$@ · velocità media di output negli ultimi %2$d giorni, stimata dai timestamp dei log locali (incluso il tempo al primo token).";
+
+"datasource.zai_query_mode" = "Consulta";
+
+"datasource.zai_api_balance" = "Saldo API";
+
+"service.zai.balance_requires_china" = "Il saldo API è disponibile solo per la regione Cina.";
+
+"service.zai.balance_query_failed" = "Richiesta del saldo API BigModel non riuscita. Riprova o verifica i permessi della chiave API.";
+
+"datasource.name_zai" = "Z.ai / BigModel";
+
+"datasource.zai_key_placeholder" = "Incolla la chiave API Z.ai / BigModel";
+
+"accounts.credential.hint.zai" = "Una chiave semplice consulta Coding Plan. Per il saldo API in Cina, usa JSON con region: china e queryMode: balance.";

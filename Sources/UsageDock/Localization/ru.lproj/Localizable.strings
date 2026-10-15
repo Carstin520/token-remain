@@ -165,3 +165,17 @@
 "currency.error_timeout" = "Истекло время запроса курсов. Сохранены последние курсы.";
 "currency.error_network" = "Не удалось подключиться к сервису курсов. Сохранены последние курсы.";
 "quota.model_speed_help" = "%1$@ · средняя скорость вывода за последние %2$d дн., оценка по временным меткам локальных журналов (с задержкой до первого токена).";
+
+"datasource.zai_query_mode" = "Запрос";
+
+"datasource.zai_api_balance" = "Баланс API";
+
+"service.zai.balance_requires_china" = "Запрос баланса API доступен только для региона Китай.";
+
+"service.zai.balance_query_failed" = "Не удалось запросить баланс API BigModel. Повторите попытку или проверьте права ключа API.";
+
+"datasource.name_zai" = "Z.ai / BigModel";
+
+"datasource.zai_key_placeholder" = "Вставьте ключ API Z.ai / BigModel";
+
+"accounts.credential.hint.zai" = "Обычный ключ запрашивает Coding Plan. Для баланса API в Китае используйте JSON с region: china и queryMode: balance.";

@@ -119,7 +119,7 @@ iPhone 版目前为 [TestFlight 公开测试](https://testflight.apple.com/join/
 | <img src="site/assets/providers/windsurf.png" width="16" alt="" /> **Windsurf** | 🟢 | 日 / 周配额 |
 | <img src="site/assets/providers/antigravity.svg" width="16" alt="" /> **Antigravity** | 🟢 | 配额池 |
 | <img src="site/assets/providers/opencode.svg" width="16" alt="" /> **OpenCode** | 🟢 | 套餐本地估算；第三方 provider 标注实际 API |
-| <img src="site/assets/providers/zai.svg" width="16" alt="" /> **Z.ai**（GLM Coding Plan） | 🔑 | 会话 / 周窗口与 MCP 月额度 |
+| <img src="site/assets/providers/zai.svg" width="16" alt="" /> **Z.ai / 智谱** | 🔑 | Coding Plan 额度，或普通 API Key 的人民币余额（中国 → API 余额） |
 | <img src="site/assets/providers/openrouter.svg" width="16" alt="" /> **OpenRouter** | 🔑 | Key 限额、Credits 与账户余额 |
 
 <details>

@@ -165,3 +165,17 @@
 "currency.error_timeout" = "विनिमय दर अनुरोध का समय समाप्त हुआ। पिछली दरें रखी गई हैं।";
 "currency.error_network" = "विनिमय दर सेवा से कनेक्ट नहीं हो सका। पिछली दरें रखी गई हैं।";
 "quota.model_speed_help" = "%1$@ · पिछले %2$d दिनों की औसत आउटपुट गति, स्थानीय लॉग टाइमस्टैम्प से अनुमानित (पहले टोकन तक का समय शामिल)।";
+
+"datasource.zai_query_mode" = "क्वेरी";
+
+"datasource.zai_api_balance" = "API शेष";
+
+"service.zai.balance_requires_china" = "API शेष की क्वेरी केवल चीन क्षेत्र में उपलब्ध है।";
+
+"service.zai.balance_query_failed" = "BigModel API शेष की क्वेरी विफल हुई। फिर प्रयास करें या API कुंजी की अनुमतियाँ जाँचें।";
+
+"datasource.name_zai" = "Z.ai / BigModel";
+
+"datasource.zai_key_placeholder" = "अपनी Z.ai / BigModel API कुंजी पेस्ट करें";
+
+"accounts.credential.hint.zai" = "साधारण कुंजी Coding Plan की क्वेरी करती है। चीन के API शेष के लिए JSON में region: china और queryMode: balance दें।";

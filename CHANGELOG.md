@@ -3,6 +3,14 @@
 All notable product changes are recorded here. TokenRemain uses Semantic
 Versioning for public releases.
 
+## Unreleased
+
+### Added
+
+- Query prepaid CNY API balances with ordinary BigModel keys using the explicit
+  China / API Balance option, independently of GLM Coding Plan subscriptions.
+  Multi-account credentials can select the same mode with `queryMode: "balance"`.
+
 ## 1.4.3 — 2026-10-14
 
 ### Improved

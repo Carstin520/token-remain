@@ -177,12 +177,12 @@
 "datasource.credential_missing" = "%1$@ no tiene una credencial guardada en el Llavero.";
 "datasource.credential_read_failed" = "TokenRemain no pudo leer la credencial guardada. Vuelve a pegarla para reemplazarla.";
 "datasource.name_grok" = "Grok (xAI)";
-"datasource.name_zai" = "Z.ai (GLM Coding Plan)";
+"datasource.name_zai" = "Z.ai / BigModel";
 "datasource.none_connected" = "Ninguna fuente de datos se ha conectado correctamente todavía";
 "datasource.openrouter_key_placeholder" = "Pega tu API Key de OpenRouter (créala en openrouter.ai → Keys)";
 "datasource.status_title" = "Estado de las fuentes de datos";
 "datasource.visibility_note" = "Las apps conectadas se conservan para el diagnóstico. Autoriza aquí el acceso de Claude/Codex o completa la configuración de otras credenciales.";
-"datasource.zai_key_placeholder" = "Pega tu API Key de Z.ai (créala en z.ai → API Keys)";
+"datasource.zai_key_placeholder" = "Pega tu clave API de Z.ai / BigModel";
 "date.month_day" = "%2$d/%1$d";
 "devices.active_sources" = "Fuentes de datos activas";
 "devices.device_name" = "Nombre del dispositivo";
@@ -684,7 +684,7 @@
 "accounts.credential.placeholder.aksk" = "Pega AccessKeyId:SecretAccessKey";
 "accounts.credential.hint.cursor" = "Token de acceso de Cursor de la cuenta que quieres seguir.";
 "accounts.credential.hint.grok" = "Token de acceso de Grok (el token guardado en ~/.grok/auth.json).";
-"accounts.credential.hint.zai" = "Clave de API de Z.ai (z.ai → API Keys). Usa el formato JSON para fijar la región.";
+"accounts.credential.hint.zai" = "Una clave sin formato consulta Coding Plan. Para el saldo API de China, usa JSON con region: china y queryMode: balance.";
 "accounts.credential.hint.zai_team" = "Configuración JSON de GLM Team con apiKey, organization y project.";
 "accounts.credential.hint.copilot" = "Token OAuth de GitHub con acceso a Copilot.";
 "accounts.credential.hint.devin" = "Clave de API de Devin. Usa el formato JSON para un servidor de API propio.";
@@ -871,3 +871,11 @@
 "currency.error_timeout" = "La solicitud de tipos de cambio superó el tiempo de espera. Se conservan los últimos tipos.";
 "currency.error_network" = "No se pudo conectar con el servicio de tipos de cambio. Se conservan los últimos tipos.";
 "quota.model_speed_help" = "%1$@ · velocidad media de salida de los últimos %2$d días, estimada con las marcas de tiempo de los registros locales (incluye el tiempo hasta el primer token).";
+
+"datasource.zai_query_mode" = "Consulta";
+
+"datasource.zai_api_balance" = "Saldo API";
+
+"service.zai.balance_requires_china" = "El saldo API solo está disponible para la región de China.";
+
+"service.zai.balance_query_failed" = "Falló la consulta del saldo API de BigModel. Reintenta o revisa los permisos de la clave API.";

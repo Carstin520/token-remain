@@ -165,3 +165,17 @@
 "currency.error_timeout" = "Yêu cầu tỷ giá đã hết thời gian. Giữ tỷ giá gần nhất.";
 "currency.error_network" = "Không kết nối được dịch vụ tỷ giá. Giữ tỷ giá gần nhất.";
 "quota.model_speed_help" = "%1$@ · tốc độ đầu ra trung bình %2$d ngày qua, ước tính từ dấu thời gian nhật ký cục bộ (gồm thời gian đến token đầu tiên).";
+
+"datasource.zai_query_mode" = "Truy vấn";
+
+"datasource.zai_api_balance" = "Số dư API";
+
+"service.zai.balance_requires_china" = "Chỉ có thể truy vấn số dư API cho khu vực Trung Quốc.";
+
+"service.zai.balance_query_failed" = "Truy vấn số dư API BigModel thất bại. Hãy thử lại hoặc kiểm tra quyền của khóa API.";
+
+"datasource.name_zai" = "Z.ai / BigModel";
+
+"datasource.zai_key_placeholder" = "Dán khóa API Z.ai / BigModel";
+
+"accounts.credential.hint.zai" = "Khóa thuần truy vấn Coding Plan. Để xem số dư API Trung Quốc, dùng JSON với region: china và queryMode: balance.";

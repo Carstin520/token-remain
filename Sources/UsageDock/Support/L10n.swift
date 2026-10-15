@@ -40,6 +40,11 @@ enum L10n {
     /// domain strings deterministic there and is also the final safety net if
     /// an installed localization is missing a key.
     private static let fallback: [String: String] = [
+        "accounts.credential.hint.zai": "普通 Key 默认查询 Coding Plan；国内 API 余额请用 JSON，指定 region: china、queryMode: balance。",
+        "service.zai.balance_query_failed": "智谱 API 余额查询失败。请重试或检查 API Key 的权限。",
+        "service.zai.balance_requires_china": "API 余额查询仅支持中国区域。",
+        "datasource.zai_api_balance": "API 余额",
+        "datasource.zai_query_mode": "查询内容",
         "claude.web.open_site": "打开 claude.ai",
         "claude.web.paste_clipboard": "从剪贴板粘贴",
         "claude.web.clipboard_unrecognized": "剪贴板中没有 claude.ai sessionKey。请复制 sessionKey 的值（以 sk-ant-sid 开头）或完整的 Cookie 请求头后重试。",
@@ -298,13 +303,13 @@ enum L10n {
         "datasource.credential_missing": "%1$@ 没有已保存的钥匙串凭据。",
         "datasource.credential_read_failed": "TokenRemain 无法读取已保存的凭据。请再次粘贴以替换。",
         "datasource.name_grok": "Grok（xAI）",
-        "datasource.name_zai": "Z.ai（GLM Coding Plan）",
+        "datasource.name_zai": "Z.ai / 智谱",
         "datasource.none_connected": "尚无成功连接过的数据来源",
         "datasource.openrouter_key_placeholder": "粘贴 OpenRouter API Key（openrouter.ai → Keys 页生成）",
         "datasource.open_provider_app": "打开 %1$@",
         "datasource.status_title": "数据来源状态",
         "datasource.visibility_note": "已连接过的应用会保留在这里供诊断；Claude/Codex 可显式授权只读凭证访问，其他凭据型服务也可在此完成首次配置。",
-        "datasource.zai_key_placeholder": "粘贴 Z.ai API Key（z.ai → API Keys 页生成）",
+        "datasource.zai_key_placeholder": "粘贴 Z.ai / 智谱 API Key",
         "date.month_day": "%1$d月%2$d日",
         "devices.active_sources": "活跃数据源",
         "devices.device_name": "设备名称",

@@ -177,12 +177,12 @@
 "datasource.credential_missing" = "%1$@ のキーチェーン認証情報は保存されていません。";
 "datasource.credential_read_failed" = "保存済みの認証情報を読み取れませんでした。再度貼り付けて置き換えてください。";
 "datasource.name_grok" = "Grok(xAI)";
-"datasource.name_zai" = "Z.ai(GLM Coding Plan)";
+"datasource.name_zai" = "Z.ai / BigModel";
 "datasource.none_connected" = "接続に成功したデータソースはまだありません";
 "datasource.openrouter_key_placeholder" = "OpenRouter APIキーを貼り付け(openrouter.ai → Keys で作成)";
 "datasource.status_title" = "データソースの状態";
 "datasource.visibility_note" = "接続済みアプリは診断用に残ります。Claude/Codex の読み取り専用アクセス許可や、その他の認証情報の初回設定をここで行えます。";
-"datasource.zai_key_placeholder" = "Z.ai APIキーを貼り付け(z.ai → API Keys で作成)";
+"datasource.zai_key_placeholder" = "Z.ai / BigModel API キーを貼り付け";
 "date.month_day" = "%1$d月%2$d日";
 "devices.active_sources" = "アクティブなデータソース";
 "devices.device_name" = "デバイス名";
@@ -684,7 +684,7 @@
 "accounts.credential.placeholder.aksk" = "AccessKeyId:SecretAccessKey を貼り付け";
 "accounts.credential.hint.cursor" = "追跡したいアカウントの Cursor アクセストークン。";
 "accounts.credential.hint.grok" = "Grok のアクセストークン（~/.grok/auth.json に保存されているトークン）。";
-"accounts.credential.hint.zai" = "Z.ai の API キー（z.ai → API Keys）。リージョンを指定する場合は JSON 形式を使います。";
+"accounts.credential.hint.zai" = "キーのみの場合は Coding Plan を照会します。中国の API 残高には JSON で region: china と queryMode: balance を指定してください。";
 "accounts.credential.hint.zai_team" = "apiKey・organization・project を含む GLM Team の JSON 設定。";
 "accounts.credential.hint.copilot" = "Copilot にアクセスできる GitHub OAuth トークン。";
 "accounts.credential.hint.devin" = "Devin の API キー。自前の API サーバーを使う場合は JSON 形式で指定します。";
@@ -871,3 +871,11 @@
 "currency.error_timeout" = "為替レートの取得がタイムアウトしました。前回のレートを使用します。";
 "currency.error_network" = "為替レートサービスに接続できません。前回のレートを使用します。";
 "quota.model_speed_help" = "%1$@ · 直近 %2$d 日間の平均出力速度。ローカルログのタイムスタンプから推定（最初のトークンまでの待ち時間を含む）。";
+
+"datasource.zai_query_mode" = "照会内容";
+
+"datasource.zai_api_balance" = "API 残高";
+
+"service.zai.balance_requires_china" = "API 残高の照会は中国リージョンでのみ利用できます。";
+
+"service.zai.balance_query_failed" = "BigModel API 残高の照会に失敗しました。再試行するか、API キーの権限を確認してください。";
