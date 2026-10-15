@@ -64,6 +64,7 @@ WINDOW_HOSTS=(
   "Sources/UsageDock/Support/FloatingWidgetWindowController.swift"
   "Sources/UsageDock/Support/PopoverPreviewWindowController.swift"
   "Sources/UsageDock/Support/ClaudeCookieGuideWindowController.swift"
+  "Sources/UsageDock/Support/WebCookieGuideWindowController.swift"
 )
 
 # NSPopover 宿主:必须**排除**在上面那条规则之外。NSPopover 正是靠
