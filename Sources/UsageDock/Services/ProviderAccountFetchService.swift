@@ -175,7 +175,7 @@ struct ProviderAccountFetchService: Sendable {
                 configuration: try secret(profile, override: credentialOverride).raw,
                 now: now
             )
-        case .opencode, .kiro, .alibabaTokenPlan:
+        case .opencode, .kiro, .alibabaTokenPlan, .grokBot, .muse, .museCode, .amp, .factory, .augment:
             throw FetchError.unsupportedProvider(profile.provider.displayName)
         }
     }

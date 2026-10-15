@@ -35,6 +35,22 @@ enum ProviderSessionAlerts {
                 return false
             }
         }
+        // Pasted web sessions (Muse, Amp, Qoder, …): only a rejected or
+        // expired session needs a fresh Cookie. A missing one was never set
+        // up, and transport or server errors recover on their own.
+        if let extended = error as? ExtendedProviderError {
+            if case .secretRejected(let provider, _) = extended {
+                return ProviderSecretStore.descriptor(for: provider)?.isCookie == true
+            }
+            return false
+        }
+        if let muse = error as? MuseUsageService.ServiceError {
+            return muse == .sessionExpired
+        }
+        if let alibaba = error as? AlibabaTokenPlanError {
+            if case .authentication = alibaba { return true }
+            return false
+        }
         if let codex = error as? CodexAPIUsageService.APIError {
             switch codex {
             case .notLoggedIn, .tokenExpired, .invalidStoredCredentials:

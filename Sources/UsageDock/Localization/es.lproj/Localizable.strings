@@ -105,6 +105,8 @@
 "quota.extra_usage" = "Uso adicional";
 "quota.spent" = "%@ gastados";
 "quota.official_spend" = "Gasto oficial";
+"quota.models_this_cycle" = "Modelos de este ciclo";
+"quota.models_more" = "+%1$d más";
 "quota.account_balance" = "Saldo de la cuenta";
 "quota.spend_week" = "Esta semana";
 "quota.spend_month" = "Este mes";
@@ -160,6 +162,7 @@
 "datasource.detail.devin" = "Consulta directa de la API SeatManagement (credenciales locales de Devin de solo lectura)";
 "datasource.detail.windsurf" = "Consulta directa de la API SeatManagement de Windsurf (inicio de sesión local de solo lectura)";
 "datasource.detail.grok" = "Consulta directa de la API de cuota del fondo semanal (solo lectura de ~/.grok/auth.json)";
+"datasource.detail.grok_bot" = "Consulta directa a la API de uso semanal (inicio de sesión local de Cursor solo lectura; Grok Bot debe usar la misma cuenta de Cursor)";
 "datasource.detail.kiro" = "Analiza el informe /usage de kiro-cli (subproceso local)";
 "datasource.detail.ollama" = "Estado de ejecución e información de modelos de Ollama local (totalmente local)";
 "datasource.detail.opencode" = "Estima la cuota del plan Go escaneando la base de datos local (totalmente local, sin red)";
@@ -319,6 +322,8 @@
 "provider.detect.found_credentials" = "Se detectaron credenciales de %1$@ configuradas";
 "provider.detect.grok.found" = "Se detectó Grok CLI o credenciales locales";
 "provider.detect.grok.hint" = "Ejecuta grok una vez e inicia sesión para conectarlo automáticamente";
+"provider.detect.grok_bot.found" = "Se detectó la app Grok Bot";
+"provider.detect.grok_bot.hint" = "Instala Grok Bot e inicia sesión en Cursor con la misma cuenta de Cursor para conectar automáticamente";
 "provider.detect.install_login_hint" = "Instala %1$@ e inicia sesión para conectarlo automáticamente";
 "provider.detect.kiro.found" = "Se detectó Kiro";
 "provider.detect.kiro.hint" = "Instala Kiro CLI e inicia sesión para conectarlo automáticamente";
@@ -391,6 +396,9 @@
 "service.devin.token_rejected" = "Devin rechazó las credenciales actuales (HTTP %1$d); vuelve a iniciar sesión en Devin para recuperarlo";
 "service.grok.not_logged_in" = "No se detectó inicio de sesión en Grok CLI; ejecuta grok una vez e inicia sesión para conectarlo automáticamente";
 "service.grok.stale_login" = "Grok lleva tiempo sin usarse y sus credenciales han caducado; ejecuta grok una vez para reanudar la actualización de cuota";
+"service.grok_bot.not_logged_in" = "El uso de Grok Bot se lee a través del inicio de sesión de Cursor; inicia sesión en Cursor con la misma cuenta que usas en Grok Bot";
+"service.grok_bot.no_weekly_allowance" = "Esta cuenta de Cursor no tiene asignación semanal de Grok Bot";
+"service.grok_bot.pooled_allowance" = "Esta cuenta usa una asignación compartida del equipo, que Grok Bot no muestra como porcentaje semanal";
 "service.kiro.not_installed" = "No se detectó kiro-cli; instala Kiro CLI e inicia sesión para conectarlo automáticamente";
 "service.opencode.no_usage" = "Este Mac aún no tiene registros de uso de OpenCode Go; aparecerán tras usar OpenCode una vez";
 "service.opencode.not_installed" = "No se detectó OpenCode; instala OpenCode Go e inicia sesión para conectarlo automáticamente";
@@ -616,8 +624,8 @@
 "settings.quota_summary_hint" = "Elige qué ventana de cuota de cuenta priorizan la barra de menús, el Dock y el Dashboard; se excluyen las cuotas de modelos.";
 "settings.quota_summary_shortest" = "Ventana más corta (predeterminado)";
 "settings.quota_summary_tightest" = "Menor cuota restante";
-"settings.antigravity_3p" = "Show Antigravity third-party pools";
-"settings.antigravity_3p_hint" = "Show the optional Claude/third-party 5-hour and weekly pools; hidden by default.";
+"settings.antigravity_3p" = "Show Antigravity Claude / GPT pools";
+"settings.antigravity_3p_hint" = "Show the Claude and GPT-OSS 5-hour and weekly pools next to Gemini; shown by default.";
 "trends.model_other_format" = "Other (%1$d models)";
 "trends.model_detail_tag" = "MODEL DETAIL";
 "trends.model_detail_accumulating" = "Model detail accumulates from this version onward; older cached days cannot be backfilled.";
@@ -777,6 +785,10 @@
 "accounts.management.remove_named" = "Eliminar cuenta %1$@";
 "accounts.management.more_named" = "Más acciones para %1$@";
 "accounts.management.add_app" = "Añadir app";
+"accounts.management.remove_app" = "Quitar";
+"accounts.management.remove_app_named" = "Quitar %@ de Gestión de cuentas";
+"accounts.management.remove_app_title" = "¿Quitar %@?";
+"accounts.management.remove_app_message" = "Se detiene la supervisión de %@ y se quita su tarjeta. Las cuentas y claves guardadas se conservan, así que al volver a añadirla desde Añadir app sigue donde lo dejaste.";
 "accounts.management.no_connected" = "Aún no hay apps con sesión iniciada. Usa Añadir app para empezar a supervisar una.";
 "accounts.management.show_all" = "Mostrar las %d cuentas";
 "accounts.management.show_fewer" = "Mostrar menos";
@@ -871,3 +883,37 @@
 "currency.error_timeout" = "La solicitud de tipos de cambio superó el tiempo de espera. Se conservan los últimos tipos.";
 "currency.error_network" = "No se pudo conectar con el servicio de tipos de cambio. Se conservan los últimos tipos.";
 "quota.model_speed_help" = "%1$@ · velocidad media de salida de los últimos %2$d días, estimada con las marcas de tiempo de los registros locales (incluye el tiempo hasta el primer token).";
+
+/* Web Cookie guide and web-session providers */
+"cookieguide.title" = "Conectar %@ con una cookie del navegador";
+"cookieguide.summary" = "Usa tu propia sesión web de %@: inicia sesión en el navegador, copia el encabezado Cookie de la solicitud de la página y pégalo aquí.";
+"cookieguide.open" = "Abrir guía paso a paso";
+"cookieguide.reopen" = "Abrir %@ de nuevo";
+"cookieguide.step1.title" = "Inicia sesión en %@";
+"cookieguide.step1.body" = "%@ se abrió en tu navegador. Inicia sesión si aún no lo has hecho y quédate en esa página.";
+"cookieguide.step2.body.chromium" = "En la página de %@, pulsa ⌥⌘I o haz clic derecho y elige Inspeccionar.";
+"cookieguide.step2.body.safari" = "Primero abre Ajustes de Safari → Avanzado y activa “Mostrar funciones para desarrolladores web”. Luego pulsa ⌥⌘I en la página de %@.";
+"cookieguide.step2.body.firefox" = "En la página de %@, pulsa ⌥⌘I o haz clic derecho y elige Inspeccionar.";
+"cookieguide.step3.title" = "Busca el encabezado Cookie de la solicitud";
+"cookieguide.step3.body.chromium" = "Abre la pestaña Network y pulsa ⌘R para recargar. Haz clic en la primera solicitud llamada %@ (tipo document), abre Headers → Request Headers y busca la fila cookie.";
+"cookieguide.step3.body.safari" = "Abre la pestaña Red y pulsa ⌘R para recargar. Selecciona el primer documento %@, abre Encabezados y busca Cookie en Solicitud.";
+"cookieguide.step3.body.firefox" = "Abre la pestaña Red y pulsa ⌘R para recargar. Selecciona la primera solicitud de documento %@, abre Cabeceras y busca Cookie en Cabeceras de la petición.";
+"cookieguide.step4.title" = "Cópialo y pégalo aquí";
+"cookieguide.step4.body" = "Haz clic derecho en la fila cookie y elige Copiar valor (también sirve clic derecho en la solicitud → Copiar como cURL) y pulsa Pegar desde el portapapeles. TokenRemain lo comprueba una vez con %@ antes de guardarlo.";
+"cookieguide.connected" = "Conectado. El uso de %@ ahora viene de esta sesión del navegador.";
+"cookieguide.clipboard_unrecognized" = "El portapapeles no contiene un encabezado Cookie ni un comando cURL. Copia el valor de cookie de los encabezados de la solicitud y vuelve a intentarlo.";
+"cookieguide.privacy" = "Solo se guarda en el llavero de TokenRemain. Funciona como una contraseña: no lo compartas. Si el sitio cierra tu sesión, pega uno nuevo.";
+"cookieguide.invalid_cookie" = "Eso no parece un encabezado Cookie. Copia el valor de cookie de los encabezados de la solicitud de la página.";
+"secret.placeholder.muse" = "Pega el encabezado Cookie de muse.ai tras iniciar sesión";
+"secret.placeholder.muse_code" = "Pega el encabezado Cookie de dev.meta.ai tras iniciar sesión";
+"secret.placeholder.amp" = "Pega el encabezado Cookie de ampcode.com tras iniciar sesión";
+"secret.placeholder.factory" = "Pega el encabezado Cookie de app.factory.ai tras iniciar sesión";
+"secret.placeholder.augment" = "Pega el encabezado Cookie de app.augmentcode.com tras iniciar sesión";
+"service.muse.session_expired" = "muse.ai cerró esta sesión. Inicia sesión en muse.ai y pega una cookie nueva.";
+"service.muse.action_not_found" = "No se encontraron los datos de suscripción en la página de muse.ai. Puede que muse.ai haya cambiado; actualiza para reintentar.";
+"alert.provider_cookie_expired.title" = "La sesión de %@ caducó";
+"alert.provider_cookie_expired.body" = "La sesión web de %@ que pegaste ya no se acepta, así que la tarjeta muestra la última lectura correcta. Abre Fuentes de datos y pega una cookie nueva; la guía te lleva paso a paso.";
+"muse_code.team" = "Equipo";
+"muse_code.team_automatic" = "Automático (primer equipo con suscripción)";
+"service.muse_code.team_no_quota" = "El equipo seleccionado %@ no tiene suscripción a Muse Code. Elige otro equipo en Fuentes de datos.";
+"amp.cli_hint" = "¿Has iniciado sesión con la CLI de Amp? Su clave de API se usa automáticamente y en solo lectura; la cookie de abajo solo hace falta sin la CLI.";

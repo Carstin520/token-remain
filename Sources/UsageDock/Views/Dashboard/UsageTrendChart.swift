@@ -329,6 +329,9 @@ struct UsageTrendChart: View {
             .animation(.easeOut(duration: 0.18), value: visibleAgentIDs)
         }
         .focusable()
+        // 键盘焦点只服务于 ←/→/Esc 切换选中日期;选中态已由柱高亮与
+        // 明细面板表达,系统蓝色焦点环会框住整张图表,视觉上是噪音。
+        .focusEffectDisabled()
         .onExitCommand { pinnedDayID = nil }
         .onMoveCommand(perform: movePinnedDay)
         .accessibilityElement(children: .contain)

@@ -9,7 +9,7 @@ const provider = {
   scopedWindows: [
     { scopeID: "fable", displayName: "Fable", window },
     { scopeID: "codex_bengalfox_session", displayName: "GPT-5.3-Codex-Spark", window },
-    { scopeID: "antigravity_3p_5h", displayName: "Claude / Third-party", window },
+    { scopeID: "antigravity_3p_5h", displayName: "Claude / GPT", window },
     { scopeID: "future_scope", displayName: "Future model", window },
   ],
 };

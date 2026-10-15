@@ -6,10 +6,20 @@ import Testing
 struct BrandIconRenderTests {
     @Test("Branded providers have explicit artwork; shared products reuse only their real brand")
     func authenticArtworkCoverage() throws {
+        // No published mark exists yet (Lobe Icons 1.95.1 has none); these
+        // render the generic fallback glyph rather than an invented logo.
+        let unbrandedProviders: Set<ProviderQuota.Provider> = [.factory, .augment]
+        // Products of the same brand share that brand's real mark.
+        // Grok Bot is a Grok-branded app (SpaceXAI on Cursor's backend).
+        let sharedBrand: [ProviderQuota.Provider: String] = [.zaiTeam: "zai", .museCode: "muse", .grokBot: "grok"]
         let resourceProviders = ProviderQuota.Provider.displayOrder.filter {
-            $0 != .claude && $0 != .codex && $0 != .thirdParty
+            $0 != .claude && $0 != .codex && $0 != .thirdParty && !unbrandedProviders.contains($0)
         }
         var resourceNames = Set<String>()
+
+        for provider in unbrandedProviders {
+            #expect(BrandIcon.artwork(for: provider) == nil)
+        }
 
         for provider in resourceProviders {
             let artwork = try #require(
@@ -17,8 +27,8 @@ struct BrandIconRenderTests {
                 "\(provider.displayName) is missing an explicit brand artwork mapping"
             )
             let inserted = resourceNames.insert(artwork.resourceName).inserted
-            if provider == .zaiTeam {
-                #expect(!inserted && artwork.resourceName == "zai")
+            if let brand = sharedBrand[provider] {
+                #expect(!inserted && artwork.resourceName == brand)
             } else {
                 #expect(inserted, "\(provider.displayName) reuses another provider's brand resource")
             }
@@ -31,7 +41,7 @@ struct BrandIconRenderTests {
             #expect(FileManager.default.fileExists(atPath: resourceURL.path))
         }
 
-        #expect(resourceNames.count == resourceProviders.count - 1)
+        #expect(resourceNames.count == resourceProviders.count - sharedBrand.count)
         #expect(BrandIcon.artwork(for: .thirdParty) == nil)
     }
 

@@ -71,7 +71,7 @@ struct BrandIcon: View {
                     .foregroundStyle(tint)
                     .accessibilityLabel(provider.rawValue)
             } else {
-                Image(systemName: "questionmark.circle")
+                Image(systemName: Self.fallbackSymbolName(for: provider))
                     .resizable()
                     .scaledToFit()
                     .foregroundStyle(tint)
@@ -222,7 +222,7 @@ struct BrandIcon: View {
             return nil
         case .cursor:
             return Artwork(resourceName: "cursor", isTemplate: true)
-        case .grok:
+        case .grok, .grokBot:
             return Artwork(resourceName: "grok", isTemplate: true)
         case .zai, .zaiTeam:
             return Artwork(resourceName: "zai", isTemplate: true)
@@ -256,6 +256,13 @@ struct BrandIcon: View {
             return Artwork(resourceName: "ollama", isTemplate: true)
         case .alibabaTokenPlan:
             return Artwork(resourceName: "bailian", isTemplate: false)
+        case .muse, .museCode:
+            return Artwork(resourceName: "muse", isTemplate: false)
+        case .amp:
+            return Artwork(resourceName: "amp", isTemplate: false)
+        case .factory, .augment:
+            // No Lobe Icons mark yet; the generic fallback glyph is used.
+            return nil
         case .thirdParty:
             return nil
         }
@@ -327,12 +334,21 @@ struct BrandIcon: View {
             ?? NSImage(size: NSSize(width: 32, height: 32))
     }
 
+    static func fallbackSymbolName(for provider: ProviderQuota.Provider) -> String {
+        switch provider {
+        case .factory: "f.square"
+        case .augment: "a.square"
+        default: "questionmark.circle"
+        }
+    }
+
+
     private static func fallbackImage(
         for provider: ProviderQuota.Provider,
         size: CGFloat
     ) -> NSImage {
         let image = NSImage(
-            systemSymbolName: "questionmark.circle",
+            systemSymbolName: fallbackSymbolName(for: provider),
             accessibilityDescription: provider.rawValue
         ) ?? NSImage(size: NSSize(width: size, height: size))
         image.size = NSSize(width: size, height: size)

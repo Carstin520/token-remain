@@ -256,7 +256,7 @@ struct ClaudeCookieGuideView: View {
 // and theme, and a real capture of the Cookies panel would contain a live
 // session value.
 
-private let guideHighlight = DashboardTheme.violet
+let guideHighlight = DashboardTheme.violet
 
 private struct GuideBrowserIllustration: View {
     var body: some View {
@@ -300,7 +300,7 @@ private struct GuideBrowserIllustration: View {
     }
 }
 
-private struct GuideShortcutIllustration: View {
+struct GuideShortcutIllustration: View {
     let showsSafariSetting: Bool
 
     var body: some View {
@@ -328,7 +328,7 @@ private struct GuideShortcutIllustration: View {
     }
 }
 
-private struct GuideKeycap: View {
+struct GuideKeycap: View {
     let symbol: String
     let caption: String?
 
@@ -459,7 +459,7 @@ private struct GuideCookieTableIllustration: View {
     }
 }
 
-private struct GuideKeycapBadge: View {
+struct GuideKeycapBadge: View {
     let text: String
 
     var body: some View {
@@ -473,7 +473,7 @@ private struct GuideKeycapBadge: View {
     }
 }
 
-private func placeholderBar(width: CGFloat) -> some View {
+func placeholderBar(width: CGFloat) -> some View {
     Capsule()
         .fill(DashboardTheme.track)
         .frame(width: width, height: 7)

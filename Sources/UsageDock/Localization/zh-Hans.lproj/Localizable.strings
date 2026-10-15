@@ -106,6 +106,8 @@
 "quota.extra_usage" = "额外用量";
 "quota.spent" = "已花 %@";
 "quota.official_spend" = "官方消费";
+"quota.models_this_cycle" = "本账期模型";
+"quota.models_more" = "另有 %1$d 个";
 "quota.account_balance" = "账户余额";
 "quota.spend_week" = "本周";
 "quota.spend_month" = "本月";
@@ -158,6 +160,7 @@
 "datasource.detail.devin" = "SeatManagement 接口直查（只读本机 Devin 凭证）";
 "datasource.detail.windsurf" = "Windsurf SeatManagement 接口直查（只读本机 Windsurf 登录态）";
 "datasource.detail.grok" = "周池额度接口直查（只读 ~/.grok/auth.json）";
+"datasource.detail.grok_bot" = "周额度接口直查（只读 Cursor 本机登录态；Grok Bot 需登录同一 Cursor 账户）";
 "datasource.detail.kiro" = "kiro-cli /usage 报告解析（本机子进程）";
 "datasource.detail.ollama" = "本机 Ollama 运行状态与模型信息（纯本地）";
 "datasource.detail.opencode" = "本地数据库扫描估算 Go 套餐额度（纯本地，无网络）";
@@ -318,6 +321,8 @@
 "provider.detect.found_credentials" = "检测到已配置的 %1$@ 凭据";
 "provider.detect.grok.found" = "检测到 Grok CLI 或本地登录凭据";
 "provider.detect.grok.hint" = "运行一次 grok 并登录后自动接入";
+"provider.detect.grok_bot.found" = "检测到 Grok Bot 应用";
+"provider.detect.grok_bot.hint" = "安装 Grok Bot，并在 Cursor 中登录同一个 Cursor 账户后自动接入";
 "provider.detect.install_login_hint" = "安装并登录 %1$@ 后自动接入";
 "provider.detect.kiro.found" = "检测到 Kiro";
 "provider.detect.kiro.hint" = "安装 Kiro CLI 并登录后自动接入";
@@ -395,6 +400,9 @@
 "service.devin.token_rejected" = "Devin 拒绝了当前凭证（HTTP %1$d）；重新登录 Devin 后恢复";
 "service.grok.not_logged_in" = "未检测到 Grok CLI 登录；运行一次 grok 并登录后自动接入";
 "service.grok.stale_login" = "Grok 长时间未使用，登录凭证已过期；运行一次 grok 即可恢复额度刷新";
+"service.grok_bot.not_logged_in" = "Grok Bot 用量通过 Cursor 本机登录态读取；请在 Cursor 中登录与 Grok Bot 相同的账户";
+"service.grok_bot.no_weekly_allowance" = "当前 Cursor 账户没有 Grok Bot 周额度";
+"service.grok_bot.pooled_allowance" = "当前账户使用团队共享额度池，Grok Bot 不提供周百分比";
 "service.kiro.not_installed" = "未检测到 kiro-cli；安装 Kiro CLI 并登录后自动接入";
 "service.opencode.no_usage" = "本机还没有 OpenCode Go 用量记录；用一次 OpenCode 后出现";
 "service.opencode.not_installed" = "未检测到 OpenCode；安装并登录 OpenCode Go 后自动接入";
@@ -620,8 +628,8 @@
 "settings.quota_summary_hint" = "选择菜单栏、Dock 与 Dashboard 摘要优先显示哪个账号级额度窗口；模型专属额度不参与。";
 "settings.quota_summary_shortest" = "最短窗口（默认）";
 "settings.quota_summary_tightest" = "剩余额度最低";
-"settings.antigravity_3p" = "显示 Antigravity 第三方额度池";
-"settings.antigravity_3p_hint" = "显示可选的 Claude/第三方 5 小时与周额度；默认隐藏。";
+"settings.antigravity_3p" = "æ¾ç¤º Antigravity Claude / GPT é¢åº¦æ± ";
+"settings.antigravity_3p_hint" = "å¨ Gemini é¢åº¦ææ¾ç¤º Claude ä¸ GPT-OSS æ¨¡åç 5 å°æ¶ä¸å¨é¢åº¦ï¼é»è®¤æ¾ç¤ºã";
 "settings.pool_mimo_daily" = "显示 MiMo 日额度池";
 "settings.pool_mimo_daily_hint" = "在 MiMo 账户窗口之外显示每日 Token 池；有用量后默认显示。";
 "settings.pool_ollama_hourly" = "显示 Ollama 小时池";
@@ -777,6 +785,10 @@
 "accounts.management.remove_named" = "移除账号 %1$@";
 "accounts.management.more_named" = "%1$@ 的更多操作";
 "accounts.management.add_app" = "添加应用";
+"accounts.management.remove_app" = "移除";
+"accounts.management.remove_app_named" = "从账号管理中移除 %@";
+"accounts.management.remove_app_title" = "移除 %@？";
+"accounts.management.remove_app_message" = "将停止监控 %@ 并移除它的卡片。已保存的账号和密钥都会保留，之后从“添加应用”重新添加即可恢复。";
 "accounts.management.no_connected" = "还没有已登录的应用。点击“添加应用”开始监控。";
 "accounts.management.show_all" = "显示全部 %d 个账号";
 "accounts.management.show_fewer" = "收起";
@@ -871,3 +883,37 @@
 "currency.error_timeout" = "汇率请求超时，继续使用上次的汇率。";
 "currency.error_network" = "无法连接汇率服务，继续使用上次的汇率。";
 "quota.model_speed_help" = "%1$@ · 近 %2$d 天平均输出速度，由本地日志时间戳估算（包含首字延迟）。";
+
+/* Web Cookie guide and web-session providers */
+"cookieguide.title" = "用浏览器 Cookie 连接 %@";
+"cookieguide.summary" = "使用你自己的 %@ 网页登录态：在浏览器登录后，复制页面请求的 Cookie 请求头，再粘贴到这里。";
+"cookieguide.open" = "打开分步指引";
+"cookieguide.reopen" = "重新打开 %@";
+"cookieguide.step1.title" = "登录 %@";
+"cookieguide.step1.body" = "已在浏览器打开 %@。如果还没登录，请先登录，并停留在该页面。";
+"cookieguide.step2.body.chromium" = "在 %@ 页面按 ⌥⌘I，或右键页面选择“检查”。";
+"cookieguide.step2.body.safari" = "先打开 Safari 设置 → 高级，勾选“显示网页开发者功能”。然后在 %@ 页面按 ⌥⌘I。";
+"cookieguide.step2.body.firefox" = "在 %@ 页面按 ⌥⌘I，或右键页面选择“检查”。";
+"cookieguide.step3.title" = "找到页面请求的 Cookie 请求头";
+"cookieguide.step3.body.chromium" = "打开 Network（网络）标签并按 ⌘R 刷新。点击第一条名为 %@ 的请求（类型 document），打开 Headers → Request Headers，找到 cookie 一行。";
+"cookieguide.step3.body.safari" = "打开“网络”标签并按 ⌘R 刷新。选中第一条 %@ 文档请求，打开“标头”，在“请求”下找到 Cookie。";
+"cookieguide.step3.body.firefox" = "打开“网络”标签并按 ⌘R 刷新。选中第一条 %@ 文档请求，打开“消息头”，在“请求头”下找到 Cookie。";
+"cookieguide.step4.title" = "复制并粘贴到这里";
+"cookieguide.step4.body" = "右键 cookie 一行选择“复制值”（也可以右键该请求 → 复制为 cURL），然后点击“从剪贴板粘贴”。TokenRemain 会先用 %@ 校验一次再保存。";
+"cookieguide.connected" = "已连接。%@ 的用量现在来自这个浏览器会话。";
+"cookieguide.clipboard_unrecognized" = "剪贴板里不是 Cookie 请求头或“复制为 cURL”的命令。请从请求头复制 cookie 的值后重试。";
+"cookieguide.privacy" = "只保存在 TokenRemain 的钥匙串里。它等同于密码，请勿分享。网站让你重新登录后，再粘贴一次新的即可。";
+"cookieguide.invalid_cookie" = "这看起来不是 Cookie 请求头。请从页面请求的请求头里复制 cookie 的值。";
+"secret.placeholder.muse" = "登录后粘贴 muse.ai 的 Cookie 请求头";
+"secret.placeholder.muse_code" = "登录后粘贴 dev.meta.ai 的 Cookie 请求头";
+"secret.placeholder.amp" = "登录后粘贴 ampcode.com 的 Cookie 请求头";
+"secret.placeholder.factory" = "登录后粘贴 app.factory.ai 的 Cookie 请求头";
+"secret.placeholder.augment" = "登录后粘贴 app.augmentcode.com 的 Cookie 请求头";
+"service.muse.session_expired" = "muse.ai 已让此会话退出登录。请在 muse.ai 重新登录并粘贴新的 Cookie。";
+"service.muse.action_not_found" = "未能在 muse.ai 页面中找到订阅数据，muse.ai 可能已改版；请刷新重试。";
+"alert.provider_cookie_expired.title" = "%@ 会话已过期";
+"alert.provider_cookie_expired.body" = "你粘贴的 %@ 网页会话已失效，卡片显示的是最后一次成功的快照。请打开“数据源”粘贴新的 Cookie，指引会一步步带你完成。";
+"muse_code.team" = "团队";
+"muse_code.team_automatic" = "自动（第一个有订阅的团队）";
+"service.muse_code.team_no_quota" = "所选团队 %@ 没有 Muse Code 订阅，请在“数据源”中选择其他团队。";
+"amp.cli_hint" = "已用 Amp CLI 登录？会自动、只读地使用它的 API Key，只有没装 CLI 时才需要下面的 Cookie。";

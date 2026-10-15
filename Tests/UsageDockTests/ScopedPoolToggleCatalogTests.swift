@@ -53,10 +53,10 @@ struct ScopedPoolToggleCatalogTests {
             for: scoped("codex_bengalfox_weekly", "GPT-5.3-Codex-Spark"), provider: .codex
         ) == ScopedPoolToggleCatalog.codexSparkPoolKey)
         #expect(ScopedPoolToggleCatalog.poolKey(
-            for: scoped("antigravity_3p_5h", "Claude / Third-party"), provider: .antigravity
+            for: scoped("antigravity_3p_5h", "Claude / GPT"), provider: .antigravity
         ) == ScopedPoolToggleCatalog.antigravityThirdPartyPoolKey)
         #expect(ScopedPoolToggleCatalog.poolKey(
-            for: scoped("antigravity_3p_weekly", "Claude / Third-party"), provider: .antigravity
+            for: scoped("antigravity_3p_weekly", "Claude / GPT"), provider: .antigravity
         ) == ScopedPoolToggleCatalog.antigravityThirdPartyPoolKey)
         #expect(ScopedPoolToggleCatalog.poolKey(
             for: scoped("mimo_daily", "Daily"), provider: .mimo
@@ -158,12 +158,15 @@ struct ScopedPoolToggleCatalogTests {
         #expect(duplicated.map(\.provider) == [.claude])
     }
 
-    @Test("Only Fable defaults to visible when no window data is available")
+    @Test("Only Fable and Antigravity Claude/GPT default to visible without window data")
     func visibilityFallbackWithoutData() {
         let visibleWithoutData = ScopedPoolToggleCatalog.entries
             .filter(\.visibilityFallbackWithoutData)
             .map(\.poolKey)
-        #expect(visibleWithoutData == [ScopedPoolToggleCatalog.fablePoolKey])
+        #expect(visibleWithoutData == [
+            ScopedPoolToggleCatalog.fablePoolKey,
+            ScopedPoolToggleCatalog.antigravityThirdPartyPoolKey
+        ])
     }
 
     @Test("Pool activity is judged over the whole pool group, not per row")

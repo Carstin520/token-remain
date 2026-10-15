@@ -45,6 +45,16 @@ test("Auto resolves group-wide activity from latest scopes and positive balances
   };
   assert.equal(scopedPoolIsActive(entry, provider), true);
   assert.equal(resolvedScopedPoolVisibility(entry, provider, {}), true);
+
+  // Antigravity Claude / GPT is shown once reported, even before first use.
+  const antigravity = SCOPED_POOL_CATALOG.find((item) => item.providerID === "antigravity");
+  const unusedThirdParty = {
+    providerID: "antigravity",
+    scopedWindows: [{ scopeID: "antigravity_3p_5h", window: { usedPercent: 0 } }],
+  };
+  assert.equal(resolvedScopedPoolVisibility(antigravity, unusedThirdParty, {}), true);
+  assert.equal(resolvedScopedPoolVisibility(antigravity, unusedThirdParty, { [antigravity.key]: "off" }), false);
+  assert.equal(scopedPoolIsActive(antigravity, { providerID: "antigravity", scopedWindows: [] }), false);
   assert.equal(resolvedScopedPoolVisibility(entry, provider, { [entry.key]: "off" }), false);
   assert.equal(resolvedScopedPoolVisibility(entry, { ...provider, scopedWindows: [] }, { [entry.key]: "on" }), true);
 

@@ -299,12 +299,13 @@ final class PreferencesStore: ObservableObject {
         ) ?? false
     }
 
-    /// 未设置态沿用历史默认 false;实际显示走智能默认(有用量即显示)。
+    /// Claude/GPT 池与 Gemini 池同为 Antigravity 的主额度组,未设置态默认
+    /// 显示;实际显示走智能默认(上报即显示),用户显式关闭仍然生效。
     var showAntigravityThirdPartyQuota: Bool {
         scopedPoolVisibility(
             provider: .antigravity,
             poolKey: ScopedPoolToggleCatalog.antigravityThirdPartyPoolKey
-        ) ?? false
+        ) ?? true
     }
 
     func setShowCodexSparkQuotaInMenuBarWidget(_ enabled: Bool) {

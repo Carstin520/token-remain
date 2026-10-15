@@ -250,6 +250,10 @@ struct QuotaCard: View {
                 Divider().overlay(DashboardSurface.border)
                 ProviderSpendRow(spend: spend)
             }
+            if let models = quota.modelUsage, !models.isEmpty {
+                Divider().overlay(DashboardSurface.border)
+                ProviderModelUsageRow(models: models)
+            }
             TimelineView(.periodic(from: .now, by: 60)) { context in
                 let isStale = context.date.timeIntervalSince(quota.capturedAt) >= 600
                 Label {
@@ -1042,6 +1046,59 @@ struct ProviderSpendRow: View {
             }
         }
         .accessibilityElement(children: .combine)
+    }
+}
+
+/// Models the provider's own billing API attributes to the current cycle,
+/// largest token total first. Three lines cover the common case without an
+/// inner scroll; the rest collapse into a count.
+struct ProviderModelUsageRow: View {
+    let models: [ProviderModelUsage]
+
+    static let visibleLimit = 3
+
+    private var totalTokens: Int64 {
+        models.reduce(0) { $0 + $1.totalTokens }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(L10n.text("quota.models_this_cycle"))
+                .font(.system(size: 12))
+                .usageDockAdaptiveForeground(.secondary)
+            ForEach(Array(models.prefix(Self.visibleLimit).enumerated()), id: \.offset) { _, model in
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(model.model)
+                        .font(.system(size: 10.5))
+                        .usageDockAdaptiveForeground(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .help(model.model)
+                    Spacer(minLength: 8)
+                    Text(detailText(for: model))
+                        .numericFont(10.5, .semibold)
+                        .usageDockAdaptiveForeground(.primary)
+                        .fixedSize()
+                }
+            }
+            if models.count > Self.visibleLimit {
+                Text(L10n.format("quota.models_more", models.count - Self.visibleLimit))
+                    .font(.system(size: 10))
+                    .usageDockAdaptiveForeground(.secondary)
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private func detailText(for model: ProviderModelUsage) -> String {
+        var parts = [UsageFormatting.compactNumber(model.totalTokens)]
+        if totalTokens > 0 {
+            parts.append(UsageFormatting.percent(Double(model.totalTokens) / Double(totalTokens) * 100))
+        }
+        if let cents = model.costCents, cents > 0 {
+            parts.append(UsageFormatting.compactUSD(cents / 100))
+        }
+        return parts.joined(separator: " · ")
     }
 }
 

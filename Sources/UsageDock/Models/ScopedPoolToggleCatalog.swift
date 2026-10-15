@@ -2,7 +2,7 @@ import Foundation
 
 /// 可开关的附加额度池静态目录(见 reports/provider-quota-pool-fix-plan-2026-08-24.md
 /// "统一原则"第 3 条)。目录只收"模型级 / 附加池"——用户可以选择显不显示、
-/// 隐藏后主额度语义仍完整的那几行:Fable、Codex Spark、Antigravity 3P、
+/// 隐藏后主额度语义仍完整的那几行:Fable、Codex Spark、Antigravity Claude/GPT、
 /// MiMo 日池、Ollama 小时池、DeepSeek 多币种、OpenRouter 积分池。
 ///
 /// **账户级兄弟池永不进目录**:Cursor cursor_auto/cursor_api、Copilot
@@ -28,14 +28,19 @@ enum ScopedPoolToggleCatalog {
         /// 藏掉它等于藏掉真正的瓶颈;Spark 沿用既有语义(用户显式开启
         /// 就是要在收起态看到)。
         let followsExpansion: Bool
+        /// 智能默认是否"上报即显示"。Antigravity 的 Claude/GPT 池与 Gemini
+        /// 池并列独立计量,未用过(0%)时也要让用户看到另一组模型还剩多少,
+        /// 所以不按"有用量才算在用"判定;用户显式关掉的开关仍然优先。
+        var showsWhenReported = false
 
         var id: String { "\(provider.rawValue)|\(poolKey)" }
 
         /// 设置页开关在"用户没动过 + 也拿不到窗口数据"时显示的保守默认,
-        /// 与旧版三个独立开关的历史默认一致(Fable 显示,其余隐藏)。
+        /// Fable 沿用旧开关的历史默认(显示);上报即显示的池(Antigravity
+        /// Claude/GPT)同样默认显示;其余隐藏。
         /// 有窗口数据时一律走 `resolvedScopedPoolVisibility` 的智能默认。
         var visibilityFallbackWithoutData: Bool {
-            poolKey == ScopedPoolToggleCatalog.fablePoolKey
+            poolKey == ScopedPoolToggleCatalog.fablePoolKey || showsWhenReported
         }
     }
 
@@ -73,7 +78,8 @@ enum ScopedPoolToggleCatalog {
             poolKey: antigravityThirdPartyPoolKey,
             titleKey: "settings.antigravity_3p",
             detailKey: "settings.antigravity_3p_hint",
-            followsExpansion: true
+            followsExpansion: true,
+            showsWhenReported: true
         ),
         Entry(
             provider: .mimo,
@@ -148,10 +154,11 @@ enum ScopedPoolToggleCatalog {
     /// - 余额型池(DeepSeek 附加币种等):usedPercent 恒为 0——"有钱"
     ///   就是 0% 已用,只看用量会把余额为正的池永远判成闲置而隐藏,
     ///   所以正余额同样算"在用"。
+    /// - `showsWhenReported` 的池:只要本次额度里有该组的行就算在用。
     static func poolIsActive(entry: Entry, in quota: ProviderQuota) -> Bool {
         quota.uniqueScopedWindows.contains { scoped in
             self.entry(for: scoped, provider: quota.provider)?.id == entry.id
-                && windowIsActive(scoped.window)
+                && (entry.showsWhenReported || windowIsActive(scoped.window))
         }
     }
 
