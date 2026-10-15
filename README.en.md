@@ -119,7 +119,7 @@ The iPhone app is in [public TestFlight beta](https://testflight.apple.com/join/
 | <img src="site/assets/providers/windsurf.png" width="16" alt="" /> **Windsurf** | 🟢 | Daily / weekly quotas |
 | <img src="site/assets/providers/antigravity.svg" width="16" alt="" /> **Antigravity** | 🟢 | Quota pools |
 | <img src="site/assets/providers/opencode.svg" width="16" alt="" /> **OpenCode** | 🟢 | Local plan estimate; third-party providers attributed to their real API |
-| <img src="site/assets/providers/zai.svg" width="16" alt="" /> **Z.ai / BigModel** | 🔑 | Coding Plan quotas or prepaid CNY API balance (China → API Balance) |
+| <img src="site/assets/providers/zai.svg" width="16" alt="" /> **Z.ai / BigModel** | 🔑 | Coding Plan quotas; prepaid CNY API balance on macOS (China → API Balance) |
 | <img src="site/assets/providers/openrouter.svg" width="16" alt="" /> **OpenRouter** | 🔑 | Key limits, credits and account balance |
 
 <details>
