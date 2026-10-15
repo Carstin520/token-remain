@@ -105,6 +105,8 @@
 "quota.extra_usage" = "追加利用";
 "quota.spent" = "%@ 使用";
 "quota.official_spend" = "公式の支出";
+"quota.models_this_cycle" = "今期のモデル";
+"quota.models_more" = "他 %1$d 件";
 "quota.account_balance" = "アカウント残高";
 "quota.spend_week" = "今週";
 "quota.spend_month" = "今月";
@@ -160,6 +162,7 @@
 "datasource.detail.devin" = "SeatManagement API を直接照会(ローカルの Devin 認証情報は読み取り専用)";
 "datasource.detail.windsurf" = "Windsurf SeatManagement API を直接照会（ローカルの Windsurf ログインは読み取り専用）";
 "datasource.detail.grok" = "週次プールのクォータ API を直接照会(~/.grok/auth.json は読み取り専用)";
+"datasource.detail.grok_bot" = "週次使用量 API を直接照会(ローカルの Cursor ログイン状態は読み取り専用。Grok Bot も同じ Cursor アカウントでログインが必要)";
 "datasource.detail.kiro" = "kiro-cli の /usage レポートを解析(ローカルサブプロセス)";
 "datasource.detail.ollama" = "ローカル Ollama の実行状態とモデル情報(完全ローカル)";
 "datasource.detail.opencode" = "ローカルデータベースをスキャンして Go プランのクォータを推定(完全ローカル、ネットワーク不使用)";
@@ -177,12 +180,12 @@
 "datasource.credential_missing" = "%1$@ のキーチェーン認証情報は保存されていません。";
 "datasource.credential_read_failed" = "保存済みの認証情報を読み取れませんでした。再度貼り付けて置き換えてください。";
 "datasource.name_grok" = "Grok(xAI)";
-"datasource.name_zai" = "Z.ai(GLM Coding Plan)";
+"datasource.name_zai" = "Z.ai / BigModel";
 "datasource.none_connected" = "接続に成功したデータソースはまだありません";
 "datasource.openrouter_key_placeholder" = "OpenRouter APIキーを貼り付け(openrouter.ai → Keys で作成)";
 "datasource.status_title" = "データソースの状態";
 "datasource.visibility_note" = "接続済みアプリは診断用に残ります。Claude/Codex の読み取り専用アクセス許可や、その他の認証情報の初回設定をここで行えます。";
-"datasource.zai_key_placeholder" = "Z.ai APIキーを貼り付け(z.ai → API Keys で作成)";
+"datasource.zai_key_placeholder" = "Z.ai / BigModel API キーを貼り付け";
 "date.month_day" = "%1$d月%2$d日";
 "devices.active_sources" = "アクティブなデータソース";
 "devices.device_name" = "デバイス名";
@@ -319,6 +322,8 @@
 "provider.detect.found_credentials" = "設定済みの%1$@認証情報を検出";
 "provider.detect.grok.found" = "Grok CLI またはローカル認証情報を検出";
 "provider.detect.grok.hint" = "grok を一度実行してログインすると自動的に接続";
+"provider.detect.grok_bot.found" = "Grok Bot アプリを検出";
+"provider.detect.grok_bot.hint" = "Grok Bot をインストールし、同じ Cursor アカウントで Cursor にログインすると自動的に接続";
 "provider.detect.install_login_hint" = "%1$@をインストールしてログインすると自動的に接続";
 "provider.detect.kiro.found" = "Kiro を検出";
 "provider.detect.kiro.hint" = "Kiro CLI をインストールしてログインすると自動的に接続";
@@ -391,6 +396,9 @@
 "service.devin.token_rejected" = "Devin が現在の認証情報を拒否しました(HTTP %1$d)。Devin に再ログインすると復旧します";
 "service.grok.not_logged_in" = "Grok CLI のログインが見つかりません。grok を一度実行してログインすると自動的に接続されます";
 "service.grok.stale_login" = "Grok が長期間使われておらず、ログイン認証情報の有効期限が切れました。grok を一度実行すると上限の更新が再開されます";
+"service.grok_bot.not_logged_in" = "Grok Bot の使用量は Cursor のログイン状態から読み取ります。Grok Bot と同じアカウントで Cursor にログインしてください";
+"service.grok_bot.no_weekly_allowance" = "この Cursor アカウントには Grok Bot の週次枠がありません";
+"service.grok_bot.pooled_allowance" = "このアカウントはチーム共有の枠を使用しており、Grok Bot は週次の割合を提供しません";
 "service.kiro.not_installed" = "kiro-cli が見つかりません。Kiro CLI をインストールしてログインすると自動的に接続されます";
 "service.opencode.no_usage" = "この Mac にはまだ OpenCode Go の使用記録がありません。OpenCode を一度使うと表示されます";
 "service.opencode.not_installed" = "OpenCode が見つかりません。OpenCode Go をインストールしてログインすると自動的に接続されます";
@@ -616,8 +624,8 @@
 "settings.quota_summary_hint" = "メニューバー、Dock、Dashboard の概要で優先するアカウント単位のクォータ期間を選択します。モデル固有のクォータは対象外です。";
 "settings.quota_summary_shortest" = "最短期間（デフォルト）";
 "settings.quota_summary_tightest" = "残量が最少";
-"settings.antigravity_3p" = "Show Antigravity third-party pools";
-"settings.antigravity_3p_hint" = "Show the optional Claude/third-party 5-hour and weekly pools; hidden by default.";
+"settings.antigravity_3p" = "Show Antigravity Claude / GPT pools";
+"settings.antigravity_3p_hint" = "Show the Claude and GPT-OSS 5-hour and weekly pools next to Gemini; shown by default.";
 "trends.model_other_format" = "Other (%1$d models)";
 "trends.model_detail_tag" = "MODEL DETAIL";
 "trends.model_detail_accumulating" = "Model detail accumulates from this version onward; older cached days cannot be backfilled.";
@@ -684,7 +692,7 @@
 "accounts.credential.placeholder.aksk" = "AccessKeyId:SecretAccessKey を貼り付け";
 "accounts.credential.hint.cursor" = "追跡したいアカウントの Cursor アクセストークン。";
 "accounts.credential.hint.grok" = "Grok のアクセストークン（~/.grok/auth.json に保存されているトークン）。";
-"accounts.credential.hint.zai" = "Z.ai の API キー（z.ai → API Keys）。リージョンを指定する場合は JSON 形式を使います。";
+"accounts.credential.hint.zai" = "キーのみの場合は Coding Plan を照会します。中国の API 残高には JSON で region: china と queryMode: balance を指定してください。";
 "accounts.credential.hint.zai_team" = "apiKey・organization・project を含む GLM Team の JSON 設定。";
 "accounts.credential.hint.copilot" = "Copilot にアクセスできる GitHub OAuth トークン。";
 "accounts.credential.hint.devin" = "Devin の API キー。自前の API サーバーを使う場合は JSON 形式で指定します。";
@@ -777,6 +785,10 @@
 "accounts.management.remove_named" = "アカウント %1$@ を削除";
 "accounts.management.more_named" = "%1$@ のその他の操作";
 "accounts.management.add_app" = "アプリを追加";
+"accounts.management.remove_app" = "削除";
+"accounts.management.remove_app_named" = "%@ をアカウント管理から削除";
+"accounts.management.remove_app_title" = "%@ を削除しますか？";
+"accounts.management.remove_app_message" = "%@ の監視を停止し、カードを削除します。保存済みのアカウントとキーは残るため、「アプリを追加」から戻すと元の状態で再開できます。";
 "accounts.management.no_connected" = "ログイン済みのアプリはまだありません。「アプリを追加」から監視を始めてください。";
 "accounts.management.show_all" = "%d 件のアカウントをすべて表示";
 "accounts.management.show_fewer" = "表示を減らす";
@@ -871,3 +883,45 @@
 "currency.error_timeout" = "為替レートの取得がタイムアウトしました。前回のレートを使用します。";
 "currency.error_network" = "為替レートサービスに接続できません。前回のレートを使用します。";
 "quota.model_speed_help" = "%1$@ · 直近 %2$d 日間の平均出力速度。ローカルログのタイムスタンプから推定（最初のトークンまでの待ち時間を含む）。";
+
+/* Web Cookie guide and web-session providers */
+"cookieguide.title" = "ブラウザの Cookie で %@ を接続";
+"cookieguide.summary" = "あなた自身の %@ のウェブセッションを使います。ブラウザでサインインし、ページのリクエストの Cookie ヘッダーをコピーしてここに貼り付けてください。";
+"cookieguide.open" = "手順ガイドを開く";
+"cookieguide.reopen" = "%@ をもう一度開く";
+"cookieguide.step1.title" = "%@ にサインイン";
+"cookieguide.step1.body" = "ブラウザで %@ を開きました。まだの場合はサインインし、そのページのままにしてください。";
+"cookieguide.step2.body.chromium" = "%@ のページで ⌥⌘I を押すか、ページを右クリックして「検証」を選びます。";
+"cookieguide.step2.body.safari" = "まず Safari の設定 → 詳細 で「Web 開発者用の機能を表示」をオンにします。その後 %@ のページで ⌥⌘I を押します。";
+"cookieguide.step2.body.firefox" = "%@ のページで ⌥⌘I を押すか、ページを右クリックして「調査」を選びます。";
+"cookieguide.step3.title" = "ページのリクエストの Cookie ヘッダーを探す";
+"cookieguide.step3.body.chromium" = "Network タブを開いて ⌘R で再読み込みします。%@ という名前の最初のリクエスト（種類 document）を選び、Headers → Request Headers で cookie の行を探します。";
+"cookieguide.step3.body.safari" = "ネットワークタブを開いて ⌘R で再読み込みします。最初の %@ ドキュメントを選び、ヘッダの「リクエスト」で Cookie を探します。";
+"cookieguide.step3.body.firefox" = "ネットワークタブを開いて ⌘R で再読み込みします。最初の %@ ドキュメントのリクエストを選び、ヘッダーの「リクエストヘッダー」で Cookie を探します。";
+"cookieguide.step4.title" = "コピーしてここに貼り付け";
+"cookieguide.step4.body" = "cookie の行を右クリックして「値をコピー」を選び（リクエストを右クリック → cURL としてコピー でも可）、「クリップボードから貼り付け」をクリックします。保存前に TokenRemain が %@ で一度確認します。";
+"cookieguide.connected" = "接続しました。%@ の使用量はこのブラウザセッションから取得されます。";
+"cookieguide.clipboard_unrecognized" = "クリップボードの内容が Cookie ヘッダーでも cURL コマンドでもありません。リクエストヘッダーから cookie の値をコピーして再試行してください。";
+"cookieguide.privacy" = "TokenRemain のキーチェーンにのみ保存されます。パスワードと同じなので共有しないでください。サイトからサインアウトされたら、新しいものを貼り付けてください。";
+"cookieguide.invalid_cookie" = "Cookie ヘッダーではないようです。ページのリクエストヘッダーから cookie の値をコピーしてください。";
+"secret.placeholder.muse" = "サインイン後に muse.ai の Cookie ヘッダーを貼り付け";
+"secret.placeholder.muse_code" = "サインイン後に dev.meta.ai の Cookie ヘッダーを貼り付け";
+"secret.placeholder.amp" = "サインイン後に ampcode.com の Cookie ヘッダーを貼り付け";
+"secret.placeholder.factory" = "サインイン後に app.factory.ai の Cookie ヘッダーを貼り付け";
+"secret.placeholder.augment" = "サインイン後に app.augmentcode.com の Cookie ヘッダーを貼り付け";
+"service.muse.session_expired" = "muse.ai がこのセッションをサインアウトしました。muse.ai に再度サインインし、新しい Cookie を貼り付けてください。";
+"service.muse.action_not_found" = "muse.ai のページでサブスクリプション情報が見つかりませんでした。muse.ai が変更された可能性があります。更新して再試行してください。";
+"alert.provider_cookie_expired.title" = "%@ のセッションが期限切れです";
+"alert.provider_cookie_expired.body" = "貼り付けた %@ のウェブセッションが無効になったため、カードには最後に取得できた値が表示されています。データソースを開いて新しい Cookie を貼り付けてください。ガイドが手順を案内します。";
+"muse_code.team" = "チーム";
+"muse_code.team_automatic" = "自動（サブスクリプションのある最初のチーム）";
+"service.muse_code.team_no_quota" = "選択したチーム %@ には Muse Code のサブスクリプションがありません。データソースで別のチームを選んでください。";
+"amp.cli_hint" = "Amp CLI でサインイン済みなら、その API キーを読み取り専用で自動的に使います。下の Cookie は CLI がない場合だけ必要です。";
+
+"datasource.zai_query_mode" = "照会内容";
+
+"datasource.zai_api_balance" = "API 残高";
+
+"service.zai.balance_requires_china" = "API 残高の照会は中国リージョンでのみ利用できます。";
+
+"service.zai.balance_query_failed" = "BigModel API 残高の照会に失敗しました。再試行するか、API キーの権限を確認してください。";

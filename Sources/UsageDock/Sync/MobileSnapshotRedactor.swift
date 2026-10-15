@@ -200,6 +200,8 @@ enum MobileSnapshotRedactor {
         case .codex: "codex"
         case .cursor: "cursor"
         case .grok: "grok"
+        // Desktop-only until published consumers support this provider.
+        case .grokBot: "grok-bot"
         case .zai: "zai"
         case .zaiTeam: "zaiteam"
         case .copilot: "copilot"
@@ -218,6 +220,12 @@ enum MobileSnapshotRedactor {
         case .kiro: "kiro"
         case .volcengine: "volcengine"
         case .ollama: "ollama"
+        // Desktop-only: not in SyncedProviderID.supportedOnCurrentMobile.
+        case .muse: "muse"
+        case .museCode: "muse-code"
+        case .amp: "amp"
+        case .factory: "factory"
+        case .augment: "augment"
         case .thirdParty: "thirdparty"
         }
     }

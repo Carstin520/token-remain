@@ -1,12 +1,13 @@
 import Foundation
 import OSLog
 
-/// Z.ai(智谱 GLM Coding Plan)额度直查。参考 OpenUsage(MIT)的 Z.ai
+/// Z.ai Coding Plan 额度或智谱国内 API 现金余额直查。参考 OpenUsage(MIT)的 Z.ai
 /// provider 与 TokenTracker 的 ZCode 本地凭证口径。取数顺序:
 /// ① 路由来的显式 Key(带显式区域);② ZCode 本地凭证自动发现
 /// (`~/.zcode/v2`,只读解密,见 ZCodeCredentialReader——凭证自带辖区,
 /// 端点由辖区唯一决定);③ 手动 Key(环境变量/配置文件/钥匙串,
 /// 配合用户显式选择的区域)。
+/// 中国 / API 余额模式仅使用显式或手动 Key,不探测 ZCode 或套餐接口。
 struct ZAIUsageService {
     enum ServiceError: LocalizedError, Sendable {
         case missingKey
@@ -14,6 +15,8 @@ struct ZAIUsageService {
         case noCodingPlan
         case requestFailed(Int)
         case invalidResponse
+        case balanceRequiresChina
+        case balanceQueryFailed
 
         var errorDescription: String? {
             switch self {
@@ -27,15 +30,23 @@ struct ZAIUsageService {
                 return L10n.format("service.common.request_failed", "Z.ai", status)
             case .invalidResponse:
                 return L10n.format("service.common.invalid_response", "Z.ai")
+            case .balanceRequiresChina:
+                return L10n.text("service.zai.balance_requires_china")
+            case .balanceQueryFailed:
+                return L10n.text("service.zai.balance_query_failed")
             }
         }
     }
 
     private static let quotaPath = "/api/monitor/usage/quota/limit"
     private static let subscriptionPath = "/api/biz/subscription/list"
+    private static let balancePath = "/api/biz/account/query-customer-account-report"
     private static let logger = Logger(subsystem: "com.jamesli.usagedock", category: "ZAIUsage")
 
     var region: ZAIAPIRegion = ZAIRegionStore().load()
+    var queryMode: ZAIQueryMode = ZAIQueryModeStore().load()
+    /// One balance request, bounded independently of the caller's refresh deadline.
+    var balanceTimeout: TimeInterval = 15
     /// 测试注入:ZCode 本地凭证候选发现。
     var loadLocalCandidates: () -> [ZCodeAuthCandidate] = {
         ZCodeCredentialReader().authCandidates()
@@ -58,9 +69,25 @@ struct ZAIUsageService {
     func fetch(
         apiKey routedKey: String?,
         region routedRegion: ZAIAPIRegion?,
+        queryMode routedQueryMode: ZAIQueryMode? = nil,
         now: Date = .now
     ) async throws -> ProviderQuota {
+        try Task.checkCancellation()
+        let selectedRegion = routedRegion ?? region
+        // A remembered China-only mode must never change global requests.
+        let selectedMode = routedQueryMode ?? (selectedRegion == .china ? queryMode : .codingPlan)
+        if selectedMode == .balance {
+            guard selectedRegion == .china else { throw ServiceError.balanceRequiresChina }
+            // Explicit balance selection bypasses ZCode discovery. Only the
+            // selected manual/account key may satisfy this request.
+            guard let key = (routedKey ?? loadManualKey())?
+                .trimmingCharacters(in: .whitespacesAndNewlines), !key.isEmpty else {
+                throw ServiceError.missingKey
+            }
+            return try await fetchBalance(apiKey: key, now: now)
+        }
         let cleaned = routedKey?.trimmingCharacters(in: .whitespacesAndNewlines)
+        if routedKey != nil, cleaned?.isEmpty != false { throw ServiceError.missingKey }
         if let routed = cleaned, !routed.isEmpty {
             // Region is an explicit privacy boundary: never retry the credential
             // against the other jurisdiction's host without a user action.
@@ -75,6 +102,8 @@ struct ZAIUsageService {
             do {
                 return try await fetch(candidate: candidate, now: now)
             } catch {
+                try Task.checkCancellation()
+                if error is CancellationError || (error as? URLError)?.code == .cancelled { throw error }
                 if localError == nil { localError = error }
             }
         }
@@ -99,7 +128,9 @@ struct ZAIUsageService {
         for (name, value) in contract.headers {
             request.setValue(value, forHTTPHeaderField: name)
         }
+        try Task.checkCancellation()
         let (data, http) = try await perform(request)
+        try Task.checkCancellation()
         switch http.statusCode {
         case 200..<300:
             break
@@ -154,10 +185,15 @@ struct ZAIUsageService {
         // 计划名尽力而为,失败不影响额度本身。
         var planName: String?
         var subscriptionResetAt: Date?
-        if let (subData, subHTTP) = try? await get(subscriptionURL, apiKey: apiKey),
-           (200..<300).contains(subHTTP.statusCode) {
-            planName = ZAIUsageParser.planName(subData)
-            subscriptionResetAt = ZAIUsageParser.subscriptionResetAt(subData)
+        do {
+            let (subData, subHTTP) = try await get(subscriptionURL, apiKey: apiKey)
+            if (200..<300).contains(subHTTP.statusCode) {
+                planName = ZAIUsageParser.planName(subData)
+                subscriptionResetAt = ZAIUsageParser.subscriptionResetAt(subData)
+            }
+        } catch {
+            try Task.checkCancellation()
+            if error is CancellationError || (error as? URLError)?.code == .cancelled { throw error }
         }
 
         let quota = try ZAIUsageParser.parse(
@@ -170,12 +206,34 @@ struct ZAIUsageService {
         return quota
     }
 
+    private func fetchBalance(apiKey: String, now: Date) async throws -> ProviderQuota {
+        let request = Self.request(ZAIAPIRegion.china.baseURL.appending(path: Self.balancePath), apiKey: apiKey)
+        let send = perform
+        let (data, http) = try await AsyncDeadline.run(timeout: balanceTimeout) {
+            try await send(request)
+        }
+        try Task.checkCancellation()
+        switch http.statusCode {
+        case 200..<300: break
+        case 401, 403: throw ServiceError.keyRejected(http.statusCode)
+        default: throw ServiceError.requestFailed(http.statusCode)
+        }
+        return try ZAIBalanceParser.parse(data, now: now)
+    }
+
     private func get(_ url: URL, apiKey: String) async throws -> (Data, HTTPURLResponse) {
+        try Task.checkCancellation()
+        let result = try await perform(Self.request(url, apiKey: apiKey))
+        try Task.checkCancellation()
+        return result
+    }
+
+    private static func request(_ url: URL, apiKey: String) -> URLRequest {
         var request = URLRequest(url: url)
         request.timeoutInterval = 10
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
-        return try await perform(request)
+        return request
     }
 
     private static func perform(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
@@ -184,6 +242,86 @@ struct ZAIUsageService {
             throw ServiceError.invalidResponse
         }
         return (data, http)
+    }
+}
+
+/// Undocumented BigModel console endpoint; contract reference:
+/// https://github.com/hucuyuu/zhipu-balance/blob/main/scripts/check_balance.py
+/// Only availableBalance is spendable CNY. Recharge, spend and frozen totals
+/// must never be substituted for it or used to invent a quota percentage.
+enum ZAIBalanceParser {
+    private struct Response: Decodable {
+        let success: Bool
+        let data: Report?
+    }
+
+    private struct Report: Decodable {
+        let availableBalance: Double
+
+        private enum CodingKeys: String, CodingKey { case availableBalance }
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            if let amount = try? container.decode(Double.self, forKey: .availableBalance) {
+                availableBalance = amount
+            } else {
+                let text = try container.decode(String.self, forKey: .availableBalance)
+                guard let amount = Double(text.trimmingCharacters(in: .whitespacesAndNewlines)) else {
+                    throw ZAIUsageService.ServiceError.invalidResponse
+                }
+                availableBalance = amount
+            }
+        }
+    }
+
+    static func parse(_ data: Data, now: Date = .now) throws -> ProviderQuota {
+        guard let response = try? JSONDecoder().decode(Response.self, from: data) else {
+            throw ZAIUsageService.ServiceError.invalidResponse
+        }
+        guard response.success else { throw ZAIUsageService.ServiceError.balanceQueryFailed }
+        guard let amount = response.data?.availableBalance, amount.isFinite, amount >= 0 else {
+            throw ZAIUsageService.ServiceError.invalidResponse
+        }
+        let balance = QuotaBalance(amount: amount, currencyCode: "CNY")
+        return ProviderQuota(
+            provider: .zai,
+            primary: QuotaWindow(
+                // Existing balance-only convention: availability, not a spend ratio.
+                usedPercent: amount > 0 ? 0 : 100,
+                windowMinutes: 0,
+                resetsAt: nil,
+                remainingBalance: balance
+            ),
+            secondary: nil,
+            planName: L10n.text("quota.account_balance"),
+            capturedAt: now,
+            remainingBalance: balance
+        )
+    }
+}
+
+enum ZAIQueryMode: String, CaseIterable, Sendable {
+    case codingPlan = "coding-plan"
+    case balance
+
+    var displayName: String {
+        switch self {
+        case .codingPlan: "Coding Plan"
+        case .balance: L10n.text("datasource.zai_api_balance")
+        }
+    }
+}
+
+struct ZAIQueryModeStore {
+    static let defaultsKey = "tokenRemain.zai.queryMode.v1"
+    var defaults: UserDefaults = .standard
+
+    func load() -> ZAIQueryMode {
+        defaults.string(forKey: Self.defaultsKey).flatMap(ZAIQueryMode.init(rawValue:)) ?? .codingPlan
+    }
+
+    func save(_ mode: ZAIQueryMode) {
+        defaults.set(mode.rawValue, forKey: Self.defaultsKey)
     }
 }
 

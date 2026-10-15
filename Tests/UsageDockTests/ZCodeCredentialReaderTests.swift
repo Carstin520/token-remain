@@ -428,6 +428,7 @@ struct ZAIUsageServicePriorityTests {
     ) -> ZAIUsageService {
         ZAIUsageService(
             region: region,
+            queryMode: .codingPlan,
             loadLocalCandidates: { candidates },
             loadManualKey: { manual },
             loadStartPlanDeviceMid: { "mid-test" },
@@ -443,6 +444,7 @@ struct ZAIUsageServicePriorityTests {
         }
         let service = ZAIUsageService(
             region: .global,
+            queryMode: .codingPlan,
             loadLocalCandidates: {
                 Issue.record("local discovery must not run for a routed key")
                 return []

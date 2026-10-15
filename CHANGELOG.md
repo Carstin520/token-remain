@@ -3,6 +3,34 @@
 All notable product changes are recorded here. TokenRemain uses Semantic
 Versioning for public releases.
 
+## 1.4.4 — 2026-10-15
+
+### Improved
+
+- Unify menu-bar provider icons in blue, normalize visible glyph sizes and align
+  them with SF Pro tabular numerals while preserving original brand colors elsewhere.
+
+### Added
+
+- Query prepaid CNY API balances with ordinary BigModel keys using the explicit
+  China / API Balance option, independently of GLM Coding Plan subscriptions.
+  Multi-account credentials can select the same mode with `queryMode: "balance"`.
+
+### Added
+
+- Desktop integrations for Grok Bot, Muse, Muse Code, Amp, Factory and Augment,
+  with a shared browser Cookie guide and expired-session reminders.
+- Optional Cursor model usage details for the current billing cycle.
+- Remove apps from Account Management while retaining saved accounts and keys.
+
+### Fixed
+
+- Keep Antigravity Gemini and Claude / GPT pools visibly distinct, including unused pools.
+- Restrict Amp CLI credentials to the exact ampcode.com origin.
+- Preserve exhausted Factory ratios and reject incomplete Augment usage responses.
+- Bound optional Cursor model requests so stalled details do not delay quota indefinitely.
+- Update bundled ccusage to 20.0.33 with verified universal binaries and license.
+
 ## 1.4.3 — 2026-10-14
 
 ### Improved

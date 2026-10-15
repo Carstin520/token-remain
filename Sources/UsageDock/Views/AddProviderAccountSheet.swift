@@ -66,7 +66,7 @@ struct ProviderAccountCredentialHint: Equatable {
             return Self(
                 placeholderKey: "accounts.credential.placeholder.api_key",
                 hintKey: "accounts.credential.hint.zai",
-                jsonExample: #"{"apiKey": "…", "region": "global"}"#
+                jsonExample: #"{"apiKey": "…", "region": "china", "queryMode": "balance"}"#
             )
         case .zaiTeam:
             return Self(

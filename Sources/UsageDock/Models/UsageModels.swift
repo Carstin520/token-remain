@@ -149,6 +149,23 @@ struct CodexRateLimitResetCredits: Sendable, Codable, Equatable {
     let availableCount: Int
 }
 
+/// Token and cost totals that a provider's own billing API attributes to one
+/// model for the current billing cycle (Cursor `GetAggregatedUsageEvents`).
+/// Local-only display data: not part of the mobile wire format.
+struct ProviderModelUsage: Sendable, Codable, Equatable {
+    let model: String
+    let inputTokens: Int64
+    let outputTokens: Int64
+    let cacheWriteTokens: Int64
+    let cacheReadTokens: Int64
+    /// Nil when the provider did not report a cost for this model.
+    let costCents: Double?
+
+    var totalTokens: Int64 {
+        inputTokens + outputTokens + cacheWriteTokens + cacheReadTokens
+    }
+}
+
 /// Identifies the account/API that actually owns a quota while preserving the
 /// host application as `ProviderQuota.provider`. For example, Claude Code can
 /// remain the card identity while its balance is attributed to DeepSeek API.
@@ -199,6 +216,9 @@ struct ProviderQuota: Sendable, Codable {
     /// Nil means the quota belongs to the host provider itself. A non-nil value
     /// names the API account that supplied the displayed limit or balance.
     var attribution: QuotaAttribution? = nil
+    /// Per-model breakdown for the current billing cycle, largest first. Nil
+    /// when the source has no such API or the best-effort lookup failed.
+    var modelUsage: [ProviderModelUsage]? = nil
 
     /// The shortest account-wide window is the default compact/headline value.
     /// This preserves the historical 5-hour-first behavior while keeping named
@@ -301,7 +321,8 @@ struct ProviderQuota: Sendable, Codable {
             scopedWindows: merged.isEmpty ? nil : merged,
             remainingBalance: remainingBalance,
             codexResetCredits: codexResetCredits,
-            attribution: attribution
+            attribution: attribution,
+            modelUsage: modelUsage
         )
     }
 
@@ -324,7 +345,8 @@ struct ProviderQuota: Sendable, Codable {
             scopedWindows: scopedWindows,
             remainingBalance: remainingBalance,
             codexResetCredits: codexResetCredits,
-            attribution: source
+            attribution: source,
+            modelUsage: modelUsage
         )
     }
 
@@ -377,6 +399,7 @@ struct ProviderQuota: Sendable, Codable {
         case codex = "Codex"
         case cursor = "Cursor"
         case grok = "Grok"
+        case grokBot = "Grok Bot"
         case zai = "Z.ai"
         case zaiTeam = "GLM Team"
         case copilot = "Copilot"
@@ -394,14 +417,19 @@ struct ProviderQuota: Sendable, Codable {
         case kiro = "Kiro"
         case volcengine = "Volcengine"
         case ollama = "Ollama"
+        case muse = "Muse"
+        case museCode = "Muse Code"
+        case amp = "Amp"
+        case factory = "Factory"
+        case augment = "Augment"
         case thirdParty = "Third-party APIs"
 
         /// UI 展示与遍历用的稳定顺序(nonisolated,供任何上下文使用)。
         static let displayOrder: [Provider] = [
             .claude, .codex, .cursor, .copilot, .devin, .windsurf,
-            .grok, .openrouter, .antigravity, .opencode, .zai, .zaiTeam,
+            .grok, .grokBot, .openrouter, .antigravity, .opencode, .zai, .zaiTeam,
             .deepseek, .kimi, .minimax, .mimo, .alibabaTokenPlan, .qoder,
-            .kiro, .volcengine, .ollama, .thirdParty
+            .kiro, .volcengine, .ollama, .muse, .museCode, .amp, .factory, .augment, .thirdParty
         ]
 
         /// UI 里的短名(rawValue 保留历史值以兼容缓存/持久化)。
@@ -411,6 +439,7 @@ struct ProviderQuota: Sendable, Codable {
             case .codex: return "Codex"
             case .cursor: return "Cursor"
             case .grok: return "Grok"
+            case .grokBot: return "Grok Bot"
             case .zai: return "Z.ai"
             case .zaiTeam: return "GLM Team"
             case .copilot: return "Copilot"
@@ -428,6 +457,11 @@ struct ProviderQuota: Sendable, Codable {
             case .kiro: return "Kiro"
             case .volcengine: return "Volcengine"
             case .ollama: return "Ollama"
+            case .muse: return "Muse"
+            case .museCode: return "Muse Code"
+            case .amp: return "Amp"
+            case .factory: return "Factory"
+            case .augment: return "Augment"
             case .thirdParty: return "Third-party"
             }
         }
@@ -945,6 +979,7 @@ extension ProviderQuota.Provider {
         case .codex: "codex"
         case .cursor: "cursor"
         case .grok: "grok"
+        case .grokBot: "grok-bot"
         case .zai: "zai"
         case .zaiTeam: "zaiteam"
         case .copilot: "copilot"
@@ -962,6 +997,11 @@ extension ProviderQuota.Provider {
         case .kiro: "kiro"
         case .volcengine: "volcengine"
         case .ollama: "ollama"
+        case .muse: "muse"
+        case .museCode: "muse-code"
+        case .amp: "amp"
+        case .factory: "factory"
+        case .augment: "augment"
         case .thirdParty: "thirdparty"
         }
     }

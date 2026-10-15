@@ -169,6 +169,81 @@ struct CursorAPIUsageParserTests {
     }
 }
 
+@Suite("Cursor model usage parser")
+struct CursorModelUsageParserTests {
+    @Test("Request body carries the billing cycle as Connect int64 strings")
+    func buildsCycleRequest() throws {
+        let usage = Data(#"{"billingCycleStart":"1790000000000","billingCycleEnd":1792592000000,"planUsage":{}}"#.utf8)
+        let body = try #require(CursorModelUsageParser.requestBody(fromCurrentPeriodUsage: usage))
+        #expect(String(decoding: body, as: UTF8.self)
+            == #"{"endDate":"1792592000000","startDate":"1790000000000"}"#)
+
+        #expect(CursorModelUsageParser.requestBody(fromCurrentPeriodUsage: Data(#"{"planUsage":{}}"#.utf8)) == nil)
+        #expect(CursorModelUsageParser.requestBody(
+            fromCurrentPeriodUsage: Data(#"{"billingCycleStart":"5","billingCycleEnd":"5"}"#.utf8)
+        ) == nil)
+    }
+
+    @Test("Aggregations become per-model rows sorted by total tokens")
+    func parsesAggregations() throws {
+        let payload = """
+        {
+          "aggregations": [
+            {"modelIntent": "gpt-5.5", "inputTokens": "1200", "outputTokens": "300", "cacheReadTokens": "500", "totalCents": 12.5},
+            {"modelIntent": "claude-4.6-sonnet-thinking", "inputTokens": "40000", "outputTokens": "2000",
+             "cacheWriteTokens": "1000", "cacheReadTokens": "900000", "totalCents": 230.75},
+            {"modelIntent": "auto", "input_tokens": 50, "output_tokens": 10},
+            {"modelIntent": "  ", "inputTokens": "999999"},
+            {"modelIntent": "unused", "inputTokens": "0", "totalCents": 0}
+          ],
+          "totalInputTokens": "41250"
+        }
+        """
+        let models = try #require(CursorModelUsageParser.parse(Data(payload.utf8)))
+        #expect(models.map(\.model) == ["claude-4.6-sonnet-thinking", "gpt-5.5", "auto"])
+        #expect(models[0].totalTokens == 943_000)
+        #expect(models[0].costCents == 230.75)
+        #expect(models[1].totalTokens == 2_000)
+        // snake_case 与数字形态的 int64 同样接受;缺费用时为 nil。
+        #expect(models[2].totalTokens == 60)
+        #expect(models[2].costCents == nil)
+    }
+
+    @Test("Missing aggregations yield nil rather than an empty breakdown")
+    func rejectsUnexpectedShapes() {
+        #expect(CursorModelUsageParser.parse(Data("[]".utf8)) == nil)
+        #expect(CursorModelUsageParser.parse(Data(#"{"totalInputTokens":"1"}"#.utf8)) == nil)
+        #expect(CursorModelUsageParser.parse(Data(#"{"aggregations":[]}"#.utf8)) == [])
+    }
+
+    @Test("Model breakdown survives the cache round-trip and old caches still decode")
+    func cacheCompatibility() throws {
+        var quota = ProviderQuota(
+            provider: .cursor,
+            primary: QuotaWindow(usedPercent: 10, windowMinutes: 43_200, resetsAt: nil),
+            secondary: nil,
+            planName: "Pro",
+            capturedAt: Date(timeIntervalSince1970: 1_790_000_000)
+        )
+        quota.modelUsage = [ProviderModelUsage(
+            model: "gpt-5.5", inputTokens: 1, outputTokens: 2,
+            cacheWriteTokens: 3, cacheReadTokens: 4, costCents: nil
+        )]
+        let decoded = try JSONDecoder().decode(ProviderQuota.self, from: JSONEncoder().encode(quota))
+        #expect(decoded.modelUsage == quota.modelUsage)
+
+        var legacy = try #require(
+            JSONSerialization.jsonObject(with: JSONEncoder().encode(quota)) as? [String: Any]
+        )
+        legacy.removeValue(forKey: "modelUsage")
+        let old = try JSONDecoder().decode(
+            ProviderQuota.self,
+            from: JSONSerialization.data(withJSONObject: legacy)
+        )
+        #expect(old.modelUsage == nil)
+    }
+}
+
 @Suite("Cursor auth reader")
 struct CursorAuthReaderTests {
     @Test("state.vscdb values are unwrapped from optional JSON quoting")
@@ -224,5 +299,60 @@ struct CursorAuthReaderTests {
         let auth = await reader.load()
         #expect(auth?.accessToken == "db-token")
         #expect(auth?.membershipType == "pro")
+    }
+}
+
+@Suite("Cursor optional model request deadline")
+struct CursorModelRequestDeadlineTests {
+    @Test("A stalled optional request times out and cancels its transport")
+    func timeoutCancelsTransport() async {
+        let state = CancellationState()
+        let start = ContinuousClock.now
+        let result = await CursorUsageService.fetchModelUsage(
+            accessToken: "fixture", body: Data(), timeout: 0.03
+        ) { _ in
+            do { try await Task.sleep(for: .seconds(60)) }
+            catch { await state.cancelled(); throw error }
+            throw URLError(.unknown)
+        }
+        #expect(result == nil)
+        #expect(start.duration(to: .now) < .seconds(1))
+        for _ in 0..<100 {
+            if await state.value { break }
+            try? await Task.sleep(for: .milliseconds(2))
+        }
+        #expect(await state.value)
+    }
+
+    @Test("Cancelling an optional request cancels the underlying transport")
+    func cancellation() async {
+        let state = CancellationState()
+        let task = Task {
+            await CursorUsageService.fetchModelUsage(accessToken: "fixture", body: Data()) { _ in
+                await state.started()
+                do { try await Task.sleep(for: .seconds(60)) }
+                catch { await state.cancelled(); throw error }
+                throw URLError(.unknown)
+            }
+        }
+        for _ in 0..<100 {
+            if await state.didStart { break }
+            try? await Task.sleep(for: .milliseconds(2))
+        }
+        #expect(await state.didStart)
+        task.cancel()
+        #expect(await task.value == nil)
+        for _ in 0..<100 {
+            if await state.value { break }
+            try? await Task.sleep(for: .milliseconds(2))
+        }
+        #expect(await state.value)
+    }
+
+    private actor CancellationState {
+        var value = false
+        var didStart = false
+        func cancelled() { value = true }
+        func started() { didStart = true }
     }
 }

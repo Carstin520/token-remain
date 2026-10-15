@@ -35,6 +35,10 @@ struct CursorUsageService {
     }
 
     private static let usageURL = URL(string: "https://api2.cursor.sh/aiserver.v1.DashboardService/GetCurrentPeriodUsage")!
+    private static let modelUsageURL = URL(string: "https://api2.cursor.sh/aiserver.v1.DashboardService/GetAggregatedUsageEvents")!
+    /// 按模型拆分只是附加信息:单独的短时限,超时或失败只丢掉这一行,
+    /// 不拖住、也不影响额度本身。
+    static let modelUsageTimeout: TimeInterval = 6
     private static let logger = Logger(subsystem: "com.jamesli.usagedock", category: "CursorUsage")
 
     func fetch(now: Date = .now) async throws -> ProviderQuota {
@@ -83,9 +87,112 @@ struct CursorUsageService {
         default:
             throw ServiceError.requestFailed(http.statusCode)
         }
-        let quota = try CursorAPIUsageParser.parse(data, planName: auth.membershipType, now: now)
+        var quota = try CursorAPIUsageParser.parse(data, planName: auth.membershipType, now: now)
         Self.logger.info("Cursor quota served by DashboardService API")
+        if let body = CursorModelUsageParser.requestBody(fromCurrentPeriodUsage: data) {
+            quota.modelUsage = await Self.fetchModelUsage(accessToken: auth.accessToken, body: body)
+        }
+        try Task.checkCancellation()
         return quota
+    }
+
+    /// 当前账期内各模型的 token / 费用汇总(Cursor 仪表盘 Usage 页同源)。
+    /// 尽力而为:任何失败都返回 nil,卡片只是不显示模型行。
+    static func fetchModelUsage(
+        accessToken: String,
+        body: Data,
+        timeout: TimeInterval = modelUsageTimeout,
+        transport: @escaping @Sendable (URLRequest) async throws -> (Data, URLResponse) = {
+            try await URLSession.shared.data(for: $0)
+        }
+    ) async -> [ProviderModelUsage]? {
+        var request = URLRequest(url: modelUsageURL)
+        request.httpMethod = "POST"
+        request.httpBody = body
+        request.timeoutInterval = timeout
+        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("1", forHTTPHeaderField: "Connect-Protocol-Version")
+        let boundedRequest = request
+        guard let (data, response) = try? await AsyncDeadline.run(timeout: timeout, operation: {
+            try await transport(boundedRequest)
+        }), let http = response as? HTTPURLResponse else {
+            logger.info("Cursor model usage unavailable: request did not complete")
+            return nil
+        }
+        guard (200..<300).contains(http.statusCode) else {
+            logger.info("Cursor model usage unavailable: HTTP \(http.statusCode, privacy: .public)")
+            return nil
+        }
+        return CursorModelUsageParser.parse(data)
+    }
+}
+
+/// `DashboardService/GetAggregatedUsageEvents`(Connect JSON)→ 按模型汇总。
+/// 请求带账期起止(epoch 毫秒,int64 按 Connect 约定写成字符串);个人账户
+/// 不带 teamId,与 GetCurrentPeriodUsage 的 `{}` 请求同一作用域。响应
+/// `aggregations[]` 每项为 `{modelIntent, inputTokens, outputTokens,
+/// cacheWriteTokens, cacheReadTokens, totalCents}`,int64 同样可能是字符串。
+enum CursorModelUsageParser {
+    static func requestBody(fromCurrentPeriodUsage data: Data) -> Data? {
+        guard let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+              let start = integer(object["billingCycleStart"]), start > 0,
+              let end = integer(object["billingCycleEnd"]), end > start else {
+            return nil
+        }
+        return try? JSONSerialization.data(
+            withJSONObject: ["startDate": String(start), "endDate": String(end)],
+            options: [.sortedKeys]
+        )
+    }
+
+    static func parse(_ data: Data) -> [ProviderModelUsage]? {
+        guard let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+              let aggregations = object["aggregations"] as? [[String: Any]] else {
+            return nil
+        }
+        let rows = aggregations.compactMap { item -> ProviderModelUsage? in
+            guard let model = (field(item, "modelIntent", "model_intent") as? String)?
+                .trimmingCharacters(in: .whitespacesAndNewlines),
+                !model.isEmpty else {
+                return nil
+            }
+            let cents = number(field(item, "totalCents", "total_cents"))
+            let usage = ProviderModelUsage(
+                model: model,
+                inputTokens: tokens(field(item, "inputTokens", "input_tokens")),
+                outputTokens: tokens(field(item, "outputTokens", "output_tokens")),
+                cacheWriteTokens: tokens(field(item, "cacheWriteTokens", "cache_write_tokens")),
+                cacheReadTokens: tokens(field(item, "cacheReadTokens", "cache_read_tokens")),
+                costCents: cents.flatMap { $0.isFinite && $0 >= 0 ? $0 : nil }
+            )
+            return usage.totalTokens > 0 || (usage.costCents ?? 0) > 0 ? usage : nil
+        }
+        return rows.sorted {
+            $0.totalTokens != $1.totalTokens
+                ? $0.totalTokens > $1.totalTokens
+                : ($0.costCents ?? 0) > ($1.costCents ?? 0)
+        }
+    }
+
+    private static func field(_ item: [String: Any], _ camel: String, _ snake: String) -> Any? {
+        item[camel] ?? item[snake]
+    }
+
+    private static func tokens(_ value: Any?) -> Int64 {
+        max(0, integer(value) ?? 0)
+    }
+
+    private static func integer(_ value: Any?) -> Int64? {
+        if let text = value as? String { return Int64(text) }
+        if let number = value as? NSNumber, number.doubleValue.isFinite { return number.int64Value }
+        return nil
+    }
+
+    private static func number(_ value: Any?) -> Double? {
+        if let number = value as? NSNumber { return number.doubleValue }
+        if let text = value as? String { return Double(text) }
+        return nil
     }
 }
 

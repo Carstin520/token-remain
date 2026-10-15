@@ -151,9 +151,11 @@ struct AntigravityUsageService {
 
 /// RetrieveUserQuotaSummary 响应 → ProviderQuota。响应为
 /// `{"groups": [{"buckets": [{bucketId, remainingFraction, resetTime}]}]}`
-/// (或包一层 `response`)。四个池按精确 bucketId 匹配:`gemini-5h` /
-/// `gemini-weekly` 为主池(映射 primary/secondary),`3p-5h` / `3p-weekly`
-/// 是共享的第三方(Claude)池,作为可由用户显示/隐藏的 scoped windows。
+/// (或包一层 `response`)。四个池按精确 bucketId 匹配,分成两组独立计量的
+/// 模型额度:`gemini-5h` / `gemini-weekly` 是 Gemini 模型组(映射
+/// primary/secondary,带 `poolName` "Gemini");`3p-5h` / `3p-weekly` 是第三方
+/// 模型组(Claude 与 GPT-OSS),作为 scoped windows 并列展示,默认可见、
+/// 用户可在设置里隐藏。一组耗尽不影响另一组,所以两组都要标名展示。
 /// `remainingFraction` 0…1,翻转为已用百分比。
 enum AntigravityUsageParser {
     /// 目前已知的四个配额桶。别的 bucketId 语义未知,渲染前先取证:
@@ -165,6 +167,9 @@ enum AntigravityUsageParser {
         subsystem: "com.jamesli.usagedock",
         category: "AntigravityUsage"
     )
+    /// 两组模型额度的显示名。品牌/模型名不做本地化。
+    static let geminiPoolName = "Gemini"
+    static let thirdPartyPoolName = "Claude / GPT"
 
     static func parse(_ data: Data, now: Date = .now) throws -> ProviderQuota {
         guard let root = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
@@ -193,7 +198,8 @@ enum AntigravityUsageParser {
                 pools[id] = QuotaWindow(
                     usedPercent: min(100, max(0, (1 - fraction) * 100)),
                     windowMinutes: minutes,
-                    resetsAt: isoDate(bucket["resetTime"])
+                    resetsAt: isoDate(bucket["resetTime"]),
+                    poolName: id.hasPrefix("gemini-") ? geminiPoolName : nil
                 )
             }
         }
@@ -208,7 +214,7 @@ enum AntigravityUsageParser {
             pools["3p-5h"].map {
                 ScopedQuotaWindow(
                     scopeID: "antigravity_3p_5h",
-                    displayName: "Claude / Third-party",
+                    displayName: thirdPartyPoolName,
                     window: $0,
                     observedAt: now
                 )
@@ -216,7 +222,7 @@ enum AntigravityUsageParser {
             pools["3p-weekly"].map {
                 ScopedQuotaWindow(
                     scopeID: "antigravity_3p_weekly",
-                    displayName: "Claude / Third-party",
+                    displayName: thirdPartyPoolName,
                     window: $0,
                     observedAt: now
                 )

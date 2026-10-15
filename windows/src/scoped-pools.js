@@ -5,7 +5,9 @@
 export const SCOPED_POOL_CATALOG = Object.freeze([
   entry("claude", "fable", "settings.menubar_fable", "settings.menubar_fable_hint", false),
   entry("codex", "codex_bengalfox", "settings.menubar_codex_spark", "settings.menubar_codex_spark_hint", false),
-  entry("antigravity", "antigravity_3p_", "settings.antigravity_3p", "settings.antigravity_3p_hint", true),
+  // Antigravity's Claude / GPT pool is metered beside Gemini, so it shows as
+  // soon as it is reported (even at 0% used) unless the user turns it off.
+  entry("antigravity", "antigravity_3p_", "settings.antigravity_3p", "settings.antigravity_3p_hint", true, true),
   entry("mimo", "mimo_daily", "settings.pool_mimo_daily", "settings.pool_mimo_daily_hint", true),
   entry("ollama", "ollama_hourly", "settings.pool_ollama_hourly", "settings.pool_ollama_hourly_hint", true),
   entry("deepseek", "deepseek_", "settings.pool_deepseek_currencies", "settings.pool_deepseek_currencies_hint", true),
@@ -67,7 +69,7 @@ export function scopedPoolIsActive(entry_, provider) {
   if (!entry_) return false;
   return uniqueScopedWindows(provider).some((scoped) => (
     scopedPoolEntryForWindow(scoped, provider?.providerID)?.key === entry_.key
-      && windowIsActive(scoped.window)
+      && (entry_.showsWhenReported || windowIsActive(scoped.window))
   ));
 }
 
@@ -91,13 +93,14 @@ export function scopedPoolSettingsGroups(providerOrder = [], providers = []) {
   });
 }
 
-function entry(providerID, poolKey, titleKey, detailKey, followsExpansion) {
+function entry(providerID, poolKey, titleKey, detailKey, followsExpansion, showsWhenReported = false) {
   return Object.freeze({
     providerID,
     poolKey,
     titleKey,
     detailKey,
     followsExpansion,
+    showsWhenReported,
     key: scopedPoolStorageKey(providerID, poolKey),
   });
 }

@@ -106,6 +106,8 @@
 "quota.extra_usage" = "額外用量";
 "quota.spent" = "已花 %@";
 "quota.official_spend" = "官方消費";
+"quota.models_this_cycle" = "本帳期模型";
+"quota.models_more" = "另有 %1$d 個";
 "quota.account_balance" = "帳戶餘額";
 "quota.spend_week" = "本週";
 "quota.spend_month" = "本月";
@@ -164,6 +166,7 @@
 "datasource.detail.devin" = "SeatManagement API 直接查詢（唯讀本機 Devin 憑證）";
 "datasource.detail.windsurf" = "Windsurf SeatManagement API 直接查詢（唯讀本機 Windsurf 登入狀態）";
 "datasource.detail.grok" = "週池額度 API 直接查詢（唯讀 ~/.grok/auth.json）";
+"datasource.detail.grok_bot" = "週額度介面直查（唯讀 Cursor 本機登入狀態；Grok Bot 需登入同一 Cursor 帳戶）";
 "datasource.detail.kiro" = "解析 kiro-cli /usage 報告（本機子程序）";
 "datasource.detail.ollama" = "本機 Ollama 執行狀態與模型資訊（純本機）";
 "datasource.detail.opencode" = "掃描本機資料庫估算 Go 方案額度（純本機，無網路）";
@@ -181,12 +184,12 @@
 "datasource.credential_missing" = "%1$@ 沒有已儲存的鑰匙圈憑證。";
 "datasource.credential_read_failed" = "TokenRemain 無法讀取已儲存的憑證。請再次貼上以替換。";
 "datasource.name_grok" = "Grok（xAI）";
-"datasource.name_zai" = "Z.ai（GLM Coding Plan）";
+"datasource.name_zai" = "Z.ai / 智譜";
 "datasource.none_connected" = "尚無成功連線過的資料來源";
 "datasource.openrouter_key_placeholder" = "貼上 OpenRouter API Key（於 openrouter.ai → Keys 頁面產生）";
 "datasource.status_title" = "資料來源狀態";
 "datasource.visibility_note" = "曾連線過的 App 會保留在此供診斷；可明確授權唯讀存取 Claude/Codex 憑證，其他憑證型服務也可在此完成首次設定。";
-"datasource.zai_key_placeholder" = "貼上 Z.ai API Key（於 z.ai → API Keys 頁面產生）";
+"datasource.zai_key_placeholder" = "貼上 Z.ai / 智譜 API Key";
 "date.month_day" = "%1$d月%2$d日";
 "devices.active_sources" = "使用中的資料來源";
 "devices.device_name" = "裝置名稱";
@@ -323,6 +326,8 @@
 "provider.detect.found_credentials" = "偵測到已設定的 %1$@ 憑證";
 "provider.detect.grok.found" = "偵測到 Grok CLI 或本機登入憑證";
 "provider.detect.grok.hint" = "執行一次 grok 並登入後即自動接入";
+"provider.detect.grok_bot.found" = "偵測到 Grok Bot 應用程式";
+"provider.detect.grok_bot.hint" = "安裝 Grok Bot，並在 Cursor 中登入同一個 Cursor 帳戶後自動接入";
 "provider.detect.install_login_hint" = "安裝並登入 %1$@ 後即自動接入";
 "provider.detect.kiro.found" = "偵測到 Kiro";
 "provider.detect.kiro.hint" = "安裝 Kiro CLI 並登入後即自動接入";
@@ -395,6 +400,9 @@
 "service.devin.token_rejected" = "Devin 拒絕了目前的憑證（HTTP %1$d）；重新登入 Devin 後即可恢復";
 "service.grok.not_logged_in" = "未偵測到 Grok CLI 登入；執行一次 grok 並登入後即自動接入";
 "service.grok.stale_login" = "Grok 長時間未使用，登入憑證已過期；執行一次 grok 即可恢復額度更新";
+"service.grok_bot.not_logged_in" = "Grok Bot 用量透過 Cursor 本機登入狀態讀取；請在 Cursor 中登入與 Grok Bot 相同的帳戶";
+"service.grok_bot.no_weekly_allowance" = "目前 Cursor 帳戶沒有 Grok Bot 週額度";
+"service.grok_bot.pooled_allowance" = "目前帳戶使用團隊共用額度池，Grok Bot 不提供週百分比";
 "service.kiro.not_installed" = "未偵測到 kiro-cli；安裝 Kiro CLI 並登入後即自動接入";
 "service.opencode.no_usage" = "這台 Mac 尚無 OpenCode Go 用量紀錄；使用一次 OpenCode 後就會出現";
 "service.opencode.not_installed" = "未偵測到 OpenCode；安裝並登入 OpenCode Go 後即自動接入";
@@ -620,8 +628,8 @@
 "settings.quota_summary_hint" = "選擇選單列、Dock 與 Dashboard 摘要優先顯示哪個帳號層級額度視窗；模型專屬額度不參與。";
 "settings.quota_summary_shortest" = "最短視窗（預設）";
 "settings.quota_summary_tightest" = "剩餘額度最低";
-"settings.antigravity_3p" = "顯示 Antigravity 第三方額度池";
-"settings.antigravity_3p_hint" = "顯示可選的 Claude/第三方 5 小時與每週額度；預設隱藏。";
+"settings.antigravity_3p" = "é¡¯ç¤º Antigravity Claude / GPT é¡åº¦æ± ";
+"settings.antigravity_3p_hint" = "å¨ Gemini é¡åº¦æé¡¯ç¤º Claude è GPT-OSS æ¨¡åç 5 å°æèæ¯é±é¡åº¦ï¼é è¨­é¡¯ç¤ºã";
 "settings.pool_mimo_daily" = "顯示 MiMo 每日額度池";
 "settings.pool_mimo_daily_hint" = "在 MiMo 帳戶視窗之外顯示每日 Token 池；有用量後預設顯示。";
 "settings.pool_ollama_hourly" = "顯示 Ollama 每小時額度池";
@@ -695,7 +703,7 @@
 "accounts.credential.placeholder.aksk" = "貼上 AccessKeyId:SecretAccessKey";
 "accounts.credential.hint.cursor" = "要追蹤的那個 Cursor 帳戶的 Access Token。";
 "accounts.credential.hint.grok" = "Grok 的 Access Token（即 ~/.grok/auth.json 中保存的 token）。";
-"accounts.credential.hint.zai" = "Z.ai API Key（z.ai → API Keys 頁產生）；需要指定區域時使用 JSON 形式。";
+"accounts.credential.hint.zai" = "一般 Key 預設查詢 Coding Plan；中國 API 餘額請用 JSON，指定 region: china、queryMode: balance。";
 "accounts.credential.hint.zai_team" = "GLM Team 的 JSON 設定，含 apiKey、organization、project。";
 "accounts.credential.hint.copilot" = "具有 Copilot 權限的 GitHub OAuth Token。";
 "accounts.credential.hint.devin" = "Devin API Key；使用自建 API 伺服器時採用 JSON 形式。";
@@ -777,6 +785,10 @@
 "accounts.management.remove_named" = "移除帳戶 %1$@";
 "accounts.management.more_named" = "%1$@ 的更多操作";
 "accounts.management.add_app" = "新增應用程式";
+"accounts.management.remove_app" = "移除";
+"accounts.management.remove_app_named" = "從帳號管理中移除 %@";
+"accounts.management.remove_app_title" = "移除 %@？";
+"accounts.management.remove_app_message" = "將停止監控 %@ 並移除它的卡片。已儲存的帳號與金鑰都會保留，之後從「新增應用」重新加入即可恢復。";
 "accounts.management.no_connected" = "還沒有已登入的應用程式。點選「新增應用程式」開始監控。";
 "accounts.management.show_all" = "顯示全部 %d 個帳號";
 "accounts.management.show_fewer" = "收合";
@@ -871,3 +883,45 @@
 "currency.error_timeout" = "匯率請求逾時，繼續使用上次的匯率。";
 "currency.error_network" = "無法連線匯率服務，繼續使用上次的匯率。";
 "quota.model_speed_help" = "%1$@ · 近 %2$d 天平均輸出速度，依本機日誌時間戳估算（包含首字延遲）。";
+
+/* Web Cookie guide and web-session providers */
+"cookieguide.title" = "用瀏覽器 Cookie 連接 %@";
+"cookieguide.summary" = "使用你自己的 %@ 網頁登入狀態：在瀏覽器登入後，複製頁面請求的 Cookie 標頭，再貼到這裡。";
+"cookieguide.open" = "開啟逐步指引";
+"cookieguide.reopen" = "重新開啟 %@";
+"cookieguide.step1.title" = "登入 %@";
+"cookieguide.step1.body" = "已在瀏覽器開啟 %@。若尚未登入，請先登入並停留在該頁面。";
+"cookieguide.step2.body.chromium" = "在 %@ 頁面按 ⌥⌘I，或在頁面上按右鍵選擇「檢查」。";
+"cookieguide.step2.body.safari" = "先開啟 Safari 設定 → 進階，勾選「顯示網頁開發者功能」。然後在 %@ 頁面按 ⌥⌘I。";
+"cookieguide.step2.body.firefox" = "在 %@ 頁面按 ⌥⌘I，或在頁面上按右鍵選擇「檢查」。";
+"cookieguide.step3.title" = "找到頁面請求的 Cookie 標頭";
+"cookieguide.step3.body.chromium" = "開啟 Network（網路）分頁並按 ⌘R 重新載入。點選第一個名為 %@ 的請求（類型 document），開啟 Headers → Request Headers，找到 cookie 一列。";
+"cookieguide.step3.body.safari" = "開啟「網路」分頁並按 ⌘R 重新載入。選取第一個 %@ 文件請求，開啟「標頭」，在「請求」下找到 Cookie。";
+"cookieguide.step3.body.firefox" = "開啟「網路」分頁並按 ⌘R 重新載入。選取第一個 %@ 文件請求，開啟「標頭」，在「請求標頭」下找到 Cookie。";
+"cookieguide.step4.title" = "複製並貼到這裡";
+"cookieguide.step4.body" = "在 cookie 一列按右鍵選擇「複製值」（也可以在該請求按右鍵 → 複製為 cURL），然後點選「從剪貼簿貼上」。TokenRemain 會先向 %@ 驗證一次再儲存。";
+"cookieguide.connected" = "已連接。%@ 的用量現在來自這個瀏覽器工作階段。";
+"cookieguide.clipboard_unrecognized" = "剪貼簿裡不是 Cookie 標頭或「複製為 cURL」的指令。請從請求標頭複製 cookie 的值後重試。";
+"cookieguide.privacy" = "只儲存在 TokenRemain 的鑰匙圈中。它等同密碼，請勿分享。網站要求重新登入後，再貼上一次新的即可。";
+"cookieguide.invalid_cookie" = "這看起來不是 Cookie 標頭。請從頁面請求的標頭複製 cookie 的值。";
+"secret.placeholder.muse" = "登入後貼上 muse.ai 的 Cookie 標頭";
+"secret.placeholder.muse_code" = "登入後貼上 dev.meta.ai 的 Cookie 標頭";
+"secret.placeholder.amp" = "登入後貼上 ampcode.com 的 Cookie 標頭";
+"secret.placeholder.factory" = "登入後貼上 app.factory.ai 的 Cookie 標頭";
+"secret.placeholder.augment" = "登入後貼上 app.augmentcode.com 的 Cookie 標頭";
+"service.muse.session_expired" = "muse.ai 已將此工作階段登出。請在 muse.ai 重新登入並貼上新的 Cookie。";
+"service.muse.action_not_found" = "無法在 muse.ai 頁面中找到訂閱資料，muse.ai 可能已改版；請重新整理再試。";
+"alert.provider_cookie_expired.title" = "%@ 工作階段已過期";
+"alert.provider_cookie_expired.body" = "你貼上的 %@ 網頁工作階段已失效，卡片顯示的是最後一次成功的快照。請開啟「資料來源」貼上新的 Cookie，指引會一步步帶你完成。";
+"muse_code.team" = "團隊";
+"muse_code.team_automatic" = "自動（第一個有訂閱的團隊）";
+"service.muse_code.team_no_quota" = "所選團隊 %@ 沒有 Muse Code 訂閱，請在「資料來源」中選擇其他團隊。";
+"amp.cli_hint" = "已用 Amp CLI 登入？會自動、唯讀地使用它的 API Key，只有沒裝 CLI 時才需要下方的 Cookie。";
+
+"datasource.zai_query_mode" = "查詢內容";
+
+"datasource.zai_api_balance" = "API 餘額";
+
+"service.zai.balance_requires_china" = "API 餘額查詢僅支援中國區域。";
+
+"service.zai.balance_query_failed" = "智譜 API 餘額查詢失敗。請重試或檢查 API Key 的權限。";

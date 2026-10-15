@@ -175,9 +175,10 @@ final class UsageStore: ObservableObject {
     /// Claude / Codex 之外、只有 API(或本地扫描)一条直查路径的 provider,
     /// 统一走 5 分钟节奏的批量抓取。
     nonisolated static let auxProviders: [ProviderQuota.Provider] = [
-        .cursor, .grok, .zai, .zaiTeam, .copilot, .devin, .windsurf,
+        .cursor, .grok, .grokBot, .zai, .zaiTeam, .copilot, .devin, .windsurf,
         .openrouter, .antigravity, .opencode,
         .deepseek, .kimi, .minimax, .mimo, .alibabaTokenPlan, .qoder, .kiro, .volcengine, .ollama,
+        .muse, .museCode, .amp, .factory, .augment,
         .thirdParty
     ]
 
@@ -384,7 +385,11 @@ final class UsageStore: ObservableObject {
         _ lhs: ProviderQuota,
         _ rhs: ProviderQuota
     ) -> Bool {
-        lhs.attribution?.routeIdentifier == rhs.attribution?.routeIdentifier
+        if lhs.provider == .zai, rhs.provider == .zai,
+           (lhs.primary.windowMinutes == 0) != (rhs.primary.windowMinutes == 0) {
+            return false
+        }
+        return lhs.attribution?.routeIdentifier == rhs.attribution?.routeIdentifier
     }
 
     private static func auxFetcher(
@@ -393,6 +398,7 @@ final class UsageStore: ObservableObject {
         switch provider {
         case .cursor: return { try await CursorUsageService().fetch() }
         case .grok: return { try await GrokUsageService().fetch() }
+        case .grokBot: return { try await GrokBotUsageService().fetch() }
         case .zai: return { try await ZAIUsageService().fetch() }
         case .zaiTeam: return { try await ZAITeamUsageService().fetch() }
         case .copilot: return { try await CopilotUsageService().fetch() }
@@ -410,6 +416,11 @@ final class UsageStore: ObservableObject {
         case .kiro: return { try await KiroUsageService().fetch() }
         case .volcengine: return { try await VolcengineUsageService().fetch() }
         case .ollama: return { try await OllamaUsageService().fetch() }
+        case .muse: return { try await MuseUsageService().fetch() }
+        case .museCode: return { try await MuseCodeUsageService().fetch() }
+        case .amp: return { try await AmpUsageService().fetch() }
+        case .factory: return { try await FactoryUsageService().fetch() }
+        case .augment: return { try await AugmentUsageService().fetch() }
         case .thirdParty: return { try await ThirdPartyUsageService().fetch() }
         case .claude, .codex: return nil
         }
@@ -1226,6 +1237,16 @@ final class UsageStore: ObservableObject {
             return try await VolcengineUsageService().fetch(credentials: credential, now: now)
         case .ollama:
             return try await OllamaUsageService().fetch(cookie: credential, now: now)
+        case .muse:
+            return try await MuseUsageService().fetch(cookie: credential, now: now)
+        case .museCode:
+            return try await MuseCodeUsageService().fetch(cookie: credential, now: now)
+        case .amp:
+            return try await AmpUsageService().fetch(cookie: credential, now: now)
+        case .factory:
+            return try await FactoryUsageService().fetch(cookie: credential, now: now)
+        case .augment:
+            return try await AugmentUsageService().fetch(cookie: credential, now: now)
         case .zaiTeam:
             return try await ZAITeamUsageService().fetch(configuration: credential, now: now)
         case .thirdParty:
@@ -1326,6 +1347,7 @@ final class UsageStore: ObservableObject {
             providerNotices[provider] = error.localizedDescription
             return false
         }
+        if provider == .museCode { MuseCodeTeamStore().clear() }
         if provider == .claude {
             claudeWebOrganizationChoices = []
             assign(nil, to: .claude) // changing source must not retain the web account's quota
@@ -1336,11 +1358,25 @@ final class UsageStore: ObservableObject {
         return true
     }
 
+    /// The Muse Code team is non-secret account metadata (nil = automatic).
+    /// Persist it beside the Cookie and re-read that one account at once.
+    func setMuseCodeTeam(_ teamID: String?) async {
+        MuseCodeTeamStore().saveSelectedTeamID(teamID)
+        await refreshKeyProvider(.museCode)
+    }
+
     /// Region selection is non-secret account metadata. Persist it separately
     /// from the API key and immediately re-query the same single Z.ai account.
     func setZAIRegion(_ region: ZAIAPIRegion) async {
+        credentialRevisions[.zai, default: 0] &+= 1
         ZAIRegionStore().save(region)
         await refreshKeyProvider(.zai)
+    }
+
+    func setZAIQueryMode(_ mode: ZAIQueryMode) async {
+        credentialRevisions[.zai, default: 0] &+= 1
+        ZAIQueryModeStore().save(mode)
+        await refreshKeyProvider(.zai, preservingCachedQuota: true)
     }
 
     /// 由数据源页的明确用户操作触发。与后台刷新不同，这条路径允许 macOS
@@ -1631,13 +1667,16 @@ final class UsageStore: ObservableObject {
         providerAccountQuotaCache.save(currentProviderAccountQuotas())
     }
 
-    private func refreshKeyProvider(_ provider: ProviderQuota.Provider) async {
+    private func refreshKeyProvider(
+        _ provider: ProviderQuota.Provider,
+        preservingCachedQuota: Bool = false
+    ) async {
         let revision = credentialRevisions[provider, default: 0]
         let results = await Self.fetchAux(providers: [provider])
         guard !Task.isCancelled, revision == credentialRevisions[provider, default: 0],
               let fetchResult = results[provider] else { return }
         apply(fetchResult, to: provider) { self.assign($0, to: provider) }
-        if case .failure = fetchResult,
+        if !preservingCachedQuota, case .failure = fetchResult,
            storedCredentialReadIssue(for: provider) == nil {
             // Key 被清空后旧数据已无意义,不再展示。
             assign(nil, to: provider)
@@ -1651,11 +1690,17 @@ final class UsageStore: ObservableObject {
         assign: (ProviderQuota) -> Void
     ) {
         guard let result else { return }
+        // Pasted web sessions expire on the site's schedule; remind (daily at
+        // most) to paste a fresh one. Claude reports its own session above.
+        let tracksCookieSession = provider != .claude
+            && ProviderSecretStore.descriptor(for: provider)?.isCookie == true
         switch result {
         case .success(let value):
             assign(value)
             providerNotices[provider] = nil
+            if tracksCookieSession { sessionAlerts.reportHealthy(provider) }
         case .failure(let error):
+            if tracksCookieSession { sessionAlerts.report(error: error, for: provider) }
             let credentialIssue = storedCredentialReadIssue(for: provider)
             if credentialIssue == nil, Self.invalidatesCachedQuota(error) {
                 self.assign(nil, to: provider)

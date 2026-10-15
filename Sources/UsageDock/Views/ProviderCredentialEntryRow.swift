@@ -56,8 +56,11 @@ struct ProviderCredentialEntryRow: View {
     @StateObject private var action = AsyncViewAction()
     private var isSaving: Bool { action.isRunning }
     @State private var zaiRegion: ZAIAPIRegion
+    @State private var zaiQueryMode: ZAIQueryMode
     @State private var alibabaRegion: AlibabaTokenPlanConfiguration.Region
     @State private var alibabaEdition: AlibabaTokenPlanConfiguration.Edition
+    @State private var museCodeTeams: [MuseCodeTeam] = []
+    @State private var museCodeTeamID = ""
 
     init(
         store: UsageStore,
@@ -71,6 +74,7 @@ struct ProviderCredentialEntryRow: View {
             initialValue: ProviderCredentialConfiguration.storedCredentialStatus(for: provider)
         )
         _zaiRegion = State(initialValue: ZAIRegionStore().load())
+        _zaiQueryMode = State(initialValue: ZAIQueryModeStore().load())
         let alibabaConfig = provider == .alibabaTokenPlan
             ? ProviderSecretStore(provider: provider).load().flatMap { try? AlibabaTokenPlanConfiguration.decode($0) }
             : nil
@@ -82,6 +86,17 @@ struct ProviderCredentialEntryRow: View {
         VStack(alignment: .leading, spacing: 7) {
             if provider == .claude {
                 claudeWebSetup
+            } else if let guideSpec {
+                webCookieSetup(guideSpec)
+            }
+            if provider == .museCode, museCodeTeams.count > 1 {
+                museCodeTeamPicker
+            }
+            if provider == .amp {
+                Text(L10n.text("amp.cli_hint"))
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(DashboardTheme.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             if provider == .alibabaTokenPlan {
                 Picker(L10n.text("alibaba.region"), selection: $alibabaRegion) {
@@ -125,6 +140,23 @@ struct ProviderCredentialEntryRow: View {
                     .frame(maxWidth: 230)
                     .disabled(isSaving)
                 }
+                if zaiRegion == .china {
+                    Picker(
+                        L10n.text("datasource.zai_query_mode"),
+                        selection: Binding(
+                            get: { zaiQueryMode },
+                            set: { newMode in
+                                zaiQueryMode = newMode
+                                action.start { await store.setZAIQueryMode(newMode) }
+                            }
+                        )
+                    ) {
+                        ForEach(ZAIQueryMode.allCases, id: \.self) { mode in
+                            Text(mode.displayName).tag(mode)
+                        }
+                    }
+                    .disabled(isSaving)
+                }
             }
 
             HStack(spacing: 8) {
@@ -150,6 +182,7 @@ struct ProviderCredentialEntryRow: View {
                         action.start {
                             _ = await store.clearAPIKey(for: provider)
                             reloadCredentialStatus()
+                            reloadMuseCodeTeams()
                         }
                     }
                     .disabled(isSaving)
@@ -184,6 +217,7 @@ struct ProviderCredentialEntryRow: View {
                     .foregroundStyle(DashboardTheme.warning)
             }
         }
+        .onAppear { reloadMuseCodeTeams() }
         .onDisappear { action.cancel() }
         .onChange(of: store.claudeWebOrganizationChoices) { _, choices in
             // A new session brings its own list; a choice from the previous one
@@ -249,6 +283,89 @@ struct ProviderCredentialEntryRow: View {
         }
     }
 
+    /// Cookie-only providers other than Claude: the steps live in the guide
+    /// panel; the row keeps the entry points. Alibaba's spec follows the
+    /// region and edition currently chosen above.
+    private var guideSpec: WebCookieGuideSpec? {
+        if provider == .alibabaTokenPlan {
+            return .alibaba(region: alibabaRegion, edition: alibabaEdition)
+        }
+        return WebCookieGuideSpec.spec(for: provider)
+    }
+
+    @ViewBuilder
+    private func webCookieSetup(_ spec: WebCookieGuideSpec) -> some View {
+        Text(L10n.format("cookieguide.summary", spec.host))
+            .font(.system(size: 11))
+            .foregroundStyle(DashboardTheme.secondaryText)
+            .fixedSize(horizontal: false, vertical: true)
+        HStack(spacing: 8) {
+            Button(L10n.text("cookieguide.open")) {
+                WebCookieGuideWindowController.shared.show(store: store, spec: spec, openingSite: true)
+            }
+            Button(L10n.text("claude.web.paste_clipboard")) {
+                pasteCookieFromClipboard()
+            }
+            .disabled(isSaving)
+        }
+        if clipboardUnrecognized {
+            Text(L10n.text("cookieguide.clipboard_unrecognized"))
+                .font(.system(size: 10.5))
+                .foregroundStyle(DashboardTheme.warning)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    /// Quota is per team. Shown once the account is known to have several;
+    /// "Automatic" keeps the first team that has a subscription.
+    private var museCodeTeamPicker: some View {
+        HStack(spacing: 8) {
+            Text(L10n.text("muse_code.team"))
+                .font(.system(size: 10.5))
+                .foregroundStyle(DashboardTheme.secondaryText)
+            Picker(
+                L10n.text("muse_code.team"),
+                selection: Binding(
+                    get: { museCodeTeamID },
+                    set: { chosen in
+                        museCodeTeamID = chosen
+                        action.start {
+                            await store.setMuseCodeTeam(chosen.isEmpty ? nil : chosen)
+                            reloadMuseCodeTeams()
+                        }
+                    }
+                )
+            ) {
+                Text(L10n.text("muse_code.team_automatic")).tag("")
+                ForEach(museCodeTeams) { team in
+                    Text(team.name).tag(team.id)
+                }
+            }
+            .labelsHidden()
+            .frame(maxWidth: 260)
+            .disabled(isSaving)
+        }
+    }
+
+    private func reloadMuseCodeTeams() {
+        guard provider == .museCode else { return }
+        let teamStore = MuseCodeTeamStore()
+        museCodeTeams = teamStore.knownTeams()
+        museCodeTeamID = teamStore.selectedTeamID() ?? ""
+    }
+
+    /// The field holds the bare header; `saveDraft` wraps it where needed.
+    private func pasteCookieFromClipboard() {
+        guard let text = NSPasteboard.general.string(forType: .string),
+              let header = WebCookieHeader.extract(fromClipboard: text) else {
+            clipboardUnrecognized = true
+            return
+        }
+        clipboardUnrecognized = false
+        draft = header
+        saveDraft()
+    }
+
     private func pasteClaudeCredentialFromClipboard() {
         guard let text = NSPasteboard.general.string(forType: .string),
               let credential = ClaudeWebUsageService.Configuration.recognizedCredential(in: text) else {
@@ -305,6 +422,7 @@ struct ProviderCredentialEntryRow: View {
                 claudeOrganizationID = ""
             }
             reloadCredentialStatus()
+            reloadMuseCodeTeams()
         }
     }
 

@@ -90,6 +90,7 @@ enum AppStoreSandboxProviderAudit {
         case .codex: return try await CodexUsageService().fetch(preferAPI: true)
         case .cursor: return try await CursorUsageService().fetch()
         case .grok: return try await GrokUsageService().fetch()
+        case .grokBot: return try await GrokBotUsageService().fetch()
         case .zai: return try await ZAIUsageService().fetch()
         case .zaiTeam: return try await ZAITeamUsageService().fetch()
         case .copilot: return try await CopilotUsageService().fetch()
@@ -107,6 +108,11 @@ enum AppStoreSandboxProviderAudit {
         case .kiro: return try await KiroUsageService().fetch()
         case .volcengine: return try await VolcengineUsageService().fetch()
         case .ollama: return try await OllamaUsageService().fetch()
+        case .muse: return try await MuseUsageService().fetch()
+        case .museCode: return try await MuseCodeUsageService().fetch()
+        case .amp: return try await AmpUsageService().fetch()
+        case .factory: return try await FactoryUsageService().fetch()
+        case .augment: return try await AugmentUsageService().fetch()
         case .thirdParty: return try await ThirdPartyUsageService().fetch()
         }
     }
