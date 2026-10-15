@@ -301,3 +301,58 @@ struct CursorAuthReaderTests {
         #expect(auth?.membershipType == "pro")
     }
 }
+
+@Suite("Cursor optional model request deadline")
+struct CursorModelRequestDeadlineTests {
+    @Test("A stalled optional request times out and cancels its transport")
+    func timeoutCancelsTransport() async {
+        let state = CancellationState()
+        let start = ContinuousClock.now
+        let result = await CursorUsageService.fetchModelUsage(
+            accessToken: "fixture", body: Data(), timeout: 0.03
+        ) { _ in
+            do { try await Task.sleep(for: .seconds(60)) }
+            catch { await state.cancelled(); throw error }
+            throw URLError(.unknown)
+        }
+        #expect(result == nil)
+        #expect(start.duration(to: .now) < .seconds(1))
+        for _ in 0..<100 {
+            if await state.value { break }
+            try? await Task.sleep(for: .milliseconds(2))
+        }
+        #expect(await state.value)
+    }
+
+    @Test("Cancelling an optional request cancels the underlying transport")
+    func cancellation() async {
+        let state = CancellationState()
+        let task = Task {
+            await CursorUsageService.fetchModelUsage(accessToken: "fixture", body: Data()) { _ in
+                await state.started()
+                do { try await Task.sleep(for: .seconds(60)) }
+                catch { await state.cancelled(); throw error }
+                throw URLError(.unknown)
+            }
+        }
+        for _ in 0..<100 {
+            if await state.didStart { break }
+            try? await Task.sleep(for: .milliseconds(2))
+        }
+        #expect(await state.didStart)
+        task.cancel()
+        #expect(await task.value == nil)
+        for _ in 0..<100 {
+            if await state.value { break }
+            try? await Task.sleep(for: .milliseconds(2))
+        }
+        #expect(await state.value)
+    }
+
+    private actor CancellationState {
+        var value = false
+        var didStart = false
+        func cancelled() { value = true }
+        func started() { didStart = true }
+    }
+}

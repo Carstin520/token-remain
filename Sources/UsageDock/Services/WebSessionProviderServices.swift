@@ -287,22 +287,14 @@ struct AmpCLICredentialReader {
     /// Whether a CLI key is available, for detection; never returns the key.
     var isAvailable: Bool { load() != nil }
 
-    /// Prefers the ampcode.com entry, then any other `apiKey…` entry.
+    /// A CLI can store credentials for several origins. Only the exact Amp
+    /// production entry may be sent to ampcode.com; never borrow another key.
     static func apiKey(fromSecrets data: Data) -> String? {
-        guard let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else { return nil }
-        let candidates = object
-            .filter { $0.key.hasPrefix("apiKey") }
-            .sorted { lhs, rhs in
-                let l = lhs.key.contains("ampcode.com"), r = rhs.key.contains("ampcode.com")
-                return l != r ? l : lhs.key < rhs.key
-            }
-        for (_, value) in candidates {
-            if let key = (value as? String)?.trimmingCharacters(in: .whitespacesAndNewlines),
-               !key.isEmpty, !key.contains(where: \.isWhitespace) {
-                return key
-            }
-        }
-        return nil
+        guard let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+              let key = (object["apiKey@https://ampcode.com/"] as? String)?
+                .trimmingCharacters(in: .whitespacesAndNewlines),
+              !key.isEmpty, !key.contains(where: \.isWhitespace) else { return nil }
+        return key
     }
 
     private func normalized(_ value: String?) -> String? {
@@ -547,7 +539,7 @@ enum FactoryUsageParser {
     /// `usedRatio` (0…1) when present, else tokens used over the allowance.
     private static func usedPercent(_ pool: [String: Any]) -> Double? {
         if let ratio = ExtendedHTTP.number(pool["usedRatio"]), ratio.isFinite, ratio >= 0 {
-            return ExtendedHTTP.clamp(ratio <= 1.5 ? ratio * 100 : ratio)
+            return ExtendedHTTP.clamp(ratio * 100)
         }
         guard let allowance = ExtendedHTTP.number(pool["totalAllowance"]), allowance > 0,
               let used = ExtendedHTTP.number(pool["orgTotalTokensUsed"]) ?? ExtendedHTTP.number(pool["userTokens"])
@@ -592,7 +584,9 @@ enum AugmentUsageParser {
             return remaining + consumed
         }()
         guard let limit, limit > 0 else { throw ExtendedProviderError.invalidResponse(.augment) }
-        let used = consumed ?? remaining.map { limit - $0 } ?? 0
+        guard let used = consumed ?? remaining.map({ limit - $0 }), used.isFinite else {
+            throw ExtendedProviderError.invalidResponse(.augment)
+        }
 
         let details = subscription.flatMap(ExtendedHTTP.json)
         let plan = (details?["planName"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)

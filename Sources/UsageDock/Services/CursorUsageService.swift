@@ -92,21 +92,31 @@ struct CursorUsageService {
         if let body = CursorModelUsageParser.requestBody(fromCurrentPeriodUsage: data) {
             quota.modelUsage = await Self.fetchModelUsage(accessToken: auth.accessToken, body: body)
         }
+        try Task.checkCancellation()
         return quota
     }
 
     /// 当前账期内各模型的 token / 费用汇总(Cursor 仪表盘 Usage 页同源)。
     /// 尽力而为:任何失败都返回 nil,卡片只是不显示模型行。
-    private static func fetchModelUsage(accessToken: String, body: Data) async -> [ProviderModelUsage]? {
+    static func fetchModelUsage(
+        accessToken: String,
+        body: Data,
+        timeout: TimeInterval = modelUsageTimeout,
+        transport: @escaping @Sendable (URLRequest) async throws -> (Data, URLResponse) = {
+            try await URLSession.shared.data(for: $0)
+        }
+    ) async -> [ProviderModelUsage]? {
         var request = URLRequest(url: modelUsageURL)
         request.httpMethod = "POST"
         request.httpBody = body
-        request.timeoutInterval = modelUsageTimeout
+        request.timeoutInterval = timeout
         request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("1", forHTTPHeaderField: "Connect-Protocol-Version")
-        guard let (data, response) = try? await URLSession.shared.data(for: request),
-              let http = response as? HTTPURLResponse else {
+        let boundedRequest = request
+        guard let (data, response) = try? await AsyncDeadline.run(timeout: timeout, operation: {
+            try await transport(boundedRequest)
+        }), let http = response as? HTTPURLResponse else {
             logger.info("Cursor model usage unavailable: request did not complete")
             return nil
         }

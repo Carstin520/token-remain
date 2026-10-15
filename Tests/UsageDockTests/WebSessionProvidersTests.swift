@@ -274,6 +274,14 @@ struct AmpCLICredentialTests {
             == "fake-amp-key")
     }
 
+    @Test("Other origins and lookalike keys never become Amp credentials")
+    func rejectsForeignCredentials() {
+        for key in ["apiKey@https://other.example/", "apiKey@https://ampcode.com.evil.example/", "apiKey@http://ampcode.com/", "apiKeyBackup"] {
+            let data = try! JSONSerialization.data(withJSONObject: [key: "foreign-fixture"])
+            #expect(AmpCLICredentialReader.apiKey(fromSecrets: data) == nil)
+        }
+    }
+
     @Test("Detection counts a CLI login as connected without a Cookie")
     @MainActor
     func detection() throws {
@@ -328,6 +336,14 @@ struct AmpUsageTests {
 
 @Suite("Factory usage")
 struct FactoryUsageTests {
+    @Test("Factory ratios over 150 percent stay exhausted")
+    func overLimitRatio() throws {
+        let data = Data(#"{"usage":{"standard":{"usedRatio":2.0},"premium":{"usedRatio":0.5}}}"#.utf8)
+        let quota = try FactoryUsageParser.parse(data)
+        #expect(quota.primary.poolName == "Standard")
+        #expect(quota.primary.usedPercent == 100)
+    }
+
     @Test("The busier of Standard and Premium leads the billing period")
     func parsesPools() throws {
         let body = #"{"usage":{"startDate":1789000000000,"endDate":1791592000000,"standard":{"userTokens":100,"totalAllowance":1000,"usedRatio":0.1},"premium":{"orgTotalTokensUsed":600,"totalAllowance":1000}}}"#
@@ -347,6 +363,13 @@ struct FactoryUsageTests {
 
 @Suite("Augment usage")
 struct AugmentUsageTests {
+    @Test("An allowance without observed usage cannot imply zero consumption")
+    func rejectsMissingUsage() {
+        #expect(throws: ExtendedProviderError.self) {
+            try AugmentUsageParser.parse(credits: Data(#"{"usageUnitsAvailable":1000}"#.utf8), subscription: nil)
+        }
+    }
+
     @Test("Credits and the subscription cycle end")
     func parsesCredits() throws {
         let credits = #"{"usageUnitsRemaining":750,"usageUnitsConsumedThisBillingCycle":250,"usageUnitsAvailable":0}"#
