@@ -151,8 +151,16 @@ struct BrandIcon: View {
                 source = monochromeMask(image(for: provider, size: 64)) ?? source
             }
         }
+        // Windsurf's artwork is entirely white, even in its color asset.
+        // Keep this monochrome brand adaptive in either menu-bar mode.
+        if colored, provider == .windsurf {
+            source = monochromeMask(source) ?? source
+        }
         let paddingRatio = artwork(for: provider)?.menuBarPaddingRatio ?? 0
         let rendered = rasterizeForMenuBar(source, pointSize: size, paddingRatio: paddingRatio)
+        if colored, provider == .kimi {
+            return appearanceAdaptiveWhiteInk(rendered)
+        }
         guard colored, let tint = menuBarBrandTint(for: provider) else { return rendered }
         let tinted = NSImage(size: rendered.size, flipped: false) { rect in
             rendered.draw(in: rect)
@@ -162,6 +170,45 @@ struct BrandIcon: View {
         }
         tinted.isTemplate = false
         return tinted
+    }
+
+    /// Kimi combines a white letter with a blue accent. Adapt only the white
+    /// strokes at draw time so the letter survives appearance changes while
+    /// the accent keeps its brand color. Never cache an appearance's pixels.
+    private static func appearanceAdaptiveWhiteInk(_ source: NSImage) -> NSImage {
+        var proposed = NSRect(origin: .zero, size: source.size)
+        guard let original = source.cgImage(forProposedRect: &proposed, context: nil, hints: nil),
+              let context = CGContext(
+                data: nil, width: original.width, height: original.height,
+                bitsPerComponent: 8, bytesPerRow: original.width * 4,
+                space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                bitmapInfo: CGBitmapInfo.byteOrder32Big.rawValue | CGImageAlphaInfo.premultipliedLast.rawValue
+              ),
+              let data = context.data?.assumingMemoryBound(to: UInt8.self) else { return source }
+        context.draw(original, in: CGRect(x: 0, y: 0, width: original.width, height: original.height))
+        for pixel in 0..<(original.width * original.height) {
+            let offset = pixel * 4
+            let alpha = Double(data[offset + 3])
+            let channels = (0..<3).map { Double(data[offset + $0]) }
+            if alpha == 0 || channels.min()! <= alpha * 0.92 || channels.max()! - channels.min()! >= alpha * 0.08 {
+                data[offset + 3] = 0
+            }
+            data[offset] = 0; data[offset + 1] = 0; data[offset + 2] = 0
+        }
+        guard let whiteMask = context.makeImage() else { return source }
+        let result = NSImage(size: source.size, flipped: false) { rect in
+            source.draw(in: rect)
+            guard let drawing = NSGraphicsContext.current?.cgContext else { return false }
+            drawing.saveGState()
+            drawing.clip(to: rect, mask: whiteMask)
+            NSColor.labelColor.setFill()
+            rect.fill()
+            drawing.restoreGState()
+            return true
+        }
+        result.cacheMode = .never
+        result.isTemplate = false
+        return result
     }
 
     /// Turns full-color artwork into a template alpha mask. White details

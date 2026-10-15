@@ -245,6 +245,8 @@ struct BrandIconRenderTests {
             let raw = BrandIcon.image(for: provider, size: StatusBarController.statusIconSize)
             if BrandIcon.menuBarBrandTint(for: provider) != nil {
                 #expect(!menu.isTemplate, "\(provider.displayName) brand tint must not be recolored by AppKit")
+            } else if provider == .windsurf {
+                #expect(menu.isTemplate, "Windsurf's white mark must remain appearance-adaptive")
             } else {
                 #expect(menu.isTemplate == raw.isTemplate, "\(provider.displayName) changed template state")
             }
@@ -256,7 +258,8 @@ struct BrandIconRenderTests {
     func statusAttachmentsFollowAppearance(scale: Int) throws {
         for colored in [false, true] {
             for provider in ProviderQuota.Provider.displayOrder {
-                guard BrandIcon.menuBarImage(for: provider, size: StatusBarController.statusIconSize, colored: colored).isTemplate else { continue }
+                let image = BrandIcon.menuBarImage(for: provider, size: StatusBarController.statusIconSize, colored: colored)
+                guard image.isTemplate || (colored && provider == .kimi) else { continue }
                 // Reuse the same attachment, as the status title does when only the
                 // appearance changes and the quota fingerprint stays unchanged.
                 let attachment = StatusBarController.statusIcon(provider, size: StatusBarController.statusIconSize, colored: colored)
@@ -288,7 +291,7 @@ struct BrandIconRenderTests {
     @Test("Monochrome attachments draw no color; brand-color attachments keep it", arguments: [1, 2])
     @MainActor
     func attachmentColorFollowsSetting(scale: Int) throws {
-        for provider in [ProviderQuota.Provider.claude, .codex, .deepseek, .kiro] {
+        for provider in [ProviderQuota.Provider.claude, .codex, .deepseek, .kiro, .kimi] {
             for appearance in [NSAppearance.Name.aqua, .darkAqua] {
                 let mono = try coloredPixels(
                     renderAttachment(StatusBarController.statusIcon(provider, size: StatusBarController.statusIconSize), appearance: appearance, scale: scale)
@@ -301,7 +304,10 @@ struct BrandIconRenderTests {
                     )
                 )
                 #expect(mono == 0, "\(provider.displayName) monochrome glyph drew \(mono) colored pixels")
-                #expect(colored > 5 * scale * scale, "\(provider.displayName) lost its brand color")
+                // Kimi's blue accent is only a small dot; it must retain color
+                // while the much larger letter adapts to the appearance.
+                let minimum = provider == .kimi ? 0 : 5 * scale * scale
+                #expect(colored > minimum, "\(provider.displayName) lost its brand color")
             }
         }
     }

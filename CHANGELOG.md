@@ -3,7 +3,7 @@
 All notable product changes are recorded here. TokenRemain uses Semantic
 Versioning for public releases.
 
-## Unreleased
+## 1.4.4 (build 42) — 2026-10-15
 
 ### Fixed
 
@@ -11,6 +11,7 @@ Versioning for public releases.
   appearance-adaptive icons instead of the uniform blue glyphs. Icons are
   slightly larger, centered on the numerals, and the spacing is tighter.
 - Use the official Grok Bot and Muse logos.
+- Keep Windsurf and Kimi menu-bar marks readable in light and dark appearances, including brand-color mode.
 
 ### Added
 
