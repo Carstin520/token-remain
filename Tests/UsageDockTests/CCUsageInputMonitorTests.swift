@@ -185,12 +185,13 @@ struct CCUsageInputMonitorTests {
             home: home
         )
         #expect(inputs.directories.count == 1)
+        // On a loaded machine, writes made just before a stream starts can be
+        // delivered to it. In production that only costs one extra run; here
+        // the fixture must be older than the stream.
+        try await Task.sleep(for: .seconds(3))
 
         monitor.runWillStart(with: inputs, at: Self.now)
         monitor.runDidFinish(succeeded: true)
-        // Let the stream settle so the write below is not mistaken for setup.
-        try await Task.sleep(for: .milliseconds(500))
-        #expect(monitor.canReuseLastRun(for: inputs, at: Self.now.addingTimeInterval(1)))
 
         // Opening a WAL database rewrites its shared-memory index even for a
         // pure read, which is what the helper itself does.
@@ -198,7 +199,10 @@ struct CCUsageInputMonitorTests {
         try handle.write(contentsOf: Data("reread".utf8))
         try handle.close()
         try await Task.sleep(for: .milliseconds(3_500))
-        #expect(monitor.canReuseLastRun(for: inputs, at: Self.now.addingTimeInterval(1)))
+        #expect(
+            monitor.canReuseLastRun(for: inputs, at: Self.now.addingTimeInterval(1)),
+            "Invalidated by \(monitor.lastInvalidatingEventDescription ?? "a non-event change")"
+        )
 
         try Self.write("{}", to: sessions.appending(path: "new.jsonl"))
         var invalidated = false

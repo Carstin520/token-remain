@@ -78,6 +78,7 @@ final class CCUsageInputMonitor: @unchecked Sendable {
     private var reusableInputs: Inputs?
     private var lastRunStartedAt: Date?
     private var inputsChanged = true
+    private var lastInvalidatingEvent: String?
     private var stream: FSEventStreamRef?
     private let eventQueue = DispatchQueue(
         label: "com.jamesli.usagedock.ccusage-inputs",
@@ -132,6 +133,14 @@ final class CCUsageInputMonitor: @unchecked Sendable {
         }
         runningInputs = nil
         stateLock.unlock()
+    }
+
+    /// The event that last invalidated a run, for diagnosing an unexpected
+    /// rerun. Held in memory only.
+    var lastInvalidatingEventDescription: String? {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        return lastInvalidatingEvent
     }
 
     /// Called by the event stream, and directly by tests.
@@ -305,6 +314,9 @@ final class CCUsageInputMonitor: @unchecked Sendable {
             // A missing path cannot be classified; treat it as a change.
             let path = index < paths.count ? paths[index] : ""
             if Self.eventChangesInputs(path: path, flags: flags[index]) {
+                stateLock.lock()
+                lastInvalidatingEvent = "\(path) flags=0x\(String(flags[index], radix: 16))"
+                stateLock.unlock()
                 markInputsChanged()
                 return
             }
