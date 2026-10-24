@@ -5,6 +5,15 @@ import SwiftUI
 @MainActor
 final class DashboardVisibility: ObservableObject {
     @Published private(set) var isVisible = false
+    /// Ordered in or minimized, even while covered. Unlike `isVisible`, this
+    /// only turns false when the window closes, so occlusion or minimizing
+    /// never discards an unsaved draft.
+    @Published private(set) var isWindowOpen = false
+
+    func setWindowOpen(_ open: Bool) {
+        guard open != isWindowOpen else { return }
+        isWindowOpen = open
+    }
 
     @discardableResult
     func setVisible(_ visible: Bool) -> Bool {
@@ -52,14 +61,18 @@ final class DashboardWindowController: NSWindowController {
         onBecameVisible: @escaping () -> Void
     ) {
         self.onBecameVisible = onBecameVisible
+        let navigator = self.navigator
+        let visibility = self.visibility
         let hosting = NSHostingController(
-            rootView: DashboardView(
-                store: store,
-                feedStore: feedStore,
-                launchAtLogin: launchAtLogin,
-                navigator: navigator,
-                visibility: visibility
-            )
+            rootView: DashboardWindowRoot(visibility: visibility) {
+                DashboardView(
+                    store: store,
+                    feedStore: feedStore,
+                    launchAtLogin: launchAtLogin,
+                    navigator: navigator,
+                    visibility: visibility
+                )
+            }
         )
         FixedHostingWindowSizing.configure(hosting)
 
@@ -104,6 +117,7 @@ final class DashboardWindowController: NSWindowController {
                     guard let self, let window = self.window else { return }
                     if name == NSWindow.willCloseNotification {
                         self.visibility.setVisible(false)
+                        self.visibility.setWindowOpen(false)
                     } else if self.visibility.update(from: window) {
                         self.onBecameVisible()
                     }
@@ -150,6 +164,8 @@ final class DashboardWindowController: NSWindowController {
         if let section {
             navigator.selection = section
         }
+        // Build the view tree before the window is ordered in.
+        visibility.setWindowOpen(true)
         NSApp.activate(ignoringOtherApps: true)
         showWindow(nil)
         window?.makeKeyAndOrderFront(nil)
@@ -159,6 +175,23 @@ final class DashboardWindowController: NSWindowController {
         window?.titleVisibility = .hidden
         if let window, visibility.update(from: window) {
             onBecameVisible()
+        }
+    }
+}
+
+/// A closed Dashboard keeps its window, frame and selected section for the
+/// next open, but not a live view tree: SwiftUI would otherwise re-evaluate and
+/// lay out the last section — keychain-backed credential rows included — on
+/// every UsageStore change while nobody can see it.
+private struct DashboardWindowRoot<Content: View>: View {
+    @ObservedObject var visibility: DashboardVisibility
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        if visibility.isWindowOpen {
+            content()
+        } else {
+            Color.clear
         }
     }
 }

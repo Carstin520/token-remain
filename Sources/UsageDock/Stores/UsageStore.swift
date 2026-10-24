@@ -1,3 +1,4 @@
+import AppKit
 import Combine
 import Foundation
 import OSLog
@@ -140,6 +141,7 @@ final class UsageStore: ObservableObject {
     private let providerAccountQuotaCache: ProviderAccountQuotaCache
     private let historyCache = DailyHistoryCache()
     private let quotaUsageHistoryCache: QuotaUsageHistoryCache
+    private let quotaUsageHistoryWriter: QuotaUsageHistoryWriter
     private let logger = Logger(subsystem: "com.jamesli.usagedock", category: "UsageRefresh")
     private let claudeRetryAfterKey = "claudeRetryAfter"
     private let serviceStatusRefreshInterval: TimeInterval = 300
@@ -148,6 +150,7 @@ final class UsageStore: ObservableObject {
     private var latestLocalUsageSnapshot: LocalUsageSnapshot?
     private let disabledLocalUsageSourcesKey = "tokenRemain.disabledLocalUsageSources.v1"
     private let sessionActivityMonitor: LocalAISessionActivityMonitor
+    private let ccusageInputMonitor: CCUsageInputMonitor
     private let hostQuotaRouter: HostAppQuotaRoutingService
 
     private enum QuotaRefreshOutput {
@@ -376,7 +379,7 @@ final class UsageStore: ObservableObject {
             let updated = quotaUsageHistory.recording(resolvedValue)
             if updated != quotaUsageHistory {
                 quotaUsageHistory = updated
-                quotaUsageHistoryCache.save(updated)
+                quotaUsageHistoryWriter.schedule(updated)
             }
         }
     }
@@ -483,6 +486,7 @@ final class UsageStore: ObservableObject {
         defaults: UserDefaults = .standard,
         home: URL = FileManager.default.homeDirectoryForCurrentUser,
         sessionActivityMonitor: LocalAISessionActivityMonitor = .shared,
+        ccusageInputMonitor: CCUsageInputMonitor = .shared,
         providerAccountsStore: ProviderAccountsStore? = nil,
         automaticallyStarts: Bool = true,
         quotaCache: QuotaCache = QuotaCache(),
@@ -510,8 +514,14 @@ final class UsageStore: ObservableObject {
         self.defaults = defaults
         self.providerAccountsStore = providerAccountsStore ?? ProviderAccountsStore(defaults: defaults)
         self.sessionActivityMonitor = sessionActivityMonitor
+        self.ccusageInputMonitor = ccusageInputMonitor
         self.quotaCache = quotaCache
         self.quotaUsageHistoryCache = quotaUsageHistoryCache
+        // In-memory hosts and tests keep write-through persistence.
+        quotaUsageHistoryWriter = QuotaUsageHistoryWriter(
+            cache: quotaUsageHistoryCache,
+            writeDelay: automaticallyStarts ? QuotaUsageHistoryWriter.defaultWriteDelay : 0
+        )
         self.providerAccountQuotaCache = providerAccountQuotaCache
         self.accountLogin = accountLogin
         self.operationTimeout = operationTimeout
@@ -594,6 +604,10 @@ final class UsageStore: ObservableObject {
             }
             .store(in: &cancellables)
 
+        NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)
+            .sink { [weak self] _ in self?.quotaUsageHistoryWriter.flush() }
+            .store(in: &cancellables)
+
         Task { @MainActor [weak self] in
             self?.start()
         }
@@ -673,7 +687,7 @@ final class UsageStore: ObservableObject {
         // Local usage has its own task and must be scheduled before the quota
         // refresh lock. Otherwise opening the UI while a provider request is
         // running silently drops the user's forced ccusage refresh.
-        refreshLocalUsage(force: forceCCUsage)
+        refreshLocalUsage(force: forceCCUsage, userRequested: forceCCUsage)
         guard !isRefreshing else { return }
         isRefreshing = true
         defer { isRefreshing = false }
@@ -1004,14 +1018,17 @@ final class UsageStore: ObservableObject {
     /// Refreshes only the bundled ccusage snapshot. Presentation surfaces use
     /// this entry point so showing local totals does not also trigger network
     /// provider requests.
-    func refreshLocalUsage(force: Bool = true) {
+    /// `force` skips the cadence check, as when a surface opens. Only
+    /// `userRequested` (a refresh button, retry or launch) also reruns the
+    /// helper when none of its inputs changed since the last successful run.
+    func refreshLocalUsage(force: Bool = true, userRequested: Bool = false) {
         // Costs shown on any surface use the display rate; checking here keeps
         // it current for menu-bar-only users. Cheap and self-throttled.
         CurrencyStore.shared.refreshIfStale()
-        scheduleCCUsageRefresh(force: force)
+        scheduleCCUsageRefresh(force: force, userRequested: userRequested)
     }
 
-    private func scheduleCCUsageRefresh(force: Bool, now: Date = .now) {
+    private func scheduleCCUsageRefresh(force: Bool, userRequested: Bool, now: Date = .now) {
         guard historyRefreshTask == nil else { return }
         let interval = AdaptiveRefreshPolicy.localUsageInterval(
             preferred: PreferencesStore.shared.refreshInterval,
@@ -1037,15 +1054,40 @@ final class UsageStore: ObservableObject {
             }
             var merged: LocalUsageSnapshot?
             var errors: [String] = []
+            let traeDirectories = traeAgentDirectories
+            let monitor = ccusageInputMonitor
+            let mayReuse = !userRequested && latestLocalUsageSnapshot != nil
             do {
-                merged = try await AsyncDeadline.run {
-                    try await CCUsageService().fetchSnapshot(days: 30, now: now)
+                let outcome = try await AsyncDeadline.run { () -> CCUsageRunOutcome in
+                    let service = CCUsageService()
+                    let invocation = try await service.prepareInvocation(days: 30, now: now)
+                    let inputs = CCUsageInputMonitor.inputs(
+                        for: invocation,
+                        additionalDirectories: traeDirectories,
+                        now: now
+                    )
+                    if mayReuse, monitor.canReuseLastRun(for: inputs, at: now) {
+                        return .unchanged
+                    }
+                    monitor.runWillStart(with: inputs, at: now)
+                    return .fresh(try await service.run(invocation, now: now))
+                }
+                switch outcome {
+                case .unchanged:
+                    // The same inputs would reproduce the snapshot on screen;
+                    // it is now known to be current as of this check.
+                    guard !Task.isCancelled, let previous = latestLocalUsageSnapshot else { return }
+                    let current = previous.confirmed(at: now)
+                    latestLocalUsageSnapshot = current
+                    applyLocalUsageSnapshot(current)
+                    scheduleThroughputRefresh(now: now)
+                    return
+                case .fresh(let snapshot):
+                    merged = snapshot
                 }
             } catch {
                 errors.append("ccusage: \(error.localizedDescription)")
             }
-
-            let traeDirectories = traeAgentDirectories
             let ccusageAlreadyIncludesTrae = merged.map { snapshot in
                 snapshot.daily.agents.contains { $0.id == TraeAgentUsageService.agentID }
                     || snapshot.history.days.contains { day in
@@ -1064,6 +1106,8 @@ final class UsageStore: ObservableObject {
                 }
             }
 
+            // Only a complete pass can stand in for an unchanged next one.
+            monitor.runDidFinish(succeeded: errors.isEmpty && merged != nil && !Task.isCancelled)
             guard !Task.isCancelled else { return }
             if let merged {
                 latestLocalUsageSnapshot = merged
@@ -1800,6 +1844,11 @@ final class UsageStore: ObservableObject {
         return summary.remainingBalance?.displayText
             ?? UsageFormatting.percent(summary.remainingPercent)
     }
+}
+
+private enum CCUsageRunOutcome: Sendable {
+    case unchanged
+    case fresh(LocalUsageSnapshot)
 }
 
 private func result<T: Sendable>(_ operation: @escaping @Sendable () async throws -> T) async -> Result<T, Error> {
