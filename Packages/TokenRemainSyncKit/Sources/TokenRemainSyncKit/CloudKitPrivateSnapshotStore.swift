@@ -691,21 +691,52 @@ public protocol SyncCloudSourceStoring: SyncCloudSnapshotStoring {
     ) async throws -> Bool
 }
 
+/// Creating the sync zone is idempotent, but every attempt is still a CloudKit
+/// write. Callers build a fresh store for each publish, so the memory of a
+/// successful creation lives for the process instead of one store instance.
+/// Any response saying the zone is gone clears it again.
+final class CloudKitZoneCreationMemo: @unchecked Sendable {
+    private let lock = NSLock()
+    private var createdZones: Set<String> = []
+
+    func contains(_ key: String) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return createdZones.contains(key)
+    }
+
+    func insert(_ key: String) {
+        lock.lock()
+        createdZones.insert(key)
+        lock.unlock()
+    }
+
+    func remove(_ key: String) {
+        lock.lock()
+        createdZones.remove(key)
+        lock.unlock()
+    }
+}
+
 public actor CloudKitPrivateSnapshotStore: SyncCloudSourceStoring {
     public static let subscriptionID = "TokenRemainSync-current-v1"
     public static let maximumConflictSaveAttempts = 2
+    static let zoneCreationMemo = CloudKitZoneCreationMemo()
 
     private let container: CKContainer
     private let database: CKDatabase
+    private let zoneMemoKey: String
 
     public init(containerIdentifier: String) {
         self.container = CKContainer(identifier: containerIdentifier)
         self.database = container.privateCloudDatabase
+        self.zoneMemoKey = containerIdentifier
     }
 
     public init(container: CKContainer) {
         self.container = container
         self.database = container.privateCloudDatabase
+        self.zoneMemoKey = container.containerIdentifier ?? ""
     }
 
     public func accountStatus() async throws -> SyncCloudAccountStatus {
@@ -725,11 +756,23 @@ public actor CloudKitPrivateSnapshotStore: SyncCloudSourceStoring {
                 deleting: []
             )
             try Self.validateZoneSaveResult(results.saveResults[zoneID], zoneID: zoneID)
+            Self.zoneCreationMemo.insert(zoneMemoKey)
         } catch let mapped as SyncCloudStoreError {
             throw mapped
         } catch {
             throw Self.map(error)
         }
+    }
+
+    /// Record writes need the zone; repeating its creation before every write
+    /// turned each unchanged publish into an extra CloudKit write.
+    private func ensureZoneIfNeeded() async throws {
+        guard !Self.zoneCreationMemo.contains(zoneMemoKey) else { return }
+        try await ensureZone()
+    }
+
+    private func forgetCreatedZone() {
+        Self.zoneCreationMemo.remove(zoneMemoKey)
     }
 
     public func save(_ envelope: EncryptedSyncEnvelope) async throws {
@@ -797,7 +840,30 @@ public actor CloudKitPrivateSnapshotStore: SyncCloudSourceStoring {
         recordID: CKRecord.ID,
         enforcesSourceSequence: Bool
     ) async throws {
-        try await ensureZone()
+        try await ensureZoneIfNeeded()
+        do {
+            try await saveRetryingConflicts(
+                envelope,
+                recordID: recordID,
+                enforcesSourceSequence: enforcesSourceSequence
+            )
+        } catch SyncCloudStoreError.zoneNotFound {
+            // Another device deleted the zone after this process created it.
+            forgetCreatedZone()
+            try await ensureZone()
+            try await saveRetryingConflicts(
+                envelope,
+                recordID: recordID,
+                enforcesSourceSequence: enforcesSourceSequence
+            )
+        }
+    }
+
+    private func saveRetryingConflicts(
+        _ envelope: EncryptedSyncEnvelope,
+        recordID: CKRecord.ID,
+        enforcesSourceSequence: Bool
+    ) async throws {
         for attempt in 0..<Self.maximumConflictSaveAttempts {
             do {
                 try await saveOnce(
@@ -941,9 +1007,10 @@ public actor CloudKitPrivateSnapshotStore: SyncCloudSourceStoring {
         }
     }
 
+    /// Like `fetchRefreshRequest()`, a plain read does not create the zone: a
+    /// missing zone cannot hold the record, and the write path recreates it.
     private func fetch(recordID: CKRecord.ID) async throws -> SyncCloudStoredEnvelope? {
         do {
-            try await ensureZone()
             let record = try await database.record(for: recordID)
             do {
                 return try CloudKitSyncRecordCodec.storedEnvelope(from: record)
@@ -954,7 +1021,10 @@ public actor CloudKitPrivateSnapshotStore: SyncCloudSourceStoring {
             throw error
         } catch {
             switch Self.map(error) {
-            case .recordNotFound, .zoneNotFound:
+            case .recordNotFound:
+                return nil
+            case .zoneNotFound:
+                forgetCreatedZone()
                 return nil
             case let mapped:
                 throw mapped
@@ -1069,6 +1139,8 @@ public actor CloudKitPrivateSnapshotStore: SyncCloudSourceStoring {
     }
 
     public func deleteZone() async throws {
+        // Forget first: even a failed delete may have removed the zone.
+        forgetCreatedZone()
         do {
             let zoneID = CloudKitSyncRecordCodec.zoneID()
             let results = try await database.modifyRecordZones(

@@ -49,7 +49,8 @@ struct ProviderCredentialEntryRow: View {
     @ObservedObject var store: UsageStore
     let provider: ProviderQuota.Provider
     let configuration: ProviderCredentialConfiguration
-    @State private var credentialStatus: StoredCredentialStatus
+    @State private var credentialStatus: StoredCredentialStatus = .missing
+    @State private var loadedStoredState = false
     @State private var draft = ""
     @State private var claudeOrganizationID = ""
     @State private var clipboardUnrecognized = false
@@ -70,16 +71,25 @@ struct ProviderCredentialEntryRow: View {
         self.store = store
         self.provider = provider
         self.configuration = configuration
-        _credentialStatus = State(
-            initialValue: ProviderCredentialConfiguration.storedCredentialStatus(for: provider)
-        )
         _zaiRegion = State(initialValue: ZAIRegionStore().load())
         _zaiQueryMode = State(initialValue: ZAIQueryModeStore().load())
-        let alibabaConfig = provider == .alibabaTokenPlan
-            ? ProviderSecretStore(provider: provider).load().flatMap { try? AlibabaTokenPlanConfiguration.decode($0) }
-            : nil
-        _alibabaRegion = State(initialValue: alibabaConfig?.region ?? .china)
-        _alibabaEdition = State(initialValue: alibabaConfig?.edition ?? .team)
+        _alibabaRegion = State(initialValue: .china)
+        _alibabaEdition = State(initialValue: .team)
+    }
+
+    /// `init` runs on every parent re-render, but `@State` keeps only its
+    /// first value; reading the Keychain there repeated a discarded read for
+    /// each row on every store update. Load once per row identity instead.
+    private func loadStoredStateIfNeeded() {
+        guard !loadedStoredState else { return }
+        loadedStoredState = true
+        reloadCredentialStatus()
+        if provider == .alibabaTokenPlan,
+           let stored = ProviderSecretStore(provider: provider).load()
+            .flatMap({ try? AlibabaTokenPlanConfiguration.decode($0) }) {
+            alibabaRegion = stored.region
+            alibabaEdition = stored.edition
+        }
     }
 
     var body: some View {
@@ -217,7 +227,10 @@ struct ProviderCredentialEntryRow: View {
                     .foregroundStyle(DashboardTheme.warning)
             }
         }
-        .onAppear { reloadMuseCodeTeams() }
+        .onAppear {
+            loadStoredStateIfNeeded()
+            reloadMuseCodeTeams()
+        }
         .onDisappear { action.cancel() }
         .onChange(of: store.claudeWebOrganizationChoices) { _, choices in
             // A new session brings its own list; a choice from the previous one

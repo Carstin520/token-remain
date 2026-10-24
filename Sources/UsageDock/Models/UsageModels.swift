@@ -833,6 +833,14 @@ struct LocalUsageSnapshot: Sendable {
     let daily: DailyUsage
     let history: DailyUsageHistory
 
+    /// The same totals, confirmed current at `date` without rereading logs.
+    func confirmed(at date: Date) -> LocalUsageSnapshot {
+        LocalUsageSnapshot(
+            daily: DailyUsage(date: daily.date, agents: daily.agents, capturedAt: date),
+            history: DailyUsageHistory(days: history.days, capturedAt: date)
+        )
+    }
+
     func merging(_ other: LocalUsageSnapshot) -> LocalUsageSnapshot {
         LocalUsageSnapshot(
             daily: DailyUsage(

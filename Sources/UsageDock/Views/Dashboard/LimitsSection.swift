@@ -106,9 +106,13 @@ struct LimitsSection: View {
 /// 点一下即加入追踪(与卡片右键"停止追踪"互为镜像)。
 private struct AddProviderTile: View {
     @ObservedObject var tracked: TrackedProvidersStore
+    /// Detection probes the file system and reads the app's own Keychain
+    /// items. It runs when the tile appears or the tracked set changes, off
+    /// the main thread, not on every UsageStore update that re-renders Limits.
+    @State private var allDetections: [TrackedProvidersStore.Detection] = []
 
     private var detections: [TrackedProvidersStore.Detection] {
-        TrackedProvidersStore.detections().filter { !tracked.isEnabled($0.provider) }
+        allDetections.filter { !tracked.isEnabled($0.provider) }
     }
 
     var body: some View {
@@ -150,5 +154,12 @@ private struct AddProviderTile: View {
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
         .accessibilityLabel(L10n.text("limits.add_app_accessibility"))
+        .task(id: tracked.enabled) {
+            let detections = await Task.detached(priority: .utility) {
+                TrackedProvidersStore.detections()
+            }.value
+            guard !Task.isCancelled else { return }
+            allDetections = detections
+        }
     }
 }

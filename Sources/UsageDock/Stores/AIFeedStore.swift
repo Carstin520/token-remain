@@ -4,7 +4,9 @@ import UserNotifications
 
 @MainActor
 final class AIFeedStore: ObservableObject {
-    @Published private(set) var posts: [AIFeedPost] = []
+    @Published private(set) var posts: [AIFeedPost] = [] {
+        didSet { recommendationCache = nil }
+    }
     @Published private(set) var isRefreshing = false
     @Published private(set) var errorMessage: String?
     @Published private(set) var lastUpdated: Date?
@@ -17,6 +19,10 @@ final class AIFeedStore: ObservableObject {
     private let defaults = UserDefaults.standard
     private let notificationsKey = "aiFeedNotificationsEnabled"
     private var refreshTask: Task<Void, Never>?
+    /// The popup and Dashboard read the curated list on every body pass,
+    /// including passes caused by unrelated quota updates. Ranking depends on
+    /// post age at minute resolution at most, so it is reused within a minute.
+    private var recommendationCache: (minute: Int64, posts: [AIFeedPost])?
 
     init() {
         notificationsEnabled = Self.resolvedNotificationsEnabled(
@@ -53,7 +59,14 @@ final class AIFeedStore: ObservableObject {
     }
 
     var recommendedPosts: [AIFeedPost] {
-        AIFeedCollectionPolicy.curateForDisplay(posts)
+        let now = Date()
+        let minute = Int64(floor(now.timeIntervalSinceReferenceDate / 60))
+        if let recommendationCache, recommendationCache.minute == minute {
+            return recommendationCache.posts
+        }
+        let curated = AIFeedCollectionPolicy.curateForDisplay(posts, now: now)
+        recommendationCache = (minute, curated)
+        return curated
     }
 
     var importantPosts: [AIFeedPost] {
