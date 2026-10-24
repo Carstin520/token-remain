@@ -7,12 +7,13 @@ import {
   normalizeDisabledLocalUsageSources,
 } from "../src/local-sources.js";
 
-test("local usage catalog mirrors the 16 macOS source definitions", () => {
+test("local usage catalog mirrors the 19 macOS source definitions", () => {
   assert.deepEqual(LOCAL_USAGE_SOURCE_CATALOG.map(({ id, displayName }) => [id, displayName]), [
     ["claude", "Claude Code"], ["codex", "Codex"], ["opencode", "OpenCode"], ["amp", "Amp"],
     ["droid", "Droid"], ["codebuff", "Codebuff"], ["hermes", "Hermes Agent"], ["pi", "pi-agent"],
     ["goose", "Goose"], ["openclaw", "OpenClaw"], ["kilo", "Kilo Code"], ["kimi", "Kimi CLI"],
-    ["qwen", "Qwen CLI"], ["copilot", "GitHub Copilot CLI"], ["gemini", "Gemini"], ["trae-agent", "Trae Agent"],
+    ["qwen", "Qwen CLI"], ["copilot", "GitHub Copilot CLI"], ["gemini", "Gemini"],
+    ["antigravity", "Antigravity"], ["grok", "Grok Build CLI"], ["zcode", "ZCode"], ["trae-agent", "Trae Agent"],
   ]);
   assert.equal(localSourceDisplayName(" future_agent-cli "), "Future Agent Cli");
 });
