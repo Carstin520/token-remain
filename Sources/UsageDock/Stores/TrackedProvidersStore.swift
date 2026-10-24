@@ -448,10 +448,13 @@ final class TrackedProvidersStore: ObservableObject {
         ProviderSecretStore.descriptors.filter { $0.provider != .claude }.map { descriptor in
             var store = ProviderSecretStore(provider: descriptor.provider)
             store.environment = environment
-            // Amp also connects through the Amp CLI's own API key, no Cookie needed.
+            // Amp also connects through the Amp CLI's own API key, no Cookie needed;
+            // DeepSeek through the key DeepSeek Harness already stores.
             let configured = store.load() != nil
                 || (descriptor.provider == .amp
                     && AmpCLICredentialReader(environment: environment, home: home).isAvailable)
+                || (descriptor.provider == .deepseek
+                    && DeepSeekHarnessCredentialReader(environment: environment, home: home).isAvailable)
             return Detection(
                 provider: descriptor.provider,
                 installed: configured,

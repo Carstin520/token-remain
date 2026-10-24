@@ -938,6 +938,9 @@ enum LocalUsageSourceCatalog {
         .init(id: "qwen", displayName: "Qwen CLI"),
         .init(id: "copilot", displayName: "GitHub Copilot CLI"),
         .init(id: "gemini", displayName: "Gemini"),
+        .init(id: "antigravity", displayName: "Antigravity"),
+        .init(id: "grok", displayName: "Grok Build CLI"),
+        .init(id: "zcode", displayName: "ZCode"),
         .init(id: "trae-agent", displayName: "Trae Agent")
     ]
 

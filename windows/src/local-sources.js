@@ -14,6 +14,9 @@ export const LOCAL_USAGE_SOURCE_CATALOG = Object.freeze([
   { id: "qwen", displayName: "Qwen CLI" },
   { id: "copilot", displayName: "GitHub Copilot CLI" },
   { id: "gemini", displayName: "Gemini" },
+  { id: "antigravity", displayName: "Antigravity" },
+  { id: "grok", displayName: "Grok Build CLI" },
+  { id: "zcode", displayName: "ZCode" },
   { id: "trae-agent", displayName: "Trae Agent" },
 ].map(Object.freeze));
 
