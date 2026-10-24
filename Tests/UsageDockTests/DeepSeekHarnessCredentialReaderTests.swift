@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 import Testing
 @testable import UsageDock
@@ -156,6 +157,46 @@ struct DeepSeekHarnessCredentialReaderTests {
         #expect(DeepSeekHarnessCredentialReader(
             environment: ["DEEPSEEK_BASE_URL": "https://relay.example"], home: plain
         ).load() == nil)
+    }
+
+    @Test("An unreadable endpoint link blocks credential reuse")
+    func danglingEndpointLinkBlocksReuse() throws {
+        let home = try makeHome(credentials: credentials(Self.fixtureKey))
+        defer { try? FileManager.default.removeItem(at: home) }
+        let dotenv = home.appending(path: ".dsh/.env")
+        try FileManager.default.createSymbolicLink(
+            at: dotenv, withDestinationURL: home.appending(path: "missing-env")
+        )
+        #expect(DeepSeekHarnessCredentialReader.readFile(dotenv) == .unreadable)
+        #expect(DeepSeekHarnessCredentialReader(environment: [:], home: home).load() == nil)
+    }
+
+    @Test("Special and oversized endpoint files fail closed without waiting")
+    func invalidEndpointFilesBlockReuse() throws {
+        for kind in ["fifo", "oversized"] {
+            let home = try makeHome(credentials: credentials(Self.fixtureKey))
+            defer { try? FileManager.default.removeItem(at: home) }
+            let dotenv = home.appending(path: ".dsh/.env")
+            if kind == "fifo" {
+                #expect(mkfifo(dotenv.path, 0o600) == 0)
+            } else {
+                try Data(repeating: 65, count: DeepSeekHarnessCredentialReader.maxFileBytes + 1)
+                    .write(to: dotenv)
+            }
+            #expect(DeepSeekHarnessCredentialReader.readFile(dotenv) == .unreadable)
+            #expect(DeepSeekHarnessCredentialReader(environment: [:], home: home).load() == nil)
+        }
+    }
+
+    @Test("An unreadable profiles link blocks credential reuse")
+    func danglingProfilesLinkBlocksReuse() throws {
+        let home = try makeHome(credentials: credentials(Self.fixtureKey))
+        defer { try? FileManager.default.removeItem(at: home) }
+        try FileManager.default.createSymbolicLink(
+            at: home.appending(path: ".dsh/profiles"),
+            withDestinationURL: home.appending(path: "missing-profiles")
+        )
+        #expect(DeepSeekHarnessCredentialReader(environment: [:], home: home).load() == nil)
     }
 
     @Test("Other providers' endpoints and unrelated settings do not block reuse")

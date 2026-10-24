@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 
 /// DeepSeek Harness(`dsh`)把 DeepSeek 开放平台 Key 存在
@@ -69,7 +70,10 @@ struct DeepSeekHarnessCredentialReader {
     var patchFiles: [URL]? {
         var files = [dshHome.appending(path: "cordis.patch.yml")]
         let profiles = dshHome.appending(path: "profiles", directoryHint: .isDirectory)
-        guard FileManager.default.fileExists(atPath: profiles.path) else { return files }
+        var profileStatus = stat()
+        if lstat(profiles.path, &profileStatus) != 0 {
+            return errno == ENOENT ? files : nil
+        }
         guard let names = try? FileManager.default.contentsOfDirectory(atPath: profiles.path),
               names.count <= Self.maxProfiles else { return nil }
         files += names.sorted().map { profiles.appending(path: $0).appending(path: "cordis.patch.yml") }
@@ -83,12 +87,29 @@ struct DeepSeekHarnessCredentialReader {
     }
 
     static func readFile(_ url: URL) -> FileRead {
-        guard FileManager.default.fileExists(atPath: url.path) else { return .missing }
-        guard let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
-              let size = (attributes[.size] as? NSNumber)?.intValue,
-              size <= maxFileBytes,
-              let data = try? Data(contentsOf: url) else { return .unreadable }
-        return .contents(data)
+        // fileExists follows links and reports an unreadable/dangling override
+        // as absent. Inspect the entry first, then read the opened regular file
+        // with a byte limit. Nonblocking open also prevents a FIFO from hanging
+        // a credential check before its request deadline can take effect.
+        var entry = stat()
+        guard lstat(url.path, &entry) == 0 else {
+            return errno == ENOENT ? .missing : .unreadable
+        }
+        let descriptor = open(url.path, O_RDONLY | O_NONBLOCK | O_CLOEXEC)
+        guard descriptor >= 0 else { return .unreadable }
+        let handle = FileHandle(fileDescriptor: descriptor, closeOnDealloc: true)
+        defer { try? handle.close() }
+        var opened = stat()
+        guard fstat(descriptor, &opened) == 0,
+              opened.st_mode & mode_t(S_IFMT) == mode_t(S_IFREG),
+              opened.st_size <= maxFileBytes else { return .unreadable }
+        do {
+            let data = try handle.read(upToCount: maxFileBytes + 1) ?? Data()
+            guard data.count <= maxFileBytes else { return .unreadable }
+            return .contents(data)
+        } catch {
+            return .unreadable
+        }
     }
 
     // MARK: - Parsing
