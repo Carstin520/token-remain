@@ -3,6 +3,32 @@
 All notable product changes are recorded here. TokenRemain uses Semantic
 Versioning for public releases.
 
+## 1.4.5 — 2026-10-25
+
+### Added
+
+- Reuse supported DeepSeek Harness credentials for the DeepSeek balance card,
+  with read-only access and conservative endpoint checks.
+- Name Antigravity, Grok Build CLI and ZCode local usage sources consistently.
+
+### Improved
+
+- Reuse recent local usage snapshots when watched logs and configuration are
+  unchanged; explicit refreshes still run the bundled helper.
+- Release the closed Dashboard view tree, avoid repeated credential reads and
+  feed ranking, and reduce redundant private-sync requests and zone writes.
+- Batch quota-history writes for up to five minutes and flush on normal
+  termination. A crash can lose the latest unsaved history samples; displayed
+  quota values remain current. Unchanged sync records deleted elsewhere are
+  restored by the existing heartbeat within fifteen minutes.
+
+### Fixed
+
+- Reject unreadable, special and oversized Harness configuration files rather
+  than reusing credentials with an uncertain route or blocking a read.
+- Update the bundled Universal ccusage helper to 20.0.44 with verified official
+  package integrity, architecture and license metadata.
+
 ## 1.4.4 (build 42) — 2026-10-15
 
 ### Fixed
