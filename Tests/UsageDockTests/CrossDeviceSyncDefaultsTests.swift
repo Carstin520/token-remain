@@ -46,6 +46,36 @@ struct CrossDeviceSyncDefaultsTests {
         #expect(CrossDeviceSyncController.refreshRequestPollInterval == 60)
     }
 
+    @Test("An unchanged snapshot inside the heartbeat window skips every CloudKit request")
+    func unchangedPublishSkipsCloudKit() {
+        let uploadedAt = Date(timeIntervalSince1970: 1_800_000_000)
+        func skips(
+            force: Bool = false,
+            fingerprint: String = "same",
+            last: String? = "same",
+            uploadedAt: Date? = uploadedAt,
+            after seconds: TimeInterval
+        ) -> Bool {
+            CrossDeviceSyncController.canSkipUnchangedPublish(
+                forceHeartbeat: force,
+                fingerprint: fingerprint,
+                lastFingerprint: last,
+                lastUploadedAt: uploadedAt,
+                now: uploadedAt.map { $0.addingTimeInterval(seconds) } ?? Date()
+            )
+        }
+
+        #expect(skips(after: 60))
+        #expect(skips(after: 15 * 60 - 1))
+        // The heartbeat window lapsing, changed content, a forced heartbeat
+        // (phone request) and a first upload all still reach CloudKit.
+        #expect(!skips(after: 15 * 60))
+        #expect(!skips(fingerprint: "changed", after: 60))
+        #expect(!skips(force: true, after: 60))
+        #expect(!skips(last: nil, after: 60))
+        #expect(!skips(uploadedAt: nil, after: 60))
+    }
+
     @Test("Publishing advances beyond the authenticated remote sequence")
     func remoteSequenceFloor() {
         #expect(SyncSequencePolicy.next(localSequence: 12, remoteSequence: 42) == 43)

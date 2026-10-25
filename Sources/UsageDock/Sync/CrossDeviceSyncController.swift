@@ -380,6 +380,20 @@ final class CrossDeviceSyncController: ObservableObject {
                 history: latestHistory,
                 includesUsageHistory: syncUsageHistoryEnabled
             )
+            // Deduplicate before any CloudKit request: most publishes follow a
+            // provider check that changed nothing visible. A record deleted by
+            // another device is therefore restored by the heartbeat rather
+            // than the next unchanged check.
+            if Self.canSkipUnchangedPublish(
+                forceHeartbeat: effectiveForceHeartbeat,
+                fingerprint: fingerprint,
+                lastFingerprint: defaults.string(forKey: DefaultsKey.lastFingerprint),
+                lastUploadedAt: lastUploadedAt,
+                now: checkedAt
+            ), let lastUploadedAt {
+                state = .synced(lastUploadedAt)
+                return
+            }
             let existingSource = try await cloud.fetchSource(
                 sourceInstanceID: localSourceID
             )
@@ -405,14 +419,6 @@ final class CrossDeviceSyncController: ObservableObject {
                 authenticatedRemoteSequence = existingSource.envelope.sequence
             } else {
                 authenticatedRemoteSequence = nil
-            }
-            if !effectiveForceHeartbeat,
-               existingSource != nil,
-               fingerprint == defaults.string(forKey: DefaultsKey.lastFingerprint),
-               let lastUploadedAt,
-               checkedAt.timeIntervalSince(lastUploadedAt) < 15 * 60 {
-                state = .synced(lastUploadedAt)
-                return
             }
 
             guard isEnabled, !Task.isCancelled else { return }
@@ -702,6 +708,22 @@ final class CrossDeviceSyncController: ObservableObject {
         // as decimal text so an extreme sequence cannot silently clamp.
         defaults.set(String(next), forKey: DefaultsKey.sequence)
         return next
+    }
+
+    /// An upload is still mandatory once the content changes, the heartbeat
+    /// window lapses or a phone request forces one; only then is the remote
+    /// record fetched and authenticated for its sequence floor.
+    nonisolated static func canSkipUnchangedPublish(
+        forceHeartbeat: Bool,
+        fingerprint: String,
+        lastFingerprint: String?,
+        lastUploadedAt: Date?,
+        now: Date
+    ) -> Bool {
+        guard !forceHeartbeat,
+              fingerprint == lastFingerprint,
+              let lastUploadedAt else { return false }
+        return now.timeIntervalSince(lastUploadedAt) < 15 * 60
     }
 
     private static func fingerprint(

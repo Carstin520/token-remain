@@ -85,4 +85,40 @@ struct QuotaUsageHistoryTests {
         #expect(!raw.localizedCaseInsensitiveContains("token"))
         #expect(!raw.localizedCaseInsensitiveContains("email"))
     }
+
+    @Test("Writes coalesce to the newest history and flush on demand")
+    func writerCoalescesAndFlushes() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("quota-history-writer-\(UUID().uuidString)", isDirectory: true)
+        let url = directory.appendingPathComponent("history.json")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let cache = QuotaUsageHistoryCache(url: url)
+        let writer = QuotaUsageHistoryWriter(cache: cache, writeDelay: 3_600)
+
+        let first = QuotaUsageHistory.empty
+            .recording(quota(.cursor, used: 10, at: Date(timeIntervalSince1970: 2_000)))
+        let second = first
+            .recording(quota(.cursor, used: 20, at: Date(timeIntervalSince1970: 2_060)))
+        writer.schedule(first)
+        writer.schedule(second)
+        // Nothing reaches disk inside the coalescing window.
+        #expect(cache.load() == nil)
+
+        writer.flush()
+        #expect(cache.load() == second)
+    }
+
+    @Test("A zero delay writes through immediately")
+    func writerWritesThroughWithoutDelay() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("quota-history-writer-\(UUID().uuidString)", isDirectory: true)
+        let url = directory.appendingPathComponent("history.json")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let cache = QuotaUsageHistoryCache(url: url)
+        let history = QuotaUsageHistory.empty
+            .recording(quota(.antigravity, used: 33, at: Date(timeIntervalSince1970: 4_000)))
+
+        QuotaUsageHistoryWriter(cache: cache, writeDelay: 0).schedule(history)
+        #expect(cache.load() == history)
+    }
 }

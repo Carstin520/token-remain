@@ -42,6 +42,20 @@ struct CCUsageService {
     /// on a fixed daily cadence; `--offline` guarantees that the helper itself
     /// never sends local usage-derived data to a pricing or package service.
     func fetchSnapshot(days: Int = 30, now: Date = .now) async throws -> Snapshot {
+        try await run(prepareInvocation(days: days, now: now), now: now)
+    }
+
+    /// Everything the helper's output depends on besides the agent logs it
+    /// reads, resolved without launching it.
+    struct Invocation: Sendable {
+        let executable: URL
+        let arguments: [String]
+        let environment: [String: String]
+        let claudeDirectories: [URL]
+        let pricingConfigurationURL: URL?
+    }
+
+    func prepareInvocation(days: Int = 30, now: Date = .now) async throws -> Invocation {
         let start = Calendar.current.date(byAdding: .day, value: -(max(1, days) - 1), to: now) ?? now
         let since = Self.dateFormatter.string(from: start)
         let executable = Self.bundledExecutableURL()
@@ -54,15 +68,25 @@ struct CCUsageService {
             environment["CLAUDE_CONFIG_DIR"] = directories.map(\.path).joined(separator: ",")
         }
         let pricingConfigurationURL = await pricingService.configurationURL(now: now)
+        return Invocation(
+            executable: executable,
+            arguments: Self.commandArguments(
+                since: since,
+                pricingConfigurationURL: pricingConfigurationURL
+            ),
+            environment: environment,
+            claudeDirectories: directories,
+            pricingConfigurationURL: pricingConfigurationURL
+        )
+    }
+
+    func run(_ invocation: Invocation, now: Date = .now) async throws -> Snapshot {
         let data: Data
         do {
             data = try await ProcessRunner.run(
-                executable.path,
-                arguments: Self.commandArguments(
-                    since: since,
-                    pricingConfigurationURL: pricingConfigurationURL
-                ),
-                environment: environment,
+                invocation.executable.path,
+                arguments: invocation.arguments,
+                environment: invocation.environment,
                 timeout: 30
             )
         } catch let error as URLError where error.code == .timedOut {

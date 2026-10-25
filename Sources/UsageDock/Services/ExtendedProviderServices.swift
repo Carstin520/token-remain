@@ -105,15 +105,21 @@ enum ExtendedHTTP {
 /// `GET api.deepseek.com/user/balance`。DeepSeek 是纯按量余额、无窗口上限:
 /// 进度条只承载"有/无余额"的可用性,主数值直接展示剩余金额。
 struct DeepSeekUsageService {
+    var harnessCredential: @Sendable () -> String? = { DeepSeekHarnessCredentialReader().load() }
+
     func fetch(now: Date = .now) async throws -> ProviderQuota {
         try await fetch(apiKey: nil, now: now)
     }
 
     /// A host CLI can already hold the DeepSeek key used by its Anthropic/OpenAI
     /// compatibility route. Prefer that read-only credential, then fall back to
-    /// TokenRemain's ordinary provider key sources.
+    /// TokenRemain's ordinary provider key sources. DeepSeek Harness's own key
+    /// is the last resort, and only when no credential was supplied, so a
+    /// validation or routed fetch never runs on a different key.
     func fetch(apiKey: String?, now: Date = .now) async throws -> ProviderQuota {
-        guard let key = normalized(apiKey) ?? ProviderSecretStore(provider: .deepseek).load() else {
+        guard let key = normalized(apiKey)
+            ?? ProviderSecretStore(provider: .deepseek).load()
+            ?? (apiKey == nil ? harnessCredential() : nil) else {
             throw ExtendedProviderError.notConfigured(.deepseek)
         }
         let data = try await ExtendedHTTP.request(

@@ -105,13 +105,18 @@ enum AIFeedCollectionPolicy {
         _ posts: [AIFeedPost],
         now: Date = Date()
     ) -> [AIFeedPost] {
-        posts.sorted {
-            let lhsScore = recommendationScore(for: $0, now: now)
-            let rhsScore = recommendationScore(for: $1, now: now)
-            if lhsScore != rhsScore { return lhsScore > rhsScore }
-            if $0.createdAt != $1.createdAt { return $0.createdAt > $1.createdAt }
-            return $0.id < $1.id
-        }
+        // Score each post once: the score scans the post text, and scoring
+        // inside the comparator repeated that scan O(n log n) times.
+        posts
+            .map { (post: $0, score: recommendationScore(for: $0, now: now)) }
+            .sorted { lhs, rhs in
+                if lhs.score != rhs.score { return lhs.score > rhs.score }
+                if lhs.post.createdAt != rhs.post.createdAt {
+                    return lhs.post.createdAt > rhs.post.createdAt
+                }
+                return lhs.post.id < rhs.post.id
+            }
+            .map(\.post)
     }
 
     static func curateForDisplay(
