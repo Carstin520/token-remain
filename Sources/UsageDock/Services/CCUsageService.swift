@@ -81,12 +81,21 @@ struct CCUsageService {
     }
 
     func run(_ invocation: Invocation, now: Date = .now) async throws -> Snapshot {
+        Self.snapshot(
+            from: try await runReport(invocation, environment: invocation.environment),
+            now: now
+        )
+    }
+
+    /// One helper run with the given environment, decoded but not yet turned
+    /// into a snapshot, so separately run halves can be merged first.
+    func runReport(_ invocation: Invocation, environment: [String: String]) async throws -> Report {
         let data: Data
         do {
             data = try await ProcessRunner.run(
                 invocation.executable.path,
                 arguments: invocation.arguments,
-                environment: invocation.environment,
+                environment: environment,
                 timeout: 30
             )
         } catch let error as URLError where error.code == .timedOut {
@@ -97,10 +106,76 @@ struct CCUsageService {
             throw ServiceError.helperFailed(error.localizedDescription)
         }
         do {
-            return try Self.parseSnapshot(data, now: now)
+            return try JSONDecoder().decode(Report.self, from: data)
         } catch {
             throw ServiceError.invalidOutput
         }
+    }
+
+    // MARK: - Codex split
+
+    /// Codex costs about 90% of a run: the helper rereads every Codex session,
+    /// gigabytes on a busy Mac, whatever `--since` says, while all other
+    /// agents together cost about a tenth of that. The same unified report run
+    /// twice, with the agents separated through their data directories, lets
+    /// an unchanged Codex half be reused; the halves merge to the full report.
+    struct SplitEnvironments: Sendable {
+        /// Every agent except Codex.
+        let others: [String: String]
+        /// Codex alone: no home directory means no other agent's defaults.
+        let codex: [String: String]
+    }
+
+    static let codexAgentID = "codex"
+    static let isolationDirectory = URL(fileURLWithPath: "/var/empty", isDirectory: true)
+
+    /// Nil when no guaranteed-empty directory exists; callers then run the
+    /// full report as before.
+    static func splitEnvironments(
+        for invocation: Invocation,
+        home: URL = FileManager.default.homeDirectoryForCurrentUser,
+        isolationDirectory: URL = isolationDirectory,
+        fileManager: FileManager = .default
+    ) -> SplitEnvironments? {
+        var isDirectory: ObjCBool = false
+        guard fileManager.fileExists(atPath: isolationDirectory.path, isDirectory: &isDirectory),
+              isDirectory.boolValue,
+              (try? fileManager.contentsOfDirectory(atPath: isolationDirectory.path))?.isEmpty == true
+        else { return nil }
+        let empty = isolationDirectory.path
+        var others = invocation.environment
+        others["CODEX_HOME"] = empty
+        var codex = ["HOME": empty]
+        codex["CODEX_HOME"] = invocation.environment["CODEX_HOME"]
+            ?? home.appending(path: ".codex", directoryHint: .isDirectory).path
+        for key in ["PATH", "TMPDIR", "LANG", "LC_ALL", "LC_CTYPE"] {
+            codex[key] = invocation.environment[key]
+        }
+        return SplitEnvironments(others: others, codex: codex)
+    }
+
+    /// Codex entries come only from the Codex half and every other agent only
+    /// from the other half, so a change in how the helper discovers agents can
+    /// never count one twice. Codex keeps its place right after Claude, as in
+    /// the unified report.
+    static func merged(others: Report, codex: Report) -> Report {
+        func isCodex(_ agent: Report.Agent) -> Bool {
+            agent.agent.caseInsensitiveCompare(codexAgentID) == .orderedSame
+        }
+        var agentsByPeriod: [String: [Report.Agent]] = [:]
+        for row in others.daily {
+            agentsByPeriod[row.period, default: []] += (row.agents ?? []).filter { !isCodex($0) }
+        }
+        for row in codex.daily {
+            let codexAgents = (row.agents ?? []).filter(isCodex)
+            var agents = agentsByPeriod[row.period, default: []]
+            let index = agents.prefix { $0.agent.caseInsensitiveCompare("claude") == .orderedSame }.count
+            agents.insert(contentsOf: codexAgents, at: index)
+            agentsByPeriod[row.period] = agents
+        }
+        return Report(daily: agentsByPeriod.keys.sorted().map { period in
+            Report.Row(period: period, agents: agentsByPeriod[period])
+        })
     }
 
     /// A desktop scan that hits its entry limit or deadline must not take the
@@ -149,7 +224,10 @@ struct CCUsageService {
     }
 
     static func parseSnapshot(_ data: Data, now: Date = .now) throws -> Snapshot {
-        let payload = try JSONDecoder().decode(Response.self, from: data)
+        snapshot(from: try JSONDecoder().decode(Report.self, from: data), now: now)
+    }
+
+    static func snapshot(from payload: Report, now: Date = .now) -> Snapshot {
         let today = dateFormatter.string(from: now)
         let row = payload.daily.first(where: { $0.period == today })
         let agents = (row?.agents ?? []).map {
@@ -175,7 +253,7 @@ struct CCUsageService {
     /// shelling out. Days are returned oldest-first and every detected agent is
     /// retained; the UI chooses which series are visible.
     static func parseHistory(_ data: Data, now: Date = .now) throws -> DailyUsageHistory {
-        let payload = try JSONDecoder().decode(Response.self, from: data)
+        let payload = try JSONDecoder().decode(Report.self, from: data)
         return parseHistory(payload, now: now)
     }
 
@@ -199,34 +277,37 @@ struct CCUsageService {
         return formatter
     }()
 
-    private struct Response: Decodable {
+    /// A decoded `daily --by-agent --json` payload. Only per-agent entries are
+    /// read; row totals are never used.
+    struct Report: Decodable, Sendable, Equatable {
         let daily: [Row]
-    }
-    private struct Row: Decodable {
-        let period: String
-        let agents: [Agent]?
-    }
-    private struct Agent: Decodable {
-        let agent: String
-        let totalTokens: Int64
-        let totalCost: Double
-        let modelsUsed: [String]?
-        let modelBreakdowns: [ModelBreakdown]?
-    }
-    private struct ModelBreakdown: Decodable {
-        let modelName: String
-        let cost: Double
-        let inputTokens: Int64
-        let outputTokens: Int64
-        let cacheCreationTokens: Int64
-        let cacheReadTokens: Int64
 
-        var totalTokens: Int64 {
-            inputTokens + outputTokens + cacheCreationTokens + cacheReadTokens
+        struct Row: Decodable, Sendable, Equatable {
+            let period: String
+            let agents: [Agent]?
+        }
+        struct Agent: Decodable, Sendable, Equatable {
+            let agent: String
+            let totalTokens: Int64
+            let totalCost: Double
+            let modelsUsed: [String]?
+            let modelBreakdowns: [ModelBreakdown]?
+        }
+        struct ModelBreakdown: Decodable, Sendable, Equatable {
+            let modelName: String
+            let cost: Double
+            let inputTokens: Int64
+            let outputTokens: Int64
+            let cacheCreationTokens: Int64
+            let cacheReadTokens: Int64
+
+            var totalTokens: Int64 {
+                inputTokens + outputTokens + cacheCreationTokens + cacheReadTokens
+            }
         }
     }
 
-    private static func unpricedModels(in agent: Agent) -> [String] {
+    private static func unpricedModels(in agent: Report.Agent) -> [String] {
         // Ollama is intentionally local and has no API list price. For hosted
         // agents, a model row with tokens and a zero cost is indistinguishable
         // from a missing price in ccusage, so present it as unavailable rather
@@ -246,7 +327,7 @@ struct CCUsageService {
     }
 
     private static func parseHistory(
-        _ payload: Response,
+        _ payload: Report,
         now: Date
     ) -> DailyUsageHistory {
         let days = payload.daily.compactMap { row -> DailyUsageHistory.Day? in
@@ -268,7 +349,7 @@ struct CCUsageService {
         return DailyUsageHistory(days: days, capturedAt: now)
     }
 
-    private static func historyModels(in agent: Agent) -> [DailyUsageHistory.ModelUsage] {
+    private static func historyModels(in agent: Report.Agent) -> [DailyUsageHistory.ModelUsage] {
         DailyUsageHistory.boundedModels((agent.modelBreakdowns ?? []).map { row in
             DailyUsageHistory.ModelUsage(
                 id: row.modelName,

@@ -16,18 +16,69 @@ import Foundation
 /// could not start. `maximumReuseAge` bounds the effect of an input this
 /// catalog does not know yet, and the vendored-helper contract test fails as
 /// soon as ccusage honors a data-directory variable listed nowhere below.
+///
+/// Codex and every other agent are tracked as separate groups, because the
+/// helper can run them separately (see `CCUsageService.splitEnvironments`) and
+/// Codex alone costs about nine tenths of a run.
 final class CCUsageInputMonitor: @unchecked Sendable {
     static let shared = CCUsageInputMonitor()
     static let maximumReuseAge: TimeInterval = 30 * 60
+
+    enum InputGroup: CaseIterable, Hashable, Sendable {
+        /// Codex session logs and the config that selects their cost tier.
+        case codex
+        /// Every other agent, plus directories the app adds itself.
+        case others
+    }
+
+    struct GroupInputs: Equatable, Sendable {
+        /// Existing directories the helper reads recursively.
+        var directories: [String] = []
+        /// Individual files the helper reads, stamped by size and mtime.
+        var fileStamps: [String] = []
+    }
+
+    /// Everything one group's output depends on.
+    struct GroupKey: Equatable, Sendable {
+        let reportDay: String
+        let timeZoneIdentifier: String
+        let arguments: [String]
+        let sharedFileStamps: [String]
+        let inputs: GroupInputs
+    }
 
     struct Inputs: Equatable, Sendable {
         let reportDay: String
         let timeZoneIdentifier: String
         let arguments: [String]
-        /// Existing directories the helper reads recursively.
-        let directories: [String]
-        /// Individual files the helper reads, stamped by size and mtime.
-        let fileStamps: [String]
+        /// Files both groups depend on, such as the pricing configuration.
+        let sharedFileStamps: [String]
+        let groups: [InputGroup: GroupInputs]
+
+        var directories: [String] {
+            Array(Set(groups.values.flatMap(\.directories))).sorted()
+        }
+
+        var fileStamps: [String] {
+            (sharedFileStamps + groups.values.flatMap(\.fileStamps)).sorted()
+        }
+
+        func key(for group: InputGroup) -> GroupKey {
+            GroupKey(
+                reportDay: reportDay,
+                timeZoneIdentifier: timeZoneIdentifier,
+                arguments: arguments,
+                sharedFileStamps: sharedFileStamps,
+                inputs: groups[group] ?? GroupInputs()
+            )
+        }
+    }
+
+    private struct GroupState {
+        var runningKey: GroupKey?
+        var reusableKey: GroupKey?
+        var startedAt: Date?
+        var changed = true
     }
 
     /// Data directories by override variable, with the home-relative
@@ -74,12 +125,15 @@ final class CCUsageInputMonitor: @unchecked Sendable {
     private let startsEventStreams: Bool
     private let stateLock = NSLock()
     private let streamLock = NSLock()
-    private var runningInputs: Inputs?
-    private var reusableInputs: Inputs?
-    private var lastRunStartedAt: Date?
-    private var inputsChanged = true
+    private var groupStates = Dictionary(
+        uniqueKeysWithValues: InputGroup.allCases.map { ($0, GroupState()) }
+    )
+    /// Guarded by `stateLock`; read by the event callback.
+    private var watchedRoots: [(path: String, group: InputGroup)] = []
     private var lastInvalidatingEvent: String?
+    /// Guarded by `streamLock`.
     private var stream: FSEventStreamRef?
+    private var watchedPaths: [String] = []
     private let eventQueue = DispatchQueue(
         label: "com.jamesli.usagedock.ccusage-inputs",
         qos: .utility
@@ -95,43 +149,82 @@ final class CCUsageInputMonitor: @unchecked Sendable {
         streamLock.unlock()
     }
 
-    func canReuseLastRun(for inputs: Inputs, at now: Date) -> Bool {
+    /// Groups whose last successful result cannot stand in for a run now.
+    func changedGroups(for inputs: Inputs, at now: Date) -> Set<InputGroup> {
         stateLock.lock()
         defer { stateLock.unlock() }
-        guard !inputsChanged,
-              reusableInputs == inputs,
-              let lastRunStartedAt else { return false }
-        let age = now.timeIntervalSince(lastRunStartedAt)
-        return age >= 0 && age < Self.maximumReuseAge
+        return Set(InputGroup.allCases.filter { group in
+            guard let state = groupStates[group],
+                  !state.changed,
+                  state.reusableKey == inputs.key(for: group),
+                  let startedAt = state.startedAt else { return true }
+            let age = now.timeIntervalSince(startedAt)
+            return !(age >= 0 && age < Self.maximumReuseAge)
+        })
     }
 
-    /// Starts watching before the helper launches, so a write made while it
-    /// is still reading also counts as a change.
-    func runWillStart(with inputs: Inputs, at now: Date) {
+    func canReuseLastRun(for inputs: Inputs, at now: Date) -> Bool {
+        changedGroups(for: inputs, at: now).isEmpty
+    }
+
+    /// Watches before the helper launches, so a write made while it is still
+    /// reading also counts as a change. Groups not being run keep their state:
+    /// the stream watching them is kept, or flushed before it is replaced.
+    func runWillStart(
+        groups: Set<InputGroup> = Set(InputGroup.allCases),
+        with inputs: Inputs,
+        at now: Date
+    ) {
         streamLock.lock()
         defer { streamLock.unlock() }
-        stopEventStreamLocked()
+        let roots = inputs.groups.flatMap { group, value in
+            value.directories.map { (path: $0, group: group) }
+        }
         stateLock.lock()
-        runningInputs = inputs
-        reusableInputs = nil
-        lastRunStartedAt = now
-        inputsChanged = false
+        for group in groups {
+            groupStates[group] = GroupState(
+                runningKey: inputs.key(for: group),
+                reusableKey: nil,
+                startedAt: now,
+                changed: false
+            )
+        }
+        watchedRoots = roots
         stateLock.unlock()
-        guard startsEventStreams,
-              !inputs.directories.isEmpty,
-              !startEventStreamLocked(paths: inputs.directories) else { return }
-        markInputsChanged()
+        guard startsEventStreams else { return }
+
+        let paths = inputs.directories
+        if stream != nil, paths == watchedPaths { return }
+        let previous = stream
+        stream = nil
+        if !paths.isEmpty, let created = startEventStream(paths: paths) {
+            stream = created
+            watchedPaths = paths
+        } else {
+            watchedPaths = []
+            if !paths.isEmpty { markInputsChanged() }
+        }
+        if let previous {
+            // Deliver what the old stream still holds back for its latency
+            // before it goes away.
+            FSEventStreamFlushSync(previous)
+            Self.stopEventStream(previous)
+        }
     }
 
-    func runDidFinish(succeeded: Bool) {
+    func runDidFinish(groups: Set<InputGroup> = Set(InputGroup.allCases), succeeded: Bool) {
         stateLock.lock()
-        if succeeded {
-            reusableInputs = runningInputs
-        } else {
-            reusableInputs = nil
-            inputsChanged = true
+        for group in groups {
+            guard var state = groupStates[group] else { continue }
+            if succeeded {
+                state.reusableKey = state.runningKey
+            } else {
+                state.reusableKey = nil
+                state.changed = true
+            }
+            state.runningKey = nil
+            groupStates[group] = state
         }
-        runningInputs = nil
         stateLock.unlock()
     }
 
@@ -144,17 +237,31 @@ final class CCUsageInputMonitor: @unchecked Sendable {
     }
 
     /// Called by the event stream, and directly by tests.
-    func markInputsChanged() {
+    func markInputsChanged(_ groups: Set<InputGroup> = Set(InputGroup.allCases)) {
         stateLock.lock()
-        let firstChange = !inputsChanged
-        inputsChanged = true
+        for group in groups {
+            groupStates[group]?.changed = true
+        }
+        let everythingChanged = groupStates.values.allSatisfy(\.changed)
         stateLock.unlock()
-        guard firstChange else { return }
-        // One change is enough until the next run; stop delivering events.
-        // The stream is torn down off its own callback queue.
+        guard everythingChanged else { return }
+        // Nothing left to watch until the next run. The stream is torn down
+        // off its own callback queue.
         DispatchQueue.global(qos: .utility).async { [weak self] in
             self?.stopEventStreamAfterChange()
         }
+    }
+
+    /// Groups an event path belongs to; a path outside every watched root
+    /// (a dropped-events marker, a volume) concerns all of them.
+    static func groups(
+        forEventPath path: String,
+        roots: [(path: String, group: InputGroup)]
+    ) -> Set<InputGroup> {
+        let matched = Set(roots.filter { root in
+            path == root.path || path.hasPrefix(root.path + "/")
+        }.map(\.group))
+        return matched.isEmpty ? Set(InputGroup.allCases) : matched
     }
 
     // MARK: - Inputs
@@ -170,6 +277,9 @@ final class CCUsageInputMonitor: @unchecked Sendable {
         let environment = invocation.environment
         var directories: [URL] = []
         var files: [URL] = []
+        var codexDirectories: [URL] = []
+        var codexFiles: [URL] = []
+        var sharedFiles: [URL] = []
 
         // ccusage reads `projects/` under each configured Claude directory and
         // falls back to these defaults when none is configured.
@@ -187,11 +297,11 @@ final class CCUsageInputMonitor: @unchecked Sendable {
         let codexHomes = [home.appending(path: ".codex", directoryHint: .isDirectory)]
             + pathList(environment["CODEX_HOME"], home: home)
         for codexHome in codexHomes {
-            directories.append(codexHome.appending(path: "sessions", directoryHint: .isDirectory))
-            directories.append(
+            codexDirectories.append(codexHome.appending(path: "sessions", directoryHint: .isDirectory))
+            codexDirectories.append(
                 codexHome.appending(path: "archived_sessions", directoryHint: .isDirectory)
             )
-            files.append(codexHome.appending(path: "config.toml"))
+            codexFiles.append(codexHome.appending(path: "config.toml"))
         }
 
         let dataHome = pathList(environment["XDG_DATA_HOME"], home: home).first
@@ -219,26 +329,32 @@ final class CCUsageInputMonitor: @unchecked Sendable {
         }
         directories += additionalDirectories
         if let configuration = invocation.pricingConfigurationURL {
-            files.append(configuration)
+            sharedFiles.append(configuration)
         }
         // Without `--config` the helper also looks for a project config.
-        files.append(
+        sharedFiles.append(
             URL(fileURLWithPath: fileManager.currentDirectoryPath, isDirectory: true)
                 .appending(path: ".ccusage/ccusage.json")
         )
 
-        var existingDirectories = Set<String>()
-        for directory in directories {
-            var isDirectory: ObjCBool = false
-            if fileManager.fileExists(atPath: directory.path, isDirectory: &isDirectory) {
-                if isDirectory.boolValue {
-                    existingDirectories.insert(canonicalPath(directory.path))
-                } else {
-                    files.append(directory)
+        func groupInputs(directories: [URL], files: [URL]) -> GroupInputs {
+            var files = files
+            var existingDirectories = Set<String>()
+            for directory in directories {
+                var isDirectory: ObjCBool = false
+                if fileManager.fileExists(atPath: directory.path, isDirectory: &isDirectory) {
+                    if isDirectory.boolValue {
+                        existingDirectories.insert(canonicalPath(directory.path))
+                    } else {
+                        files.append(directory)
+                    }
                 }
             }
+            return GroupInputs(
+                directories: existingDirectories.sorted(),
+                fileStamps: Set(files.map { stamp(for: $0, fileManager: fileManager) }).sorted()
+            )
         }
-        let fileStamps = Set(files.map { stamp(for: $0, fileManager: fileManager) })
 
         let formatter = DateFormatter()
         formatter.calendar = Calendar(identifier: .gregorian)
@@ -249,8 +365,12 @@ final class CCUsageInputMonitor: @unchecked Sendable {
             reportDay: formatter.string(from: now),
             timeZoneIdentifier: timeZone.identifier,
             arguments: invocation.arguments,
-            directories: existingDirectories.sorted(),
-            fileStamps: fileStamps.sorted()
+            sharedFileStamps: Set(sharedFiles.map { stamp(for: $0, fileManager: fileManager) })
+                .sorted(),
+            groups: [
+                .codex: groupInputs(directories: codexDirectories, files: codexFiles),
+                .others: groupInputs(directories: directories, files: files)
+            ]
         )
     }
 
@@ -310,16 +430,22 @@ final class CCUsageInputMonitor: @unchecked Sendable {
     }
 
     private func handleEvents(count: Int, paths: [String], flags: UnsafePointer<FSEventStreamEventFlags>) {
+        var changed = Set<InputGroup>()
+        stateLock.lock()
+        let roots = watchedRoots
         for index in 0..<count {
-            // A missing path cannot be classified; treat it as a change.
+            // A missing path cannot be classified; it concerns every group.
             let path = index < paths.count ? paths[index] : ""
-            if Self.eventChangesInputs(path: path, flags: flags[index]) {
-                stateLock.lock()
+            guard Self.eventChangesInputs(path: path, flags: flags[index]) else { continue }
+            let groups = Self.groups(forEventPath: path, roots: roots)
+            if !groups.isSubset(of: changed) {
                 lastInvalidatingEvent = "\(path) flags=0x\(String(flags[index], radix: 16))"
-                stateLock.unlock()
-                markInputsChanged()
-                return
             }
+            changed.formUnion(groups)
+        }
+        stateLock.unlock()
+        if !changed.isEmpty {
+            markInputsChanged(changed)
         }
     }
 
@@ -327,15 +453,14 @@ final class CCUsageInputMonitor: @unchecked Sendable {
         streamLock.lock()
         defer { streamLock.unlock() }
         stateLock.lock()
-        let changed = inputsChanged
+        let everythingChanged = groupStates.values.allSatisfy(\.changed)
         stateLock.unlock()
-        // A run that started meanwhile owns a fresh stream.
-        guard changed else { return }
+        // A run that started meanwhile still needs the stream.
+        guard everythingChanged else { return }
         stopEventStreamLocked()
     }
 
-    /// Must be called while `streamLock` is held.
-    private func startEventStreamLocked(paths: [String]) -> Bool {
+    private func startEventStream(paths: [String]) -> FSEventStreamRef? {
         var context = FSEventStreamContext(
             version: 0,
             info: Unmanaged.passUnretained(self).toOpaque(),
@@ -365,25 +490,28 @@ final class CCUsageInputMonitor: @unchecked Sendable {
             FSEventStreamEventId(kFSEventStreamEventIdSinceNow),
             2,
             flags
-        ) else { return false }
+        ) else { return nil }
 
-        stream = created
         FSEventStreamSetDispatchQueue(created, eventQueue)
         guard FSEventStreamStart(created) else {
             FSEventStreamInvalidate(created)
             FSEventStreamRelease(created)
-            stream = nil
-            return false
+            return nil
         }
-        return true
+        return created
     }
 
     /// Must be called while `streamLock` is held.
     private func stopEventStreamLocked() {
         guard let stream else { return }
+        Self.stopEventStream(stream)
+        self.stream = nil
+        watchedPaths = []
+    }
+
+    private static func stopEventStream(_ stream: FSEventStreamRef) {
         FSEventStreamStop(stream)
         FSEventStreamInvalidate(stream)
         FSEventStreamRelease(stream)
-        self.stream = nil
     }
 }

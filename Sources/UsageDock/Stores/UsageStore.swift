@@ -148,6 +148,9 @@ final class UsageStore: ObservableObject {
     private var quotaErrorMessage: String?
     private var historyErrorMessage: String?
     private var latestLocalUsageSnapshot: LocalUsageSnapshot?
+    /// The two halves of the last split ccusage run, so an unchanged half can
+    /// be reused. Nil after a full run.
+    private var ccusageParts: CCUsageParts?
     private let disabledLocalUsageSourcesKey = "tokenRemain.disabledLocalUsageSources.v1"
     private let sessionActivityMonitor: LocalAISessionActivityMonitor
     private let ccusageInputMonitor: CCUsageInputMonitor
@@ -1057,6 +1060,8 @@ final class UsageStore: ObservableObject {
             let traeDirectories = traeAgentDirectories
             let monitor = ccusageInputMonitor
             let mayReuse = !userRequested && latestLocalUsageSnapshot != nil
+            let cachedParts = userRequested ? nil : ccusageParts
+            var ranGroups = Set(CCUsageInputMonitor.InputGroup.allCases)
             do {
                 let outcome = try await AsyncDeadline.run { () -> CCUsageRunOutcome in
                     let service = CCUsageService()
@@ -1066,11 +1071,46 @@ final class UsageStore: ObservableObject {
                         additionalDirectories: traeDirectories,
                         now: now
                     )
-                    if mayReuse, monitor.canReuseLastRun(for: inputs, at: now) {
+                    let changed = monitor.changedGroups(for: inputs, at: now)
+                    if mayReuse, changed.isEmpty {
                         return .unchanged
                     }
+                    if let split = CCUsageService.splitEnvironments(for: invocation) {
+                        // Rerun only the halves whose inputs changed; reuse the
+                        // other from the last split run.
+                        var toRun = changed
+                        if cachedParts?.others == nil { toRun.insert(.others) }
+                        if cachedParts?.codex == nil { toRun.insert(.codex) }
+                        monitor.runWillStart(groups: toRun, with: inputs, at: now)
+                        do {
+                            let others = toRun.contains(.others)
+                                ? try await service.runReport(invocation, environment: split.others)
+                                : cachedParts?.others
+                            let codex = toRun.contains(.codex)
+                                ? try await service.runReport(invocation, environment: split.codex)
+                                : cachedParts?.codex
+                            if let others, let codex {
+                                return .fresh(
+                                    CCUsageService.snapshot(
+                                        from: CCUsageService.merged(others: others, codex: codex),
+                                        now: now
+                                    ),
+                                    parts: CCUsageParts(others: others, codex: codex),
+                                    ranGroups: toRun
+                                )
+                            }
+                        } catch is CancellationError {
+                            throw CancellationError()
+                        } catch {
+                            // A failed half falls back to the full report below.
+                        }
+                    }
                     monitor.runWillStart(with: inputs, at: now)
-                    return .fresh(try await service.run(invocation, now: now))
+                    return .fresh(
+                        try await service.run(invocation, now: now),
+                        parts: nil,
+                        ranGroups: Set(CCUsageInputMonitor.InputGroup.allCases)
+                    )
                 }
                 switch outcome {
                 case .unchanged:
@@ -1082,8 +1122,10 @@ final class UsageStore: ObservableObject {
                     applyLocalUsageSnapshot(current)
                     scheduleThroughputRefresh(now: now)
                     return
-                case .fresh(let snapshot):
+                case .fresh(let snapshot, let parts, let groups):
                     merged = snapshot
+                    ccusageParts = parts
+                    ranGroups = groups
                 }
             } catch {
                 errors.append("ccusage: \(error.localizedDescription)")
@@ -1107,7 +1149,10 @@ final class UsageStore: ObservableObject {
             }
 
             // Only a complete pass can stand in for an unchanged next one.
-            monitor.runDidFinish(succeeded: errors.isEmpty && merged != nil && !Task.isCancelled)
+            monitor.runDidFinish(
+                groups: ranGroups,
+                succeeded: errors.isEmpty && merged != nil && !Task.isCancelled
+            )
             guard !Task.isCancelled else { return }
             if let merged {
                 latestLocalUsageSnapshot = merged
@@ -1846,9 +1891,14 @@ final class UsageStore: ObservableObject {
     }
 }
 
+private struct CCUsageParts: Sendable {
+    let others: CCUsageService.Report?
+    let codex: CCUsageService.Report?
+}
+
 private enum CCUsageRunOutcome: Sendable {
     case unchanged
-    case fresh(LocalUsageSnapshot)
+    case fresh(LocalUsageSnapshot, parts: CCUsageParts?, ranGroups: Set<CCUsageInputMonitor.InputGroup>)
 }
 
 private func result<T: Sendable>(_ operation: @escaping @Sendable () async throws -> T) async -> Result<T, Error> {
