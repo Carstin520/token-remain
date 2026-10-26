@@ -31,7 +31,7 @@ Credentials never leave your machine: read-only, never refreshed, never uploaded
   <img src="site/assets/dash-overview.webp" width="77%" alt="Dashboard overview: lowest remaining quota, today's tokens and estimated cost, official quota progress and risk notes" />
   <img src="site/assets/popover.webp" width="19%" alt="Menu bar popover listing remaining quota per app, today's local usage and the AI Feed" />
 </p>
-<p align="center"><sub>Remaining quota, reset countdowns and today's cost for Claude Code, Codex, Cursor, Grok, GLM and 21+ tools — on one screen. (Real usage data.)</sub></p>
+<p align="center"><sub>Remaining quota, reset countdowns and today's cost for Claude Code, Codex, Cursor, Grok, GLM and 27+ tools — on one screen. (Real usage data.)</sub></p>
 
 > [!TIP]
 > **New in 1.4:** an Account Management page to enable, pause and rename each account; Trends now splits input / output / cache write / cache read and estimates each model's output speed (tok/s) on your Mac; cost estimates in 13 display currencies; Claude Desktop / Cowork sessions count toward local usage. See the [changelog](CHANGELOG.md) for everything.
@@ -40,7 +40,7 @@ Credentials never leave your machine: read-only, never refreshed, never uploaded
 
 ### 🧭 Quota — know whether you'll make it to reset
 
-- **21+ tools side by side**: every official quota window with a progress bar, reset countdown and freshness.
+- **27+ tools side by side**: every official quota window with a progress bar, reset countdown and freshness.
 - **Pace prediction**: real window progress decides whether your current pace lasts until reset, with an ETA when it won't.
 - **Multiple accounts**: each account of the same tool gets its own row; the Account Management page toggles monitoring per app, enables or pauses accounts, renames them and updates credentials, with an opt-in combined view for same-plan accounts.
 - **Wherever you look**: menu bar capsules, a floating window across Spaces, two meters on the Dock icon (you pick the apps), and Liquid Glass on macOS 26.
@@ -111,9 +111,10 @@ The iPhone app is in [public TestFlight beta](https://testflight.apple.com/join/
 | Service | Connect | What it reads |
 | :-- | :-: | :-- |
 | <img src="site/assets/providers/claude-code.svg" width="16" alt="" /> **Claude Code** | 🟢 | 5-hour / 7-day windows; third-party `ANTHROPIC_BASE_URL` attributed to its real API |
-| <img src="site/assets/providers/codex.svg" width="16" alt="" /> **Codex** | 🟢 | 5-hour / 7-day windows and reset cards; custom `base_url` attributed to its real API |
+| <img src="site/assets/providers/codex-glyph.svg" width="16" alt="" /> **Codex** | 🟢 | 5-hour / 7-day windows and reset cards; custom `base_url` attributed to its real API |
 | <img src="site/assets/providers/cursor.svg" width="16" alt="" /> **Cursor** | 🟢 | Monthly billing-cycle quota, with Cursor and other models as separate pools |
 | <img src="site/assets/providers/grok.svg" width="16" alt="" /> **Grok** (xAI) | 🟢 | Weekly pool remaining |
+| <img src="site/assets/providers/grok-bot.png" width="16" alt="" /> **Grok Bot** | 🟢 | Weekly allowance, read through the local Cursor sign-in (use the same Cursor account as Grok Bot) |
 | <img src="site/assets/providers/copilot.svg" width="16" alt="" /> **GitHub Copilot** | 🟢 | Monthly credits |
 | <img src="site/assets/providers/devin.svg" width="16" alt="" /> **Devin** | 🟢 | Daily / weekly quotas |
 | <img src="site/assets/providers/windsurf.png" width="16" alt="" /> **Windsurf** | 🟢 | Daily / weekly quotas |
@@ -123,7 +124,7 @@ The iPhone app is in [public TestFlight beta](https://testflight.apple.com/join/
 | <img src="site/assets/providers/openrouter.svg" width="16" alt="" /> **OpenRouter** | 🔑 | Key limits, credits and account balance |
 
 <details>
-<summary><b>11 more extended providers</b> and local cost sources</summary>
+<summary><b>16 more extended providers</b> and local cost sources</summary>
 <br/>
 
 | Service | Connection | | Service | Connection |
@@ -132,10 +133,12 @@ The iPhone app is in [public TestFlight beta](https://testflight.apple.com/join/
 | <img src="site/assets/providers/kimi.svg" width="16" alt="" /> **Kimi** | API key / cookie | | <img src="site/assets/providers/kiro.svg" width="16" alt="" /> **Kiro** | `kiro-cli /usage` parsing |
 | <img src="site/assets/providers/minimax.svg" width="16" alt="" /> **MiniMax** | API key | | <img src="site/assets/providers/volcengine.svg" width="16" alt="" /> **Volcengine** | AK:SK signing |
 | <img src="site/assets/providers/mimo.svg" width="16" alt="" /> **MiMo Code** | Cookie | | <img src="site/assets/providers/ollama.svg" width="16" alt="" /> **Ollama** | Session cookie |
-| <img src="site/assets/providers/zai.svg" width="16" alt="" /> **GLM Team** | API key + org + project | | **Third-party APIs** | New API / custom balance endpoint |
-| <img src="Sources/UsageDock/Resources/ProviderIcons/bailian.svg" width="16" alt="" /> **Alibaba Token Plan** | Console cookie | | | |
+| <img src="site/assets/providers/zai.svg" width="16" alt="" /> **GLM Team** | API key + org + project | | <img src="Sources/UsageDock/Resources/ProviderIcons/bailian.svg" width="16" alt="" /> **Alibaba Token Plan** | Console cookie |
+| <img src="site/assets/providers/amp.svg" width="16" alt="" /> **Amp** | Amp CLI key (read automatically) or cookie | | <img src="site/assets/providers/muse.png" width="16" alt="" /> **Muse** | Cookie (muse.ai) |
+| <img src="site/assets/providers/muse.png" width="16" alt="" /> **Muse Code** | Cookie (dev.meta.ai), read per team | | **Factory** | Cookie (app.factory.ai) |
+| **Augment** | Cookie (app.augmentcode.com) | | **Third-party APIs** | New API / custom balance endpoint |
 
-**How cookie-based services connect:** sign in to the service's website, copy the request Cookie from your browser's developer tools and paste it into that service's quota card (or provide it via `QODER_COOKIE`, `MIMO_COOKIE` or `OLLAMA_COOKIE`). Cookies are stored only in your Mac's Keychain, like API keys; TokenRemain never reads your browser's own cookie store. A cookie is a sign-in credential — never share it; signing out of the website invalidates it, so paste a fresh one afterwards.
+**How cookie-based services connect:** sign in to the service's website, copy the request's Cookie value from your browser's developer tools (or right-click the request → Copy as cURL), then paste it into that service's quota card or use Paste from Clipboard in its setup guide (or provide it via `QODER_COOKIE`, `MIMO_COOKIE`, `OLLAMA_COOKIE`, `MUSE_COOKIE`, `MUSE_CODE_COOKIE`, `AMP_COOKIE`, `FACTORY_COOKIE` or `AUGMENT_COOKIE`). Cookies are stored only in your Mac's Keychain, like API keys; TokenRemain never reads your browser's own cookie store. A cookie is a sign-in credential — never share it; signing out of the website invalidates it, so paste a fresh one afterwards.
 
 **Local cost sources:** the bundled ccusage collector discovers 15+ local agents (Claude Code, Codex, Gemini, Goose, …) and merges `~/.claude`, `~/.config/claude`, `CLAUDE_CONFIG_DIR` and Claude Cowork session folders (deduplicated; add custom folders on the Data Sources page). Trae contributes only timestamps, model names and token counts from a folder you select. Hosted models use official list-price estimates; local models like Ollama stay at zero cost, and tokens are kept even when a price is unknown.
 
