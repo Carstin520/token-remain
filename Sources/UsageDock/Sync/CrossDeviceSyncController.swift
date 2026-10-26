@@ -81,8 +81,10 @@ final class CrossDeviceSyncController: ObservableObject {
     private let logger = Logger(subsystem: "com.jamesli.usagedock", category: "PrivateSync")
     private var latestQuotas: [ProviderQuota.Provider: ProviderQuota] = [:]
     private var latestHistory: DailyUsageHistory?
+    private var latestThroughput: ModelThroughputSnapshot = .empty
     private var storeSubscription: AnyCancellable?
     private var historySubscription: AnyCancellable?
+    private var throughputSubscription: AnyCancellable?
     private var accountSubscription: AnyCancellable?
     private var uploadTask: Task<Void, Never>?
     private var publishTask: Task<Void, Never>?
@@ -124,6 +126,7 @@ final class CrossDeviceSyncController: ObservableObject {
         store.setLowLatencySyncEnabled(isEnabled)
         latestQuotas = store.localQuotasForDirectSync
         latestHistory = store.history
+        latestThroughput = store.modelThroughput
         updatePreview()
         storeSubscription = store.$quotas
             .dropFirst()
@@ -141,6 +144,17 @@ final class CrossDeviceSyncController: ObservableObject {
                 guard let self else { return }
                 self.latestHistory = history
                 self.updatePreview()
+                self.scheduleUpload(after: 4)
+            }
+        // Output speed rides along with the history it describes; a change
+        // that alters nothing published is filtered by the fingerprint.
+        throughputSubscription = store.$modelThroughput
+            .dropFirst()
+            .receive(on: RunLoop.main)
+            .sink { [weak self] throughput in
+                guard let self else { return }
+                self.latestThroughput = throughput
+                guard self.syncUsageHistoryEnabled else { return }
                 self.scheduleUpload(after: 4)
             }
         accountSubscription = NotificationCenter.default.publisher(for: .CKAccountChanged)
@@ -378,7 +392,9 @@ final class CrossDeviceSyncController: ObservableObject {
             let fingerprint = Self.fingerprint(
                 for: latestQuotas,
                 history: latestHistory,
-                includesUsageHistory: syncUsageHistoryEnabled
+                includesUsageHistory: syncUsageHistoryEnabled,
+                throughput: latestThroughput,
+                now: checkedAt
             )
             // Deduplicate before any CloudKit request: most publishes follow a
             // provider check that changed nothing visible. A record deleted by
@@ -431,6 +447,7 @@ final class CrossDeviceSyncController: ObservableObject {
                 from: latestQuotas,
                 history: latestHistory,
                 includesUsageHistory: syncUsageHistoryEnabled,
+                throughput: latestThroughput,
                 sourceInstanceID: localSourceID,
                 sequence: sequence,
                 generatedAt: preparedAt
@@ -729,12 +746,16 @@ final class CrossDeviceSyncController: ObservableObject {
     private static func fingerprint(
         for quotas: [ProviderQuota.Provider: ProviderQuota],
         history: DailyUsageHistory?,
-        includesUsageHistory: Bool
+        includesUsageHistory: Bool,
+        throughput: ModelThroughputSnapshot,
+        now: Date
     ) -> String {
         SyncContentFingerprint.make(
             quotas: quotas,
             history: history,
-            includesUsageHistory: includesUsageHistory
+            includesUsageHistory: includesUsageHistory,
+            throughput: throughput,
+            now: now
         )
     }
 

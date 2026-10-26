@@ -297,7 +297,7 @@ struct MobileSnapshotRedactorTests {
         #expect(snapshot.providers.first { $0.providerID == "cursor" }?.planName == nil)
     }
 
-    @Test("Daily token and cost history requires separate opt-in and stays aggregate-only")
+    @Test("Daily history requires separate opt-in and carries only allowlisted detail")
     func dailyHistoryOptIn() throws {
         let now = Date(timeIntervalSince1970: 1_784_764_800)
         let history = DailyUsageHistory(
@@ -363,11 +363,189 @@ struct MobileSnapshotRedactorTests {
             #expect(!text.lowercased().contains(deniedField))
         }
         #expect(!text.contains("modelBreakdowns"))
-        #expect(!text.contains("models"))
-        #expect(!text.contains("private-model-alias"))
+        #expect(!text.contains("unpricedModels"))
+        // Since the per-model Trends detail, a model's name crosses — only in
+        // its sanitized wire form, only inside this separately opted-in
+        // history, and only with token counts, cost and speed.
+        let yesterday = try #require(synced.days.first)
+        let claude = try #require(yesterday.agents?.first { $0.id == "claude" })
+        #expect(claude.models?.map(\.id) == ["private-model-alias"])
+        #expect(off.dailyUsageHistory == nil)
         #expect(throws: Never.self) {
             try on.validatedForTransport(configuration: .current(now: now))
         }
+    }
+
+    @Test("Usage detail names agents and models in wire form with token kinds and speed")
+    func usageDetail() throws {
+        let now = Date(timeIntervalSince1970: 1_784_764_800)
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: now)
+        let eightDaysAgo = calendar.date(byAdding: .day, value: -8, to: today)!
+        func model(_ id: String, input: Int64, cost: Double) -> DailyUsageHistory.ModelUsage {
+            .init(
+                id: id,
+                inputTokens: input,
+                outputTokens: 500,
+                cacheTokens: 300,
+                cost: cost,
+                cacheWriteTokens: 100,
+                cacheReadTokens: 200
+            )
+        }
+        let history = DailyUsageHistory(
+            days: [
+                DailyUsageHistory.Day(date: eightDaysAgo, agents: [
+                    .init(id: "claude", tokens: 1_800, cost: 1, models: [model("opus-4-5", input: 1_000, cost: 1)])
+                ]),
+                DailyUsageHistory.Day(date: today, agents: [
+                    .init(id: "Claude", tokens: 3_600, cost: 2.004, models: [
+                        model("claude-3-5-sonnet@20240620", input: 1_000, cost: 1.002),
+                        model("weird alias!", input: 1_000, cost: 1.002)
+                    ]),
+                    .init(id: "opencode", tokens: 900, cost: 0.5),
+                    .init(id: "/Users/alice", tokens: 5, cost: 0)
+                ])
+            ],
+            capturedAt: now
+        )
+        let key = ModelThroughputSnapshot.key(
+            day: ModelThroughputParser.dayKey(today),
+            agentID: "claude",
+            modelID: "claude-3-5-sonnet@20240620"
+        )
+        let throughput = ModelThroughputSnapshot(buckets: [
+            key: ThroughputBucket(outputTokens: 4_000, seconds: 80.04, samples: 12)
+        ])
+
+        let snapshot = MobileSnapshotRedactor.makeSnapshot(
+            from: [:],
+            history: history,
+            includesUsageHistory: true,
+            throughput: throughput,
+            sourceInstanceID: UUID(),
+            sequence: 1,
+            generatedAt: now
+        )
+        let days = try #require(snapshot.dailyUsageHistory?.days)
+        let old = try #require(days.first)
+        let recent = try #require(days.last)
+
+        // Model rows only for the last week; the older day keeps its totals and mix.
+        #expect(old.agents?.first?.models == nil)
+        #expect(old.mix == SyncedTokenMix(input: 1_000, output: 500, cacheWrite: 100, cacheRead: 200, cacheUnsplit: 0))
+
+        #expect(recent.agents?.map(\.id) == ["claude", "opencode"])
+        let claude = try #require(recent.agents?.first)
+        #expect(claude.cost == 2)
+        let models = try #require(claude.models)
+        #expect(models.map(\.id) == ["claude-3-5-sonnet-20240620", SyncedModelUsage.otherID])
+        #expect(models[0].speed == SyncedThroughput(outputTokens: 4_000, seconds: 80, samples: 12))
+        #expect(models[0].speed?.tokensPerSecond == 50)
+        #expect(models[1].speed == nil)
+        #expect(models[1].count == 1)
+        #expect(recent.mix?.total == 3_600)
+        #expect(recent.totalTokens == 4_500)
+        #expect(throws: Never.self) {
+            try snapshot.validatedForTransport(configuration: .current(now: now))
+        }
+    }
+
+    @Test("A worst-case history is trimmed to the envelope, newest detail last")
+    func usageDetailFitsTheEnvelope() throws {
+        let now = Date(timeIntervalSince1970: 1_784_764_800)
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: now)
+        let days = (0..<SyncedDailyUsageHistory.maximumDays).map { offset in
+            let date = calendar.date(byAdding: .day, value: -offset, to: today)!
+            return DailyUsageHistory.Day(date: date, agents: (0..<SyncedDailyUsageDay.maximumAgents).map { agent in
+                .init(
+                    id: agent == 0 ? "claude" : "agent-\(agent)",
+                    tokens: 9_876_543_210,
+                    cost: 1_234.567,
+                    models: (0..<8).map { index in
+                        .init(
+                            id: "provider/a-very-long-model-name-\(index)-2026-10-26-preview",
+                            inputTokens: 1_234_567_890,
+                            outputTokens: 123_456_789,
+                            cacheTokens: 3_000_000_000,
+                            cost: 987.654,
+                            cacheWriteTokens: 1_000_000_000,
+                            cacheReadTokens: 2_000_000_000
+                        )
+                    }
+                )
+            })
+        }.reversed()
+        let quotas = Dictionary(uniqueKeysWithValues: MobileSnapshotRedactor.publishedProviders.map { provider in
+            (provider, ProviderQuota(
+                provider: provider,
+                primary: QuotaWindow(usedPercent: 41.5, windowMinutes: 300, resetsAt: now + 3_600),
+                secondary: QuotaWindow(usedPercent: 12.25, windowMinutes: 10_080, resetsAt: now + 86_400),
+                planName: "Max",
+                capturedAt: now
+            ))
+        })
+
+        let snapshot = MobileSnapshotRedactor.makeSnapshot(
+            from: quotas,
+            history: DailyUsageHistory(days: Array(days), capturedAt: now),
+            includesUsageHistory: true,
+            sourceInstanceID: UUID(),
+            sequence: 1,
+            generatedAt: now
+        )
+        let payload = try snapshot.validatedForTransport(configuration: .current(now: now)).encodedPayload()
+        #expect(payload.count <= EncryptedSyncEnvelope.maximumPlaintextBytes)
+        #expect(throws: Never.self) {
+            try EncryptedSyncEnvelope.seal(
+                snapshot,
+                using: SyncEncryptionKey.random(),
+                keyID: UUID(),
+                containerID: CrossDeviceSyncController.cloudContainerIdentifier,
+                configuration: .current(now: now)
+            )
+        }
+        let synced = try #require(snapshot.dailyUsageHistory?.days)
+        // Every legacy column survives; trimming starts at the oldest day.
+        #expect(synced.count == SyncedDailyUsageHistory.maximumDays)
+        #expect(synced.allSatisfy { $0.claudeTokens == 9_876_543_210 })
+        let detailed = synced.map { $0.agents != nil || $0.mix != nil }
+        #expect(detailed.last == true)
+        #expect(detailed == detailed.sorted { !$0 && $1 })
+    }
+
+    @Test("Speed and day changes republish only when history is shared")
+    func fingerprintFollowsPublishedDetail() {
+        let now = Date(timeIntervalSince1970: 1_784_764_800)
+        let today = Calendar.current.startOfDay(for: now)
+        let history = DailyUsageHistory(
+            days: [DailyUsageHistory.Day(date: today, agents: [
+                .init(id: "claude", tokens: 1_000, cost: 1, models: [
+                    .init(id: "opus-4-5", inputTokens: 1_000, outputTokens: 0, cacheTokens: 0, cost: 1)
+                ])
+            ])],
+            capturedAt: now
+        )
+        let key = ModelThroughputSnapshot.key(
+            day: ModelThroughputParser.dayKey(today),
+            agentID: "claude",
+            modelID: "opus-4-5"
+        )
+        func fingerprint(seconds: Double, shared: Bool, capturedAt: Date = now) -> String {
+            SyncContentFingerprint.make(
+                quotas: [:],
+                history: DailyUsageHistory(days: history.days, capturedAt: capturedAt),
+                includesUsageHistory: shared,
+                throughput: ModelThroughputSnapshot(buckets: [
+                    key: ThroughputBucket(outputTokens: 600, seconds: seconds, samples: 5)
+                ]),
+                now: now
+            )
+        }
+        #expect(fingerprint(seconds: 10, shared: true) != fingerprint(seconds: 20, shared: true))
+        #expect(fingerprint(seconds: 10, shared: false) == fingerprint(seconds: 20, shared: false))
+        #expect(fingerprint(seconds: 10, shared: true) == fingerprint(seconds: 10, shared: true, capturedAt: now + 60))
     }
 
     @Test("Daily history day keys are canonical UTC across the local midnight boundary")
