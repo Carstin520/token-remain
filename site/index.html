@@ -8,7 +8,7 @@
 <meta name="keywords" content="TokenRemain, AI quota, Claude Code usage, Codex usage, Cursor quota, Grok quota, GLM quota, menu bar app, macOS, token usage, rate limit, ccusage">
 <meta name="author" content="Dongheng Li">
 <meta name="robots" content="index, follow, max-image-preview:large">
-<meta name="theme-color" content="#070B12">
+<meta name="theme-color" content="#0D0E10">
 <link rel="canonical" href="https://tokenremain.com/">
 <link rel="alternate" hreflang="en" href="https://tokenremain.com/">
 <link rel="alternate" hreflang="zh" href="https://tokenremain.com/?lang=zh">
@@ -19,7 +19,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="TokenRemain">
 <meta property="og:title" content="TokenRemain — Your AI quota, always in the menu bar">
-<meta property="og:description" content="Remaining quota and reset countdowns for Claude Code, Codex, Cursor, Windsurf, Grok, GLM and 21+ services — right in your Mac menu bar. Credentials stay on your Mac.">
+<meta property="og:description" content="Remaining quota and reset countdowns for Claude Code, Codex, Cursor, Windsurf, Grok, GLM and 27+ services — right in your Mac menu bar. Credentials stay on your Mac.">
 <meta property="og:url" content="https://tokenremain.com/">
 <meta property="og:image" content="https://tokenremain.com/assets/dashboard.jpg">
 <meta property="og:image:alt" content="TokenRemain dashboard showing remaining AI quota by provider">
@@ -29,7 +29,7 @@
 <!-- Twitter / X card -->
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="TokenRemain — Your AI quota, always in the menu bar">
-<meta name="twitter:description" content="Remaining quota and reset countdowns for Claude Code, Codex, Cursor, Windsurf, Grok, GLM and 21+ services — right in your Mac menu bar.">
+<meta name="twitter:description" content="Remaining quota and reset countdowns for Claude Code, Codex, Cursor, Windsurf, Grok, GLM and 27+ services — right in your Mac menu bar.">
 <meta name="twitter:image" content="https://tokenremain.com/assets/dashboard.jpg">
 
 <!-- Structured data: software product -->
@@ -44,7 +44,7 @@
   "url": "https://tokenremain.com/",
   "downloadUrl": "https://tokenremain.com/#download",
   "screenshot": "https://tokenremain.com/assets/dashboard.jpg",
-  "description": "A private macOS, iPhone and Apple Watch companion for 21+ AI coding tools, with encrypted multi-Mac quota aggregation, a token-first mobile dashboard, a curated AI Feed, and latest-release updates. Credentials stay on your Mac.",
+  "description": "A private macOS, iPhone and Apple Watch companion for 27+ AI coding tools, with encrypted multi-Mac quota aggregation, a token-first mobile dashboard, a curated AI Feed, and latest-release updates. Credentials stay on your Mac.",
   "author": { "@type": "Person", "name": "Dongheng Li" },
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
   "sameAs": ["https://github.com/Carstin520/token-remain"]
@@ -60,29 +60,39 @@
   "publisher": { "@type": "Person", "name": "Dongheng Li" }
 }
 </script>
+<!-- Motion gate: every entrance below starts from a hidden state only under
+     html.motion, so reduced-motion visitors and no-JS readers always get the
+     final, fully visible page. Set here, before first paint, to avoid a flash. -->
+<script>try{if(matchMedia('(prefers-reduced-motion: no-preference)').matches)document.documentElement.classList.add('motion')}catch(e){}</script>
 <style>
-/* ============ tokens · design/palette.md v1.1 ============ */
+/* ============ tokens ============
+   Surfaces and text follow the app's current graphite theme
+   (Sources/UsageDock/Views/Theme/DashboardTheme.swift), which superseded the
+   navy of design/palette.md v1.1. The violet / cyan accents are the app's
+   hues at lower chroma, for small UI details across the page. --brand-violet
+   is the full brand violet, kept vivid where it should stand out: the
+   wordmark and the hero headline (same value as legal.css). */
 :root{
-  --ink:#070B12;
-  --surface:#0D1420;
-  --surface2:#141D2C;
-  --surface3:#1B2536;
-  --border:#223044;
-  --track:#1B2536;
-  --text:#E9EDF5;
-  --text-dim:#8B97AB;
-  --text-mute:#55617A;
-  --violet:#8F7BF2;
-  --violet-dim:#5B4FB0;
-  --cyan:#3ECFE0;
-  --cyan-dim:#2B8FA0;
+  --ink:#0D0E10;
+  --surface:#121316;
+  --surface2:#1A1B1F;
+  --surface3:#23252A;
+  --border:#2C2F35;
+  --track:#272A30;
+  --text:#F2F3F5;
+  --text-dim:#A7ABB4;
+  --text-mute:#6F7580;
+  --brand-violet:#8F7BF2;
+  --violet:#A397E0;
+  --violet-dim:#6A60AE;
+  --cyan:#72C1CA;
+  --cyan-dim:#4B8A92;
   --indigo:#2F5FD0;
   --magenta:#D95FB8;
   --olive:#7DA342;
   --success:#57D19A;
   --warning:#FFB554;
   --danger:#FF6B6B;
-  --claude-logo:#D97757;
   --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Helvetica Neue",sans-serif;
   --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,monospace;
 }
@@ -149,10 +159,10 @@ img{max-width:100%}
 .topbar.scrolled{border-bottom-color:var(--border)}
 .topbar nav{
   display:flex;align-items:center;justify-content:space-between;gap:16px;
-  padding:16px 0;
+  padding:16px 28px; /* keep .wrap's side gutter: logo lines up with the hero */
 }
 .wordmark{font-family:var(--mono);font-size:15px;font-weight:700;letter-spacing:.06em;color:var(--text)}
-.wordmark em{font-style:normal;color:var(--violet)}
+.wordmark em{font-style:normal;color:var(--brand-violet)}
 nav .links{display:flex;gap:20px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
 nav .links a{color:var(--text-dim);font-size:13.5px;white-space:nowrap}
 nav .links a:hover{color:var(--text);text-decoration:none}
@@ -192,7 +202,7 @@ nav .links a:hover{color:var(--text);text-decoration:none}
   text-wrap:balance;
   margin:22px 0 18px;
 }
-.hero h1 .accent{color:var(--violet)}
+.hero h1 .accent{color:var(--brand-violet)}
 .hero .sub{
   color:var(--text-dim);font-size:17px;max-width:34em;
   margin-bottom:34px;
@@ -207,10 +217,10 @@ nav .links a:hover{color:var(--text);text-decoration:none}
 }
 .btn:hover{text-decoration:none;transform:translateY(-1px)}
 .btn:active{transform:translateY(0)}
-.btn-primary{background:var(--cyan);color:var(--ink);border:1px solid var(--cyan)}
-.btn-primary:hover{background:#5CDAE8;box-shadow:0 8px 28px -10px color-mix(in srgb,var(--cyan) 55%,transparent)}
-.btn-testflight{background:color-mix(in srgb,var(--violet-dim) 18%,transparent);color:var(--text);border:1px solid var(--violet-dim)}
-.btn-testflight:hover{background:color-mix(in srgb,var(--violet-dim) 28%,transparent);border-color:var(--violet);color:var(--violet)}
+.btn-primary{background:#ECEDF0;color:var(--ink);border:1px solid #ECEDF0}
+.btn-primary:hover{background:#fff;box-shadow:0 8px 28px -12px rgba(255,255,255,.35)}
+.btn-testflight{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
+.btn-testflight:hover{border-color:var(--violet-dim);color:var(--violet)}
 .btn-ghost{background:transparent;color:var(--text);border:1px solid var(--border)}
 .btn-ghost:hover{border-color:var(--cyan-dim);color:var(--cyan)}
 .btn svg{flex:none}
@@ -224,7 +234,8 @@ nav .links a:hover{color:var(--text);text-decoration:none}
 .releases-hint a{color:var(--cyan-dim)}
 
 /* ============ 3D stage ============ */
-.stage-wrap{position:relative;perspective:1300px;perspective-origin:60% 40%;min-width:0;display:flex;justify-content:center}
+/* top padding seats the menu-bar slice that hangs above the popup */
+.stage-wrap{position:relative;perspective:1300px;perspective-origin:60% 40%;min-width:0;display:flex;justify-content:center;padding-top:34px}
 .stage{
   position:relative;
   transform-style:preserve-3d;
@@ -235,7 +246,12 @@ nav .links a:hover{color:var(--text);text-decoration:none}
   0%,100%{transform:translateZ(0) translateY(0)}
   50%{transform:translateZ(0) translateY(-9px)}
 }
-.float{animation:idle-float 7s ease-in-out infinite;transform-style:preserve-3d}
+/* The popup's container stays flat: Chrome hit-tests the children of a
+   preserve-3d element by depth and ignores their z-index, which sent clicks on
+   the settings panel to the widgets beneath it. Only the decorative status
+   items need depth, so they get their own 3D layer beside it. */
+.float,.chip-layer{animation:idle-float 7s ease-in-out infinite}
+.chip-layer{position:absolute;inset:0;transform-style:preserve-3d;pointer-events:none}
 
 /* ============ live popover · liquid glass ============
    The hero popover is a real DOM component, not a screenshot. Everything that
@@ -247,9 +263,9 @@ nav .links a:hover{color:var(--text);text-decoration:none}
    read as a straight seam next to the popover */
 .glow-field{position:absolute;inset:-3% -2%;pointer-events:none;z-index:0}
 .glow-field i{position:absolute;display:block;border-radius:50%;filter:blur(80px)}
-.glow-field .g1{width:250px;height:250px;left:12%;top:4%;background:var(--violet);opacity:.30}
-.glow-field .g2{width:230px;height:230px;right:4%;top:36%;background:var(--cyan);opacity:.26}
-.glow-field .g3{width:210px;height:210px;left:20%;bottom:5%;background:var(--claude-logo);opacity:.22}
+.glow-field .g1{width:250px;height:250px;left:12%;top:4%;background:var(--violet-dim);opacity:.20}
+.glow-field .g2{width:230px;height:230px;right:4%;top:36%;background:var(--cyan-dim);opacity:.14}
+.glow-field .g3{width:210px;height:210px;left:20%;bottom:5%;background:#BF8471;opacity:.11}
 @media (prefers-reduced-motion:no-preference){
   @keyframes glow-a{0%,100%{transform:translate3d(0,0,0)}50%{transform:translate3d(38px,-30px,0) scale(1.12)}}
   @keyframes glow-b{0%,100%{transform:translate3d(0,0,0)}50%{transform:translate3d(-34px,26px,0) scale(1.08)}}
@@ -259,26 +275,55 @@ nav .links a:hover{color:var(--text);text-decoration:none}
   .glow-field .g3{animation:glow-c 21s ease-in-out infinite}
 }
 
+/* Proportions follow the app, in points: UsageMenuView (380 wide, 16 padding,
+   12 between cards), MenuBarPopupShellShape (14 radius, 24×12 beak), cards at
+   13 radius / 13 padding (local usage 11), SegmentBar (14 segments, 6 tall,
+   3 apart, 2 corners). The stage is zoomed as a whole to fit the hero (see the
+   script), so these ratios hold at every size.
+
+   Glass: the app's two styles, set on .float so the beak follows the shell.
+   Frosted (the app default) is neutral graphite; Clear lets more of the page
+   through. --pa is the popup-opacity setting, 0…1, app default 62%. */
+.float{
+  --pa:.62;
+  --pop-top:rgba(40,41,46,calc(.5 + .45*var(--pa)));
+  --pop-bot:rgba(22,23,27,calc(.6 + .38*var(--pa)));
+  --pop-rim:rgba(255,255,255,.11);
+  --card-bg:rgba(255,255,255,.055);
+  --card-bd:rgba(255,255,255,.085);
+  --pop-line:rgba(255,255,255,.08);
+  --seg-track:rgba(0,0,0,.34);
+  --gl-bg:rgba(255,255,255,.08);
+  --gl-bd:rgba(255,255,255,.13);
+}
+.float.clear{
+  --pop-top:rgba(44,56,78,calc(.16 + .5*var(--pa)));
+  --pop-bot:rgba(14,18,26,calc(.22 + .54*var(--pa)));
+  --pop-rim:rgba(170,195,235,.16);
+  --card-bg:rgba(150,180,230,.075);
+  --card-bd:rgba(160,190,240,.13);
+  --pop-line:rgba(200,215,240,.09);
+  --seg-track:rgba(200,220,255,.12);
+  --gl-bg:rgba(170,195,240,.10);
+  --gl-bd:rgba(170,195,240,.18);
+}
 .pop{
-  --pop-c:rgba(217,119,87,.82);          /* Claude identity, desaturated */
-  --pop-x:rgba(110,134,214,.88);         /* Codex identity, desaturated */
-  --pop-track:rgba(200,220,255,.14);
-  /* one rounded capsule + its trailing gap, tiled 14× across the bar */
-  --segmask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22.29 6' preserveAspectRatio='none'%3E%3Crect width='18.29' height='6' rx='3'/%3E%3C/svg%3E");
-  --nc:12;                               /* Claude bar · filled capsules of 14 */
-  --nx:13;                               /* Codex bar  · filled capsules of 14 */
+  --pop-c:#BF8471;                       /* DashboardTheme.claudeAccent */
+  --pop-x:#6687C5;                       /* DashboardTheme.codexAccent */
   --donut:51.5%;                         /* Claude share of the ring */
   --lg1:var(--pop-c);                    /* legend row 1 dot */
   --lg2:var(--pop-x);                    /* legend row 2 dot */
-  --feed1:#4FBECD;                       /* first feed item dot */
-  --warn:none;                           /* Codex danger triangle */
-  position:relative;width:330px;max-width:100%;overflow:hidden;
-  border-radius:22px;padding:14px 14px 12px;
-  display:flex;flex-direction:column;gap:8px;
-  background:linear-gradient(165deg,rgba(30,50,85,.66),rgba(10,16,28,.76));
-  border:1px solid rgba(150,185,240,.13);
-  box-shadow:0 40px 90px -30px rgba(0,0,0,.85),inset 0 1px 0 rgba(255,255,255,.08);
-  font-size:12px;line-height:1.4;
+  --feed1:#5FB3BE;                       /* first feed item dot */
+  position:relative;width:380px;overflow:hidden;
+  border-radius:14px;padding:16px;
+  display:flex;flex-direction:column;gap:12px;
+  background:linear-gradient(180deg,var(--pop-top),var(--pop-bot));
+  border:1px solid var(--pop-rim);
+  box-shadow:0 40px 90px -30px rgba(0,0,0,.85),inset 0 1px 0 rgba(255,255,255,.07);
+  font-size:12px;line-height:1.35;
+  -webkit-user-select:none;user-select:none;
+  transform-origin:50% 0;
+  transition:opacity .2s ease,scale .2s cubic-bezier(.2,.7,.2,1);
 }
 .pop>*{position:relative;z-index:1}
 /* Refraction is painted inside the shell rather than sampled with
@@ -290,123 +335,263 @@ nav .links a:hover{color:var(--text);text-decoration:none}
 .pop::after{
   content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
   background:
-    radial-gradient(115% 75% at 16% 4%,rgba(143,123,242,.10),transparent 62%),
-    radial-gradient(100% 70% at 94% 40%,rgba(62,207,224,.09),transparent 64%),
-    radial-gradient(95% 60% at 26% 98%,rgba(217,119,87,.07),transparent 62%),
-    linear-gradient(rgba(255,255,255,.035),rgba(255,255,255,0) 55%);
+    radial-gradient(115% 75% at 16% 4%,rgba(163,151,224,.05),transparent 62%),
+    radial-gradient(100% 70% at 94% 40%,rgba(114,193,202,.04),transparent 64%),
+    radial-gradient(95% 60% at 26% 98%,rgba(191,132,113,.04),transparent 62%),
+    linear-gradient(rgba(255,255,255,.03),rgba(255,255,255,0) 55%);
 }
 /* specular sheen along the top edge */
 .pop::before{
   content:"";position:absolute;left:16%;right:16%;top:0;height:1px;border-radius:1px;z-index:2;
-  background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent);
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.32),transparent);
 }
-.pop-card{background:rgba(90,140,210,.10);border:1px solid rgba(140,180,240,.14);border-radius:15px;padding:9px 11px}
+/* zero-specificity reset, so each control's own rule wins */
+:where(.pop) button{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;cursor:pointer;text-align:inherit}
+.pop-card{background:var(--card-bg);border:1px solid var(--card-bd);border-radius:13px;padding:13px}
 .pop-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
 
-/* header */
-.pop-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:2px 2px 2px 0}
-.pop-name{font-family:var(--mono);font-size:19px;font-weight:700;letter-spacing:-.01em;color:var(--text);line-height:1.2}
-.pop-when{font-size:10.5px;color:var(--text-mute);line-height:1.5}
-.pop-acts{display:flex;align-items:center;gap:10px;color:var(--text-dim)}
-.pop-acts .rf{width:27px;height:27px;border-radius:50%;background:rgba(8,13,22,.55);border:1px solid rgba(150,185,240,.16);display:flex;align-items:center;justify-content:center}
+/* header: 18pt wordmark over a 10pt freshness line; two 26pt glass buttons */
+.pop-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.pop-name{font-family:var(--mono);font-size:18px;font-weight:700;letter-spacing:-.01em;color:var(--text);line-height:1.2}
+.pop-when{font-size:10px;color:var(--text-mute);line-height:1.3;margin-top:2px}
+.pop-acts{display:flex;align-items:center;margin-right:-4px}
+.pop-acts .gb{width:34px;height:34px;display:grid;place-items:center;color:var(--text)}
+.pop-acts .gb>span{
+  width:26px;height:26px;border-radius:50%;display:grid;place-items:center;
+  background:var(--gl-bg);border:1px solid var(--gl-bd);box-shadow:inset 0 1px 0 rgba(255,255,255,.07);
+  transition:background .15s ease;
+}
+.pop-acts .gb:hover>span,.pop-acts .gb[aria-expanded="true"]>span{background:rgba(255,255,255,.15)}
+.pop-acts .rf.busy svg{animation:spin .8s linear infinite}
 
-/* risk banner */
-.pop-ban{display:flex;align-items:center;gap:12px}
+/* risk strip: pixel badge (9pt mono, 1pt tracking, 3pt corners) beside 13 / 10pt lines */
+.pop-ban{display:flex;align-items:center;gap:10px;padding:10px 13px}
 .pop-sev{
-  font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.14em;
-  color:var(--warning);border:1px solid color-mix(in srgb,var(--warning) 55%,transparent);
-  border-radius:5px;padding:3px 8px;white-space:nowrap;flex:none;
+  font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:1px;line-height:1.25;
+  color:var(--warning);background:rgba(0,0,0,.25);
+  border:1px solid color-mix(in srgb,var(--warning) 70%,transparent);
+  border-radius:3px;padding:3px 7px;white-space:nowrap;flex:none;
 }
-.pop-ban b{display:block;font-size:12px;line-height:1.35;font-weight:600;color:var(--text)}
-.pop-ban span{display:block;font-size:11px;font-variant-numeric:tabular-nums;line-height:1.4;color:var(--text-dim)}
+.pop-ban b{display:block;font-size:13px;line-height:1.3;font-weight:600;color:var(--text)}
+.pop-ban>div>span{display:block;margin-top:2px;font-size:10px;font-weight:500;font-variant-numeric:tabular-nums;line-height:1.3;color:var(--text-dim)}
 
-/* provider cards */
-.pop-pn{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:var(--text)}
-.pop-pn img{width:17px;height:17px;flex:none}
-.pop-pn i{font-style:normal;color:var(--text-mute);font-size:13px}
-.pop-pin{color:var(--text-mute);flex:none}
-.pop-meta{margin-top:5px}
-.pop-meta .w{font-size:11.5px;color:var(--text-dim)}
-.pop-meta .r{display:flex;align-items:center;gap:5px;font-size:13.5px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--text)}
-.pop-warn{display:var(--warn);color:var(--danger);flex:none}
-.pop-seg{position:relative;height:6px;margin-top:7px;background:var(--pop-track);
-  -webkit-mask-image:var(--segmask);mask-image:var(--segmask);
-  -webkit-mask-size:calc((100% + 4px)/14) 100%;mask-size:calc((100% + 4px)/14) 100%;
-  -webkit-mask-repeat:repeat-x;mask-repeat:repeat-x;
-}
-/* stop the fill in the middle of the gap after capsule --n, so the boundary is
-   invisible whatever the bar measures */
-.pop-seg::after{content:"";position:absolute;inset:0 auto 0 0;width:calc(var(--n)*(100% + 4px)/14 - 2px);background:var(--pf)}
-.pop-claude .pop-seg{--n:var(--nc);--pf:var(--pop-c)}
-.pop-codex .pop-seg{--n:var(--nx);--pf:var(--pop-x)}
+/* widget header: a 20pt row (20pt mark, 14pt name, 10pt chevron and pin).
+   The name and chevron are one button, as in the app: it toggles expansion. */
+.pop-hd{height:20px}
+.pop-pn{display:flex;align-items:center;gap:8px;height:20px;font-size:14px;font-weight:600;color:var(--text)}
+.pop-pn>img,.pop-pn>svg{width:20px;height:20px;flex:none}
+.pop-feedc .pop-pn>svg{color:var(--text-dim)}
+.pop-pn .chev{width:18px;height:20px;margin-left:-1px;display:grid;place-items:center;color:var(--text-mute);transition:transform .22s cubic-bezier(.2,.7,.2,1)}
+.is-exp .pop-hd .chev{transform:rotate(90deg)}
+.pop-pin{width:18px;height:20px;display:grid;place-items:center;color:var(--text-mute);flex:none}
+.pop-pin .on{display:none}
+.is-pin .pop-pin{color:var(--text)}
+.is-pin .pop-pin .on{display:block}
+.is-pin .pop-pin .off{display:none}
+.pop-pin:hover,.pop-pn:hover .chev{color:var(--text-dim)}
 
-/* local usage */
-.pop-utitle{font-size:14px;font-weight:600;color:var(--text)}
-.pop-utotal{font-size:16px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--text)}
-.pop-split{display:flex;align-items:center;gap:14px;margin:8px 0 0}
-.pop-donut{width:54px;height:54px;flex:none;border-radius:50%;
-  background:conic-gradient(var(--pop-c) 0 var(--donut),var(--pop-x) var(--donut) 100%);
-  -webkit-mask:radial-gradient(closest-side,transparent 61%,#000 62%);
-  mask:radial-gradient(closest-side,transparent 61%,#000 62%);
+/* quota rows (QuotaWindowRow): 13pt window / 14pt bold remaining, 6pt (7 when
+   expanded), the segment bar; rows split by hairlines with 8pt (11 expanded)
+   on each side. Collapsed shows the shortest window plus model-scoped pools;
+   expanding adds the other windows, the reset / speed and pace lines, and the
+   freshness line. */
+.pop-q{--sp:8px}
+.pop-q.is-exp{--sp:11px}
+.qrow{padding-top:var(--sp);transition:padding .22s cubic-bezier(.2,.7,.2,1),margin .22s cubic-bezier(.2,.7,.2,1)}
+.qrow.sep{margin-top:var(--sp);border-top:1px solid var(--pop-line)}
+.pop-meta{align-items:baseline}
+.pop-meta .w{font-size:13px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pop-meta .r{display:flex;align-items:center;gap:5px;font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--text);white-space:nowrap}
+.pop-meta .rw{color:var(--danger);flex:none;align-self:center}
+.pop-meta .rw[hidden]{display:none}
+.pop-seg{display:flex;gap:3px;height:6px;margin-top:6px;transition:margin .22s cubic-bezier(.2,.7,.2,1)}
+.is-exp .pop-seg{margin-top:7px}
+.pop-seg b{flex:1;border-radius:2px;background:var(--seg-track)}
+.pop-claude .pop-seg b.on{background:var(--pop-c)}
+.pop-codex .pop-seg b.on{background:var(--pop-x)}
+.qx,.qdet{display:grid;grid-template-rows:0fr;transition:grid-template-rows .22s cubic-bezier(.2,.7,.2,1)}
+.is-exp .qx,.is-exp .qdet{grid-template-rows:1fr}
+.qclip{overflow:hidden;min-height:0}
+.qclip>*{opacity:0;translate:0 -4px;transition:opacity .22s ease,translate .22s cubic-bezier(.2,.7,.2,1)}
+.is-exp .qclip>*{opacity:1;translate:0 0}
+.qd{display:flex;align-items:center;gap:5px;padding-top:7px;font-size:10px;line-height:14px;color:var(--text-dim);white-space:nowrap}
+.qd svg{flex:none}
+.qd .sp{margin-left:auto;padding-left:8px;display:flex;gap:4px;min-width:0}
+.qd .sp>span:first-child{overflow:hidden;text-overflow:ellipsis}
+.qd .sp b{font-weight:500;color:var(--text);font-variant-numeric:tabular-nums}
+.qd.pace .lbl{font-weight:500;font-variant-numeric:tabular-nums}
+.qd.pace .o{margin-left:auto;padding-left:8px;font-variant-numeric:tabular-nums}
+.qd.pace .bad{display:none}
+.qd.pace.t-ok{color:var(--success)}
+.qd.pace.t-warn{color:var(--warning)}
+.qd.pace.t-bad{color:var(--danger)}
+.qd.pace.t-bad .ok{display:none}
+.qd.pace.t-bad .bad{display:block}
+.qfresh{display:flex;align-items:center;gap:5px;padding-top:var(--sp);font-size:10px;font-variant-numeric:tabular-nums;color:var(--text-dim)}
+
+/* local usage: 11pt padding, 7pt rhythm; a 52pt ring with an 8pt stroke, 22pt
+   legend rows, 17pt spend rows and a 22pt trend at most 170 wide. Hovering a
+   row or the ring highlights that provider and puts its cost in the centre. */
+.pop-card.pop-usage{padding:11px}
+.pop-utitle{font-size:14px;font-weight:600;line-height:20px;color:var(--text)}
+.pop-utotal{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--text)}
+.pop-split{display:flex;align-items:center;gap:14px;margin-top:7px}
+.pop-ring{position:relative;width:52px;height:52px;flex:none;cursor:default}
+.pop-donut{position:absolute;inset:0;border-radius:50%;
+  background:conic-gradient(var(--pop-c) 0 min(var(--donut),var(--sweep,100%)),var(--pop-x) 0 var(--sweep,100%),transparent 0);
+  -webkit-mask:radial-gradient(closest-side,transparent 68.5%,#000 69.5%);
+  mask:radial-gradient(closest-side,transparent 68.5%,#000 69.5%);
 }
-.pop-legs{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
-.pop-lg{display:flex;align-items:center;gap:8px}
+.pop-ring .rc{position:absolute;inset:0;display:grid;place-content:center;text-align:center;line-height:1.15;opacity:0;transition:opacity .15s ease;pointer-events:none}
+.pop-ring .rc b{font-size:9px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--text)}
+.pop-ring .rc i{font-style:normal;font-size:8px;font-variant-numeric:tabular-nums;color:var(--text-dim)}
+.pop-usage[data-hl] .rc{opacity:1}
+.pop-usage[data-hl="c"] .pop-donut{--pop-x:rgba(102,135,197,.32)}
+.pop-usage[data-hl="x"] .pop-donut{--pop-c:rgba(191,132,113,.32)}
+.pop-legs{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.pop-lg{display:flex;align-items:center;gap:6px;height:22px;padding:0 7px;border-radius:7px;transition:background .15s ease}
+.pop-lg.hl{background:rgba(255,255,255,.07)}
+.pop-usage[data-hl="c"] .pop-lg.hl .pc{color:var(--pop-c)}
+.pop-usage[data-hl="x"] .pop-lg.hl .pc{color:var(--pop-x)}
 .pop-lg i{width:7px;height:7px;border-radius:50%;flex:none}
 .pop-lg .n1{background:var(--lg1)}
 .pop-lg .n2{background:var(--lg2)}
-.pop-lg .nm{flex:1;min-width:0;font-size:12px;color:var(--text)}
-.pop-lg .tk{font-size:11px;font-variant-numeric:tabular-nums;color:var(--text-dim)}
-.pop-lg .pc{font-size:12px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--text);min-width:42px;text-align:right}
-.pop-rule{height:1px;background:rgba(233,237,245,.08);margin:9px 0 7px}
-.pop-stat{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:1px 0}
-.pop-stat .l{font-size:11.5px;color:var(--text-dim)}
-.pop-stat .v{font-size:11.5px;font-variant-numeric:tabular-nums;color:var(--text)}
-.pop-trend{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:6px}
-.pop-trend .l{font-size:11.5px;color:var(--text-dim);flex:none}
-.pop-spark{display:flex;align-items:flex-end;gap:2px;height:18px;flex:1;max-width:180px}
+.pop-lg .nm{flex:1;min-width:0;font-size:11px;font-weight:500;color:var(--text)}
+.pop-lg .tk{font-size:10px;font-variant-numeric:tabular-nums;color:var(--text-dim)}
+.pop-lg .pc{width:39px;text-align:right;font-size:11px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--text);transition:color .15s ease}
+.pop-rule{height:1px;background:var(--pop-line);margin:7px 0}
+.pop-stat{display:flex;align-items:center;justify-content:space-between;gap:8px;height:17px}
+.pop-stat+.pop-stat{margin-top:4px}
+.pop-stat .l{font-size:11px;font-weight:500;color:var(--text-dim)}
+.pop-stat .v{font-size:11px;font-variant-numeric:tabular-nums;color:var(--text)}
+.pop-trend{display:flex;align-items:flex-end;justify-content:space-between;gap:8px;margin-top:6px}
+.pop-trend .l{font-size:11px;font-weight:500;color:var(--text-dim);flex:none}
+.pop-spark{display:flex;align-items:flex-end;gap:2px;height:22px;flex:1;max-width:170px}
 .pop-spark i{flex:1;border-radius:1px;background:var(--text-mute)}
 .pop-spark i:nth-child(n+16){background:var(--text-dim)}
-.pop-spark i:nth-child(n+18):nth-child(-n+21){background:#A6B1C4}
+.pop-spark i:nth-child(n+18):nth-child(-n+21){background:#C3C6CD}
 
-/* AI feed */
-.pop-fmeta{display:flex;align-items:center;gap:8px;flex:none}
-.pop-count{font-size:10.5px;font-variant-numeric:tabular-nums;color:var(--text-mute)}
-.pop-fsub{margin-top:5px;font-size:11.5px;color:var(--text-dim)}
-.pop-fitem{display:flex;align-items:flex-start;gap:9px;padding:7px 0 6px}
-.pop-fitem+.pop-fitem{border-top:1px solid rgba(233,237,245,.07)}
-.pop-fitem>i{width:6px;height:6px;border-radius:50%;flex:none;margin-top:6px;background:var(--text)}
+/* AI Feed: 10pt rhythm, 10pt meta line, 6pt dots, 10 / 9 / 11pt story lines;
+   expanded, the subtitle reads "Full top stories" and stories wrap in full */
+.pop-fmeta{display:flex;align-items:center;gap:2px;flex:none}
+.pop-count{font-size:10px;font-weight:600;color:var(--text-dim)}
+.pop-fsub{margin-top:10px;font-size:10px;color:var(--text-dim)}
+.pop-fsub .va{font-weight:600}
+.pop-fsub .fs-f,.pop-fitem .xf{display:none}
+.is-exp .pop-fsub .fs-f{display:inline}
+.is-exp .pop-fsub .fs-s,.is-exp .pop-fitem .xs{display:none}
+.is-exp .pop-fitem .xf{display:inline}
+.is-exp .pop-fitem .x{white-space:normal}
+.pop-fitem{display:flex;align-items:center;gap:9px;padding-top:10px}
+.pop-fitem+.pop-fitem{margin-top:10px;border-top:1px solid var(--pop-line)}
+.pop-fitem>i{width:6px;height:6px;border-radius:50%;flex:none;background:var(--text)}
 .pop-fitem.f1>i{background:var(--feed1)}
 .pop-fitem .b{flex:1;min-width:0}
-.pop-fitem .h{display:flex;align-items:baseline;gap:7px}
-.pop-fitem .s{font-size:11.5px;font-weight:700;color:var(--text)}
-.pop-fitem .t{font-size:10.5px;font-variant-numeric:tabular-nums;color:var(--text-mute)}
-.pop-fitem .x{font-size:11.5px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pop-fitem .a{color:var(--text-mute);flex:none;margin-top:4px}
+.pop-fitem .h{display:flex;align-items:baseline;gap:6px}
+.pop-fitem .s{font-size:10px;font-weight:600;color:var(--text)}
+.pop-fitem .t{font-size:9px;font-variant-numeric:tabular-nums;color:var(--text-mute)}
+.pop-fitem .x{margin-top:3px;font-size:11px;font-weight:500;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pop-fitem .a{color:var(--text-mute);flex:none}
 
-/* footer */
-.pop-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 2px 0;border-top:1px solid rgba(233,237,245,.08)}
-.pop-foot .o{font-size:12.5px;font-weight:600;color:var(--text)}
-.pop-foot .q{font-size:11.5px;color:var(--text-dim)}
+/* footer: a hairline, then glass commands (12 / 11pt, 10×5 padding, 9pt corners) */
+.pop-sep{height:1px;margin-top:1px;background:var(--pop-line)}
+.pop-foot{display:flex;align-items:center;gap:6px}
+.pop .pop-cmd{
+  padding:5px 10px;border-radius:9px;white-space:nowrap;line-height:1.3;
+  font-size:11px;color:var(--text-dim);
+  background:var(--gl-bg);border:1px solid var(--gl-bd);transition:background .15s ease;
+}
+.pop .pop-cmd:hover,.pop .pop-cmd[aria-expanded="true"]{background:rgba(255,255,255,.15)}
+.pop .pop-cmd.o{margin-right:auto;font-size:12px;font-weight:600;color:var(--text)}
 
-/* Chinese state: same DOM, different numbers and severity */
-html[lang^="zh"] .pop{--nc:14;--nx:4;--donut:12.7%;--lg1:var(--pop-x);--lg2:var(--pop-c);--warn:block}
+/* reorder: a long press lifts a widget, the others make room */
+.pop-list{display:flex;flex-direction:column;gap:12px}
+.pop-list>.pop-card{transition:translate .2s cubic-bezier(.2,.7,.2,1),scale .15s ease,box-shadow .15s ease}
+.pop-list>.pop-card.dragging{transition:scale .15s ease,box-shadow .15s ease;z-index:3;scale:1.02;box-shadow:0 18px 40px -14px rgba(0,0,0,.8);cursor:grabbing}
+.pop-list>.pop-card.is-hidden{display:none}
+.pop-list>.pop-card.flash{animation:card-flash .7s ease}
+@keyframes card-flash{30%{box-shadow:0 0 0 2px rgba(255,255,255,.18)}}
 
-/* floating chips at depth */
+/* menus: the "+" add-widget menu and each widget's context menu */
+.pm{
+  position:absolute;z-index:6;min-width:176px;padding:5px;border-radius:9px;
+  background:rgba(40,41,46,.97);border:1px solid rgba(255,255,255,.12);
+  box-shadow:0 14px 34px -10px rgba(0,0,0,.75);display:none;
+}
+.pm.open{display:block}
+.pm button{display:flex;align-items:center;gap:7px;width:100%;padding:4px 9px;border-radius:5px;font-size:12px;color:var(--text);white-space:nowrap}
+.pm button:hover:not(:disabled),.pm button:focus-visible{background:rgba(255,255,255,.11);outline:none}
+.pm button:disabled{color:var(--text-mute);cursor:default}
+.pm button.del{color:#F08A82}
+.pm hr{border:0;height:1px;background:rgba(255,255,255,.1);margin:4px 6px}
+
+/* settings panel: floats over the stack, seated 10pt above the footer */
+.pop-settings{
+  position:absolute;left:16px;right:16px;bottom:54px;z-index:5;
+  display:grid;gap:9px;padding:12px 13px;border-radius:13px;
+  background:rgba(34,35,40,.97);border:1px solid rgba(255,255,255,.12);box-shadow:0 18px 40px -12px rgba(0,0,0,.7);
+  opacity:0;visibility:hidden;translate:0 6px;
+  transition:opacity .16s ease,translate .16s ease,visibility 0s linear .16s;
+}
+.pop.set-open .pop-settings{opacity:1;visibility:visible;translate:0 0;transition:opacity .16s ease,translate .16s ease}
+.ps-head{display:flex;align-items:center;gap:7px;color:var(--text-dim)}
+.ps-head b{font-size:13px;font-weight:600;color:var(--text)}
+.ps-x{margin-left:auto;width:20px;height:20px;display:grid;place-items:center;border-radius:50%;color:var(--text-dim)}
+.ps-x:hover{background:rgba(255,255,255,.1)}
+.ps-lbl{font-size:10px;font-weight:500;color:var(--text-dim)}
+.ps-seg{display:grid;grid-template-columns:1fr 1fr;gap:3px;padding:3px;border-radius:9px;background:rgba(0,0,0,.28)}
+.pop .ps-seg button{padding:5px 6px;border-radius:7px;font-size:11px;color:var(--text-dim);text-align:center}
+.pop .ps-seg button[aria-pressed="true"]{background:rgba(255,255,255,.13);color:var(--text)}
+.ps-op{display:flex;align-items:baseline;justify-content:space-between}
+.ps-val{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--text)}
+.ps-range{width:100%;margin:0;accent-color:#C9CCD2}
+.ps-ends{display:flex;justify-content:space-between;margin-top:-4px;font-size:9px;color:var(--text-mute)}
+.ps-row{display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:500;color:var(--text)}
+.pop .ps-tg{width:28px;height:16px;border-radius:8px;background:rgba(255,255,255,.18);position:relative;transition:background .15s ease}
+.ps-tg i{position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:#fff;transition:translate .15s ease}
+.pop .ps-tg[aria-checked="true"]{background:var(--success)}
+.ps-tg[aria-checked="true"] i{translate:12px 0}
+.ps-btns{display:grid;gap:6px}
+.pop .ps-btns button{padding:5px 10px;border-radius:9px;font-size:11px;color:var(--text);text-align:center;background:var(--gl-bg);border:1px solid var(--gl-bd)}
+.pop .ps-btns button:hover{background:rgba(255,255,255,.15)}
+
+/* Chinese state: same DOM, different numbers (segment counts, warning marks
+   and pace tones come from data-*-zh, applied by the script) */
+html[lang^="zh"] .pop{--donut:12.7%;--lg1:var(--pop-x);--lg2:var(--pop-c)}
+
+/* the popup's beak (24×12, softened apex) points up at the status item */
+.pop-beak{position:absolute;left:50%;top:-11px;width:24px;height:12px;margin-left:-12px;z-index:2;overflow:visible;transition:opacity .2s ease}
+.pop-beak .f{fill:var(--pop-top)}
+.pop-beak .s{fill:none;stroke:var(--pop-rim);stroke-width:1}
+
+/* the status item, drawn the way the app draws it: 12pt monospaced numerals,
+   15pt glyphs in the default monochrome style, spaces narrowed by 3.5pt, "·"
+   between providers; highlighted while its popup is open */
+.mb-anchor{position:absolute;left:0;right:0;bottom:calc(100% + 11px);display:flex;justify-content:center;pointer-events:none}
+.stage .mb-item{
+  pointer-events:auto;display:inline-flex;align-items:center;gap:3.7px;height:22px;padding:0 8px;border-radius:5px;border:0;
+  background:rgba(255,255,255,.18);color:#fff;font-family:var(--mono);font-size:12px;line-height:1;font-variant-numeric:tabular-nums;
+  cursor:pointer;transition:background .15s ease,opacity .3s ease;
+}
+.stage .mb-item:hover{background:rgba(255,255,255,.24)}
+.mb-item img{width:15px;height:15px;display:block}
+.mb-item .tmpl{filter:brightness(0) invert(1)}
+.float.closed .mb-item{background:transparent}
+.float.closed .mb-item:hover{background:rgba(255,255,255,.1)}
+.float.closed .pop,.float.closed .pop-beak{opacity:0;pointer-events:none}
+.float.closed .pop{scale:.97}
+.float.quit .mb-item{opacity:0;pointer-events:none}
+.pop-hint{position:absolute;left:0;right:0;top:calc(100% + 16px);text-align:center;font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;color:var(--text-mute);transition:opacity .3s ease}
+.float.touched .pop-hint{opacity:0}
+
+/* floating status items at depth: one provider each, in the menu bar's type */
 .chip{
-  position:absolute;
-  font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.08em;
-  color:var(--text-dim);
-  background:color-mix(in srgb,var(--surface2) 88%,transparent);
-  border:1px solid var(--border);border-radius:6px;
-  padding:7px 12px;display:flex;gap:8px;align-items:center;
+  position:absolute;display:flex;gap:4px;align-items:center;white-space:nowrap;line-height:1;
+  font-family:var(--mono);font-size:12px;color:var(--text);font-variant-numeric:tabular-nums;
+  background:rgba(22,23,27,.88);border:1px solid rgba(255,255,255,.1);border-radius:7px;padding:5px 9px;
   box-shadow:0 18px 40px -18px rgba(0,0,0,.8);
-  white-space:nowrap;
 }
 .chip .brand-logo{width:15px;height:15px}
-.chip .v{color:var(--text);font-variant-numeric:tabular-nums}
-.chip.mb{padding:9px 12px;gap:7px;background:rgba(7,11,18,.92);letter-spacing:.02em}
-.chip.mb .sep{color:var(--text-mute)}
-.chip1{top:8px;right:-6%;transform:translateZ(90px)}
 .chip2{bottom:-4px;left:-13%;transform:translateZ(140px)}
 .chip3{top:30%;left:-17%;transform:translateZ(55px)}
 .chip4{bottom:-42px;right:-3%;transform:translateZ(110px)}
@@ -422,7 +607,7 @@ html[lang^="zh"] .pop{--nc:14;--nx:4;--donut:12.7%;--lg1:var(--pop-x);--lg2:var(
 .stat:last-child{border-right:none}
 .stat b{display:block;font-size:30px;line-height:1.15;font-weight:650;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:var(--text)}
 .stat b em{font-style:normal;color:var(--cyan)}
-.stat span{display:block;margin-top:4px;color:var(--text-dim);font-size:13px;line-height:1.45}
+.stat>span{display:block;margin-top:4px;color:var(--text-dim);font-size:13px;line-height:1.45}
 
 /* ============ what's new in 1.4 — bento ============ */
 .new-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
@@ -673,6 +858,7 @@ figure.shot.widgets.row figcaption{grid-column:1/-1}
 .prov.featp p{font-size:13.5px}
 .minibar{display:flex;gap:3px;height:7px;margin:12px 0 10px}
 .minibar b{flex:1;border-radius:2px;background:var(--track)}
+.prov.span2{grid-column:span 2}
 .prov.wide{grid-column:1/-1;display:flex;gap:18px;align-items:baseline;flex-wrap:wrap}
 .prov.wide .pn{margin-bottom:0}
 .prov.wide .names{display:flex;gap:8px;flex-wrap:wrap}
@@ -896,7 +1082,7 @@ figure.shot.widgets.row figcaption{grid-column:1/-1}
 .tray img.mark{width:44px;height:44px}
 .tray img.mascotg{width:56px;height:56px;image-rendering:pixelated}
 .tray .wm{font-family:var(--mono);font-weight:800;font-size:14px;letter-spacing:.02em}
-.tray .wm em{font-style:normal;color:var(--violet)}
+.tray .wm em{font-style:normal;color:var(--brand-violet)}
 .tray .lb{
   font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.12em;
   text-transform:uppercase;color:var(--text-mute);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
@@ -1000,12 +1186,15 @@ footer.site .disclaimer{
   color:var(--text-mute);max-width:60em;
 }
 
+/* the script seats the copy against the collapsed popup (see center()) */
+.hero.anchored{align-items:start}
+.stage.focus :is(.float,.chip-layer){animation-play-state:paused}
 @media (max-width:900px){
   .hero{grid-template-columns:1fr;min-height:0;padding-top:20px;gap:64px}
   .stage-wrap{perspective-origin:50% 30%}
-  .chip2{left:-4%}
+  .chip2{left:2%}
   .chip3{left:-6%}
-  .chip1,.chip4{right:-4%}
+  .chip4{right:-4%}
   .feat-sub{grid-template-columns:1fr 1fr}
   .steps{grid-template-columns:1fr;gap:16px}
   .step:not(:last-child)::after{display:none}
@@ -1029,22 +1218,241 @@ footer.site .disclaimer{
 @media (max-width:560px){
   .feat-sub{grid-template-columns:1fr}
   .prov-grid,.priv-grid{grid-template-columns:1fr}
-  .prov.featp{grid-column:span 1}
+  .prov.featp,.prov.span2{grid-column:span 1}
   .tray{grid-template-columns:repeat(2,1fr)}
   .stat{padding:16px}
   .stat b{font-size:24px}
   .new-grid{grid-template-columns:1fr}
   .new-card.wide{grid-column:span 1}
 }
-/* scroll reveal — motion only when allowed */
-@media (prefers-reduced-motion:no-preference){
-  .reveal{opacity:0;transform:translateY(16px);transition:opacity .55s ease,transform .55s ease}
-  .reveal.in{opacity:1;transform:none}
+/* ============ motion layer ============
+   One orchestrated entrance (the hero and its popover boot like the app),
+   then motion that answers the visitor: a focus frame that follows the
+   pointer across the headline, numbers that roll when they arrive, cards lit
+   from where the pointer is, and data drawn flowing one way through the
+   privacy pipeline. Every hidden starting state sits under html.motion (set
+   in <head>), so reduced-motion and no-JS visitors see the final page. */
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+@property --sweep{syntax:'<percentage>';inherits:false;initial-value:100%}
+@property --ang{syntax:'<angle>';inherits:false;initial-value:0deg}
+@keyframes rise-in{from{opacity:0;transform:translateY(18px);filter:blur(8px)}to{opacity:1;transform:none;filter:none}}
+@keyframes stage-in{from{opacity:0;transform:translateY(28px) scale(.96)}}
+@keyframes card-in{from{opacity:0;transform:translateY(10px) scale(.98)}}
+@keyframes chip-in{from{opacity:0;scale:.82}}
+@keyframes seg-on{from{background:var(--seg-track)}}
+@keyframes seg-pulse{40%{filter:brightness(1.75)}}
+@keyframes mbar-in{from{opacity:0;translate:0 -10px}}
+@keyframes sweep{from{--sweep:0%}}
+@keyframes spark-up{from{transform:scaleY(0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes when-flash{30%{color:var(--cyan)}}
+@keyframes dot-ping{0%{opacity:.9;transform:scale(.8)}80%,100%{opacity:0;transform:scale(2.6)}}
+@keyframes caret{50%{opacity:0}}
+@keyframes mq{to{transform:translateX(-50%)}}
+@keyframes flow{from{background-position:100% 0}to{background-position:0 0}}
+@keyframes node-hit{0%,34%,100%{border-color:var(--border);box-shadow:0 0 0 0 transparent}10%{border-color:var(--cyan-dim);box-shadow:0 0 0 4px color-mix(in srgb,var(--cyan) 14%,transparent)}}
+@keyframes live-ring{from{box-shadow:0 0 0 0 color-mix(in srgb,var(--success) 70%,transparent)}to{box-shadow:0 0 0 7px transparent}}
+@keyframes pin-sweep{to{transform:translateX(220%)}}
+@keyframes beam{to{--ang:360deg}}
+@keyframes btn-shine{0%{transform:skewX(-20deg) translateX(0)}24%,100%{transform:skewX(-20deg) translateX(440%)}}
+
+/* hero entrance: copy rises out of a blur, the stage follows */
+html.motion .hero-copy>*{animation:rise-in .9s cubic-bezier(.2,.7,.2,1) both}
+html.motion .hero-copy>:nth-child(2){animation-delay:.1s}
+html.motion .hero-copy>:nth-child(3){animation-delay:.22s}
+html.motion .hero-copy>:nth-child(4){animation-delay:.34s}
+html.motion .hero-copy>:nth-child(5){animation-delay:.44s}
+html.motion .hero-copy>:nth-child(6){animation-delay:.52s}
+html.motion .stage-wrap{animation:stage-in 1.2s cubic-bezier(.2,.7,.2,1) .18s both}
+
+/* badge: pixel dot pings, the release line types itself */
+.badge .dot{position:relative}
+html.motion .badge .dot::after{content:"";position:absolute;inset:-2px;border:1px solid var(--cyan);border-radius:2px;opacity:0;animation:dot-ping 2.4s cubic-bezier(.2,.7,.2,1) 1.4s infinite}
+.caret{display:inline-block;width:2px;height:1.05em;margin-left:-5px;background:var(--cyan);animation:caret 1s steps(1) infinite;transition:opacity .5s ease}
+.caret.done{opacity:0;animation:none}
+
+/* headline focus: one chunk sharp, the rest soft, a viewfinder between */
+.hero h1{position:relative}
+.fw{display:inline-block;transition:filter .55s ease,opacity .55s ease}
+/* focus chunks are atomic inlines, which would let a line break fall right
+   before the closing punctuation; keep the last chunk and its stop together */
+.nowrap{white-space:nowrap}
+.focus-on .fw{filter:blur(3px);opacity:.55;cursor:default}
+.focus-on .fw.on{filter:none;opacity:1}
+.focus-frame{
+  position:absolute;left:0;top:0;width:0;height:0;pointer-events:none;opacity:0;
+  transition:transform .5s cubic-bezier(.2,.7,.2,1),width .5s cubic-bezier(.2,.7,.2,1),height .5s cubic-bezier(.2,.7,.2,1),opacity .4s ease;
 }
+.focus-on .focus-frame{opacity:1}
+.focus-frame i{position:absolute;width:12px;height:12px;border:0 solid var(--cyan);border-radius:2px;filter:drop-shadow(0 0 4px color-mix(in srgb,var(--cyan) 35%,transparent))}
+.focus-frame i:nth-child(1){left:0;top:0;border-top-width:2.5px;border-left-width:2.5px}
+.focus-frame i:nth-child(2){right:0;top:0;border-top-width:2.5px;border-right-width:2.5px}
+.focus-frame i:nth-child(3){left:0;bottom:0;border-bottom-width:2.5px;border-left-width:2.5px}
+.focus-frame i:nth-child(4){right:0;bottom:0;border-bottom-width:2.5px;border-right-width:2.5px}
+
+/* popover boot: cards settle in order, bars light segment by segment, the
+   ring draws itself, the sparkline grows, the status items pop in at depth.
+   Scoped to :not(.booted): once the script marks the boot done, moving a
+   widget (which re-inserts it) cannot replay its entrance. */
+html.motion .pop:not(.booted) :is(.pop-head,.pop-ban,.pop-list>*,.pop-sep,.pop-foot){animation:card-in .7s cubic-bezier(.2,.7,.2,1) both}
+html.motion .pop:not(.booted) .pop-head{animation-delay:.45s}
+html.motion .pop:not(.booted) .pop-ban{animation-delay:.55s}
+html.motion .pop:not(.booted) .pop-list>:nth-child(1){animation-delay:.63s}
+html.motion .pop:not(.booted) .pop-list>:nth-child(2){animation-delay:.71s}
+html.motion .pop:not(.booted) .pop-list>:nth-child(3){animation-delay:.79s}
+html.motion .pop:not(.booted) .pop-list>:nth-child(4){animation-delay:.87s}
+html.motion .pop:not(.booted) .pop-sep{animation-delay:.95s}
+html.motion .pop:not(.booted) .pop-foot{animation-delay:1s}
+.pop-claude .pop-seg{--d0:1s}
+.pop-codex .pop-seg{--d0:1.12s}
+html.motion .pop:not(.booted) .pop-seg b.on{animation:seg-on .35s ease both;animation-delay:calc(var(--d0) + var(--k,0)*45ms)}
+html.motion .pop:not(.booted) .pop-donut{animation:sweep 1.4s cubic-bezier(.3,.7,.2,1) 1.2s both}
+html.motion .pop:not(.booted) .pop-spark i{transform-origin:50% 100%;animation:spark-up .5s cubic-bezier(.2,.7,.2,1) both;animation-delay:calc(1.3s + var(--i,0)*24ms)}
+html.motion .chip{animation:chip-in .7s cubic-bezier(.2,.7,.2,1) both}
+html.motion .mb-item{animation:mbar-in .8s cubic-bezier(.2,.7,.2,1) .3s both}
+html.motion .chip3{animation-delay:1.58s}
+html.motion .chip2{animation-delay:1.71s}
+html.motion .chip4{animation-delay:1.84s}
+/* refresh (the button, or the periodic one): a pulse runs along the lit
+   segments and the freshness line flashes */
+html.motion .pop.refresh .pop-seg b.on{animation:seg-pulse .6s ease;animation-delay:calc(var(--k,0)*35ms)}
+html.motion .pop.refresh :is(.pop-when,.qfresh){animation:when-flash 1.4s ease}
 @media (prefers-reduced-motion:reduce){
-  .float{animation:none}
+  .qx,.qdet,.qclip>*,.qrow,.pop-seg,.pop-hd .chev,.pop-list>.pop-card,.pop,.pop-beak,.pop-settings{transition:none}
+}
+/* glass glare that follows the pointer */
+.pop>.pop-glare{
+  position:absolute;inset:0;z-index:0;pointer-events:none;border-radius:inherit;opacity:0;transition:opacity .5s ease;
+  background:radial-gradient(240px circle at var(--gx,50%) var(--gy,0%),rgba(255,255,255,.08),transparent 62%);
+}
+.pop.glaring>.pop-glare{opacity:1}
+
+/* key numbers: odometer digits */
+.odo{display:inline-block;height:1.15em;overflow:hidden;vertical-align:top}
+.odo>span{display:block;transition:transform 2s cubic-bezier(.16,.84,.24,1)}
+.odo>span>span{display:block;height:1.15em}
+
+/* provider marquee: two rows drifting in opposite directions */
+.marquee{margin-top:30px;display:grid;gap:10px;position:relative;z-index:2}
+.mq-label{text-align:center;font-size:13px;color:var(--text-mute);margin-bottom:4px}
+.mq-row{
+  display:flex;overflow:hidden;
+  -webkit-mask-image:linear-gradient(90deg,transparent,#000 10%,#000 90%,transparent);
+  mask-image:linear-gradient(90deg,transparent,#000 10%,#000 90%,transparent);
+}
+.mq-track{display:flex;gap:10px;padding-right:10px;flex:none}
+.mq-item{
+  display:inline-flex;align-items:center;gap:8px;white-space:nowrap;
+  font-family:var(--mono);font-size:12px;font-weight:600;color:var(--text-dim);
+  background:color-mix(in srgb,var(--surface) 82%,transparent);
+  border:1px solid var(--border);border-radius:6px;padding:7px 13px 7px 11px;
+  transition:color .2s ease,border-color .2s ease;
+}
+.mq-item .brand-logo{width:16px;height:16px}
+.mq-item:hover{color:var(--text);border-color:var(--cyan-dim)}
+html.motion .mq-track{animation:mq 48s linear infinite;animation-play-state:paused}
+html.motion .mq-row.rev .mq-track{animation-duration:56s;animation-direction:reverse}
+html.motion .marquee.playing .mq-track{animation-play-state:running}
+html.motion .marquee.playing .mq-row:hover .mq-track{animation-play-state:paused}
+
+/* cards lit from where the pointer is: a soft wash plus a rim highlight */
+.lift{position:relative;isolation:isolate}
+.spot{
+  position:absolute;inset:0;z-index:-1;border-radius:inherit;pointer-events:none;opacity:0;transition:opacity .35s ease;
+  background:radial-gradient(440px circle at var(--mx,50%) var(--my,50%),rgba(163,151,224,.09),transparent 58%);
+}
+.spot::before{
+  content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;
+  background:radial-gradient(240px circle at var(--mx,50%) var(--my,50%),color-mix(in srgb,var(--cyan) 60%,transparent),transparent 70%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;
+  mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);mask-composite:exclude;
+}
+@media (hover:hover){.lift:hover>.spot{opacity:1}}
+
+/* scroll reveal: rise out of a blur */
+html.motion .reveal{opacity:0;transform:translateY(22px);filter:blur(6px);transition:opacity .75s cubic-bezier(.2,.7,.2,1),transform .75s cubic-bezier(.2,.7,.2,1),filter .75s ease}
+html.motion .reveal.in{opacity:1;transform:none;filter:none}
+/* section titles arrive word by word (character by character in Chinese) */
+html.motion .h-split .hw{display:inline-block;opacity:0;filter:blur(10px);transform:translateY(.32em)}
+html.motion .h-split.in .hw{
+  opacity:1;filter:none;transform:none;
+  transition:opacity .8s cubic-bezier(.2,.7,.2,1) var(--d,0ms),filter .8s ease var(--d,0ms),transform .8s cubic-bezier(.2,.7,.2,1) var(--d,0ms);
+}
+html.motion .eyebrow::after{transform:scaleX(0);transform-origin:0 50%;transition:transform .9s cubic-bezier(.2,.7,.2,1) .3s}
+html.motion .eyebrow.in::after{transform:none}
+
+/* privacy pipeline: light travels left to right, each node lights on arrival */
+html.motion .pipe-card.playing .pipe .arrow{
+  background:linear-gradient(90deg,var(--cyan-dim) 0 38%,#D6ECEF 50%,var(--cyan-dim) 62% 100%) 0 0/300% 100%;
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+  animation:flow 2.6s linear infinite;
+}
+html.motion .pipe-card.playing .pipe .arrow~.arrow{animation-delay:.9s}
+html.motion .pipe-card.playing .pipe .node{animation:node-hit 2.6s linear .3s infinite}
+html.motion .pipe-card.playing .pipe .node:nth-child(3){animation-delay:1.45s}
+html.motion .pipe-card.playing .pipe .node:nth-child(5){animation-delay:2.35s}
+
+/* AI feed: items land in order, pinned ones catch the light once */
+html.motion .feed-panel .feed-item{transition:opacity .6s cubic-bezier(.2,.7,.2,1),transform .6s cubic-bezier(.2,.7,.2,1)}
+html.motion .feed-panel:not(.seen) .feed-item{opacity:0;transform:translateX(-16px)}
+html.motion .feed-panel .feed-item:nth-child(2){transition-delay:.3s}
+html.motion .feed-panel .feed-item:nth-child(3){transition-delay:.45s}
+html.motion .feed-panel .feed-item:nth-child(4){transition-delay:.6s}
+.feed-item.pinned{position:relative;overflow:hidden}
+html.motion .feed-panel.seen .feed-item.pinned::after{
+  content:"";position:absolute;top:0;bottom:0;left:0;width:50%;pointer-events:none;transform:translateX(-110%);
+  background:linear-gradient(100deg,transparent,color-mix(in srgb,var(--cyan) 13%,transparent),transparent);
+  animation:pin-sweep 1.3s cubic-bezier(.4,0,.2,1) 1s;
+}
+html.motion .feed-panel.seen .feed-item.pinned:nth-child(3)::after{animation-delay:1.2s}
+html.motion .feed-head .live i{animation:pulse 2.4s ease-in-out infinite,live-ring 2s ease-out infinite}
+
+/* release bento: the token-mix and speed bars grow in once the card lands */
+html.motion .new-card .mix-bar i,html.motion .new-card .model .bar i{transform-origin:0 50%;transition:transform 1.1s cubic-bezier(.2,.7,.2,1) .35s}
+html.motion .new-card:not(.seen) .mix-bar i,html.motion .new-card:not(.seen) .model .bar i{transform:scaleX(0)}
+
+/* install steps: the connectors draw once the cards land */
+html.motion .step:not(:last-child)::after{transform:scaleX(0);transform-origin:0 50%;transition:transform .8s cubic-bezier(.2,.7,.2,1) .5s}
+html.motion .step.seen:not(:last-child)::after{transform:none}
+
+/* topbar: an ink line slides under the section you're reading */
+.nav-ink{
+  position:absolute;left:0;top:0;height:2px;width:0;border-radius:1px;pointer-events:none;opacity:0;
+  background:linear-gradient(90deg,var(--violet),var(--cyan));
+  transition:transform .45s cubic-bezier(.2,.7,.2,1),width .45s cubic-bezier(.2,.7,.2,1),opacity .3s ease;
+}
+nav .links a[aria-current]{color:var(--text)}
+@media (min-width:861px){nav .links{position:relative}}
+@media (max-width:860px){.nav-ink{display:none}}
+
+/* hero buttons: a slow sheen on the primary, a gentle magnetic pull */
+.btn{position:relative;overflow:hidden}
+html.motion .btn-primary::after{
+  content:"";position:absolute;top:-2px;bottom:-2px;left:-60%;width:40%;pointer-events:none;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.9),transparent);
+  transform:skewX(-20deg);animation:btn-shine 5.5s ease-in-out 2.2s infinite;
+}
+html.motion .cta-row .btn{transition:transform .15s ease,background .15s ease,border-color .15s ease,box-shadow .2s ease,translate .4s cubic-bezier(.2,.7,.2,1)}
+
+/* repo band: a beam runs around the border while it's on screen */
+.repo-band{position:relative;isolation:isolate}
+html.motion .repo-band::before{
+  content:"";position:absolute;inset:-1px;border-radius:13px;padding:1px;pointer-events:none;
+  background:conic-gradient(from var(--ang),transparent 0 64%,var(--violet) 80%,var(--cyan) 90%,transparent 97%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;
+  mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);mask-composite:exclude;
+  animation:beam 7s linear infinite;animation-play-state:paused;
+}
+html.motion .repo-band.playing::before{animation-play-state:running}
+
+/* brand lab: the robot head turns toward the pointer */
+.lab-stage{perspective:800px}
+html.motion .lab-stage img{transition:transform .25s ease,rotate .5s cubic-bezier(.2,.7,.2,1),translate .5s cubic-bezier(.2,.7,.2,1)}
+
+@media (prefers-reduced-motion:reduce){
+  .float,.chip-layer{animation:none}
   html{scroll-behavior:auto}
-  .btn,.stage{transition:none}
+  .btn,.stage,.nav-ink{transition:none}
 }
 </style>
 </head>
@@ -1079,12 +1487,12 @@ footer.site .disclaimer{
 
   <!-- ================= hero ================= -->
   <header class="hero" id="download">
-    <div>
+    <div class="hero-copy">
       <span class="badge" data-i18n="h-badge"><span class="dot"></span>Version 1.4 · Mac release + iPhone beta</span>
-      <h1 data-i18n="h-h1">Your AI quotas,<br><span class="accent">right in the menu bar</span>.</h1>
+      <h1 data-i18n="h-h1">Your AI quotas,<br><span class="accent"><span class="fw">right</span> <span class="fw">in the</span></span> <span class="nowrap"><span class="accent"><span class="fw">menu bar</span></span>.</span></h1>
       <p class="sub" data-i18n="h-sub">
         Remaining quota and reset countdowns for <strong>Claude Code, Codex, Cursor, Windsurf, Grok, GLM</strong>
-        and <strong>21+ services</strong> — plus where today's tokens went, how fast each model answered and what it would cost.
+        and <strong>27+ services</strong> — plus where today's tokens went, how fast each model answered and what it would cost.
         Provider credentials stay on your Mac. If you enable Apple-device sync, only an allowlisted AES-256-GCM encrypted quota snapshot moves through your own iCloud account.
       </p>
       <div class="cta-row">
@@ -1109,20 +1517,24 @@ footer.site .disclaimer{
     </div>
 
     <!-- ============ 3D stage · live popover, rendered in the browser ============ -->
-    <div class="stage-wrap" aria-hidden="true">
-      <div class="glow-field"><i class="g1"></i><i class="g2"></i><i class="g3"></i></div>
+    <div class="stage-wrap">
+      <div class="glow-field" aria-hidden="true"><i class="g1"></i><i class="g2"></i><i class="g3"></i></div>
       <div class="stage" id="stage">
         <div class="float">
 
-          <div class="pop">
+          <!-- the status item this popup hangs from (default monochrome style); clicking it opens and closes the popup, as in the menu bar -->
+          <div class="mb-anchor"><button class="mb-item" type="button" aria-expanded="true" aria-controls="demoPop" aria-label="TokenRemain menu bar item / TokenRemain 菜单栏项目"><img class="tmpl" src="assets/providers/claude-code.svg" alt=""><span data-i18n="pop-mb1">89%</span><span>·</span><img src="assets/providers/codex-glyph-mono.svg" alt=""><span data-i18n="pop-mb2">91%</span></button></div>
+          <svg class="pop-beak" viewBox="0 0 24 12" aria-hidden="true"><path class="f" d="M0 12C5.6 12 7.7 9.9 9.7 3.6 10.6 0.8 13.4 0.8 14.3 3.6 16.3 9.9 18.4 12 24 12Z"/><path class="s" d="M0 11.5C5.6 11.5 7.7 9.4 9.7 3.1 10.6.3 13.4.3 14.3 3.1 16.3 9.4 18.4 11.5 24 11.5"/></svg>
+
+          <div class="pop" id="demoPop" role="group" aria-label="Interactive demo of the TokenRemain popup, sample data / TokenRemain 弹窗交互演示（示例数据）">
             <div class="pop-head">
               <div>
                 <div class="pop-name">TokenRemain</div>
                 <div class="pop-when" data-i18n="pop-when">Updated just now</div>
               </div>
               <div class="pop-acts">
-                <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg>
-                <span class="rf"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 8a5.5 5.5 0 1 1-1.7-3.95"/><path d="M13.2 1.9v2.6h-2.6"/></svg></span>
+                <button class="gb ad" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="Add widget / 添加组件"><span><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M8 2.5v11M2.5 8h11"/></svg></span></button>
+                <button class="gb rf" type="button" aria-label="Refresh / 刷新"><span><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 8a5.5 5.5 0 1 1-1.7-3.95"/><path d="M13.2 1.9v2.6h-2.6"/></svg></span></button>
               </div>
             </div>
 
@@ -1134,40 +1546,29 @@ footer.site .disclaimer{
               </div>
             </div>
 
-            <div class="pop-card pop-claude">
-              <div class="pop-row">
-                <span class="pop-pn"><img src="assets/providers/claude-code.svg" alt="">Claude<i>&rsaquo;</i></span>
-                <svg class="pop-pin" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M5 2h6M6.5 2v4.2L4 9.3h8L9.5 6.2V2M8 9.3V14"/></svg>
-              </div>
-              <div class="pop-row pop-meta">
-                <span class="w" data-i18n="pop-cwin">5 hr window</span>
-                <span class="r" data-i18n="pop-crem">89% remaining</span>
-              </div>
-              <div class="pop-seg"></div>
+            <div class="pop-list">
+            <div class="pop-card pop-q pop-claude" data-w="claude">
+              <div class="pop-row pop-hd"><button class="pop-pn pop-toggle" type="button" aria-expanded="false"><img src="assets/providers/claude-code.svg" alt=""><span data-title>Claude</span><span class="chev"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 1.8 6.7 5 3.5 8.2"/></svg></span></button><button class="pop-pin" type="button" aria-pressed="false" aria-label="Keep expanded / 保持展开"><svg class="off" width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2h6M6.5 2v4.2L4 9.3h8L9.5 6.2V2M8 9.3V14"/></svg><svg class="on" width="11" height="11" viewBox="0 0 16 16" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2h6M6.5 2v4.2L4 9.3h8L9.5 6.2V2Z"/><path d="M8 9.3V14" fill="none"/></svg></button></div>
+              <div class="qrow"><div class="pop-row pop-meta"><span class="w" data-i18n="pop-cwin">5 hr window</span><span class="r"><svg class="rw" data-show="0" data-show-zh="0" width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.6 15.2 14H.8L8 1.6Zm0 3.7a.8.8 0 0 0-.8.85l.25 3.3a.55.55 0 0 0 1.1 0l.25-3.3A.8.8 0 0 0 8 5.3Zm0 5.4a.85.85 0 1 0 0 1.7.85.85 0 0 0 0-1.7Z"/></svg><span data-i18n="pop-crem">89% remaining</span></span></div><div class="pop-seg" data-n="12" data-n-zh="14"><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b></div><div class="qdet"><div class="qclip"><div class="qd"><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 8a5.5 5.5 0 1 1-1.7-3.95"/><path d="M13.2 1.9v2.6h-2.6"/></svg><span data-i18n="pop-c1r">Resets in 2 hr 14 min</span><span class="sp"><span>opus-5-5</span><span>·</span><b>≈100 tok/s</b></span></div><div class="qd pace" data-tone="ok" data-tone-zh="ok"><svg class="ok" width="9" height="9" viewBox="0 0 16 16" fill="currentColor"><path d="M8 .5a7.5 7.5 0 1 0 0 15A7.5 7.5 0 0 0 8 .5Zm3.6 5.4-4.3 4.8a.9.9 0 0 1-1.3 0L4.4 9a.9.9 0 1 1 1.3-1.2l1 1 3.6-4.1a.9.9 0 0 1 1.3 1.2Z"/></svg><svg class="bad" width="9" height="9" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.6 15.2 14H.8L8 1.6Zm0 3.7a.8.8 0 0 0-.8.85l.25 3.3a.55.55 0 0 0 1.1 0l.25-3.3A.8.8 0 0 0 8 5.3Zm0 5.4a.85.85 0 1 0 0 1.7.85.85 0 0 0 0-1.7Z"/></svg><span class="lbl" data-i18n="pop-c1p">44.3% reserve</span><span class="o" data-i18n="pop-lasts">Lasts until reset</span></div></div></div></div>
+              <div class="qx"><div class="qclip"><div class="qrow sep"><div class="pop-row pop-meta"><span class="w" data-i18n="pop-c2w">7 d window</span><span class="r"><svg class="rw" data-show="1" data-show-zh="0" width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.6 15.2 14H.8L8 1.6Zm0 3.7a.8.8 0 0 0-.8.85l.25 3.3a.55.55 0 0 0 1.1 0l.25-3.3A.8.8 0 0 0 8 5.3Zm0 5.4a.85.85 0 1 0 0 1.7.85.85 0 0 0 0-1.7Z"/></svg><span data-i18n="pop-c2rem">86% remaining</span></span></div><div class="pop-seg" data-n="12" data-n-zh="11"><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b></div><div class="qdet"><div class="qclip"><div class="qd"><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 8a5.5 5.5 0 1 1-1.7-3.95"/><path d="M13.2 1.9v2.6h-2.6"/></svg><span data-i18n="pop-c2r">Resets Mon 09:00</span></div><div class="qd pace" data-tone="bad" data-tone-zh="ok"><svg class="ok" width="9" height="9" viewBox="0 0 16 16" fill="currentColor"><path d="M8 .5a7.5 7.5 0 1 0 0 15A7.5 7.5 0 0 0 8 .5Zm3.6 5.4-4.3 4.8a.9.9 0 0 1-1.3 0L4.4 9a.9.9 0 1 1 1.3-1.2l1 1 3.6-4.1a.9.9 0 0 1 1.3 1.2Z"/></svg><svg class="bad" width="9" height="9" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.6 15.2 14H.8L8 1.6Zm0 3.7a.8.8 0 0 0-.8.85l.25 3.3a.55.55 0 0 0 1.1 0l.25-3.3A.8.8 0 0 0 8 5.3Zm0 5.4a.85.85 0 1 0 0 1.7.85.85 0 0 0 0-1.7Z"/></svg><span class="lbl" data-i18n="pop-c2p">4.7% ahead</span><span class="o" data-i18n="pop-c2o">Projected to run out in 4 d 0 hr</span></div></div></div></div></div></div>
+              <div class="qrow sep"><div class="pop-row pop-meta"><span class="w" data-i18n="pop-c3w">Fable · 7 d window</span><span class="r"><svg class="rw" data-show="0" data-show-zh="0" width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.6 15.2 14H.8L8 1.6Zm0 3.7a.8.8 0 0 0-.8.85l.25 3.3a.55.55 0 0 0 1.1 0l.25-3.3A.8.8 0 0 0 8 5.3Zm0 5.4a.85.85 0 1 0 0 1.7.85.85 0 0 0 0-1.7Z"/></svg><span data-i18n="pop-c3rem">92% remaining</span></span></div><div class="pop-seg" data-n="13" data-n-zh="13"><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b></div><div class="qdet"><div class="qclip"><div class="qd"><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 8a5.5 5.5 0 1 1-1.7-3.95"/><path d="M13.2 1.9v2.6h-2.6"/></svg><span data-i18n="pop-c2r">Resets Mon 09:00</span></div><div class="qd pace" data-tone="ok" data-tone-zh="ok"><svg class="ok" width="9" height="9" viewBox="0 0 16 16" fill="currentColor"><path d="M8 .5a7.5 7.5 0 1 0 0 15A7.5 7.5 0 0 0 8 .5Zm3.6 5.4-4.3 4.8a.9.9 0 0 1-1.3 0L4.4 9a.9.9 0 1 1 1.3-1.2l1 1 3.6-4.1a.9.9 0 0 1 1.3 1.2Z"/></svg><svg class="bad" width="9" height="9" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.6 15.2 14H.8L8 1.6Zm0 3.7a.8.8 0 0 0-.8.85l.25 3.3a.55.55 0 0 0 1.1 0l.25-3.3A.8.8 0 0 0 8 5.3Zm0 5.4a.85.85 0 1 0 0 1.7.85.85 0 0 0 0-1.7Z"/></svg><span class="lbl" data-i18n="pop-c3p">1.3% reserve</span><span class="o" data-i18n="pop-lasts">Lasts until reset</span></div></div></div></div>
+              <div class="qx"><div class="qclip"><div class="qfresh"><svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M8 .5a7.5 7.5 0 1 0 0 15A7.5 7.5 0 0 0 8 .5Zm3.6 5.4-4.3 4.8a.9.9 0 0 1-1.3 0L4.4 9a.9.9 0 1 1 1.3-1.2l1 1 3.6-4.1a.9.9 0 0 1 1.3 1.2Z"/></svg><span data-i18n="pop-when">Updated just now</span></div></div></div>
             </div>
-
-            <div class="pop-card pop-codex">
-              <div class="pop-row">
-                <span class="pop-pn"><img src="assets/providers/codex.svg" alt="">Codex<i>&rsaquo;</i></span>
-                <svg class="pop-pin" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M5 2h6M6.5 2v4.2L4 9.3h8L9.5 6.2V2M8 9.3V14"/></svg>
-              </div>
-              <div class="pop-row pop-meta">
-                <span class="w" data-i18n="pop-xwin">7 d window</span>
-                <span class="r"><svg class="pop-warn" width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.6 15.2 14H.8L8 1.6Zm0 3.7a.8.8 0 0 0-.8.85l.25 3.3a.55.55 0 0 0 1.1 0l.25-3.3A.8.8 0 0 0 8 5.3Zm0 5.4a.85.85 0 1 0 0 1.7.85.85 0 0 0 0-1.7Z"/></svg><span data-i18n="pop-xrem">91% remaining</span></span>
-              </div>
-              <div class="pop-seg"></div>
+            <div class="pop-card pop-q pop-codex" data-w="codex">
+              <div class="pop-row pop-hd"><button class="pop-pn pop-toggle" type="button" aria-expanded="false"><img src="assets/providers/codex-glyph.svg" alt=""><span data-title>Codex</span><span class="chev"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 1.8 6.7 5 3.5 8.2"/></svg></span></button><button class="pop-pin" type="button" aria-pressed="false" aria-label="Keep expanded / 保持展开"><svg class="off" width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2h6M6.5 2v4.2L4 9.3h8L9.5 6.2V2M8 9.3V14"/></svg><svg class="on" width="11" height="11" viewBox="0 0 16 16" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2h6M6.5 2v4.2L4 9.3h8L9.5 6.2V2Z"/><path d="M8 9.3V14" fill="none"/></svg></button></div>
+              <div class="qrow"><div class="pop-row pop-meta"><span class="w" data-i18n="pop-xwin">7 d window</span><span class="r"><svg class="rw" data-show="0" data-show-zh="1" width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.6 15.2 14H.8L8 1.6Zm0 3.7a.8.8 0 0 0-.8.85l.25 3.3a.55.55 0 0 0 1.1 0l.25-3.3A.8.8 0 0 0 8 5.3Zm0 5.4a.85.85 0 1 0 0 1.7.85.85 0 0 0 0-1.7Z"/></svg><span data-i18n="pop-xrem">91% remaining</span></span></div><div class="pop-seg" data-n="13" data-n-zh="4"><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b></div><div class="qdet"><div class="qclip"><div class="qd"><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 8a5.5 5.5 0 1 1-1.7-3.95"/><path d="M13.2 1.9v2.6h-2.6"/></svg><span data-i18n="pop-x1r">Resets Thu 20:00</span><span class="sp"><span>gpt-6-astra</span><span>·</span><b>≈27.8 tok/s</b></span></div><div class="qd pace" data-tone="ok" data-tone-zh="bad"><svg class="ok" width="9" height="9" viewBox="0 0 16 16" fill="currentColor"><path d="M8 .5a7.5 7.5 0 1 0 0 15A7.5 7.5 0 0 0 8 .5Zm3.6 5.4-4.3 4.8a.9.9 0 0 1-1.3 0L4.4 9a.9.9 0 1 1 1.3-1.2l1 1 3.6-4.1a.9.9 0 0 1 1.3 1.2Z"/></svg><svg class="bad" width="9" height="9" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.6 15.2 14H.8L8 1.6Zm0 3.7a.8.8 0 0 0-.8.85l.25 3.3a.55.55 0 0 0 1.1 0l.25-3.3A.8.8 0 0 0 8 5.3Zm0 5.4a.85.85 0 1 0 0 1.7.85.85 0 0 0 0-1.7Z"/></svg><span class="lbl" data-i18n="pop-x1p">51.0% reserve</span><span class="o" data-i18n="pop-x1o">Lasts until reset</span></div></div></div></div>
+              <div class="qx"><div class="qclip"><div class="qfresh"><svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M8 .5a7.5 7.5 0 1 0 0 15A7.5 7.5 0 0 0 8 .5Zm3.6 5.4-4.3 4.8a.9.9 0 0 1-1.3 0L4.4 9a.9.9 0 1 1 1.3-1.2l1 1 3.6-4.1a.9.9 0 0 1 1.3 1.2Z"/></svg><span data-i18n="pop-when">Updated just now</span></div></div></div>
             </div>
-
-            <div class="pop-card">
+            <div class="pop-card pop-usage" data-w="usage">
               <div class="pop-row">
-                <span class="pop-utitle" data-i18n="pop-usage">Today's Local Usage</span>
+                <span class="pop-utitle" data-i18n="pop-usage" data-title>Today's Local Usage</span>
                 <span class="pop-utotal" data-i18n="pop-total">$52.15</span>
               </div>
               <div class="pop-split">
-                <div class="pop-donut"></div>
+                <div class="pop-ring"><div class="pop-donut"></div><div class="rc"><b></b><i></i></div></div>
                 <div class="pop-legs">
-                  <div class="pop-lg"><i class="n1"></i><span class="nm" data-i18n="pop-l1n">Claude</span><span class="tk" data-i18n="pop-l1t">77.25M</span><span class="pc" data-i18n="pop-l1p">51.5%</span></div>
-                  <div class="pop-lg"><i class="n2"></i><span class="nm" data-i18n="pop-l2n">Codex</span><span class="tk" data-i18n="pop-l2t">72.78M</span><span class="pc" data-i18n="pop-l2p">48.5%</span></div>
+                  <div class="pop-lg" data-p="c" data-p-zh="x"><i class="n1"></i><span class="nm" data-i18n="pop-l1n">Claude</span><span class="tk" data-i18n="pop-l1t">77.25M</span><span class="pc" data-i18n="pop-l1p">51.5%</span></div>
+                  <div class="pop-lg" data-p="x" data-p-zh="c"><i class="n2"></i><span class="nm" data-i18n="pop-l2n">Codex</span><span class="tk" data-i18n="pop-l2t">72.78M</span><span class="pc" data-i18n="pop-l2p">48.5%</span></div>
                 </div>
               </div>
               <div class="pop-rule"></div>
@@ -1179,46 +1580,45 @@ footer.site .disclaimer{
                 <span class="pop-spark"><i style="height:2px"></i><i style="height:2px"></i><i style="height:3px"></i><i style="height:2px"></i><i style="height:2px"></i><i style="height:3px"></i><i style="height:2px"></i><i style="height:2px"></i><i style="height:2px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:4px"></i><i style="height:3px"></i><i style="height:3px"></i><i style="height:7px"></i><i style="height:6px"></i><i style="height:10px"></i><i style="height:14px"></i><i style="height:20px"></i><i style="height:16px"></i><i style="height:12px"></i><i style="height:8px"></i><i style="height:5px"></i><i style="height:7px"></i><i style="height:5px"></i><i style="height:4px"></i><i style="height:6px"></i><i style="height:2px"></i></span>
               </div>
             </div>
-
-            <div class="pop-card">
-              <div class="pop-row">
-                <span class="pop-pn"><svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><rect x="1.6" y="3" width="10.8" height="10" rx="1.4"/><path d="M12.4 5.6h2v6.1a1.3 1.3 0 0 1-2.6 0"/><path d="M4 5.6h2.2v2.2H4zM8 5.6h2.4M8 7.8h2.4M4 10.2h6.4"/></svg><span data-i18n="pop-feed">AI Feed</span><i>&rsaquo;</i></span>
-                <span class="pop-fmeta">
-                  <span class="pop-count" data-i18n="pop-fcount">2 items</span>
-                  <svg class="pop-pin" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M5 2h6M6.5 2v4.2L4 9.3h8L9.5 6.2V2M8 9.3V14"/></svg>
-                </span>
+            <div class="pop-card pop-feedc" data-w="feed">
+              <div class="pop-row pop-hd">
+                <button class="pop-pn pop-toggle" type="button" aria-expanded="false"><svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><rect x="1.6" y="3" width="10.8" height="10" rx="1.4"/><path d="M12.4 5.6h2v6.1a1.3 1.3 0 0 1-2.6 0"/><path d="M4 5.6h2.2v2.2H4zM8 5.6h2.4M8 7.8h2.4M4 10.2h6.4"/></svg><span data-i18n="pop-feed" data-title>AI Feed</span><span class="chev"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 1.8 6.7 5 3.5 8.2"/></svg></span></button>
+                <span class="pop-fmeta"><span class="pop-count" data-i18n="pop-fcount">2 items</span><button class="pop-pin" type="button" aria-pressed="false" aria-label="Keep expanded / 保持展开"><svg class="off" width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2h6M6.5 2v4.2L4 9.3h8L9.5 6.2V2M8 9.3V14"/></svg><svg class="on" width="11" height="11" viewBox="0 0 16 16" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2h6M6.5 2v4.2L4 9.3h8L9.5 6.2V2Z"/><path d="M8 9.3V14" fill="none"/></svg></button></span>
               </div>
-              <div class="pop-row pop-fsub">
-                <span data-i18n="pop-fsub">Important updates</span><span data-i18n="pop-fall">View all</span>
-              </div>
-              <div class="pop-fitem f1">
-                <i></i>
-                <div class="b">
-                  <div class="h"><span class="s" data-i18n="pop-f1s">Tibo</span><span class="t" data-i18n="pop-f1t">12 hr, 51 min</span></div>
-                  <div class="x" data-i18n="pop-f1x">We have reset usage limits fo…</div>
-                </div>
-                <svg class="a" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 11.5 11.5 4.5M5.6 4.5h5.9v5.9"/></svg>
-              </div>
-              <div class="pop-fitem f2">
-                <i></i>
-                <div class="b">
-                  <div class="h"><span class="s" data-i18n="pop-f2s">Claude</span><span class="t" data-i18n="pop-f2t">1 day, 15 hr</span></div>
-                  <div class="x" data-i18n="pop-f2x">Introducing Claude Opus 5. It…</div>
-                </div>
-                <svg class="a" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 11.5 11.5 4.5M5.6 4.5h5.9v5.9"/></svg>
-              </div>
+              <div class="pop-row pop-fsub"><span><span class="fs-s" data-i18n="pop-fsub">Important updates</span><span class="fs-f" data-i18n="pop-fsub2">Full top stories</span></span><span class="va" data-i18n="pop-fall">View all</span></div>
+              <div class="pop-fitem f1"><i></i><div class="b"><div class="h"><span class="s" data-i18n="pop-f1s">Tibo</span><span class="t" data-i18n="pop-f1t">12 hr, 51 min</span></div><div class="x"><span class="xs" data-i18n="pop-f1x">We have reset usage limits fo…</span><span class="xf" data-i18n="pop-f1xf">We have reset usage limits for everyone.</span></div></div><svg class="a" width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 11.5 11.5 4.5M5.6 4.5h5.9v5.9"/></svg></div>
+              <div class="pop-fitem f2"><i></i><div class="b"><div class="h"><span class="s" data-i18n="pop-f2s">Claude</span><span class="t" data-i18n="pop-f2t">1 day, 15 hr</span></div><div class="x"><span class="xs" data-i18n="pop-f2x">Introducing Claude Opus 5. It…</span><span class="xf" data-i18n="pop-f2xf">Introducing Claude Opus 5. It's available today.</span></div></div><svg class="a" width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 11.5 11.5 4.5M5.6 4.5h5.9v5.9"/></svg></div>
+            </div>
             </div>
 
+            <div class="pop-sep"></div>
             <div class="pop-foot">
-              <span class="o" data-i18n="pop-open">Open Dashboard</span>
-              <span class="q" data-i18n="pop-quit">Settings · Quit</span>
+              <button class="pop-cmd o" type="button" data-act="dash"><span data-i18n="pop-open">Open Dashboard</span></button>
+              <button class="pop-cmd" type="button" data-act="settings" aria-expanded="false"><span data-i18n="pop-set">Settings</span></button>
+              <button class="pop-cmd" type="button" data-act="quit"><span data-i18n="pop-quit">Quit</span></button>
             </div>
-          </div>
 
-          <span class="chip chip1 mb"><img class="brand-logo mono" src="assets/providers/claude-code.svg" alt=""><span class="v" data-i18n="pop-mb1">89%</span><span class="sep">·</span><img class="brand-logo" src="assets/providers/codex.svg" alt=""><span class="v" data-i18n="pop-mb2">91%</span></span>
-          <span class="chip chip2"><img class="brand-logo mono" src="assets/providers/grok.svg" alt=""><span data-i18n="chip-grok">Grok weekly</span> <span class="v">58%</span></span>
-          <span class="chip chip3"><img class="brand-logo mono" src="assets/providers/zai.svg" alt="">GLM <span class="v">77%</span></span>
-          <span class="chip chip4"><img class="brand-logo" src="assets/providers/copilot.svg" alt="">Copilot <span class="v">91%</span></span>
+            <!-- the popup's own settings panel: glass style and opacity really restyle this demo -->
+            <div class="pop-settings" role="dialog" aria-label="Popup appearance / 弹窗外观">
+              <div class="ps-head"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="2.2"/><path d="M8 1.5v1.8M8 12.7v1.8M14.5 8h-1.8M3.3 8H1.5M12.6 3.4l-1.3 1.3M4.7 11.3l-1.3 1.3M12.6 12.6l-1.3-1.3M4.7 4.7 3.4 3.4"/></svg><b data-i18n="ps-title">Popup appearance</b><button class="ps-x" type="button" aria-label="Close / 关闭"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M2 2l6 6M8 2 2 8"/></svg></button></div>
+              <span class="ps-lbl" data-i18n="ps-glass">Glass style</span>
+              <div class="ps-seg"><button type="button" data-glass="frosted" aria-pressed="true"><span data-i18n="ps-frosted">Frosted glass</span></button><button type="button" data-glass="clear" aria-pressed="false"><span data-i18n="ps-clear">Clear glass</span></button></div>
+              <div class="ps-op"><span class="ps-lbl" data-i18n="ps-opacity">Popup opacity</span><b class="ps-val">62%</b></div>
+              <input class="ps-range" type="range" min="0" max="100" value="62" aria-label="Popup opacity / 弹窗不透明度">
+              <div class="ps-ends"><span data-i18n="ps-more-t">More transparent</span><span data-i18n="ps-more-o">Darker</span></div>
+              <div class="ps-row"><span data-i18n="ps-login">Launch at login</span><button class="ps-tg" type="button" role="switch" aria-checked="true" aria-label="Launch at login / 登录时自动启动"><i></i></button></div>
+              <div class="ps-btns"><button type="button" data-act="dash"><span data-i18n="ps-dash">Open Dashboard Settings</span></button><button type="button" data-act="restart"><span data-i18n="ps-restart">Restart TokenRemain</span></button></div>
+            </div>
+            <div class="pm" role="menu"></div>
+            <i class="pop-glare"></i>
+          </div>
+          <p class="pop-hint" data-i18n="pop-hint">Try it: open a card, pin it, right-click, or long-press and drag</p>
+
+        </div>
+        <div class="chip-layer" aria-hidden="true">
+          <span class="chip chip2"><img class="brand-logo mono" src="assets/providers/grok.svg" alt=""><span class="v">58%</span></span>
+          <span class="chip chip3"><img class="brand-logo mono" src="assets/providers/zai.svg" alt=""><span class="v">77%</span></span>
+          <span class="chip chip4"><img class="brand-logo mono" src="assets/providers/copilot.svg" alt=""><span class="v">91%</span></span>
         </div>
       </div>
     </div>
@@ -1226,10 +1626,17 @@ footer.site .disclaimer{
 
   <!-- ================= key numbers ================= -->
   <div class="stats" aria-label="TokenRemain at a glance / TokenRemain 速览">
-    <div class="stat"><b>21<em>+</em></b><span data-i18n="st-a">AI coding tools and services with quota windows</span></div>
+    <div class="stat"><b>27<em>+</em></b><span data-i18n="st-a">AI coding tools and services with quota windows</span></div>
     <div class="stat"><b>15<em>+</em></b><span data-i18n="st-b">local coding agents counted offline by ccusage</span></div>
     <div class="stat"><b>13</b><span data-i18n="st-c">display currencies for API list-price estimates</span></div>
     <div class="stat"><b>0</b><span data-i18n="st-d">credentials refreshed, copied or uploaded</span></div>
+  </div>
+
+  <!-- ================= provider marquee (decorative; the full list is in #providers) ================= -->
+  <div class="marquee" id="marquee" aria-hidden="true">
+    <p class="mq-label" data-i18n="mq-label">Works with the AI tools you already use</p>
+    <div class="mq-row"><div class="mq-track"></div></div>
+    <div class="mq-row rev"><div class="mq-track"></div></div>
   </div>
 
   <!-- ================= 1.4 release ================= -->
@@ -1252,9 +1659,9 @@ footer.site .disclaimer{
             <span style="--c:#5A6475"><span data-i18n="n1-cr">Cache read</span> <b>96.1%</b></span>
           </div>
           <div class="mix-rows">
-            <div class="mix-row"><span class="nm"><i style="background:var(--claude-logo)"></i>opus-5-5</span><span class="mix-bar"><i style="width:.5%;min-width:3px;background:var(--cyan)"></i><i style="width:2.9%;min-width:3px;background:var(--warning)"></i><i style="flex:1;background:#5A6475"></i></span><b>52.3M</b></div>
-            <div class="mix-row"><span class="nm"><i style="background:#6E86D6"></i>gpt-6-astra</span><span class="mix-bar"><i style="width:2.3%;min-width:3px;background:var(--violet)"></i><i style="width:.4%;min-width:3px;background:var(--cyan)"></i><i style="flex:1;background:#5A6475"></i></span><b>91.5M</b></div>
-            <div class="mix-row"><span class="nm"><i style="background:#6E86D6"></i>gpt-5.6-luna</span><span class="mix-bar"><i style="width:8.8%;min-width:3px;background:var(--violet)"></i><i style="width:.5%;min-width:3px;background:var(--cyan)"></i><i style="flex:1;background:#5A6475"></i></span><b>1.5M</b></div>
+            <div class="mix-row"><span class="nm"><i style="background:#BF8471"></i>opus-5-5</span><span class="mix-bar"><i style="width:.5%;min-width:3px;background:var(--cyan)"></i><i style="width:2.9%;min-width:3px;background:var(--warning)"></i><i style="flex:1;background:#5A6475"></i></span><b>52.3M</b></div>
+            <div class="mix-row"><span class="nm"><i style="background:#6687C5"></i>gpt-6-astra</span><span class="mix-bar"><i style="width:2.3%;min-width:3px;background:var(--violet)"></i><i style="width:.4%;min-width:3px;background:var(--cyan)"></i><i style="flex:1;background:#5A6475"></i></span><b>91.5M</b></div>
+            <div class="mix-row"><span class="nm"><i style="background:#6687C5"></i>gpt-5.6-luna</span><span class="mix-bar"><i style="width:8.8%;min-width:3px;background:var(--violet)"></i><i style="width:.5%;min-width:3px;background:var(--cyan)"></i><i style="flex:1;background:#5A6475"></i></span><b>1.5M</b></div>
           </div>
         </div>
       </div>
@@ -1263,9 +1670,9 @@ footer.site .disclaimer{
         <h3 data-i18n="n2t">Output speed, measured locally</h3>
         <p data-i18n="n2d">End-to-end tokens per second for each model, estimated from Claude Code and Codex session timestamps. Only appended log bytes are read, with a time and size budget.</p>
         <div class="models" aria-hidden="true">
-          <div class="model"><span class="nm">opus-5-5</span><span class="tps">≈100 tok/s</span><span class="tk">52.3M</span><span class="bar"><i style="width:100%;background:var(--claude-logo)"></i></span></div>
-          <div class="model"><span class="nm">gpt-6-astra</span><span class="tps">≈27.8 tok/s</span><span class="tk">91.5M</span><span class="bar"><i style="width:60.6%;background:#6E86D6"></i></span></div>
-          <div class="model"><span class="nm">gpt-5.6-luna</span><span class="tps">≈76.3 tok/s</span><span class="tk">1.5M</span><span class="bar"><i style="width:4%;background:#6E86D6"></i></span></div>
+          <div class="model"><span class="nm">opus-5-5</span><span class="tps">≈100 tok/s</span><span class="tk">52.3M</span><span class="bar"><i style="width:100%;background:#BF8471"></i></span></div>
+          <div class="model"><span class="nm">gpt-6-astra</span><span class="tps">≈27.8 tok/s</span><span class="tk">91.5M</span><span class="bar"><i style="width:60.6%;background:#6687C5"></i></span></div>
+          <div class="model"><span class="nm">gpt-5.6-luna</span><span class="tps">≈76.3 tok/s</span><span class="tk">1.5M</span><span class="bar"><i style="width:4%;background:#6687C5"></i></span></div>
         </div>
       </div>
       <div class="new-card lift">
@@ -1275,7 +1682,7 @@ footer.site .disclaimer{
         <div class="acct" aria-hidden="true">
           <div><img src="assets/providers/claude-code.svg" alt="">Claude · <span data-i18n="n3-a">Work</span><span class="tg"></span></div>
           <div><img src="assets/providers/claude-code.svg" alt="">Claude · <span data-i18n="n3-b">Personal</span><span class="tg"></span></div>
-          <div><img src="assets/providers/codex.svg" alt=""><span class="dim">Codex · <span data-i18n="n3-c">Side project</span></span><span class="tg off"></span></div>
+          <div><img src="assets/providers/codex-glyph.svg" alt=""><span class="dim">Codex · <span data-i18n="n3-c">Side project</span></span><span class="tg off"></span></div>
         </div>
       </div>
       <div class="new-card lift">
@@ -1409,7 +1816,7 @@ footer.site .disclaimer{
       </div>
       <div class="prov featp lift">
         <div class="pn">
-          <img class="brand-logo" src="assets/providers/codex.svg" alt="">
+          <img class="brand-logo" src="assets/providers/codex-glyph.svg" alt="">
           Codex<span class="mode">AUTO</span>
         </div>
         <span class="minibar" data-fill="6" data-color="#5C7FD8"></span>
@@ -1417,21 +1824,26 @@ footer.site .disclaimer{
       </div>
       <div class="prov lift"><div class="pn"><img class="brand-logo mono" src="assets/providers/cursor.svg" alt="">Cursor<span class="mode">AUTO</span></div><p data-i18n="pv-cursor-d">Monthly billing-cycle quota and reset countdown. Read-only queries of <code>state.vscdb</code>.</p></div>
       <div class="prov lift"><div class="pn"><img class="brand-logo mono" src="assets/providers/grok.svg" alt="">Grok<span class="mode">AUTO</span></div><p data-i18n="pv-grok-d">Weekly pool remaining. Reads the Grok CLI's existing credentials.</p></div>
+      <div class="prov lift"><div class="pn"><img class="brand-logo" src="assets/providers/grok-bot.png" alt="">Grok Bot<span class="mode">AUTO</span></div><p data-i18n="pv-grokbot-d">Weekly allowance, read through your local Cursor sign-in — use the same Cursor account as Grok Bot.</p></div>
+      <div class="prov lift"><div class="pn"><img class="brand-logo" src="assets/providers/copilot.svg" alt="">Copilot<span class="mode">AUTO</span></div><p data-i18n="pv-copilot-d">Monthly credits. Reads your local GitHub sign-in.</p></div>
+      <div class="prov lift"><div class="pn"><img class="brand-logo" src="assets/providers/windsurf.png" alt="">Windsurf<span class="mode">AUTO</span></div><p data-i18n="pv-windsurf-d">Daily / weekly quotas from Windsurf's read-only local login state.</p></div>
+      <div class="prov lift"><div class="pn"><img class="brand-logo" src="assets/providers/devin.svg" alt="">Devin<span class="mode">AUTO</span></div><p data-i18n="pv-devin-d">Daily / weekly quotas from the SeatManagement API. Reads your local Devin credentials.</p></div>
+      <div class="prov lift"><div class="pn"><img class="brand-logo" src="assets/providers/antigravity.svg" alt="">Antigravity<span class="mode">AUTO</span></div><p data-i18n="pv-ag-d">Quota pools, plus optional Claude / third-party pools. Reads the local sign-in state.</p></div>
+      <div class="prov lift"><div class="pn"><img class="brand-logo mono" src="assets/providers/opencode.svg" alt="">OpenCode<span class="mode">AUTO</span></div><p data-i18n="pv-oc-d">Go plan usage stays local; configured third-party providers keep the OpenCode card while naming the API quota source.</p></div>
+      <div class="prov lift"><div class="pn"><img class="brand-logo" src="assets/providers/amp.svg" alt="">Amp<span class="mode">AUTO</span></div><p data-i18n="pv-amp-d">Amp Free, paid balance and credits — the same summary as <code>amp usage</code>. Uses the Amp CLI's key read-only, or a pasted Cookie.</p></div>
       <div class="prov lift"><div class="pn"><img class="brand-logo" src="assets/providers/deepseek.svg" alt="">DeepSeek<span class="mode key">API KEY</span></div><p data-i18n="pv-ds-d">Pay-as-you-go account balance. The key lives only in your Keychain.</p></div>
       <div class="prov lift"><div class="pn"><img class="brand-logo" src="assets/providers/kimi.svg" alt="">Kimi<span class="mode key">API KEY</span></div><p data-i18n="pv-kimi-d">Coding session / weekly windows, via API key or kimi-auth. Stored only in your Keychain.</p></div>
       <div class="prov lift"><div class="pn"><img class="brand-logo mono" src="assets/providers/zai.svg" alt="">Z.ai GLM<span class="mode key">API KEY</span></div><p data-i18n="pv-zai-d">Coding Plan session / weekly windows, on the Global or China endpoint you choose. The key lives only in your Keychain.</p></div>
       <div class="prov lift"><div class="pn"><img class="brand-logo mono" src="assets/providers/zai.svg" alt="">GLM Team<span class="mode key">API KEY</span></div><p data-i18n="pv-zt-d">China-region Team Plan quota pools. The JSON config lives only in your Keychain.</p></div>
-      <div class="prov lift"><div class="pn"><img class="brand-logo" src="assets/providers/copilot.svg" alt="">Copilot<span class="mode">AUTO</span></div><p data-i18n="pv-copilot-d">Monthly credits. Reads your local GitHub sign-in.</p></div>
-      <div class="prov lift"><div class="pn"><img class="brand-logo" src="assets/providers/windsurf.png" alt="">Windsurf<span class="mode">AUTO</span></div><p data-i18n="pv-windsurf-d">Daily / weekly quotas from Windsurf's read-only local login state.</p></div>
       <div class="prov lift"><div class="pn"><img class="brand-logo" src="assets/providers/openrouter.svg" alt="">OpenRouter<span class="mode key">API KEY</span></div><p data-i18n="pv-or-d">Prepaid credit balance, official spend and per-key limits.</p></div>
-      <div class="prov lift"><div class="pn"><img class="brand-logo" src="assets/providers/antigravity.svg" alt="">Antigravity<span class="mode">AUTO</span></div><p data-i18n="pv-ag-d">Quota pools, plus optional Claude / third-party pools. Reads the local sign-in state.</p></div>
-      <div class="prov lift"><div class="pn"><img class="brand-logo mono" src="assets/providers/opencode.svg" alt="">OpenCode<span class="mode">AUTO</span></div><p data-i18n="pv-oc-d">Go plan usage stays local; configured third-party providers keep the OpenCode card while naming the API quota source.</p></div>
-      <div class="prov lift"><div class="pn"><svg class="brand-logo mono" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="5" cy="12" r="2.2"/><circle cx="19" cy="5" r="2.2"/><circle cx="19" cy="19" r="2.2"/><path d="M7.1 10.9 16.9 6M7.1 13.1l9.8 4.9"/></svg><span data-i18n="pv-3p-n">Third-party API</span><span class="mode key">API KEY</span></div><p data-i18n="pv-3p-d">New API-compatible account balance APIs or a custom balance endpoint. The config lives only in your Keychain.</p></div>
+      <div class="prov lift"><div class="pn"><img class="brand-logo" src="assets/providers/muse.png" alt="">Muse<span class="mode key">COOKIE</span></div><p data-i18n="pv-muse-d">muse.ai's weekly token pool: percent used and reset time. The pasted Cookie lives only in your Keychain.</p></div>
+      <div class="prov lift"><div class="pn"><img class="brand-logo" src="assets/providers/muse.png" alt="">Muse Code<span class="mode key">COOKIE</span></div><p data-i18n="pv-musecode-d">Rolling 5-hour and weekly request windows from dev.meta.ai, read per team.</p></div>
+      <div class="prov lift"><div class="pn"><svg class="brand-logo mono" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="2.5" width="19" height="19" rx="5"/><path d="M9.5 17V7h5.2M9.5 12h4.3"/></svg>Factory<span class="mode key">COOKIE</span></div><p data-i18n="pv-factory-d">Droid token allowance for the billing period, with the Standard and Premium pools both shown.</p></div>
+      <div class="prov lift"><div class="pn"><svg class="brand-logo mono" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="2.5" width="19" height="19" rx="5"/><path d="M8 17l4-10 4 10M9.5 13.4h5"/></svg>Augment<span class="mode key">COOKIE</span></div><p data-i18n="pv-augment-d">Credits for the billing cycle, with the plan name and cycle end.</p></div>
+      <div class="prov span2 lift"><div class="pn"><svg class="brand-logo mono" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="5" cy="12" r="2.2"/><circle cx="19" cy="5" r="2.2"/><circle cx="19" cy="19" r="2.2"/><path d="M7.1 10.9 16.9 6M7.1 13.1l9.8 4.9"/></svg><span data-i18n="pv-3p-n">Third-party API</span><span class="mode key">API KEY</span></div><p data-i18n="pv-3p-d">New API-compatible account balance APIs or a custom balance endpoint. The config lives only in your Keychain.</p></div>
       <div class="prov wide lift">
         <div class="pn"><span data-i18n="pv-compat-n">More services · incl. token-monitor compatibility</span></div>
         <div class="names">
-          <span><img class="brand-logo" src="assets/providers/devin.svg" alt="">Devin</span>
-          <span><img class="brand-logo mono" src="assets/providers/trae.svg" alt="">Trae</span>
           <span><img class="brand-logo" src="assets/providers/minimax.svg" alt="">MiniMax</span>
           <span><img class="brand-logo mono" src="assets/providers/mimo.svg" alt="">MiMo Code</span>
           <span><img class="brand-logo" src="assets/providers/qoder.svg" alt="">Qoder</span>
@@ -1442,7 +1854,7 @@ footer.site .disclaimer{
         </div>
       </div>
     </div>
-    <p class="prov-note" data-i18n="pv-note">Credential locations and endpoints for every service are documented in the repo <code>README</code>; pace prediction uses real window progress and official reset times to judge whether your current pace lasts until reset.</p>
+    <p class="prov-note" data-i18n="pv-note">Credential locations and endpoints for every service are documented in the repo <code>README</code>; pace prediction uses real window progress and official reset times to judge whether your current pace lasts until reset. Trae Agent logs count toward local token and cost totals only; Trae has no quota card.</p>
   </section>
 
   <!-- ================= AI feed ================= -->
@@ -1760,11 +2172,10 @@ footer.site .disclaimer{
 var ZH={
   "nav-dl":"下载","nav-new":"1.4 新功能","nav-screens":"界面","nav-providers":"支持的服务","nav-feed":"AI 动态","nav-privacy":"隐私","nav-brand":"品牌","nav-policy":"隐私政策","nav-support":"支持","nav-limits":"限制",
   "h-badge":"<span class=\"dot\"></span>1.4 正式版 · Mac 发布 + iPhone 测试",
-  "h-h1":"你的 AI 额度，<br><span class=\"accent\">常驻菜单栏</span>。",
-  "h-sub":"一处看全 <strong>Claude Code、Codex、Cursor、Windsurf、Grok、GLM</strong> 等 <strong>21+ 服务</strong>的剩余额度与重置倒计时，还能看清今天的 Token 花在哪、每个模型跑得多快、折合多少钱。Provider 凭证始终留在 Mac；启用 Apple 设备同步后，只有经过白名单过滤并使用 AES-256-GCM 加密的额度快照会通过你自己的 iCloud 账户传输。",
+  "h-h1":"你的 AI 额度，<br><span class=\"accent\"><span class=\"fw\">常驻</span></span><span class=\"nowrap\"><span class=\"accent\"><span class=\"fw\">菜单栏</span></span>。</span>",
+  "h-sub":"一处看全 <strong>Claude Code、Codex、Cursor、Windsurf、Grok、GLM</strong> 等 <strong>27+ 服务</strong>的剩余额度与重置倒计时，还能看清今天的 Token 花在哪、每个模型跑得多快、折合多少钱。Provider 凭证始终留在 Mac；启用 Apple 设备同步后，只有经过白名单过滤并使用 AES-256-GCM 加密的额度快照会通过你自己的 iCloud 账户传输。",
   "h-dl":"下载 Mac 版","h-ios":"加入 iPhone TestFlight","h-gh":"GitHub 仓库",
   "h-hint":"Mac 版已签名并通过 Apple 公证；iPhone 测试版需 iOS 18+、Mac 伴侣 App 与同一 iCloud 账号。",
-  "chip-grok":"Grok 周池",
   "pop-when":"4 分钟前更新",
   "pop-sev":"中","pop-ban1":"当前节奏可能提前用尽","pop-ban2":"Codex 剩余 29%",
   "pop-cwin":"5 小时窗口","pop-crem":"剩余 97%",
@@ -1780,7 +2191,19 @@ var ZH={
   "pop-feed":"AI 动态","pop-fcount":"2 条","pop-fsub":"精选重要动态","pop-fall":"查看全部",
   "pop-f1s":"Claude","pop-f1t":"13 小时 18 分钟","pop-f1x":"The Claude Security plugin fo…",
   "pop-f2s":"Simon Willison","pop-f2t":"7 小时 27 分钟","pop-f2x":"I wrote about the completely …",
-  "pop-open":"打开 Dashboard","pop-quit":"设置 · 退出",
+  "pop-open":"打开 Dashboard","pop-set":"设置","pop-quit":"退出",
+  "pop-c1r":"重置还有 3小时 40分","pop-c1p":"节奏余量 23.7%","pop-lasts":"可持续到重置",
+  "pop-c2w":"7 天窗口","pop-c2rem":"剩余 81%","pop-c2r":"周二 09:00 重置","pop-c2p":"节奏余量 69.0%","pop-c2o":"可持续到重置",
+  "pop-c3w":"Fable · 7 天窗口","pop-c3rem":"剩余 90%","pop-c3p":"节奏余量 78.0%",
+  "pop-x1r":"周四 20:00 重置","pop-x1p":"用量超前 18.4%","pop-x1o":"预计 1天 12小时 后用尽",
+  "pop-fsub2":"热门内容全文",
+  "pop-f1xf":"The Claude Security plugin for Claude Code is now available.",
+  "pop-f2xf":"I wrote about the completely new release, with notes and examples.",
+  "ps-title":"弹窗外观","ps-glass":"玻璃质感","ps-frosted":"毛玻璃","ps-clear":"透明玻璃",
+  "ps-opacity":"弹窗不透明度","ps-more-t":"更透明","ps-more-o":"更深","ps-login":"登录时自动启动",
+  "ps-dash":"打开 Dashboard 设置","ps-restart":"重启 TokenRemain",
+  "pop-hint":"试试：展开卡片、固定、右键，或长按拖动",
+  "mq-label":"接入你已在用的 AI 工具",
   "st-a":"家 AI 编码工具与服务的额度窗口","st-b":"种本地编码 Agent，由 ccusage 离线统计","st-c":"种显示币种，用于 API 标价估算","st-d":"个凭证被刷新、复制或上传",
   "n-h2":"每个 Token 去了哪，一目了然",
   "n-lede":"TokenRemain 1.4 带来 Token 级的用量视图——哪些是输入、输出与缓存，每个模型回答得多快——再加上账号管理页、显示币种和可自选的 Dock 仪表。全部在你的 Mac 本地计算。",
@@ -1816,6 +2239,13 @@ var ZH={
   "pv-zai-d":"Coding Plan 会话 / 周窗口，全球 / 中国区任选。Key 只存钥匙串。",
   "pv-zt-d":"中国区 Team Plan 配额。JSON 配置只存钥匙串。",
   "pv-copilot-d":"月度 Credits。只读本机 GitHub 登录。",
+  "pv-grokbot-d":"周额度；通过本机 Cursor 登录态只读读取，Grok Bot 需使用同一 Cursor 账户。",
+  "pv-devin-d":"日 / 周配额，SeatManagement 接口直查。只读本机 Devin 凭证。",
+  "pv-amp-d":"Amp Free、付费余额与 Credits，与 <code>amp usage</code> 同口径。优先只读 Amp CLI 的 Key，否则使用粘贴的 Cookie。",
+  "pv-muse-d":"muse.ai 每周 Token 额度池：已用百分比与重置时间。粘贴的 Cookie 只存钥匙串。",
+  "pv-musecode-d":"dev.meta.ai 的 5 小时滚动窗口与周限额，按团队读取。",
+  "pv-factory-d":"Droid 计费周期 Token 额度，Standard 与 Premium 两个池同时显示。",
+  "pv-augment-d":"计费周期 Credits，附套餐名与周期结束时间。",
   "pv-windsurf-d":"日 / 周配额；只读 Windsurf 本机登录态。",
   "pv-or-d":"预充积分余额、官方消费与 Key 限额。",
   "pv-ag-d":"配额池，可选显示 Claude/第三方池。只读本机登录态。",
@@ -1823,7 +2253,7 @@ var ZH={
   "pv-3p-n":"第三方 API",
   "pv-3p-d":"New API 兼容账户余额 API 或自定义余额接口。配置只存钥匙串。",
   "pv-compat-n":"更多服务 · 含 token-monitor 兼容接入","pv-volc":"火山引擎","pv-bailian":"阿里云百炼 Token Plan",
-  "pv-note":"各服务的凭证位置与接口方式在仓库 <code>README</code> 有完整说明；节奏预测基于真实窗口进度与官方重置时间，判断当前用量能否撑到重置。",
+  "pv-note":"各服务的凭证位置与接口方式在仓库 <code>README</code> 有完整说明；节奏预测基于真实窗口进度与官方重置时间，判断当前用量能否撑到重置。Trae Agent 日志只计入本地 Token 与成本统计，不显示额度卡片。",
   "fe-h2":"影响额度的 AI 动态，替你排好序",
   "fe-lede":"应用内置一条精选的 AI 行业动态流——iPhone 上是带本机归档的独立阅读标签页，Apple Watch 上是速览页，Mac 上是 Dashboard 面板。额度、速率限制与重置变化会<strong style=\"color:var(--text)\">自动置顶并推送通知</strong>；普通行业消息安静地排在下面。不需要 X 账号、不用登录、没有关键词轰炸。",
   "fe1t":"固定精选名单，不是推荐算法",
@@ -2069,6 +2499,338 @@ document.querySelectorAll('.minibar').forEach(function(bar){
   }
 });
 
+/* ---------- hero popover: the app's own interactions, on sample data ----------
+   Mirrors PopoverLayoutStore and the popup's controls. The name + chevron
+   toggle a widget; the pin keeps it expanded, and collapsing a pinned widget
+   also releases the pin; right-click offers Expand / Move up / Move down /
+   Remove; a long press lifts a widget to reorder it; "+" brings removed
+   widgets back; Settings opens the popup's appearance panel, whose glass style
+   and opacity restyle this demo; the status item opens and closes the popup. */
+(function(){
+  var float=document.querySelector('#stage .float');
+  if(!float)return;
+  var stage=document.getElementById('stage'),hero=document.querySelector('.hero');
+  var pop=float.querySelector('.pop'),list=pop.querySelector('.pop-list'),menu=pop.querySelector('.pm');
+  var item=float.querySelector('.mb-item'),addBtn=pop.querySelector('.gb.ad'),rf=pop.querySelector('.gb.rf');
+  var setBtn=pop.querySelector('[data-act="settings"]');
+  var motion=document.documentElement.classList.contains('motion');
+  var TRASH="<svg width=\"11\" height=\"11\" viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M2.5 4h11M6 4V2.5h4V4M4 4l.7 9.5h6.6L12 4\"/></svg>";
+  var T={
+    en:{expand:'Expand',collapse:'Collapse',up:'Move up',down:'Move down',remove:'Remove %s widget',add:'Add %s',all:'All widgets are visible',keep:'Keep expanded',unkeep:'Stop keeping expanded',fresh:'Updated just now'},
+    zh:{expand:'展开',collapse:'折叠',up:'上移',down:'下移',remove:'移除%s组件',add:'添加%s',all:'所有组件均已显示',keep:'保持展开',unkeep:'取消保持展开',fresh:'刚刚更新'}
+  };
+  /* per-provider cost and tokens for the ring centre, in each language's sample */
+  var COST={en:{c:['$31.40','77.25M'],x:['$20.75','72.78M']},zh:{c:['$37.81','25.66M'],x:['$151.30','176.50M']}};
+  var usage=pop.querySelector('.pop-usage'),ring=usage.querySelector('.pop-ring'),rc=ring.querySelector('.rc');
+  var dragging=false,busy=false,menuFor=null,heroOn=true;
+  function zh(){return document.documentElement.lang!=='en'}
+  function t(){return zh()?T.zh:T.en}
+  function touched(){float.classList.add('touched')}
+  function cards(){return [].slice.call(list.children)}
+  function shown(){return cards().filter(function(c){return !c.classList.contains('is-hidden')})}
+  function titleOf(c){var el=c.querySelector('[data-title]');return el?el.textContent.trim():''}
+  function ty(el){return parseFloat((el.style.translate||'').split(' ')[1])||0}
+
+  /* language-dependent sample state: lit segments, warning marks, pace tones */
+  function paint(){
+    var z=zh();
+    pop.querySelectorAll('.pop-seg').forEach(function(bar){
+      var n=+(z?bar.dataset.nZh:bar.dataset.n);
+      [].forEach.call(bar.children,function(b,k){b.classList.toggle('on',k<n);b.style.setProperty('--k',k)});
+    });
+    /* an attribute, not .hidden: the marks are SVG, which has no hidden property */
+    pop.querySelectorAll('[data-show]').forEach(function(el){el.toggleAttribute('hidden',(z?el.dataset.showZh:el.dataset.show)!=='1')});
+    pop.querySelectorAll('[data-tone]').forEach(function(el){
+      el.classList.remove('t-ok','t-warn','t-bad');
+      el.classList.add('t-'+(z?el.dataset.toneZh:el.dataset.tone));
+    });
+    pop.querySelectorAll('.pop-pin').forEach(function(b){b.title=b.getAttribute('aria-pressed')==='true'?t().unkeep:t().keep});
+    hl(null);
+    closeMenu();
+  }
+
+  /* expansion and pin (PopoverLayoutStore.toggleExpanded / togglePinned) */
+  function setExp(c,on){
+    c.classList.toggle('is-exp',on);
+    var b=c.querySelector('.pop-toggle');
+    if(b)b.setAttribute('aria-expanded',on?'true':'false');
+  }
+  function setPin(c,on){
+    c.classList.toggle('is-pin',on);
+    var b=c.querySelector('.pop-pin');
+    if(b){b.setAttribute('aria-pressed',on?'true':'false');b.title=on?t().unkeep:t().keep}
+  }
+  function toggleExp(c){
+    if(c.classList.contains('is-exp')){
+      if(c.classList.contains('is-pin'))setPin(c,false);
+      setExp(c,false);
+    }else setExp(c,true);
+  }
+  function togglePin(c){
+    if(c.classList.contains('is-pin'))setPin(c,false);
+    else{setPin(c,true);setExp(c,true)}
+  }
+  list.addEventListener('click',function(e){
+    if(dragging)return;
+    var tg=e.target.closest('.pop-toggle'),pn=e.target.closest('.pop-pin');
+    if(tg){touched();toggleExp(tg.closest('.pop-card'))}
+    else if(pn){touched();togglePin(pn.closest('.pop-card'))}
+  });
+
+  /* order changes animate from where each widget was (FLIP) */
+  function flip(mutate){
+    var cs=cards(),first=cs.map(function(c){return c.offsetTop+ty(c)});
+    cs.forEach(function(c){c.style.transition='none';c.style.translate=''});
+    mutate();
+    cs.forEach(function(c,i){
+      var d=first[i]-c.offsetTop;
+      if(Math.abs(d)>.5&&!c.classList.contains('is-hidden'))c.style.translate='0 '+d.toFixed(1)+'px';
+    });
+    list.offsetWidth;
+    cs.forEach(function(c){c.style.transition='';c.style.translate=''});
+  }
+  function move(c,dir){
+    var vis=shown(),j=vis.indexOf(c)+dir;
+    if(j<0||j>=vis.length)return;
+    flip(function(){if(dir<0)vis[j].before(c);else vis[j].after(c)});
+  }
+  /* removing keeps a pin, so a pinned widget comes back expanded */
+  function hide(c){flip(function(){c.classList.add('is-hidden');setExp(c,c.classList.contains('is-pin'))})}
+  function show(c){
+    flip(function(){c.classList.remove('is-hidden')});
+    c.classList.add('flash');
+    setTimeout(function(){c.classList.remove('flash')},700);
+  }
+
+  /* menus, positioned in the popup's own (unzoomed, untilted) coordinates */
+  function local(cx,cy){
+    var r=pop.getBoundingClientRect();
+    return [(cx-r.left)/r.width*pop.offsetWidth,(cy-r.top)/r.height*pop.offsetHeight];
+  }
+  function openMenu(items,x,y,owner,alignRight){
+    menu.innerHTML='';
+    items.forEach(function(it){
+      if(it==='-'){menu.appendChild(document.createElement('hr'));return}
+      var b=document.createElement('button');
+      b.type='button';b.setAttribute('role','menuitem');
+      b.textContent=it.label;
+      if(it.icon)b.insertAdjacentHTML('afterbegin',it.icon);
+      if(it.danger)b.className='del';
+      if(it.disabled)b.disabled=true;
+      b.addEventListener('click',function(){closeMenu();if(it.run)it.run()});
+      menu.appendChild(b);
+    });
+    menu.classList.add('open');
+    var mw=menu.offsetWidth,mh=menu.offsetHeight;
+    if(alignRight)x-=mw;
+    menu.style.left=Math.max(6,Math.min(x,pop.clientWidth-mw-6)).toFixed(0)+'px';
+    menu.style.top=Math.max(6,Math.min(y,pop.clientHeight-mh-6)).toFixed(0)+'px';
+    menuFor=owner||null;
+    if(menuFor)menuFor.setAttribute('aria-expanded','true');
+    var first=menu.querySelector('button:not(:disabled)');
+    if(first)first.focus({preventScroll:true});
+  }
+  function closeMenu(){
+    if(!menu.classList.contains('open'))return;
+    menu.classList.remove('open');
+    if(menuFor)menuFor.setAttribute('aria-expanded','false');
+    menuFor=null;
+  }
+  addBtn.addEventListener('click',function(){
+    touched();
+    if(menuFor===addBtn){closeMenu();return}
+    setSettings(false);
+    var hidden=cards().filter(function(c){return c.classList.contains('is-hidden')});
+    var items=hidden.length
+      ?hidden.map(function(c){return {label:t().add.replace('%s',titleOf(c)),run:function(){show(c)}}})
+      :[{label:t().all,disabled:true}];
+    var r=addBtn.getBoundingClientRect(),p=local(r.right,r.bottom);
+    openMenu(items,p[0],p[1]+4,addBtn,true);
+  });
+  list.addEventListener('contextmenu',function(e){
+    var c=e.target.closest('.pop-card');
+    if(!c)return;
+    e.preventDefault();touched();setSettings(false);
+    var vis=shown(),i=vis.indexOf(c),items=[];
+    if(c.querySelector('.pop-toggle'))
+      items.push({label:c.classList.contains('is-exp')?t().collapse:t().expand,run:function(){toggleExp(c)}},'-');
+    items.push(
+      {label:t().up,disabled:i<=0,run:function(){move(c,-1)}},
+      {label:t().down,disabled:i>=vis.length-1,run:function(){move(c,1)}},
+      '-',
+      {label:t().remove.replace('%s',titleOf(c)),icon:TRASH,danger:true,run:function(){hide(c)}}
+    );
+    var p=local(e.clientX,e.clientY);
+    openMenu(items,p[0],p[1],null,false);
+  });
+  document.addEventListener('pointerdown',function(e){
+    if(menu.classList.contains('open')&&!menu.contains(e.target)&&!(menuFor&&menuFor.contains(e.target)))closeMenu();
+  });
+  document.addEventListener('keydown',function(e){if(e.key==='Escape'){closeMenu();setSettings(false)}});
+  addEventListener('scroll',closeMenu,{passive:true});
+
+  /* long press (mouse) lifts a widget; the others slide to make room */
+  list.addEventListener('pointerdown',function(e){
+    if(e.pointerType!=='mouse'||e.button!==0||e.target.closest('button'))return;
+    var c=e.target.closest('.pop-card');
+    if(!c)return;
+    var sx=e.clientX,sy=e.clientY,timer=setTimeout(start,320);
+    function cancel(ev){if(Math.abs(ev.clientX-sx)>5||Math.abs(ev.clientY-sy)>5)stop()}
+    function stop(){clearTimeout(timer);removeEventListener('pointermove',cancel);removeEventListener('pointerup',stop)}
+    function start(){stop();lift(c,sy)}
+    addEventListener('pointermove',cancel);
+    addEventListener('pointerup',stop);
+  });
+  function lift(c,sy){
+    closeMenu();setSettings(false);touched();dragging=true;
+    var vis=shown(),idx=vis.indexOf(c),GAP=12;
+    var tops=vis.map(function(v){return v.offsetTop}),hs=vis.map(function(v){return v.offsetHeight});
+    var k=pop.offsetHeight/pop.getBoundingClientRect().height,target=idx,dy=0;
+    var lo=tops[0]-tops[idx]-8,hi=tops[vis.length-1]+hs[vis.length-1]-hs[idx]-tops[idx]+8;
+    c.classList.add('dragging');
+    function mv(ev){
+      dy=Math.max(lo,Math.min(hi,(ev.clientY-sy)*k));
+      c.style.translate='0 '+dy.toFixed(1)+'px';
+      /* the leading edge decides: a tall widget passes a short one as soon
+         as its top (or bottom) crosses that widget's middle */
+      var top=tops[idx]+dy,bottom=top+hs[idx],i;
+      target=idx;
+      for(i=0;i<idx;i++)if(top<tops[i]+hs[i]/2){target=i;break}
+      for(i=vis.length-1;i>idx;i--)if(bottom>tops[i]+hs[i]/2){target=i;break}
+      vis.forEach(function(v,j){
+        if(v===c)return;
+        var off=0;
+        if(idx<target&&j>idx&&j<=target)off=-(hs[idx]+GAP);
+        else if(idx>target&&j>=target&&j<idx)off=hs[idx]+GAP;
+        v.style.translate=off?'0 '+off+'px':'';
+      });
+    }
+    function up(){
+      removeEventListener('pointermove',mv);removeEventListener('pointerup',up);
+      c.classList.remove('dragging');
+      if(target!==idx)flip(function(){if(target>idx)vis[target].after(c);else vis[target].before(c)});
+      else flip(function(){});
+      setTimeout(function(){dragging=false},0);
+    }
+    addEventListener('pointermove',mv);
+    addEventListener('pointerup',up);
+  }
+
+  /* local usage: hover a legend row or the ring to single out a provider */
+  function rowP(r){return zh()?r.dataset.pZh:r.dataset.p}
+  function hl(p){
+    var rows=usage.querySelectorAll('.pop-lg');
+    if(!p){usage.removeAttribute('data-hl');rows.forEach(function(r){r.classList.remove('hl')});return}
+    usage.setAttribute('data-hl',p);
+    rows.forEach(function(r){r.classList.toggle('hl',rowP(r)===p)});
+    var d=COST[zh()?'zh':'en'][p];
+    rc.firstChild.textContent=d[0];rc.lastChild.textContent=d[1];
+  }
+  usage.querySelectorAll('.pop-lg').forEach(function(r){r.addEventListener('pointerenter',function(){hl(rowP(r))})});
+  usage.querySelector('.pop-legs').addEventListener('pointerleave',function(){hl(null)});
+  ring.addEventListener('pointermove',function(e){
+    var b=ring.getBoundingClientRect(),dx=e.clientX-(b.left+b.width/2),dy=e.clientY-(b.top+b.height/2);
+    var f=(Math.atan2(dx,-dy)/(2*Math.PI)+1)%1;
+    hl(f<(zh()?.127:.515)?'c':'x');
+  });
+  ring.addEventListener('pointerleave',function(){hl(null)});
+
+  /* refresh: the button spins while "fetching", then the bars pulse */
+  function pulse(){
+    pop.classList.remove('refresh');pop.offsetWidth;pop.classList.add('refresh');
+    setTimeout(function(){pop.classList.remove('refresh')},1600);
+  }
+  rf.addEventListener('click',function(){
+    if(busy)return;
+    busy=true;touched();rf.classList.add('busy');rf.setAttribute('aria-busy','true');
+    setTimeout(function(){
+      rf.classList.remove('busy');rf.removeAttribute('aria-busy');busy=false;
+      pop.querySelectorAll('[data-i18n="pop-when"]').forEach(function(el){el.textContent=t().fresh});
+      pulse();
+    },900);
+  });
+  if('IntersectionObserver' in window&&hero)
+    new IntersectionObserver(function(es){heroOn=es[0].isIntersecting}).observe(hero);
+  function idle(){
+    return heroOn&&!document.hidden&&!dragging&&!busy&&!menu.classList.contains('open')
+      &&!pop.classList.contains('set-open')&&!float.classList.contains('closed');
+  }
+  if(motion)setTimeout(function(){
+    if(idle())pulse();
+    setInterval(function(){if(idle())pulse()},12000);
+  },4200);
+  /* once the entrance has played, re-inserting a widget must not replay it */
+  setTimeout(function(){pop.classList.add('booted')},motion?2800:0);
+
+  /* footer, settings panel, status item */
+  function setSettings(on){
+    pop.classList.toggle('set-open',on);
+    setBtn.setAttribute('aria-expanded',on?'true':'false');
+  }
+  function setOpen(on){
+    float.classList.toggle('closed',!on);
+    item.setAttribute('aria-expanded',on?'true':'false');
+    if(!on){closeMenu();setSettings(false)}
+  }
+  function quit(relaunch){
+    setOpen(false);float.classList.add('quit');
+    setTimeout(function(){
+      float.classList.remove('quit');
+      if(relaunch)setTimeout(function(){setOpen(true)},250);
+    },relaunch?900:1600);
+  }
+  item.addEventListener('click',function(){touched();setOpen(float.classList.contains('closed'))});
+  pop.addEventListener('click',function(e){
+    var a=e.target.closest('[data-act]');
+    if(!a)return;
+    touched();
+    var act=a.dataset.act;
+    if(act==='settings'){closeMenu();setSettings(!pop.classList.contains('set-open'))}
+    else if(act==='dash'){
+      setSettings(false);
+      var target=document.getElementById('screens');
+      if(target)target.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
+    }
+    else if(act==='quit')quit(false);
+    else if(act==='restart')quit(true);
+  });
+  pop.querySelector('.ps-x').addEventListener('click',function(){setSettings(false)});
+  var segBtns=pop.querySelectorAll('.ps-seg button');
+  segBtns.forEach(function(b){
+    b.addEventListener('click',function(){
+      float.classList.toggle('clear',b.dataset.glass==='clear');
+      segBtns.forEach(function(o){o.setAttribute('aria-pressed',o===b?'true':'false')});
+    });
+  });
+  var range=pop.querySelector('.ps-range'),val=pop.querySelector('.ps-val');
+  range.addEventListener('input',function(){
+    float.style.setProperty('--pa',(range.value/100).toFixed(2));
+    val.textContent=range.value+'%';
+  });
+  var tgl=pop.querySelector('.ps-tg');
+  tgl.addEventListener('click',function(){tgl.setAttribute('aria-checked',tgl.getAttribute('aria-checked')==='true'?'false':'true')});
+
+  /* zoom the stage to the hero (CSS zoom also shrinks the layout box), and
+     seat the copy against the collapsed popup so expanding a widget grows the
+     stage downward instead of re-centering the headline */
+  var wrap=document.querySelector('.stage-wrap'),copy=document.querySelector('.hero-copy');
+  var canZoom='zoom' in document.documentElement.style;
+  function center(){
+    if(innerWidth<=900){hero.classList.remove('anchored');copy.style.marginTop='';return}
+    if(pop.querySelector('.pop-card.is-exp')||pop.querySelector('.pop-card.is-hidden'))return;
+    hero.classList.add('anchored');
+    copy.style.marginTop=Math.max(0,(wrap.offsetHeight-copy.offsetHeight)/2).toFixed(0)+'px';
+  }
+  function fit(){
+    if(canZoom)stage.style.zoom=Math.max(.6,Math.min(1,wrap.clientWidth/400,(innerHeight-170)/790)).toFixed(3);
+    center();
+  }
+  fit();
+  addEventListener('resize',fit,{passive:true});
+  addEventListener('tr-lang',function(){paint();requestAnimationFrame(center)});
+  paint();
+})();
+
 /* ---------- brand: mood slider + state wall ---------- */
 (function(){
   var STATES=[
@@ -2134,11 +2896,74 @@ document.querySelectorAll('.minibar').forEach(function(bar){
   render();
 })();
 
+/* ---------- provider marquee (decorative; built in every motion mode) ---------- */
+(function(){
+  var mq=document.getElementById('marquee');
+  if(!mq)return;
+  /* the same 27 named services as #providers (Third-party APIs aside);
+     Factory and Augment have no published mark, so they get the letter
+     glyph the app itself falls back to */
+  var ROWS=[
+    [['Claude Code','claude-code.svg'],['Codex','codex-glyph.svg'],['Cursor','cursor.svg',1],['Grok','grok.svg',1],['Grok Bot','grok-bot.png'],['Copilot','copilot.svg'],['Windsurf','windsurf.png'],['Devin','devin.svg'],['Antigravity','antigravity.svg'],['OpenCode','opencode.svg',1],['Amp','amp.svg'],['DeepSeek','deepseek.svg'],['Kimi','kimi.svg']],
+    [['Z.ai GLM','zai.svg',1],['GLM Team','zai.svg',1],['OpenRouter','openrouter.svg'],['Muse','muse.png'],['Muse Code','muse.png'],['Factory','#F'],['Augment','#A'],['MiniMax','minimax.svg'],['MiMo Code','mimo.svg',1],['Qoder','qoder.svg'],['Kiro','kiro.svg'],[{en:'Volcengine',zh:'火山引擎'},'volcengine.svg'],[{en:'Alibaba Token Plan',zh:'阿里云百炼 Token Plan'},'bailian.svg'],['Ollama','ollama.svg',1]]
+  ];
+  var GLYPH={F:'M9.5 17V7h5.2M9.5 12h4.3',A:'M8 17l4-10 4 10M9.5 13.4h5'};
+  var tracks=mq.querySelectorAll('.mq-track');
+  function icon(p){
+    if(p[1].charAt(0)==='#')
+      return '<svg class="brand-logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="2.5" width="19" height="19" rx="5"/><path d="'+GLYPH[p[1].slice(1)]+'"/></svg>';
+    return '<img class="brand-logo'+(p[2]?' mono':'')+'" src="assets/providers/'+p[1]+'" alt="" loading="lazy">';
+  }
+  function render(){
+    var zh=document.documentElement.lang!=='en';
+    ROWS.forEach(function(row,r){
+      var html=row.map(function(p){
+        var name=typeof p[0]==='string'?p[0]:(zh?p[0].zh:p[0].en);
+        return '<span class="mq-item">'+icon(p)+name+'</span>';
+      }).join('');
+      /* two copies: the track scrolls by exactly one copy, so the loop is seamless */
+      tracks[r].innerHTML=html+html;
+    });
+  }
+  render();
+  addEventListener('tr-lang',render);
+})();
+
+/* ---------- topbar scrollspy: aria-current plus a sliding ink line ---------- */
+(function(){
+  var links=document.getElementById('navLinks');
+  if(!links||!('IntersectionObserver' in window))return;
+  var map={};
+  links.querySelectorAll('a[href^="#"]').forEach(function(a){map[a.getAttribute('href').slice(1)]=a});
+  var ink=document.createElement('span');
+  ink.className='nav-ink';ink.setAttribute('aria-hidden','true');
+  links.appendChild(ink);
+  var current=null;
+  function move(){
+    if(!current||!current.offsetWidth){ink.style.opacity='0';return}
+    ink.style.width=current.offsetWidth+'px';
+    ink.style.transform='translate('+current.offsetLeft+'px,'+(current.offsetTop+current.offsetHeight+3)+'px)';
+    ink.style.opacity='1';
+  }
+  function set(a){
+    if(!a||a===current)return;
+    if(current)current.removeAttribute('aria-current');
+    current=a;a.setAttribute('aria-current','location');
+    move();
+  }
+  var io=new IntersectionObserver(function(entries){
+    entries.forEach(function(e){if(e.isIntersecting)set(map[e.target.id])});
+  },{rootMargin:'-45% 0px -50% 0px'});
+  Object.keys(map).forEach(function(id){var s=document.getElementById(id);if(s)io.observe(s)});
+  addEventListener('resize',move,{passive:true});
+  addEventListener('tr-lang',function(){requestAnimationFrame(move)});
+})();
+
 /* ---------- scroll reveal with stagger ---------- */
 (function(){
-  if(matchMedia('(prefers-reduced-motion: reduce)').matches||!('IntersectionObserver' in window))return;
+  if(!document.documentElement.classList.contains('motion')||!('IntersectionObserver' in window))return;
   var els=Array.prototype.filter.call(
-    document.querySelectorAll('figure.shot,.prov,.priv,.pipe-card,.limit-card,.feat,.step,.repo-band,.fact,.feed-panel,.ledger,.lab,.sp-item'),
+    document.querySelectorAll('.lede,.new-card,figure.shot,.prov,.priv,.pipe-card,.limit-card,.feat,.step,.repo-band,.fact,.feed-panel,.ledger,.lab,.sp-item'),
     /* pinned showcases run their own entrance — a reveal transform/opacity on
        them fights the sticky stage and can be caught mid-flight on fast scroll */
     function(el){return !el.closest('.pin-track')}
@@ -2149,12 +2974,292 @@ document.querySelectorAll('.minibar').forEach(function(bar){
     var idx=sibs.indexOf(el);
     if(idx>0)el.style.transitionDelay=Math.min(idx,5)*70+'ms';
   });
+  /* once an element has landed, drop the reveal classes so .lift's own hover
+     transition is no longer shadowed by .reveal.in; .seen stays for the
+     one-shot extras (feed cascade, step connectors) */
+  function settle(e){
+    var el=e.currentTarget;
+    if(e.target!==el||e.propertyName!=='opacity')return;
+    el.removeEventListener('transitionend',settle);
+    el.classList.remove('reveal','in');
+    el.style.transitionDelay='';
+  }
   var io=new IntersectionObserver(function(entries){
     entries.forEach(function(e){
-      if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}
+      if(!e.isIntersecting)return;
+      e.target.addEventListener('transitionend',settle);
+      e.target.classList.add('in','seen');
+      io.unobserve(e.target);
     });
   },{threshold:.12,rootMargin:'0px 0px -40px 0px'});
   els.forEach(function(el){io.observe(el)});
+})();
+
+/* ---------- motion layer: everything below runs only under html.motion ---------- */
+(function(){
+  if(!document.documentElement.classList.contains('motion'))return;
+  var hasIO='IntersectionObserver' in window;
+  var finePointer=matchMedia('(hover: hover) and (pointer: fine)').matches;
+  function whileVisible(el,cb,opts){
+    if(!el)return;
+    if(!hasIO){cb(true);return}
+    new IntersectionObserver(function(es){es.forEach(function(e){cb(e.isIntersecting)})},opts).observe(el);
+  }
+
+  /* infinite loops (marquee, pipeline light, border beam) only run on screen */
+  document.querySelectorAll('#marquee,.pipe-card,.repo-band').forEach(function(el){
+    whileVisible(el,function(on){el.classList.toggle('playing',on)});
+  });
+  var hero=document.querySelector('.hero'),heroOn=true;
+  whileVisible(hero,function(on){heroOn=on});
+
+  /* badge: the release line types itself in behind a caret */
+  (function(){
+    var badge=document.querySelector('.hero .badge');
+    if(!badge)return;
+    var node=null;
+    badge.childNodes.forEach(function(n){if(!node&&n.nodeType===3&&n.textContent.trim())node=n});
+    if(!node)return;
+    /* opened in a background tab, timers crawl at ~1/s: show the line whole */
+    if(document.hidden)return;
+    var full=node.textContent,i=0,timer;
+    var caret=document.createElement('span');
+    caret.className='caret';caret.setAttribute('aria-hidden','true');
+    node.textContent='';badge.appendChild(caret);
+    function type(){
+      node.textContent=full.slice(0,++i);
+      if(i<full.length)timer=setTimeout(type,i<3?60:22);
+      else timer=setTimeout(function(){caret.classList.add('done')},2200);
+    }
+    timer=setTimeout(type,420);
+    /* a language switch rewrites the badge; stop typing into the old node */
+    addEventListener('tr-lang',function(){clearTimeout(timer)},{once:true});
+  })();
+
+  /* headline focus: one chunk sharp at a time, a viewfinder glides to it;
+     hovering a chunk takes over from the auto-cycle */
+  (function(){
+    var h1=document.querySelector('.hero h1');
+    if(!h1)return;
+    var words=[],frame=null,idx=0,hover=false;
+    function place(instant){
+      var w=words[idx];
+      if(!w||!frame)return;
+      var r=w.getBoundingClientRect(),hr=h1.getBoundingClientRect(),px=8,py=2;
+      if(instant)frame.style.transition='none';
+      frame.style.width=(r.width+px*2).toFixed(1)+'px';
+      frame.style.height=(r.height+py*2).toFixed(1)+'px';
+      frame.style.transform='translate('+(r.left-hr.left-px).toFixed(1)+'px,'+(r.top-hr.top-py).toFixed(1)+'px)';
+      if(instant){frame.getBoundingClientRect();frame.style.transition=''}
+    }
+    function focus(k,instant){
+      idx=k;
+      words.forEach(function(w,j){w.classList.toggle('on',j===k)});
+      place(instant);
+    }
+    function setup(){
+      words=[].slice.call(h1.querySelectorAll('.fw'));
+      frame=null;
+      if(words.length<2){h1.classList.remove('focus-on');return}
+      frame=document.createElement('span');
+      frame.className='focus-frame';frame.setAttribute('aria-hidden','true');
+      frame.innerHTML='<i></i><i></i><i></i><i></i>';
+      h1.appendChild(frame);
+      words.forEach(function(w,k){
+        w.addEventListener('pointerenter',function(){hover=true;focus(k)});
+        w.addEventListener('pointerleave',function(){hover=false});
+      });
+      focus(Math.min(idx,words.length-1),true);
+    }
+    setup();
+    setTimeout(function(){
+      if(words.length>1)h1.classList.add('focus-on');
+      place(true);
+      setInterval(function(){
+        if(hover||!heroOn||document.hidden||words.length<2)return;
+        focus((idx+1)%words.length);
+      },1800);
+    },1500);
+    addEventListener('tr-lang',function(){idx=0;setup()});
+    addEventListener('resize',function(){place(true)},{passive:true});
+  })();
+
+  /* popover: numbers count up with the boot, a refresh pulse every few
+     seconds, and a glare on the glass that tracks the pointer */
+  (function(){
+    var pop=document.querySelector('.pop'),stage=document.getElementById('stage');
+    if(!pop||!stage)return;
+    pop.querySelectorAll('.pop-spark i').forEach(function(b,k){b.style.setProperty('--i',k)});
+    /* a language switch rewrites these strings; running counts stop instead
+       of writing the old language's numbers back */
+    var live=true;
+    addEventListener('tr-lang',function(){live=false},{once:true});
+    function countUp(el,delay){
+      if(!el||el.children.length)return;
+      var txt=el.textContent,m=txt.match(/\d+(?:\.\d+)?/);
+      if(!m)return;
+      var target=parseFloat(m[0]),dec=(m[0].split('.')[1]||'').length;
+      var pre=txt.slice(0,m.index),post=txt.slice(m.index+m[0].length);
+      el.textContent=pre+(0).toFixed(dec)+post;
+      setTimeout(function(){
+        var t0=null;
+        (function tick(now){
+          if(!live)return;
+          if(t0==null)t0=now;
+          var k=Math.min(1,(now-t0)/1100),e=1-Math.pow(1-k,3);
+          el.textContent=pre+(target*e).toFixed(dec)+post;
+          if(k<1)requestAnimationFrame(tick);
+        })(performance.now());
+      },delay);
+    }
+    [['pop-crem',1000],['pop-xrem',1120],['pop-total',1200],['pop-l1p',1260],['pop-l2p',1320],['pop-mb1',1450],['pop-mb2',1500]].forEach(function(c){
+      countUp(stage.querySelector('[data-i18n="'+c[0]+'"]'),c[1]);
+    });
+    if(finePointer&&hero){
+      hero.addEventListener('pointermove',function(e){
+        var r=pop.getBoundingClientRect();
+        pop.style.setProperty('--gx',((e.clientX-r.left)/r.width*100).toFixed(1)+'%');
+        pop.style.setProperty('--gy',((e.clientY-r.top)/r.height*100).toFixed(1)+'%');
+        pop.classList.add('glaring');
+      });
+      hero.addEventListener('pointerleave',function(){pop.classList.remove('glaring')});
+    }
+  })();
+
+  /* key numbers: odometer digits roll into place (the zero rolls down to it) */
+  (function(){
+    var stats=document.querySelector('.stats');
+    if(!stats||!hasIO)return;
+    var strips=[];
+    stats.querySelectorAll('.stat b').forEach(function(b,si){
+      var tn=b.firstChild;
+      if(!tn||tn.nodeType!==3||!/^\d+$/.test(tn.textContent.trim()))return;
+      var digits=tn.textContent.trim(),zero=digits==='0';
+      var sr=document.createElement('span');
+      sr.className='sr-only';sr.textContent=digits;
+      var wrap=document.createElement('span');
+      wrap.setAttribute('aria-hidden','true');
+      digits.split('').forEach(function(d,di){
+        var odo=document.createElement('span'),strip=document.createElement('span');
+        odo.className='odo';
+        for(var k=0;k<20;k++){var c=document.createElement('span');c.textContent=k%10;strip.appendChild(c)}
+        strip.style.transform='translateY('+(-(zero?19:0)*1.15)+'em)';
+        strip.style.transitionDelay=(si*140+di*110)+'ms';
+        odo.appendChild(strip);wrap.appendChild(odo);
+        strips.push([strip,zero?0:+d+10]);
+      });
+      b.replaceChild(wrap,tn);
+      b.insertBefore(sr,wrap);
+    });
+    var io=new IntersectionObserver(function(entries){
+      if(!entries.some(function(e){return e.isIntersecting}))return;
+      io.disconnect();
+      strips.forEach(function(s){s[0].style.transform='translateY('+(-s[1]*1.15)+'em)'});
+    },{threshold:.4});
+    io.observe(stats);
+  })();
+
+  /* section titles: split into words (or CJK characters, keeping Latin runs
+     and trailing punctuation whole) that blur in one after another */
+  (function(){
+    if(!hasIO)return;
+    var TOKEN=/[A-Za-z0-9][A-Za-z0-9.+\-'’]*|\s+|[\s\S]/g;
+    var PUNCT=/^[，。、！？：；）」』,.!?:;)]$/;
+    function split(h){
+      if(h.classList.contains('in')||h.children.length)return;
+      var tokens=[];
+      (h.textContent.match(TOKEN)||[]).forEach(function(t){
+        if(tokens.length&&PUNCT.test(t)&&!/^\s+$/.test(tokens[tokens.length-1]))tokens[tokens.length-1]+=t;
+        else tokens.push(t);
+      });
+      var words=tokens.filter(function(t){return !/^\s+$/.test(t)}).length;
+      var step=Math.min(60,Math.round(720/Math.max(1,words))),n=0;
+      h.textContent='';
+      tokens.forEach(function(t){
+        if(/^\s+$/.test(t)){h.appendChild(document.createTextNode(t));return}
+        var s=document.createElement('span');
+        s.className='hw';s.textContent=t;s.style.setProperty('--d',(n++*step)+'ms');
+        h.appendChild(s);
+      });
+    }
+    var hs=[].slice.call(document.querySelectorAll('section h2'));
+    var io=new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}
+      });
+    },{threshold:.3,rootMargin:'0px 0px -30px 0px'});
+    hs.forEach(function(h){split(h);h.classList.add('h-split');io.observe(h)});
+    /* i18n rewrites titles as plain text: re-split the ones still waiting */
+    addEventListener('tr-lang',function(){hs.forEach(split)});
+  })();
+
+  /* eyebrows decode from random glyphs, and their rule draws out */
+  (function(){
+    if(!hasIO)return;
+    var GLYPHS='ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#%&*+/<>';
+    var io=new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(!e.isIntersecting)return;
+        var el=e.target,final=el.textContent,t0=null;
+        io.unobserve(el);
+        el.classList.add('in');
+        (function tick(now){
+          if(t0==null)t0=now;
+          var k=Math.min(1,(now-t0)/650),out='';
+          for(var i=0;i<final.length;i++){
+            var c=final[i];
+            out+=(c===' '||i/final.length<k)?c:GLYPHS[Math.random()*GLYPHS.length|0];
+          }
+          el.textContent=k<1?out:final;
+          if(k<1)requestAnimationFrame(tick);
+        })(performance.now());
+      });
+    },{threshold:.6});
+    document.querySelectorAll('.eyebrow').forEach(function(el){io.observe(el)});
+  })();
+
+  if(!finePointer)return;
+
+  /* cards lit from where the pointer is */
+  document.querySelectorAll('.lift').forEach(function(el){
+    var s=document.createElement('span');
+    s.className='spot';s.setAttribute('aria-hidden','true');
+    el.appendChild(s);
+  });
+  document.addEventListener('pointermove',function(e){
+    var el=e.target.closest?e.target.closest('.lift'):null;
+    if(!el)return;
+    var r=el.getBoundingClientRect();
+    el.style.setProperty('--mx',(e.clientX-r.left).toFixed(0)+'px');
+    el.style.setProperty('--my',(e.clientY-r.top).toFixed(0)+'px');
+  },{passive:true});
+
+  /* hero buttons lean toward the pointer */
+  document.querySelectorAll('.cta-row .btn').forEach(function(btn){
+    btn.addEventListener('pointermove',function(e){
+      var r=btn.getBoundingClientRect();
+      var dx=(e.clientX-(r.left+r.width/2))/r.width,dy=(e.clientY-(r.top+r.height/2))/r.height;
+      btn.style.translate=(dx*8).toFixed(1)+'px '+(dy*6).toFixed(1)+'px';
+    });
+    btn.addEventListener('pointerleave',function(){btn.style.translate=''});
+  });
+
+  /* brand lab: the robot head turns toward the pointer */
+  (function(){
+    var lab=document.querySelector('.lab-stage'),img=document.getElementById('moodImg');
+    if(!lab||!img)return;
+    lab.addEventListener('pointermove',function(e){
+      var r=img.getBoundingClientRect();
+      var nx=Math.max(-1,Math.min(1,(e.clientX-(r.left+r.width/2))/(r.width*1.6)));
+      var ny=Math.max(-1,Math.min(1,(e.clientY-(r.top+r.height/2))/(r.height*1.6)));
+      var amt=Math.min(1,Math.sqrt(nx*nx+ny*ny));
+      if(amt<.02){img.style.rotate='';img.style.translate='';return}
+      /* axis (-ny, nx, 0): positive angle turns the face toward the pointer */
+      img.style.rotate=(-ny).toFixed(3)+' '+nx.toFixed(3)+' 0 '+(amt*16).toFixed(1)+'deg';
+      img.style.translate=(nx*6).toFixed(1)+'px '+(ny*4).toFixed(1)+'px';
+    });
+    lab.addEventListener('pointerleave',function(){img.style.rotate='';img.style.translate=''});
+  })();
 })();
 
 /* ---------- pointer-driven 3D tilt (lerped) ---------- */
@@ -2162,7 +3267,11 @@ document.querySelectorAll('.minibar').forEach(function(bar){
   var stage=document.getElementById('stage');
   if(!stage||matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   var tx=-10,ty=6,cx=-10,cy=6;      /* targetRotY, targetRotX, current */
+  var onStage=false;
+  stage.addEventListener('pointerenter',function(){onStage=true;stage.classList.add('focus');tx=-3;ty=2});
+  stage.addEventListener('pointerleave',function(){onStage=false;stage.classList.remove('focus')});
   addEventListener('pointermove',function(e){
+    if(onStage)return;
     var nx=e.clientX/innerWidth*2-1, ny=e.clientY/innerHeight*2-1;
     tx=-10+nx*10; ty=6-ny*8;
   });
@@ -2173,7 +3282,10 @@ document.querySelectorAll('.minibar').forEach(function(bar){
   })();
 })();
 
-/* ---------- canvas backdrop: perspective grid + drifting tokens ---------- */
+/* ---------- canvas backdrop: perspective grid + drifting tokens ----------
+   The floor grid flows slowly toward the viewer, tokens drift with depth
+   parallax on scroll, and a mouse pointer parts the tokens it passes while
+   linking the nearest ones to it. Reduced motion draws one still frame. */
 (function(){
   var cv=document.getElementById('bg'),ctx=cv.getContext('2d');
   var W,H,DPR=Math.min(devicePixelRatio||1,2);
@@ -2183,40 +3295,58 @@ document.querySelectorAll('.minibar').forEach(function(bar){
     cv.width=W*DPR;cv.height=H*DPR;
     cv.style.width=W+'px';cv.style.height=H+'px';
     ctx.setTransform(DPR,0,0,DPR,0,0);
+    if(reduced)draw(0);
   }
-  size();addEventListener('resize',size);
+  var px=-1e4,py=-1e4,phase=0,last=0;
+  if(!reduced){
+    addEventListener('pointermove',function(e){
+      if(e.pointerType!=='mouse')return;
+      px=e.clientX;py=e.clientY;
+    },{passive:true});
+    document.documentElement.addEventListener('mouseleave',function(){px=py=-1e4});
+    addEventListener('blur',function(){px=py=-1e4});
+  }
 
-  var COLORS=['#5B4FB0','#2B8FA0','#24479C'];
+  var COLORS=['#5E5794','#3F7A82','#4A5368'];
   var pts=[];
   for(var i=0;i<70;i++){
     pts.push({x:Math.random(),y:Math.random(),z:.3+Math.random()*.7,
-      s:Math.random()*1.4+.6,c:COLORS[i%COLORS.length],
+      s:Math.random()*1.4+.6,c:COLORS[i%COLORS.length],ox:0,oy:0,
       vx:(Math.random()-.5)*.00012,vy:-(.00003+Math.random()*.00008)});
   }
-  function draw(){
+  function draw(now){
+    var dt=last&&now?Math.min(64,now-last):16;
+    last=now;
     ctx.clearRect(0,0,W,H);
-    /* perspective floor grid, anchored to bottom */
+    /* perspective floor grid, anchored to bottom; rows advance one step
+       every ~9 s and a new one fades in at the horizon */
     var horizon=H*.62, rows=14;
+    if(!reduced)phase=(phase+dt/9000)%1;
     ctx.lineWidth=1;
     for(var r=0;r<=rows;r++){
-      var p=r/rows, y=horizon+(H-horizon)*p*p;
-      ctx.strokeStyle='rgba(34,48,68,'+(0.05+p*.24)+')';
+      var p=(r+phase)/rows;
+      if(p>1)break;
+      var y=horizon+(H-horizon)*p*p;
+      ctx.strokeStyle='rgba(52,55,62,'+(0.05+p*.22)+')';
       ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();
     }
     var cols=18;
     for(var c2=0;c2<=cols;c2++){
       var xNorm=c2/cols, xh=W*.5+(xNorm-.5)*W*.34, xb=(xNorm-.5)*W*2.1+W*.5;
-      ctx.strokeStyle='rgba(34,48,68,0.16)';
+      ctx.strokeStyle='rgba(52,55,62,0.15)';
       ctx.beginPath();ctx.moveTo(xh,horizon);ctx.lineTo(xb,H);ctx.stroke();
     }
     /* soft glow pools, brand dims only */
     var g=ctx.createRadialGradient(W*.72,H*.34,0,W*.72,H*.34,W*.42);
-    g.addColorStop(0,'rgba(91,79,176,0.10)');g.addColorStop(1,'rgba(91,79,176,0)');
+    g.addColorStop(0,'rgba(106,96,174,0.06)');g.addColorStop(1,'rgba(106,96,174,0)');
     ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
     var g2=ctx.createRadialGradient(W*.15,H*.85,0,W*.15,H*.85,W*.4);
-    g2.addColorStop(0,'rgba(43,143,160,0.07)');g2.addColorStop(1,'rgba(43,143,160,0)');
+    g2.addColorStop(0,'rgba(75,138,146,0.045)');g2.addColorStop(1,'rgba(75,138,146,0)');
     ctx.fillStyle=g2;ctx.fillRect(0,0,W,H);
-    /* drifting square tokens */
+    /* drifting square tokens: nearer ones (higher z) scroll further, and the
+       pointer pushes them aside, easing back once it moves on */
+    var sy=reduced?0:scrollY*.06,R=150;
+    ctx.lineWidth=1;
     for(var i2=0;i2<pts.length;i2++){
       var p2=pts[i2];
       if(!reduced){
@@ -2224,15 +3354,25 @@ document.querySelectorAll('.minibar').forEach(function(bar){
         if(p2.y<-.02){p2.y=1.02;p2.x=Math.random()}
         if(p2.x<-.02)p2.x=1.02; if(p2.x>1.02)p2.x=-.02;
       }
-      var sz=p2.s*p2.z*2.4;
+      var bx=p2.x*W,by=((p2.y*H-sy*p2.z)%H+H)%H;
+      var dx=bx-px,dy=by-py,d=Math.sqrt(dx*dx+dy*dy),tx=0,ty=0;
+      if(d<R&&d>.5){var f=(1-d/R)*26*p2.z;tx=dx/d*f;ty=dy/d*f}
+      p2.ox+=(tx-p2.ox)*.08;p2.oy+=(ty-p2.oy)*.08;
+      var x=bx+p2.ox,y2=by+p2.oy,sz=p2.s*p2.z*2.4;
+      if(d<R){
+        ctx.globalAlpha=(1-d/R)*.32;
+        ctx.strokeStyle='#72C1CA';
+        ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(x+sz/2,y2+sz/2);ctx.stroke();
+      }
       ctx.globalAlpha=.14+p2.z*.3;
       ctx.fillStyle=p2.c;
-      ctx.fillRect(p2.x*W,p2.y*H,sz,sz);
+      ctx.fillRect(x,y2,sz,sz);
     }
     ctx.globalAlpha=1;
     if(!reduced)requestAnimationFrame(draw);
   }
-  draw();
+  size();addEventListener('resize',size);
+  draw(0);
 })();
 </script>
 </body>

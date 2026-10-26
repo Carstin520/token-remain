@@ -31,7 +31,7 @@
   <img src="site/assets/dash-overview-zh.webp" width="77%" alt="Dashboard 概览：最低剩余额度、今日 Token 与估算成本、官方额度进度与风险提示" />
   <img src="site/assets/popover-zh.webp" width="19%" alt="菜单栏弹窗：按应用列出剩余额度、今日本地统计与 AI 动态" />
 </p>
-<p align="center"><sub>Claude Code、Codex、Cursor、Grok、GLM 等 21+ 家工具的剩余额度、重置倒计时与今日成本，一屏看完。（真实使用数据截图）</sub></p>
+<p align="center"><sub>Claude Code、Codex、Cursor、Grok、GLM 等 27+ 家工具的剩余额度、重置倒计时与今日成本，一屏看完。（真实使用数据截图）</sub></p>
 
 > [!TIP]
 > **1.4 新功能**：Dashboard 新增「账号管理」，多账号可单独启停与重命名；趋势页拆分输入 / 输出 / 缓存写入 / 缓存读取，并在本机估算各模型输出速度（tok/s）；成本估算支持 13 种显示币种；Claude Desktop / Cowork 会话计入本地统计。完整内容见[更新记录](CHANGELOG.md)。
@@ -40,7 +40,7 @@
 
 ### 🧭 额度：撑不撑得到重置，一眼就知道
 
-- **21+ 家工具并排展示**：每个官方额度窗口都带进度条、重置倒计时和更新时间。
+- **27+ 家工具并排展示**：每个官方额度窗口都带进度条、重置倒计时和更新时间。
 - **节奏预测**：按真实窗口进度判断当前节奏能否撑到重置，撑不到时给出预计可用时长。
 - **多账号**：同一工具的多个账号分行显示；「账号管理」页可按应用开关监控、启停账号、重命名、更新凭证，同套餐账号可选合并查看。
 - **随处可见**：菜单栏胶囊、跨空间浮窗、Dock 图标双仪表（两款应用自选），macOS 26 上使用 Liquid Glass。
@@ -111,9 +111,10 @@ iPhone 版目前为 [TestFlight 公开测试](https://testflight.apple.com/join/
 | 应用 | 接入 | 读取内容 |
 | :-- | :-: | :-- |
 | <img src="site/assets/providers/claude-code.svg" width="16" alt="" /> **Claude Code** | 🟢 | 5 小时 / 7 天窗口；第三方 `ANTHROPIC_BASE_URL` 标注实际 API |
-| <img src="site/assets/providers/codex.svg" width="16" alt="" /> **Codex** | 🟢 | 5 小时 / 7 天窗口、重置卡；自定义 `base_url` 标注实际 API |
+| <img src="site/assets/providers/codex-glyph.svg" width="16" alt="" /> **Codex** | 🟢 | 5 小时 / 7 天窗口、重置卡；自定义 `base_url` 标注实际 API |
 | <img src="site/assets/providers/cursor.svg" width="16" alt="" /> **Cursor** | 🟢 | 月度账期额度，Cursor 模型与其他模型分池显示 |
 | <img src="site/assets/providers/grok.svg" width="16" alt="" /> **Grok**（xAI） | 🟢 | 周池剩余额度 |
+| <img src="site/assets/providers/grok-bot.png" width="16" alt="" /> **Grok Bot** | 🟢 | 周额度；通过本机 Cursor 登录读取，需与 Grok Bot 使用同一 Cursor 账户 |
 | <img src="site/assets/providers/copilot.svg" width="16" alt="" /> **GitHub Copilot** | 🟢 | 月度 Credits |
 | <img src="site/assets/providers/devin.svg" width="16" alt="" /> **Devin** | 🟢 | 日 / 周配额 |
 | <img src="site/assets/providers/windsurf.png" width="16" alt="" /> **Windsurf** | 🟢 | 日 / 周配额 |
@@ -123,7 +124,7 @@ iPhone 版目前为 [TestFlight 公开测试](https://testflight.apple.com/join/
 | <img src="site/assets/providers/openrouter.svg" width="16" alt="" /> **OpenRouter** | 🔑 | Key 限额、Credits 与账户余额 |
 
 <details>
-<summary><b>另外 11 家扩展 Provider</b>与本地成本来源</summary>
+<summary><b>另外 16 家扩展 Provider</b>与本地成本来源</summary>
 <br/>
 
 | 应用 | 接入方式 | | 应用 | 接入方式 |
@@ -132,10 +133,12 @@ iPhone 版目前为 [TestFlight 公开测试](https://testflight.apple.com/join/
 | <img src="site/assets/providers/kimi.svg" width="16" alt="" /> **Kimi** | API Key / Cookie | | <img src="site/assets/providers/kiro.svg" width="16" alt="" /> **Kiro** | `kiro-cli /usage` 解析 |
 | <img src="site/assets/providers/minimax.svg" width="16" alt="" /> **MiniMax** | API Key | | <img src="site/assets/providers/volcengine.svg" width="16" alt="" /> **火山引擎** | AK:SK 签名 |
 | <img src="site/assets/providers/mimo.svg" width="16" alt="" /> **MiMo Code** | Cookie | | <img src="site/assets/providers/ollama.svg" width="16" alt="" /> **Ollama** | session Cookie |
-| <img src="site/assets/providers/zai.svg" width="16" alt="" /> **GLM Team** | API Key + Org + Project | | **第三方 API** | New API / 自定义余额接口 |
-| <img src="Sources/UsageDock/Resources/ProviderIcons/bailian.svg" width="16" alt="" /> **阿里云百炼 Token Plan** | 控制台 Cookie | | | |
+| <img src="site/assets/providers/zai.svg" width="16" alt="" /> **GLM Team** | API Key + Org + Project | | <img src="Sources/UsageDock/Resources/ProviderIcons/bailian.svg" width="16" alt="" /> **阿里云百炼 Token Plan** | 控制台 Cookie |
+| <img src="site/assets/providers/amp.svg" width="16" alt="" /> **Amp** | 自动读取 Amp CLI 的 Key，或 Cookie | | <img src="site/assets/providers/muse.png" width="16" alt="" /> **Muse** | Cookie（muse.ai） |
+| <img src="site/assets/providers/muse.png" width="16" alt="" /> **Muse Code** | Cookie（dev.meta.ai），按团队读取 | | **Factory** | Cookie（app.factory.ai） |
+| **Augment** | Cookie（app.augmentcode.com） | | **第三方 API** | New API / 自定义余额接口 |
 
-**Cookie 型服务怎么接入**：在浏览器登录对应网站后，从开发者工具复制请求里的 Cookie，粘贴到该服务的额度卡即可（也可用 `QODER_COOKIE`、`MIMO_COOKIE`、`OLLAMA_COOKIE` 环境变量提供）。Cookie 与 API Key 一样只存本机钥匙串；TokenRemain 从不读取浏览器自身的 Cookie 存储。Cookie 等同于登录凭证，请勿分享；退出网站登录后它会失效，需要重新粘贴。
+**Cookie 型服务怎么接入**：在浏览器登录对应网站后，从开发者工具复制请求里的 Cookie 值（或右键请求「复制为 cURL」），粘贴到该服务的额度卡，或在接入引导里点「从剪贴板粘贴」即可（也可用 `QODER_COOKIE`、`MIMO_COOKIE`、`OLLAMA_COOKIE`、`MUSE_COOKIE`、`MUSE_CODE_COOKIE`、`AMP_COOKIE`、`FACTORY_COOKIE`、`AUGMENT_COOKIE` 环境变量提供）。Cookie 与 API Key 一样只存本机钥匙串；TokenRemain 从不读取浏览器自身的 Cookie 存储。Cookie 等同于登录凭证，请勿分享；退出网站登录后它会失效，需要重新粘贴。
 
 **本地成本来源**：内置 ccusage 动态发现 Claude Code、Codex、Gemini、Goose 等 15+ 种本地 Agent，并合并 `~/.claude`、`~/.config/claude`、`CLAUDE_CONFIG_DIR` 与 Claude Cowork 的会话目录（自动去重，可在「数据来源」页添加自定义目录）；Trae 只读取所选目录中的时间、模型与 Token 计数。托管模型按官方标价估算，Ollama 等本地模型记零成本；价格未知时仍保留 Token 数。
 
