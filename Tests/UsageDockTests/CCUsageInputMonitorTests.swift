@@ -67,6 +67,16 @@ struct CCUsageInputMonitorTests {
         #expect(inputs.fileStamps.contains { $0.hasPrefix(home.path + "/.codex/config.toml|") && !$0.hasSuffix("|missing") })
         #expect(!inputs.directories.contains("\(root)/.codex"))
         #expect(inputs.reportDay == "2027-01-15")
+        // Codex inputs form their own group, so its half can be reused alone.
+        #expect(inputs.groups[.codex]?.directories == ["\(root)/.codex/sessions"])
+        #expect(inputs.groups[.codex]?.fileStamps.contains {
+            $0.hasPrefix(home.path + "/.codex/config.toml|")
+        } == true)
+        #expect(inputs.groups[.others]?.directories == [
+            "\(root)/.claude/projects",
+            "\(root)/.local/share/opencode"
+        ])
+        #expect(inputs.groups[.others]?.fileStamps.contains { $0.contains("/.codex/") } == false)
     }
 
     @Test("A new agent directory, a config edit or a new day changes the inputs")
@@ -129,23 +139,28 @@ struct CCUsageInputMonitorTests {
         #expect(directories.contains("desktop/.claude/projects"))
     }
 
+    private static func fixedInputs(
+        day: String = "2027-01-15",
+        codexStamp: String = "codex|1",
+        othersStamp: String = "others|1"
+    ) -> CCUsageInputMonitor.Inputs {
+        CCUsageInputMonitor.Inputs(
+            reportDay: day,
+            timeZoneIdentifier: "UTC",
+            arguments: ["daily"],
+            sharedFileStamps: [],
+            groups: [
+                .codex: .init(directories: [], fileStamps: [codexStamp]),
+                .others: .init(directories: [], fileStamps: [othersStamp])
+            ]
+        )
+    }
+
     @Test("Only an unchanged, successful and recent run is reused")
     func reuseRules() {
         let monitor = CCUsageInputMonitor(startsEventStreams: false)
-        let inputs = CCUsageInputMonitor.Inputs(
-            reportDay: "2027-01-15",
-            timeZoneIdentifier: "UTC",
-            arguments: ["daily"],
-            directories: [],
-            fileStamps: []
-        )
-        let other = CCUsageInputMonitor.Inputs(
-            reportDay: "2027-01-16",
-            timeZoneIdentifier: "UTC",
-            arguments: ["daily"],
-            directories: [],
-            fileStamps: []
-        )
+        let inputs = Self.fixedInputs()
+        let other = Self.fixedInputs(day: "2027-01-16")
         #expect(!monitor.canReuseLastRun(for: inputs, at: Self.now))
 
         monitor.runWillStart(with: inputs, at: Self.now)
@@ -168,12 +183,57 @@ struct CCUsageInputMonitorTests {
         #expect(!monitor.canReuseLastRun(for: inputs, at: Self.now.addingTimeInterval(60)))
     }
 
+    @Test("Codex and the other agents are reused and invalidated separately")
+    func groupsReuseSeparately() {
+        let monitor = CCUsageInputMonitor(startsEventStreams: false)
+        let inputs = Self.fixedInputs()
+        monitor.runWillStart(with: inputs, at: Self.now)
+        monitor.runDidFinish(succeeded: true)
+        #expect(monitor.changedGroups(for: inputs, at: Self.now.addingTimeInterval(60)).isEmpty)
+
+        // A new Claude session only reruns the cheap half.
+        let othersChanged = Self.fixedInputs(othersStamp: "others|2")
+        #expect(monitor.changedGroups(for: othersChanged, at: Self.now.addingTimeInterval(60)) == [.others])
+        monitor.runWillStart(groups: [.others], with: othersChanged, at: Self.now.addingTimeInterval(60))
+        monitor.runDidFinish(groups: [.others], succeeded: true)
+        #expect(monitor.changedGroups(for: othersChanged, at: Self.now.addingTimeInterval(120)).isEmpty)
+
+        // The reused Codex half still ages from its own run.
+        #expect(monitor.changedGroups(
+            for: othersChanged,
+            at: Self.now.addingTimeInterval(CCUsageInputMonitor.maximumReuseAge + 30)
+        ) == [.codex])
+
+        monitor.markInputsChanged([.codex])
+        #expect(monitor.changedGroups(for: othersChanged, at: Self.now.addingTimeInterval(120)) == [.codex])
+
+        monitor.runWillStart(groups: [.codex], with: othersChanged, at: Self.now.addingTimeInterval(120))
+        monitor.runDidFinish(groups: [.codex], succeeded: false)
+        #expect(monitor.changedGroups(for: othersChanged, at: Self.now.addingTimeInterval(180)) == [.codex])
+    }
+
+    @Test("An event path is charged to its group; an unknown path to both")
+    func eventPathGroups() {
+        let roots: [(path: String, group: CCUsageInputMonitor.InputGroup)] = [
+            (path: "/h/.codex/sessions", group: .codex),
+            (path: "/h/.claude/projects", group: .others)
+        ]
+        #expect(CCUsageInputMonitor.groups(forEventPath: "/h/.codex/sessions/2027/a.jsonl", roots: roots) == [.codex])
+        #expect(CCUsageInputMonitor.groups(forEventPath: "/h/.claude/projects/p/s.jsonl", roots: roots) == [.others])
+        #expect(CCUsageInputMonitor.groups(forEventPath: "/h/.codex/sessions", roots: roots) == [.codex])
+        // A sibling that only shares a prefix is not inside the root.
+        #expect(CCUsageInputMonitor.groups(forEventPath: "/h/.codex/sessions-old/x", roots: roots) == [.codex, .others])
+        #expect(CCUsageInputMonitor.groups(forEventPath: "", roots: roots) == [.codex, .others])
+    }
+
     @Test("A write under a watched directory invalidates the last run")
     func fileSystemEventInvalidates() async throws {
         let home = try Self.makeHome()
         defer { try? FileManager.default.removeItem(at: home) }
         let sessions = home.appending(path: ".codex/sessions", directoryHint: .isDirectory)
         try FileManager.default.createDirectory(at: sessions, withIntermediateDirectories: true)
+        let projects = home.appending(path: ".claude/projects", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: projects, withIntermediateDirectories: true)
         // A WAL database keeps its shared-memory index next to it while open.
         let sharedMemoryIndex = sessions.appending(path: "history.db-shm")
         try Self.write("index", to: sharedMemoryIndex)
@@ -184,7 +244,7 @@ struct CCUsageInputMonitorTests {
             now: Self.now,
             home: home
         )
-        #expect(inputs.directories.count == 1)
+        #expect(inputs.directories.count == 2)
         // On a loaded machine, writes made just before a stream starts can be
         // delivered to it. In production that only costs one extra run; here
         // the fixture must be older than the stream.
@@ -204,13 +264,22 @@ struct CCUsageInputMonitorTests {
             "Invalidated by \(monitor.lastInvalidatingEventDescription ?? "a non-event change")"
         )
 
+        // A Codex write invalidates only the Codex half.
         try Self.write("{}", to: sessions.appending(path: "new.jsonl"))
-        var invalidated = false
-        for _ in 0..<80 where !invalidated {
+        var changed: Set<CCUsageInputMonitor.InputGroup> = []
+        for _ in 0..<80 where changed.isEmpty {
             try await Task.sleep(for: .milliseconds(100))
-            invalidated = !monitor.canReuseLastRun(for: inputs, at: Self.now.addingTimeInterval(1))
+            changed = monitor.changedGroups(for: inputs, at: Self.now.addingTimeInterval(1))
         }
-        #expect(invalidated)
+        #expect(changed == [.codex])
+
+        // The stream keeps watching the other half after the first change.
+        try Self.write("{}", to: projects.appending(path: "p/s.jsonl"))
+        for _ in 0..<80 where changed.count < 2 {
+            try await Task.sleep(for: .milliseconds(100))
+            changed = monitor.changedGroups(for: inputs, at: Self.now.addingTimeInterval(1))
+        }
+        #expect(changed == [.codex, .others])
     }
 
     @Test("Only SQLite shared-memory index events are ignored")
