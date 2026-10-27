@@ -10,7 +10,9 @@ enum SyncContentFingerprint {
     static func make(
         quotas: [ProviderQuota.Provider: ProviderQuota],
         history: DailyUsageHistory?,
-        includesUsageHistory: Bool
+        includesUsageHistory: Bool,
+        throughput: ModelThroughputSnapshot = .empty,
+        now: Date = Date()
     ) -> String {
         struct Window: Codable {
             let usedPercent: Double
@@ -32,7 +34,11 @@ enum SyncContentFingerprint {
         }
         struct Payload: Codable {
             let providers: [Provider]
-            let historyDays: [DailyUsageHistory.Day]
+            // The redacted days the phone receives, plus the day the Mac calls
+            // today; the capture time stays out so an unchanged minute is not
+            // a change.
+            let historyDays: [SyncedDailyUsageDay]
+            let historySourceDay: String?
         }
         let values = MobileSnapshotRedactor.publishedProviders.compactMap { provider -> Provider? in
             guard let quota = quotas[provider] else { return nil }
@@ -78,9 +84,13 @@ enum SyncContentFingerprint {
         let encoder = JSONEncoder()
         encoder.outputFormatting = .sortedKeys
         encoder.dateEncodingStrategy = .millisecondsSince1970
+        let syncedHistory = includesUsageHistory
+            ? history.map { MobileSnapshotRedactor.redactedHistory($0, throughput: throughput, now: now) }
+            : nil
         let payload = Payload(
             providers: values,
-            historyDays: includesUsageHistory ? (history?.days ?? []) : []
+            historyDays: syncedHistory?.days ?? [],
+            historySourceDay: syncedHistory?.sourceDay
         )
         let data = (try? encoder.encode(payload)) ?? Data()
         return SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()

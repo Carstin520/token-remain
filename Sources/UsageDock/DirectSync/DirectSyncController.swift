@@ -169,6 +169,7 @@ final class DirectSyncController: ObservableObject {
                 from: usageStore.localQuotasForDirectSync,
                 history: usageStore.history,
                 includesUsageHistory: sharesUsageHistory,
+                throughput: usageStore.modelThroughput,
                 sourceInstanceID: sourceInstanceID,
                 sequence: nextSequence(),
                 generatedAt: now

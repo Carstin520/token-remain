@@ -219,6 +219,180 @@ struct SyncProtocolTests {
         }
     }
 
+    private static func detailedDay(
+        _ key: String = "2026-07-22",
+        agents: [SyncedAgentUsage]? = nil,
+        mix: SyncedTokenMix? = SyncedTokenMix(input: 10, output: 20, cacheWrite: 30, cacheRead: 40, cacheUnsplit: 0)
+    ) -> SyncedDailyUsageDay {
+        SyncedDailyUsageDay(
+            day: key,
+            claudeTokens: 100,
+            claudeCost: 1.5,
+            codexTokens: 0,
+            codexCost: 0,
+            agents: agents ?? [
+                SyncedAgentUsage(id: "claude", tokens: 100, cost: 1.5, models: [
+                    SyncedModelUsage(
+                        id: "opus-4-5",
+                        mix: SyncedTokenMix(input: 10, output: 20, cacheWrite: 30, cacheRead: 40, cacheUnsplit: 0),
+                        cost: 1.5,
+                        speed: SyncedThroughput(outputTokens: 600, seconds: 12, samples: 4)
+                    )
+                ]),
+                SyncedAgentUsage(id: "opencode", tokens: 250, cost: 0.75)
+            ],
+            mix: mix
+        )
+    }
+
+    @Test("Per-agent detail round-trips compactly and is absent from plain days")
+    func usageDetailRoundTrip() throws {
+        let history = SyncedDailyUsageHistory(days: [Self.detailedDay()], capturedAt: fixedNow)
+        let payload = try snapshot(dailyUsageHistory: history).encodedPayload()
+        let decoded = try MobileUsageSnapshot.decodedPayload(from: payload)
+        let day = try #require(decoded.dailyUsageHistory?.days.first)
+
+        #expect(day == Self.detailedDay())
+        #expect(day.totalTokens == 350)
+        #expect(day.totalCost == 2.25)
+        #expect(day.agents?.first?.models?.first?.speed?.tokensPerSecond == 50)
+        let text = try #require(String(data: payload, encoding: .utf8))
+        #expect(text.contains("\"mix\":[10,20,30,40,0]"))
+        #expect(text.contains("\"speed\":[600,12,4]"))
+
+        // A day without detail encodes exactly as before the fields existed,
+        // so older receivers and persisted replay digests are unaffected.
+        let plain = Self.detailedDay().withoutDetail
+        let plainText = try #require(String(
+            data: try snapshot(dailyUsageHistory: SyncedDailyUsageHistory(days: [plain], capturedAt: fixedNow))
+                .encodedPayload(),
+            encoding: .utf8
+        ))
+        #expect(!plainText.contains("agents"))
+        #expect(!plainText.contains("mix"))
+        #expect(plain.totalTokens == 100)
+    }
+
+    @Test("Throughput below the desktop noise floor has no speed")
+    func throughputNoiseFloor() {
+        #expect(SyncedThroughput(outputTokens: 600, seconds: 12, samples: 2).tokensPerSecond == nil)
+        #expect(SyncedThroughput(outputTokens: 600, seconds: 4, samples: 9).tokensPerSecond == nil)
+        #expect(SyncedThroughput(outputTokens: 0, seconds: 60, samples: 9).tokensPerSecond == nil)
+        #expect(SyncedThroughput(outputTokens: 600, seconds: 12, samples: 3).tokensPerSecond == 50)
+    }
+
+    @Test("Malformed or unbounded detail rejects the history")
+    func invalidUsageDetailIsRejected() {
+        func rejects(_ day: SyncedDailyUsageDay) -> Bool {
+            let history = SyncedDailyUsageHistory(days: [day], capturedAt: fixedNow)
+            do {
+                _ = try snapshot(dailyUsageHistory: history).validatedForTransport(configuration: fixedConfiguration)
+                return false
+            } catch SyncValidationError.invalidDailyUsageHistory {
+                return true
+            } catch {
+                return false
+            }
+        }
+        let mix = SyncedTokenMix(input: 1, output: 1, cacheWrite: 0, cacheRead: 0, cacheUnsplit: 0)
+        func model(_ id: String, speed: SyncedThroughput? = nil) -> SyncedModelUsage {
+            SyncedModelUsage(id: id, mix: mix, cost: 0, speed: speed)
+        }
+
+        #expect(!rejects(Self.detailedDay()))
+        #expect(rejects(Self.detailedDay(agents: [SyncedAgentUsage(id: "/Users/alice", tokens: 1, cost: 0)])))
+        #expect(rejects(Self.detailedDay(agents: [
+            SyncedAgentUsage(id: "claude", tokens: 1, cost: 0),
+            SyncedAgentUsage(id: "claude", tokens: 1, cost: 0)
+        ])))
+        #expect(rejects(Self.detailedDay(agents: [SyncedAgentUsage(id: "claude", tokens: -1, cost: 0)])))
+        #expect(rejects(Self.detailedDay(agents: [SyncedAgentUsage(id: "claude", tokens: 1, cost: .nan)])))
+        #expect(rejects(Self.detailedDay(agents: [
+            SyncedAgentUsage(id: "claude", tokens: 1, cost: 0, models: [model("user@example.com")])
+        ])))
+        #expect(rejects(Self.detailedDay(agents: [
+            SyncedAgentUsage(id: "claude", tokens: 1, cost: 0, models: [model("opus"), model("opus")])
+        ])))
+        #expect(rejects(Self.detailedDay(agents: [
+            SyncedAgentUsage(id: "claude", tokens: 1, cost: 0, models: (0...SyncedAgentUsage.maximumModels).map {
+                model("model-\($0)")
+            })
+        ])))
+        #expect(rejects(Self.detailedDay(agents: [
+            SyncedAgentUsage(id: "claude", tokens: 1, cost: 0, models: [
+                model("opus", speed: SyncedThroughput(outputTokens: 1, seconds: .infinity, samples: 3))
+            ])
+        ])))
+        #expect(rejects(Self.detailedDay(agents: (0...SyncedDailyUsageDay.maximumAgents).map {
+            SyncedAgentUsage(id: "agent-\($0)", tokens: 1, cost: 0)
+        })))
+        #expect(rejects(Self.detailedDay(mix: SyncedTokenMix(
+            input: -1, output: 0, cacheWrite: 0, cacheRead: 0, cacheUnsplit: 0
+        ))))
+    }
+
+    @Test("Multi-Mac detail sums when every source has it and falls back otherwise")
+    func multiMacUsageDetailMerge() throws {
+        let secondSource = UUID(uuidString: "11111111-2222-4333-8444-555555555555")!
+        func aggregate(_ first: SyncedDailyUsageDay, _ second: SyncedDailyUsageDay) throws -> SyncedDailyUsageDay {
+            let merged = try #require(try MobileUsageSnapshotAggregator.aggregate([
+                snapshot(dailyUsageHistory: SyncedDailyUsageHistory(days: [first], capturedAt: fixedNow)),
+                snapshot(
+                    sourceInstanceID: secondSource,
+                    dailyUsageHistory: SyncedDailyUsageHistory(days: [second], capturedAt: fixedNow)
+                ),
+            ], now: fixedNow))
+            return try #require(merged.dailyUsageHistory?.days.first)
+        }
+
+        let both = try aggregate(Self.detailedDay(), Self.detailedDay())
+        let claude = try #require(both.agents?.first { $0.id == "claude" })
+        #expect(both.agents?.map(\.id) == ["claude", "opencode"])
+        #expect(claude.tokens == 200)
+        #expect(claude.models?.first?.mix.input == 20)
+        #expect(claude.models?.first?.speed == SyncedThroughput(outputTokens: 1_200, seconds: 24, samples: 8))
+        #expect(both.mix == SyncedTokenMix(input: 20, output: 40, cacheWrite: 60, cacheRead: 80, cacheUnsplit: 0))
+        #expect(both.totalTokens == 700)
+
+        // An older Mac's plain day would make the per-agent sum undercount.
+        let mixed = try aggregate(Self.detailedDay(), Self.detailedDay().withoutDetail)
+        #expect(mixed.agents == nil)
+        #expect(mixed.mix == nil)
+        #expect(mixed.claudeTokens == 200)
+
+        // A trimmed agent row drops that agent's models, not its totals.
+        let trimmed = try aggregate(
+            Self.detailedDay(),
+            Self.detailedDay(agents: [SyncedAgentUsage(id: "claude", tokens: 100, cost: 1.5)])
+        )
+        #expect(trimmed.agents?.first { $0.id == "claude" }?.models == nil)
+        #expect(trimmed.agents?.first { $0.id == "claude" }?.tokens == 200)
+
+        // Two different top lists fold back to the per-agent bound.
+        let mix = SyncedTokenMix(input: 1, output: 1, cacheWrite: 0, cacheRead: 0, cacheUnsplit: 0)
+        func rows(_ range: ClosedRange<Int>) -> [SyncedModelUsage] {
+            range.map {
+                SyncedModelUsage(
+                    id: "model-\($0)",
+                    mix: mix,
+                    cost: 0.01,
+                    speed: SyncedThroughput(outputTokens: 100, seconds: 10, samples: 5)
+                )
+            }
+        }
+        let wide = try aggregate(
+            Self.detailedDay(agents: [SyncedAgentUsage(id: "claude", tokens: 14, cost: 0.07, models: rows(1...7))]),
+            Self.detailedDay(agents: [SyncedAgentUsage(id: "claude", tokens: 14, cost: 0.07, models: rows(5...11))])
+        )
+        let models = try #require(wide.agents?.first?.models)
+        #expect(models.count == SyncedAgentUsage.maximumModels)
+        let other = try #require(models.last)
+        #expect(other.id == SyncedModelUsage.otherID)
+        #expect(other.speed == nil)
+        #expect(models.reduce(0) { $0 + $1.totalTokens } == 28)
+        #expect(other.count == 4)
+    }
+
     @Test("Daily usage history round-trips inside the encrypted allowlist")
     func dailyHistoryRoundTrip() throws {
         let history = SyncedDailyUsageHistory(

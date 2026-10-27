@@ -204,13 +204,26 @@ public struct AggregateUsage: Codable, Sendable, Equatable {
 
 /// One privacy-minimized calendar-day aggregate from Mac `ccusage` history.
 /// The day is a timezone-independent `yyyy-MM-dd` key; no session, project,
-/// prompt, model, account, or file-path detail is permitted on this boundary.
+/// prompt, account, or file-path detail is permitted on this boundary. Product
+/// identifiers — local-usage agent slugs and model names — may cross it in the
+/// optional detail fields, which carry only token counts, estimated cost and
+/// measured output speed.
 public struct SyncedDailyUsageDay: Codable, Sendable, Equatable, Identifiable {
+    public static let maximumAgents = 16
+
     public let day: String
+    /// Fixed legacy columns, still published for clients that predate
+    /// `agents` (iPhone 1.2, Windows).
     public let claudeTokens: Int64
     public let claudeCost: Double
     public let codexTokens: Int64
     public let codexCost: Double
+    /// Every local-usage agent the Mac counted that day. Nil from Macs before
+    /// 1.4.6 and on days the sender trimmed to fit the payload budget.
+    public let agents: [SyncedAgentUsage]?
+    /// The day's token kinds across every agent. Kept on days whose model
+    /// rows were trimmed, so a range's token mix survives the budget.
+    public let mix: SyncedTokenMix?
 
     public var id: String { day }
 
@@ -219,17 +232,286 @@ public struct SyncedDailyUsageDay: Codable, Sendable, Equatable, Identifiable {
         claudeTokens: Int64,
         claudeCost: Double,
         codexTokens: Int64,
-        codexCost: Double
+        codexCost: Double,
+        agents: [SyncedAgentUsage]? = nil,
+        mix: SyncedTokenMix? = nil
     ) {
         self.day = day
         self.claudeTokens = claudeTokens
         self.claudeCost = claudeCost
         self.codexTokens = codexTokens
         self.codexCost = codexCost
+        self.agents = agents
+        self.mix = mix
     }
 
-    public var totalTokens: Int64 { claudeTokens + codexTokens }
-    public var totalCost: Double { claudeCost + codexCost }
+    /// The same day without its optional detail — what an older Mac sends.
+    public var withoutDetail: SyncedDailyUsageDay {
+        SyncedDailyUsageDay(
+            day: day,
+            claudeTokens: claudeTokens,
+            claudeCost: claudeCost,
+            codexTokens: codexTokens,
+            codexCost: codexCost
+        )
+    }
+
+    /// Every agent when the day carries them, otherwise the legacy columns.
+    public var totalTokens: Int64 {
+        guard let agents else { return claudeTokens + codexTokens }
+        return agents.reduce(0) { $0 + $1.tokens }
+    }
+
+    public var totalCost: Double {
+        guard let agents else { return claudeCost + codexCost }
+        return agents.reduce(0) { $0 + $1.cost }
+    }
+}
+
+/// One local-usage agent's share of a synced day.
+public struct SyncedAgentUsage: Codable, Sendable, Equatable, Identifiable {
+    public static let maximumModels = 8
+
+    /// The Mac's local-usage source slug (`claude`, `codex`, `opencode`, …),
+    /// a product identifier that passes `SyncedProviderID.isWellFormed`.
+    public let id: String
+    public let tokens: Int64
+    public let cost: Double
+    /// Bounded per-model rows, the tail folded into `SyncedModelUsage.otherID`.
+    /// Only the most recent days that fit the payload budget carry them.
+    public let models: [SyncedModelUsage]?
+
+    public init(id: String, tokens: Int64, cost: Double, models: [SyncedModelUsage]? = nil) {
+        self.id = id
+        self.tokens = tokens
+        self.cost = cost
+        self.models = models
+    }
+
+    public var withoutModels: SyncedAgentUsage {
+        SyncedAgentUsage(id: id, tokens: tokens, cost: cost)
+    }
+
+    /// Folds rows beyond `maximumModels` into one `other` row: the busiest
+    /// named models stay, ties broken by identifier so every sender and
+    /// merger produces the same list.
+    public static func boundedModels(_ rows: [SyncedModelUsage]) -> [SyncedModelUsage] {
+        var byID: [String: SyncedModelUsage] = [:]
+        for row in rows {
+            byID[row.id] = byID[row.id].map { $0.adding(row) } ?? row
+        }
+        let other = byID.removeValue(forKey: SyncedModelUsage.otherID)
+        let named = byID.values.sorted {
+            $0.totalTokens == $1.totalTokens ? $0.id < $1.id : $0.totalTokens > $1.totalTokens
+        }
+        guard named.count + (other == nil ? 0 : 1) > maximumModels else {
+            return named + [other].compactMap { $0 }
+        }
+        let kept = Array(named.prefix(maximumModels - 1))
+        let tail = Array(named.dropFirst(maximumModels - 1)) + [other].compactMap { $0 }
+        let folded = tail.dropFirst().reduce(tail[0].foldedIntoOther) {
+            $0.adding($1.foldedIntoOther)
+        }
+        return kept + [folded]
+    }
+}
+
+/// One model's use by one agent on one day.
+public struct SyncedModelUsage: Codable, Sendable, Equatable, Identifiable {
+    /// The row that sums every model beyond the named ones.
+    public static let otherID = "other"
+    public static let maximumConstituents = 10_000
+
+    public let id: String
+    public let mix: SyncedTokenMix
+    public let cost: Double
+    /// Concrete models folded into the `other` row; nil for a named model.
+    public let count: Int?
+    /// Measured output speed inputs; nil without timed responses.
+    public let speed: SyncedThroughput?
+
+    public init(
+        id: String,
+        mix: SyncedTokenMix,
+        cost: Double,
+        count: Int? = nil,
+        speed: SyncedThroughput? = nil
+    ) {
+        self.id = id
+        self.mix = mix
+        self.cost = cost
+        self.count = count
+        self.speed = speed
+    }
+
+    public var totalTokens: Int64 { mix.total }
+
+    /// The row as part of `other`, which never shows a speed.
+    public var foldedIntoOther: SyncedModelUsage {
+        SyncedModelUsage(id: Self.otherID, mix: mix, cost: cost, count: count ?? 1)
+    }
+
+    /// Sums two rows for the same model. `other` rows add their constituent
+    /// counts; named rows add their speed inputs.
+    public func adding(_ other: SyncedModelUsage) -> SyncedModelUsage {
+        let isOther = id == Self.otherID
+        let speed: SyncedThroughput? = switch (self.speed, other.speed) {
+        case let (lhs?, rhs?): lhs.adding(rhs)
+        case let (lhs?, nil): lhs
+        case let (nil, rhs?): rhs
+        case (nil, nil): nil
+        }
+        let cost = self.cost + other.cost
+        return SyncedModelUsage(
+            id: id,
+            mix: mix.adding(other.mix),
+            cost: cost.isFinite
+                ? min(cost, SyncedDailyUsageHistory.maximumCostPerProviderPerDay)
+                : SyncedDailyUsageHistory.maximumCostPerProviderPerDay,
+            count: isOther
+                ? min((count ?? 1) + (other.count ?? 1), Self.maximumConstituents)
+                : nil,
+            speed: isOther ? nil : speed
+        )
+    }
+
+    /// Lower-case model identifiers as the Mac stores them (`opus-4-5`,
+    /// `gpt-5.3-codex`, `anthropic/claude-sonnet`). `@` is excluded so nothing
+    /// address-shaped passes; senders rewrite Vertex-style `name@date` to
+    /// `name-date` and fold anything else into `other`.
+    public static func isWellFormedID(_ value: String) -> Bool {
+        guard (1...64).contains(value.utf8.count),
+              let first = value.utf8.first,
+              (first >= 97 && first <= 122) || (first >= 48 && first <= 57) else {
+            return false
+        }
+        return value.utf8.allSatisfy { byte in
+            (byte >= 97 && byte <= 122) || (byte >= 48 && byte <= 57)
+                || byte == 45 || byte == 46 || byte == 95 || byte == 47 || byte == 58
+        }
+    }
+}
+
+/// Token kinds in a fixed order, encoded as a five-number array
+/// `[input, output, cacheWrite, cacheRead, cacheUnsplit]`: a day can carry
+/// dozens of these and the whole snapshot must fit the 20 KiB envelope.
+/// `cacheUnsplit` holds cache tokens from rows that predate the write/read split.
+public struct SyncedTokenMix: Codable, Sendable, Equatable {
+    public let input: Int64
+    public let output: Int64
+    public let cacheWrite: Int64
+    public let cacheRead: Int64
+    public let cacheUnsplit: Int64
+
+    public static let zero = SyncedTokenMix(input: 0, output: 0, cacheWrite: 0, cacheRead: 0, cacheUnsplit: 0)
+
+    public init(input: Int64, output: Int64, cacheWrite: Int64, cacheRead: Int64, cacheUnsplit: Int64) {
+        self.input = input
+        self.output = output
+        self.cacheWrite = cacheWrite
+        self.cacheRead = cacheRead
+        self.cacheUnsplit = cacheUnsplit
+    }
+
+    public init(from decoder: any Decoder) throws {
+        var container = try decoder.unkeyedContainer()
+        input = try container.decode(Int64.self)
+        output = try container.decode(Int64.self)
+        cacheWrite = try container.decode(Int64.self)
+        cacheRead = try container.decode(Int64.self)
+        cacheUnsplit = try container.decode(Int64.self)
+        guard container.isAtEnd else {
+            throw DecodingError.dataCorruptedError(
+                in: container,
+                debugDescription: "A token mix has exactly five kinds"
+            )
+        }
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.unkeyedContainer()
+        try container.encode(input)
+        try container.encode(output)
+        try container.encode(cacheWrite)
+        try container.encode(cacheRead)
+        try container.encode(cacheUnsplit)
+    }
+
+    public var values: [Int64] { [input, output, cacheWrite, cacheRead, cacheUnsplit] }
+
+    /// Saturating sum, so merged detail never overflows its bound.
+    public var total: Int64 {
+        values.reduce(0) { SyncedDailyUsageHistory.saturatingAdd($0, $1) }
+    }
+
+    public func adding(_ other: SyncedTokenMix) -> SyncedTokenMix {
+        typealias H = SyncedDailyUsageHistory
+        return SyncedTokenMix(
+            input: H.saturatingAdd(input, other.input),
+            output: H.saturatingAdd(output, other.output),
+            cacheWrite: H.saturatingAdd(cacheWrite, other.cacheWrite),
+            cacheRead: H.saturatingAdd(cacheRead, other.cacheRead),
+            cacheUnsplit: H.saturatingAdd(cacheUnsplit, other.cacheUnsplit)
+        )
+    }
+}
+
+/// End-to-end output speed inputs for one model on one day, encoded as
+/// `[outputTokens, seconds, samples]`. Receivers derive tokens per second
+/// (Σ output ÷ Σ seconds) themselves, so several Macs merge exactly.
+public struct SyncedThroughput: Codable, Sendable, Equatable {
+    /// The desktop's noise floor: fewer timed responses than this, or less
+    /// time, is not shown as a speed.
+    public static let minimumSamples = 3
+    public static let minimumSeconds: Double = 5
+    public static let maximumSeconds: Double = 30 * 24 * 60 * 60
+    public static let maximumSamples = 10_000_000
+
+    public let outputTokens: Int64
+    public let seconds: Double
+    public let samples: Int
+
+    public init(outputTokens: Int64, seconds: Double, samples: Int) {
+        self.outputTokens = outputTokens
+        self.seconds = seconds
+        self.samples = samples
+    }
+
+    public init(from decoder: any Decoder) throws {
+        var container = try decoder.unkeyedContainer()
+        outputTokens = try container.decode(Int64.self)
+        seconds = try container.decode(Double.self)
+        samples = try container.decode(Int.self)
+        guard container.isAtEnd else {
+            throw DecodingError.dataCorruptedError(
+                in: container,
+                debugDescription: "A throughput sample has exactly three values"
+            )
+        }
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.unkeyedContainer()
+        try container.encode(outputTokens)
+        try container.encode(seconds)
+        try container.encode(samples)
+    }
+
+    /// Nil below the noise floor.
+    public var tokensPerSecond: Double? {
+        guard samples >= Self.minimumSamples,
+              seconds >= Self.minimumSeconds,
+              outputTokens > 0 else { return nil }
+        return Double(outputTokens) / seconds
+    }
+
+    public func adding(_ other: SyncedThroughput) -> SyncedThroughput {
+        SyncedThroughput(
+            outputTokens: SyncedDailyUsageHistory.saturatingAdd(outputTokens, other.outputTokens),
+            seconds: min(seconds + other.seconds, Self.maximumSeconds),
+            samples: min(samples + other.samples, Self.maximumSamples)
+        )
+    }
 }
 
 /// Optional history has a deliberately small retention window and fixed
@@ -254,6 +536,13 @@ public struct SyncedDailyUsageHistory: Codable, Sendable, Equatable {
         self.days = days
         self.capturedAt = capturedAt
         self.sourceDay = sourceDay
+    }
+
+    /// Clamps at the per-day token bound instead of overflowing.
+    public static func saturatingAdd(_ lhs: Int64, _ rhs: Int64) -> Int64 {
+        let (sum, overflow) = lhs.addingReportingOverflow(rhs)
+        guard !overflow else { return maximumTokensPerProviderPerDay }
+        return min(sum, maximumTokensPerProviderPerDay)
     }
 }
 
@@ -664,11 +953,55 @@ public struct MobileUsageSnapshot: Codable, Sendable, Equatable {
                   Self.valid(tokens: day.claudeTokens),
                   Self.valid(tokens: day.codexTokens),
                   Self.valid(cost: day.claudeCost),
-                  Self.valid(cost: day.codexCost) else {
+                  Self.valid(cost: day.codexCost),
+                  Self.validDetail(of: day) else {
                 throw SyncValidationError.invalidDailyUsageHistory
             }
             previousDay = day.day
         }
+    }
+
+    /// Optional per-agent and per-model detail. Every count is bounded and
+    /// every identifier is a product slug, so nothing account- or path-like
+    /// and no unbounded list can ride on a valid day.
+    private static func validDetail(of day: SyncedDailyUsageDay) -> Bool {
+        if let mix = day.mix, !valid(mix: mix) { return false }
+        guard let agents = day.agents else { return true }
+        guard agents.count <= SyncedDailyUsageDay.maximumAgents else { return false }
+        var agentIDs = Set<String>()
+        for agent in agents {
+            guard SyncedProviderID.isWellFormed(agent.id),
+                  agentIDs.insert(agent.id).inserted,
+                  valid(tokens: agent.tokens),
+                  valid(cost: agent.cost) else {
+                return false
+            }
+            guard let models = agent.models else { continue }
+            guard models.count <= SyncedAgentUsage.maximumModels else { return false }
+            var modelIDs = Set<String>()
+            for model in models {
+                guard SyncedModelUsage.isWellFormedID(model.id),
+                      modelIDs.insert(model.id).inserted,
+                      valid(mix: model.mix),
+                      valid(cost: model.cost),
+                      model.count.map({ (1...SyncedModelUsage.maximumConstituents).contains($0) }) ?? true,
+                      model.speed.map(valid(speed:)) ?? true else {
+                    return false
+                }
+            }
+        }
+        return true
+    }
+
+    private static func valid(mix: SyncedTokenMix) -> Bool {
+        mix.values.allSatisfy(valid(tokens:))
+    }
+
+    private static func valid(speed: SyncedThroughput) -> Bool {
+        valid(tokens: speed.outputTokens)
+            && speed.seconds.isFinite
+            && (0...SyncedThroughput.maximumSeconds).contains(speed.seconds)
+            && (0...SyncedThroughput.maximumSamples).contains(speed.samples)
     }
 
     private func validate(

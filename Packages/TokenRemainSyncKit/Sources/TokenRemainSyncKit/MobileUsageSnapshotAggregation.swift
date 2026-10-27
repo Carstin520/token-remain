@@ -117,12 +117,30 @@ private struct DailyAccumulator {
     var claudeCost: Double = 0
     var codexTokens: Int64 = 0
     var codexCost: Double = 0
+    /// Nil once any source reports the day without per-agent detail: a sum
+    /// over only some Macs would undercount, so the day falls back to the
+    /// legacy columns, which every source fills.
+    var agents: [String: AgentAccumulator]? = [:]
+    var mix: SyncedTokenMix? = .zero
 
     mutating func add(_ day: SyncedDailyUsageDay) {
-        claudeTokens = boundedAdd(claudeTokens, day.claudeTokens)
-        claudeCost = boundedAdd(claudeCost, day.claudeCost)
-        codexTokens = boundedAdd(codexTokens, day.codexTokens)
-        codexCost = boundedAdd(codexCost, day.codexCost)
+        claudeTokens = SyncedDailyUsageHistory.saturatingAdd(claudeTokens, day.claudeTokens)
+        claudeCost = boundedCost(claudeCost + day.claudeCost)
+        codexTokens = SyncedDailyUsageHistory.saturatingAdd(codexTokens, day.codexTokens)
+        codexCost = boundedCost(codexCost + day.codexCost)
+
+        if let dayAgents = day.agents, agents != nil {
+            for agent in dayAgents {
+                agents![agent.id, default: AgentAccumulator()].add(agent)
+            }
+        } else {
+            agents = nil
+        }
+        if let dayMix = day.mix, let current = mix {
+            mix = current.adding(dayMix)
+        } else {
+            mix = nil
+        }
     }
 
     func value(day: String) -> SyncedDailyUsageDay {
@@ -131,23 +149,50 @@ private struct DailyAccumulator {
             claudeTokens: claudeTokens,
             claudeCost: claudeCost,
             codexTokens: codexTokens,
-            codexCost: codexCost
+            codexCost: codexCost,
+            agents: agents.map { agents in
+                agents.keys.sorted().prefix(SyncedDailyUsageDay.maximumAgents).map {
+                    agents[$0]!.value(id: $0)
+                }
+            },
+            mix: mix
         )
     }
+}
 
-    private func boundedAdd(_ lhs: Int64, _ rhs: Int64) -> Int64 {
-        let (sum, overflow) = lhs.addingReportingOverflow(rhs)
-        guard !overflow else {
-            return SyncedDailyUsageHistory.maximumTokensPerProviderPerDay
+private struct AgentAccumulator {
+    var tokens: Int64 = 0
+    var cost: Double = 0
+    /// Nil once any source's row for this agent arrives without models.
+    var models: [String: SyncedModelUsage]? = [:]
+
+    mutating func add(_ agent: SyncedAgentUsage) {
+        tokens = SyncedDailyUsageHistory.saturatingAdd(tokens, agent.tokens)
+        cost = boundedCost(cost + agent.cost)
+        guard let rows = agent.models, models != nil else {
+            models = nil
+            return
         }
-        return min(sum, SyncedDailyUsageHistory.maximumTokensPerProviderPerDay)
+        for row in rows {
+            models![row.id] = models![row.id].map { $0.adding(row) } ?? row
+        }
     }
 
-    private func boundedAdd(_ lhs: Double, _ rhs: Double) -> Double {
-        let sum = lhs + rhs
-        guard sum.isFinite else {
-            return SyncedDailyUsageHistory.maximumCostPerProviderPerDay
-        }
-        return min(sum, SyncedDailyUsageHistory.maximumCostPerProviderPerDay)
+    func value(id: String) -> SyncedAgentUsage {
+        SyncedAgentUsage(
+            id: id,
+            tokens: tokens,
+            cost: cost,
+            // Two Macs can each send a different top seven; the union folds
+            // back to the bound the Mac applies.
+            models: models.map { SyncedAgentUsage.boundedModels(Array($0.values)) }
+        )
     }
+}
+
+private func boundedCost(_ sum: Double) -> Double {
+    guard sum.isFinite else {
+        return SyncedDailyUsageHistory.maximumCostPerProviderPerDay
+    }
+    return min(sum, SyncedDailyUsageHistory.maximumCostPerProviderPerDay)
 }
