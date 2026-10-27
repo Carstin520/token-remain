@@ -3,6 +3,23 @@
 All notable product changes are recorded here. TokenRemain uses Semantic
 Versioning for public releases.
 
+## 1.4.6 — 2026-10-27
+
+### Added
+
+- Sync sanitized per-tool and per-model usage details to compatible iPhone
+  clients, while retaining compatibility with older snapshots and clients.
+- Introduce the dot-ring head app icon and a quota meter when one app is selected.
+
+### Improved
+
+- Rerun only the Codex or non-Codex half of local usage collection when its
+  inputs change; explicit refreshes still collect both halves.
+- Improve Dashboard readability with dark cards on Tinted glass, identify the
+  app with the lowest remaining quota, and simplify usage trend visuals.
+- Refresh the website with an interactive menu-bar demo, a calmer palette and
+  an updated overview of supported providers.
+
 ## 1.4.5 — 2026-10-25
 
 ### Added
