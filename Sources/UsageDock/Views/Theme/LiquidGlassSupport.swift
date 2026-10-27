@@ -386,6 +386,7 @@ private struct UsageDockGlassSurfaceModifier: ViewModifier {
             // stroke differ between the two settings now, and none of those is
             // glass.
             content
+                .background(dashboardCardFill ?? .clear, in: shape)
                 .glassEffect(
                     interactive ? baseGlass.interactive() : baseGlass,
                     in: shape
@@ -458,6 +459,22 @@ private struct UsageDockGlassSurfaceModifier: ViewModifier {
             Glass.clear.tint(surfaceTint)
         }
     }
+
+    /// Dashboard cards draw their own ground above the glass. Left to untinted
+    /// `Glass.regular` the card's colour belongs to the system, and with
+    /// Appearance › Liquid Glass set to Tinted (`NSGlassDiffusionSetting = 1`)
+    /// it diffuses to a light grey — a glass tint only lightened it further.
+    /// Measured on that setting over the Dashboard canvas (≈#1E1E21):
+    /// untinted ≈#38383B, surface @ 0.62 tint ≈#4A4A4C, surface2 @ 0.90 fill
+    /// ≈#25262C. The canvas here is material under the 0.62 ink scrim, which
+    /// lands about where `surface` sits, so cards take the next step up.
+    private var dashboardCardFill: Color? {
+        guard popoverBackdropOpacity == nil, tint == nil else { return nil }
+        return (fallbackBackground ?? surfaces.surface2)
+            .opacity(Self.dashboardCardFillOpacity)
+    }
+
+    private static let dashboardCardFillOpacity = 0.9
 
     /// Frosted popup cards keep their pre-redesign composition: full tint, the
     /// old border curve, no white lift.

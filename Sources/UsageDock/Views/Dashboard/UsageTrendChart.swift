@@ -39,8 +39,8 @@ enum TrendMetric: CaseIterable, Identifiable {
 
 // MARK: - Card
 
-/// Trends card: range / metric toggles, a provider legend, an ornamental total
-/// sparkline, and the stacked daily bar chart.
+/// Trends card: range / metric toggles, a provider legend and the stacked daily
+/// bar chart.
 /// Backed entirely by real ccusage `daily --by-agent` history — the caller only
 /// shows this when at least two days exist.
 struct UsageTrendCard: View {
@@ -82,8 +82,6 @@ struct UsageTrendCard: View {
 
                 controls
 
-                sparklineRow
-
                 UsageTrendChart(
                     days: shown,
                     metric: metric,
@@ -92,6 +90,14 @@ struct UsageTrendCard: View {
                     pinnedDayID: $pinnedDayID
                 )
                     .frame(height: 208)
+                    // A calm, near-opaque ground for the plot. On glass the card
+                    // refracts the desktop, and its streaks ran straight through
+                    // the bars and gridlines.
+                    .padding(EdgeInsets(top: 12, leading: 4, bottom: 6, trailing: 12))
+                    .background(
+                        DashboardSurface.canvas.opacity(0.62),
+                        in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    )
 
                 let pinnedDay = shown.first(where: { $0.id == pinnedDayID })
                 compositionStrip(pinnedDay: pinnedDay)
@@ -147,28 +153,6 @@ struct UsageTrendCard: View {
                 options: TrendMetric.allCases.map { ($0, $0.label) },
                 selection: $metric
             )
-        }
-    }
-
-    @ViewBuilder
-    private var sparklineRow: some View {
-        let totals = shown.map { day in
-            UsageTrendChart.selectedTotal(
-                day,
-                metric: metric,
-                visibleAgentIDs: visibleAgentIDs
-            )
-        }
-        if !visibleAgentIDs.isEmpty, totals.count > 1 {
-            HStack(spacing: 8) {
-                Text(L10n.text("trends.total_sparkline"))
-                    .font(.system(size: 9, weight: .medium))
-                    .foregroundStyle(DashboardTheme.mutedText)
-                // Neutral (non-series) tint: a total is neither Claude nor Codex,
-                // so it must not borrow either provider's identity color.
-                DottedSparkline(values: totals, accent: DashboardTheme.secondaryText)
-                    .frame(height: 20)
-            }
         }
     }
 
@@ -235,11 +219,20 @@ struct UsageTrendChart: View {
             let plotW = size.width - leftGutter
             let plotH = size.height - xAxisHeight
             let columnW = plotW / CGFloat(max(days.count, 1))
-            let barW = barWidth(columnW: columnW, cap: barCap)
+            let barW = barWidth(columnW: columnW)
 
             ZStack(alignment: .topLeading) {
                 if hasVisibleSeries {
                     gridlines(plotW: plotW, plotH: plotH)
+                }
+
+                if hasVisibleSeries, let index = highlightedIndex {
+                    columnBand(
+                        centerX: leftGutter + columnW * (CGFloat(index) + 0.5),
+                        columnW: columnW,
+                        barW: barW,
+                        plotH: plotH
+                    )
                 }
 
                 baseline(plotW: plotW, plotH: plotH)
@@ -340,18 +333,20 @@ struct UsageTrendChart: View {
         )
     }
 
-    private var barCap: CGFloat {
-        // Match the enclosing range's thin-bar width; fall back for odd counts.
-        switch days.count {
-        case ...7: return 12
-        case ...14: return 10
-        default: return 7
-        }
+    /// Bars take a share of their day's column instead of a fixed width, so a
+    /// wide window does not leave 10pt slivers stranded in 60pt of air. Capped
+    /// so a 7-day range never turns into blocks.
+    private func barWidth(columnW: CGFloat) -> CGFloat {
+        let proportional = Swift.min(22, columnW * 0.42)
+        // Always leave a >=2pt canvas gap between adjacent bars.
+        return Swift.max(2, Swift.min(proportional, columnW - 2))
     }
 
-    private func barWidth(columnW: CGFloat, cap: CGFloat) -> CGFloat {
-        // Always leave a >=2pt canvas gap between adjacent bars.
-        Swift.max(2, Swift.min(cap, columnW - 2))
+    /// The hovered day, else the pinned one: the column the tooltip or the
+    /// model breakdown is talking about.
+    private var highlightedIndex: Int? {
+        if let activeIndex, days.indices.contains(activeIndex) { return activeIndex }
+        return pinnedDayID.flatMap { id in days.firstIndex { $0.id == id } }
     }
 
     private func barHeight(_ value: Double, plotH: CGFloat) -> CGFloat {
@@ -377,21 +372,41 @@ struct UsageTrendChart: View {
     private func gridlines(plotW: CGFloat, plotH: CGFloat) -> some View {
         ForEach(gridlineFractions, id: \.self) { fraction in
             let y = plotH - plotH * CGFloat(fraction)
+            // One step off the surface: at 40% the border colour vanished on
+            // the glass card and the tick labels floated with nothing to read
+            // a bar height against.
             Rectangle()
-                .fill(DashboardSurface.border.opacity(0.4))
+                .fill(DashboardSurface.border)
                 .frame(width: plotW, height: 1)
                 .position(x: leftGutter + plotW / 2, y: y)
                 .accessibilityHidden(true)
 
-            Text(axisLabel(niceMax * fraction))
-                .font(DashboardTheme.Typo.numeric(9)).monospacedDigit()
-                .foregroundStyle(DashboardTheme.mutedText)
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
-                .frame(width: leftGutter - 8, alignment: .trailing)
-                .position(x: (leftGutter - 8) / 2, y: y)
-                .accessibilityHidden(true)
+            axisTick(niceMax * fraction, y: y)
         }
+        // The baseline is the zero gridline; label it so the scale has an origin.
+        axisTick(0, y: plotH - 0.5)
+    }
+
+    private func axisTick(_ value: Double, y: CGFloat) -> some View {
+        Text(axisLabel(value))
+            .font(DashboardTheme.Typo.numeric(9)).monospacedDigit()
+            .foregroundStyle(DashboardTheme.secondaryText)
+            .lineLimit(1)
+            .minimumScaleFactor(0.75)
+            .frame(width: leftGutter - 8, alignment: .trailing)
+            .position(x: (leftGutter - 8) / 2, y: y)
+            .accessibilityHidden(true)
+    }
+
+    /// Faint band behind the highlighted day, tying its bar to the x label
+    /// and to the tooltip or breakdown that describes it.
+    private func columnBand(centerX: CGFloat, columnW: CGFloat, barW: CGFloat, plotH: CGFloat) -> some View {
+        RoundedRectangle(cornerRadius: 6, style: .continuous)
+            .fill(DashboardTheme.text.opacity(0.06))
+            .frame(width: Swift.min(columnW, Swift.max(barW + 8, columnW - 6)), height: plotH)
+            .position(x: centerX, y: plotH / 2)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
     }
 
     @ViewBuilder
@@ -609,14 +624,14 @@ private struct BarColumn: View {
         segments.prefix(index).reduce(0) { $0 + $1.height + gap }
     }
 
-    /// Top-only 2pt rounding for the stack's data-end; square everywhere else so
+    /// Top-only 3pt rounding for the stack's data-end; square everywhere else so
     /// segments read as anchored blocks.
     private func segment(rounded: Bool) -> UnevenRoundedRectangle {
         UnevenRoundedRectangle(
-            topLeadingRadius: rounded ? 2 : 0,
+            topLeadingRadius: rounded ? 3 : 0,
             bottomLeadingRadius: 0,
             bottomTrailingRadius: 0,
-            topTrailingRadius: rounded ? 2 : 0,
+            topTrailingRadius: rounded ? 3 : 0,
             style: .continuous
         )
     }
