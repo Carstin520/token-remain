@@ -1,0 +1,1150 @@
+{
+  "status": "passed",
+  "checks_passed": 155,
+  "checks": [
+    {
+      "check": "full ring count",
+      "passed": true,
+      "detail": 20
+    },
+    {
+      "check": "full dot 0 geometry",
+      "passed": true,
+      "detail": {
+        "x": 512.0,
+        "y": 112.0,
+        "r": 30
+      }
+    },
+    {
+      "check": "full dot 0 palette",
+      "passed": true,
+      "detail": "#3ECFE0"
+    },
+    {
+      "check": "full dot 1 geometry",
+      "passed": true,
+      "detail": {
+        "x": 635.606798,
+        "y": 131.577393,
+        "r": 30
+      }
+    },
+    {
+      "check": "full dot 1 palette",
+      "passed": true,
+      "detail": "#3ECFE0"
+    },
+    {
+      "check": "full dot 2 geometry",
+      "passed": true,
+      "detail": {
+        "x": 747.114101,
+        "y": 188.393202,
+        "r": 30
+      }
+    },
+    {
+      "check": "full dot 2 palette",
+      "passed": true,
+      "detail": "#3ECFE0"
+    },
+    {
+      "check": "full dot 3 geometry",
+      "passed": true,
+      "detail": {
+        "x": 835.606798,
+        "y": 276.885899,
+        "r": 30
+      }
+    },
+    {
+      "check": "full dot 3 palette",
+      "passed": true,
+      "detail": "#3ECFE0"
+    },
+    {
+      "check": "full dot 4 geometry",
+      "passed": true,
+      "detail": {
+        "x": 892.422607,
+        "y": 388.393202,
+        "r": 30
+      }
+    },
+    {
+      "check": "full dot 4 palette",
+      "passed": true,
+      "detail": "#3ECFE0"
+    },
+    {
+      "check": "full dot 5 geometry",
+      "passed": true,
+      "detail": {
+        "x": 912.0,
+        "y": 512.0,
+        "r": 30
+      }
+    },
+    {
+      "check": "full dot 5 palette",
+      "passed": true,
+      "detail": "#3ECFE0"
+    },
+    {
+      "check": "full dot 6 geometry",
+      "passed": true,
+      "detail": {
+        "x": 892.422607,
+        "y": 635.606798,
+        "r": 30
+      }
+    },
+    {
+      "check": "full dot 6 palette",
+      "passed": true,
+      "detail": "#3ECFE0"
+    },
+    {
+      "check": "full dot 7 geometry",
+      "passed": true,
+      "detail": {
+        "x": 835.606798,
+        "y": 747.114101,
+        "r": 30
+      }
+    },
+    {
+      "check": "full dot 7 palette",
+      "passed": true,
+      "detail": "#3ECFE0"
+    },
+    {
+      "check": "full dot 8 geometry",
+      "passed": true,
+      "detail": {
+        "x": 747.114101,
+        "y": 835.606798,
+        "r": 30
+      }
+    },
+    {
+      "check": "full dot 8 palette",
+      "passed": true,
+      "detail": "#3ECFE0"
+    },
+    {
+      "check": "full dot 9 geometry",
+      "passed": true,
+      "detail": {
+        "x": 635.606798,
+        "y": 892.422607,
+        "r": 30
+      }
+    },
+    {
+      "check": "full dot 9 palette",
+      "passed": true,
+      "detail": "#3ECFE0"
+    },
+    {
+      "check": "full dot 10 geometry",
+      "passed": true,
+      "detail": {
+        "x": 512.0,
+        "y": 912.0,
+        "r": 30
+      }
+    },
+    {
+      "check": "full dot 10 palette",
+      "passed": true,
+      "detail": "#3ECFE0"
+    },
+    {
+      "check": "full dot 11 geometry",
+      "passed": true,
+      "detail": {
+        "x": 388.393202,
+        "y": 892.422607,
+        "r": 30
+      }
+    },
+    {
+      "check": "full dot 11 palette",
+      "passed": true,
+      "detail": "#3ECFE0"
+    },
+    {
+      "check": "full dot 12 geometry",
+      "passed": true,
+      "detail": {
+        "x": 276.885899,
+        "y": 835.606798,
+        "r": 30
+      }
+    },
+    {
+      "check": "full dot 12 palette",
+      "passed": true,
+      "detail": "#3ECFE0"
+    },
+    {
+      "check": "full dot 13 geometry",
+      "passed": true,
+      "detail": {
+        "x": 188.393202,
+        "y": 747.114101,
+        "r": 30
+      }
+    },
+    {
+      "check": "full dot 13 palette",
+      "passed": true,
+      "detail": "#3ECFE0"
+    },
+    {
+      "check": "full dot 14 geometry",
+      "passed": true,
+      "detail": {
+        "x": 131.577393,
+        "y": 635.606798,
+        "r": 30
+      }
+    },
+    {
+      "check": "full dot 14 palette",
+      "passed": true,
+      "detail": "#3ECFE0"
+    },
+    {
+      "check": "full dot 15 geometry",
+      "passed": true,
+      "detail": {
+        "x": 112.0,
+        "y": 512.0,
+        "r": 30
+      }
+    },
+    {
+      "check": "full dot 15 palette",
+      "passed": true,
+      "detail": "#2B3754"
+    },
+    {
+      "check": "full dot 16 geometry",
+      "passed": true,
+      "detail": {
+        "x": 131.577393,
+        "y": 388.393202,
+        "r": 30
+      }
+    },
+    {
+      "check": "full dot 16 palette",
+      "passed": true,
+      "detail": "#2B3754"
+    },
+    {
+      "check": "full dot 17 geometry",
+      "passed": true,
+      "detail": {
+        "x": 188.393202,
+        "y": 276.885899,
+        "r": 30
+      }
+    },
+    {
+      "check": "full dot 17 palette",
+      "passed": true,
+      "detail": "#2B3754"
+    },
+    {
+      "check": "full dot 18 geometry",
+      "passed": true,
+      "detail": {
+        "x": 276.885899,
+        "y": 188.393202,
+        "r": 30
+      }
+    },
+    {
+      "check": "full dot 18 palette",
+      "passed": true,
+      "detail": "#2B3754"
+    },
+    {
+      "check": "full dot 19 geometry",
+      "passed": true,
+      "detail": {
+        "x": 388.393202,
+        "y": 131.577393,
+        "r": 30
+      }
+    },
+    {
+      "check": "full dot 19 palette",
+      "passed": true,
+      "detail": "#2B3754"
+    },
+    {
+      "check": "full eye geometry",
+      "passed": true,
+      "detail": 34
+    },
+    {
+      "check": "full rectangle geometry",
+      "passed": true,
+      "detail": [
+        [
+          0.0,
+          0.0,
+          1024.0,
+          1024.0,
+          0.0
+        ],
+        [
+          459.0,
+          262.0,
+          106.0,
+          64.0,
+          24.0
+        ],
+        [
+          286.0,
+          352.0,
+          452.0,
+          400.0,
+          120.0
+        ],
+        [
+          286.0,
+          312.0,
+          452.0,
+          400.0,
+          120.0
+        ],
+        [
+          352.0,
+          386.0,
+          320.0,
+          240.0,
+          66.0
+        ]
+      ]
+    },
+    {
+      "check": "full default equals dark",
+      "passed": true,
+      "detail": "byte-identical decoded pixels"
+    },
+    {
+      "check": "full background sRGB",
+      "passed": true,
+      "detail": [
+        8,
+        20,
+        49,
+        255
+      ]
+    },
+    {
+      "check": "full embedded sRGB profile",
+      "passed": true,
+      "detail": 588
+    },
+    {
+      "check": "full size 1024",
+      "passed": true,
+      "detail": [
+        1024,
+        1024
+      ]
+    },
+    {
+      "check": "full size 256",
+      "passed": true,
+      "detail": [
+        256,
+        256
+      ]
+    },
+    {
+      "check": "full size 128",
+      "passed": true,
+      "detail": [
+        128,
+        128
+      ]
+    },
+    {
+      "check": "full size 64",
+      "passed": true,
+      "detail": [
+        64,
+        64
+      ]
+    },
+    {
+      "check": "full size 48",
+      "passed": true,
+      "detail": [
+        48,
+        48
+      ]
+    },
+    {
+      "check": "full size 32",
+      "passed": true,
+      "detail": [
+        32,
+        32
+      ]
+    },
+    {
+      "check": "full size 24",
+      "passed": true,
+      "detail": [
+        24,
+        24
+      ]
+    },
+    {
+      "check": "full size 16",
+      "passed": true,
+      "detail": [
+        16,
+        16
+      ]
+    },
+    {
+      "check": "full native asset dots-dim.svg",
+      "passed": true,
+      "detail": "dots-dim.svg"
+    },
+    {
+      "check": "full glass dots-dim",
+      "passed": true,
+      "detail": false
+    },
+    {
+      "check": "full native asset dots-lit.svg",
+      "passed": true,
+      "detail": "dots-lit.svg"
+    },
+    {
+      "check": "full glass dots-lit",
+      "passed": true,
+      "detail": false
+    },
+    {
+      "check": "full native asset antenna.svg",
+      "passed": true,
+      "detail": "antenna.svg"
+    },
+    {
+      "check": "full glass antenna",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "check": "full native asset depth.svg",
+      "passed": true,
+      "detail": "depth.svg"
+    },
+    {
+      "check": "full glass depth",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "check": "full native asset shell.svg",
+      "passed": true,
+      "detail": "shell.svg"
+    },
+    {
+      "check": "full glass shell",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "check": "full native asset screen.svg",
+      "passed": true,
+      "detail": "screen.svg"
+    },
+    {
+      "check": "full glass screen",
+      "passed": true,
+      "detail": false
+    },
+    {
+      "check": "full native asset eyes.svg",
+      "passed": true,
+      "detail": "eyes.svg"
+    },
+    {
+      "check": "full glass eyes",
+      "passed": true,
+      "detail": false
+    },
+    {
+      "check": "full macOS-only",
+      "passed": true,
+      "detail": {
+        "squares": [
+          "macOS"
+        ]
+      }
+    },
+    {
+      "check": "medium ring count",
+      "passed": true,
+      "detail": 10
+    },
+    {
+      "check": "medium dot 0 geometry",
+      "passed": true,
+      "detail": {
+        "x": 512.0,
+        "y": 120.0,
+        "r": 46
+      }
+    },
+    {
+      "check": "medium dot 0 palette",
+      "passed": true,
+      "detail": "#3ECFE0"
+    },
+    {
+      "check": "medium dot 1 geometry",
+      "passed": true,
+      "detail": {
+        "x": 742.411819,
+        "y": 194.865338,
+        "r": 46
+      }
+    },
+    {
+      "check": "medium dot 1 palette",
+      "passed": true,
+      "detail": "#3ECFE0"
+    },
+    {
+      "check": "medium dot 2 geometry",
+      "passed": true,
+      "detail": {
+        "x": 884.814154,
+        "y": 390.865338,
+        "r": 46
+      }
+    },
+    {
+      "check": "medium dot 2 palette",
+      "passed": true,
+      "detail": "#3ECFE0"
+    },
+    {
+      "check": "medium dot 3 geometry",
+      "passed": true,
+      "detail": {
+        "x": 884.814154,
+        "y": 633.134662,
+        "r": 46
+      }
+    },
+    {
+      "check": "medium dot 3 palette",
+      "passed": true,
+      "detail": "#3ECFE0"
+    },
+    {
+      "check": "medium dot 4 geometry",
+      "passed": true,
+      "detail": {
+        "x": 742.411819,
+        "y": 829.134662,
+        "r": 46
+      }
+    },
+    {
+      "check": "medium dot 4 palette",
+      "passed": true,
+      "detail": "#3ECFE0"
+    },
+    {
+      "check": "medium dot 5 geometry",
+      "passed": true,
+      "detail": {
+        "x": 512.0,
+        "y": 904.0,
+        "r": 46
+      }
+    },
+    {
+      "check": "medium dot 5 palette",
+      "passed": true,
+      "detail": "#3ECFE0"
+    },
+    {
+      "check": "medium dot 6 geometry",
+      "passed": true,
+      "detail": {
+        "x": 281.588181,
+        "y": 829.134662,
+        "r": 46
+      }
+    },
+    {
+      "check": "medium dot 6 palette",
+      "passed": true,
+      "detail": "#3ECFE0"
+    },
+    {
+      "check": "medium dot 7 geometry",
+      "passed": true,
+      "detail": {
+        "x": 139.185846,
+        "y": 633.134662,
+        "r": 46
+      }
+    },
+    {
+      "check": "medium dot 7 palette",
+      "passed": true,
+      "detail": "#3ECFE0"
+    },
+    {
+      "check": "medium dot 8 geometry",
+      "passed": true,
+      "detail": {
+        "x": 139.185846,
+        "y": 390.865338,
+        "r": 46
+      }
+    },
+    {
+      "check": "medium dot 8 palette",
+      "passed": true,
+      "detail": "#2B3754"
+    },
+    {
+      "check": "medium dot 9 geometry",
+      "passed": true,
+      "detail": {
+        "x": 281.588181,
+        "y": 194.865338,
+        "r": 46
+      }
+    },
+    {
+      "check": "medium dot 9 palette",
+      "passed": true,
+      "detail": "#2B3754"
+    },
+    {
+      "check": "medium eye geometry",
+      "passed": true,
+      "detail": 40
+    },
+    {
+      "check": "medium rectangle geometry",
+      "passed": true,
+      "detail": [
+        [
+          0.0,
+          0.0,
+          1024.0,
+          1024.0,
+          0.0
+        ],
+        [
+          459.0,
+          262.0,
+          106.0,
+          64.0,
+          24.0
+        ],
+        [
+          286.0,
+          352.0,
+          452.0,
+          400.0,
+          120.0
+        ],
+        [
+          286.0,
+          312.0,
+          452.0,
+          400.0,
+          120.0
+        ],
+        [
+          352.0,
+          386.0,
+          320.0,
+          240.0,
+          66.0
+        ]
+      ]
+    },
+    {
+      "check": "medium default equals dark",
+      "passed": true,
+      "detail": "byte-identical decoded pixels"
+    },
+    {
+      "check": "medium background sRGB",
+      "passed": true,
+      "detail": [
+        8,
+        20,
+        49,
+        255
+      ]
+    },
+    {
+      "check": "medium embedded sRGB profile",
+      "passed": true,
+      "detail": 588
+    },
+    {
+      "check": "medium size 1024",
+      "passed": true,
+      "detail": [
+        1024,
+        1024
+      ]
+    },
+    {
+      "check": "medium size 256",
+      "passed": true,
+      "detail": [
+        256,
+        256
+      ]
+    },
+    {
+      "check": "medium size 128",
+      "passed": true,
+      "detail": [
+        128,
+        128
+      ]
+    },
+    {
+      "check": "medium size 64",
+      "passed": true,
+      "detail": [
+        64,
+        64
+      ]
+    },
+    {
+      "check": "medium size 48",
+      "passed": true,
+      "detail": [
+        48,
+        48
+      ]
+    },
+    {
+      "check": "medium size 32",
+      "passed": true,
+      "detail": [
+        32,
+        32
+      ]
+    },
+    {
+      "check": "medium size 24",
+      "passed": true,
+      "detail": [
+        24,
+        24
+      ]
+    },
+    {
+      "check": "medium size 16",
+      "passed": true,
+      "detail": [
+        16,
+        16
+      ]
+    },
+    {
+      "check": "medium native asset dots-dim.svg",
+      "passed": true,
+      "detail": "dots-dim.svg"
+    },
+    {
+      "check": "medium glass dots-dim",
+      "passed": true,
+      "detail": false
+    },
+    {
+      "check": "medium native asset dots-lit.svg",
+      "passed": true,
+      "detail": "dots-lit.svg"
+    },
+    {
+      "check": "medium glass dots-lit",
+      "passed": true,
+      "detail": false
+    },
+    {
+      "check": "medium native asset antenna.svg",
+      "passed": true,
+      "detail": "antenna.svg"
+    },
+    {
+      "check": "medium glass antenna",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "check": "medium native asset depth.svg",
+      "passed": true,
+      "detail": "depth.svg"
+    },
+    {
+      "check": "medium glass depth",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "check": "medium native asset shell.svg",
+      "passed": true,
+      "detail": "shell.svg"
+    },
+    {
+      "check": "medium glass shell",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "check": "medium native asset screen.svg",
+      "passed": true,
+      "detail": "screen.svg"
+    },
+    {
+      "check": "medium glass screen",
+      "passed": true,
+      "detail": false
+    },
+    {
+      "check": "medium native asset eyes.svg",
+      "passed": true,
+      "detail": "eyes.svg"
+    },
+    {
+      "check": "medium glass eyes",
+      "passed": true,
+      "detail": false
+    },
+    {
+      "check": "medium macOS-only",
+      "passed": true,
+      "detail": {
+        "squares": [
+          "macOS"
+        ]
+      }
+    },
+    {
+      "check": "small ring count",
+      "passed": true,
+      "detail": 0
+    },
+    {
+      "check": "small eye geometry",
+      "passed": true,
+      "detail": 56
+    },
+    {
+      "check": "small rectangle geometry",
+      "passed": true,
+      "detail": [
+        [
+          0.0,
+          0.0,
+          1024.0,
+          1024.0,
+          0.0
+        ],
+        [
+          439.0,
+          201.0,
+          146.0,
+          88.0,
+          33.0
+        ],
+        [
+          200.0,
+          270.0,
+          624.0,
+          552.0,
+          166.0
+        ],
+        [
+          291.0,
+          372.0,
+          442.0,
+          331.0,
+          91.0
+        ]
+      ]
+    },
+    {
+      "check": "small default equals dark",
+      "passed": true,
+      "detail": "byte-identical decoded pixels"
+    },
+    {
+      "check": "small background sRGB",
+      "passed": true,
+      "detail": [
+        8,
+        20,
+        49,
+        255
+      ]
+    },
+    {
+      "check": "small embedded sRGB profile",
+      "passed": true,
+      "detail": 588
+    },
+    {
+      "check": "small size 1024",
+      "passed": true,
+      "detail": [
+        1024,
+        1024
+      ]
+    },
+    {
+      "check": "small size 256",
+      "passed": true,
+      "detail": [
+        256,
+        256
+      ]
+    },
+    {
+      "check": "small size 128",
+      "passed": true,
+      "detail": [
+        128,
+        128
+      ]
+    },
+    {
+      "check": "small size 64",
+      "passed": true,
+      "detail": [
+        64,
+        64
+      ]
+    },
+    {
+      "check": "small size 48",
+      "passed": true,
+      "detail": [
+        48,
+        48
+      ]
+    },
+    {
+      "check": "small size 32",
+      "passed": true,
+      "detail": [
+        32,
+        32
+      ]
+    },
+    {
+      "check": "small size 24",
+      "passed": true,
+      "detail": [
+        24,
+        24
+      ]
+    },
+    {
+      "check": "small size 16",
+      "passed": true,
+      "detail": [
+        16,
+        16
+      ]
+    },
+    {
+      "check": "small native asset antenna.svg",
+      "passed": true,
+      "detail": "antenna.svg"
+    },
+    {
+      "check": "small glass antenna",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "check": "small native asset shell.svg",
+      "passed": true,
+      "detail": "shell.svg"
+    },
+    {
+      "check": "small glass shell",
+      "passed": true,
+      "detail": true
+    },
+    {
+      "check": "small native asset screen.svg",
+      "passed": true,
+      "detail": "screen.svg"
+    },
+    {
+      "check": "small glass screen",
+      "passed": true,
+      "detail": false
+    },
+    {
+      "check": "small native asset eyes.svg",
+      "passed": true,
+      "detail": "eyes.svg"
+    },
+    {
+      "check": "small glass eyes",
+      "passed": true,
+      "detail": false
+    },
+    {
+      "check": "small macOS-only",
+      "passed": true,
+      "detail": {
+        "squares": [
+          "macOS"
+        ]
+      }
+    },
+    {
+      "check": "16px small eyes separated",
+      "passed": true,
+      "detail": [
+        3,
+        3
+      ]
+    },
+    {
+      "check": "32px medium lit dots separated",
+      "passed": true,
+      "detail": [
+        9,
+        9,
+        9,
+        8,
+        8,
+        8,
+        8,
+        8
+      ]
+    },
+    {
+      "check": "zero and missing look identical",
+      "passed": true,
+      "detail": "intentional; no runtime code changed"
+    },
+    {
+      "check": "runtime scene 20",
+      "passed": true,
+      "detail": 20
+    },
+    {
+      "check": "runtime scene 15",
+      "passed": true,
+      "detail": 15
+    },
+    {
+      "check": "runtime scene 10",
+      "passed": true,
+      "detail": 10
+    },
+    {
+      "check": "runtime scene 05",
+      "passed": true,
+      "detail": 5
+    },
+    {
+      "check": "runtime scene 01",
+      "passed": true,
+      "detail": 1
+    },
+    {
+      "check": "runtime scene 00",
+      "passed": true,
+      "detail": 0
+    },
+    {
+      "check": "runtime scene no-data",
+      "passed": true,
+      "detail": 0
+    },
+    {
+      "check": "watch outer edge",
+      "passed": true,
+      "detail": {
+        "outer_radius": 430,
+        "circular_crop_radius": 512,
+        "clearance": 82
+      }
+    }
+  ],
+  "limits": [
+    "Composer manifests authored but native open/compile/render blocked by first-launch Apple EULA; no claim of successful native validation.",
+    "iOS corner radius 224 is an illustrative review mask, not an exported production clipping path.",
+    "No product tests, application builds, simulator checks, installation or production asset changes in Stage A."
+  ],
+  "reference_comparison": [
+    {
+      "variant": "full",
+      "source": "/Users/jamesli/Developer/Desktop_Projects/UsageDock-project/.claude/worktrees/app-logo-concepts-2aeb83/design/source/token-remain-dot-ring-head/reference/full-1024.svg",
+      "source_sha256": "365b9d956204719e8a2fbd44871b39af5541f806f76069236f3cd190bcbdd0e8",
+      "primitive_count": 27,
+      "max_coordinate_delta_px": 0.022606999999993604,
+      "all_fill_colors_equal": true,
+      "passed": true
+    },
+    {
+      "variant": "medium",
+      "source": "/Users/jamesli/Developer/Desktop_Projects/UsageDock-project/.claude/worktrees/app-logo-concepts-2aeb83/design/source/token-remain-dot-ring-head/reference/medium-1024.svg",
+      "source_sha256": "09604a30b7beb80ffe3f46c4232bebb2e14a1b2f19e2457102f70fa59d825014",
+      "primitive_count": 17,
+      "max_coordinate_delta_px": 0.03466200000002573,
+      "all_fill_colors_equal": true,
+      "passed": true
+    },
+    {
+      "variant": "small",
+      "source": "/Users/jamesli/Developer/Desktop_Projects/UsageDock-project/.claude/worktrees/app-logo-concepts-2aeb83/design/source/token-remain-dot-ring-head/reference/small-1024.svg",
+      "source_sha256": "a9aacb8ed33014fd854b29c10e704115598e197916efcdcb7ddee0ab1a5d8daa",
+      "primitive_count": 6,
+      "max_coordinate_delta_px": 0,
+      "all_fill_colors_equal": true,
+      "passed": true
+    }
+  ],
+  "workspace_preservation": {
+    "/Users/jamesli/Developer/Desktop_Projects/UsageDock-project": {
+      "preexisting_files_changed": [],
+      "status_added": [
+        "?? design/source/token-remain-dot-ring-head/"
+      ],
+      "status_removed": []
+    },
+    "/Users/jamesli/Developer/Desktop_Projects/token-remain-ios": {
+      "preexisting_files_changed": [],
+      "status_added": [],
+      "status_removed": []
+    }
+  }
+}

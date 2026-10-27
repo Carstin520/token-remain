@@ -425,10 +425,10 @@
 "settings.general" = "Allgemein";
 "settings.show_dock_icon" = "Dock-Symbol anzeigen";
 "settings.show_dock_icon_hint" = "TokenRemain im Dock und App-Umschalter anzeigen; ausgeschaltet bleibt es über die Menüleiste erreichbar";
-"settings.dock_logo_title" = "Anzeigen im Dock-Symbol";
-"settings.dock_logo_hint" = "Wähle, welchen zwei Apps die Anzeigen im Dock-Symbol folgen; der Ausdruck folgt der niedrigeren";
-"settings.dock_logo_top" = "Oben";
-"settings.dock_logo_bottom" = "Unten";
+"settings.dock_logo_title" = "Dock-Symbol-Anzeige";
+"settings.dock_logo_hint" = "Die Punkte um das Dock-Symbol zeigen das Restkontingent der ausgewählten App";
+"settings.dock_logo_top" = "App";
+"settings.dock_logo_bottom" = "App 2";
 "settings.login_item_note" = "Verwendet die native macOS-Anmeldeobjektverwaltung";
 "settings.manual_only" = "Nur manuell";
 "settings.menubar_hidden" = "Nicht in der Menüleiste";

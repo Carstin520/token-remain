@@ -1,11 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="TokenRemain">
-  <rect width="64" height="64" rx="14" fill="#0D1420"/>
-  <rect x="28" y="9" width="8" height="7" rx="2" fill="#B7A9F7"/>
-  <rect x="12" y="15" width="40" height="33" rx="10" fill="#8F7BF2"/>
-  <rect x="18" y="22" width="28" height="19" rx="5" fill="#0A0F18"/>
-  <circle cx="26" cy="32" r="2.8" fill="#3ECFE0"/>
-  <circle cx="38" cy="32" r="2.8" fill="#3ECFE0"/>
-  <rect x="20" y="52" width="7" height="3" rx="1.5" fill="#D97757"/>
-  <rect x="30" y="52" width="7" height="3" rx="1.5" fill="#8F7BF2"/>
-  <rect x="40" y="52" width="4" height="3" rx="1.5" fill="#223044"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <title>TokenRemain</title>
+  <rect id="background" width="1024" height="1024" rx="224" fill="#081431"/>
+  <g id="head">
+    <rect id="antenna" x="439" y="201" width="146" height="88" rx="33" fill="#B7A9F7"/>
+    <rect id="shell" x="200" y="270" width="624" height="552" rx="166" fill="#8F7BF2"/>
+  </g>
+  <g id="face">
+    <rect id="screen" x="291" y="372" width="442" height="331" rx="91" fill="#070B12"/>
+    <circle id="eye-left" cx="411" cy="538" r="56" fill="#3ECFE0"/>
+    <circle id="eye-right" cx="613" cy="538" r="56" fill="#3ECFE0"/>
+  </g>
 </svg>

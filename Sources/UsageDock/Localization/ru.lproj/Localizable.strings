@@ -219,3 +219,11 @@
 "datasource.zai_key_placeholder" = "Вставьте ключ API Z.ai / BigModel";
 
 "accounts.credential.hint.zai" = "Обычный ключ запрашивает Coding Plan. Для баланса API в Китае используйте JSON с region: china и queryMode: balance.";
+
+"settings.dock_logo_title" = "Индикатор значка Dock";
+
+"settings.dock_logo_hint" = "Точки вокруг значка Dock показывают оставшуюся квоту выбранного приложения";
+
+"settings.dock_logo_top" = "Приложение";
+
+"settings.dock_logo_bottom" = "Приложение 2";

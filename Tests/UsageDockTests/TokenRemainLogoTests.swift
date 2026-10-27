@@ -3,72 +3,78 @@ import XCTest
 @testable import UsageDock
 
 final class TokenRemainLogoTests: XCTestCase {
-    func testDockRenderKeyDistinguishesProviderIdentityAndPresence() {
-        // Claude 单条与 Codex 单条颜色不同,同档位也必须是不同的 key;
-        // key 相同则跳过 Dock 重绘,混淆会让图标停在另一家的颜色上。
-        XCTAssertNotEqual(
-            TokenRemainHeadLogoArtwork.renderKey(claudeRemaining: 45, codexRemaining: nil),
-            TokenRemainHeadLogoArtwork.renderKey(claudeRemaining: nil, codexRemaining: 45)
-        )
-        // 双条与单条、无数据分别可区分。
-        XCTAssertNotEqual(
-            TokenRemainHeadLogoArtwork.renderKey(claudeRemaining: 45, codexRemaining: 45),
-            TokenRemainHeadLogoArtwork.renderKey(claudeRemaining: 45, codexRemaining: nil)
-        )
-        XCTAssertNotEqual(
-            TokenRemainHeadLogoArtwork.renderKey(claudeRemaining: nil, codexRemaining: nil),
-            TokenRemainHeadLogoArtwork.renderKey(claudeRemaining: 45, codexRemaining: nil)
-        )
-        // 相同输入必须稳定,内容去重才有意义。
-        XCTAssertEqual(
-            TokenRemainHeadLogoArtwork.renderKey(claudeRemaining: 45, codexRemaining: 12),
-            TokenRemainHeadLogoArtwork.renderKey(claudeRemaining: 45, codexRemaining: 12)
-        )
+    func testDockRenderKeyDependsOnDotsAndMissingState() {
+        let key: (Double?, Double?) -> String = { TokenRemainHeadLogoArtwork.renderKey(claudeRemaining: $0, codexRemaining: $1) }
+        XCTAssertEqual(key(45, nil), key(nil, 45))
+        XCTAssertEqual(key(45, 45), key(45, nil))
+        XCTAssertNotEqual(key(nil, nil), key(0, nil))
+        XCTAssertNotEqual(key(nil, nil), key(45, nil))
+        XCTAssertEqual(key(45, 12), key(45, 12))
+        XCTAssertEqual(key(20, 100), key(21, 97))
+        XCTAssertNotEqual(key(20, 100), key(22.5, 100))
     }
 
-    func testDockRenderKeyFollowsTheSelectedProviderPair() {
+    func testDockRenderKeyFollowsTheSelectedProviderMinimum() {
         typealias Slot = TokenRemainHeadLogoArtwork.Slot
-        // The historical convenience API is the default pair, not a separate
-        // rendering path.
-        XCTAssertEqual(
-            TokenRemainHeadLogoArtwork.renderKey(claudeRemaining: 45, codexRemaining: 12),
-            TokenRemainHeadLogoArtwork.renderKey(slots: [
-                Slot(provider: .claude, remainingPercent: 45),
-                Slot(provider: .codex, remainingPercent: 12)
-            ])
-        )
-        // Same values on a different pair, or the same pair swapped top and
-        // bottom, is a different picture and must not be deduplicated away.
-        let claudeCursor = TokenRemainHeadLogoArtwork.renderKey(slots: [
-            Slot(provider: .claude, remainingPercent: 45),
-            Slot(provider: .cursor, remainingPercent: 12)
-        ])
-        XCTAssertNotEqual(
-            claudeCursor,
-            TokenRemainHeadLogoArtwork.renderKey(claudeRemaining: 45, codexRemaining: 12)
-        )
-        XCTAssertNotEqual(
-            claudeCursor,
-            TokenRemainHeadLogoArtwork.renderKey(slots: [
-                Slot(provider: .cursor, remainingPercent: 12),
-                Slot(provider: .claude, remainingPercent: 45)
-            ])
-        )
-        XCTAssertEqual(
-            TokenRemainHeadLogoArtwork.moodRemaining([
-                Slot(provider: .grok, remainingPercent: nil),
-                Slot(provider: .cursor, remainingPercent: 12)
-            ]),
-            12
-        )
+        let first = [Slot(provider: .claude, remainingPercent: 45), Slot(provider: .cursor, remainingPercent: 12)]
+        let swapped = [Slot(provider: .cursor, remainingPercent: 12), Slot(provider: .claude, remainingPercent: 45)]
+        XCTAssertEqual(TokenRemainHeadLogoArtwork.renderKey(slots: first), TokenRemainHeadLogoArtwork.renderKey(slots: swapped))
+        XCTAssertEqual(TokenRemainHeadLogoArtwork.renderKey(slots: first), TokenRemainHeadLogoArtwork.renderKey(claudeRemaining: 45, codexRemaining: 12))
+        XCTAssertEqual(TokenRemainHeadLogoArtwork.moodRemaining(first), 12)
+        XCTAssertEqual(TokenRemainHeadLogoArtwork.moodRemaining([Slot(provider: .grok, remainingPercent: nil), Slot(provider: .cursor, remainingPercent: 12)]), 12)
+        XCTAssertNil(TokenRemainHeadLogoArtwork.moodRemaining([]))
+        XCTAssertNil(TokenRemainHeadLogoArtwork.moodRemaining([Slot(provider: .cursor, remainingPercent: nil)]))
     }
 
-    func testDockMeterColorsKeepClaudeAndCodexArtwork() {
-        let claude = TokenRemainHeadLogoArtwork.meterColor(for: .claude).usingColorSpace(.sRGB)
-        let codex = TokenRemainHeadLogoArtwork.meterColor(for: .codex).usingColorSpace(.sRGB)
-        XCTAssertEqual(claude.map { Int(($0.redComponent * 255).rounded()) }, 217)
-        XCTAssertEqual(codex.map { Int(($0.blueComponent * 255).rounded()) }, 251)
-        XCTAssertNotNil(TokenRemainHeadLogoArtwork.meterColor(for: .cursor).usingColorSpace(.sRGB))
+    func testDotCountMappingAndSizeThresholds() {
+        let values: [(Double?, Int)] = [(nil, 0), (0, 0), (2, 1), (2.5, 1), (50, 10), (97, 19), (100, 20), (-1, 0), (200, 20)]
+        for (value, count) in values {
+            XCTAssertEqual(TokenRemainHeadLogoArtwork.litCount(remainingPercent: value), count, "remaining \(String(describing: value))")
+        }
+        XCTAssertEqual(TokenRemainHeadLogoArtwork.litCount(remainingPercent: 7.5, variant: .full), 2)
+        XCTAssertEqual(TokenRemainHeadLogoArtwork.litCount(remainingPercent: nil, variant: .medium), 0)
+        XCTAssertEqual(TokenRemainHeadLogoArtwork.litCount(remainingPercent: 0, variant: .medium), 0)
+        XCTAssertEqual(TokenRemainHeadLogoArtwork.litCount(remainingPercent: 2, variant: .medium), 1)
+        XCTAssertEqual(TokenRemainHeadLogoArtwork.litCount(remainingPercent: 15, variant: .medium), 2)
+        XCTAssertEqual(TokenRemainHeadLogoArtwork.litCount(remainingPercent: 50, variant: .medium), 5)
+        XCTAssertEqual(TokenRemainHeadLogoArtwork.litCount(remainingPercent: 100, variant: .medium), 10)
+        XCTAssertEqual(DotRingIconArtwork.Variant.resolve(pixelSize: 16), .small)
+        XCTAssertEqual(DotRingIconArtwork.Variant.resolve(pixelSize: 31), .small)
+        XCTAssertEqual(DotRingIconArtwork.Variant.resolve(pixelSize: 32), .medium)
+        XCTAssertEqual(DotRingIconArtwork.Variant.resolve(pixelSize: 63), .medium)
+        XCTAssertEqual(DotRingIconArtwork.Variant.resolve(pixelSize: 64), .full)
+    }
+
+    func testDockDotsKeepTheSameCyanAtLowQuotaAndForEveryProvider() throws {
+        for provider in ProviderQuota.Provider.displayOrder {
+            let image = TokenRemainHeadLogoArtwork.image(slots: [.init(provider: provider, remainingPercent: 2)], size: 1024)
+            let color = try pixel(image, x: 512, y: 112)
+            XCTAssertEqual(color.redComponent, 62.0 / 255, accuracy: 0.002)
+            XCTAssertEqual(color.greenComponent, 207.0 / 255, accuracy: 0.002)
+            XCTAssertEqual(color.blueComponent, 224.0 / 255, accuracy: 0.002)
+        }
+    }
+
+    private func pixel(_ image: NSImage, x: Int, y: Int) throws -> NSColor {
+        // NSBitmapImageRep(cgImage:).colorAt can reinterpret the buffer using
+        // a device profile. Measure the actual NSImage draw in explicit sRGB,
+        // as the existing Dock tile contract does, without widening tolerance.
+        let width = Int(image.size.width), height = Int(image.size.height)
+        var pixels = [UInt8](repeating: 0, count: width * height * 4)
+        let context = try XCTUnwrap(CGContext(data: &pixels, width: width, height: height,
+            bitsPerComponent: 8, bytesPerRow: width * 4,
+            space: XCTUnwrap(CGColorSpace(name: CGColorSpace.sRGB)),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = NSGraphicsContext(cgContext: context, flipped: false)
+        image.draw(in: NSRect(x: 0, y: 0, width: width, height: height))
+        NSGraphicsContext.restoreGraphicsState()
+        // The explicit bitmap buffer uses top-origin rows, confirmed by a
+        // one-lit-dot NSImage draw probe (top row 112 is cyan, row 912 dim).
+        let index = (y * width + x) * 4
+        let alpha = Double(pixels[index + 3]) / 255
+        func channel(_ offset: Int) -> Double { alpha == 0 ? 0 : Double(pixels[index + offset]) / 255 / alpha }
+        return NSColor(srgbRed: channel(0), green: channel(1), blue: channel(2), alpha: alpha)
     }
 
     @MainActor
@@ -85,10 +91,19 @@ final class TokenRemainLogoTests: XCTestCase {
             strategy: .shortestWindow,
             quota: { $0 == .cursor ? cursor : nil }
         )
-        XCTAssertEqual(slots, [
-            TokenRemainHeadLogoArtwork.Slot(provider: .cursor, remainingPercent: 70),
-            TokenRemainHeadLogoArtwork.Slot(provider: .claude, remainingPercent: nil)
-        ])
+        XCTAssertEqual(slots, [TokenRemainHeadLogoArtwork.Slot(provider: .cursor, remainingPercent: 70)])
+    }
+
+    @MainActor
+    func testSingleDockAppDoesNotFallBackToTheLegacySecondSelection() {
+        var consulted: [ProviderQuota.Provider] = []
+        let slots = StatusBarPresentation.headLogoSlots(
+            providers: [.claude, .codex], strategy: .shortestWindow,
+            quota: { consulted.append($0); return nil }
+        )
+        XCTAssertEqual(consulted, [.claude])
+        XCTAssertEqual(slots, [.init(provider: .claude, remainingPercent: nil)])
+        XCTAssertNil(TokenRemainHeadLogoArtwork.moodRemaining(slots))
     }
 
     func testLiveSecondCountdownOnlyInsideTheFinalHour() {
@@ -264,35 +279,17 @@ final class TokenRemainLogoTests: XCTestCase {
         XCTAssertEqual(TokenRemainLogoMeter.filledSegments(remainingPercent: 100), 10)
     }
 
-    func testDockLogoKeepsRasterArtworkUpright() throws {
-        let size = NSSize(width: 32, height: 32)
-        let source = NSImage(size: size, flipped: false) { rect in
-            NSColor.blue.setFill()
-            NSRect(x: rect.minX, y: rect.minY, width: rect.width, height: rect.height / 2).fill()
-            NSColor.red.setFill()
-            NSRect(x: rect.minX, y: rect.midY, width: rect.width, height: rect.height / 2).fill()
-            return true
-        }
-        let rendered = TokenRemainHeadLogoArtwork.renderSourceUprightForTesting(
-            source,
-            size: size.width
-        )
-
-        let sourceData = try XCTUnwrap(source.tiffRepresentation)
-        let sourceBitmap = try XCTUnwrap(NSBitmapImageRep(data: sourceData))
-        let renderedData = try XCTUnwrap(rendered.tiffRepresentation)
-        let renderedBitmap = try XCTUnwrap(NSBitmapImageRep(data: renderedData))
-
-        for y in [8, 24] {
-            let expected = try XCTUnwrap(
-                sourceBitmap.colorAt(x: 16, y: y)?.usingColorSpace(.deviceRGB)
-            )
-            let actual = try XCTUnwrap(
-                renderedBitmap.colorAt(x: 16, y: y)?.usingColorSpace(.deviceRGB)
-            )
-            XCTAssertEqual(actual.redComponent, expected.redComponent, accuracy: 0.08)
-            XCTAssertEqual(actual.blueComponent, expected.blueComponent, accuracy: 0.08)
-        }
+    func testDockRingStartsAtTwelveAndProceedsClockwise() throws {
+        let image = TokenRemainHeadLogoArtwork.image(claudeRemaining: 5, codexRemaining: nil, size: 1024)
+        let top = try pixel(image, x: 512, y: 112)
+        let right = try pixel(image, x: 912, y: 512)
+        let left = try pixel(image, x: 112, y: 512)
+        XCTAssertEqual(top.greenComponent, 207.0 / 255, accuracy: 0.002)
+        XCTAssertEqual(right.redComponent, 43.0 / 255, accuracy: 0.002)
+        XCTAssertEqual(left.blueComponent, 84.0 / 255, accuracy: 0.002)
+        let zero = TokenRemainHeadLogoArtwork.image(claudeRemaining: 0, codexRemaining: nil, size: 1024)
+        XCTAssertEqual(try pixel(zero, x: 512, y: 112).redComponent, 43.0 / 255, accuracy: 0.002)
+        XCTAssertEqual(try pixel(zero, x: 439, y: 506).greenComponent, 207.0 / 255, accuracy: 0.002)
     }
 
     @MainActor
@@ -389,45 +386,59 @@ final class TokenRemainLogoTests: XCTestCase {
         XCTAssertEqual(plist["CFBundleIconFile"] as? String, "TokenRemain.icns")
     }
 
-    func testDockTileDrawsTheIconShapeWhileTheBareLogoStaysTransparent() throws {
-        let size = NSSize(width: 256, height: 256)
-        // A transparent source stands in for the robot: only the tile shows.
-        let source = NSImage(size: size, flipped: false) { _ in true }
-
-        // Rasterize into an explicit sRGB context: a TIFF round trip tags the
-        // bitmap with a device space and shifts the color being checked.
-        func color(_ image: NSImage, x: Int, y: Int) throws -> NSColor {
-            let width = Int(size.width), height = Int(size.height)
-            var pixels = [UInt8](repeating: 0, count: width * height * 4)
-            let context = try XCTUnwrap(CGContext(
-                data: &pixels, width: width, height: height, bitsPerComponent: 8,
-                bytesPerRow: width * 4, space: XCTUnwrap(CGColorSpace(name: CGColorSpace.sRGB)),
-                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-            ))
-            NSGraphicsContext.saveGraphicsState()
-            NSGraphicsContext.current = NSGraphicsContext(cgContext: context, flipped: false)
-            image.draw(in: NSRect(origin: .zero, size: size))
-            NSGraphicsContext.restoreGraphicsState()
-            // Row 0 of the buffer is the top of the image.
-            let index = ((height - 1 - y) * width + x) * 4
-            let alpha = Double(pixels[index + 3]) / 255
-            func channel(_ offset: Int) -> Double {
-                alpha == 0 ? 0 : Double(pixels[index + offset]) / 255 / alpha
-            }
-            return NSColor(srgbRed: channel(0), green: channel(1), blue: channel(2), alpha: alpha)
+    func testIcnsSmallEntryKeepsHeadOnlyARGBAndCorrectTransparentEdges() throws {
+        let data = try Data(contentsOf: repositoryRoot.appending(path: "Sources/UsageDock/Resources/TokenRemain.icns"))
+        func length(at offset: Int) -> Int {
+            data[offset..<(offset + 4)].reduce(0) { ($0 << 8) | Int($1) }
         }
+        var offset = 8
+        var argb: Data?
+        while offset + 8 <= data.count {
+            let count = length(at: offset + 4)
+            XCTAssertGreaterThanOrEqual(count, 8)
+            guard count >= 8, offset + count <= data.count else { break }
+            if String(data: data[offset..<(offset + 4)], encoding: .ascii) == "ic04" {
+                argb = data.subdata(in: (offset + 8)..<(offset + count)); break
+            }
+            offset += count
+        }
+        let payload = try XCTUnwrap(argb)
+        XCTAssertEqual(String(data: payload.prefix(4), encoding: .ascii), "ARGB")
+        // iconutil's reverse PNG export is lossy for small ARGB entries.
+        // Inspect the four stored straight-alpha RLE planes directly instead.
+        var cursor = 4
+        var planes: [[UInt8]] = []
+        for _ in 0..<4 {
+            var plane: [UInt8] = []
+            while plane.count < 256 {
+                let control = Int(payload[cursor]); cursor += 1
+                if control < 128 {
+                    plane.append(contentsOf: payload[cursor..<(cursor + control + 1)])
+                    cursor += control + 1
+                } else {
+                    plane.append(contentsOf: repeatElement(payload[cursor], count: control - 125))
+                    cursor += 1
+                }
+            }
+            XCTAssertEqual(plane.count, 256)
+            planes.append(plane)
+        }
+        XCTAssertEqual(planes[0][0], 0)
+        XCTAssertEqual(planes[3][2 * 16 + 8], 49)
+        XCTAssertGreaterThan(planes[2][8 * 16 + 6], 150)
+        XCTAssertGreaterThan(planes[2][8 * 16 + 9], 150)
+        XCTAssertLessThan(planes[2][8 * 16 + 8], 100)
+    }
 
-        let tile = TokenRemainHeadLogoArtwork.renderDockTileForTesting(source, size: size.width)
-        // Outside the 824/1024 shape: transparent, as on any macOS icon grid.
-        XCTAssertEqual(try color(tile, x: 4, y: 128).alphaComponent, 0, accuracy: 0.01)
-        XCTAssertEqual(try color(tile, x: 30, y: 30).alphaComponent, 0, accuracy: 0.01)
-        // Inside it: the Icon Composer navy.
-        let inside = try color(tile, x: 128, y: 128)
+    func testDockTileDrawsTheIconShapeWhileTheBareLogoStaysTransparent() throws {
+        let tile = TokenRemainHeadLogoArtwork.image(slots: [], size: 256, style: .dockTile)
+        XCTAssertEqual(try pixel(tile, x: 4, y: 128).alphaComponent, 0, accuracy: 0.01)
+        XCTAssertEqual(try pixel(tile, x: 30, y: 30).alphaComponent, 0, accuracy: 0.01)
+        let inside = try pixel(tile, x: 128, y: 40)
         XCTAssertEqual(inside.alphaComponent, 1, accuracy: 0.01)
-        XCTAssertEqual(inside.redComponent, TokenRemainHeadLogoArtwork.dockTileFill.red, accuracy: 0.02)
-        XCTAssertEqual(inside.blueComponent, TokenRemainHeadLogoArtwork.dockTileFill.blue, accuracy: 0.02)
-
-        let bare = TokenRemainHeadLogoArtwork.renderSourceUprightForTesting(source, size: size.width)
-        XCTAssertEqual(try color(bare, x: 128, y: 128).alphaComponent, 0, accuracy: 0.01)
+        XCTAssertEqual(inside.redComponent, TokenRemainHeadLogoArtwork.dockTileFill.red, accuracy: 0.002)
+        XCTAssertEqual(inside.blueComponent, TokenRemainHeadLogoArtwork.dockTileFill.blue, accuracy: 0.002)
+        let bare = TokenRemainHeadLogoArtwork.image(slots: [], size: 256, style: .bare)
+        XCTAssertEqual(try pixel(bare, x: 128, y: 40).alphaComponent, 0, accuracy: 0.01)
     }
 }

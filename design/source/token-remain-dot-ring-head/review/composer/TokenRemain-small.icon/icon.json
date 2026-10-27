@@ -1,0 +1,135 @@
+{
+  "fill": {
+    "solid": "srgb:0.031372549,0.078431373,0.192156863,1.000000000"
+  },
+  "fill-specializations": [
+    {
+      "appearance": "dark",
+      "value": {
+        "solid": "srgb:0.031372549,0.078431373,0.192156863,1.000000000"
+      }
+    },
+    {
+      "appearance": "tinted",
+      "value": {
+        "solid": "srgb:0.000000000,0.000000000,0.000000000,1.000000000"
+      }
+    }
+  ],
+  "color-space-for-untagged-svg-colors": "srgb",
+  "groups": [
+    {
+      "name": "Head",
+      "layers": [
+        {
+          "name": "antenna",
+          "image-name": "antenna.svg",
+          "glass": true,
+          "fill-specializations": [
+            {
+              "appearance": "dark",
+              "value": {
+                "solid": "srgb:0.717647059,0.662745098,0.968627451,1.000000000"
+              }
+            },
+            {
+              "appearance": "tinted",
+              "value": {
+                "solid": "srgb:0.850980392,0.850980392,0.850980392,1.000000000"
+              }
+            }
+          ]
+        },
+        {
+          "name": "shell",
+          "image-name": "shell.svg",
+          "glass": true,
+          "fill-specializations": [
+            {
+              "appearance": "dark",
+              "value": {
+                "solid": "srgb:0.560784314,0.482352941,0.949019608,1.000000000"
+              }
+            },
+            {
+              "appearance": "tinted",
+              "value": {
+                "solid": "srgb:0.701960784,0.701960784,0.701960784,1.000000000"
+              }
+            }
+          ]
+        }
+      ],
+      "lighting": "individual",
+      "specular": true,
+      "blur-material": 0,
+      "translucency": {
+        "enabled": false,
+        "value": 0
+      },
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.5
+      }
+    },
+    {
+      "name": "Face",
+      "layers": [
+        {
+          "name": "screen",
+          "image-name": "screen.svg",
+          "glass": false,
+          "fill-specializations": [
+            {
+              "appearance": "dark",
+              "value": {
+                "solid": "srgb:0.027450980,0.043137255,0.070588235,1.000000000"
+              }
+            },
+            {
+              "appearance": "tinted",
+              "value": {
+                "solid": "srgb:0.000000000,0.000000000,0.000000000,1.000000000"
+              }
+            }
+          ]
+        },
+        {
+          "name": "eyes",
+          "image-name": "eyes.svg",
+          "glass": false,
+          "fill-specializations": [
+            {
+              "appearance": "dark",
+              "value": {
+                "solid": "srgb:0.243137255,0.811764706,0.878431373,1.000000000"
+              }
+            },
+            {
+              "appearance": "tinted",
+              "value": {
+                "solid": "srgb:1.000000000,1.000000000,1.000000000,1.000000000"
+              }
+            }
+          ]
+        }
+      ],
+      "lighting": "individual",
+      "specular": false,
+      "blur-material": 0,
+      "translucency": {
+        "enabled": false,
+        "value": 0
+      },
+      "shadow": {
+        "kind": "none",
+        "opacity": 0
+      }
+    }
+  ],
+  "supported-platforms": {
+    "squares": [
+      "macOS"
+    ]
+  }
+}

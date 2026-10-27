@@ -46,16 +46,15 @@ enum StatusBarPresentation {
         return UsageFormatting.percent(remaining)
     }
 
-    /// One meter per selected provider, in the user's top-to-bottom order.
-    /// Each meter shows that provider's headline window — the same value the
-    /// menu-bar text shows for it.
+    /// One app drives the single dot ring. Keep the legacy pair on disk for
+    /// downgrade compatibility, but never read its second app as a fallback.
     @MainActor
     static func headLogoSlots(
         providers: [ProviderQuota.Provider],
         strategy: QuotaSummaryStrategy,
         quota: (ProviderQuota.Provider) -> ProviderQuota?
     ) -> [TokenRemainHeadLogoArtwork.Slot] {
-        providers.map { provider in
+        providers.prefix(1).map { provider in
             TokenRemainHeadLogoArtwork.Slot(
                 provider: provider,
                 remainingPercent: UsageStore.logoQuotaSelection(
@@ -453,9 +452,6 @@ final class StatusBarController: NSObject {
             strategy: summaryStrategy,
             quota: { store.headlineQuota(for: $0, strategy: summaryStrategy) }
         )
-        let state = TokenRemainLogoState.resolve(
-            remainingPercent: TokenRemainHeadLogoArtwork.moodRemaining(logoSlots)
-        )
         let dockIconKey = TokenRemainHeadLogoArtwork.renderKey(slots: logoSlots)
         let dockIconHidden = PreferencesStore.shared.dockIconHidden
 
@@ -465,10 +461,9 @@ final class StatusBarController: NSObject {
             others: store.headlineQuotas,
             daily: nil
         )
-        // 菜单栏文字维持用户自选项;Dock logo 的表情与双进度条只比较
-        // 设置里选定的两个应用，其他 provider 仍出现在 tooltip 与面板里。
+        // Dock dots follow the selected app; the menu bar keeps its own selection.
         var tooltipLines = [
-            "TokenRemain · \(state.accessibilityDescription)",
+            TokenRemainHeadLogoArtwork.accessibilityLabel(slots: logoSlots),
             insights.decisionHeadline()
         ]
         for provider in ProviderQuota.Provider.displayOrder {

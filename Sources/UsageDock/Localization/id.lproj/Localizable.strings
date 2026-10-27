@@ -219,3 +219,11 @@
 "datasource.zai_key_placeholder" = "Tempel kunci API Z.ai / BigModel Anda";
 
 "accounts.credential.hint.zai" = "Kunci biasa mengueri Coding Plan. Untuk saldo API Tiongkok, gunakan JSON dengan region: china dan queryMode: balance.";
+
+"settings.dock_logo_title" = "Meter ikon Dock";
+
+"settings.dock_logo_hint" = "Titik di sekitar ikon Dock menampilkan sisa kuota aplikasi yang dipilih";
+
+"settings.dock_logo_top" = "Aplikasi";
+
+"settings.dock_logo_bottom" = "Aplikasi 2";

@@ -54,6 +54,10 @@
       {
         "from": "../site/assets/brand/appicon-mac.png",
         "to": "appicon.png"
+      },
+      {
+        "from": "../site/assets/brand/appicon-small.png",
+        "to": "appicon-small.png"
       }
     ],
     "win": {

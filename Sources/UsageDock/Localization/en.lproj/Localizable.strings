@@ -426,10 +426,10 @@
 "settings.general" = "General";
 "settings.show_dock_icon" = "Show icon in Dock";
 "settings.show_dock_icon_hint" = "Keep TokenRemain visible in the Dock and app switcher; when off, it remains available from the menu bar";
-"settings.dock_logo_title" = "Dock icon meters";
-"settings.dock_logo_hint" = "Choose which two apps the meters on the Dock icon follow; its expression follows the lower one";
-"settings.dock_logo_top" = "Top";
-"settings.dock_logo_bottom" = "Bottom";
+"settings.dock_logo_title" = "Dock icon meter";
+"settings.dock_logo_hint" = "The dots around the Dock icon show the selected app’s remaining quota";
+"settings.dock_logo_top" = "App";
+"settings.dock_logo_bottom" = "App 2";
 "settings.login_item_note" = "Uses the native macOS login-item manager";
 "settings.manual_only" = "Manual only";
 "settings.menubar_hidden" = "Not shown in the menu bar";

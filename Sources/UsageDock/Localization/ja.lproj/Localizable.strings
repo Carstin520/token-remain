@@ -425,10 +425,10 @@
 "settings.general" = "一般";
 "settings.show_dock_icon" = "Dockにアイコンを表示";
 "settings.show_dock_icon_hint" = "Dockとアプリ切り替えにTokenRemainを表示します。オフでもメニューバーから開けます";
-"settings.dock_logo_title" = "Dockアイコンのメーター";
-"settings.dock_logo_hint" = "Dockアイコンの2本のメーターに表示するアプリを選びます。表情は残りが少ない方に合わせます";
-"settings.dock_logo_top" = "上";
-"settings.dock_logo_bottom" = "下";
+"settings.dock_logo_title" = "Dockアイコンの残量メーター";
+"settings.dock_logo_hint" = "Dockアイコンの周囲のドットは、選択したアプリの残量を示します";
+"settings.dock_logo_top" = "アプリ";
+"settings.dock_logo_bottom" = "アプリ2";
 "settings.login_item_note" = "macOS 標準のログイン項目管理を使用";
 "settings.manual_only" = "手動のみ";
 "settings.menubar_hidden" = "メニューバー非表示";

@@ -1,0 +1,921 @@
+{
+  "status": "verified_with_quantization_note",
+  "checks_passed": 129,
+  "checks_failed": 1,
+  "checks": [
+    {
+      "check": "full exact primitive 0",
+      "passed": true,
+      "detail": {
+        "cx": 512.0,
+        "cy": 112.0,
+        "r": 30
+      }
+    },
+    {
+      "check": "full exact primitive 1",
+      "passed": true,
+      "detail": {
+        "cx": 635.606797749979,
+        "cy": 131.5773934819386,
+        "r": 30
+      }
+    },
+    {
+      "check": "full exact primitive 2",
+      "passed": true,
+      "detail": {
+        "cx": 747.1141009169893,
+        "cy": 188.39320225002103,
+        "r": 30
+      }
+    },
+    {
+      "check": "full exact primitive 3",
+      "passed": true,
+      "detail": {
+        "cx": 835.606797749979,
+        "cy": 276.8858990830107,
+        "r": 30
+      }
+    },
+    {
+      "check": "full exact primitive 4",
+      "passed": true,
+      "detail": {
+        "cx": 892.4226065180615,
+        "cy": 388.39320225002103,
+        "r": 30
+      }
+    },
+    {
+      "check": "full exact primitive 5",
+      "passed": true,
+      "detail": {
+        "cx": 912.0,
+        "cy": 512.0,
+        "r": 30
+      }
+    },
+    {
+      "check": "full exact primitive 6",
+      "passed": true,
+      "detail": {
+        "cx": 892.4226065180615,
+        "cy": 635.6067977499789,
+        "r": 30
+      }
+    },
+    {
+      "check": "full exact primitive 7",
+      "passed": true,
+      "detail": {
+        "cx": 835.606797749979,
+        "cy": 747.1141009169893,
+        "r": 30
+      }
+    },
+    {
+      "check": "full exact primitive 8",
+      "passed": true,
+      "detail": {
+        "cx": 747.1141009169893,
+        "cy": 835.606797749979,
+        "r": 30
+      }
+    },
+    {
+      "check": "full exact primitive 9",
+      "passed": true,
+      "detail": {
+        "cx": 635.606797749979,
+        "cy": 892.4226065180615,
+        "r": 30
+      }
+    },
+    {
+      "check": "full exact primitive 10",
+      "passed": true,
+      "detail": {
+        "cx": 512.0,
+        "cy": 912.0,
+        "r": 30
+      }
+    },
+    {
+      "check": "full exact primitive 11",
+      "passed": true,
+      "detail": {
+        "cx": 388.3932022500211,
+        "cy": 892.4226065180615,
+        "r": 30
+      }
+    },
+    {
+      "check": "full exact primitive 12",
+      "passed": true,
+      "detail": {
+        "cx": 276.8858990830108,
+        "cy": 835.606797749979,
+        "r": 30
+      }
+    },
+    {
+      "check": "full exact primitive 13",
+      "passed": true,
+      "detail": {
+        "cx": 188.3932022500211,
+        "cy": 747.1141009169893,
+        "r": 30
+      }
+    },
+    {
+      "check": "full exact primitive 14",
+      "passed": true,
+      "detail": {
+        "cx": 131.5773934819386,
+        "cy": 635.606797749979,
+        "r": 30
+      }
+    },
+    {
+      "check": "full exact primitive 15",
+      "passed": true,
+      "detail": {
+        "cx": 112.0,
+        "cy": 512.0,
+        "r": 30
+      }
+    },
+    {
+      "check": "full exact primitive 16",
+      "passed": true,
+      "detail": {
+        "cx": 131.57739348193854,
+        "cy": 388.3932022500211,
+        "r": 30
+      }
+    },
+    {
+      "check": "full exact primitive 17",
+      "passed": true,
+      "detail": {
+        "cx": 188.39320225002103,
+        "cy": 276.8858990830108,
+        "r": 30
+      }
+    },
+    {
+      "check": "full exact primitive 18",
+      "passed": true,
+      "detail": {
+        "cx": 276.8858990830107,
+        "cy": 188.3932022500211,
+        "r": 30
+      }
+    },
+    {
+      "check": "full exact primitive 19",
+      "passed": true,
+      "detail": {
+        "cx": 388.393202250021,
+        "cy": 131.5773934819386,
+        "r": 30
+      }
+    },
+    {
+      "check": "full exact primitive 20",
+      "passed": true,
+      "detail": {
+        "x": 459,
+        "y": 262,
+        "width": 106,
+        "height": 64,
+        "rx": 24
+      }
+    },
+    {
+      "check": "full exact primitive 21",
+      "passed": true,
+      "detail": {
+        "x": 286,
+        "y": 352,
+        "width": 452,
+        "height": 400,
+        "rx": 120
+      }
+    },
+    {
+      "check": "full exact primitive 22",
+      "passed": true,
+      "detail": {
+        "x": 286,
+        "y": 312,
+        "width": 452,
+        "height": 400,
+        "rx": 120
+      }
+    },
+    {
+      "check": "full exact primitive 23",
+      "passed": true,
+      "detail": {
+        "x": 352,
+        "y": 386,
+        "width": 320,
+        "height": 240,
+        "rx": 66
+      }
+    },
+    {
+      "check": "full exact primitive 24",
+      "passed": true,
+      "detail": {
+        "cx": 439,
+        "cy": 506,
+        "r": 34
+      }
+    },
+    {
+      "check": "full exact primitive 25",
+      "passed": true,
+      "detail": {
+        "cx": 585,
+        "cy": 506,
+        "r": 34
+      }
+    },
+    {
+      "check": "full size 1024",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "full size 256",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "full size 128",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "full size 64",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "full size 48",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "full size 32",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "full size 24",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "full size 16",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "full flat Default equals Dark",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "full sRGB native serialization",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "full front-to-back stacking",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "full original native layer eyes",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "full glass switch eyes",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "full original native layer screen",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "full glass switch screen",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "full original native layer shell",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "full glass switch shell",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "full original native layer depth",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "full glass switch depth",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "full original native layer antenna",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "full glass switch antenna",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "full combined opaque head",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "full original native layer dots-lit",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "full glass switch dots-lit",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "full original native layer dots-dim",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "full glass switch dots-dim",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "full native export",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "medium exact primitive 0",
+      "passed": true,
+      "detail": {
+        "cx": 512.0,
+        "cy": 120.0,
+        "r": 46
+      }
+    },
+    {
+      "check": "medium exact primitive 1",
+      "passed": true,
+      "detail": {
+        "cx": 742.4118188986495,
+        "cy": 194.86533820502058,
+        "r": 46
+      }
+    },
+    {
+      "check": "medium exact primitive 2",
+      "passed": true,
+      "detail": {
+        "cx": 884.8141543877002,
+        "cy": 390.86533820502063,
+        "r": 46
+      }
+    },
+    {
+      "check": "medium exact primitive 3",
+      "passed": true,
+      "detail": {
+        "cx": 884.8141543877002,
+        "cy": 633.1346617949794,
+        "r": 46
+      }
+    },
+    {
+      "check": "medium exact primitive 4",
+      "passed": true,
+      "detail": {
+        "cx": 742.4118188986495,
+        "cy": 829.1346617949794,
+        "r": 46
+      }
+    },
+    {
+      "check": "medium exact primitive 5",
+      "passed": true,
+      "detail": {
+        "cx": 512.0,
+        "cy": 904.0,
+        "r": 46
+      }
+    },
+    {
+      "check": "medium exact primitive 6",
+      "passed": true,
+      "detail": {
+        "cx": 281.5881811013506,
+        "cy": 829.1346617949794,
+        "r": 46
+      }
+    },
+    {
+      "check": "medium exact primitive 7",
+      "passed": true,
+      "detail": {
+        "cx": 139.18584561229983,
+        "cy": 633.1346617949794,
+        "r": 46
+      }
+    },
+    {
+      "check": "medium exact primitive 8",
+      "passed": true,
+      "detail": {
+        "cx": 139.18584561229977,
+        "cy": 390.86533820502063,
+        "r": 46
+      }
+    },
+    {
+      "check": "medium exact primitive 9",
+      "passed": true,
+      "detail": {
+        "cx": 281.58818110135053,
+        "cy": 194.86533820502063,
+        "r": 46
+      }
+    },
+    {
+      "check": "medium exact primitive 10",
+      "passed": true,
+      "detail": {
+        "x": 459,
+        "y": 262,
+        "width": 106,
+        "height": 64,
+        "rx": 24
+      }
+    },
+    {
+      "check": "medium exact primitive 11",
+      "passed": true,
+      "detail": {
+        "x": 286,
+        "y": 352,
+        "width": 452,
+        "height": 400,
+        "rx": 120
+      }
+    },
+    {
+      "check": "medium exact primitive 12",
+      "passed": true,
+      "detail": {
+        "x": 286,
+        "y": 312,
+        "width": 452,
+        "height": 400,
+        "rx": 120
+      }
+    },
+    {
+      "check": "medium exact primitive 13",
+      "passed": true,
+      "detail": {
+        "x": 352,
+        "y": 386,
+        "width": 320,
+        "height": 240,
+        "rx": 66
+      }
+    },
+    {
+      "check": "medium exact primitive 14",
+      "passed": true,
+      "detail": {
+        "cx": 439,
+        "cy": 506,
+        "r": 40
+      }
+    },
+    {
+      "check": "medium exact primitive 15",
+      "passed": true,
+      "detail": {
+        "cx": 585,
+        "cy": 506,
+        "r": 40
+      }
+    },
+    {
+      "check": "medium size 1024",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "medium size 256",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "medium size 128",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "medium size 64",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "medium size 48",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "medium size 32",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "medium size 24",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "medium size 16",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "medium flat Default equals Dark",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "medium sRGB native serialization",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "medium front-to-back stacking",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "medium original native layer eyes",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "medium glass switch eyes",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "medium original native layer screen",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "medium glass switch screen",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "medium original native layer shell",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "medium glass switch shell",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "medium original native layer depth",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "medium glass switch depth",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "medium original native layer antenna",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "medium glass switch antenna",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "medium combined opaque head",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "medium original native layer dots-lit",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "medium glass switch dots-lit",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "medium original native layer dots-dim",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "medium glass switch dots-dim",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "medium native export",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "small exact primitive 0",
+      "passed": true,
+      "detail": {
+        "x": 439,
+        "y": 201,
+        "width": 146,
+        "height": 88,
+        "rx": 33
+      }
+    },
+    {
+      "check": "small exact primitive 1",
+      "passed": true,
+      "detail": {
+        "x": 200,
+        "y": 270,
+        "width": 624,
+        "height": 552,
+        "rx": 166
+      }
+    },
+    {
+      "check": "small exact primitive 2",
+      "passed": true,
+      "detail": {
+        "x": 291,
+        "y": 372,
+        "width": 442,
+        "height": 331,
+        "rx": 91
+      }
+    },
+    {
+      "check": "small exact primitive 3",
+      "passed": true,
+      "detail": {
+        "cx": 411,
+        "cy": 538,
+        "r": 56
+      }
+    },
+    {
+      "check": "small exact primitive 4",
+      "passed": true,
+      "detail": {
+        "cx": 613,
+        "cy": 538,
+        "r": 56
+      }
+    },
+    {
+      "check": "small size 1024",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "small size 256",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "small size 128",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "small size 64",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "small size 48",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "small size 32",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "small size 24",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "small size 16",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "small flat Default equals Dark",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "small sRGB native serialization",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "small front-to-back stacking",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "small original native layer eyes",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "small glass switch eyes",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "small original native layer screen",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "small glass switch screen",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "small original native layer shell",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "small glass switch shell",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "small original native layer antenna",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "small glass switch antenna",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "small combined opaque head",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "small native export",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "small 16px separation",
+      "passed": true,
+      "detail": [
+        1,
+        1
+      ]
+    },
+    {
+      "check": "medium 32px separation",
+      "passed": true,
+      "detail": [
+        7,
+        7,
+        7,
+        7,
+        7,
+        7,
+        6,
+        6
+      ]
+    },
+    {
+      "check": "native cyan after ICC conversion",
+      "passed": true,
+      "detail": [
+        62,
+        207,
+        224,
+        255
+      ]
+    },
+    {
+      "check": "native eye foreground",
+      "passed": true,
+      "detail": [
+        62,
+        207,
+        224,
+        255
+      ]
+    },
+    {
+      "check": "native screen exact 8-bit RGB after ICC conversion",
+      "passed": false,
+      "detail": {
+        "source_rgba": [
+          7,
+          11,
+          18,
+          255
+        ],
+        "rendered_srgb": [
+          6,
+          10,
+          18,
+          255
+        ],
+        "classification": "Known 8-bit Display P3 / sRGB round-trip quantization. Source SVG is unchanged; no acceptance assertion relaxed."
+      }
+    },
+    {
+      "check": "native screen visible before head",
+      "passed": true,
+      "detail": "Independent foreground ordering check; does not replace the exact-color result above."
+    },
+    {
+      "check": "UsageDock-project baseline preserved",
+      "passed": true,
+      "detail": {
+        "preexisting_files_changed": [],
+        "status_added": [],
+        "status_removed": []
+      }
+    },
+    {
+      "check": "token-remain-ios baseline preserved",
+      "passed": true,
+      "detail": {
+        "preexisting_files_changed": [],
+        "status_added": [],
+        "status_removed": []
+      }
+    }
+  ],
+  "native_export_success_count": 25,
+  "gui_verified": "TokenRemain-full.icon, 3 groups / 7 layers, actual document opened and shown at 50% zoom.",
+  "limits": [
+    "Native screen RGB exactness fails by one level after 8-bit ICC conversion, as explicitly recorded.",
+    "AI material study is 1254x1254 and not a color-exact production asset. Bright-dot center deviation max 0.77px when normalized to 1024.",
+    "Vector material mockups add gradient/highlight colors. Native .icon source layers retain the approved original flat palette.",
+    "GUI and ictool image export verified; no live Dock integration, asset-catalog compile or simulator home-screen acceptance in Stage A.",
+    "Clear static exports are not a cross-wallpaper or moving-light acceptance test."
+  ],
+  "native_watch_enclosure": "Confirmed circle alpha at corners and clear ring; exported from separate shared/watchOS review document."
+}

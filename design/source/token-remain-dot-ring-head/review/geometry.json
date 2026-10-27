@@ -1,0 +1,505 @@
+{
+  "palette": {
+    "background": "#081431",
+    "shell": "#8F7BF2",
+    "depth": "#5B4FB0",
+    "antenna": "#B7A9F7",
+    "screen": "#070B12",
+    "eyes": "#3ECFE0",
+    "lit": "#3ECFE0",
+    "dim": "#2B3754"
+  },
+  "mono": {
+    "background": "#000000",
+    "shell": "#B3B3B3",
+    "depth": "#737373",
+    "antenna": "#D9D9D9",
+    "screen": "#000000",
+    "eyes": "#FFFFFF",
+    "lit": "#FFFFFF",
+    "dim": "#333333"
+  },
+  "variants": {
+    "full": [
+      {
+        "kind": "circle",
+        "group": "Ring",
+        "role": "lit",
+        "index": 0,
+        "cx": 512.0,
+        "cy": 112.0,
+        "r": 30,
+        "fill": "#3ECFE0"
+      },
+      {
+        "kind": "circle",
+        "group": "Ring",
+        "role": "lit",
+        "index": 1,
+        "cx": 635.606797749979,
+        "cy": 131.5773934819386,
+        "r": 30,
+        "fill": "#3ECFE0"
+      },
+      {
+        "kind": "circle",
+        "group": "Ring",
+        "role": "lit",
+        "index": 2,
+        "cx": 747.1141009169893,
+        "cy": 188.39320225002103,
+        "r": 30,
+        "fill": "#3ECFE0"
+      },
+      {
+        "kind": "circle",
+        "group": "Ring",
+        "role": "lit",
+        "index": 3,
+        "cx": 835.606797749979,
+        "cy": 276.8858990830107,
+        "r": 30,
+        "fill": "#3ECFE0"
+      },
+      {
+        "kind": "circle",
+        "group": "Ring",
+        "role": "lit",
+        "index": 4,
+        "cx": 892.4226065180615,
+        "cy": 388.39320225002103,
+        "r": 30,
+        "fill": "#3ECFE0"
+      },
+      {
+        "kind": "circle",
+        "group": "Ring",
+        "role": "lit",
+        "index": 5,
+        "cx": 912.0,
+        "cy": 512.0,
+        "r": 30,
+        "fill": "#3ECFE0"
+      },
+      {
+        "kind": "circle",
+        "group": "Ring",
+        "role": "lit",
+        "index": 6,
+        "cx": 892.4226065180615,
+        "cy": 635.6067977499789,
+        "r": 30,
+        "fill": "#3ECFE0"
+      },
+      {
+        "kind": "circle",
+        "group": "Ring",
+        "role": "lit",
+        "index": 7,
+        "cx": 835.606797749979,
+        "cy": 747.1141009169893,
+        "r": 30,
+        "fill": "#3ECFE0"
+      },
+      {
+        "kind": "circle",
+        "group": "Ring",
+        "role": "lit",
+        "index": 8,
+        "cx": 747.1141009169893,
+        "cy": 835.606797749979,
+        "r": 30,
+        "fill": "#3ECFE0"
+      },
+      {
+        "kind": "circle",
+        "group": "Ring",
+        "role": "lit",
+        "index": 9,
+        "cx": 635.606797749979,
+        "cy": 892.4226065180615,
+        "r": 30,
+        "fill": "#3ECFE0"
+      },
+      {
+        "kind": "circle",
+        "group": "Ring",
+        "role": "lit",
+        "index": 10,
+        "cx": 512.0,
+        "cy": 912.0,
+        "r": 30,
+        "fill": "#3ECFE0"
+      },
+      {
+        "kind": "circle",
+        "group": "Ring",
+        "role": "lit",
+        "index": 11,
+        "cx": 388.3932022500211,
+        "cy": 892.4226065180615,
+        "r": 30,
+        "fill": "#3ECFE0"
+      },
+      {
+        "kind": "circle",
+        "group": "Ring",
+        "role": "lit",
+        "index": 12,
+        "cx": 276.8858990830108,
+        "cy": 835.606797749979,
+        "r": 30,
+        "fill": "#3ECFE0"
+      },
+      {
+        "kind": "circle",
+        "group": "Ring",
+        "role": "lit",
+        "index": 13,
+        "cx": 188.3932022500211,
+        "cy": 747.1141009169893,
+        "r": 30,
+        "fill": "#3ECFE0"
+      },
+      {
+        "kind": "circle",
+        "group": "Ring",
+        "role": "lit",
+        "index": 14,
+        "cx": 131.5773934819386,
+        "cy": 635.606797749979,
+        "r": 30,
+        "fill": "#3ECFE0"
+      },
+      {
+        "kind": "circle",
+        "group": "Ring",
+        "role": "dim",
+        "index": 15,
+        "cx": 112.0,
+        "cy": 512.0,
+        "r": 30,
+        "fill": "#2B3754"
+      },
+      {
+        "kind": "circle",
+        "group": "Ring",
+        "role": "dim",
+        "index": 16,
+        "cx": 131.57739348193854,
+        "cy": 388.3932022500211,
+        "r": 30,
+        "fill": "#2B3754"
+      },
+      {
+        "kind": "circle",
+        "group": "Ring",
+        "role": "dim",
+        "index": 17,
+        "cx": 188.39320225002103,
+        "cy": 276.8858990830108,
+        "r": 30,
+        "fill": "#2B3754"
+      },
+      {
+        "kind": "circle",
+        "group": "Ring",
+        "role": "dim",
+        "index": 18,
+        "cx": 276.8858990830107,
+        "cy": 188.3932022500211,
+        "r": 30,
+        "fill": "#2B3754"
+      },
+      {
+        "kind": "circle",
+        "group": "Ring",
+        "role": "dim",
+        "index": 19,
+        "cx": 388.393202250021,
+        "cy": 131.5773934819386,
+        "r": 30,
+        "fill": "#2B3754"
+      },
+      {
+        "kind": "rect",
+        "group": "Head",
+        "role": "antenna",
+        "x": 459,
+        "y": 262,
+        "w": 106,
+        "h": 64,
+        "r": 24,
+        "fill": "#B7A9F7"
+      },
+      {
+        "kind": "rect",
+        "group": "Head",
+        "role": "depth",
+        "x": 286,
+        "y": 352,
+        "w": 452,
+        "h": 400,
+        "r": 120,
+        "fill": "#5B4FB0"
+      },
+      {
+        "kind": "rect",
+        "group": "Head",
+        "role": "shell",
+        "x": 286,
+        "y": 312,
+        "w": 452,
+        "h": 400,
+        "r": 120,
+        "fill": "#8F7BF2"
+      },
+      {
+        "kind": "rect",
+        "group": "Face",
+        "role": "screen",
+        "x": 352,
+        "y": 386,
+        "w": 320,
+        "h": 240,
+        "r": 66,
+        "fill": "#070B12"
+      },
+      {
+        "kind": "circle",
+        "group": "Face",
+        "role": "eyes",
+        "cx": 439,
+        "cy": 506,
+        "r": 34,
+        "fill": "#3ECFE0"
+      },
+      {
+        "kind": "circle",
+        "group": "Face",
+        "role": "eyes",
+        "cx": 585,
+        "cy": 506,
+        "r": 34,
+        "fill": "#3ECFE0"
+      }
+    ],
+    "medium": [
+      {
+        "kind": "circle",
+        "group": "Ring",
+        "role": "lit",
+        "index": 0,
+        "cx": 512.0,
+        "cy": 120.0,
+        "r": 46,
+        "fill": "#3ECFE0"
+      },
+      {
+        "kind": "circle",
+        "group": "Ring",
+        "role": "lit",
+        "index": 1,
+        "cx": 742.4118188986495,
+        "cy": 194.86533820502058,
+        "r": 46,
+        "fill": "#3ECFE0"
+      },
+      {
+        "kind": "circle",
+        "group": "Ring",
+        "role": "lit",
+        "index": 2,
+        "cx": 884.8141543877002,
+        "cy": 390.86533820502063,
+        "r": 46,
+        "fill": "#3ECFE0"
+      },
+      {
+        "kind": "circle",
+        "group": "Ring",
+        "role": "lit",
+        "index": 3,
+        "cx": 884.8141543877002,
+        "cy": 633.1346617949794,
+        "r": 46,
+        "fill": "#3ECFE0"
+      },
+      {
+        "kind": "circle",
+        "group": "Ring",
+        "role": "lit",
+        "index": 4,
+        "cx": 742.4118188986495,
+        "cy": 829.1346617949794,
+        "r": 46,
+        "fill": "#3ECFE0"
+      },
+      {
+        "kind": "circle",
+        "group": "Ring",
+        "role": "lit",
+        "index": 5,
+        "cx": 512.0,
+        "cy": 904.0,
+        "r": 46,
+        "fill": "#3ECFE0"
+      },
+      {
+        "kind": "circle",
+        "group": "Ring",
+        "role": "lit",
+        "index": 6,
+        "cx": 281.5881811013506,
+        "cy": 829.1346617949794,
+        "r": 46,
+        "fill": "#3ECFE0"
+      },
+      {
+        "kind": "circle",
+        "group": "Ring",
+        "role": "lit",
+        "index": 7,
+        "cx": 139.18584561229983,
+        "cy": 633.1346617949794,
+        "r": 46,
+        "fill": "#3ECFE0"
+      },
+      {
+        "kind": "circle",
+        "group": "Ring",
+        "role": "dim",
+        "index": 8,
+        "cx": 139.18584561229977,
+        "cy": 390.86533820502063,
+        "r": 46,
+        "fill": "#2B3754"
+      },
+      {
+        "kind": "circle",
+        "group": "Ring",
+        "role": "dim",
+        "index": 9,
+        "cx": 281.58818110135053,
+        "cy": 194.86533820502063,
+        "r": 46,
+        "fill": "#2B3754"
+      },
+      {
+        "kind": "rect",
+        "group": "Head",
+        "role": "antenna",
+        "x": 459,
+        "y": 262,
+        "w": 106,
+        "h": 64,
+        "r": 24,
+        "fill": "#B7A9F7"
+      },
+      {
+        "kind": "rect",
+        "group": "Head",
+        "role": "depth",
+        "x": 286,
+        "y": 352,
+        "w": 452,
+        "h": 400,
+        "r": 120,
+        "fill": "#5B4FB0"
+      },
+      {
+        "kind": "rect",
+        "group": "Head",
+        "role": "shell",
+        "x": 286,
+        "y": 312,
+        "w": 452,
+        "h": 400,
+        "r": 120,
+        "fill": "#8F7BF2"
+      },
+      {
+        "kind": "rect",
+        "group": "Face",
+        "role": "screen",
+        "x": 352,
+        "y": 386,
+        "w": 320,
+        "h": 240,
+        "r": 66,
+        "fill": "#070B12"
+      },
+      {
+        "kind": "circle",
+        "group": "Face",
+        "role": "eyes",
+        "cx": 439,
+        "cy": 506,
+        "r": 40,
+        "fill": "#3ECFE0"
+      },
+      {
+        "kind": "circle",
+        "group": "Face",
+        "role": "eyes",
+        "cx": 585,
+        "cy": 506,
+        "r": 40,
+        "fill": "#3ECFE0"
+      }
+    ],
+    "small": [
+      {
+        "kind": "rect",
+        "group": "Head",
+        "role": "antenna",
+        "x": 439,
+        "y": 201,
+        "w": 146,
+        "h": 88,
+        "r": 33,
+        "fill": "#B7A9F7"
+      },
+      {
+        "kind": "rect",
+        "group": "Head",
+        "role": "shell",
+        "x": 200,
+        "y": 270,
+        "w": 624,
+        "h": 552,
+        "r": 166,
+        "fill": "#8F7BF2"
+      },
+      {
+        "kind": "rect",
+        "group": "Face",
+        "role": "screen",
+        "x": 291,
+        "y": 372,
+        "w": 442,
+        "h": 331,
+        "r": 91,
+        "fill": "#070B12"
+      },
+      {
+        "kind": "circle",
+        "group": "Face",
+        "role": "eyes",
+        "cx": 411,
+        "cy": 538,
+        "r": 56,
+        "fill": "#3ECFE0"
+      },
+      {
+        "kind": "circle",
+        "group": "Face",
+        "role": "eyes",
+        "cx": 613,
+        "cy": 538,
+        "r": 56,
+        "fill": "#3ECFE0"
+      }
+    ]
+  }
+}

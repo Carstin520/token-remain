@@ -425,10 +425,10 @@
 "settings.general" = "일반";
 "settings.show_dock_icon" = "Dock에 아이콘 표시";
 "settings.show_dock_icon_hint" = "Dock과 앱 전환기에 TokenRemain을 표시합니다. 꺼도 메뉴 막대에서 열 수 있습니다";
-"settings.dock_logo_title" = "Dock 아이콘 막대";
-"settings.dock_logo_hint" = "Dock 아이콘의 두 막대에 표시할 앱을 선택합니다. 표정은 더 낮은 쪽을 따릅니다";
-"settings.dock_logo_top" = "위";
-"settings.dock_logo_bottom" = "아래";
+"settings.dock_logo_title" = "Dock 아이콘 잔여량 표시";
+"settings.dock_logo_hint" = "Dock 아이콘 주위의 점은 선택한 앱의 잔여량을 표시합니다";
+"settings.dock_logo_top" = "앱";
+"settings.dock_logo_bottom" = "앱 2";
 "settings.login_item_note" = "macOS 기본 로그인 항목 관리 기능을 사용합니다";
 "settings.manual_only" = "수동 전용";
 "settings.menubar_hidden" = "메뉴 막대에 표시 안 됨";

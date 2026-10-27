@@ -219,3 +219,11 @@
 "datasource.zai_key_placeholder" = "Z.ai / BigModel API anahtarınızı yapıştırın";
 
 "accounts.credential.hint.zai" = "Düz anahtar Coding Plan sorgular. Çin API bakiyesi için region: china ve queryMode: balance içeren JSON kullanın.";
+
+"settings.dock_logo_title" = "Dock simgesi göstergesi";
+
+"settings.dock_logo_hint" = "Dock simgesinin çevresindeki noktalar seçilen uygulamanın kalan kotasını gösterir";
+
+"settings.dock_logo_top" = "Uygulama";
+
+"settings.dock_logo_bottom" = "Uygulama 2";
