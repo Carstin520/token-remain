@@ -219,3 +219,11 @@
 "datasource.zai_key_placeholder" = "अपनी Z.ai / BigModel API कुंजी पेस्ट करें";
 
 "accounts.credential.hint.zai" = "साधारण कुंजी Coding Plan की क्वेरी करती है। चीन के API शेष के लिए JSON में region: china और queryMode: balance दें।";
+
+"settings.dock_logo_title" = "Dock आइकन मीटर";
+
+"settings.dock_logo_hint" = "Dock आइकन के चारों ओर के बिंदु चुने गए ऐप की बची हुई सीमा दिखाते हैं";
+
+"settings.dock_logo_top" = "ऐप";
+
+"settings.dock_logo_bottom" = "ऐप 2";

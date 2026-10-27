@@ -5,7 +5,15 @@ import { deflateSync, inflateSync } from "node:zlib";
 
 const ICON_SIZES = [16, 24, 32, 48, 64, 128, 256];
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
-const sourcePath = fileURLToPath(new URL("../../site/assets/brand/appicon-mac.png", import.meta.url));
+// Select by physical pixel size so the smallest entries retain two clear eyes.
+function variantForSize(size) {
+  return size < 32 ? "small" : size < 64 ? "medium" : "full";
+}
+const sourcePaths = {
+  full: fileURLToPath(new URL("../../site/assets/brand/appicon-mac.png", import.meta.url)),
+  medium: fileURLToPath(new URL("../../site/assets/brand/appicon-medium.png", import.meta.url)),
+  small: fileURLToPath(new URL("../../site/assets/brand/appicon-small.png", import.meta.url)),
+};
 const outputPath = fileURLToPath(new URL("../build/icon.ico", import.meta.url));
 
 function paethPredictor(left, up, upperLeft) {
@@ -176,8 +184,8 @@ function encodeICO(images) {
   return Buffer.concat([directory, ...images.map(({ png }) => png)]);
 }
 
-const source = decodePNG(await readFile(sourcePath));
-const images = ICON_SIZES.map((size) => ({ size, png: encodePNG(size, resizeRGBA(source, size)) }));
+const sources = Object.fromEntries(await Promise.all(Object.entries(sourcePaths).map(async ([variant, path]) => [variant, decodePNG(await readFile(path))])));
+const images = ICON_SIZES.map((size) => ({ size, png: encodePNG(size, resizeRGBA(sources[variantForSize(size)], size)) }));
 await mkdir(dirname(outputPath), { recursive: true });
 await writeFile(outputPath, encodeICO(images));
 console.log(`Generated ${outputPath} with PNG-compressed entries: ${ICON_SIZES.join(", ")}px`);

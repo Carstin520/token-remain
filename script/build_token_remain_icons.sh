@@ -2,39 +2,33 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SOURCE_DIR="$ROOT_DIR/design/source/token-remain-robot-states"
-DUAL_ICON_DIR="$ROOT_DIR/design/source/token-remain-logo-redesign/selected-10-head-logo-states"
-STATE_DIR="$ROOT_DIR/Sources/UsageDock/Resources/TokenRemainStates"
 APP_ICON="$ROOT_DIR/Sources/UsageDock/Resources/TokenRemain.icns"
-MASTER_ICON="$DUAL_ICON_DIR/app-icon-dual-calm-macos.png"
-ICONSET="$(mktemp -d)/TokenRemain.iconset"
+WORK_DIR="$(mktemp -d)"
+ICONSET="$WORK_DIR/TokenRemain.iconset"
 
 cleanup() {
-  rm -rf "$(dirname "$ICONSET")"
+  rm -rf "$WORK_DIR"
 }
 trap cleanup EXIT
 
-xcrun swift "$ROOT_DIR/script/refine_token_remain_icons.swift" \
-  "$SOURCE_DIR" "$STATE_DIR"
+# Expressions and full-body robots have a separate, explicit generation entry.
+# This icon-only command must never rewrite TokenRemainStates or HeadStates.
+xcrun swiftc "$ROOT_DIR/Sources/UsageDock/Views/DotRingIconArtwork.swift" \
+  "$ROOT_DIR/script/render_dot_ring_icons.swift" -o "$WORK_DIR/render-icons"
+"$WORK_DIR/render-icons" "$WORK_DIR/images" \
+  "$ROOT_DIR/design/source/token-remain-dot-ring-head/native-lighting"
 
 mkdir -p "$ICONSET"
-sips -z 16 16 "$MASTER_ICON" --out "$ICONSET/icon_16x16.png" >/dev/null
-sips -z 32 32 "$MASTER_ICON" --out "$ICONSET/icon_16x16@2x.png" >/dev/null
-sips -z 32 32 "$MASTER_ICON" --out "$ICONSET/icon_32x32.png" >/dev/null
-sips -z 64 64 "$MASTER_ICON" --out "$ICONSET/icon_32x32@2x.png" >/dev/null
-sips -z 128 128 "$MASTER_ICON" --out "$ICONSET/icon_128x128.png" >/dev/null
-sips -z 256 256 "$MASTER_ICON" --out "$ICONSET/icon_128x128@2x.png" >/dev/null
-sips -z 256 256 "$MASTER_ICON" --out "$ICONSET/icon_256x256.png" >/dev/null
-sips -z 512 512 "$MASTER_ICON" --out "$ICONSET/icon_256x256@2x.png" >/dev/null
-sips -z 512 512 "$MASTER_ICON" --out "$ICONSET/icon_512x512.png" >/dev/null
-cp "$MASTER_ICON" "$ICONSET/icon_512x512@2x.png"
-
+cp "$WORK_DIR/images/small-dock-16.png" "$ICONSET/icon_16x16.png"
+cp "$WORK_DIR/images/medium-dock-32.png" "$ICONSET/icon_16x16@2x.png"
+cp "$WORK_DIR/images/medium-dock-32.png" "$ICONSET/icon_32x32.png"
+for entry in '32x32@2x:64' '128x128:128' '128x128@2x:256' '256x256:256' '256x256@2x:512' '512x512:512' '512x512@2x:1024'; do
+  cp "$WORK_DIR/images/full-dock-${entry##*:}.png" "$ICONSET/icon_${entry%:*}.png"
+done
 iconutil -c icns "$ICONSET" -o "$APP_ICON"
 
-# macOS 26+ icon: the same master as an Icon Composer foreground layer. If the
-# printed navy changes, update `fill` in AppIcon.icon/icon.json and
-# TokenRemainHeadLogoArtwork.dockTileFill together; TokenRemainLogoTests fails
-# while those two disagree.
-xcrun swift "$ROOT_DIR/script/extract_app_icon_foreground.swift" \
-  "$MASTER_ICON" "$ROOT_DIR/Resources/AppIcon.icon/Assets/foreground.png"
-echo "Built mood states and the dual-meter macOS app icon"
+# Full-bleed website/window master plus dedicated ICO/tray sources.
+cp "$WORK_DIR/images/full-tile-512.png" "$ROOT_DIR/site/assets/brand/appicon-mac.png"
+cp "$WORK_DIR/images/medium-tile-256.png" "$ROOT_DIR/site/assets/brand/appicon-medium.png"
+cp "$WORK_DIR/images/small-tile-256.png" "$ROOT_DIR/site/assets/brand/appicon-small.png"
+echo "Built O4-C size-adapted icns and website/Windows sources; expression assets untouched"

@@ -1,0 +1,209 @@
+{
+  "ictool_version": "1.6 (99.1)",
+  "xcode": "26.6 (17F113)",
+  "exports": [
+    {
+      "variant": "full",
+      "platform": "macOS",
+      "rendition": "Default",
+      "exit_code": 0,
+      "error": "",
+      "source_document": "TokenRemain-full.icon"
+    },
+    {
+      "variant": "full",
+      "platform": "macOS",
+      "rendition": "Dark",
+      "exit_code": 0,
+      "error": "",
+      "source_document": "TokenRemain-full.icon"
+    },
+    {
+      "variant": "full",
+      "platform": "macOS",
+      "rendition": "TintedLight",
+      "exit_code": 0,
+      "error": "",
+      "source_document": "TokenRemain-full.icon"
+    },
+    {
+      "variant": "full",
+      "platform": "macOS",
+      "rendition": "TintedDark",
+      "exit_code": 0,
+      "error": "",
+      "source_document": "TokenRemain-full.icon"
+    },
+    {
+      "variant": "full",
+      "platform": "macOS",
+      "rendition": "ClearLight",
+      "exit_code": 0,
+      "error": "",
+      "source_document": "TokenRemain-full.icon"
+    },
+    {
+      "variant": "full",
+      "platform": "macOS",
+      "rendition": "ClearDark",
+      "exit_code": 0,
+      "error": "",
+      "source_document": "TokenRemain-full.icon"
+    },
+    {
+      "variant": "full",
+      "platform": "iOS",
+      "rendition": "Default",
+      "exit_code": 0,
+      "error": "",
+      "source_document": "TokenRemain-platform-preview.icon"
+    },
+    {
+      "variant": "full",
+      "platform": "iOS",
+      "rendition": "Dark",
+      "exit_code": 0,
+      "error": "",
+      "source_document": "TokenRemain-platform-preview.icon"
+    },
+    {
+      "variant": "full",
+      "platform": "iOS",
+      "rendition": "TintedLight",
+      "exit_code": 0,
+      "error": "",
+      "source_document": "TokenRemain-platform-preview.icon"
+    },
+    {
+      "variant": "full",
+      "platform": "iOS",
+      "rendition": "TintedDark",
+      "exit_code": 0,
+      "error": "",
+      "source_document": "TokenRemain-platform-preview.icon"
+    },
+    {
+      "variant": "full",
+      "platform": "iOS",
+      "rendition": "ClearLight",
+      "exit_code": 0,
+      "error": "",
+      "source_document": "TokenRemain-platform-preview.icon"
+    },
+    {
+      "variant": "full",
+      "platform": "iOS",
+      "rendition": "ClearDark",
+      "exit_code": 0,
+      "error": "",
+      "source_document": "TokenRemain-platform-preview.icon"
+    },
+    {
+      "variant": "full",
+      "platform": "watchOS",
+      "rendition": "Default",
+      "exit_code": 0,
+      "error": "",
+      "source_document": "TokenRemain-platform-preview.icon"
+    },
+    {
+      "variant": "medium",
+      "platform": "macOS",
+      "rendition": "Default",
+      "exit_code": 0,
+      "error": "",
+      "source_document": "TokenRemain-medium.icon"
+    },
+    {
+      "variant": "medium",
+      "platform": "macOS",
+      "rendition": "Dark",
+      "exit_code": 0,
+      "error": "",
+      "source_document": "TokenRemain-medium.icon"
+    },
+    {
+      "variant": "medium",
+      "platform": "macOS",
+      "rendition": "TintedLight",
+      "exit_code": 0,
+      "error": "",
+      "source_document": "TokenRemain-medium.icon"
+    },
+    {
+      "variant": "medium",
+      "platform": "macOS",
+      "rendition": "TintedDark",
+      "exit_code": 0,
+      "error": "",
+      "source_document": "TokenRemain-medium.icon"
+    },
+    {
+      "variant": "medium",
+      "platform": "macOS",
+      "rendition": "ClearLight",
+      "exit_code": 0,
+      "error": "",
+      "source_document": "TokenRemain-medium.icon"
+    },
+    {
+      "variant": "medium",
+      "platform": "macOS",
+      "rendition": "ClearDark",
+      "exit_code": 0,
+      "error": "",
+      "source_document": "TokenRemain-medium.icon"
+    },
+    {
+      "variant": "small",
+      "platform": "macOS",
+      "rendition": "Default",
+      "exit_code": 0,
+      "error": "",
+      "source_document": "TokenRemain-small.icon"
+    },
+    {
+      "variant": "small",
+      "platform": "macOS",
+      "rendition": "Dark",
+      "exit_code": 0,
+      "error": "",
+      "source_document": "TokenRemain-small.icon"
+    },
+    {
+      "variant": "small",
+      "platform": "macOS",
+      "rendition": "TintedLight",
+      "exit_code": 0,
+      "error": "",
+      "source_document": "TokenRemain-small.icon"
+    },
+    {
+      "variant": "small",
+      "platform": "macOS",
+      "rendition": "TintedDark",
+      "exit_code": 0,
+      "error": "",
+      "source_document": "TokenRemain-small.icon"
+    },
+    {
+      "variant": "small",
+      "platform": "macOS",
+      "rendition": "ClearLight",
+      "exit_code": 0,
+      "error": "",
+      "source_document": "TokenRemain-small.icon"
+    },
+    {
+      "variant": "small",
+      "platform": "macOS",
+      "rendition": "ClearDark",
+      "exit_code": 0,
+      "error": "",
+      "source_document": "TokenRemain-small.icon"
+    }
+  ],
+  "note": "Image exports only, not app integration or simulator acceptance.",
+  "successful_exports": 25,
+  "enclosure_note": "watchOS/iOS use a separate review-only shared/circular enclosure document; macOS documents remain macOS-only."
+}

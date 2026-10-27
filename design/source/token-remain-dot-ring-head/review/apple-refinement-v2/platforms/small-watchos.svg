@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024"><defs>
+    <linearGradient id="shell" x1="0" y1="0" x2="0.18" y2="1"><stop stop-color="#B4A3FA"/><stop offset=".45" stop-color="#8F7BF2"/><stop offset="1" stop-color="#7B68DB"/></linearGradient>
+    <linearGradient id="depth" x2="0" y2="1"><stop stop-color="#6B5CC5"/><stop offset="1" stop-color="#4B4099"/></linearGradient>
+    <linearGradient id="antenna" x2="0" y2="1"><stop stop-color="#D4CBFC"/><stop offset="1" stop-color="#B7A9F7"/></linearGradient>
+    <linearGradient id="edge" x1="0" y1="0" x2=".35" y2="1"><stop stop-color="#F0EAFF" stop-opacity=".65"/><stop offset=".4" stop-color="#E0D5FF" stop-opacity=".07"/><stop offset="1" stop-color="#38266B" stop-opacity=".28"/></linearGradient>
+    <radialGradient id="softLight" cx=".15" cy=".04" r=".85"><stop stop-color="#ECE4FF" stop-opacity=".25"/><stop offset=".65" stop-color="#B9A6FF" stop-opacity="0"/></radialGradient>
+    <filter id="edgeSoftness" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="4"/></filter>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="12" stdDeviation="13" flood-color="#000000" flood-opacity=".28"/></filter>
+    <clipPath id="headClip"><rect x="200" y="270" width="624" height="552" rx="166" fill="#8F7BF2" /></clipPath>
+    <clipPath id="crop"><circle cx="512" cy="512" r="512"/></clipPath>
+  </defs><g clip-path="url(#crop)"><rect width="1024" height="1024" fill="#081431"/><g ><rect x="439" y="201" width="146" height="88" rx="33" fill="url(#antenna)" /><rect x="200" y="270" width="624" height="552" rx="166" fill="url(#shell)" /></g><g clip-path="url(#headClip)"><rect x="200" y="270" width="624" height="552" rx="166" fill="url(#softLight)" /><rect x="207" y="277" width="610" height="538" rx="159" fill="none" stroke="url(#edge)" stroke-width="18" filter="url(#edgeSoftness)"/></g><rect x="291" y="372" width="442" height="331" rx="91" fill="#070B12" /><circle cx="411" cy="538" r="56" fill="#3ECFE0" /><circle cx="613" cy="538" r="56" fill="#3ECFE0" /><rect x="293" y="374" width="438" height="327" rx="89" fill="none" stroke="#4A3E6F" stroke-opacity=".45" stroke-width="4"/></g></svg>

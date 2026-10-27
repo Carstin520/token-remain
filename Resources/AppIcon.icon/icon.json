@@ -1,38 +1,206 @@
 {
-  "fill" : {
-    "solid" : "srgb:0.03137,0.07843,0.19216,1.00000"
+  "fill": {
+    "solid": "srgb:0.031372549,0.078431373,0.192156863,1.000000000"
   },
-  "groups" : [
+  "fill-specializations": [
     {
-      "layers" : [
-        {
-          "glass" : false,
-          "hidden" : false,
-          "image-name" : "foreground.png",
-          "name" : "foreground",
-          "opacity" : 1,
-          "position" : {
-            "scale" : 1,
-            "translation-in-points" : [
-              0,
-              0
-            ]
-          }
-        }
-      ],
-      "name" : "Robot",
-      "shadow" : {
-        "kind" : "neutral",
-        "opacity" : 0.5
-      },
-      "translucency" : {
-        "enabled" : false,
-        "value" : 0.5
+      "appearance": "dark",
+      "value": {
+        "solid": "srgb:0.031372549,0.078431373,0.192156863,1.000000000"
+      }
+    },
+    {
+      "appearance": "tinted",
+      "value": {
+        "solid": "srgb:0.000000000,0.000000000,0.000000000,1.000000000"
       }
     }
   ],
-  "supported-platforms" : {
-    "squares" : [
+  "groups": [
+    {
+      "name": "Face",
+      "layers": [
+        {
+          "name": "eyes",
+          "image-name": "eyes.svg",
+          "glass": false,
+          "fill-specializations": [
+            {
+              "appearance": "dark",
+              "value": {
+                "solid": "srgb:0.243137255,0.811764706,0.878431373,1.000000000"
+              }
+            },
+            {
+              "appearance": "tinted",
+              "value": {
+                "solid": "srgb:1.000000000,1.000000000,1.000000000,1.000000000"
+              }
+            }
+          ]
+        },
+        {
+          "name": "screen",
+          "image-name": "screen.svg",
+          "glass": false,
+          "fill-specializations": [
+            {
+              "appearance": "dark",
+              "value": {
+                "solid": "srgb:0.027450980,0.043137255,0.070588235,1.000000000"
+              }
+            },
+            {
+              "appearance": "tinted",
+              "value": {
+                "solid": "srgb:0.000000000,0.000000000,0.000000000,1.000000000"
+              }
+            }
+          ]
+        }
+      ],
+      "lighting": "individual",
+      "specular": false,
+      "blur-material": 0,
+      "translucency": {
+        "enabled": false,
+        "value": 0
+      },
+      "shadow": {
+        "kind": "none",
+        "opacity": 0
+      }
+    },
+    {
+      "name": "Head",
+      "layers": [
+        {
+          "name": "shell",
+          "image-name": "shell.svg",
+          "glass": true,
+          "fill-specializations": [
+            {
+              "appearance": "dark",
+              "value": {
+                "solid": "srgb:0.560784314,0.482352941,0.949019608,1.000000000"
+              }
+            },
+            {
+              "appearance": "tinted",
+              "value": {
+                "solid": "srgb:0.701960784,0.701960784,0.701960784,1.000000000"
+              }
+            }
+          ]
+        },
+        {
+          "name": "depth",
+          "image-name": "depth.svg",
+          "glass": true,
+          "fill-specializations": [
+            {
+              "appearance": "dark",
+              "value": {
+                "solid": "srgb:0.356862745,0.309803922,0.690196078,1.000000000"
+              }
+            },
+            {
+              "appearance": "tinted",
+              "value": {
+                "solid": "srgb:0.450980392,0.450980392,0.450980392,1.000000000"
+              }
+            }
+          ]
+        },
+        {
+          "name": "antenna",
+          "image-name": "antenna.svg",
+          "glass": true,
+          "fill-specializations": [
+            {
+              "appearance": "dark",
+              "value": {
+                "solid": "srgb:0.717647059,0.662745098,0.968627451,1.000000000"
+              }
+            },
+            {
+              "appearance": "tinted",
+              "value": {
+                "solid": "srgb:0.850980392,0.850980392,0.850980392,1.000000000"
+              }
+            }
+          ]
+        }
+      ],
+      "lighting": "combined",
+      "specular": true,
+      "blur-material": 0,
+      "translucency": {
+        "enabled": false,
+        "value": 0
+      },
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.5
+      }
+    },
+    {
+      "name": "Ring",
+      "layers": [
+        {
+          "name": "dots-lit",
+          "image-name": "dots-lit.svg",
+          "glass": false,
+          "fill-specializations": [
+            {
+              "appearance": "dark",
+              "value": {
+                "solid": "srgb:0.243137255,0.811764706,0.878431373,1.000000000"
+              }
+            },
+            {
+              "appearance": "tinted",
+              "value": {
+                "solid": "srgb:1.000000000,1.000000000,1.000000000,1.000000000"
+              }
+            }
+          ]
+        },
+        {
+          "name": "dots-dim",
+          "image-name": "dots-dim.svg",
+          "glass": false,
+          "fill-specializations": [
+            {
+              "appearance": "dark",
+              "value": {
+                "solid": "srgb:0.168627451,0.215686275,0.329411765,1.000000000"
+              }
+            },
+            {
+              "appearance": "tinted",
+              "value": {
+                "solid": "srgb:0.200000000,0.200000000,0.200000000,1.000000000"
+              }
+            }
+          ]
+        }
+      ],
+      "lighting": "individual",
+      "specular": false,
+      "blur-material": 0,
+      "translucency": {
+        "enabled": false,
+        "value": 0
+      },
+      "shadow": {
+        "kind": "none",
+        "opacity": 0
+      }
+    }
+  ],
+  "supported-platforms": {
+    "squares": [
       "macOS"
     ]
   }

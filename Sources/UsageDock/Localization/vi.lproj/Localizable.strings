@@ -219,3 +219,11 @@
 "datasource.zai_key_placeholder" = "Dán khóa API Z.ai / BigModel";
 
 "accounts.credential.hint.zai" = "Khóa thuần truy vấn Coding Plan. Để xem số dư API Trung Quốc, dùng JSON với region: china và queryMode: balance.";
+
+"settings.dock_logo_title" = "Vòng dung lượng trên biểu tượng Dock";
+
+"settings.dock_logo_hint" = "Các chấm quanh biểu tượng Dock hiển thị dung lượng còn lại của ứng dụng đã chọn";
+
+"settings.dock_logo_top" = "Ứng dụng";
+
+"settings.dock_logo_bottom" = "Ứng dụng 2";

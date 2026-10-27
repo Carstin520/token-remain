@@ -66,7 +66,8 @@ struct OverviewSection: View {
                     value: insights.minRemainingPercent.map { UsageFormatting.percent($0) } ?? "—",
                     caption: "\(risk.badge) RISK",
                     captionColor: risk.tint,
-                    valueColor: risk == .unknown ? DashboardTheme.text : risk.tint
+                    valueColor: risk == .unknown ? DashboardTheme.text : risk.tint,
+                    source: minRemainingSource
                 )
                 MetricCard(
                     label: L10n.text("usage.today_tokens"),
@@ -86,7 +87,19 @@ struct OverviewSection: View {
                 )
                 sustainabilityMetric(at: context.date)
             }
+            .fixedSize(horizontal: false, vertical: true)
         }
+    }
+
+    /// Names the window behind the lowest percentage. `constrainingWindow` is
+    /// the same minimum `minRemainingPercent` reports, so the label always
+    /// matches the number shown above it.
+    private var minRemainingSource: MetricCard.Source? {
+        guard let window = insights.constrainingWindow else { return nil }
+        return MetricCard.Source(
+            provider: window.provider,
+            text: "\(window.displayName) · \(UsageFormatting.windowName(minutes: window.windowMinutes))"
+        )
     }
 
     private func sustainabilityMetric(at now: Date) -> MetricCard {

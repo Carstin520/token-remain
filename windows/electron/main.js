@@ -466,7 +466,7 @@ function usableTrayBounds(bounds) {
 }
 
 function createTray() {
-  const image = nativeImage.createFromPath(iconPath()).resize({ width: 20, height: 20 });
+  const image = nativeImage.createFromPath(trayFallbackIconPath()).resize({ width: 20, height: 20 });
   tray = new Tray(image);
   updateTrayTooltip();
   updateTrayContextMenu();
@@ -529,6 +529,12 @@ function sendToDashboard(channel, payload) {
   mainWindow.webContents.once("did-finish-load", () => {
     if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(channel, payload);
   });
+}
+
+function trayFallbackIconPath() {
+  return app.isPackaged
+    ? join(process.resourcesPath, "appicon-small.png")
+    : join(import.meta.dirname, "../../site/assets/brand/appicon-small.png");
 }
 
 function iconPath() {
@@ -1074,7 +1080,7 @@ function updateTrayTooltip() {
     return [`${name} ${remainingPercent}%`];
   });
   tray.setToolTip(summaries.length ? `TokenRemain — ${summaries.slice(0, 4).join(" · ")}` : "TokenRemain");
-  tray.setImage(dynamicTrayImage(state) || nativeImage.createFromPath(iconPath()).resize({ width: 20, height: 20 }));
+  tray.setImage(dynamicTrayImage(state) || nativeImage.createFromPath(trayFallbackIconPath()).resize({ width: 20, height: 20 }));
 }
 
 function dynamicTrayImage(state) {

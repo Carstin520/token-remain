@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <title>TokenRemain O4-C full variant, static master 15 of 20 lit (geometry reference, not a production asset)</title>
+  <rect id="background" width="1024" height="1024" fill="#081431"/>
+  <g id="ring">
+    <circle cx="512.0" cy="112.0" r="30" fill="#3ECFE0"/>
+    <circle cx="635.6" cy="131.6" r="30" fill="#3ECFE0"/>
+    <circle cx="747.1" cy="188.4" r="30" fill="#3ECFE0"/>
+    <circle cx="835.6" cy="276.9" r="30" fill="#3ECFE0"/>
+    <circle cx="892.4" cy="388.4" r="30" fill="#3ECFE0"/>
+    <circle cx="912.0" cy="512.0" r="30" fill="#3ECFE0"/>
+    <circle cx="892.4" cy="635.6" r="30" fill="#3ECFE0"/>
+    <circle cx="835.6" cy="747.1" r="30" fill="#3ECFE0"/>
+    <circle cx="747.1" cy="835.6" r="30" fill="#3ECFE0"/>
+    <circle cx="635.6" cy="892.4" r="30" fill="#3ECFE0"/>
+    <circle cx="512.0" cy="912.0" r="30" fill="#3ECFE0"/>
+    <circle cx="388.4" cy="892.4" r="30" fill="#3ECFE0"/>
+    <circle cx="276.9" cy="835.6" r="30" fill="#3ECFE0"/>
+    <circle cx="188.4" cy="747.1" r="30" fill="#3ECFE0"/>
+    <circle cx="131.6" cy="635.6" r="30" fill="#3ECFE0"/>
+    <circle cx="112.0" cy="512.0" r="30" fill="#2B3754"/>
+    <circle cx="131.6" cy="388.4" r="30" fill="#2B3754"/>
+    <circle cx="188.4" cy="276.9" r="30" fill="#2B3754"/>
+    <circle cx="276.9" cy="188.4" r="30" fill="#2B3754"/>
+    <circle cx="388.4" cy="131.6" r="30" fill="#2B3754"/>
+  </g>
+  <g id="head">
+    <rect id="antenna" x="459" y="262" width="106" height="64" rx="24" fill="#B7A9F7"/>
+    <rect id="depth" x="286" y="352" width="452" height="400" rx="120" fill="#5B4FB0"/>
+    <rect id="shell" x="286" y="312" width="452" height="400" rx="120" fill="#8F7BF2"/>
+  </g>
+  <g id="face">
+    <rect id="screen" x="352" y="386" width="320" height="240" rx="66" fill="#070B12"/>
+    <circle id="eye-left" cx="439" cy="506" r="34" fill="#3ECFE0"/>
+    <circle id="eye-right" cx="585" cy="506" r="34" fill="#3ECFE0"/>
+  </g>
+</svg>
