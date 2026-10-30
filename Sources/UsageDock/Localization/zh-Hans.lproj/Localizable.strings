@@ -399,6 +399,8 @@
 "service.copilot.not_logged_in" = "未检测到 GitHub 登录；在编辑器里登录 Copilot 或运行 gh auth login 后自动接入";
 "service.copilot.token_rejected" = "GitHub 拒绝了当前凭证（HTTP %1$d）；重新登录 Copilot 或 gh 后恢复";
 "service.cursor.no_subscription" = "当前 Cursor 账户没有生效中的订阅";
+"service.cursor.encrypted_login_authorization" = "Cursor 已加密保存登录凭证。点「授权只读访问」，并在系统弹窗中选择「始终允许」，即可恢复额度刷新";
+"service.cursor.encrypted_login_unreadable" = "无法解密 Cursor 的加密登录凭证；打开一次 Cursor 后重试";
 "service.cursor.not_logged_in" = "未找到 Cursor 登录凭证；请先在 Cursor 应用中登录";
 "service.deepseek.balance_plan" = "余额 %1$@%2$@";
 "service.devin.no_quota_data" = "当前 Devin 账户未提供配额数据";

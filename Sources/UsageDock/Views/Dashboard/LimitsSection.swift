@@ -7,6 +7,8 @@ import SwiftUI
 /// that setup directly in the empty quota card.
 struct LimitsSection: View {
     private static let reorderCoordinateSpace = "tokenremain.dashboard.limits.direct-reorder"
+    static let columnMinimum: CGFloat = 300
+    static let columnSpacing: CGFloat = 14
 
     let insights: UsageInsights
     var notices: [ProviderQuota.Provider: String] = [:]
@@ -14,6 +16,62 @@ struct LimitsSection: View {
     @ObservedObject var store: UsageStore
     @ObservedObject var tracked: TrackedProvidersStore = .shared
     let reorderInteraction: DirectReorderInteraction<ProviderQuota.Provider>
+
+    /// Each card's own height before stretching, and the height every card in
+    /// a grid row is stretched to. Row heights hold still while a card is
+    /// dragged, so reordering never re-flows the rows under the pointer.
+    @State private var gridWidth: CGFloat = 0
+    @State private var naturalHeights: [ProviderQuota.Provider: CGFloat] = [:]
+    @State private var rowHeights: [ProviderQuota.Provider: CGFloat] = [:]
+
+    /// `GridItem.adaptive` fits as many minimum-width columns as the width allows.
+    static func columnCount(
+        forWidth width: CGFloat,
+        minimum: CGFloat = columnMinimum,
+        spacing: CGFloat = columnSpacing
+    ) -> Int {
+        guard width > 0 else { return 1 }
+        return max(1, Int((width + spacing) / (minimum + spacing)))
+    }
+
+    /// Every card in a grid row takes the tallest natural height in that row,
+    /// so rows read as even bands while each row stays only as tall as its
+    /// own content.
+    static func rowHeights(
+        order: [ProviderQuota.Provider],
+        natural: [ProviderQuota.Provider: CGFloat],
+        columns: Int
+    ) -> [ProviderQuota.Provider: CGFloat] {
+        guard columns > 0 else { return [:] }
+        var heights: [ProviderQuota.Provider: CGFloat] = [:]
+        for start in stride(from: 0, to: order.count, by: columns) {
+            let row = order[start..<min(start + columns, order.count)]
+            let height = row.compactMap { natural[$0] }.max() ?? 0
+            for provider in row {
+                heights[provider] = height
+            }
+        }
+        return heights
+    }
+
+    private func refreshRowHeights() {
+        guard !reorderInteraction.isActive else { return }
+        let updated = Self.rowHeights(
+            order: tracked.enabledOrdered,
+            natural: naturalHeights,
+            columns: Self.columnCount(forWidth: gridWidth)
+        )
+        if updated != rowHeights {
+            rowHeights = updated
+        }
+    }
+
+    private func recordNaturalHeight(_ height: CGFloat, for provider: ProviderQuota.Provider) {
+        // Sub-point layout noise must not re-flow the grid.
+        let rounded = (height * 2).rounded() / 2
+        guard naturalHeights[provider] != rounded else { return }
+        naturalHeights[provider] = rounded
+    }
 
     /// Multi-account providers read the store's selection-aware projection;
     /// single-account providers keep using the original insights snapshot.
@@ -36,9 +94,15 @@ struct LimitsSection: View {
             )
 
             LazyVGrid(
-                columns: [GridItem(.adaptive(minimum: 300, maximum: 460), spacing: 14, alignment: .top)],
+                columns: [
+                    GridItem(
+                        .adaptive(minimum: Self.columnMinimum, maximum: 460),
+                        spacing: Self.columnSpacing,
+                        alignment: .top
+                    )
+                ],
                 alignment: .leading,
-                spacing: 14
+                spacing: Self.columnSpacing
             ) {
                 ForEach(tracked.enabledOrdered, id: \.self) { provider in
                     QuotaCard(
@@ -46,6 +110,8 @@ struct LimitsSection: View {
                         quota: quota(for: provider),
                         serviceStatus: serviceStatuses[provider],
                         notice: notice(for: provider),
+                        rowHeight: rowHeights[provider],
+                        onNaturalHeightChange: { recordNaturalHeight($0, for: provider) },
                         store: store
                     )
                         .frame(maxWidth: .infinity, alignment: .top)
@@ -79,6 +145,15 @@ struct LimitsSection: View {
                         .frame(maxWidth: .infinity, alignment: .top)
                 }
             }
+            .onGeometryChange(for: CGFloat.self) { proxy in
+                proxy.size.width
+            } action: { width in
+                gridWidth = width
+            }
+            .onChange(of: naturalHeights) { refreshRowHeights() }
+            .onChange(of: gridWidth) { refreshRowHeights() }
+            .onChange(of: tracked.enabledOrdered) { refreshRowHeights() }
+            .onChange(of: reorderInteraction.isActive) { refreshRowHeights() }
 
             DashboardCard {
                 VStack(alignment: .leading, spacing: 10) {

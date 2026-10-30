@@ -395,6 +395,8 @@
 "service.copilot.not_logged_in" = "GitHub のログインが見つかりません。エディタで Copilot にログインするか gh auth login を実行すると自動的に接続されます";
 "service.copilot.token_rejected" = "GitHub が現在の認証情報を拒否しました(HTTP %1$d)。Copilot または gh に再ログインすると復旧します";
 "service.cursor.no_subscription" = "この Cursor アカウントには有効なサブスクリプションがありません";
+"service.cursor.encrypted_login_authorization" = "Cursor は保存したログイン情報を暗号化するようになりました。「読み取りアクセスを許可」をクリックし、macOS のダイアログで「常に許可」を選ぶとクォータの更新が再開します";
+"service.cursor.encrypted_login_unreadable" = "Cursor の暗号化されたログイン情報を復号できません。Cursor を一度開いてから再試行してください";
 "service.cursor.not_logged_in" = "Cursor のログイン認証情報が見つかりません。先に Cursor アプリでログインしてください";
 "service.deepseek.balance_plan" = "残高 %1$@%2$@";
 "service.devin.no_quota_data" = "この Devin アカウントはクォータデータを提供していません";

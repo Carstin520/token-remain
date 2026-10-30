@@ -17,6 +17,11 @@ struct CursorUsageService {
         case requestFailed(Int)
         case invalidResponse
         case noActiveSubscription
+        /// Cursor 3.27+ 加密了登录凭证,读取 "Cursor Safe Storage" 需要用户
+        /// 主动授权一次(后台刷新从不弹窗)。
+        case encryptedLoginNeedsAuthorization
+        /// 加密凭证无法解开(钥匙串条目缺失或解出的不是 token)。
+        case encryptedLoginUnreadable
 
         var errorDescription: String? {
             switch self {
@@ -30,6 +35,10 @@ struct CursorUsageService {
                 return L10n.format("service.common.invalid_response", "Cursor")
             case .noActiveSubscription:
                 return L10n.text("service.cursor.no_subscription")
+            case .encryptedLoginNeedsAuthorization:
+                return L10n.text("service.cursor.encrypted_login_authorization")
+            case .encryptedLoginUnreadable:
+                return L10n.text("service.cursor.encrypted_login_unreadable")
             }
         }
     }
@@ -41,21 +50,33 @@ struct CursorUsageService {
     static let modelUsageTimeout: TimeInterval = 6
     private static let logger = Logger(subsystem: "com.jamesli.usagedock", category: "CursorUsage")
 
-    func fetch(now: Date = .now) async throws -> ProviderQuota {
-        try await fetch(accessToken: nil, membershipType: nil, now: now)
+    /// - Parameter keychainInteraction: `.allowed` only from an explicit user
+    ///   action (授权只读访问), which may show one macOS Keychain prompt for
+    ///   Cursor's Safe Storage key; background refresh stays `.disallowed`.
+    func fetch(
+        now: Date = .now,
+        keychainInteraction: KeychainRead.Interaction = .disallowed
+    ) async throws -> ProviderQuota {
+        try await fetch(accessToken: nil, membershipType: nil, now: now, keychainInteraction: keychainInteraction)
     }
 
     func fetch(
         accessToken routedToken: String?,
         membershipType: String? = nil,
-        now: Date = .now
+        now: Date = .now,
+        keychainInteraction: KeychainRead.Interaction = .disallowed
     ) async throws -> ProviderQuota {
         let token = routedToken?.trimmingCharacters(in: .whitespacesAndNewlines)
         let auth: CursorAuthReader.Auth?
         if let token, !token.isEmpty {
             auth = CursorAuthReader.Auth(accessToken: token, membershipType: membershipType)
         } else {
-            auth = await CursorAuthReader().load(now: now)
+            switch await CursorAuthReader().resolve(now: now, interaction: keychainInteraction) {
+            case .token(let resolved): auth = resolved
+            case .sealed(.authorizationRequired): throw ServiceError.encryptedLoginNeedsAuthorization
+            case .sealed(.unreadable): throw ServiceError.encryptedLoginUnreadable
+            case .missing: auth = nil
+            }
         }
         guard let auth else {
             throw ServiceError.notLoggedIn
@@ -428,11 +449,28 @@ enum CursorAPIUsageParser {
 ///    只在 CLI 运行时续期,打开 IDE 不会刷新它
 /// IDE token 优先;它缺失、或已过期而 CLI token 仍有效且属于同一账号
 /// (JWT `sub` 相同)时才用 CLI token,不会悄悄换成另一个账号的额度。
+/// Cursor 3.27+ 把 IDE token 加密存放(见 `CursorSafeStorage`):解得开就用
+/// 明文 token;解不开时报明确原因,绝不把密文当 token 发出去,也不换用
+/// 无法核对账号的 CLI token。
 /// 通过 `sqlite3 -readonly` 查询,不锁库、不写入。
 struct CursorAuthReader {
     struct Auth: Sendable {
         let accessToken: String
         let membershipType: String?
+    }
+
+    /// Why Cursor's sealed IDE login could not be used.
+    enum SealedFailure: Error, Sendable, Equatable {
+        /// Reading the "Cursor Safe Storage" key needs a one-time approval.
+        case authorizationRequired
+        /// The key is missing or does not decrypt the value to a token.
+        case unreadable
+    }
+
+    enum Resolution: Sendable {
+        case token(Auth)
+        case sealed(SealedFailure)
+        case missing
     }
 
     static let stateDBPath = "~/Library/Application Support/Cursor/User/globalStorage/state.vscdb"
@@ -444,26 +482,71 @@ struct CursorAuthReader {
     var keychainPayload: @Sendable () -> String? = {
         KeychainRead.genericPassword(service: "cursor-access-token", interaction: .disallowed).payload
     }
+    /// The "Cursor Safe Storage" password. Background refresh passes
+    /// `.disallowed`; only an explicit user action passes `.allowed`.
+    var safeStorageKey: @Sendable (KeychainRead.Interaction) -> KeychainRead.Outcome = { interaction in
+        KeychainRead.genericPassword(service: CursorSafeStorage.keychainService, interaction: interaction)
+    }
+    var keyCache: CursorSafeStorage.KeyCache = .shared
 
     func load(now: Date = .now) async -> Auth? {
-        let stateToken = await stateValue(key: "cursorAuth/accessToken")
+        guard case .token(let auth) = await resolve(now: now, interaction: .disallowed) else { return nil }
+        return auth
+    }
+
+    func resolve(now: Date = .now, interaction: KeychainRead.Interaction) async -> Resolution {
+        var stateToken: String?
+        var sealedFailure: SealedFailure?
+        if let stored = await stateValue(key: "cursorAuth/accessToken") {
+            if CursorSafeStorage.isSealed(stored) {
+                switch unseal(stored, interaction: interaction) {
+                case .success(let token): stateToken = token
+                case .failure(let failure): sealedFailure = failure
+                }
+            } else {
+                stateToken = stored
+            }
+        }
         if let stateToken, !Self.isExpired(stateToken, now: now) {
             let membership = await stateValue(key: "cursorAuth/stripeMembershipType")
-            return Auth(accessToken: stateToken, membershipType: membership)
+            return .token(Auth(accessToken: stateToken, membershipType: membership))
         }
         let keychainToken = Self.normalized(keychainPayload())
-        if let keychainToken, !Self.isExpired(keychainToken, now: now),
+        if sealedFailure == nil, let keychainToken, !Self.isExpired(keychainToken, now: now),
            stateToken.map({ Self.sameAccount($0, keychainToken) }) ?? true {
             Self.logger.info("Cursor token served by the cursor-agent Keychain item")
-            return Auth(accessToken: keychainToken, membershipType: nil)
+            return .token(Auth(accessToken: keychainToken, membershipType: nil))
         }
+        if let sealedFailure { return .sealed(sealedFailure) }
         // 没有可用的新 token:仍交回 IDE 的过期 token,由调用方报 staleLogin。
         if let stateToken {
-            return Auth(accessToken: stateToken, membershipType: nil)
+            return .token(Auth(accessToken: stateToken, membershipType: nil))
         }
-        guard let keychainToken else { return nil }
+        guard let keychainToken else { return .missing }
         Self.logger.info("Cursor token served by the cursor-agent Keychain item")
-        return Auth(accessToken: keychainToken, membershipType: nil)
+        return .token(Auth(accessToken: keychainToken, membershipType: nil))
+    }
+
+    /// Decrypts with the cached key first; a stale key falls through to a
+    /// fresh Keychain read under the caller's interaction policy.
+    private func unseal(_ sealed: String, interaction: KeychainRead.Interaction) -> Result<String, SealedFailure> {
+        if let cached = keyCache.key {
+            if let token = CursorSafeStorage.decrypt(sealed, key: cached) { return .success(token) }
+            keyCache.store(nil)
+        }
+        let outcome = safeStorageKey(interaction)
+        guard let password = outcome.payload else {
+            Self.logger.info("Cursor login is sealed; Safe Storage key unavailable (OSStatus \(outcome.status, privacy: .public))")
+            return .failure(outcome.needsAuthorization ? .authorizationRequired : .unreadable)
+        }
+        guard let key = CursorSafeStorage.derivedKey(password: password),
+              let token = CursorSafeStorage.decrypt(sealed, key: key) else {
+            Self.logger.error("Cursor sealed login did not decrypt with the Safe Storage key")
+            return .failure(.unreadable)
+        }
+        keyCache.store(key)
+        Self.logger.info("Cursor sealed login decrypted")
+        return .success(token)
     }
 
     private static func isExpired(_ token: String, now: Date) -> Bool {
