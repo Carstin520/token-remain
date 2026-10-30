@@ -58,6 +58,7 @@
 "pace.deficit" = "%1$@ 초과";
 "pace.lasts_until_reset" = "재설정까지 유지";
 "pace.projected_early" = "조기 소진 예상";
+"pace.exhausted" = "모두 소진됨";
 "pace.projected_in" = "%1$@ 후 소진 예상";
 "widget.all_visible" = "모든 위젯이 표시 중입니다";
 "widget.add_named" = "%1$@ 추가";
@@ -89,6 +90,7 @@
 "usage.provider_accessibility" = "%1$@, API 비용 %2$@, %3$@ tokens";
 "quota.loading_official" = "공식 할당량 읽는 중…";
 "quota.login_recovery_hint" = "로그인이 감지되지 않았습니다. 로그인하면 데이터가 자동으로 복구됩니다";
+"quota.refresh_failed_hint" = "새로 고치지 못함";
 "feed.updating" = "업데이트 중";
 "feed.item_count" = "%d개";
 "feed.filtering" = "주목할 업데이트를 찾는 중…";
@@ -626,6 +628,9 @@
 "settings.quota_summary_hint" = "메뉴 막대, Dock 및 Dashboard 요약에서 우선 표시할 계정 단위 할당량 창을 선택합니다. 모델별 할당량은 제외됩니다.";
 "settings.quota_summary_shortest" = "가장 짧은 창(기본값)";
 "settings.quota_summary_tightest" = "남은 할당량이 가장 적음";
+"settings.cursor_headline_pool_title" = "요약에 표시할 Cursor 풀";
+"settings.cursor_headline_pool_hint" = "Cursor Models와 Other Models는 별도의 풀이며, 하나를 모두 써도 다른 하나는 계속 사용할 수 있습니다. 메뉴 막대, Dock, 툴팁에 표시할 풀을 선택하세요. 카드에는 항상 두 풀이 모두 표시됩니다.";
+"settings.cursor_headline_pool_busiest" = "남은 양이 가장 적은 풀";
 "settings.antigravity_3p" = "Show Antigravity Claude / GPT pools";
 "settings.antigravity_3p_hint" = "Show the Claude and GPT-OSS 5-hour and weekly pools next to Gemini; shown by default.";
 "trends.model_other_format" = "Other (%1$d models)";

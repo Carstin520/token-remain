@@ -62,6 +62,18 @@ struct PreferencesStoreTests {
         #expect(PreferencesStore(defaults: defaults).quotaSummaryStrategy == .shortestWindow)
     }
 
+    @Test("Cursor headline pool defaults to the busiest pool and persists a fixed choice")
+    func cursorHeadlinePool() {
+        let defaults = testDefaults()
+        #expect(PreferencesStore(defaults: defaults).cursorHeadlinePool == .busiest)
+
+        PreferencesStore(defaults: defaults).setCursorHeadlinePool(.cursorModels)
+        #expect(PreferencesStore(defaults: defaults).cursorHeadlinePool == .cursorModels)
+
+        defaults.set("future-pool", forKey: PreferencesStore.cursorHeadlinePoolKey)
+        #expect(PreferencesStore(defaults: defaults).cursorHeadlinePool == .busiest)
+    }
+
     @Test("Antigravity Claude/GPT pools default on and persist an opt-out")
     func antigravityThirdPartyPreference() {
         let defaults = testDefaults()

@@ -300,6 +300,181 @@ struct CursorAuthReaderTests {
         #expect(auth?.accessToken == "db-token")
         #expect(auth?.membershipType == "pro")
     }
+
+    private static let now = Date(timeIntervalSince1970: 1_784_000_000)
+
+    /// Unsigned fixture JWT; the reader only decodes `sub` / `exp`.
+    private static func fixtureJWT(sub: String, exp: Date) -> String {
+        let payload = #"{"sub":"\#(sub)","exp":\#(Int(exp.timeIntervalSince1970))}"#
+        let encoded = Data(payload.utf8).base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
+        return "eyJhbGciOiJub25lIn0.\(encoded).fixture"
+    }
+
+    private static func stateDB(accessToken: String) async throws -> String {
+        let path = FileManager.default.temporaryDirectory
+            .appendingPathComponent("usagedock-cursor-\(UUID().uuidString).vscdb").path
+        _ = try await ProcessRunner.run("/usr/bin/sqlite3", arguments: [
+            path,
+            """
+            CREATE TABLE ItemTable (key TEXT PRIMARY KEY, value BLOB);
+            INSERT INTO ItemTable VALUES ('cursorAuth/accessToken', '\(accessToken)');
+            """
+        ])
+        return path
+    }
+
+    @Test("An expired IDE token yields to a fresh cursor-agent token for the same account")
+    func expiredStateTokenUsesSameAccountKeychainToken() async throws {
+        let expired = Self.fixtureJWT(sub: "auth0|user-a", exp: Self.now.addingTimeInterval(-60))
+        let fresh = Self.fixtureJWT(sub: "auth0|user-a", exp: Self.now.addingTimeInterval(3_600))
+        let path = try await Self.stateDB(accessToken: expired)
+        defer { try? FileManager.default.removeItem(atPath: path) }
+
+        var reader = CursorAuthReader()
+        reader.stateDBURL = URL(fileURLWithPath: path)
+        reader.keychainPayload = { fresh }
+        let auth = await reader.load(now: Self.now)
+        #expect(auth?.accessToken == fresh)
+    }
+
+    @Test("A cursor-agent token for another account never replaces the IDE login")
+    func expiredStateTokenIgnoresOtherAccountKeychainToken() async throws {
+        let expired = Self.fixtureJWT(sub: "auth0|user-a", exp: Self.now.addingTimeInterval(-60))
+        let otherAccount = Self.fixtureJWT(sub: "auth0|user-b", exp: Self.now.addingTimeInterval(3_600))
+        let path = try await Self.stateDB(accessToken: expired)
+        defer { try? FileManager.default.removeItem(atPath: path) }
+
+        var reader = CursorAuthReader()
+        reader.stateDBURL = URL(fileURLWithPath: path)
+        reader.keychainPayload = { otherAccount }
+        let auth = await reader.load(now: Self.now)
+        // The expired IDE token comes back so the service reports staleLogin.
+        #expect(auth?.accessToken == expired)
+    }
+
+    @Test("An expired IDE token is still returned when no fresher token exists")
+    func expiredStateTokenWithoutAlternative() async throws {
+        let expired = Self.fixtureJWT(sub: "auth0|user-a", exp: Self.now.addingTimeInterval(-60))
+        let staleCLI = Self.fixtureJWT(sub: "auth0|user-a", exp: Self.now.addingTimeInterval(-120))
+        let path = try await Self.stateDB(accessToken: expired)
+        defer { try? FileManager.default.removeItem(atPath: path) }
+
+        var reader = CursorAuthReader()
+        reader.stateDBURL = URL(fileURLWithPath: path)
+        reader.keychainPayload = { staleCLI }
+        #expect(await reader.load(now: Self.now)?.accessToken == expired)
+
+        reader.keychainPayload = { nil }
+        #expect(await reader.load(now: Self.now)?.accessToken == expired)
+    }
+
+    @Test("Accounts match only when both tokens carry the same subject")
+    func sameAccountRequiresMatchingSubject() {
+        let exp = Self.now
+        #expect(CursorAuthReader.sameAccount(
+            Self.fixtureJWT(sub: "auth0|a", exp: exp),
+            Self.fixtureJWT(sub: "auth0|a", exp: exp)
+        ))
+        #expect(!CursorAuthReader.sameAccount(
+            Self.fixtureJWT(sub: "auth0|a", exp: exp),
+            Self.fixtureJWT(sub: "auth0|b", exp: exp)
+        ))
+        #expect(!CursorAuthReader.sameAccount("opaque-token", Self.fixtureJWT(sub: "auth0|a", exp: exp)))
+    }
+}
+
+@Suite("Cursor usage HTTP status")
+struct CursorUsageStatusTests {
+    @Test("Only 401 means an expired login; 403 and others report their status")
+    func statusClassification() {
+        #expect(CursorUsageService.failure(forStatus: 200) == nil)
+        #expect(CursorUsageService.failure(forStatus: 204) == nil)
+        guard case .staleLogin? = CursorUsageService.failure(forStatus: 401) else {
+            Issue.record("401 must map to staleLogin")
+            return
+        }
+        for status in [403, 429, 500] {
+            guard case .requestFailed(let reported)? = CursorUsageService.failure(forStatus: status) else {
+                Issue.record("\(status) must map to requestFailed")
+                continue
+            }
+            #expect(reported == status)
+        }
+    }
+}
+
+@Suite("Cursor headline pool")
+struct CursorHeadlinePoolTests {
+    private let now = Date(timeIntervalSince1970: 1_784_000_000)
+
+    /// Issue #92: Other Models used up, Cursor Models at 67.9% used.
+    private func splitQuota() throws -> ProviderQuota {
+        let payload = """
+        {"enabled": true, "planUsage": {"autoPercentUsed": 67.9, "apiPercentUsed": 100},
+         "billingCycleStart": 1782000000000, "billingCycleEnd": 1784592000000}
+        """
+        return try CursorAPIUsageParser.parse(Data(payload.utf8), now: now)
+    }
+
+    @Test("The busiest default keeps the parsed shape")
+    func busiestIsUnchanged() throws {
+        let quota = try splitQuota()
+        let headlined = CursorAPIUsageParser.headlined(quota, on: .busiest)
+        #expect(headlined.primary.poolName == CursorAPIUsageParser.apiPoolName)
+        #expect(headlined.primary.usedPercent == 100)
+        #expect(CursorAPIUsageParser.headlined(quota, on: .otherModels).primary.usedPercent == 100)
+    }
+
+    @Test("Choosing Cursor Models swaps the pools without dropping either")
+    func cursorModelsSwapsPools() throws {
+        let quota = try splitQuota()
+        let headlined = CursorAPIUsageParser.headlined(quota, on: .cursorModels)
+
+        #expect(headlined.primary.poolName == CursorAPIUsageParser.autoPoolName)
+        #expect(headlined.primary.usedPercent == 67.9)
+        #expect(headlined.primary.resetsAt == quota.primary.resetsAt)
+        #expect(headlined.primary.windowMinutes == quota.primary.windowMinutes)
+        #expect(headlined.capturedAt == quota.capturedAt)
+
+        let scoped = try #require(headlined.uniqueScopedWindows.first)
+        #expect(headlined.uniqueScopedWindows.count == 1)
+        #expect(scoped.scopeID == CursorAPIUsageParser.apiPoolScopeID)
+        #expect(scoped.displayName == CursorAPIUsageParser.apiPoolName)
+        #expect(scoped.window.usedPercent == 100)
+        #expect(scoped.window.poolName == nil)
+        #expect(scoped.observedAt == now)
+
+        let summary = headlined.generalQuotaSummary(strategy: .lowestRemaining)
+        #expect(abs(summary.remainingPercent - 32.1) < 0.0001)
+        #expect(StatusBarPresentation.remainingText(for: headlined) == UsageFormatting.percent(100 - 67.9))
+        #expect(StatusBarPresentation.remainingText(for: quota) == UsageFormatting.percent(0))
+    }
+
+    @Test("A missing pool, a blended bar, or another provider stays untouched")
+    func unavailablePoolsAreUnchanged() throws {
+        let lone = try CursorAPIUsageParser.parse(Data("""
+        {"enabled": true, "planUsage": {"apiPercentUsed": 100}}
+        """.utf8), now: now)
+        #expect(CursorAPIUsageParser.headlined(lone, on: .cursorModels).primary.usedPercent == 100)
+
+        let blended = try CursorAPIUsageParser.parse(Data("""
+        {"enabled": true, "planUsage": {"totalPercentUsed": 40}}
+        """.utf8), now: now)
+        #expect(CursorAPIUsageParser.headlined(blended, on: .cursorModels).primary.usedPercent == 40)
+
+        let other = ProviderQuota(
+            provider: .copilot,
+            primary: QuotaWindow(usedPercent: 90, windowMinutes: 43_200, resetsAt: nil, poolName: "Premium"),
+            secondary: nil,
+            planName: nil,
+            capturedAt: now
+        )
+        #expect(UsageStore.headlined(other, cursorPool: .cursorModels).primary.usedPercent == 90)
+        #expect(UsageStore.headlined(try splitQuota(), cursorPool: .cursorModels).primary.usedPercent == 67.9)
+    }
 }
 
 @Suite("Cursor optional model request deadline")

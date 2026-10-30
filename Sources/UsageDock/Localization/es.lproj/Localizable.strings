@@ -58,6 +58,7 @@
 "pace.deficit" = "Adelanto %1$@";
 "pace.lasts_until_reset" = "Dura hasta el reinicio";
 "pace.projected_early" = "Se agotará antes";
+"pace.exhausted" = "Agotada";
 "pace.projected_in" = "Se agotará en %1$@";
 "widget.all_visible" = "Todos los widgets están visibles";
 "widget.add_named" = "Añadir %1$@";
@@ -89,6 +90,7 @@
 "usage.provider_accessibility" = "%1$@, coste de API %2$@, %3$@ tokens";
 "quota.loading_official" = "Leyendo cuota oficial…";
 "quota.login_recovery_hint" = "No se detectó una sesión; inicia sesión para restaurar los datos automáticamente";
+"quota.refresh_failed_hint" = "No se pudo actualizar";
 "feed.updating" = "Actualizando";
 "feed.item_count" = "%d elementos";
 "feed.filtering" = "Buscando novedades relevantes…";
@@ -626,6 +628,9 @@
 "settings.quota_summary_hint" = "Elige qué ventana de cuota de cuenta priorizan la barra de menús, el Dock y el Dashboard; se excluyen las cuotas de modelos.";
 "settings.quota_summary_shortest" = "Ventana más corta (predeterminado)";
 "settings.quota_summary_tightest" = "Menor cuota restante";
+"settings.cursor_headline_pool_title" = "Grupo de Cursor en resúmenes";
+"settings.cursor_headline_pool_hint" = "Cursor Models y Other Models son grupos independientes; si uno se agota, el otro sigue disponible. Elige cuál muestran la barra de menús, el Dock y la información emergente. Las tarjetas siempre muestran ambos.";
+"settings.cursor_headline_pool_busiest" = "Grupo con menos restante";
 "settings.antigravity_3p" = "Show Antigravity Claude / GPT pools";
 "settings.antigravity_3p_hint" = "Show the Claude and GPT-OSS 5-hour and weekly pools next to Gemini; shown by default.";
 "trends.model_other_format" = "Other (%1$d models)";

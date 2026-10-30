@@ -58,6 +58,7 @@
 "pace.deficit" = "用量超前 %1$@";
 "pace.lasts_until_reset" = "可持续到重置";
 "pace.projected_early" = "预计提前用尽";
+"pace.exhausted" = "已用尽";
 "pace.projected_in" = "预计 %1$@ 后用尽";
 
 "widget.all_visible" = "所有组件均已显示";
@@ -90,6 +91,7 @@
 "usage.provider_accessibility" = "%1$@，%2$@ API 花费，%3$@ tokens";
 "quota.loading_official" = "正在读取官方额度…";
 "quota.login_recovery_hint" = "未检测到登录，请登录后数据会自动恢复";
+"quota.refresh_failed_hint" = "未能刷新";
 "feed.updating" = "更新中";
 "feed.item_count" = "%d 条";
 "feed.filtering" = "正在筛选值得关注的新动态…";
@@ -630,6 +632,9 @@
 "settings.quota_summary_hint" = "选择菜单栏、Dock 与 Dashboard 摘要优先显示哪个账号级额度窗口；模型专属额度不参与。";
 "settings.quota_summary_shortest" = "最短窗口（默认）";
 "settings.quota_summary_tightest" = "剩余额度最低";
+"settings.cursor_headline_pool_title" = "Cursor 摘要额度池";
+"settings.cursor_headline_pool_hint" = "Cursor Models 与 Other Models 是两个独立额度池，一个用尽时另一个仍可使用。选择菜单栏、Dock 与提示显示哪一个；卡片始终显示两个池。";
+"settings.cursor_headline_pool_busiest" = "剩余最少的池";
 "settings.antigravity_3p" = "æ¾ç¤º Antigravity Claude / GPT é¢åº¦æ± ";
 "settings.antigravity_3p_hint" = "å¨ Gemini é¢åº¦ææ¾ç¤º Claude ä¸ GPT-OSS æ¨¡åç 5 å°æ¶ä¸å¨é¢åº¦ï¼é»è®¤æ¾ç¤ºã";
 "settings.pool_mimo_daily" = "显示 MiMo 日额度池";

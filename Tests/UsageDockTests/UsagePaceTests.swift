@@ -41,6 +41,24 @@ struct UsagePaceTests {
         #expect(!pace.willLastUntilReset)
         #expect(pace.estimatedRunOutAt == now.addingTimeInterval(21 * 60 * 60))
         #expect(pace.showsRemainingWarning)
+        #expect(!pace.isExhausted)
+    }
+
+    @Test("A used-up window reports exhausted rather than a run-out projection")
+    func exhausted() throws {
+        let pace = try #require(UsagePace(
+            window: QuotaWindow(
+                usedPercent: 100,
+                windowMinutes: 10_080,
+                resetsAt: now.addingTimeInterval(week / 2)
+            ),
+            now: now
+        ))
+
+        #expect(pace.isExhausted)
+        #expect(!pace.willLastUntilReset)
+        // Risk insights still read the run-out instant; only the label changes.
+        #expect(pace.estimatedRunOutAt == now)
     }
 
     @Test("Slow consumption reports reserve and lasts until reset")

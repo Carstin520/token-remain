@@ -265,6 +265,9 @@ struct QuotaCard: View {
                 .font(.system(size: 10))
                 .foregroundStyle(isStale ? DashboardTheme.warning : DashboardTheme.mutedText)
             }
+            if let notice {
+                noticeDetail(notice)
+            }
         } else if let credentialConfiguration {
             VStack(alignment: .leading, spacing: 8) {
                 Text(
@@ -292,7 +295,9 @@ struct QuotaCard: View {
                         .help(notice)
                 }
             }
-        } else if notice == nil {
+        } else if let notice {
+            noticeDetail(notice)
+        } else {
             HStack(spacing: 8) {
                 ProgressView().controlSize(.small)
                 Text(L10n.text("quota.loading_official"))
@@ -302,6 +307,16 @@ struct QuotaCard: View {
             .frame(maxWidth: .infinity, minHeight: 40, alignment: .leading)
         }
 
+    }
+
+    /// The header pill only flags that data is not updating; the actual reason
+    /// (not signed in, expired login, HTTP failure, timeout) is shown here in
+    /// full, matching the popover, so recovery guidance is never tooltip-only.
+    private func noticeDetail(_ notice: String) -> some View {
+        Label(notice, systemImage: "moon.zzz.fill")
+            .font(.system(size: 11))
+            .foregroundStyle(DashboardTheme.secondaryText)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     private var header: some View {
@@ -954,15 +969,17 @@ struct CodexResetCreditsCard: View {
     }
 }
 
-/// Prominent recovery guidance pinned beside the provider name. Keeping it in
-/// the fixed header makes login/install failures visible even when the quota
-/// rows below need to scroll.
+/// Prominent failure flag pinned beside the provider name. Keeping it in the
+/// fixed header makes refresh failures visible even when the quota rows below
+/// need to scroll. Notices cover every failure class (#92: an expired Cursor
+/// login read as "not signed in"), so the label stays neutral and the card
+/// body carries the specific reason.
 private struct QuotaConnectionNotice: View {
     let message: String
 
     var body: some View {
         Label {
-            Text(L10n.text("quota.login_recovery_hint"))
+            Text(L10n.text("quota.refresh_failed_hint"))
                 .lineLimit(1)
                 .minimumScaleFactor(0.72)
         } icon: {
@@ -982,7 +999,7 @@ private struct QuotaConnectionNotice: View {
                 .stroke(DashboardTheme.warning.opacity(0.42), lineWidth: 1)
         }
         .help(message)
-        .accessibilityLabel(L10n.text("quota.login_recovery_hint"))
+        .accessibilityLabel("\(L10n.text("quota.refresh_failed_hint")), \(message)")
     }
 }
 
@@ -1341,6 +1358,9 @@ private struct QuotaPaceRow: View {
     private var outcomeLabel: String {
         if pace.willLastUntilReset {
             return L10n.text("pace.lasts_until_reset")
+        }
+        if pace.isExhausted {
+            return L10n.text("pace.exhausted")
         }
         guard let runOutAt = pace.estimatedRunOutAt else { return L10n.text("pace.projected_early") }
         return L10n.format("pace.projected_in", UsageFormatting.durationUntil(runOutAt, now: now))

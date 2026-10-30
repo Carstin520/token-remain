@@ -55,7 +55,7 @@ struct CursorUsageService {
         if let token, !token.isEmpty {
             auth = CursorAuthReader.Auth(accessToken: token, membershipType: membershipType)
         } else {
-            auth = await CursorAuthReader().load()
+            auth = await CursorAuthReader().load(now: now)
         }
         guard let auth else {
             throw ServiceError.notLoggedIn
@@ -77,15 +77,9 @@ struct CursorUsageService {
         guard let http = response as? HTTPURLResponse else {
             throw ServiceError.invalidResponse
         }
-        switch http.statusCode {
-        case 200..<300:
-            break
-        case 401, 403:
-            // 服务端拒绝但 exp 还没到(时钟偏差、提前吊销):对用户而言
-            // 处置方式相同——打开 Cursor 让它自己续期。
-            throw ServiceError.staleLogin
-        default:
-            throw ServiceError.requestFailed(http.statusCode)
+        if let failure = Self.failure(forStatus: http.statusCode) {
+            Self.logger.error("Cursor usage API rejected the request: HTTP \(http.statusCode, privacy: .public)")
+            throw failure
         }
         var quota = try CursorAPIUsageParser.parse(data, planName: auth.membershipType, now: now)
         Self.logger.info("Cursor quota served by DashboardService API")
@@ -94,6 +88,17 @@ struct CursorUsageService {
         }
         try Task.checkCancellation()
         return quota
+    }
+
+    /// 只有 401(未认证)按登录过期处理:exp 未到但服务端已吊销或有时钟
+    /// 偏差,处置同过期——打开 Cursor 让它自己续期。403 等其他状态不是
+    /// 凭证过期,如实报状态码,不再引导用户反复打开/重登 Cursor(#92)。
+    static func failure(forStatus status: Int) -> ServiceError? {
+        switch status {
+        case 200..<300: return nil
+        case 401: return .staleLogin
+        default: return .requestFailed(status)
+        }
     }
 
     /// 当前账期内各模型的 token / 费用汇总(Cursor 仪表盘 Usage 页同源)。
@@ -311,6 +316,61 @@ enum CursorAPIUsageParser {
         )
     }
 
+    /// 紧凑表面(菜单栏、Dock、提示)按用户选择改看指定池(#92:Other
+    /// Models 用尽后 Auto/Composer 仍可用,恒显 0% 没有意义)。只交换主窗口
+    /// 与 scoped 兄弟的位置,不丢数据;缓存、同步与卡片仍用解析出的
+    /// 用量最高优先形态。所选池不存在(单池或旧缓存)时原样返回。
+    static func headlined(_ quota: ProviderQuota, on pool: CursorHeadlinePool) -> ProviderQuota {
+        let target: (name: String, scopeID: String)
+        switch pool {
+        case .busiest: return quota
+        case .cursorModels: target = (autoPoolName, autoPoolScopeID)
+        case .otherModels: target = (apiPoolName, apiPoolScopeID)
+        }
+        guard quota.provider == .cursor,
+              let formerName = quota.primary.poolName, formerName != target.name,
+              let formerScopeID = poolScopeID(named: formerName),
+              let sibling = quota.scopedWindows?.first(where: { $0.scopeID == target.scopeID }) else {
+            return quota
+        }
+        var promoted = sibling.window
+        promoted.poolName = target.name
+        var demoted = quota.primary
+        demoted.poolName = nil
+        let others = (quota.scopedWindows ?? []).filter { $0.scopeID != target.scopeID }
+        return ProviderQuota(
+            provider: quota.provider,
+            primary: promoted,
+            secondary: quota.secondary,
+            planName: quota.planName,
+            capturedAt: quota.capturedAt,
+            extraUsage: quota.extraUsage,
+            spend: quota.spend,
+            accountBalance: quota.accountBalance,
+            scopedWindows: others + [
+                ScopedQuotaWindow(
+                    scopeID: formerScopeID,
+                    displayName: formerName,
+                    window: demoted,
+                    observedAt: sibling.observedAt
+                )
+            ],
+            // 旧版主窗口的遗留余额字段属于被换下的池,不跟到新主窗口上。
+            remainingBalance: nil,
+            codexResetCredits: quota.codexResetCredits,
+            attribution: quota.attribution,
+            modelUsage: quota.modelUsage
+        )
+    }
+
+    private static func poolScopeID(named name: String) -> String? {
+        switch name {
+        case autoPoolName: return autoPoolScopeID
+        case apiPoolName: return apiPoolScopeID
+        default: return nil
+        }
+    }
+
     /// "pro" → "Pro";Cursor 的 membership type 是小写单词。
     static func planLabel(_ value: String?) -> String? {
         guard let raw = value?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else {
@@ -351,10 +411,13 @@ enum CursorAPIUsageParser {
     }
 }
 
-/// 只读发现 Cursor IDE 的登录凭证。查找顺序:
-/// 1. `state.vscdb`(`ItemTable` 的 `cursorAuth/accessToken`)——Cursor 的
+/// 只读发现 Cursor 的登录凭证。来源:
+/// 1. `state.vscdb`(`ItemTable` 的 `cursorAuth/accessToken`)——Cursor IDE 的
 ///    主存储,顺带取 `cursorAuth/stripeMembershipType` 作计划名
-/// 2. 钥匙串 `cursor-access-token`(新版 Cursor 的备用存储)
+/// 2. 钥匙串 `cursor-access-token`——这是 `cursor-agent` CLI 自己的登录,
+///    只在 CLI 运行时续期,打开 IDE 不会刷新它
+/// IDE token 优先;它缺失、或已过期而 CLI token 仍有效且属于同一账号
+/// (JWT `sub` 相同)时才用 CLI token,不会悄悄换成另一个账号的额度。
 /// 通过 `sqlite3 -readonly` 查询,不锁库、不写入。
 struct CursorAuthReader {
     struct Auth: Sendable {
@@ -363,6 +426,7 @@ struct CursorAuthReader {
     }
 
     static let stateDBPath = "~/Library/Application Support/Cursor/User/globalStorage/state.vscdb"
+    private static let logger = Logger(subsystem: "com.jamesli.usagedock", category: "CursorUsage")
 
     var stateDBURL: URL = URL(
         fileURLWithPath: (stateDBPath as NSString).expandingTildeInPath
@@ -371,25 +435,54 @@ struct CursorAuthReader {
         KeychainRead.genericPassword(service: "cursor-access-token", interaction: .disallowed).payload
     }
 
-    func load() async -> Auth? {
-        if let token = await stateValue(key: "cursorAuth/accessToken") {
+    func load(now: Date = .now) async -> Auth? {
+        let stateToken = await stateValue(key: "cursorAuth/accessToken")
+        if let stateToken, !Self.isExpired(stateToken, now: now) {
             let membership = await stateValue(key: "cursorAuth/stripeMembershipType")
-            return Auth(accessToken: token, membershipType: membership)
+            return Auth(accessToken: stateToken, membershipType: membership)
         }
-        guard let token = Self.normalized(keychainPayload()) else { return nil }
-        return Auth(accessToken: token, membershipType: nil)
+        let keychainToken = Self.normalized(keychainPayload())
+        if let keychainToken, !Self.isExpired(keychainToken, now: now),
+           stateToken.map({ Self.sameAccount($0, keychainToken) }) ?? true {
+            Self.logger.info("Cursor token served by the cursor-agent Keychain item")
+            return Auth(accessToken: keychainToken, membershipType: nil)
+        }
+        // 没有可用的新 token:仍交回 IDE 的过期 token,由调用方报 staleLogin。
+        if let stateToken {
+            return Auth(accessToken: stateToken, membershipType: nil)
+        }
+        guard let keychainToken else { return nil }
+        Self.logger.info("Cursor token served by the cursor-agent Keychain item")
+        return Auth(accessToken: keychainToken, membershipType: nil)
+    }
+
+    private static func isExpired(_ token: String, now: Date) -> Bool {
+        JWT.expiry(token).map { $0 <= now } ?? false
+    }
+
+    /// 两个 token 都带 `sub` 且相同才算同一账号;无法确认时不切换来源。
+    static func sameAccount(_ lhs: String, _ rhs: String) -> Bool {
+        guard let left = JWT.payload(lhs)?["sub"] as? String, !left.isEmpty,
+              let right = JWT.payload(rhs)?["sub"] as? String else {
+            return false
+        }
+        return left == right
     }
 
     private func stateValue(key: String) async -> String? {
         guard FileManager.default.fileExists(atPath: stateDBURL.path) else { return nil }
         let sql = "SELECT value FROM ItemTable WHERE key = '\(key)' LIMIT 1;"
-        guard let data = try? await ProcessRunner.run(
-            "/usr/bin/sqlite3",
-            arguments: ["-readonly", stateDBURL.path, sql]
-        ) else {
+        do {
+            let data = try await ProcessRunner.run(
+                "/usr/bin/sqlite3",
+                arguments: ["-readonly", stateDBURL.path, sql]
+            )
+            return Self.normalized(String(data: data, encoding: .utf8))
+        } catch {
+            // sqlite3 的错误输出只有库状态(如 database is locked),不含库内容。
+            Self.logger.error("Cursor state.vscdb read failed: \(error.localizedDescription, privacy: .public)")
             return nil
         }
-        return Self.normalized(String(data: data, encoding: .utf8))
     }
 
     /// state.vscdb 的 value 可能是裸字符串或 JSON 引号包裹的字符串,统一剥掉。

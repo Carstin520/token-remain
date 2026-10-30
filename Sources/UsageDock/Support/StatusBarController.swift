@@ -237,6 +237,11 @@ final class StatusBarController: NSObject {
             .sink { [weak self] _ in self?.updateStatusImage() }
             .store(in: &cancellables)
 
+        PreferencesStore.shared.$cursorHeadlinePool
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.updateStatusImage() }
+            .store(in: &cancellables)
+
         PreferencesStore.shared.$dockIconHidden
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.updateStatusImage() }

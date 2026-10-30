@@ -58,6 +58,7 @@
 "pace.deficit" = "%1$@ voraus";
 "pace.lasts_until_reset" = "Reicht bis zur Zurücksetzung";
 "pace.projected_early" = "Voraussichtlich zu früh aufgebraucht";
+"pace.exhausted" = "Aufgebraucht";
 "pace.projected_in" = "Voraussichtlich in %1$@ aufgebraucht";
 "widget.all_visible" = "Alle Widgets sind sichtbar";
 "widget.add_named" = "%1$@ hinzufügen";
@@ -89,6 +90,7 @@
 "usage.provider_accessibility" = "%1$@, API-Kosten %2$@, %3$@ tokens";
 "quota.loading_official" = "Offizielles Kontingent wird gelesen…";
 "quota.login_recovery_hint" = "Keine Anmeldung erkannt; nach der Anmeldung werden Daten automatisch wiederhergestellt";
+"quota.refresh_failed_hint" = "Aktualisierung fehlgeschlagen";
 "feed.updating" = "Wird aktualisiert";
 "feed.item_count" = "%d Einträge";
 "feed.filtering" = "Relevante Neuigkeiten werden gesucht…";
@@ -626,6 +628,9 @@
 "settings.quota_summary_hint" = "Wähle, welches Kontingentfenster auf Kontoebene in Menüleiste, Dock und Dashboard priorisiert wird; Modellkontingente bleiben ausgeschlossen.";
 "settings.quota_summary_shortest" = "Kürzestes Fenster (Standard)";
 "settings.quota_summary_tightest" = "Geringstes Restkontingent";
+"settings.cursor_headline_pool_title" = "Cursor-Kontingent in Übersichten";
+"settings.cursor_headline_pool_hint" = "Cursor Models und Other Models sind getrennte Kontingente; ist eines aufgebraucht, bleibt das andere nutzbar. Wähle, welches Menüleiste, Dock und Tooltip zeigen. Karten zeigen immer beide.";
+"settings.cursor_headline_pool_busiest" = "Kontingent mit geringstem Rest";
 "settings.antigravity_3p" = "Show Antigravity Claude / GPT pools";
 "settings.antigravity_3p_hint" = "Show the Claude and GPT-OSS 5-hour and weekly pools next to Gemini; shown by default.";
 "trends.model_other_format" = "Other (%1$d models)";
