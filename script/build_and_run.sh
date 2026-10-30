@@ -581,6 +581,8 @@ if [[ -n "$BROADCAST_BASE_URL" ]]; then
     "$APP_CONTENTS/Info.plist"
 fi
 cp "$ROOT_DIR/Sources/UsageDock/Resources/claude.png" "$APP_RESOURCES/claude.png"
+# Model-vendor marks on multi-vendor pool rows (ModelVendorIcon).
+cp "$ROOT_DIR/Sources/UsageDock/Resources/openai.png" "$APP_RESOURCES/openai.png"
 # BrandIcon only ever resolves `withExtension: "png"`. The SVGs beside them are
 # the regeneration sources described in ProviderIcons/README.md and stay in the
 # repository, but shipping them to users is dead weight.

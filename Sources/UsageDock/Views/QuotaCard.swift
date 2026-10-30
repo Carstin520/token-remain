@@ -216,14 +216,16 @@ struct QuotaCard: View {
                 window: quota.primary,
                 provider: provider,
                 attribution: quota.attribution,
-                remainingBalance: quota.primary.remainingBalance ?? quota.remainingBalance
+                remainingBalance: quota.primary.remainingBalance ?? quota.remainingBalance,
+                vendorSummary: quota.modelVendorSummary(for: quota.primary)
             )
             if let secondary = quota.secondary {
                 Divider().overlay(DashboardSurface.border)
                 QuotaWindowRow(
                     window: secondary,
                     provider: provider,
-                    attribution: quota.attribution
+                    attribution: quota.attribution,
+                    vendorSummary: quota.modelVendorSummary(for: secondary)
                 )
             }
             ForEach(
@@ -235,7 +237,8 @@ struct QuotaCard: View {
                     window: scoped.window,
                     provider: provider,
                     attribution: quota.attribution,
-                    scopeName: scoped.displayName
+                    scopeName: scoped.displayName,
+                    vendorSummary: quota.modelVendorSummary(for: scoped.window, scopedName: scoped.displayName)
                 )
             }
             if let extraUsage = quota.extraUsage {
@@ -252,7 +255,7 @@ struct QuotaCard: View {
             }
             if let models = quota.modelUsage, !models.isEmpty {
                 Divider().overlay(DashboardSurface.border)
-                ProviderModelUsageRow(models: models)
+                ProviderModelUsageRow(models: models, period: quota.modelUsagePeriod)
             }
             TimelineView(.periodic(from: .now, by: 60)) { context in
                 let isStale = context.date.timeIntervalSince(quota.capturedAt) >= 600
@@ -1071,6 +1074,8 @@ struct ProviderSpendRow: View {
 /// inner scroll; the rest collapse into a count.
 struct ProviderModelUsageRow: View {
     let models: [ProviderModelUsage]
+    /// Nil is the current billing cycle; relays report a recent span instead.
+    var period: ModelUsagePeriod? = nil
 
     static let visibleLimit = 3
 
@@ -1078,9 +1083,17 @@ struct ProviderModelUsageRow: View {
         models.reduce(0) { $0 + $1.totalTokens }
     }
 
+    static func title(for period: ModelUsagePeriod?) -> String {
+        switch period {
+        case nil: L10n.text("quota.models_this_cycle")
+        case .days(let days): L10n.format("quota.models_recent_days", days)
+        case .recentRequests(let count): L10n.format("quota.models_recent_requests", count)
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(L10n.text("quota.models_this_cycle"))
+            Text(Self.title(for: period))
                 .font(.system(size: 12))
                 .usageDockAdaptiveForeground(.secondary)
             ForEach(Array(models.prefix(Self.visibleLimit).enumerated()), id: \.offset) { _, model in
@@ -1147,11 +1160,20 @@ struct QuotaWindowRow: View {
     /// Most-used model's local output speed, shown at the end of the reset
     /// line. Callers pass it to one row per provider only.
     var modelSpeed: ModelSpeedSummary? = nil
+    /// Vendor logos for the models behind this row, after its name. A summary
+    /// label ("Others") replaces the pool name, so callers never pass one
+    /// when an account name labels the row.
+    var vendorSummary: ModelVendorSummary? = nil
 
     /// Scoped rows are named by their call site; a general window can also
     /// name itself when it represents one pool of a split cycle (Cursor).
     private var effectiveScopeName: String? {
         scopeName ?? window.poolName
+    }
+
+    private var displayedVendorSummary: ModelVendorSummary? {
+        guard let vendorSummary, !vendorSummary.marks.isEmpty else { return nil }
+        return vendorSummary
     }
 
     private var remainingPercent: Double {
@@ -1171,9 +1193,28 @@ struct QuotaWindowRow: View {
                             .frame(width: 12, height: 12)
                             .usageDockAdaptiveForeground(.secondary)
                     }
-                    Text(windowTitle)
-                        .font(.system(size: 13))
-                        .usageDockAdaptiveForeground(.secondary)
+                    if let summary = displayedVendorSummary {
+                        let parts = Self.vendorTitleParts(
+                            windowMinutes: window.windowMinutes,
+                            name: summary.label ?? effectiveScopeName,
+                            attribution: attribution
+                        )
+                        HStack(alignment: .center, spacing: 5) {
+                            Text(verbatim: parts.leading)
+                                .font(.system(size: 13))
+                                .usageDockAdaptiveForeground(.secondary)
+                            ModelVendorMarkStrip(marks: summary.marks)
+                            if let trailing = parts.trailing {
+                                Text(verbatim: trailing)
+                                    .font(.system(size: 13))
+                                    .usageDockAdaptiveForeground(.secondary)
+                            }
+                        }
+                    } else {
+                        Text(windowTitle)
+                            .font(.system(size: 13))
+                            .usageDockAdaptiveForeground(.secondary)
+                    }
                     Spacer()
                     if let pace = UsagePace(window: window, now: context.date),
                        pace.showsRemainingWarning {
@@ -1276,9 +1317,28 @@ struct QuotaWindowRow: View {
         return "\(source) · \(scoped)"
     }
 
+    /// Title around the vendor logos: `Others [logos] · 31-day window` for a
+    /// named pool, `Total [logos]` for an unnamed account window.
+    static func vendorTitleParts(
+        windowMinutes: Int,
+        name: String?,
+        attribution: QuotaAttribution?
+    ) -> (leading: String, trailing: String?) {
+        let duration = L10n.format("quota.window", UsageFormatting.windowName(minutes: windowMinutes))
+        let source = attribution.map { "\($0.displayName) · " } ?? ""
+        guard let name else { return (source + duration, nil) }
+        return (source + name, "· \(duration)")
+    }
+
     private var windowAccessibilityDescriptor: String {
         let duration = UsageFormatting.windowName(minutes: window.windowMinutes)
-        return effectiveScopeName.map { "\($0) · \(duration)" } ?? duration
+        var scope = effectiveScopeName
+        if let summary = displayedVendorSummary {
+            let vendors = summary.marks.prefix(ModelVendorMark.limit).map(\.vendor.displayName).joined(separator: ", ")
+            let name: String? = summary.label ?? scope
+            scope = name.map { "\($0) (\(vendors))" } ?? vendors
+        }
+        return scope.map { "\($0) · \(duration)" } ?? duration
     }
 
     private var accessibilityProviderName: String {

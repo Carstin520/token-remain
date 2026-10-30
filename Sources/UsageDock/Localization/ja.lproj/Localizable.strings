@@ -108,7 +108,10 @@
 "quota.spent" = "%@ 使用";
 "quota.official_spend" = "公式の支出";
 "quota.models_this_cycle" = "今期のモデル";
+"quota.models_recent_days" = "直近 %1$d 日のモデル";
+"quota.models_recent_requests" = "直近 %1$d 件のリクエストのモデル";
 "quota.models_more" = "他 %1$d 件";
+"model_vendor.other" = "その他のベンダー";
 "quota.account_balance" = "アカウント残高";
 "quota.spend_week" = "今週";
 "quota.spend_month" = "今月";

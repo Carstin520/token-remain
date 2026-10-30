@@ -219,6 +219,15 @@ enum CursorAPIUsageParser {
     static let apiPoolName = "Other Models"
     static let apiPoolScopeID = "cursor_api"
 
+    /// Cursor 自家模型(Auto、Composer、cursor-*)计入 Cursor Models 池,
+    /// 其余模型走 Other Models 池。用量接口只给整个账期一份按模型的列表,
+    /// 所以按模型名推断归属。
+    static func isCursorModel(_ model: String) -> Bool {
+        let name = model.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return name == "auto" || name == "default"
+            || name.hasPrefix("composer") || name.hasPrefix("cursor")
+    }
+
     static func parse(_ data: Data, planName: String? = nil, now: Date = .now) throws -> ProviderQuota {
         guard let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
             throw CursorUsageService.ServiceError.invalidResponse
@@ -359,7 +368,8 @@ enum CursorAPIUsageParser {
             remainingBalance: nil,
             codexResetCredits: quota.codexResetCredits,
             attribution: quota.attribution,
-            modelUsage: quota.modelUsage
+            modelUsage: quota.modelUsage,
+            modelUsagePeriod: quota.modelUsagePeriod
         )
     }
 

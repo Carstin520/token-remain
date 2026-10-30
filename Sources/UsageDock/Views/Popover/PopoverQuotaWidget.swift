@@ -224,7 +224,8 @@ struct PopoverQuotaWidget: View {
             showsDetails: isExpanded,
             scopeName: accountName,
             remainingBalance: shortestWindow.remainingBalance,
-            modelSpeed: modelSpeed
+            modelSpeed: modelSpeed,
+            vendorSummary: Self.vendorSummary(in: quota, window: shortestWindow.window, accountName: accountName)
         )
 
         if isExpanded {
@@ -235,7 +236,8 @@ struct PopoverQuotaWidget: View {
                     provider: provider,
                     attribution: quota.attribution,
                     scopeName: accountName,
-                    remainingBalance: item.remainingBalance
+                    remainingBalance: item.remainingBalance,
+                    vendorSummary: Self.vendorSummary(in: quota, window: item.window, accountName: accountName)
                 )
             }
         }
@@ -254,7 +256,8 @@ struct PopoverQuotaWidget: View {
                 provider: provider,
                 attribution: quota.attribution,
                 showsDetails: isExpanded,
-                scopeName: scoped.displayName
+                scopeName: scoped.displayName,
+                vendorSummary: quota.modelVendorSummary(for: scoped.window, scopedName: scoped.displayName)
             )
         }
 
@@ -317,6 +320,17 @@ struct PopoverQuotaWidget: View {
             L10n.format("accounts.row_accessibility", provider.displayName, name)
         )
         .accessibilityValue(text)
+    }
+
+    /// An account name labels the row, so a summary that would replace the
+    /// row's name ("Others") is dropped; relay logos still follow the name.
+    static func vendorSummary(
+        in quota: ProviderQuota,
+        window: QuotaWindow,
+        accountName: String?
+    ) -> ModelVendorSummary? {
+        guard let summary = quota.modelVendorSummary(for: window) else { return nil }
+        return accountName != nil && summary.label != nil ? nil : summary
     }
 
     private var offersCookieSignIn: Bool {

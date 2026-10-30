@@ -109,7 +109,10 @@
 "quota.spent" = "%@ spent";
 "quota.official_spend" = "Official Spend";
 "quota.models_this_cycle" = "Models this cycle";
+"quota.models_recent_days" = "Models · last %1$d days";
+"quota.models_recent_requests" = "Models · last %1$d requests";
 "quota.models_more" = "+%1$d more";
+"model_vendor.other" = "Other vendors";
 "quota.account_balance" = "Account Balance";
 "quota.spend_week" = "This Week";
 "quota.spend_month" = "This Month";

@@ -170,6 +170,12 @@ enum AntigravityUsageParser {
     /// 两组模型额度的显示名。品牌/模型名不做本地化。
     static let geminiPoolName = "Gemini"
     static let thirdPartyPoolName = "Claude / GPT"
+    /// 第三方池覆盖的模型族。接口只回整池剩余比例、没有按模型的用量,
+    /// 所以按池名的固定顺序展示,不做用量排序。
+    static let thirdPartyVendorMarks = [
+        ModelVendorMark(vendor: .anthropic, models: [.init(name: "Claude")]),
+        ModelVendorMark(vendor: .openai, models: [.init(name: "GPT-OSS")])
+    ]
 
     static func parse(_ data: Data, now: Date = .now) throws -> ProviderQuota {
         guard let root = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {

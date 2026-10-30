@@ -108,7 +108,10 @@
 "quota.spent" = "%@ ausgegeben";
 "quota.official_spend" = "Offizielle Ausgaben";
 "quota.models_this_cycle" = "Modelle in diesem Zeitraum";
+"quota.models_recent_days" = "Modelle · letzte %1$d Tage";
+"quota.models_recent_requests" = "Modelle · letzte %1$d Anfragen";
 "quota.models_more" = "+%1$d weitere";
+"model_vendor.other" = "Andere Anbieter";
 "quota.account_balance" = "Kontostand";
 "quota.spend_week" = "Diese Woche";
 "quota.spend_month" = "Dieser Monat";

@@ -166,6 +166,57 @@ struct ProviderModelUsage: Sendable, Codable, Equatable {
     }
 }
 
+extension ProviderModelUsage {
+    /// Sums rows a provider reports per day, hour or request into one row per
+    /// model, largest token total first (cost breaks ties). Empty names and
+    /// rows with neither tokens nor cost are dropped.
+    static func aggregated(_ rows: [ProviderModelUsage]) -> [ProviderModelUsage] {
+        var order: [String] = []
+        var totals: [String: ProviderModelUsage] = [:]
+        for row in rows {
+            let model = row.model.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !model.isEmpty else { continue }
+            if let current = totals[model] {
+                let cost: Double? = current.costCents == nil && row.costCents == nil
+                    ? nil
+                    : (current.costCents ?? 0) + (row.costCents ?? 0)
+                totals[model] = ProviderModelUsage(
+                    model: model,
+                    inputTokens: current.inputTokens + row.inputTokens,
+                    outputTokens: current.outputTokens + row.outputTokens,
+                    cacheWriteTokens: current.cacheWriteTokens + row.cacheWriteTokens,
+                    cacheReadTokens: current.cacheReadTokens + row.cacheReadTokens,
+                    costCents: cost
+                )
+            } else {
+                order.append(model)
+                totals[model] = ProviderModelUsage(
+                    model: model,
+                    inputTokens: row.inputTokens,
+                    outputTokens: row.outputTokens,
+                    cacheWriteTokens: row.cacheWriteTokens,
+                    cacheReadTokens: row.cacheReadTokens,
+                    costCents: row.costCents
+                )
+            }
+        }
+        return order.compactMap { totals[$0] }
+            .filter { $0.totalTokens > 0 || ($0.costCents ?? 0) > 0 }
+            .sorted {
+                $0.totalTokens != $1.totalTokens
+                    ? $0.totalTokens > $1.totalTokens
+                    : ($0.costCents ?? 0) > ($1.costCents ?? 0)
+            }
+    }
+}
+
+/// The span `ProviderQuota.modelUsage` covers when it is not the current
+/// billing cycle: relay APIs report a recent day range or recent requests.
+enum ModelUsagePeriod: Sendable, Codable, Equatable {
+    case days(Int)
+    case recentRequests(Int)
+}
+
 /// Identifies the account/API that actually owns a quota while preserving the
 /// host application as `ProviderQuota.provider`. For example, Claude Code can
 /// remain the card identity while its balance is attributed to DeepSeek API.
@@ -219,6 +270,8 @@ struct ProviderQuota: Sendable, Codable {
     /// Per-model breakdown for the current billing cycle, largest first. Nil
     /// when the source has no such API or the best-effort lookup failed.
     var modelUsage: [ProviderModelUsage]? = nil
+    /// Nil means `modelUsage` covers the current billing cycle (Cursor).
+    var modelUsagePeriod: ModelUsagePeriod? = nil
 
     /// The shortest account-wide window is the default compact/headline value.
     /// This preserves the historical 5-hour-first behavior while keeping named
@@ -322,7 +375,8 @@ struct ProviderQuota: Sendable, Codable {
             remainingBalance: remainingBalance,
             codexResetCredits: codexResetCredits,
             attribution: attribution,
-            modelUsage: modelUsage
+            modelUsage: modelUsage,
+            modelUsagePeriod: modelUsagePeriod
         )
     }
 
@@ -346,7 +400,8 @@ struct ProviderQuota: Sendable, Codable {
             remainingBalance: remainingBalance,
             codexResetCredits: codexResetCredits,
             attribution: source,
-            modelUsage: modelUsage
+            modelUsage: modelUsage,
+            modelUsagePeriod: modelUsagePeriod
         )
     }
 

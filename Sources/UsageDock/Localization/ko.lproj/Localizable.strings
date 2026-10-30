@@ -108,7 +108,10 @@
 "quota.spent" = "%@ 사용";
 "quota.official_spend" = "공식 지출";
 "quota.models_this_cycle" = "이번 주기 모델";
+"quota.models_recent_days" = "최근 %1$d일 모델";
+"quota.models_recent_requests" = "최근 %1$d건 요청의 모델";
 "quota.models_more" = "외 %1$d개";
+"model_vendor.other" = "기타 제공업체";
 "quota.account_balance" = "계정 잔액";
 "quota.spend_week" = "이번 주";
 "quota.spend_month" = "이번 달";
