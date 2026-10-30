@@ -34,7 +34,7 @@ fail() {
   || fail "vendored arm64 helper has an unexpected architecture"
 [[ "$(/usr/bin/lipo "$X64_BINARY" -archs)" == "x86_64" ]] \
   || fail "vendored x86_64 helper has an unexpected architecture"
-/usr/bin/lipo "$UNIVERSAL_BINARY" -verify_arch arm64 x86_64 \
+{ /usr/bin/lipo "$UNIVERSAL_BINARY" -verify_arch arm64 && /usr/bin/lipo "$UNIVERSAL_BINARY" -verify_arch x86_64; } \
   || fail "vendored universal helper is missing arm64 or x86_64"
 [[ "$("$UNIVERSAL_BINARY" --version)" == "ccusage $VERSION" ]] \
   || fail "vendored universal helper version does not match $VERSION"
