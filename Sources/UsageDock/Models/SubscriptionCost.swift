@@ -98,9 +98,9 @@ enum SubscriptionPlanCatalog {
         planName: String?,
         chosenPlanID: String?
     ) -> String? {
-        let plan = chosenPlanID.flatMap { plan(id: $0, provider: provider) }
-            ?? plan(provider: provider, planName: planName)
-        return plan?.id ?? normalized(planName)
+        let resolved = chosenPlanID.flatMap { Self.plan(id: $0, provider: provider) }
+            ?? Self.plan(provider: provider, planName: planName)
+        return resolved?.id ?? normalized(planName)
     }
 
     /// `Max 20x` → `max20x`, `Pro+` → `proplus`, `copilot_pro` → `copilotpro`.
