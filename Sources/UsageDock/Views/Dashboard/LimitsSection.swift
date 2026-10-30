@@ -8,6 +8,7 @@ import SwiftUI
 struct LimitsSection: View {
     private static let reorderCoordinateSpace = "tokenremain.dashboard.limits.direct-reorder"
     static let columnMinimum: CGFloat = 300
+    static let columnMaximum: CGFloat = 460
     static let columnSpacing: CGFloat = 14
 
     let insights: UsageInsights
@@ -16,62 +17,6 @@ struct LimitsSection: View {
     @ObservedObject var store: UsageStore
     @ObservedObject var tracked: TrackedProvidersStore = .shared
     let reorderInteraction: DirectReorderInteraction<ProviderQuota.Provider>
-
-    /// Each card's own height before stretching, and the height every card in
-    /// a grid row is stretched to. Row heights hold still while a card is
-    /// dragged, so reordering never re-flows the rows under the pointer.
-    @State private var gridWidth: CGFloat = 0
-    @State private var naturalHeights: [ProviderQuota.Provider: CGFloat] = [:]
-    @State private var rowHeights: [ProviderQuota.Provider: CGFloat] = [:]
-
-    /// `GridItem.adaptive` fits as many minimum-width columns as the width allows.
-    static func columnCount(
-        forWidth width: CGFloat,
-        minimum: CGFloat = columnMinimum,
-        spacing: CGFloat = columnSpacing
-    ) -> Int {
-        guard width > 0 else { return 1 }
-        return max(1, Int((width + spacing) / (minimum + spacing)))
-    }
-
-    /// Every card in a grid row takes the tallest natural height in that row,
-    /// so rows read as even bands while each row stays only as tall as its
-    /// own content.
-    static func rowHeights(
-        order: [ProviderQuota.Provider],
-        natural: [ProviderQuota.Provider: CGFloat],
-        columns: Int
-    ) -> [ProviderQuota.Provider: CGFloat] {
-        guard columns > 0 else { return [:] }
-        var heights: [ProviderQuota.Provider: CGFloat] = [:]
-        for start in stride(from: 0, to: order.count, by: columns) {
-            let row = order[start..<min(start + columns, order.count)]
-            let height = row.compactMap { natural[$0] }.max() ?? 0
-            for provider in row {
-                heights[provider] = height
-            }
-        }
-        return heights
-    }
-
-    private func refreshRowHeights() {
-        guard !reorderInteraction.isActive else { return }
-        let updated = Self.rowHeights(
-            order: tracked.enabledOrdered,
-            natural: naturalHeights,
-            columns: Self.columnCount(forWidth: gridWidth)
-        )
-        if updated != rowHeights {
-            rowHeights = updated
-        }
-    }
-
-    private func recordNaturalHeight(_ height: CGFloat, for provider: ProviderQuota.Provider) {
-        // Sub-point layout noise must not re-flow the grid.
-        let rounded = (height * 2).rounded() / 2
-        guard naturalHeights[provider] != rounded else { return }
-        naturalHeights[provider] = rounded
-    }
 
     /// Multi-account providers read the store's selection-aware projection;
     /// single-account providers keep using the original insights snapshot.
@@ -93,15 +38,9 @@ struct LimitsSection: View {
                 trailing: insights.lastUpdated.map { L10n.format("common.updated_at", $0.formatted(date: .omitted, time: .standard)) }
             )
 
-            LazyVGrid(
-                columns: [
-                    GridItem(
-                        .adaptive(minimum: Self.columnMinimum, maximum: 460),
-                        spacing: Self.columnSpacing,
-                        alignment: .top
-                    )
-                ],
-                alignment: .leading,
+            QuotaGridLayout(
+                minimumColumnWidth: Self.columnMinimum,
+                maximumColumnWidth: Self.columnMaximum,
                 spacing: Self.columnSpacing
             ) {
                 ForEach(tracked.enabledOrdered, id: \.self) { provider in
@@ -110,8 +49,6 @@ struct LimitsSection: View {
                         quota: quota(for: provider),
                         serviceStatus: serviceStatuses[provider],
                         notice: notice(for: provider),
-                        rowHeight: rowHeights[provider],
-                        onNaturalHeightChange: { recordNaturalHeight($0, for: provider) },
                         store: store
                     )
                         .frame(maxWidth: .infinity, alignment: .top)
@@ -145,15 +82,6 @@ struct LimitsSection: View {
                         .frame(maxWidth: .infinity, alignment: .top)
                 }
             }
-            .onGeometryChange(for: CGFloat.self) { proxy in
-                proxy.size.width
-            } action: { width in
-                gridWidth = width
-            }
-            .onChange(of: naturalHeights) { refreshRowHeights() }
-            .onChange(of: gridWidth) { refreshRowHeights() }
-            .onChange(of: tracked.enabledOrdered) { refreshRowHeights() }
-            .onChange(of: reorderInteraction.isActive) { refreshRowHeights() }
 
             DashboardCard {
                 VStack(alignment: .leading, spacing: 10) {
@@ -174,6 +102,93 @@ struct LimitsSection: View {
             }
         }
         .coordinateSpace(name: Self.reorderCoordinateSpace)
+    }
+}
+
+/// Adaptive quota grid whose rows read as even bands: every cell in a row is
+/// offered the row's tallest natural height. Columns and row heights come out
+/// of one layout pass, so nothing is measured into state and written back.
+/// 1.4.7 (46) did that with `LazyVGrid` plus measured `@State` heights, and
+/// the measure → state → relayout cycle never settled on some dashboards:
+/// the main thread spun at 100% CPU and memory grew by gigabytes.
+struct QuotaGridLayout: Layout {
+    var minimumColumnWidth: CGFloat
+    var maximumColumnWidth: CGFloat
+    var spacing: CGFloat
+
+    /// `GridItem.adaptive` fits as many minimum-width columns as the width allows.
+    static func columnCount(forWidth width: CGFloat, minimum: CGFloat, spacing: CGFloat) -> Int {
+        guard width.isFinite, width > 0 else { return 1 }
+        return max(1, Int((width + spacing) / (minimum + spacing)))
+    }
+
+    /// Columns share the width evenly up to the maximum and pack leading.
+    static func columnWidth(forWidth width: CGFloat, columns: Int, maximum: CGFloat, spacing: CGFloat) -> CGFloat {
+        let columns = max(1, columns)
+        let shared = (width - spacing * CGFloat(columns - 1)) / CGFloat(columns)
+        return max(0, min(maximum, shared))
+    }
+
+    /// Each row is as tall as its tallest cell, so rows stay only as tall as
+    /// their own content.
+    static func rowHeights(natural: [CGFloat], columns: Int) -> [CGFloat] {
+        let columns = max(1, columns)
+        return stride(from: 0, to: natural.count, by: columns).map { start in
+            natural[start..<min(start + columns, natural.count)].max() ?? 0
+        }
+    }
+
+    private struct Grid {
+        var columns: Int
+        var columnWidth: CGFloat
+        var rowHeights: [CGFloat]
+    }
+
+    private func grid(for proposal: ProposedViewSize, subviews: Subviews) -> Grid {
+        // A missing or unbounded width has no column count to fit; fall back
+        // to one minimum-width column instead of an unbounded one.
+        let width = proposal.width.flatMap { $0.isFinite ? $0 : nil } ?? minimumColumnWidth
+        let columns = Self.columnCount(forWidth: width, minimum: minimumColumnWidth, spacing: spacing)
+        let columnWidth = Self.columnWidth(
+            forWidth: width,
+            columns: columns,
+            maximum: maximumColumnWidth,
+            spacing: spacing
+        )
+        let natural = subviews.map {
+            $0.sizeThatFits(ProposedViewSize(width: columnWidth, height: nil)).height
+        }
+        return Grid(
+            columns: columns,
+            columnWidth: columnWidth,
+            rowHeights: Self.rowHeights(natural: natural, columns: columns)
+        )
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let grid = grid(for: proposal, subviews: subviews)
+        let usedColumns = min(grid.columns, max(1, subviews.count))
+        let width = proposal.width.flatMap { $0.isFinite ? $0 : nil }
+            ?? grid.columnWidth * CGFloat(usedColumns) + spacing * CGFloat(usedColumns - 1)
+        let height = grid.rowHeights.reduce(0, +) + spacing * CGFloat(max(0, grid.rowHeights.count - 1))
+        return CGSize(width: width, height: height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let grid = grid(for: ProposedViewSize(width: bounds.width, height: bounds.height), subviews: subviews)
+        var y = bounds.minY
+        for (row, rowHeight) in grid.rowHeights.enumerated() {
+            let start = row * grid.columns
+            for index in start..<min(start + grid.columns, subviews.count) {
+                let column = CGFloat(index - start)
+                subviews[index].place(
+                    at: CGPoint(x: bounds.minX + column * (grid.columnWidth + spacing), y: y),
+                    anchor: .topLeading,
+                    proposal: ProposedViewSize(width: grid.columnWidth, height: rowHeight)
+                )
+            }
+            y += rowHeight + spacing
+        }
     }
 }
 

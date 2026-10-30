@@ -21,12 +21,6 @@ struct QuotaCard: View {
     var serviceStatus: ProviderServiceStatus?
     /// Provider 级状态说明(如 Cursor 登录过期的恢复提示)。
     var notice: String?
-    /// Height the grid gives every card in this card's row (the tallest
-    /// natural height there), so a row reads as one band.
-    var rowHeight: CGFloat? = nil
-    /// Reports this card's own height before the row stretch, for the grid
-    /// to compute row heights from.
-    var onNaturalHeightChange: ((CGFloat) -> Void)? = nil
     /// Observe managed-account changes even when the system quota stays nil.
     /// The Dashboard owns this store; cards never create a collector.
     @ObservedObject var store: UsageStore
@@ -99,10 +93,12 @@ struct QuotaCard: View {
                 }
             }
             .frame(minHeight: Self.minimumContentHeight, alignment: .top)
-            // Measured before the row stretch below, so the reported height
-            // never feeds back into itself.
-            .background(heightReader { onNaturalHeightChange?($0) })
-            .frame(minHeight: rowHeight ?? 0, alignment: .top)
+            // The content always lays out at its natural height, whatever
+            // height the grid offers, so the scroll measurement above never
+            // sees the row stretch. The frame below then fills the row the
+            // `QuotaGridLayout` offers, so cards in a row read as one band.
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxHeight: .infinity, alignment: .top)
         }
         .accessibilityElement(children: .contain)
         .alert(
