@@ -165,3 +165,100 @@ struct MenuBarPopupShellShapeTests {
         #expect(inner.contains(CGPoint(x: 190, y: MenuBarPopupShellShape.beakOverhang - 3)))
     }
 }
+
+@Suite("Menu bar popup resizing")
+@MainActor
+struct MenuBarPopupResizeTests {
+    @Test("Every popup height keeps the top edge under the status item, so growth goes down")
+    func anchoredResizeGrowsDownward() {
+        let anchor = NSRect(x: 700, y: 876, width: 80, height: 24)
+        let visible = NSRect(x: 0, y: 0, width: 1512, height: 876)
+        let current = NSRect(x: 550, y: 176, width: 380, height: 700)
+        for height in [520.0, 700.0, 811.0] {
+            let size = NSSize(width: 380, height: height)
+            let placement = MenuBarPopupPlacement.resolve(anchorFrame: anchor, popupSize: size, visibleFrame: visible)
+            let frame = MenuBarPopupSizing.resizedFrame(from: current, to: size, anchoredOrigin: placement.origin)
+            #expect(frame.maxY == anchor.minY - MenuBarPopupPlacement.anchorGap)
+            #expect(frame.size == size)
+        }
+    }
+
+    @Test("Without an anchor a resize still keeps the top edge where it was")
+    func unanchoredResizeKeepsTop() {
+        let current = NSRect(x: 40, y: 100, width: 380, height: 600)
+        let grown = MenuBarPopupSizing.resizedFrame(from: current, to: NSSize(width: 380, height: 760), anchoredOrigin: nil)
+        let shrunk = MenuBarPopupSizing.resizedFrame(from: current, to: NSSize(width: 380, height: 420), anchoredOrigin: nil)
+        #expect(grown.maxY == current.maxY)
+        #expect(shrunk.maxY == current.maxY)
+        #expect(grown.minX == current.minX)
+    }
+
+    @Test("Content taller than the not-yet-resized window stays pinned to the top")
+    func overflowingContentIsTopAligned() throws {
+        let probe = FrameProbe()
+        let controller = MenuBarPopupWindowController { _ in
+            Color.clear
+                .frame(width: MenuBarPopupSizing.menuWidth, height: 1_000)
+                .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { probe.frame = $0 }
+        }
+        let window = try #require(controller.window)
+        // The size an earlier, shorter measurement left behind; the taller
+        // content has not been applied yet (that happens a run-loop turn later).
+        window.setContentSize(NSSize(width: MenuBarPopupSizing.menuWidth, height: 711))
+        let contentView = try #require(window.contentView)
+        contentView.layoutSubtreeIfNeeded()
+
+        let frame = try #require(probe.frame)
+        // Centered, the content's top would sit 150pt above the window;
+        // pinned, it sits right under the beak band.
+        #expect(contentView.bounds.height == 711)
+        #expect(abs(frame.minY - MenuBarPopupShellShape.beakOverhang) < 0.5)
+    }
+}
+
+extension MenuBarPopupResizeTests {
+    @Test("Height reports resize the real panel with its top edge fixed")
+    func reportedHeightsKeepTopEdge() async throws {
+        let relay = HeightReportBox()
+        let controller = MenuBarPopupWindowController { report in
+            relay.capture(report)
+        }
+        let window = try #require(controller.window)
+        try #require(window.contentView).layoutSubtreeIfNeeded()
+        let report = try #require(relay.report)
+
+        func settle() async throws {
+            // The resize is applied on the next main-queue turn by design.
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        report(700)
+        try await settle()
+        let top = window.frame.maxY
+        #expect(window.frame.height == 700 + MenuBarPopupShellShape.beakOverhang)
+
+        report(900)
+        try await settle()
+        #expect(window.frame.maxY == top)
+        #expect(window.frame.height == 900 + MenuBarPopupShellShape.beakOverhang)
+
+        report(520)
+        try await settle()
+        #expect(window.frame.maxY == top)
+        #expect(window.frame.height == 520 + MenuBarPopupShellShape.beakOverhang)
+    }
+}
+
+@MainActor
+private final class HeightReportBox {
+    private(set) var report: ((CGFloat) -> Void)?
+
+    func capture(_ report: @escaping (CGFloat) -> Void) -> some View {
+        self.report = report
+        return Color.clear.frame(width: MenuBarPopupSizing.menuWidth, height: 10)
+    }
+}
+
+@MainActor
+private final class FrameProbe {
+    var frame: CGRect?
+}

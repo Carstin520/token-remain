@@ -50,6 +50,17 @@ enum MenuBarPopupSizing {
         abs(current.width - target.width) >= resizeTolerance
             || abs(current.height - target.height) >= resizeTolerance
     }
+
+    /// The frame for one resize step. With an anchored origin the popup sits
+    /// under its status item; without one the top edge stays where it is.
+    /// Either way the change is a single frame update, so a taller popup
+    /// grows downward instead of first growing up past the menu bar.
+    static func resizedFrame(from current: NSRect, to size: NSSize, anchoredOrigin: NSPoint?) -> NSRect {
+        if let anchoredOrigin {
+            return NSRect(origin: anchoredOrigin, size: size)
+        }
+        return NSRect(x: current.minX, y: current.maxY - size.height, width: size.width, height: size.height)
+    }
 }
 
 @MainActor
@@ -100,6 +111,13 @@ final class MenuBarPopupWindowController: NSWindowController {
                     sizeRelay?.report(menuHeight: height)
                 }
             }
+            // The window follows SwiftUI's measurement one run-loop turn later.
+            // Top-aligned, content that is briefly taller or shorter than the
+            // window spills at the bottom; centered (the hosting default), the
+            // whole stack jumped by half of every expand/collapse height change.
+            // The zero minimums keep the frame at the window's size instead of
+            // growing to the content's, which is what lets the alignment apply.
+            .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity, alignment: .top)
         )
         FixedHostingWindowSizing.configure(hosting)
         hosting.safeAreaRegions = []
@@ -265,19 +283,42 @@ final class MenuBarPopupWindowController: NSWindowController {
         guard MenuBarPopupSizing.requiresResize(from: currentSize, to: size) else {
             return
         }
-        window.setContentSize(size)
-        if isShown {
-            _ = positionWindow()
+        // One frame change with the top edge pinned. `setContentSize` keeps the
+        // bottom-left origin, so the panel first grew upward past the menu bar
+        // and then jumped back down when re-anchored: an up/down twitch on
+        // every height report of an expand/collapse animation.
+        let frameSize = window.frameRect(forContentRect: NSRect(origin: .zero, size: size)).size
+        let placement = isShown ? anchoredPlacement(for: frameSize) : nil
+        window.setFrame(
+            MenuBarPopupSizing.resizedFrame(
+                from: window.frame,
+                to: frameSize,
+                anchoredOrigin: placement?.origin
+            ),
+            display: isShown
+        )
+        if let placement {
+            chromeModel.arrowCenterX = placement.arrowCenterX
         }
     }
 
     @discardableResult
     private func positionWindow() -> Bool {
+        guard let window, let placement = anchoredPlacement(for: window.frame.size) else {
+            return false
+        }
+        chromeModel.arrowCenterX = placement.arrowCenterX
+        window.setFrameOrigin(placement.origin)
+        return true
+    }
+
+    /// Where a popup of `popupSize` sits under its status item, or nil while
+    /// the button is not yet attached to a real menu-bar window.
+    private func anchoredPlacement(for popupSize: NSSize) -> MenuBarPopupPlacement.Result? {
         guard
-            let window,
             let button = anchorButton,
             let anchorWindow = button.window
-        else { return false }
+        else { return nil }
 
         let anchorInWindow = button.convert(button.bounds, to: nil)
         let anchorFrame = anchorWindow.convertToScreen(anchorInWindow)
@@ -287,16 +328,13 @@ final class MenuBarPopupWindowController: NSWindowController {
             anchorFrame.width > 0,
             anchorFrame.height > 0,
             anchorFrame.midY >= screen.frame.maxY - 48
-        else { return false }
+        else { return nil }
 
-        let placement = MenuBarPopupPlacement.resolve(
+        return MenuBarPopupPlacement.resolve(
             anchorFrame: anchorFrame,
-            popupSize: window.frame.size,
+            popupSize: popupSize,
             visibleFrame: screen.visibleFrame
         )
-        chromeModel.arrowCenterX = placement.arrowCenterX
-        window.setFrameOrigin(placement.origin)
-        return true
     }
 
     private func installEventMonitors() {
