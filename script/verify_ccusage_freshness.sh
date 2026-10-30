@@ -67,7 +67,7 @@ verify_local_contract() {
     || fail "vendored arm64 binary has an unexpected architecture"
   [[ "$(/usr/bin/lipo "$INSTALLED_X64_BINARY" -archs)" == "x86_64" ]] \
     || fail "vendored x86_64 binary has an unexpected architecture"
-  /usr/bin/lipo "$INSTALLED_UNIVERSAL_BINARY" -verify_arch arm64 x86_64 \
+  { /usr/bin/lipo "$INSTALLED_UNIVERSAL_BINARY" -verify_arch arm64 && /usr/bin/lipo "$INSTALLED_UNIVERSAL_BINARY" -verify_arch x86_64; } \
     || fail "vendored universal binary is missing arm64 or x86_64"
   case "$(/usr/bin/uname -m)" in
     arm64) native_binary="$INSTALLED_ARM_BINARY" ;;
@@ -255,7 +255,7 @@ validate_and_assemble_candidate() {
   /usr/bin/lipo -create "$ARM_BINARY" "$X64_BINARY" -output "$UNIVERSAL_BINARY" \
     || fail "failed to assemble a Universal ccusage helper"
   /bin/chmod +x "$UNIVERSAL_BINARY"
-  /usr/bin/lipo "$UNIVERSAL_BINARY" -verify_arch arm64 x86_64 \
+  { /usr/bin/lipo "$UNIVERSAL_BINARY" -verify_arch arm64 && /usr/bin/lipo "$UNIVERSAL_BINARY" -verify_arch x86_64; } \
     || fail "failed to create a Universal ccusage helper"
   [[ "$("$UNIVERSAL_BINARY" --version)" == "ccusage $LATEST_VERSION" ]] \
     || fail "Universal helper version mismatch"

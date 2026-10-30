@@ -435,7 +435,7 @@ verify_embedded_sparkle() {
     "$framework_version/Updater.app/Contents/MacOS/Updater" \
     "$framework_version/XPCServices/Installer.xpc/Contents/MacOS/Installer" \
     "$framework_version/XPCServices/Downloader.xpc/Contents/MacOS/Downloader"; do
-    /usr/bin/lipo "$universal_executable" -verify_arch arm64 x86_64 || {
+    { /usr/bin/lipo "$universal_executable" -verify_arch arm64 && /usr/bin/lipo "$universal_executable" -verify_arch x86_64; } || {
       echo "Sparkle contains a non-universal executable: $universal_executable" >&2
       exit 1
     }
@@ -456,7 +456,7 @@ verify_embedded_ccusage() {
     echo "Signed application is missing its bundled ccusage helper." >&2
     exit 1
   }
-  /usr/bin/lipo "$helper" -verify_arch arm64 x86_64 || {
+  { /usr/bin/lipo "$helper" -verify_arch arm64 && /usr/bin/lipo "$helper" -verify_arch x86_64; } || {
     echo "Signed application contains a non-universal ccusage helper." >&2
     exit 1
   }
@@ -502,7 +502,7 @@ verify_bundle_payload() {
 
 verify_bundle_for_mode() {
   local signed_app="$1"
-  /usr/bin/lipo "$signed_app/Contents/MacOS/$EXECUTABLE_NAME" -verify_arch arm64 x86_64 || {
+  { /usr/bin/lipo "$signed_app/Contents/MacOS/$EXECUTABLE_NAME" -verify_arch arm64 && /usr/bin/lipo "$signed_app/Contents/MacOS/$EXECUTABLE_NAME" -verify_arch x86_64; } || {
     echo "Signed application executable is not universal." >&2
     exit 1
   }
@@ -559,7 +559,7 @@ if [[ "$SYNC_RELEASE_MODE" == "1" ]]; then
     exit 1
   }
   /usr/bin/strip -S -x "$APP_BINARY"
-  /usr/bin/lipo "$APP_BINARY" -verify_arch arm64 x86_64 || {
+  { /usr/bin/lipo "$APP_BINARY" -verify_arch arm64 && /usr/bin/lipo "$APP_BINARY" -verify_arch x86_64; } || {
     echo "Stripping produced a non-universal executable." >&2
     exit 1
   }
