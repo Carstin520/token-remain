@@ -5,6 +5,9 @@ import UserNotifications
 extension Notification.Name {
     static let tokenRemainOpenAIFeed = Notification.Name("tokenRemain.openAIFeed")
     static let tokenRemainOpenDataSources = Notification.Name("tokenRemain.openDataSources")
+    /// Settings live in the Dashboard; the app menu, ⌘, and any stray system
+    /// request for the SwiftUI Settings window route here instead.
+    static let tokenRemainOpenSettings = Notification.Name("tokenRemain.openSettings")
 }
 
 /// The app's single owner of `UNUserNotificationCenter`. Only one delegate can

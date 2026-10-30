@@ -25,6 +25,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusBarController: StatusBarController?
     private var feedNotificationObserver: NSObjectProtocol?
     private var dataSourcesNotificationObserver: NSObjectProtocol?
+    private var settingsNotificationObserver: NSObjectProtocol?
     private var dockIconCancellable: AnyCancellable?
     func applicationDidFinishLaunching(_ notification: Notification) {
         let arguments = ProcessInfo.processInfo.arguments
@@ -79,6 +80,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.statusBarController?.showDashboard(section: .dataSources)
             }
         }
+        settingsNotificationObserver = NotificationCenter.default.addObserver(
+            forName: .tokenRemainOpenSettings,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.statusBarController?.showDashboard(section: .settings)
+            }
+        }
 #if TOKENREMAIN_CLOUD_SYNC
         // Website-distributed production builds update themselves through the
         // signed Sparkle appcast. Development builds never start the updater,
@@ -125,16 +135,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// The Dock click is fully handled here, so the system's default reopen
+    /// is declined: with only the placeholder Settings scene declared, letting
+    /// it run opened an empty "TokenRemain Settings" window beside the
+    /// Dashboard.
     func applicationShouldHandleReopen(
         _ sender: NSApplication,
         hasVisibleWindows flag: Bool
     ) -> Bool {
         if ProcessInfo.processInfo.arguments.contains("--open-popover") {
             statusBarController?.openPopoverForPreview()
-            return true
+            return false
         }
         statusBarController?.showDashboard(section: .overview)
-        return true
+        return false
     }
 
     func applicationDidBecomeActive(_ notification: Notification) {
@@ -177,9 +191,43 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 struct UsageDockApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
+    /// A SwiftUI App must declare a scene; the real windows are AppKit
+    /// (`StatusBarController`), and settings are a Dashboard section. The app
+    /// menu's Settings item and ⌘, open that section, and the placeholder
+    /// window closes itself if the system opens it anyway.
     var body: some Scene {
         Settings {
-            EmptyView()
+            SettingsPlaceholderCloser()
+        }
+        .commands {
+            CommandGroup(replacing: .appSettings) {
+                Button(L10n.text("nav.settings") + "…") {
+                    NotificationCenter.default.post(name: .tokenRemainOpenSettings, object: nil)
+                }
+                .keyboardShortcut(",", modifiers: .command)
+            }
+        }
+    }
+}
+
+/// Content of the placeholder Settings window. The menu item and ⌘, never
+/// open it, so it only appears when SwiftUI does on its own: on macOS 27 it
+/// opens this scene at every launch (declining `applicationShouldOpenUntitledFile`
+/// does not stop it), and in 1.4.7 that left an empty "TokenRemain Settings"
+/// window. It hides at once and closes without navigating: the app has
+/// already shown the window that context needs.
+struct SettingsPlaceholderCloser: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView { CloserView() }
+    func updateNSView(_ nsView: NSView, context: Context) {}
+
+    final class CloserView: NSView {
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            guard let window else { return }
+            window.alphaValue = 0
+            DispatchQueue.main.async {
+                window.close()
+            }
         }
     }
 }
