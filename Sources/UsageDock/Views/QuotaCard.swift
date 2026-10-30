@@ -4,10 +4,14 @@ import SwiftUI
 /// window (remaining %, progress bar, reset label). Shown in the Dashboard's
 /// Limits section. Renders a waiting state before data arrives.
 struct QuotaCard: View {
-    /// Give ordinary two-window cards room for reset, pace and freshness labels.
-    /// Bounded content can grow for wrapping text; larger collections keep this
-    /// shared slot and scroll below the pinned provider header.
-    static let dashboardContentHeight: CGFloat = 224
+    /// Floor for near-empty cards (loading, setup), so a card alone in its row
+    /// still keeps the shared slot.
+    static let minimumContentHeight: CGFloat = 224
+    /// Every card shows its whole content up to this height — three or four
+    /// windows with resets, pace, reset cards, balances and model rows all fit
+    /// (DB-002). Only beyond it (several accounts, many pools) does the
+    /// content scroll below the pinned provider header.
+    static let maximumContentHeight: CGFloat = 520
     /// Reserve one shared title slot for every grid card so quota rows stay
     /// aligned even when a compact connection warning is present.
     private static let headerHeight: CGFloat = 26
@@ -17,6 +21,12 @@ struct QuotaCard: View {
     var serviceStatus: ProviderServiceStatus?
     /// Provider 级状态说明(如 Cursor 登录过期的恢复提示)。
     var notice: String?
+    /// Height the grid gives every card in this card's row (the tallest
+    /// natural height there), so a row reads as one band.
+    var rowHeight: CGFloat? = nil
+    /// Reports this card's own height before the row stretch, for the grid
+    /// to compute row heights from.
+    var onNaturalHeightChange: ((CGFloat) -> Void)? = nil
     /// Observe managed-account changes even when the system quota stays nil.
     /// The Dashboard owns this store; cards never create a collector.
     @ObservedObject var store: UsageStore
@@ -31,31 +41,15 @@ struct QuotaCard: View {
     /// accepting a secret, so the compact plus button never triggers a surprise.
     @State private var isPresentingAccountSetup = false
     @State private var pendingCredentialUpdateID: ProviderAccountID?
-    /// 实测的滚动视口与内容高度。卡片槽位固定(网格对齐),但内容装得下
-    /// 时不该出现滚动条+大片留白的矛盾观感(#42:Codex Plus 用户没有
-    /// Spark 行,内容其实放得下)。测量驱动而非按 provider 硬编码,之后
-    /// 任何新窗口行(如模型池 5h)把内容顶超槽位时滚动会自动恢复。
-    @State private var scrollViewportHeight: CGFloat = 0
-    @State private var scrollContentHeight: CGFloat = 0
+    /// 内容的自然高度(与视口无关,所以切换滚动不会反过来改变测量)。
+    /// 首帧为 0,按"装得下"处理,加载态不闪滚动条。以前按窗口数量分两档:
+    /// 两条以内按内容撑高,三条起塞进 224pt 固定槽位内层滚动,于是
+    /// Claude(含 Fable)、Antigravity(含 Others)被裁切而同一行的 Codex
+    /// 撑高。现在所有卡片同一规则:装得下就完整显示,行高由网格统一。
+    @State private var naturalContentHeight: CGFloat = 0
 
-    /// 首帧测量未落地时(0/0)按"装得下"处理,避免加载态闪一下滚动条。
-    private var quotaContentFits: Bool {
-        scrollContentHeight <= scrollViewportHeight + 0.5
-    }
-
-    /// #44 的内容定高布局覆盖最多两条可见额度(含 scoped 池)。附属的
-    /// 重置卡、余额与消费摘要也只有固定数量的行,一起按内容撑高,不为
-    /// 少量信息增加内层滚动。更多窗口/多账户配置仍走固定槽位+
-    /// 滚动,避免单个多池 provider 抬高整行网格。
-    private var usesBoundedContentLayout: Bool {
-        if let combined = combinedAccountQuota {
-            return visibleCombinedWindows(combined).count <= 2 && combined.accountCount <= 3
-        }
-        guard let quota, !showsAccountOverview else { return false }
-        if store.isAddingProviderAccount(provider) { return false }
-        let visibleWindowCount = 1 + (quota.secondary == nil ? 0 : 1)
-            + Self.scopedWindows(in: quota, preferences: preferences).count
-        return visibleWindowCount <= 2
+    static func contentScrolls(naturalContentHeight: CGFloat) -> Bool {
+        naturalContentHeight > maximumContentHeight + 0.5
     }
 
     /// Dashboard 卡片:目录内的池由通用池开关 + 智能默认决定显隐;
@@ -95,29 +89,20 @@ struct QuotaCard: View {
         DashboardCard(padding: 13) {
             VStack(alignment: .leading, spacing: 11) {
                 header
-                if usesBoundedContentLayout {
-                    VStack(alignment: .leading, spacing: 11) {
-                        quotaContent
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                } else {
+                if Self.contentScrolls(naturalContentHeight: naturalContentHeight) {
                     ScrollView(.vertical) {
-                        VStack(alignment: .leading, spacing: 11) {
-                            quotaContent
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(heightReader { scrollContentHeight = $0 })
+                        contentStack
                     }
-                    .scrollDisabled(quotaContentFits)
-                    .scrollIndicators(quotaContentFits ? .hidden : .automatic)
-                    .background(heightReader { scrollViewportHeight = $0 })
+                    .frame(height: Self.maximumContentHeight)
+                } else {
+                    contentStack
                 }
             }
-            .frame(
-                minHeight: Self.dashboardContentHeight,
-                maxHeight: usesBoundedContentLayout ? nil : Self.dashboardContentHeight,
-                alignment: .top
-            )
+            .frame(minHeight: Self.minimumContentHeight, alignment: .top)
+            // Measured before the row stretch below, so the reported height
+            // never feeds back into itself.
+            .background(heightReader { onNaturalHeightChange?($0) })
+            .frame(minHeight: rowHeight ?? 0, alignment: .top)
         }
         .accessibilityElement(children: .contain)
         .alert(
@@ -147,6 +132,14 @@ struct QuotaCard: View {
         } message: { id in
             Text(L10n.format(removeMessageKey(for: id), accountName(for: id)))
         }
+    }
+
+    private var contentStack: some View {
+        VStack(alignment: .leading, spacing: 11) {
+            quotaContent
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(heightReader { naturalContentHeight = $0 })
     }
 
     /// 尺寸测量探针:铺在被测视图的 background 里,不参与命中与布局。
