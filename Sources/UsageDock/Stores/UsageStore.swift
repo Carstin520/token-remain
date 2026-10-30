@@ -50,6 +50,10 @@ final class UsageStore: ObservableObject {
     /// 刻意不进全局错误条:"未接入某工具"是卡片语境的信息,
     /// 不该像故障一样反复告警。
     @Published private(set) var providerNotices: [ProviderQuota.Provider: String] = [:]
+    /// Providers whose last refresh stopped at a Keychain read that needs the
+    /// user's one-time approval (Cursor's sealed login). Drives the inline
+    /// 授权只读访问 buttons; cleared by the next successful refresh.
+    @Published private(set) var keychainAuthorizationRequired: Set<ProviderQuota.Provider> = []
     /// Organizations offered when a claude.ai session belongs to several. Set
     /// by a validation or refresh that stopped at `organizationRequired`, and
     /// cleared by any other outcome so a stale picker never outlives it.
@@ -634,6 +638,7 @@ final class UsageStore: ObservableObject {
             assign(nil, to: provider)
         }
         providerNotices = providerNotices.filter { tracked.isEnabled($0.key) }
+        keychainAuthorizationRequired = keychainAuthorizationRequired.filter { tracked.isEnabled($0) }
         serviceStatuses = serviceStatuses.filter { tracked.isEnabled($0.key) }
         quotaCache.save(currentSnapshot())
     }
@@ -1508,6 +1513,11 @@ final class UsageStore: ObservableObject {
                         now: now,
                         keychainInteraction: .allowed
                     )
+                case .cursor:
+                    return try await CursorUsageService().fetch(
+                        now: now,
+                        keychainInteraction: .allowed
+                    )
                 default:
                     guard Self.supportsPastedCredential(provider),
                           let credential = try Self.storedPastedCredential(
@@ -1533,11 +1543,13 @@ final class UsageStore: ObservableObject {
             }
             assign(quota, to: provider)
             providerNotices[provider] = nil
+            keychainAuthorizationRequired.remove(provider)
             quotaCache.save(currentSnapshot())
             logger.info("Explicit read-only credential authorization succeeded for \(provider.rawValue, privacy: .public)")
             return true
         } catch {
             guard revision == credentialRevisions[provider, default: 0] else { return false }
+            updateKeychainAuthorizationRequired(provider, after: error)
             if Self.invalidatesCachedQuota(error) {
                 assign(nil, to: provider)
                 quotaCache.save(currentSnapshot())
@@ -1798,8 +1810,10 @@ final class UsageStore: ObservableObject {
         case .success(let value):
             assign(value)
             providerNotices[provider] = nil
+            keychainAuthorizationRequired.remove(provider)
             if tracksCookieSession { sessionAlerts.reportHealthy(provider) }
         case .failure(let error):
+            updateKeychainAuthorizationRequired(provider, after: error)
             if tracksCookieSession { sessionAlerts.report(error: error, for: provider) }
             let credentialIssue = storedCredentialReadIssue(for: provider)
             if credentialIssue == nil, Self.invalidatesCachedQuota(error) {
@@ -1869,6 +1883,21 @@ final class UsageStore: ObservableObject {
 
     nonisolated static func invalidatesCachedQuota(_ error: Error) -> Bool {
         error is HostAppQuotaRoutingError
+    }
+
+    nonisolated static func requiresKeychainAuthorization(_ error: Error) -> Bool {
+        if case .encryptedLoginNeedsAuthorization? = error as? CursorUsageService.ServiceError {
+            return true
+        }
+        return false
+    }
+
+    private func updateKeychainAuthorizationRequired(_ provider: ProviderQuota.Provider, after error: Error) {
+        if Self.requiresKeychainAuthorization(error) {
+            keychainAuthorizationRequired.insert(provider)
+        } else {
+            keychainAuthorizationRequired.remove(provider)
+        }
     }
 
     /// The system Claude card is served by the OAuth path or an explicit web

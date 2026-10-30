@@ -180,6 +180,9 @@ struct DataSourcesSection: View {
                 ProviderCredentialEntryRow(store: store, provider: provider, configuration: configuration)
                     .padding(.top, 8)
             }
+        case .cursor where store.keychainAuthorizationRequired.contains(.cursor):
+            // Only Cursor 3.27+ sealed logins need this; a plain token never does.
+            ProviderAuthorizationRow(store: store, provider: provider)
         default:
             if let configuration = ProviderCredentialConfiguration.resolve(for: provider) {
                 ProviderCredentialEntryRow(

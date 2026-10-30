@@ -396,6 +396,8 @@
 "service.copilot.not_logged_in" = "No GitHub login detected; sign in to Copilot in your editor or run gh auth login to connect automatically";
 "service.copilot.token_rejected" = "GitHub rejected the current credentials (HTTP %1$d); sign in to Copilot or gh again to recover";
 "service.cursor.no_subscription" = "This Cursor account has no active subscription";
+"service.cursor.encrypted_login_authorization" = "Cursor now encrypts its saved login. Click Authorize Read Access and choose Always Allow in the macOS prompt to resume quota refresh";
+"service.cursor.encrypted_login_unreadable" = "Couldn't decrypt Cursor's encrypted login; open Cursor once and try again";
 "service.cursor.not_logged_in" = "No Cursor login credentials found; sign in from the Cursor app first";
 "service.deepseek.balance_plan" = "Balance %1$@%2$@";
 "service.devin.no_quota_data" = "This Devin account does not report quota data";

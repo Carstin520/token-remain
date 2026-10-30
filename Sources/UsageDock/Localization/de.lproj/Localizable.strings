@@ -395,6 +395,8 @@
 "service.copilot.not_logged_in" = "Keine GitHub-Anmeldung erkannt; im Editor bei Copilot anmelden oder gh auth login ausführen – Verbindung erfolgt automatisch";
 "service.copilot.token_rejected" = "GitHub hat die aktuellen Anmeldedaten abgelehnt (HTTP %1$d); erneut bei Copilot oder gh anmelden";
 "service.cursor.no_subscription" = "Dieses Cursor-Konto hat kein aktives Abo";
+"service.cursor.encrypted_login_authorization" = "Cursor verschlüsselt jetzt seine gespeicherte Anmeldung. Klicke auf Lesezugriff erlauben und wähle in der macOS-Abfrage Immer erlauben, um die Kontingentaktualisierung fortzusetzen";
+"service.cursor.encrypted_login_unreadable" = "Die verschlüsselte Cursor-Anmeldung ließ sich nicht entschlüsseln; öffne Cursor einmal und versuche es erneut";
 "service.cursor.not_logged_in" = "Keine Cursor-Anmeldedaten gefunden; zuerst in der Cursor-App anmelden";
 "service.deepseek.balance_plan" = "Guthaben %1$@%2$@";
 "service.devin.no_quota_data" = "Dieses Devin-Konto liefert keine Kontingentdaten";

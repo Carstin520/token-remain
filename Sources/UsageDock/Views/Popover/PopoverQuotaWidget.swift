@@ -347,6 +347,9 @@ struct PopoverQuotaWidget: View {
             Button(L10n.text("claude.web.sign_in_with_cookie"), action: onSignInWithCookie)
                 .controlSize(.small)
         }
+        if store.keychainAuthorizationRequired.contains(provider) {
+            KeychainAuthorizationButton(store: store, provider: provider)
+        }
     }
 
     private func freshnessRow(_ quota: ProviderQuota) -> some View {

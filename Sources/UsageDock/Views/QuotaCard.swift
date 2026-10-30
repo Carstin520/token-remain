@@ -315,11 +315,15 @@ struct QuotaCard: View {
     /// The header pill only flags that data is not updating; the actual reason
     /// (not signed in, expired login, HTTP failure, timeout) is shown here in
     /// full, matching the popover, so recovery guidance is never tooltip-only.
+    @ViewBuilder
     private func noticeDetail(_ notice: String) -> some View {
         Label(notice, systemImage: "moon.zzz.fill")
             .font(.system(size: 11))
             .foregroundStyle(DashboardTheme.secondaryText)
             .fixedSize(horizontal: false, vertical: true)
+        if store.keychainAuthorizationRequired.contains(provider) {
+            KeychainAuthorizationButton(store: store, provider: provider)
+        }
     }
 
     private var header: some View {
