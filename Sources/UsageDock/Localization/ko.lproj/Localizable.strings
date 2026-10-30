@@ -967,12 +967,14 @@
 "subscription.advice.summary_changes" = "추천: %1$d개 변경, 월 %2$@";
 "subscription.advice.summary_fit" = "추천: 현재 요금제 구성이 적절합니다";
 "subscription.advice.summary_insufficient" = "추천: 기록이 아직 부족합니다. 며칠 사용 후 다시 확인하세요";
-"subscription.advice.footnote" = "이 Mac에 기록된 한도 이력과 각 업체가 공개한 요금제 배수를 기준으로 합니다.";
+"subscription.advice.footnote" = "추천은 현재 요금제에서 기록된 한도 이력만 사용하며, Claude와 Codex는 이 Mac의 토큰 사용량으로도 환산하고 각 업체가 공개한 요금제 배수를 참고합니다.";
 "subscription.reason.projected" = "%1$@ 창 %2$@ 도달 예상";
 "subscription.reason.used" = "%1$@ 창 %2$@ 사용";
 "subscription.reason.ran_out" = "최근 %3$@ 창 %2$d개 중 %1$d개 한도 도달";
 "subscription.reason.short_hits" = "%3$d일 동안 %1$@ 한도 %2$d회 도달";
 "subscription.reason.peak" = "%1$@ 최고 %2$@";
+"subscription.reason.token_demand" = "토큰 사용량 기준, 최근 %1$d주 중 가장 많은 주는 현재 요금제의 약 %2$@";
+"subscription.reason.token_weeks_over" = "토큰 사용량 기준, 최근 %2$d주 중 %1$d주가 현재 요금제를 초과";
 "subscription.share_title" = "비용 비중";
 "subscription.advice.after_changes" = "변경 후: 월 %@";
 "subscription.advice.item_upgrade_generic" = "%@: 상위 요금제";

@@ -9,6 +9,8 @@ import SwiftUI
 struct SubscriptionCostCard: View {
     let accounts: [SubscriptionAccountInput]
     let history: QuotaUsageHistory
+    /// This Mac's ccusage days, for judging Claude and Codex by token use.
+    let tokenHistory: DailyUsageHistory?
     @ObservedObject var costStore: SubscriptionCostStore = .shared
     @ObservedObject private var currencyStore = CurrencyStore.shared
     @State private var addingAccount: SubscriptionAccountInput?
@@ -73,14 +75,18 @@ struct SubscriptionCostCard: View {
         }
     }
 
-    /// Advice for every line the user pays for; excluded rows get none.
+    /// Advice for every line the user pays for; excluded rows get none. The
+    /// local token log covers all of a provider's accounts at once, so it is
+    /// used only when that provider has a single line on the card.
     private func advice(for summary: SubscriptionCostSummary) -> [ProviderAccountID: SubscriptionAdvice] {
         var result: [ProviderAccountID: SubscriptionAdvice] = [:]
         for line in summary.lines where !line.isExcluded {
+            let isOnlyLine = summary.lines.filter { $0.provider == line.provider }.count == 1
             result[line.accountID] = SubscriptionAdvisor.advise(
                 line: line,
                 quota: accounts.first { $0.accountID == line.accountID }?.hostQuota,
-                samples: history.samples(for: line.provider, account: line.accountID)
+                samples: history.samples(for: line.provider, account: line.accountID),
+                tokenDays: isOnlyLine ? tokenHistory?.days ?? [] : []
             )
         }
         return result
@@ -538,7 +544,7 @@ private enum SubscriptionAdviceText {
                 return L10n.format(
                     isProjection ? "subscription.reason.projected" : "subscription.reason.used",
                     UsageFormatting.windowName(minutes: minutes),
-                    UsageFormatting.percent(percent.rounded())
+                    percentText(percent)
                 )
             case .longWindowsRanOut(let ranOut, let total, let minutes):
                 return L10n.format("subscription.reason.ran_out", ranOut, total, UsageFormatting.windowName(minutes: minutes))
@@ -550,9 +556,18 @@ private enum SubscriptionAdviceText {
                     UsageFormatting.windowName(minutes: minutes),
                     UsageFormatting.percent(percent.rounded())
                 )
+            case .tokenDemand(let percent, let weeks):
+                return L10n.format("subscription.reason.token_demand", weeks, percentText(percent))
+            case .tokenWeeksOver(let over, let weeks):
+                return L10n.format("subscription.reason.token_weeks_over", over, weeks)
             }
         }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
+    /// Projections can run far past the cap; past 999% the digits stop helping.
+    static func percentText(_ value: Double) -> String {
+        value > 999 ? ">999%" : UsageFormatting.percent(value.rounded())
     }
 
     static func plain(_ advice: SubscriptionAdvice, line: SubscriptionCostLine, display: CurrencyDisplay) -> String {

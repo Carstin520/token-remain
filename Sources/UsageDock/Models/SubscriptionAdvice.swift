@@ -4,6 +4,14 @@ import Foundation
 /// judged from the live quota windows and this Mac's quota history. It holds
 /// structured evidence only; the cost card words it.
 ///
+/// A percentage only means something against the cap it was measured on, so
+/// history samples count only when they were taken under the current plan
+/// (`QuotaUsageHistory.Sample.planKey`). Where this Mac's ccusage log covers
+/// the provider, weekly demand is also judged from token use itself: the
+/// current week calibrates what 1% of this plan's weekly cap buys, and each
+/// recent week's usage is restated as a share of that cap. That stays valid
+/// across a plan change, which percentages do not.
+///
 /// The thresholds prefer "not enough data" to a guess. Raising a tier needs
 /// one clear sign of running out. Lowering one needs ten days of short-window
 /// history plus a completed or mostly elapsed long window, and the busiest
@@ -35,6 +43,11 @@ struct SubscriptionAdvice: Sendable, Equatable {
         case shortLimitHits(count: Int, days: Int, windowMinutes: Int)
         /// The highest use seen in a window of this length.
         case peak(windowMinutes: Int, percent: Double)
+        /// The busiest of the last `weeks` weeks of local token use, restated
+        /// as a share of the current plan's weekly cap.
+        case tokenDemand(peakPercent: Double, weeks: Int)
+        /// `over` of the last `weeks` weeks of token use exceeded this plan.
+        case tokenWeeksOver(over: Int, weeks: Int)
     }
 
     let kind: Kind
@@ -89,6 +102,24 @@ enum SubscriptionAdvisor {
     static let minimumDowngradeDays = 10
     static let shortHitsPerWeek: Double = 3
 
+    /// Below this, the current week says too little about what 1% buys.
+    static let minimumCalibrationPercent: Double = 5
+
+    struct TokenDemand: Sendable, Equatable {
+        /// Each recent week's usage as a share of this plan's weekly cap,
+        /// newest first. Not capped: 1,200% is a real answer.
+        let weeklyPercents: [Double]
+
+        var weeks: Int { weeklyPercents.count }
+        var peakPercent: Double { weeklyPercents.max() ?? 0 }
+        var weeksOver: Int { weeklyPercents.filter { $0 >= 100 }.count }
+        /// The second-busiest week, so one sprint does not size the plan.
+        var typicalPercent: Double {
+            let sorted = weeklyPercents.sorted(by: >)
+            return sorted.count >= 2 ? sorted[1] : sorted.first ?? 0
+        }
+    }
+
     private struct Reading {
         let used: Double
         let windowMinutes: Int
@@ -96,13 +127,25 @@ enum SubscriptionAdvisor {
         let capturedAt: Date
     }
 
+    /// `tokenDays` is this Mac's ccusage history; pass none when the
+    /// provider's local log cannot be attributed to this one account (two
+    /// accounts of the same provider share one log).
     static func advise(
         line: SubscriptionCostLine,
         quota: ProviderQuota?,
         samples: [QuotaUsageHistory.Sample],
+        tokenDays: [DailyUsageHistory.Day] = [],
         now: Date = .now
     ) -> SubscriptionAdvice {
         guard let quota else { return .insufficient }
+        // Samples from another plan, or from before plans were recorded, are
+        // measured against a different cap and would mislead.
+        let currentPlanKey = SubscriptionPlanCatalog.planKey(
+            provider: line.provider,
+            planName: quota.planName,
+            chosenPlanID: line.catalogPlan?.id
+        )
+        let samples = samples.filter { currentPlanKey != nil && $0.planKey == currentPlanKey }
         let live = [quota.primary, quota.secondary].compactMap { $0 }
             .filter { $0.windowMinutes > 0 && $0.usedPercent.isFinite }
         let shortLive = live.filter { $0.windowMinutes < 1_440 }.min { $0.windowMinutes < $1.windowMinutes }
@@ -149,6 +192,7 @@ enum SubscriptionAdvisor {
         let projected = longLive.flatMap { window in
             elapsed.flatMap { $0 >= minimumProjectionElapsed ? min(999, window.usedPercent / $0) : nil }
         }
+        let tokens = tokenDemand(provider: line.provider, longLive: longLive, days: tokenDays, now: now)
 
         let tiers = SubscriptionPlanCatalog.plans(for: line.provider).sorted { $0.monthlyUSD < $1.monthlyUSD }
         let currentPlan = line.catalogPlan
@@ -178,6 +222,10 @@ enum SubscriptionAdvisor {
                 ))
             }
         }
+        // One heavy week is a sprint; two say the plan is too small.
+        if let tokens, tokens.weeksOver >= min(2, tokens.weeks) {
+            upgradeEvidence.append(.tokenWeeksOver(over: tokens.weeksOver, weeks: tokens.weeks))
+        }
         if let shortLive, observedDays >= 3,
            Double(shortHits) * 7 / Double(observedDays) >= shortHitsPerWeek {
             upgradeEvidence.append(.shortLimitHits(
@@ -187,7 +235,17 @@ enum SubscriptionAdvisor {
             ))
         }
         if !upgradeEvidence.isEmpty {
-            let target = currentPlan.flatMap { plan in tiers.first { $0.monthlyUSD > plan.monthlyUSD } }
+            // Size the next plan for a typical week where the demand is
+            // measurable: the cheapest higher tier that holds it at 80%, else
+            // the top tier. Without capacities, step up one tier.
+            let demand = max(projected ?? longLive?.usedPercent ?? 0, tokens?.typicalPercent ?? 0)
+            let target = currentPlan.flatMap { plan -> SubscriptionPlan? in
+                let higher = tiers.filter { $0.monthlyUSD > plan.monthlyUSD }
+                guard let capacity = plan.relativeCapacity, demand > 0 else { return higher.first }
+                return higher.first { tier in
+                    tier.relativeCapacity.map { demand * capacity / $0 <= downgradeCeiling } ?? false
+                } ?? higher.last
+            }
             return SubscriptionAdvice(
                 kind: .upgrade(target),
                 evidence: upgradeEvidence,
@@ -201,14 +259,16 @@ enum SubscriptionAdvisor {
         }
         let longMax = (longPeaks + [longEstimate].compactMap { $0 }).max()
         var peaks: [SubscriptionAdvice.Evidence] = []
+        if let tokens { peaks.append(.tokenDemand(peakPercent: tokens.peakPercent, weeks: tokens.weeks)) }
         if let shortLive { peaks.append(.peak(windowMinutes: shortLive.windowMinutes, percent: shortMax)) }
         if let longLive, let longMax { peaks.append(.peak(windowMinutes: longLive.windowMinutes, percent: longMax)) }
 
         let shortEnough = shortLive == nil || observedDays >= minimumDowngradeDays
         let longEnough = longLive == nil || !longPeaks.isEmpty || (elapsed ?? 0) >= 0.5
+            || (tokens?.weeks ?? 0) >= 3
         let hasAnyWindow = shortLive != nil || longLive != nil
         if hasAnyWindow, shortEnough, longEnough {
-            let busiest = max(shortMax, longMax ?? 0)
+            let busiest = max(shortMax, longMax ?? 0, tokens?.peakPercent ?? 0)
             if busiest <= 2, let currentUSD, currentUSD > 0 {
                 return SubscriptionAdvice(kind: .cancel, evidence: peaks, monthlyDeltaUSD: -currentUSD)
             }
@@ -232,6 +292,61 @@ enum SubscriptionAdvisor {
             return SubscriptionAdvice(kind: .keep, evidence: peaks, monthlyDeltaUSD: nil)
         }
         return .insufficient
+    }
+
+    /// Weekly token demand as a share of the current plan's weekly cap.
+    ///
+    /// Calibration: API-price-weighted usage since the current week began,
+    /// divided by the week's reported percentage, is what 1% of this plan
+    /// buys. Usage is weighted by price because a cache read is a token too
+    /// yet costs a tenth of fresh input, and caps track cost far better than
+    /// raw counts. ccusage reports whole days, so the day the window opened
+    /// counts in proportion to the hours inside the window. Usage on other
+    /// devices or in the web app is not in the log; the calibration absorbs
+    /// it as long as that share stays roughly steady.
+    static func tokenDemand(
+        provider: ProviderQuota.Provider,
+        longLive: QuotaWindow?,
+        days: [DailyUsageHistory.Day],
+        now: Date
+    ) -> TokenDemand? {
+        guard let window = longLive, window.windowMinutes == 10_080,
+              window.usedPercent >= minimumCalibrationPercent,
+              let resetsAt = window.resetsAt, !days.isEmpty else {
+            return nil
+        }
+        let calendar = Calendar.current
+        let windowStart = resetsAt.addingTimeInterval(-7 * 86_400)
+        guard windowStart < now,
+              now.timeIntervalSince(windowStart) >= minimumProjectionElapsed * 7 * 86_400 else {
+            return nil
+        }
+
+        var windowUsage = 0.0
+        for day in days {
+            let dayEnd = calendar.date(byAdding: .day, value: 1, to: day.date) ?? day.date.addingTimeInterval(86_400)
+            let coveredEnd = min(dayEnd, now)
+            let covered = coveredEnd.timeIntervalSince(day.date)
+            let inside = coveredEnd.timeIntervalSince(max(day.date, windowStart))
+            guard covered > 0, inside > 0 else { continue }
+            windowUsage += day.cost(for: provider) * min(1, inside / covered)
+        }
+        guard windowUsage > 0 else { return nil }
+        let usagePerPercent = windowUsage / window.usedPercent
+
+        // Up to four seven-day blocks ending today, each at least partly
+        // inside the log. Days ccusage omits had no usage.
+        let earliest = days.map(\.date).min() ?? now
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now)) ?? now
+        var weekly: [Double] = []
+        for block in 0..<4 {
+            guard let end = calendar.date(byAdding: .day, value: -7 * block, to: tomorrow),
+                  let start = calendar.date(byAdding: .day, value: -7, to: end),
+                  end > earliest else { break }
+            weekly.append(days.filter { $0.date >= start && $0.date < end }.reduce(0) { $0 + $1.cost(for: provider) })
+        }
+        guard !weekly.isEmpty else { return nil }
+        return TokenDemand(weeklyPercents: weekly.map { $0 / usagePerPercent })
     }
 
     /// Peak use of each window that has already reset, oldest first. Readings

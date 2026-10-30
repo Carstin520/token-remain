@@ -967,12 +967,14 @@
 "subscription.advice.summary_changes" = "Empfehlung: %1$d Änderung(en), %2$@ / Monat";
 "subscription.advice.summary_fit" = "Empfehlung: deine aktuellen Tarife passen zur Nutzung";
 "subscription.advice.summary_insufficient" = "Empfehlung: noch zu wenig Verlauf; schau nach ein paar Tagen Nutzung wieder vorbei";
-"subscription.advice.footnote" = "Empfehlungen beruhen auf dem Kontingentverlauf dieses Macs und den von den Anbietern genannten Tarif-Faktoren.";
+"subscription.advice.footnote" = "Empfehlungen nutzen nur den Kontingentverlauf aus deinem aktuellen Tarif, dazu die Token-Nutzung dieses Macs für Claude und Codex sowie die von den Anbietern genannten Tarif-Faktoren.";
 "subscription.reason.projected" = "%1$@-Fenster läuft auf %2$@ zu";
 "subscription.reason.used" = "%1$@-Fenster bei %2$@";
 "subscription.reason.ran_out" = "%1$d der letzten %2$d %3$@-Fenster ausgeschöpft";
 "subscription.reason.short_hits" = "%1$@-Limit %2$d× in %3$d Tagen erreicht";
 "subscription.reason.peak" = "%1$@-Spitze %2$@";
+"subscription.reason.token_demand" = "Nach Token-Nutzung: stärkste der letzten %1$d Wochen ≈ %2$@ dieses Tarifs";
+"subscription.reason.token_weeks_over" = "Nach Token-Nutzung: %1$d der letzten %2$d Wochen über diesem Tarif";
 "subscription.share_title" = "Kostenanteil";
 "subscription.advice.after_changes" = "Nach Änderungen: %@ / Monat";
 "subscription.advice.item_upgrade_generic" = "%@: höherer Tarif";

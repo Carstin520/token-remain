@@ -967,12 +967,14 @@
 "subscription.advice.summary_changes" = "おすすめ：%1$d 件の変更、月 %2$@";
 "subscription.advice.summary_fit" = "おすすめ：現在のプラン構成は適切です";
 "subscription.advice.summary_insufficient" = "おすすめ：履歴がまだ足りません。数日使ってから確認してください";
-"subscription.advice.footnote" = "この Mac に記録された上限の履歴と、各社が公表するプラン倍率に基づく提案です。";
+"subscription.advice.footnote" = "提案は現在のプランで記録した上限の履歴だけを使い、Claude と Codex はこの Mac のトークン使用量でも換算し、各社公表のプラン倍率を参考にします。";
 "subscription.reason.projected" = "%1$@ 枠は %2$@ に達する見込み";
 "subscription.reason.used" = "%1$@ 枠は %2$@ 使用済み";
 "subscription.reason.ran_out" = "直近 %2$d 回の %3$@ 枠のうち %1$d 回が上限到達";
 "subscription.reason.short_hits" = "%3$d 日間で %1$@ 上限に %2$d 回到達";
 "subscription.reason.peak" = "%1$@ ピーク %2$@";
+"subscription.reason.token_demand" = "トークン使用量で換算すると、直近 %1$d 週で最も多い週は現在のプランの約 %2$@";
+"subscription.reason.token_weeks_over" = "トークン使用量で換算すると、直近 %2$d 週のうち %1$d 週が現在のプランを超過";
 "subscription.share_title" = "費用の内訳";
 "subscription.advice.after_changes" = "変更後：月 %@";
 "subscription.advice.item_upgrade_generic" = "%@：上位プラン";

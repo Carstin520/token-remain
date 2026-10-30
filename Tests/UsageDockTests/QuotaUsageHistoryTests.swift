@@ -129,6 +129,18 @@ struct QuotaUsageHistoryTests {
         #expect(history.samples.first?.usedPercent == 30)
     }
 
+    @Test("Each sample keeps the plan it was taken under")
+    func recordsPlanKey() {
+        let history = QuotaUsageHistory.empty
+            .recording(quota(.claude, used: 20, at: Date(timeIntervalSince1970: 1_800)), planKey: "claude.max20x")
+        #expect(history.samples.first?.planKey == "claude.max20x")
+        // A chosen tier wins over the source's label; an unknown label is kept as-is.
+        #expect(SubscriptionPlanCatalog.planKey(provider: .claude, planName: "Pro", chosenPlanID: "claude.max5x") == "claude.max5x")
+        #expect(SubscriptionPlanCatalog.planKey(provider: .claude, planName: "Max 20x", chosenPlanID: nil) == "claude.max20x")
+        #expect(SubscriptionPlanCatalog.planKey(provider: .windsurf, planName: "Teams", chosenPlanID: nil) == "teams")
+        #expect(SubscriptionPlanCatalog.planKey(provider: .claude, planName: nil, chosenPlanID: "codex.plus") == nil)
+    }
+
     @Test("The weekly window is recorded beside the primary one")
     func recordsSecondaryWindow() {
         let now = Date(timeIntervalSince1970: 1_800)

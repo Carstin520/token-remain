@@ -967,12 +967,14 @@
 "subscription.advice.summary_changes" = "Sugerencia: %1$d cambio(s), %2$@ / mes";
 "subscription.advice.summary_fit" = "Sugerencia: tus planes actuales encajan con tu uso";
 "subscription.advice.summary_insufficient" = "Sugerencia: aún no hay suficiente historial; vuelve tras unos días de uso";
-"subscription.advice.footnote" = "Las sugerencias usan el historial de cuota de este Mac y los múltiplos de plan que publica cada proveedor.";
+"subscription.advice.footnote" = "Las sugerencias solo usan el historial de cuota registrado con tu plan actual, además del uso de tokens de este Mac para Claude y Codex, y los múltiplos de plan que publica cada proveedor.";
 "subscription.reason.projected" = "ventana de %1$@ camino de %2$@";
 "subscription.reason.used" = "ventana de %1$@ al %2$@";
 "subscription.reason.ran_out" = "%1$d de las últimas %2$d ventanas de %3$@ se agotaron";
 "subscription.reason.short_hits" = "límite de %1$@ alcanzado %2$d× en %3$d días";
 "subscription.reason.peak" = "pico de %1$@: %2$@";
+"subscription.reason.token_demand" = "Por uso de tokens, la semana más intensa de las últimas %1$d ≈ %2$@ de este plan";
+"subscription.reason.token_weeks_over" = "Por uso de tokens, %1$d de las últimas %2$d semanas superaron este plan";
 "subscription.share_title" = "Reparto del coste";
 "subscription.advice.after_changes" = "Tras los cambios: %@ / mes";
 "subscription.advice.item_upgrade_generic" = "%@: plan superior";

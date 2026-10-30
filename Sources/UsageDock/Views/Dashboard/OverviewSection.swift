@@ -36,7 +36,11 @@ struct OverviewSection: View {
                 riskDetailPanel
             }
 
-            SubscriptionCostCard(accounts: subscriptionAccounts, history: insights.quotaUsageHistory)
+            SubscriptionCostCard(
+                accounts: subscriptionAccounts,
+                history: insights.quotaUsageHistory,
+                tokenHistory: insights.history
+            )
 
             AIFeedSection(store: feedStore)
         }

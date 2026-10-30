@@ -90,6 +90,19 @@ enum SubscriptionPlanCatalog {
         return plans.first { $0.provider == provider && $0.aliases.contains(key) }
     }
 
+    /// Names the tier a quota reading was taken under: the tier the user
+    /// chose, else the recognized one, else the source's own label. History
+    /// stores it so advice never compares percentages across plans.
+    static func planKey(
+        provider: ProviderQuota.Provider,
+        planName: String?,
+        chosenPlanID: String?
+    ) -> String? {
+        let plan = chosenPlanID.flatMap { plan(id: $0, provider: provider) }
+            ?? plan(provider: provider, planName: planName)
+        return plan?.id ?? normalized(planName)
+    }
+
     /// `Max 20x` → `max20x`, `Pro+` → `proplus`, `copilot_pro` → `copilotpro`.
     static func normalized(_ planName: String?) -> String? {
         guard let planName else { return nil }

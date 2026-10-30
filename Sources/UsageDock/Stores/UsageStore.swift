@@ -411,9 +411,17 @@ final class UsageStore: ObservableObject {
     }
 
     /// Nil records the provider's system account. Restored account caches are
-    /// not recorded, only readings from a refresh.
+    /// not recorded, only readings from a refresh. Each sample carries the
+    /// plan it was taken under, including a tier the user chose on the cost
+    /// card, so a later plan change does not inherit old percentages.
     private func recordQuotaHistory(_ quota: ProviderQuota, account: ProviderAccountID?) {
-        let updated = quotaUsageHistory.recording(quota, account: account)
+        let chosenPlanID = SubscriptionCostStore.shared.overrides[account ?? .system(quota.provider)]?.planID
+        let planKey = SubscriptionPlanCatalog.planKey(
+            provider: quota.provider,
+            planName: quota.planName,
+            chosenPlanID: chosenPlanID
+        )
+        let updated = quotaUsageHistory.recording(quota, account: account, planKey: planKey)
         if updated != quotaUsageHistory {
             quotaUsageHistory = updated
             quotaUsageHistoryWriter.schedule(updated)

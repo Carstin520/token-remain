@@ -33,6 +33,11 @@ struct QuotaUsageHistory: Sendable, Codable, Equatable {
         /// The account-wide secondary window (Claude and Codex weekly caps).
         /// Nil when the source reported none or the cache predates it.
         var secondary: WindowReading? = nil
+        /// The tier the account was on (`SubscriptionPlanCatalog.planKey`).
+        /// A percentage only means something against its own plan's cap, so
+        /// subscription advice ignores samples whose key differs from the
+        /// current plan, including every sample written before keys existed.
+        var planKey: String? = nil
 
         var id: String {
             guard let accountID else {
@@ -93,7 +98,11 @@ struct QuotaUsageHistory: Sendable, Codable, Equatable {
         }
     }
 
-    func recording(_ quota: ProviderQuota, account: ProviderAccountID? = nil) -> QuotaUsageHistory {
+    func recording(
+        _ quota: ProviderQuota,
+        account: ProviderAccountID? = nil,
+        planKey: String? = nil
+    ) -> QuotaUsageHistory {
         guard quota.primary.usedPercent.isFinite else { return self }
 
         let sample = Sample(
@@ -111,7 +120,8 @@ struct QuotaUsageHistory: Sendable, Codable, Equatable {
                     windowMinutes: window.windowMinutes,
                     resetsAt: window.resetsAt
                 )
-            }
+            },
+            planKey: planKey
         )
         let retentionCutoff = sample.capturedAt.addingTimeInterval(-Self.retentionDuration)
         let keepsRecent: (Sample) -> Bool = { $0.capturedAt >= retentionCutoff }
