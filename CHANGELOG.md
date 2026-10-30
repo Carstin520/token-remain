@@ -3,6 +3,15 @@
 All notable product changes are recorded here. TokenRemain uses Semantic
 Versioning for public releases.
 
+## 1.4.7 (build 47) — 2026-10-31
+
+### Fixed
+
+- Stop the Dashboard from freezing with full CPU use and growing memory when
+  the Limits page is scrolled. Cards in a row still share one height and show
+  their full content; the row heights are now computed in a single layout
+  pass instead of being measured and fed back into the grid.
+
 ## 1.4.7 (build 46) — 2026-10-30
 
 ### Fixed
