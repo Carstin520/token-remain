@@ -64,6 +64,9 @@ jobs:
       - name: Launch surface isolation
         run: bash script/verify_launch_surface_isolation.sh
 
+      - name: Layout measurement contract
+        run: bash script/verify_layout_measurement_contract.sh
+
       - name: Version consistency
         run: bash script/verify_version_consistency.sh
 
