@@ -67,6 +67,100 @@ struct QuotaUsageHistoryTests {
         #expect(history.samples.first?.usedPercent == 100)
     }
 
+    @Test("A cache written before accounts and weekly windows still decodes")
+    func decodesLegacyCache() throws {
+        let legacy = #"""
+        {"samples":[{"provider":"Claude Code","usedPercent":42,"windowMinutes":300,"capturedAt":1000}]}
+        """#
+        let history = try JSONDecoder().decode(QuotaUsageHistory.self, from: Data(legacy.utf8))
+
+        #expect(history.samples.count == 1)
+        #expect(history.samples.first?.accountID == nil)
+        #expect(history.samples.first?.secondary == nil)
+        #expect(history.samples(for: .claude).count == 1)
+    }
+
+    @Test("Managed accounts get their own series and stay out of the trend table")
+    func recordsManagedAccountsSeparately() {
+        let now = Date(timeIntervalSince1970: 1_800)
+        let work = ProviderAccountID.managed(UUID())
+        let history = QuotaUsageHistory.empty
+            .recording(quota(.claude, used: 20, at: now))
+            .recording(quota(.claude, used: 70, at: now.addingTimeInterval(60)), account: work)
+            .recording(quota(.codex, used: 5, at: now), account: ProviderAccountID.managed(UUID()))
+
+        // Same provider and bucket, different accounts: neither replaces the other.
+        #expect(history.samples.count == 1)
+        #expect(history.accountSamples?.count == 2)
+        #expect(history.samples(for: .claude).map(\.usedPercent) == [20])
+        #expect(history.samples(for: .claude, account: work).map(\.usedPercent) == [70])
+        // Passing the system ID reads the legacy nil-account series.
+        #expect(history.samples(for: .claude, account: .system(.claude)).map(\.usedPercent) == [20])
+        #expect(history.providers == [.claude])
+        #expect(Set((history.samples + (history.accountSamples ?? [])).map(\.id)).count == 3)
+    }
+
+    @Test("Older builds reading the shared cache never see managed-account samples")
+    func managedSamplesStayOutOfLegacyKey() throws {
+        let now = Date(timeIntervalSince1970: 1_800)
+        let history = QuotaUsageHistory.empty
+            .recording(quota(.claude, used: 20, at: now))
+            .recording(quota(.claude, used: 70, at: now), account: ProviderAccountID.managed(UUID()))
+        let object = try #require(
+            try JSONSerialization.jsonObject(with: JSONEncoder().encode(history)) as? [String: Any]
+        )
+        let legacy = try #require(object["samples"] as? [[String: Any]])
+
+        // The key an older build decodes holds only the system series.
+        #expect(legacy.count == 1)
+        #expect(legacy.allSatisfy { $0["accountID"] == nil })
+        #expect((object["accountSamples"] as? [[String: Any]])?.count == 1)
+    }
+
+    @Test("The system account ID is stored as the legacy nil series")
+    func systemAccountStoresAsNil() {
+        let now = Date(timeIntervalSince1970: 1_800)
+        let history = QuotaUsageHistory.empty
+            .recording(quota(.claude, used: 20, at: now))
+            .recording(quota(.claude, used: 30, at: now.addingTimeInterval(60)), account: .system(.claude))
+
+        #expect(history.samples.count == 1)
+        #expect(history.samples.first?.accountID == nil)
+        #expect(history.samples.first?.usedPercent == 30)
+    }
+
+    @Test("Each sample keeps the plan it was taken under")
+    func recordsPlanKey() {
+        let history = QuotaUsageHistory.empty
+            .recording(quota(.claude, used: 20, at: Date(timeIntervalSince1970: 1_800)), planKey: "claude.max20x")
+        #expect(history.samples.first?.planKey == "claude.max20x")
+        // A chosen tier wins over the source's label; an unknown label is kept as-is.
+        #expect(SubscriptionPlanCatalog.planKey(provider: .claude, planName: "Pro", chosenPlanID: "claude.max5x") == "claude.max5x")
+        #expect(SubscriptionPlanCatalog.planKey(provider: .claude, planName: "Max 20x", chosenPlanID: nil) == "claude.max20x")
+        #expect(SubscriptionPlanCatalog.planKey(provider: .windsurf, planName: "Teams", chosenPlanID: nil) == "teams")
+        #expect(SubscriptionPlanCatalog.planKey(provider: .claude, planName: nil, chosenPlanID: "codex.plus") == nil)
+    }
+
+    @Test("The weekly window is recorded beside the primary one")
+    func recordsSecondaryWindow() {
+        let now = Date(timeIntervalSince1970: 1_800)
+        let reset = now.addingTimeInterval(86_400)
+        let quota = ProviderQuota(
+            provider: .claude,
+            primary: QuotaWindow(usedPercent: 12, windowMinutes: 300, resetsAt: nil),
+            secondary: QuotaWindow(usedPercent: 140, windowMinutes: 10_080, resetsAt: reset),
+            planName: "Max 5x",
+            capturedAt: now
+        )
+        let sample = QuotaUsageHistory.empty.recording(quota).samples.first
+
+        #expect(sample?.secondary == QuotaUsageHistory.WindowReading(
+            usedPercent: 100,
+            windowMinutes: 10_080,
+            resetsAt: reset
+        ))
+    }
+
     @Test("The cache contains display values only and round-trips every provider")
     func cacheRoundTrip() throws {
         let directory = FileManager.default.temporaryDirectory

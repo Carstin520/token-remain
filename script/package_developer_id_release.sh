@@ -112,9 +112,12 @@ verify_app() {
   [[ "$(/usr/libexec/PlistBuddy -c 'Print :SURequireSignedFeed' "$app/Contents/Info.plist")" == "true" ]]
   [[ -d "$app/Contents/Frameworks/Sparkle.framework" ]]
   [[ -x "$app/Contents/Helpers/ccusage" ]]
-  /usr/bin/lipo "$app/Contents/MacOS/UsageDock" -verify_arch arm64 x86_64
-  /usr/bin/lipo "$app/Contents/Frameworks/Sparkle.framework/Versions/B/Sparkle" -verify_arch arm64 x86_64
-  /usr/bin/lipo "$app/Contents/Helpers/ccusage" -verify_arch arm64 x86_64
+  /usr/bin/lipo "$app/Contents/MacOS/UsageDock" -verify_arch arm64
+  /usr/bin/lipo "$app/Contents/MacOS/UsageDock" -verify_arch x86_64
+  /usr/bin/lipo "$app/Contents/Frameworks/Sparkle.framework/Versions/B/Sparkle" -verify_arch arm64
+  /usr/bin/lipo "$app/Contents/Frameworks/Sparkle.framework/Versions/B/Sparkle" -verify_arch x86_64
+  /usr/bin/lipo "$app/Contents/Helpers/ccusage" -verify_arch arm64
+  /usr/bin/lipo "$app/Contents/Helpers/ccusage" -verify_arch x86_64
   /usr/bin/codesign --verify --strict "$app/Contents/Frameworks/Sparkle.framework"
   /usr/bin/codesign --verify --strict "$app/Contents/Helpers/ccusage"
   [[ "$("$app/Contents/Helpers/ccusage" --version)" == "ccusage $CCUSAGE_VERSION" ]]

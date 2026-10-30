@@ -3,6 +3,26 @@
 All notable product changes are recorded here. TokenRemain uses Semantic
 Versioning for public releases.
 
+## 1.4.7 — 2026-10-30
+
+### Added
+
+- Show monthly subscription costs on the Dashboard, with per-account price and
+  plan overrides, employer-paid exclusions, and usage-based tier suggestions.
+- Show model-vendor logos and usage details for supported multi-model pools,
+  OpenRouter management keys and compatible new-api relay accounts.
+
+### Fixed
+
+- Show the actual Cursor refresh failure instead of a generic login hint;
+  distinguish HTTP 403 from expired credentials and reuse a valid same-account
+  CLI token when the IDE token has expired, without refreshing credentials.
+- Let users choose Cursor Models, Other Models or the lowest remaining pool for
+  menu-bar and Dock headlines while retaining all pools on the quota card.
+- Label an exhausted quota window as used up rather than about to run out.
+- Verify Universal release architectures separately for compatibility with
+  Xcode 27's lipo argument parsing.
+
 ## 1.4.6 — 2026-10-27
 
 ### Added

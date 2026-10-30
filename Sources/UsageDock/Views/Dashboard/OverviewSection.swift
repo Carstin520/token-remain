@@ -5,6 +5,7 @@ import SwiftUI
 /// that would require multi-day history lives in the Trends section instead.
 struct OverviewSection: View {
     let insights: UsageInsights
+    let subscriptionAccounts: [SubscriptionAccountInput]
     let localUsageStatus: UsageStore.LocalUsageStatus
     let isCCUsageRefreshing: Bool
     let onRetryCCUsage: () -> Void
@@ -34,6 +35,12 @@ struct OverviewSection: View {
                 TrendingStoriesCard(posts: feedStore.topStories)
                 riskDetailPanel
             }
+
+            SubscriptionCostCard(
+                accounts: subscriptionAccounts,
+                history: insights.quotaUsageHistory,
+                tokenHistory: insights.history
+            )
 
             AIFeedSection(store: feedStore)
         }
