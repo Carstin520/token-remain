@@ -3,6 +3,22 @@
 All notable product changes are recorded here. TokenRemain uses Semantic
 Versioning for public releases.
 
+## 1.4.7 (build 46) — 2026-10-30
+
+### Fixed
+
+- Read Cursor 3.27's encrypted login after a one-time Keychain approval
+  instead of reporting expired credentials; the encrypted value is never sent
+  and only the access token is decrypted.
+- Stop an empty "TokenRemain Settings" window from appearing at launch or on
+  reopen; Settings in the app menu and Command-comma open the Dashboard.
+- Keep the menu-bar popover anchored while widgets expand or collapse,
+  removing the up-and-down twitch.
+- Show every Limits card's full content and give cards in a row one height,
+  instead of clipping cards with three or more quota windows.
+- Update the bundled Universal ccusage helper to 20.0.45 with verified official
+  package integrity, architecture and license metadata.
+
 ## 1.4.7 — 2026-10-30
 
 ### Added
