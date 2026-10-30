@@ -355,6 +355,7 @@ struct DashboardView: View {
         case .overview:
             OverviewSection(
                 insights: insights,
+                subscriptionAccounts: store.subscriptionAccounts,
                 localUsageStatus: store.localUsageStatus,
                 isCCUsageRefreshing: store.isCCUsageRefreshing,
                 onRetryCCUsage: {

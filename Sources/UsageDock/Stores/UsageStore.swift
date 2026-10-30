@@ -299,6 +299,33 @@ final class UsageStore: ObservableObject {
         return CursorAPIUsageParser.headlined(quota, on: cursorPool)
     }
 
+    /// Every enabled account of a monitored provider with its latest reading,
+    /// for the subscription cost card. An account that has not answered yet
+    /// stays listed with a nil quota so a price the user entered still counts.
+    var subscriptionAccounts: [SubscriptionAccountInput] {
+        ProviderQuota.Provider.displayOrder.flatMap { provider -> [SubscriptionAccountInput] in
+            guard tracked.isEnabled(provider) else { return [] }
+            let snapshots = accountSnapshots(for: provider).filter(\.profile.isEnabled)
+            guard !snapshots.isEmpty else {
+                guard let quota = quotaValue(for: provider) else { return [] }
+                return [SubscriptionAccountInput(
+                    accountID: .system(provider),
+                    provider: provider,
+                    accountName: "",
+                    quota: quota
+                )]
+            }
+            return snapshots.map { snapshot in
+                SubscriptionAccountInput(
+                    accountID: snapshot.id,
+                    provider: provider,
+                    accountName: snapshot.profile.isSystem ? "" : snapshot.profile.displayName,
+                    quota: snapshot.quota
+                )
+            }
+        }
+    }
+
     func headlineQuota(for provider: ProviderQuota.Provider) -> ProviderQuota? {
         headlineQuota(
             for: provider,
@@ -390,11 +417,25 @@ final class UsageStore: ObservableObject {
             providerAccountStates[systemID] = state
         }
         if let resolvedValue {
-            let updated = quotaUsageHistory.recording(resolvedValue)
-            if updated != quotaUsageHistory {
-                quotaUsageHistory = updated
-                quotaUsageHistoryWriter.schedule(updated)
-            }
+            recordQuotaHistory(resolvedValue, account: nil)
+        }
+    }
+
+    /// Nil records the provider's system account. Restored account caches are
+    /// not recorded, only readings from a refresh. Each sample carries the
+    /// plan it was taken under, including a tier the user chose on the cost
+    /// card, so a later plan change does not inherit old percentages.
+    private func recordQuotaHistory(_ quota: ProviderQuota, account: ProviderAccountID?) {
+        let chosenPlanID = SubscriptionCostStore.shared.overrides[account ?? .system(quota.provider)]?.planID
+        let planKey = SubscriptionPlanCatalog.planKey(
+            provider: quota.provider,
+            planName: quota.planName,
+            chosenPlanID: chosenPlanID
+        )
+        let updated = quotaUsageHistory.recording(quota, account: account, planKey: planKey)
+        if updated != quotaUsageHistory {
+            quotaUsageHistory = updated
+            quotaUsageHistoryWriter.schedule(updated)
         }
     }
 
@@ -972,6 +1013,7 @@ final class UsageStore: ObservableObject {
             case .success(let quota):
                 state.quota = quota
                 state.notice = nil
+                recordQuotaHistory(quota, account: profile.id)
             case .failure(let error):
                 // Preserve the last good reading and scope the failure to this
                 // account; sibling accounts remain available.
