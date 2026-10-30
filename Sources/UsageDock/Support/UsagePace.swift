@@ -29,6 +29,12 @@ struct UsagePace: Sendable, Equatable {
         return false
     }
 
+    /// The window is already used up. `estimatedRunOutAt` is then `now`, which
+    /// would otherwise render as a projection ("runs out in under a minute").
+    var isExhausted: Bool {
+        actualUsedPercent >= 100
+    }
+
     init?(window: QuotaWindow, now: Date = .now) {
         guard let resetsAt = window.resetsAt, window.windowMinutes > 0 else { return nil }
 

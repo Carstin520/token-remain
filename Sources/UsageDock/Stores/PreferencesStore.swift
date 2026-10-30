@@ -9,6 +9,16 @@ enum MenuBarDisplayMode: String, CaseIterable, Identifiable, Sendable {
     var id: String { rawValue }
 }
 
+/// Cursor 的 Cursor Models / Other Models 是互相独立的额度池。紧凑表面
+/// 默认跟随用量最高的池(历史行为);用户可固定看其中一个。
+enum CursorHeadlinePool: String, CaseIterable, Identifiable, Sendable {
+    case busiest
+    case cursorModels
+    case otherModels
+
+    var id: String { rawValue }
+}
+
 enum PopoverGlassStyle: String, CaseIterable, Identifiable, Sendable {
     case frosted
     case clear
@@ -38,6 +48,7 @@ final class PreferencesStore: ObservableObject {
     static let popoverBackgroundOpacityKey = "tokenRemain.popoverBackgroundOpacity.v1"
     static let dashboardBackgroundLightnessKey = "tokenRemain.dashboardBackgroundLightness.v1"
     static let quotaSummaryStrategyKey = "tokenRemain.quotaSummaryStrategy.v1"
+    static let cursorHeadlinePoolKey = "tokenRemain.cursorHeadlinePool.v1"
     /// 旧的三个手拍开关键。只在初始化时一次性迁入
     /// `scopedPoolVisibilityKey`,之后不再读写。
     static let menuBarCodexSparkQuotaKey = "tokenRemain.dashboardCodexSparkQuota.v1"
@@ -80,6 +91,8 @@ final class PreferencesStore: ObservableObject {
     @Published private(set) var dashboardBackgroundLightness: Double
     /// Which account-level window compact summary surfaces display.
     @Published private(set) var quotaSummaryStrategy: QuotaSummaryStrategy
+    /// 菜单栏、Dock 与提示中 Cursor 显示哪个额度池;卡片始终显示两个池。
+    @Published private(set) var cursorHeadlinePool: CursorHeadlinePool
     /// 附加池可见性 tri-state 存储(键见 `scopedPoolStorageKey`)。
     /// @Published 让任何池开关变化都能驱动挂件/卡片刷新。
     @Published private(set) var scopedPoolVisibilityByKey: [String: Bool]
@@ -120,6 +133,8 @@ final class PreferencesStore: ObservableObject {
         )
         quotaSummaryStrategy = defaults.string(forKey: Self.quotaSummaryStrategyKey)
             .flatMap(QuotaSummaryStrategy.init(rawValue:)) ?? .shortestWindow
+        cursorHeadlinePool = defaults.string(forKey: Self.cursorHeadlinePoolKey)
+            .flatMap(CursorHeadlinePool.init(rawValue:)) ?? .busiest
         scopedPoolVisibilityByKey = Self.loadScopedPoolVisibility(migratingFrom: defaults)
         let storedMinutes = defaults.object(forKey: Self.refreshKey) as? Int
         refreshMinutes = storedMinutes.map { Self.refreshChoices.contains($0) ? $0 : 5 } ?? 5
@@ -212,6 +227,11 @@ final class PreferencesStore: ObservableObject {
     func setQuotaSummaryStrategy(_ strategy: QuotaSummaryStrategy) {
         quotaSummaryStrategy = strategy
         defaults.set(strategy.rawValue, forKey: Self.quotaSummaryStrategyKey)
+    }
+
+    func setCursorHeadlinePool(_ pool: CursorHeadlinePool) {
+        cursorHeadlinePool = pool
+        defaults.set(pool.rawValue, forKey: Self.cursorHeadlinePoolKey)
     }
 
     // MARK: - 附加池可见性(通用 tri-state 存储 + 智能默认)

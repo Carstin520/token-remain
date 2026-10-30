@@ -275,12 +275,94 @@ struct ThirdPartyUsageService {
         async let statusAttempt = statusData(for: configuration)
         let quotaData = try await quotaAttempt
         let statusData = try await statusAttempt
-        return try Self.parse(
+        var quota = try Self.parse(
             quotaData: quotaData,
             statusData: statusData,
             configuration: configuration,
             now: now
         )
+        // Custom balance endpoints have no known per-model source.
+        if configuration.adapter != .custom {
+            let unit = Self.quotaPerUnit(statusData: statusData)
+            let usage = await ModelUsageThrottle.shared.value(
+                for: ModelUsageThrottle.key(
+                    "thirdParty",
+                    configuration.baseURL.absoluteString,
+                    configuration.credential,
+                    configuration.userID ?? ""
+                ),
+                now: now
+            ) {
+                await fetchModelUsage(configuration: configuration, quotaPerUnit: unit, now: now)
+            }
+            quota.modelUsage = usage.usage
+            quota.modelUsagePeriod = usage.period
+        }
+        try Task.checkCancellation()
+        return quota
+    }
+
+    /// Optional detail: its own short deadline, failure only drops the logos.
+    static let modelUsageTimeout: TimeInterval = 6
+    static let modelUsageWindowDays = 30
+
+    /// new-api per-model usage with the credential already configured:
+    /// an account access token reads `/api/data/self` (hourly per-model
+    /// totals) over the last 30 days; an API key reads `/api/log/token`
+    /// (the key's most recent request logs).
+    private func fetchModelUsage(
+        configuration: ThirdPartyConfiguration,
+        quotaPerUnit: Double,
+        now: Date
+    ) async -> ModelUsageThrottle.Value {
+        let headers = request(for: configuration).headers
+        let path: String
+        switch configuration.adapter {
+        case .newAPIAccount:
+            let end = Int(now.timeIntervalSince1970)
+            let start = end - Self.modelUsageWindowDays * 86_400
+            path = "/api/data/self?start_timestamp=\(start)&end_timestamp=\(end)"
+        case .newAPIToken:
+            path = "/api/log/token"
+        case .custom:
+            return .unavailable
+        }
+        let url = endpoint(configuration.baseURL, path: path)
+        // `timeoutInterval` only bounds idle gaps; the deadline bounds the whole
+        // request so a slow relay cannot hold the balance refresh open.
+        guard let data = try? await AsyncDeadline.run(timeout: Self.modelUsageTimeout, operation: {
+            try await ExtendedHTTP.request(
+                .thirdParty,
+                url: url,
+                headers: headers,
+                timeout: Self.modelUsageTimeout,
+                followRedirects: false
+            )
+        }) else {
+            return .unavailable
+        }
+        switch configuration.adapter {
+        case .newAPIAccount:
+            guard let usage = ThirdPartyModelUsageParser.parseQuotaData(data, quotaPerUnit: quotaPerUnit) else {
+                return .unavailable
+            }
+            return ModelUsageThrottle.Value(usage: usage, period: .days(Self.modelUsageWindowDays))
+        case .newAPIToken:
+            guard let logs = ThirdPartyModelUsageParser.parseTokenLogs(data, quotaPerUnit: quotaPerUnit) else {
+                return .unavailable
+            }
+            return ModelUsageThrottle.Value(usage: logs.usage, period: .recentRequests(logs.requests))
+        case .custom:
+            return .unavailable
+        }
+    }
+
+    static func quotaPerUnit(statusData: Data?) -> Double {
+        statusData.flatMap(ExtendedHTTP.json)
+            .flatMap(responseData)
+            .flatMap { number($0["quota_per_unit"]) }
+            .flatMap { $0 > 0 ? $0 : nil }
+            ?? defaultQuotaPerUnit
     }
 
     static func parse(
@@ -292,11 +374,7 @@ struct ThirdPartyUsageService {
         guard let root = ExtendedHTTP.json(quotaData) else {
             throw ExtendedProviderError.invalidResponse(.thirdParty)
         }
-        let unit = statusData.flatMap(ExtendedHTTP.json)
-            .flatMap(responseData)
-            .flatMap { number($0["quota_per_unit"]) }
-            .flatMap { $0 > 0 ? $0 : nil }
-            ?? defaultQuotaPerUnit
+        let unit = quotaPerUnit(statusData: statusData)
 
         let result: BalanceResult?
         switch configuration.adapter {
@@ -471,5 +549,78 @@ struct ThirdPartyUsageService {
         // their encoded forms preserves a legitimate `%2F` in a custom path;
         // assigning through URLComponents.path would encode `%` a second time.
         return URL(string: baseURL.absoluteString + path)!
+    }
+}
+
+/// new-api 按模型的用量,两种凭据各一个来源,`quota` 按站点
+/// `quota_per_unit` 折成美元:
+/// - `/api/data/self`:`data[]` 是按小时、按模型的汇总
+///   (`model_name`、`token_used`、`quota`、`count`)。
+/// - `/api/log/token`:该 Key 最近的请求日志(`model_name`、
+///   `prompt_tokens`、`completion_tokens`、`quota`;`type` 2 = 消费)。
+enum ThirdPartyModelUsageParser {
+    /// new-api `LogTypeConsume`;其余类型(充值、管理、系统)不是模型调用。
+    static let consumeLogType = 2
+
+    static func parseQuotaData(_ data: Data, quotaPerUnit: Double) -> [ProviderModelUsage]? {
+        guard let rows = records(data) else { return nil }
+        return ProviderModelUsage.aggregated(rows.compactMap { row in
+            guard let model = row["model_name"] as? String else { return nil }
+            return ProviderModelUsage(
+                model: model,
+                inputTokens: tokens(row["token_used"]),
+                outputTokens: 0,
+                cacheWriteTokens: 0,
+                cacheReadTokens: 0,
+                costCents: cents(row["quota"], quotaPerUnit: quotaPerUnit)
+            )
+        })
+    }
+
+    static func parseTokenLogs(
+        _ data: Data,
+        quotaPerUnit: Double
+    ) -> (usage: [ProviderModelUsage], requests: Int)? {
+        guard let logs = records(data) else { return nil }
+        let consumed = logs.filter { log in
+            guard let type = number(log["type"]) else { return true }
+            return type == Double(consumeLogType)
+        }
+        let rows = consumed.compactMap { log -> ProviderModelUsage? in
+            guard let model = log["model_name"] as? String else { return nil }
+            return ProviderModelUsage(
+                model: model,
+                inputTokens: tokens(log["prompt_tokens"]),
+                outputTokens: tokens(log["completion_tokens"]),
+                cacheWriteTokens: 0,
+                cacheReadTokens: 0,
+                costCents: cents(log["quota"], quotaPerUnit: quotaPerUnit)
+            )
+        }
+        return (ProviderModelUsage.aggregated(rows), rows.count)
+    }
+
+    /// `{success, message, data: [...]}`;`success: false` 或缺 data 视为不可用。
+    private static func records(_ data: Data) -> [[String: Any]]? {
+        guard let root = ExtendedHTTP.json(data), root["success"] as? Bool != false else {
+            return nil
+        }
+        return root["data"] as? [[String: Any]]
+    }
+
+    private static func tokens(_ value: Any?) -> Int64 {
+        guard let count = number(value), count.isFinite, count > 0 else { return 0 }
+        return Int64(min(count, 1e15))
+    }
+
+    private static func cents(_ value: Any?, quotaPerUnit: Double) -> Double? {
+        guard let quota = number(value), quota.isFinite, quota >= 0, quotaPerUnit > 0 else { return nil }
+        return quota / quotaPerUnit * 100
+    }
+
+    private static func number(_ value: Any?) -> Double? {
+        if let number = value as? NSNumber { return number.doubleValue }
+        if let text = value as? String { return Double(text.trimmingCharacters(in: .whitespaces)) }
+        return nil
     }
 }

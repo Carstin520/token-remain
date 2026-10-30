@@ -526,6 +526,11 @@ struct SettingsSection: View {
                         isOn: { preferences.isInMenuBar($0) },
                         toggle: { preferences.toggleMenuBar($0) }
                     )
+
+                    if tracked.isEnabled(.cursor) {
+                        Divider().overlay(DashboardSurface.border)
+                        cursorHeadlinePoolRow
+                    }
                 }
             }
 
@@ -824,6 +829,33 @@ struct SettingsSection: View {
         }
         guard poolHasWindows else { return entry.visibilityFallbackWithoutData }
         return ScopedPoolToggleCatalog.poolIsActive(entry: entry, in: quota)
+    }
+
+    private var cursorHeadlinePoolRow: some View {
+        HStack(alignment: .center, spacing: 16) {
+            preferenceLabel(
+                title: L10n.text("settings.cursor_headline_pool_title"),
+                detail: L10n.text("settings.cursor_headline_pool_hint")
+            )
+            Spacer(minLength: 16)
+            Picker("", selection: Binding(
+                get: { preferences.cursorHeadlinePool },
+                set: { preferences.setCursorHeadlinePool($0) }
+            )) {
+                Text(L10n.text("settings.cursor_headline_pool_busiest"))
+                    .tag(CursorHeadlinePool.busiest)
+                // Cursor 仪表盘上的池名,与卡片行一致,不翻译。
+                Text(CursorAPIUsageParser.autoPoolName)
+                    .tag(CursorHeadlinePool.cursorModels)
+                Text(CursorAPIUsageParser.apiPoolName)
+                    .tag(CursorHeadlinePool.otherModels)
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .frame(width: 180)
+            .accessibilityLabel(L10n.text("settings.cursor_headline_pool_title"))
+            .accessibilityHint(L10n.text("settings.cursor_headline_pool_hint"))
+        }
     }
 
     private var quotaSummaryStrategyBinding: Binding<QuotaSummaryStrategy> {

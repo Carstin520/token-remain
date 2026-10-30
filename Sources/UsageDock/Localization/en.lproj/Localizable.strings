@@ -58,6 +58,7 @@
 "pace.deficit" = "%1$@ ahead";
 "pace.lasts_until_reset" = "Lasts until reset";
 "pace.projected_early" = "Projected to run out early";
+"pace.exhausted" = "Used up";
 "pace.projected_in" = "Projected to run out in %1$@";
 
 "widget.all_visible" = "All widgets are visible";
@@ -90,6 +91,7 @@
 "usage.provider_accessibility" = "%1$@, %2$@ API cost, %3$@ tokens";
 "quota.loading_official" = "Reading official quota…";
 "quota.login_recovery_hint" = "Login not detected; sign in to restore data automatically";
+"quota.refresh_failed_hint" = "Couldn't refresh";
 "feed.updating" = "Updating";
 "feed.item_count" = "%d items";
 "feed.filtering" = "Finding updates worth your attention…";
@@ -107,7 +109,10 @@
 "quota.spent" = "%@ spent";
 "quota.official_spend" = "Official Spend";
 "quota.models_this_cycle" = "Models this cycle";
+"quota.models_recent_days" = "Models · last %1$d days";
+"quota.models_recent_requests" = "Models · last %1$d requests";
 "quota.models_more" = "+%1$d more";
+"model_vendor.other" = "Other vendors";
 "quota.account_balance" = "Account Balance";
 "quota.spend_week" = "This Week";
 "quota.spend_month" = "This Month";
@@ -627,6 +632,9 @@
 "settings.quota_summary_hint" = "Choose which account-level quota window the menu bar, Dock, and Dashboard summaries prioritize; model-specific quotas stay excluded.";
 "settings.quota_summary_shortest" = "Shortest window (default)";
 "settings.quota_summary_tightest" = "Lowest remaining quota";
+"settings.cursor_headline_pool_title" = "Cursor pool in summaries";
+"settings.cursor_headline_pool_hint" = "Cursor Models and Other Models are separate pools; when one runs out, the other still works. Choose which one the menu bar, Dock, and tooltip show. Cards always list both.";
+"settings.cursor_headline_pool_busiest" = "Lowest remaining pool";
 "settings.antigravity_3p" = "Show Antigravity Claude / GPT pools";
 "settings.antigravity_3p_hint" = "Show the Claude and GPT-OSS 5-hour and weekly pools next to Gemini; shown by default.";
 "settings.pool_mimo_daily" = "Show the MiMo daily pool";

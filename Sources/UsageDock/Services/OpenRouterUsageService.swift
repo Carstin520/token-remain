@@ -70,13 +70,57 @@ struct OpenRouterUsageService {
             throw ServiceError.requestFailed(statuses.first ?? 0)
         }
 
-        let quota = try OpenRouterUsageParser.parse(
+        var quota = try OpenRouterUsageParser.parse(
             creditsData: creditsData,
             keyData: keyData,
             now: now
         )
         Self.logger.info("OpenRouter quota served by key and credits APIs")
+        // Per-model activity is management-key only; an inference key would
+        // just collect a 403 on every refresh, so it is not asked.
+        if OpenRouterActivityParser.isManagementKey(keyData) {
+            let activity = await ModelUsageThrottle.shared.value(
+                for: ModelUsageThrottle.key("openrouter", apiKey),
+                now: now
+            ) {
+                await Self.fetchModelUsage(apiKey: apiKey)
+            }
+            quota.modelUsage = activity.usage
+            quota.modelUsagePeriod = activity.period
+        }
+        try Task.checkCancellation()
         return quota
+    }
+
+    private static let activityURL = URL(string: "https://openrouter.ai/api/v1/activity")!
+    /// Optional detail: its own short deadline, failure only drops the logos.
+    static let modelUsageTimeout: TimeInterval = 6
+
+    /// `GET /api/v1/activity`: the last 30 completed UTC days per model.
+    static func fetchModelUsage(
+        apiKey: String,
+        timeout: TimeInterval = modelUsageTimeout,
+        transport: @escaping @Sendable (URLRequest) async throws -> (Data, URLResponse) = {
+            try await URLSession.shared.data(for: $0)
+        }
+    ) async -> ModelUsageThrottle.Value {
+        var request = URLRequest(url: activityURL)
+        request.timeoutInterval = timeout
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        let boundedRequest = request
+        guard let (data, response) = try? await AsyncDeadline.run(timeout: timeout, operation: {
+            try await transport(boundedRequest)
+        }), let http = response as? HTTPURLResponse else {
+            logger.info("OpenRouter model activity unavailable: request did not complete")
+            return .unavailable
+        }
+        guard (200..<300).contains(http.statusCode) else {
+            logger.info("OpenRouter model activity unavailable: HTTP \(http.statusCode, privacy: .public)")
+            return .unavailable
+        }
+        guard let usage = OpenRouterActivityParser.parse(data) else { return .unavailable }
+        return ModelUsageThrottle.Value(usage: usage, period: .days(OpenRouterActivityParser.windowDays))
     }
 
     private static func get(_ url: URL, apiKey: String) async throws -> (Data, HTTPURLResponse) {
@@ -231,6 +275,54 @@ enum OpenRouterUsageParser {
             monthUSD: amount("usage_monthly"),
             allTimeUSD: amount("usage")
         )
+    }
+
+    private static func number(_ value: Any?) -> Double? {
+        if let number = value as? NSNumber { return number.doubleValue }
+        if let text = value as? String { return Double(text) }
+        return nil
+    }
+}
+
+/// `/api/v1/activity` 响应:`data[]` 每项是某天某模型的汇总
+/// (`model` 如 `anthropic/claude-sonnet-4.5`、`prompt_tokens`、
+/// `completion_tokens`、`usage` 美元)。按模型累加成 30 天总量。
+enum OpenRouterActivityParser {
+    static let windowDays = 30
+
+    static func isManagementKey(_ keyData: Data?) -> Bool {
+        guard let keyData,
+              let root = (try? JSONSerialization.jsonObject(with: keyData)) as? [String: Any] else {
+            return false
+        }
+        let payload = (root["data"] as? [String: Any]) ?? root
+        return payload["is_management_key"] as? Bool == true
+            || payload["is_provisioning_key"] as? Bool == true
+    }
+
+    static func parse(_ data: Data) -> [ProviderModelUsage]? {
+        guard let root = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+              let items = root["data"] as? [[String: Any]] else {
+            return nil
+        }
+        let rows = items.compactMap { item -> ProviderModelUsage? in
+            guard let model = item["model"] as? String else { return nil }
+            let usageUSD = number(item["usage"]).flatMap { $0.isFinite && $0 >= 0 ? $0 : nil }
+            return ProviderModelUsage(
+                model: model,
+                inputTokens: tokens(item["prompt_tokens"]),
+                outputTokens: tokens(item["completion_tokens"]),
+                cacheWriteTokens: 0,
+                cacheReadTokens: 0,
+                costCents: usageUSD.map { $0 * 100 }
+            )
+        }
+        return ProviderModelUsage.aggregated(rows)
+    }
+
+    private static func tokens(_ value: Any?) -> Int64 {
+        guard let count = number(value), count.isFinite, count > 0 else { return 0 }
+        return Int64(min(count, 1e15))
     }
 
     private static func number(_ value: Any?) -> Double? {

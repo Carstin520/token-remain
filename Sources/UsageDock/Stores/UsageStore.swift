@@ -280,12 +280,23 @@ final class UsageStore: ObservableObject {
         // Keep saved account readings for resuming, but never surface them in
         // Dock or other aggregate headlines while this app is not monitored.
         guard tracked.isEnabled(provider) else { return nil }
+        let pool = PreferencesStore.shared.cursorHeadlinePool
         let enabled = accountSnapshots(for: provider).filter(\.profile.isEnabled)
-        let quotas = enabled.compactMap(\.quota)
+        let quotas = enabled.compactMap(\.quota).map { Self.headlined($0, cursorPool: pool) }
         if enabled.count > 1 {
             return Self.tightestQuota(among: quotas, strategy: strategy)
         }
-        return quotas.first ?? quotaValue(for: provider)
+        return quotas.first ?? quotaValue(for: provider).map { Self.headlined($0, cursorPool: pool) }
+    }
+
+    /// Only compact headlines follow the user's Cursor pool choice; cards,
+    /// cache and sync keep the parsed busiest-first shape.
+    nonisolated static func headlined(
+        _ quota: ProviderQuota,
+        cursorPool: CursorHeadlinePool
+    ) -> ProviderQuota {
+        guard quota.provider == .cursor else { return quota }
+        return CursorAPIUsageParser.headlined(quota, on: cursorPool)
     }
 
     func headlineQuota(for provider: ProviderQuota.Provider) -> ProviderQuota? {
