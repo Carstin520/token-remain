@@ -165,6 +165,8 @@ struct PopoverQuotaWidget: View {
                 }
             }
         }
+        // Reset, pace and speed lines read at 11 pt on the popup's glass.
+        .environment(\.quotaDetailFontSize, 11)
         .accessibilityElement(children: .contain)
     }
 
@@ -180,7 +182,7 @@ struct PopoverQuotaWidget: View {
                     quota,
                     shortestWindow: shortestWindow,
                     remainingWindows: Array(windows.dropFirst()),
-                    accountName: snapshot.profile.accountDisplayName,
+                    accountName: Self.accountCaption(for: snapshot, among: enabledAccounts),
                     trailingNotice: snapshot.notice,
                     modelSpeed: showsModelSpeed ? modelSpeed : nil
                 )
@@ -213,19 +215,23 @@ struct PopoverQuotaWidget: View {
         offersCookieSignIn: Bool = false,
         modelSpeed: ModelSpeedSummary? = nil
     ) -> some View {
+        // A second account names itself once, in small print above its
+        // rows, so two Claude logins cannot collapse into unlabeled bars
+        // without repeating the name on every bar.
+        if let accountName {
+            accountCaption(accountName)
+        }
         // This first row is deliberately stable across both states:
         // expanding only reveals its details and appends longer
-        // windows beneath it. A second account names itself so two
-        // Claude logins cannot collapse into one unlabeled bar.
+        // windows beneath it.
         QuotaWindowRow(
             window: shortestWindow.window,
             provider: provider,
             attribution: quota.attribution,
             showsDetails: isExpanded,
-            scopeName: accountName,
             remainingBalance: shortestWindow.remainingBalance,
             modelSpeed: modelSpeed,
-            vendorSummary: Self.vendorSummary(in: quota, window: shortestWindow.window, accountName: accountName)
+            vendorSummary: quota.modelVendorSummary(for: shortestWindow.window)
         )
 
         if isExpanded {
@@ -235,9 +241,8 @@ struct PopoverQuotaWidget: View {
                     window: item.window,
                     provider: provider,
                     attribution: quota.attribution,
-                    scopeName: accountName,
                     remainingBalance: item.remainingBalance,
-                    vendorSummary: Self.vendorSummary(in: quota, window: item.window, accountName: accountName)
+                    vendorSummary: quota.modelVendorSummary(for: item.window)
                 )
             }
         }
@@ -322,15 +327,24 @@ struct PopoverQuotaWidget: View {
         .accessibilityValue(text)
     }
 
-    /// An account name labels the row, so a summary that would replace the
-    /// row's name ("Others") is dropped; relay logos still follow the name.
-    static func vendorSummary(
-        in quota: ProviderQuota,
-        window: QuotaWindow,
-        accountName: String?
-    ) -> ModelVendorSummary? {
-        guard let summary = quota.modelVendorSummary(for: window) else { return nil }
-        return accountName != nil && summary.label != nil ? nil : summary
+    /// The name above an account's rows. A lone account needs none, and when
+    /// there are several the default (system) login stays unnamed.
+    static func accountCaption(
+        for snapshot: ProviderAccountSnapshot,
+        among snapshots: [ProviderAccountSnapshot]
+    ) -> String? {
+        guard showsAccountRows(snapshots), !snapshot.profile.isSystem else { return nil }
+        return snapshot.profile.accountDisplayName
+    }
+
+    private func accountCaption(_ name: String) -> some View {
+        Text(verbatim: name)
+            .font(.system(size: 11, weight: .medium))
+            .usageDockAdaptiveForeground(.secondary)
+            .lineLimit(1)
+            .truncationMode(.middle)
+            .help(name)
+            .accessibilityAddTraits(.isHeader)
     }
 
     private var offersCookieSignIn: Bool {
@@ -359,7 +373,7 @@ struct PopoverQuotaWidget: View {
                 UsageFormatting.freshnessDescription(since: quota.capturedAt, now: context.date),
                 systemImage: isStale ? "exclamationmark.circle.fill" : "checkmark.circle.fill"
             )
-            .numericFont(10)
+            .numericFont(11)
             .usageDockAdaptiveForeground(
                 .muted,
                 fixedColor: isStale ? DashboardTheme.warning : nil

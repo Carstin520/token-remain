@@ -164,8 +164,21 @@ final class DashboardWindowController: NSWindowController {
         if let section {
             navigator.selection = section
         }
-        // Build the view tree before the window is ordered in.
+        let animates = Self.opensWithAnimation(
+            wasOnScreen: window.map { $0.isVisible && !$0.isMiniaturized } ?? false,
+            reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        )
         visibility.setWindowOpen(true)
+        if animates, let window {
+            // Build and lay out the new view tree while the window is still
+            // off screen. (SwiftUI does not draw it until it is on screen.)
+            window.contentView?.layoutSubtreeIfNeeded()
+            window.alphaValue = 0
+        }
+        // The system's document-window open adds a slight zoom that the
+        // window server applies to the window as a whole; on its own it is
+        // too small to see, so the fade below carries the entrance.
+        window?.animationBehavior = animates ? .documentWindow : .none
         NSApp.activate(ignoringOtherApps: true)
         showWindow(nil)
         window?.makeKeyAndOrderFront(nil)
@@ -176,6 +189,32 @@ final class DashboardWindowController: NSWindowController {
         if let window, visibility.update(from: window) {
             onBecameVisible()
         }
+        guard animates, let window else {
+            window?.alphaValue = 1
+            return
+        }
+        // SwiftUI draws only a window that is on screen, so the page's first
+        // draw (~0.2s) happens now, behind alpha 0. Left to this turn's
+        // display cycle it ran after the fade had started (a main-queue block
+        // runs first), and the page appeared at 75-90% opacity. Draw it here
+        // and send it, then fade on the next turn over a drawn page. Only
+        // window alpha animates; the frame and the page's layout never do.
+        window.layoutIfNeeded()
+        CATransaction.flush()
+        DispatchQueue.main.async { [weak window] in
+            guard let window, window.isVisible else { return }
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = MotionTiming.dashboardFadeIn
+                context.timingFunction = MotionTiming.dashboardFadeCurve
+                window.animator().alphaValue = 1
+            }
+        }
+    }
+
+    /// A window that is already on screen just comes to the front; one being
+    /// opened animates in, unless Reduce Motion is on.
+    nonisolated static func opensWithAnimation(wasOnScreen: Bool, reduceMotion: Bool) -> Bool {
+        !wasOnScreen && !reduceMotion
     }
 }
 

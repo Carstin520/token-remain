@@ -264,7 +264,7 @@ private struct ProviderAccountManagementCard: View {
                 set: { tracked.setEnabled(provider, $0) }
             ))
             .labelsHidden()
-            .toggleStyle(.switch)
+            .toggleStyle(ElasticSwitchToggleStyle(showsLabel: false))
             .controlSize(.small)
             .tint(DashboardTheme.violet)
             .help(L10n.text(isMonitoring
@@ -333,7 +333,7 @@ private struct ProviderAccountManagementCard: View {
                     set: { setEnabled($0, profile) }
                 ))
                 .labelsHidden()
-                .toggleStyle(.switch)
+                .toggleStyle(ElasticSwitchToggleStyle(showsLabel: false))
                 .controlSize(.small)
                 .tint(DashboardTheme.violet)
                 .help(L10n.text(profile.isEnabled ? "accounts.disable" : "accounts.enable"))

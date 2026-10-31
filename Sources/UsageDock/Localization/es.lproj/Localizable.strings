@@ -43,6 +43,12 @@
 "duration.less_than_minute" = "Menos de 1 min";
 "duration.hours" = "%d h";
 "duration.days" = "%d d";
+"duration.minutes_full_one" = "%d minuto";
+"duration.minutes_full_other" = "%d minutos";
+"duration.hours_full_one" = "%d hora";
+"duration.hours_full_other" = "%d horas";
+"duration.days_full_one" = "%d día";
+"duration.days_full_other" = "%d días";
 "reset.in_progress" = "Reiniciando";
 "reset.countdown" = "Se reinicia en %1$@";
 "reset.on" = "Se reinicia %1$@";
@@ -406,6 +412,7 @@
 "service.grok_bot.not_logged_in" = "El uso de Grok Bot se lee a través del inicio de sesión de Cursor; inicia sesión en Cursor con la misma cuenta que usas en Grok Bot";
 "service.grok_bot.no_weekly_allowance" = "Esta cuenta de Cursor no tiene asignación semanal de Grok Bot";
 "service.grok_bot.pooled_allowance" = "Esta cuenta usa una asignación compartida del equipo, que Grok Bot no muestra como porcentaje semanal";
+"service.grok_bot.cursor_login_authorization" = "El uso de Grok Bot se lee a través del inicio de sesión de Cursor, que Cursor ahora cifra. Haz clic en Autorizar acceso de lectura y elige Permitir siempre en el aviso de macOS para reanudar la actualización de la cuota";
 "service.kiro.not_installed" = "No se detectó kiro-cli; instala Kiro CLI e inicia sesión para conectarlo automáticamente";
 "service.opencode.no_usage" = "Este Mac aún no tiene registros de uso de OpenCode Go; aparecerán tras usar OpenCode una vez";
 "service.opencode.not_installed" = "No se detectó OpenCode; instala OpenCode Go e inicia sesión para conectarlo automáticamente";
@@ -574,6 +581,12 @@
 "trends.metric_cost" = "Coste";
 "trends.no_local_usage_today" = "Sin uso local hoy.";
 "trends.no_provider_selected" = "Sin proveedor seleccionado";
+"trends.series_menu" = "Apps";
+"trends.series_menu_help" = "Elige qué apps muestra el gráfico";
+"trends.series_no_recent" = "Sin registros locales recientes";
+"trends.series_quota_only" = "Solo datos de cuota";
+"trends.choose_apps_hint" = "Elige qué apps mostrar en el menú Apps";
+"trends.no_usage_in_range" = "Sin uso de las apps seleccionadas en este periodo";
 "trends.quota_accumulating_message" = "TokenRemain empieza a registrar tras una actualización correcta de la cuota. Todos los proveedores conectados aparecerán automáticamente; los datos anteriores no se pueden recuperar.";
 "trends.quota_accumulating_title" = "La tendencia de cuota se está acumulando";
 "trends.quota_history" = "Tendencia";
@@ -990,3 +1003,12 @@
 "subscription.advice.item_upgrade_generic" = "%@: plan superior";
 "subscription.advice.item_top_tier" = "%@: plan más alto, añade una cuenta";
 "subscription.advice.item_cancel" = "%@: cancelar";
+
+/* 1.5 Overview window table and risk banner */
+"overview.finding.projected" = "%1$@ %2$@ va %3$@ por delante del ritmo y podría agotarse en %4$@. %5$@.";
+"overview.kpi.runs_out_first" = "Se agota primero";
+"quota.windows_title" = "Ventanas de cuota";
+"quota.windows_subtitle" = "Todas las ventanas oficiales, la más urgente primero";
+"quota.windows_pace" = "Ritmo";
+"quota.windows_resets" = "Reinicio";
+"risk.headline.window_runout" = "%1$@ %2$@ podría agotarse en %3$@";

@@ -48,9 +48,22 @@ if [[ "$SYNC_RELEASE_MODE" == "1" ]]; then
     "$INSTALL_DIR/Token Remain.app"
   )
 else
-  APP_NAME="TokenRemain Dev"
-  EXECUTABLE_NAME="UsageDockDev"
-  BUNDLE_ID="com.jamesli.usagedock.dev"
+  # A second development line (1.5 beside the 1.4.x Dev build) installs next
+  # to the default Dev app under its own name, bundle identifier and process
+  # name, so neither build's pre-build stop or install replaces the other.
+  APP_NAME="${USAGEDOCK_DEV_APP_NAME:-TokenRemain Dev}"
+  EXECUTABLE_NAME="${USAGEDOCK_DEV_EXECUTABLE:-UsageDockDev}"
+  BUNDLE_ID="${USAGEDOCK_DEV_BUNDLE_ID:-com.jamesli.usagedock.dev}"
+  if [[ "$BUNDLE_ID" != com.jamesli.usagedock.dev* \
+    || "$EXECUTABLE_NAME" == "UsageDock" || "$APP_NAME" == "TokenRemain" ]]; then
+    echo "A development variant must keep a .dev bundle identifier and non-production names." >&2
+    exit 1
+  fi
+  if [[ "$APP_NAME" != "TokenRemain Dev" \
+    && ( "$EXECUTABLE_NAME" == "UsageDockDev" || "$BUNDLE_ID" == "com.jamesli.usagedock.dev" ) ]]; then
+    echo "A development variant needs its own executable and bundle identifier as well as its own name." >&2
+    exit 1
+  fi
   LEGACY_INSTALLED_APPS=(
     "$INSTALL_DIR/UsageDock Dev.app"
   )

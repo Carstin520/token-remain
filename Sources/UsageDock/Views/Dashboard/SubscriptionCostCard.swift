@@ -14,6 +14,12 @@ struct SubscriptionCostCard: View {
     @ObservedObject var costStore: SubscriptionCostStore = .shared
     @ObservedObject private var currencyStore = CurrencyStore.shared
     @State private var addingAccount: SubscriptionAccountInput?
+    /// Advice filters the whole quota history per account. The card's body
+    /// runs on every Overview rebuild (page switches, minute ticks, unrelated
+    /// store updates), so the result is reused while its inputs and the
+    /// minute stay the same. Shared, because each page switch builds a new
+    /// card and per-view state would start empty every time.
+    private static let adviceMemo = AdviceMemo()
 
     var body: some View {
         let summary = SubscriptionCostSummary.make(
@@ -68,8 +74,8 @@ struct SubscriptionCostCard: View {
 
                 Text(L10n.format("subscription.footnote", SubscriptionPlanCatalog.checkedOn)
                     + " " + L10n.text("subscription.advice.footnote"))
-                    .font(.system(size: 10))
-                    .foregroundStyle(DashboardTheme.mutedText)
+                    .font(.system(size: 11))
+                    .foregroundStyle(DashboardTheme.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -79,6 +85,27 @@ struct SubscriptionCostCard: View {
     /// local token log covers all of a provider's accounts at once, so it is
     /// used only when that provider has a single line on the card.
     private func advice(for summary: SubscriptionCostSummary) -> [ProviderAccountID: SubscriptionAdvice] {
+        let key = AdviceMemo.Key(
+            lines: summary.lines,
+            quotaStamps: summary.lines.map { line in
+                accounts.first { $0.accountID == line.accountID }?.hostQuota?.capturedAt
+            },
+            historyCount: history.samples.count,
+            historyLast: history.samples.last?.capturedAt,
+            accountHistoryCount: history.accountSamples?.count ?? 0,
+            accountHistoryLast: history.accountSamples?.last?.capturedAt,
+            tokenHistoryStamp: tokenHistory?.capturedAt,
+            minute: Int64(floor(Date().timeIntervalSinceReferenceDate / 60))
+        )
+        let memo = Self.adviceMemo
+        if let cached = memo.value, memo.key == key { return cached }
+        let result = computeAdvice(for: summary)
+        memo.key = key
+        memo.value = result
+        return result
+    }
+
+    private func computeAdvice(for summary: SubscriptionCostSummary) -> [ProviderAccountID: SubscriptionAdvice] {
         var result: [ProviderAccountID: SubscriptionAdvice] = [:]
         for line in summary.lines where !line.isExcluded {
             let isOnlyLine = summary.lines.filter { $0.provider == line.provider }.count == 1
@@ -141,7 +168,7 @@ struct SubscriptionCostCard: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .firstTextBaseline, spacing: 5) {
-                Text(display.amount(usd: summary.monthlyUSD))
+                RollingText(display.amount(usd: summary.monthlyUSD))
                     .numericFont(26, .bold)
                     .foregroundStyle(DashboardTheme.text)
                     .lineLimit(1)
@@ -210,12 +237,12 @@ struct SubscriptionCostCard: View {
                                 .fill(DashboardTheme.accent(for: part.provider))
                                 .frame(width: 6, height: 6)
                             Text(part.label)
-                                .font(.system(size: 10.5))
+                                .font(.system(size: 11))
                                 .foregroundStyle(DashboardTheme.text)
                                 .lineLimit(1)
                             Spacer(minLength: 4)
                             Text("\(display.amount(usd: part.usd)) · \(UsageFormatting.percent((part.share * 100).rounded()))")
-                                .numericFont(10)
+                                .numericFont(11)
                                 .foregroundStyle(DashboardTheme.secondaryText)
                                 .fixedSize()
                         }
@@ -373,7 +400,10 @@ struct SubscriptionCostCard: View {
     private func menuLabel(for account: SubscriptionAccountInput) -> String {
         var label = account.provider.displayName
         if !account.accountName.isEmpty { label += " · \(account.accountName)" }
-        if let plan = account.quota?.planName, !plan.isEmpty { label += " (\(plan))" }
+        if let plan = SubscriptionPlanCatalog.displayName(provider: account.provider, planName: account.quota?.planName),
+           !plan.isEmpty {
+            label += " (\(plan))"
+        }
         return label
     }
 }
@@ -428,7 +458,7 @@ private struct SubscriptionCostRow: View {
                             .foregroundStyle(DashboardTheme.text)
                             .lineLimit(1)
                         Text(line.planName ?? L10n.text("subscription.plan_unknown"))
-                            .font(.system(size: 10))
+                            .font(.system(size: 11))
                             .foregroundStyle(DashboardTheme.secondaryText)
                             .lineLimit(1)
                     }
@@ -442,8 +472,8 @@ private struct SubscriptionCostRow: View {
                             .strikethrough(line.isExcluded, color: DashboardTheme.mutedText)
                         if let sourceText {
                             Text(sourceText)
-                                .font(.system(size: 9.5))
-                                .foregroundStyle(DashboardTheme.mutedText)
+                                .font(.system(size: 11))
+                                .foregroundStyle(DashboardTheme.secondaryText)
                         }
                     }
                     .fixedSize()
@@ -453,7 +483,7 @@ private struct SubscriptionCostRow: View {
                 }
                 if let adviceText {
                     adviceText
-                        .font(.system(size: 10))
+                        .font(.system(size: 11))
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -463,7 +493,7 @@ private struct SubscriptionCostRow: View {
             .background(DashboardSurface.surface2, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressRippleButtonStyle(cornerRadius: 9, pressedScale: 0.98, rippleOpacity: 0.12))
         .accessibilityLabel(
             [label, line.planName, priceText, sourceText, advice.map { SubscriptionAdviceText.plain($0, line: line, display: display) }]
                 .compactMap { $0 }
@@ -787,4 +817,22 @@ private struct SubscriptionPriceEditor: View {
         onSave(isEmpty ? nil : draft(amount: amount))
         onClose()
     }
+}
+
+/// Last advice result and what it was computed from. A plain reference, so
+/// storing a result never invalidates a view. Main-thread only (view bodies).
+private final class AdviceMemo {
+    struct Key: Equatable {
+        let lines: [SubscriptionCostLine]
+        let quotaStamps: [Date?]
+        let historyCount: Int
+        let historyLast: Date?
+        let accountHistoryCount: Int
+        let accountHistoryLast: Date?
+        let tokenHistoryStamp: Date?
+        let minute: Int64
+    }
+
+    var key: Key?
+    var value: [ProviderAccountID: SubscriptionAdvice]?
 }

@@ -43,6 +43,12 @@
 "duration.less_than_minute" = "1분 미만";
 "duration.hours" = "%d시간";
 "duration.days" = "%d일";
+"duration.minutes_full_one" = "%d분";
+"duration.minutes_full_other" = "%d분";
+"duration.hours_full_one" = "%d시간";
+"duration.hours_full_other" = "%d시간";
+"duration.days_full_one" = "%d일";
+"duration.days_full_other" = "%d일";
 "reset.in_progress" = "재설정 중";
 "reset.countdown" = "%1$@ 후 재설정";
 "reset.on" = "%1$@ 재설정";
@@ -406,6 +412,7 @@
 "service.grok_bot.not_logged_in" = "Grok Bot 사용량은 Cursor 로그인 상태로 읽습니다. Grok Bot과 같은 계정으로 Cursor에 로그인하세요";
 "service.grok_bot.no_weekly_allowance" = "이 Cursor 계정에는 Grok Bot 주간 한도가 없습니다";
 "service.grok_bot.pooled_allowance" = "이 계정은 팀 공유 한도를 사용하며, Grok Bot은 주간 비율을 제공하지 않습니다";
+"service.grok_bot.cursor_login_authorization" = "Grok Bot 사용량은 Cursor 로그인 상태로 읽는데, Cursor가 이 로그인 정보를 암호화합니다. 「읽기 권한 허용」을 누르고 macOS 대화상자에서 「항상 허용」을 선택하면 할당량 새로 고침이 재개됩니다";
 "service.kiro.not_installed" = "kiro-cli가 감지되지 않았습니다. Kiro CLI를 설치하고 로그인하면 자동으로 연결됩니다";
 "service.opencode.no_usage" = "이 Mac에 아직 OpenCode Go 사용량 기록이 없습니다. OpenCode를 한 번 사용하면 표시됩니다";
 "service.opencode.not_installed" = "OpenCode가 감지되지 않았습니다. OpenCode Go를 설치하고 로그인하면 자동으로 연결됩니다";
@@ -574,6 +581,12 @@
 "trends.metric_cost" = "비용";
 "trends.no_local_usage_today" = "오늘 로컬 사용량이 없습니다.";
 "trends.no_provider_selected" = "선택된 제공업체 없음";
+"trends.series_menu" = "앱";
+"trends.series_menu_help" = "차트에 표시할 앱 선택";
+"trends.series_no_recent" = "최근 로컬 기록 없음";
+"trends.series_quota_only" = "할당량 데이터만";
+"trends.choose_apps_hint" = "앱 메뉴에서 표시할 앱을 선택하세요";
+"trends.no_usage_in_range" = "선택한 앱의 이 기간 사용량이 없습니다";
 "trends.quota_accumulating_message" = "할당량을 성공적으로 새로 고치면 TokenRemain이 기록을 시작합니다. 연결된 모든 제공업체가 자동으로 표시되며 이전 데이터는 채울 수 없습니다.";
 "trends.quota_accumulating_title" = "할당량 추세 누적 중";
 "trends.quota_history" = "추세";
@@ -990,3 +1003,12 @@
 "subscription.advice.item_upgrade_generic" = "%@: 상위 요금제";
 "subscription.advice.item_top_tier" = "%@: 최상위 요금제, 계정 추가";
 "subscription.advice.item_cancel" = "%@: 해지";
+
+/* 1.5 Overview window table and risk banner */
+"overview.finding.projected" = "%1$@ %2$@ 창이 페이스보다 %3$@ 앞서 있어 %4$@ 후 소진될 수 있습니다. %5$@.";
+"overview.kpi.runs_out_first" = "가장 먼저 소진";
+"quota.windows_title" = "할당량 창";
+"quota.windows_subtitle" = "모든 공식 창, 가장 급한 순";
+"quota.windows_pace" = "페이스";
+"quota.windows_resets" = "재설정";
+"risk.headline.window_runout" = "%1$@ %2$@ 창은 %3$@ 후 소진될 수 있음";

@@ -50,6 +50,12 @@ struct PopoverLayoutStoreTests {
         #expect(!PopoverQuotaWidget.showsAccountRows([current]))
         #expect(!PopoverQuotaWidget.showsAccountRows([current, paused]))
         #expect(!PopoverQuotaWidget.showsAccountRows([]))
+
+        // Only a non-default account among several is named above its rows.
+        #expect(PopoverQuotaWidget.accountCaption(for: work, among: [current, work]) == "Work")
+        #expect(PopoverQuotaWidget.accountCaption(for: current, among: [current, work]) == nil)
+        #expect(PopoverQuotaWidget.accountCaption(for: work, among: [work]) == nil)
+        #expect(PopoverQuotaWidget.accountCaption(for: work, among: [work, paused]) == nil)
     }
 
     @Test("Collapsed provider card always chooses the shortest quota window")

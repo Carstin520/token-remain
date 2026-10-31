@@ -36,6 +36,7 @@ struct TrendsSection: View {
                     capturedAt: insights.history?.capturedAt,
                     preferredAgentIDs: preferredAgentIDs,
                     excludedAgentIDs: disabledLocalUsageSourceIDs,
+                    trackedProviders: tracked.enabledOrdered,
                     throughput: throughput
                 )
                 if !insights.historyUnpricedModels.isEmpty {

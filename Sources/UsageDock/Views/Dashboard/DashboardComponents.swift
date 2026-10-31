@@ -21,7 +21,7 @@ struct SectionTitleHeader: View {
             if let trailing {
                 Text(trailing)
                     .numericFont(12)
-                    .foregroundStyle(DashboardTheme.mutedText)
+                    .foregroundStyle(DashboardTheme.secondaryText)
             }
         }
         .accessibilityElement(children: .combine)
@@ -55,6 +55,8 @@ struct OverviewPanelCard<Header: View, Content: View>: View {
         self.content = content()
     }
 
+    @Environment(\.overviewPanelFillsHeight) private var fillsHeight
+
     var body: some View {
         DashboardCard {
             VStack(alignment: .leading, spacing: 12) {
@@ -62,7 +64,9 @@ struct OverviewPanelCard<Header: View, Content: View>: View {
                 contentArea
             }
             .frame(
-                height: DashboardOverviewLayout.panelContentHeight,
+                minHeight: DashboardOverviewLayout.panelContentHeight,
+                idealHeight: fillsHeight ? nil : DashboardOverviewLayout.panelContentHeight,
+                maxHeight: fillsHeight ? .infinity : DashboardOverviewLayout.panelContentHeight,
                 alignment: .top
             )
         }
@@ -71,7 +75,15 @@ struct OverviewPanelCard<Header: View, Content: View>: View {
 
     @ViewBuilder
     private var contentArea: some View {
-        if scrollsContent {
+        if fillsHeight && scrollsContent {
+            // A card stretched to its row shows its content centred when it
+            // fits and scrolls only when it does not; no measured state.
+            ViewThatFits(in: .vertical) {
+                contentStack.frame(maxHeight: .infinity)
+                ScrollView(.vertical) { contentStack }
+                    .scrollIndicators(.automatic)
+            }
+        } else if scrollsContent {
             ScrollView(.vertical) {
                 contentStack
             }
@@ -87,6 +99,19 @@ struct OverviewPanelCard<Header: View, Content: View>: View {
             content
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// Lets an Overview panel grow past its shared slot to end level with a
+/// taller neighbour (the window table beside the right-hand column).
+private struct OverviewPanelFillsHeightKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    var overviewPanelFillsHeight: Bool {
+        get { self[OverviewPanelFillsHeightKey.self] }
+        set { self[OverviewPanelFillsHeightKey.self] = newValue }
     }
 }
 

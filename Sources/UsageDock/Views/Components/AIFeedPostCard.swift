@@ -92,7 +92,7 @@ struct AIFeedPostCard: View {
                 value: isHovering
             )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressRippleButtonStyle(cornerRadius: 13, pressedScale: 0.99, rippleOpacity: 0.1))
         .onHover { isHovering = $0 }
         .accessibilityLabel(L10n.format("feed.post_accessibility", post.displayName, post.text))
         .accessibilityHint(L10n.text("feed.open_x_hint"))

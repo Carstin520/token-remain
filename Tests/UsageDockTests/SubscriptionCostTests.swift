@@ -60,6 +60,39 @@ struct SubscriptionCostTests {
         }
     }
 
+    @Test("Claude's renamed tiers keep their ids and both spellings")
+    func claudeRenameKeepsStoredTiers() {
+        #expect(SubscriptionPlanCatalog.plan(provider: .claude, planName: "Max 5x")?.displayName == "Max")
+        #expect(SubscriptionPlanCatalog.plan(provider: .claude, planName: "Max 20x")?.displayName == "Ultra")
+        #expect(SubscriptionPlanCatalog.plan(provider: .claude, planName: "Ultra")?.id == "claude.max20x")
+        // Stored overrides and history name the tiers by id, unchanged.
+        #expect(SubscriptionPlanCatalog.plan(id: "claude.max5x", provider: .claude)?.monthlyUSD == 100)
+        #expect(SubscriptionPlanCatalog.plan(id: "claude.max20x", provider: .claude)?.monthlyUSD == 200)
+        // Cards show the current name; labels the catalog lacks stay as given.
+        #expect(SubscriptionPlanCatalog.displayName(provider: .claude, planName: "Max 20x") == "Ultra")
+        #expect(SubscriptionPlanCatalog.displayName(provider: .claude, planName: "Max") == "Max")
+        #expect(SubscriptionPlanCatalog.displayName(provider: .grok, planName: "Grok Bot plan") == "Grok Bot plan")
+        #expect(SubscriptionPlanCatalog.displayName(provider: .claude, planName: nil) == nil)
+    }
+
+    @Test("Other surfaces read the card's tier per account, or when accounts agree")
+    func catalogPlanNameFollowsCard() {
+        let work = ProviderAccountID.managed(UUID())
+        let summary = SubscriptionCostSummary.make(
+            accounts: [account(.claude, plan: nil), account(.claude, plan: "Pro", id: work), account(.codex, plan: "Plus")],
+            overrides: [
+                .system(.claude): SubscriptionPriceOverride(planID: "claude.max20x", currencyCode: "USD", excludesFromTotal: false),
+            ],
+            rates: nil
+        )
+
+        #expect(summary.catalogPlanName(for: .claude, account: .system(.claude)) == "Ultra")
+        #expect(summary.catalogPlanName(for: .claude, account: work) == "Pro")
+        #expect(summary.catalogPlanName(for: .claude) == nil)
+        #expect(summary.catalogPlanName(for: .codex) == "Plus")
+        #expect(summary.catalogPlanName(for: .cursor) == nil)
+    }
+
     @Test("Ambiguous or seat-priced plans are not guessed")
     func catalogLeavesUnknownPlansUnpriced() {
         #expect(SubscriptionPlanCatalog.plan(provider: .claude, planName: "Max") == nil)
@@ -161,7 +194,7 @@ struct SubscriptionCostTests {
             rates: nil
         )
 
-        #expect(summary.lines.map(\.planName) == ["Google AI Pro", "Max 5x"])
+        #expect(summary.lines.map(\.planName) == ["Google AI Pro", "Max"])
         #expect(summary.lines.allSatisfy { $0.source == .listPrice })
         #expect(summary.monthlyUSD == 119.99)
         #expect(summary.missingPriceCount == 0)
@@ -188,7 +221,7 @@ struct SubscriptionCostTests {
             rates: nil
         )
 
-        #expect(summary.lines[0].planName == "Max 20x")
+        #expect(summary.lines[0].planName == "Ultra")
         #expect(summary.lines[0].source == .custom)
         #expect(summary.lines[0].monthlyUSD == 180)
         // Codex keeps its detected Plus: a Claude tier cannot price it.

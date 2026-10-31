@@ -23,6 +23,17 @@ struct PreferencesStoreTests {
         #expect(store.dockLogoProviders == [.claude, .codex])
     }
 
+    @Test("Daily Usage Trend choices persist per agent")
+    func trendSeriesVisibility() {
+        let defaults = testDefaults()
+        let store = PreferencesStore(defaults: defaults)
+        #expect(store.trendSeriesVisibility.isEmpty)
+
+        store.setTrendSeriesVisible(false, agentID: "Codex")
+        store.setTrendSeriesVisible(true, agentID: "gemini")
+        #expect(PreferencesStore(defaults: defaults).trendSeriesVisibility == ["codex": false, "gemini": true])
+    }
+
     @Test("Dock logo slots persist, swap on collision and reject malformed stored pairs")
     func dockLogoProviders() {
         let defaults = testDefaults()

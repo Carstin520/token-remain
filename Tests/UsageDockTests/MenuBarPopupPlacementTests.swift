@@ -5,6 +5,12 @@ import Testing
 
 @Suite("Menu bar popup placement")
 struct MenuBarPopupPlacementTests {
+    @Test("Closing fades out no slower than opening fades in")
+    func popupFadeTiming() {
+        #expect(MotionTiming.popupFadeIn > 0)
+        #expect(MotionTiming.popupFadeOut <= MotionTiming.popupFadeIn)
+    }
+
     @Test("Popup is centered below the status item and the arrow tracks its center")
     func centeredAlignment() {
         let placement = MenuBarPopupPlacement.resolve(

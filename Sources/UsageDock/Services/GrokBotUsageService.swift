@@ -19,6 +19,11 @@ struct GrokBotUsageService {
         case noWeeklyAllowance
         /// 团队共享池:Grok Bot 自己也不展示周百分比,这里同样不伪造一个。
         case pooledAllowance
+        /// Cursor 已加密登录凭证,读取需要用户在卡片上主动授权一次;与 Cursor
+        /// 共用同一次授权,不是"未登录"。
+        case cursorLoginNeedsAuthorization
+        /// 加密凭证无法解开(钥匙串条目缺失或解出的不是 token)。
+        case cursorLoginUnreadable
 
         var errorDescription: String? {
             switch self {
@@ -34,6 +39,10 @@ struct GrokBotUsageService {
                 return L10n.text("service.grok_bot.no_weekly_allowance")
             case .pooledAllowance:
                 return L10n.text("service.grok_bot.pooled_allowance")
+            case .cursorLoginNeedsAuthorization:
+                return L10n.text("service.grok_bot.cursor_login_authorization")
+            case .cursorLoginUnreadable:
+                return L10n.text("service.cursor.encrypted_login_unreadable")
             }
         }
     }
@@ -43,14 +52,25 @@ struct GrokBotUsageService {
 
     typealias Transport = @Sendable (URLRequest) async throws -> (Data, URLResponse)
 
-    var loadAuth: @Sendable () async -> CursorAuthReader.Auth? = { await CursorAuthReader().load() }
+    var loadAuth: @Sendable (Date, KeychainRead.Interaction) async -> CursorAuthReader.Resolution = {
+        await CursorAuthReader().resolve(now: $0, interaction: $1)
+    }
     /// 单次请求 10 秒;整轮刷新另由 `UsageStore.fetchAux` 的 `AsyncDeadline` 兜底,
     /// 超时只保留旧缓存,不等于凭证失效。
     var transport: Transport = { try await URLSession.shared.data(for: $0) }
 
-    func fetch(now: Date = .now) async throws -> ProviderQuota {
-        guard let auth = await loadAuth() else {
-            throw ServiceError.notLoggedIn
+    /// - Parameter keychainInteraction: `.allowed` only from the explicit
+    ///   授权只读访问 action; background refresh never shows a prompt.
+    func fetch(
+        now: Date = .now,
+        keychainInteraction: KeychainRead.Interaction = .disallowed
+    ) async throws -> ProviderQuota {
+        let auth: CursorAuthReader.Auth
+        switch await loadAuth(now, keychainInteraction) {
+        case .token(let resolved): auth = resolved
+        case .sealed(.authorizationRequired): throw ServiceError.cursorLoginNeedsAuthorization
+        case .sealed(.unreadable): throw ServiceError.cursorLoginUnreadable
+        case .missing: throw ServiceError.notLoggedIn
         }
         if let expiry = JWT.expiry(auth.accessToken), expiry <= now {
             Self.logger.info("Cursor access token expired; waiting for Cursor to renew it")

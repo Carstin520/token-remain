@@ -30,7 +30,7 @@ struct PopoverFooter: View {
                             .usageDockAdaptiveForeground(.primary)
                             .commandLabelPadding()
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PressRippleButtonStyle.popup(cornerRadius: 9))
                     .commandSurface()
                     .help(L10n.text("action.open_dashboard_help"))
 
@@ -44,7 +44,7 @@ struct PopoverFooter: View {
                             .usageDockAdaptiveForeground(.secondary)
                             .commandLabelPadding()
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PressRippleButtonStyle.popup(cornerRadius: 9))
                     .fixedSize()
                     .commandSurface()
                     .accessibilityLabel(L10n.text("action.settings"))
@@ -58,7 +58,7 @@ struct PopoverFooter: View {
                             .usageDockAdaptiveForeground(.secondary)
                             .commandLabelPadding()
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PressRippleButtonStyle.popup(cornerRadius: 9))
                     .commandSurface()
                     .help(L10n.text("action.quit_app"))
                 }

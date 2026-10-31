@@ -6,6 +6,7 @@ enum DashboardSection: String, CaseIterable, Identifiable, Hashable {
     case overview
     case limits
     case trends
+    case aiFeed
     case devices
     case accounts
     case dataSources
@@ -28,7 +29,7 @@ enum DashboardSection: String, CaseIterable, Identifiable, Hashable {
 
     var group: Group {
         switch self {
-        case .overview, .limits, .trends, .devices: return .monitor
+        case .overview, .limits, .trends, .aiFeed, .devices: return .monitor
         case .accounts, .dataSources, .settings: return .system
         }
     }
@@ -39,6 +40,7 @@ enum DashboardSection: String, CaseIterable, Identifiable, Hashable {
         case .overview: return L10n.text("nav.overview")
         case .limits: return L10n.text("nav.limits")
         case .trends: return L10n.text("nav.trends")
+        case .aiFeed: return L10n.text("widget.ai_feed")
         case .devices: return L10n.text("nav.devices")
         case .accounts: return L10n.text("nav.accounts")
         case .dataSources: return L10n.text("nav.data_sources")
@@ -52,6 +54,7 @@ enum DashboardSection: String, CaseIterable, Identifiable, Hashable {
         case .overview: return L10n.text("section.overview.subtitle")
         case .limits: return L10n.text("section.limits.subtitle")
         case .trends: return L10n.text("section.trends.subtitle")
+        case .aiFeed: return L10n.text("feed.section_subtitle")
         case .devices: return L10n.text("section.devices.subtitle")
         case .accounts: return L10n.text("section.accounts.subtitle")
         case .dataSources: return L10n.text("section.data_sources.subtitle")
@@ -64,6 +67,8 @@ enum DashboardSection: String, CaseIterable, Identifiable, Hashable {
         case .overview: return "square.grid.2x2"
         case .limits: return "gauge.with.dots.needle.50percent"
         case .trends: return "chart.line.uptrend.xyaxis"
+        // Same mark as the menu-bar AI Feed card.
+        case .aiFeed: return "newspaper"
         case .devices: return "laptopcomputer.and.iphone"
         case .accounts: return "person.2.badge.gearshape"
         case .dataSources: return "cylinder.split.1x2"

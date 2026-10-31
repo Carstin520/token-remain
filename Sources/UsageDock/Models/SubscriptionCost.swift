@@ -10,7 +10,7 @@ struct SubscriptionPlan: Sendable, Equatable, Identifiable {
     let displayName: String
     let monthlyUSD: Double
     /// Usage allowance relative to the provider's base paid tier, as the
-    /// vendor states it (Max 20x = 20). Nil for free tiers and tiers whose
+    /// vendor states it (Claude Ultra = 20). Nil for free tiers and tiers whose
     /// multiple is not published; advice never downgrades into such a tier.
     let relativeCapacity: Double?
     /// Normalized `planName` spellings that identify this tier. Both the raw
@@ -19,9 +19,12 @@ struct SubscriptionPlan: Sendable, Equatable, Identifiable {
 }
 
 /// Recognizes the plans whose list price is known. Seat-priced, quote-only and
-/// ambiguous tiers (Claude "Max" without a 5x/20x suffix, ChatGPT Team) are
-/// deliberately absent: an unrecognized plan asks the user for a price rather
-/// than borrowing a neighbouring tier's. The same tiers are offered in the
+/// ambiguous tiers (a bare Claude "Max", ChatGPT Team) are deliberately
+/// absent: an unrecognized plan asks the user for a price rather than
+/// borrowing a neighbouring tier's. Claude's local credentials report the
+/// subscription type "max" for both of its upper tiers, and since the
+/// October 2026 rename "Max" is also the $100 tier's own name, so only a
+/// label carrying the tier (`Max 5x`, `Max 20x`, `Ultra`) is priced. The same tiers are offered in the
 /// price editor, so a source that reports no plan (Claude Web, Antigravity)
 /// can still be priced by choosing one.
 enum SubscriptionPlanCatalog {
@@ -33,8 +36,12 @@ enum SubscriptionPlanCatalog {
     static let plans: [SubscriptionPlan] = [
         plan(.claude, "claude.free", "Free", 0, nil, ["free"]),
         plan(.claude, "claude.pro", "Pro", 20, 1, ["pro"]),
-        plan(.claude, "claude.max5x", "Max 5x", 100, 5, ["max5x"]),
-        plan(.claude, "claude.max20x", "Max 20x", 200, 20, ["max20x"]),
+        // Anthropic renamed these in October 2026 (Max 5x → Max, Max 20x →
+        // Ultra) at the same prices. The ids are stored in price overrides
+        // and quota history, so they keep the old spelling; sources may
+        // report either name.
+        plan(.claude, "claude.max5x", "Max", 100, 5, ["max5x"]),
+        plan(.claude, "claude.max20x", "Ultra", 200, 20, ["max20x", "ultra"]),
         plan(.codex, "codex.free", "Free", 0, nil, ["free"]),
         plan(.codex, "codex.plus", "Plus", 20, 1, ["plus"]),
         plan(.codex, "codex.pro5x", "Pro 5x", 100, 5, ["prolite", "pro5x"]),
@@ -88,6 +95,13 @@ enum SubscriptionPlanCatalog {
     ) -> SubscriptionPlan? {
         guard let key = normalized(planName) else { return nil }
         return plans.first { $0.provider == provider && $0.aliases.contains(key) }
+    }
+
+    /// The tier's current catalog name for a source label (`Max 20x` →
+    /// `Ultra`, `prolite` → `Pro 5x`); a label the catalog does not know is
+    /// shown as the source gave it.
+    static func displayName(provider: ProviderQuota.Provider, planName: String?) -> String? {
+        plan(provider: provider, planName: planName)?.displayName ?? planName
     }
 
     /// Names the tier a quota reading was taken under: the tier the user
@@ -238,6 +252,18 @@ struct SubscriptionCostSummary: Sendable, Equatable {
 
     var unconvertibleCount: Int {
         countedLines.filter(\.isUnconvertible).count
+    }
+
+    /// The catalog tier this card names for one account, or for a provider
+    /// whose accounts all agree: the tier the user chose, else the one
+    /// recognized from the source. Nil when unknown or the accounts differ,
+    /// so other surfaces never show a tier the card does not.
+    func catalogPlanName(for provider: ProviderQuota.Provider, account: ProviderAccountID? = nil) -> String? {
+        let names = Set(lines
+            .filter { $0.provider == provider && (account == nil || $0.accountID == account) }
+            .map { $0.catalogPlan?.displayName })
+        guard names.count == 1, let name = names.first ?? nil else { return nil }
+        return name
     }
 
     static func make(
