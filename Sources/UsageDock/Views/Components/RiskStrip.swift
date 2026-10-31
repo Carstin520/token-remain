@@ -1,8 +1,10 @@
 import SwiftUI
 
 /// Risk-first summary banner: the product's headline signal. Tint and copy come
-/// from live remaining quota plus the current-window pace projection. The
-/// trailing value names the service that currently constrains the user.
+/// from live remaining quota plus the current-window pace projection. When a
+/// window is projected to run out before reset, the banner names that window,
+/// when it runs out and when it resets; otherwise the second line names the
+/// service with the least quota left.
 struct RiskStrip: View {
     let insights: UsageInsights
 
@@ -14,19 +16,15 @@ struct RiskStrip: View {
                 PixelBadge(text: risk.badge, color: risk.tint, filled: risk == .high)
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(insights.decisionHeadline(at: context.date))
-                        .font(.system(size: 13, weight: .semibold))
+                    Text(headline(at: context.date))
+                        .numericFont(13, .semibold)
                         .usageDockAdaptiveForeground(.primary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.88)
 
-                    if let window = insights.constrainingWindow {
-                        Text(L10n.format(
-                            "risk.provider_remaining",
-                            window.displayName,
-                            UsageFormatting.percent(window.remainingPercent)
-                        ))
-                            .numericFont(10, .medium)
+                    if let detail = detail(at: context.date) {
+                        Text(detail)
+                            .numericFont(11, .medium)
                             .usageDockAdaptiveForeground(.secondary)
                             .lineLimit(1)
                             .minimumScaleFactor(0.85)
@@ -48,16 +46,44 @@ struct RiskStrip: View {
             .accessibilityLabel(L10n.format(
                 "risk.accessibility_summary",
                 risk.badge,
-                insights.decisionHeadline(at: context.date)
+                headline(at: context.date)
             ))
-            .accessibilityValue(
-                insights.constrainingWindow.map {
-                    L10n.format(
-                        "risk.provider_remaining",
-                        $0.displayName,
-                        UsageFormatting.percent($0.remainingPercent)
-                    )
-                } ?? ""
+            .accessibilityValue(detail(at: context.date) ?? "")
+        }
+    }
+
+    private func headline(at now: Date) -> String {
+        guard let assessment = insights.paceAssessment(at: now),
+              let runOutAt = assessment.pace.estimatedRunOutAt
+        else { return insights.decisionHeadline(at: now) }
+        if assessment.pace.isExhausted {
+            let window = assessment.window
+            return "\(window.displayName) \(UsageFormatting.windowFullName(minutes: window.windowMinutes)) · \(L10n.text("pace.exhausted"))"
+        }
+        return L10n.format(
+            "risk.headline.window_runout",
+            assessment.window.displayName,
+            UsageFormatting.windowFullName(minutes: assessment.window.windowMinutes),
+            UsageFormatting.durationUntil(runOutAt, now: now)
+        )
+    }
+
+    /// `8.4% ahead · Resets Tue 12:58` for a projected run-out; otherwise
+    /// `Claude 52% remaining` for the scarcest window.
+    private func detail(at now: Date) -> String? {
+        if let assessment = insights.paceAssessment(at: now) {
+            if assessment.pace.isExhausted {
+                return assessment.window.resetsAt.map { UsageFormatting.resetDescription(to: $0, now: now) }
+            }
+            let ahead = L10n.format("pace.deficit", UsageFormatting.percent(abs(assessment.pace.deltaPercent)))
+            guard let reset = assessment.window.resetsAt else { return ahead }
+            return "\(ahead) · \(UsageFormatting.resetDescription(to: reset, now: now))"
+        }
+        return insights.constrainingWindow.map {
+            L10n.format(
+                "risk.provider_remaining",
+                $0.displayName,
+                UsageFormatting.percent($0.remainingPercent)
             )
         }
     }

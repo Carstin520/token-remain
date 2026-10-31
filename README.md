@@ -1,283 +1,290 @@
 <div align="center">
 
-<a href="https://tokenremain.com"><img src="site/assets/mascot.gif" width="112" alt="TokenRemain 吉祥物动画：剩余额度从 100% 递减到 0%，表情随之变化" /></a>
+<a href="https://tokenremain.com"><img src="site/assets/mascot.gif" width="112" alt="TokenRemain mascot animation: remaining quota draining from 100% to 0%, expression changing along the way" /></a>
 
 # TokenRemain
 
-**AI 编码工具的剩余额度，常驻 Mac 菜单栏。**<br/>
-凭证只留在本机：只读、不刷新、不上传。
+**Your AI coding quota, always in the Mac menu bar.**<br/>
+Credentials never leave your machine: read-only, never refreshed, never uploaded.
 
 <p>
-  <a href="https://github.com/Carstin520/token-remain/releases/latest"><img alt="最新版本" src="https://img.shields.io/github/v/release/Carstin520/token-remain?label=latest&color=22D3EE" /></a>
+  <a href="https://github.com/Carstin520/token-remain/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/Carstin520/token-remain?label=latest&color=22D3EE" /></a>
   <img alt="macOS 14+ · Universal" src="https://img.shields.io/badge/macOS_14%2B-Universal-000?logo=apple&logoColor=white" />
-  <img alt="已通过 Apple 公证" src="https://img.shields.io/badge/Apple-Notarized-34C759?logo=apple&logoColor=white" />
-  <a href="LICENSE"><img alt="Apache-2.0 许可" src="https://img.shields.io/badge/license-Apache--2.0-8A94A6" /></a>
+  <img alt="Notarized by Apple" src="https://img.shields.io/badge/Apple-Notarized-34C759?logo=apple&logoColor=white" />
+  <a href="LICENSE"><img alt="Apache-2.0 license" src="https://img.shields.io/badge/license-Apache--2.0-8A94A6" /></a>
 </p>
 
-<h3><a href="https://api.tokenremain.com/v1/downloads/macos">⬇️ 下载 TokenRemain.dmg</a></h3>
+<h3><a href="https://api.tokenremain.com/v1/downloads/macos">⬇️ Download TokenRemain.dmg</a></h3>
 
-<a href="https://tokenremain.com">官网</a> ·
-<a href="https://testflight.apple.com/join/DU3DrnhG">iPhone 测试版</a> ·
-<a href="CHANGELOG.md">更新记录</a> ·
-<a href="https://tokenremain.com/privacy">隐私政策</a> ·
-<a href="https://github.com/Carstin520/token-remain/issues">问题反馈</a> ·
-<a href="README.en.md">English</a>
+<a href="https://tokenremain.com">Website</a> ·
+<a href="https://testflight.apple.com/join/DU3DrnhG">iPhone beta</a> ·
+<a href="CHANGELOG.md">Changelog</a> ·
+<a href="https://tokenremain.com/privacy">Privacy</a> ·
+<a href="https://github.com/Carstin520/token-remain/issues">Issues</a> ·
+<a href="README.zh-CN.md">简体中文</a>
 
 </div>
 
 <br/>
 
 <p align="center">
-  <img src="site/assets/dash-overview-zh.webp" width="77%" alt="Dashboard 概览：最低剩余额度、今日 Token 与估算成本、官方额度进度与风险提示" />
-  <img src="site/assets/popover-zh.webp" width="19%" alt="菜单栏弹窗：按应用列出剩余额度、今日本地统计与 AI 动态" />
+  <img src="docs/assets/readme/overview.webp" width="77%" alt="Dashboard Overview: what runs out first, today's tokens and estimated cost, every official quota window with plan badges, today's usage and trending AI posts" />
+  <img src="docs/assets/readme/popover.webp" width="19%" alt="Menu bar panel: remaining quota per app with full window lengths, today's local usage and the AI Feed" />
 </p>
-<p align="center"><sub>Claude Code、Codex、Cursor、Grok、GLM 等 27+ 家工具的剩余额度、重置倒计时与今日成本，一屏看完。（真实使用数据截图）</sub></p>
+<p align="center"><sub>Remaining quota, reset countdowns and today's cost for Claude Code, Codex, Cursor, Grok, GLM and 27+ tools — on one screen. (Real usage data.)</sub></p>
 
 > [!TIP]
-> **1.4 新功能**：Dashboard 新增「账号管理」，多账号可单独启停与重命名；趋势页拆分输入 / 输出 / 缓存写入 / 缓存读取，并在本机估算各模型输出速度（tok/s）；成本估算支持 13 种显示币种；Claude Desktop / Cowork 会话计入本地统计。完整内容见[更新记录](CHANGELOG.md)。
+> **New in 1.5.1:** a redesigned Dashboard and menu bar panel. Overview puts what runs out first, today's tokens and cost, every quota window and trending AI posts on one page; quota rows read simply "5 hours" or "Fable · 7 days", with the data source moved to the Dashboard's small print; plan badges follow your Subscriptions card; the Daily Usage Trend gets an **Apps** menu to add or remove apps. Numbers and bars roll in on first open, buttons answer with springs and ripples, and the panel and Dashboard fade in and out — all of it follows Reduce Motion. See the [changelog](CHANGELOG.md) for earlier releases.
 
-## 功能
+## Features
 
-### 🧭 额度：撑不撑得到重置，一眼就知道
+### 🧭 Quota — know whether you'll make it to reset
 
-- **27+ 家工具并排展示**：每个官方额度窗口都带进度条、重置倒计时和更新时间。
-- **节奏预测**：按真实窗口进度判断当前节奏能否撑到重置，撑不到时给出预计可用时长。
-- **多账号**：同一工具的多个账号分行显示；「账号管理」页可按应用开关监控、启停账号、重命名、更新凭证，同套餐账号可选合并查看。
-- **随处可见**：菜单栏胶囊、跨空间浮窗、Dock 图标双仪表（两款应用自选），macOS 26 上使用 Liquid Glass。
+- **27+ tools side by side**: every official quota window with a progress bar, reset countdown and freshness; Overview lists them in one table, most urgent first.
+- **Pace prediction**: real window progress decides whether your current pace lasts until reset, with an ETA when it won't.
+- **Clean rows**: each bar names only its pool and window length ("5 hours", "Fable · 7 days"). Where the numbers come from (for example Claude Web) appears once, in the Dashboard's small print.
+- **Multiple accounts**: each account of the same tool gets its own rows; when an app has several, the non-default ones are named in small print above their rows. The Account Management page toggles monitoring per app, enables or pauses accounts, renames them and updates credentials.
+- **Wherever you look**: menu bar capsules, a floating window across Spaces, two meters on the Dock icon (you pick the apps), and a Liquid Glass panel on macOS 26 whose height follows the cards you expand. Reorder the panel's cards however you like.
 
-### 📊 用量：Token 花在哪、跑得多快
+### 📊 Usage — where the tokens go, and what you pay
 
-- **今日成本**：内置 ccusage 离线统计 15+ 种本地编码 Agent（含 Claude Desktop / Cowork），按官方 API 标价估算。
-- **Token 构成**：输入、输出、缓存写入、缓存读取分开统计；点击趋势图任意一天即可展开按模型的明细。
-- **输出速度**：从本机 Claude Code 与 Codex 会话日志估算各模型的端到端 tok/s，只读取时间戳与 Token 计数。
-- **显示币种**：USD、CNY、EUR、JPY 等 13 种；只换算 API 标价估算，官方账单与余额保持原币种。
+- **Today's cost**: the bundled ccusage counts 15+ local coding agents offline (Claude Desktop / Cowork included), estimated at official API list prices.
+- **Choose what Trends shows**: the Daily Usage Trend's **Apps** menu adds or removes apps. Apps whose local logs TokenRemain reads stay selectable even with nothing recent; apps with quota data only are listed so it's clear why they can't be charted.
+- **Token mix and output speed**: input, output, cache write and cache read counted separately; click any day for a per-model breakdown with end-to-end tok/s estimated from local Claude Code and Codex logs.
+- **Subscriptions**: monthly plan prices with per-account overrides, employer-paid exclusions and usage-based tier suggestions; plan badges on Overview and Limits follow what you set here.
+- **Display currency**: USD, CNY, EUR, JPY and 9 more; only list-price estimates are converted, official bills and balances stay in their billing currency.
 
-### 🔐 隐私：凭证从不离开你的 Mac
+### 🔐 Privacy — credentials never leave your Mac
 
-- **只读本机已有凭证**：无需注册账号，无遥测，不刷新第三方 token，不上传凭证。
-- **可选加密同步**：默认关闭；开启后只把白名单字段组成的快照加密写入你自己的 iCloud，供 iPhone、Apple Watch 与桌面小组件显示。
-- **AI 动态**：精选 Anthropic、OpenAI 等官方账号，额度重置与重大更新可推送本机通知。
-- **低能耗**：后台 CPU 比 v1.2.2 降低 95%（[测试方法](docs/performance-v1.2.3.md)）；界面支持简体中文、繁體中文、English、日本語、한국어 等多种语言。
+- **Reads what's already there**: no account to create, no telemetry, never refreshes third-party tokens, never uploads credentials.
+- **Optional encrypted sync**: off by default; when on, only an allowlisted snapshot is encrypted into your own iCloud for iPhone, Apple Watch and Home Screen widgets.
+- **AI Feed and Trending**: curated posts from Anthropic, OpenAI and other official accounts in a single readable column, the top picks shown on Overview, with local alerts for quota resets and major updates.
+- **Light on energy**: background CPU down 95% vs v1.2.2 ([method](docs/performance-v1.2.3.md)), and 1.5 trims background wake-ups and memory further; interface in English, 简体中文, 繁體中文, 日本語, 한국어 and more.
 
-## 界面一览
+## Screenshots
 
 <table>
   <tr>
-    <td width="50%"><img src="site/assets/dash-limits-zh.webp" alt="额度页：各服务商的官方窗口、重置倒计时与节奏余量" /></td>
-    <td width="50%"><img src="site/assets/dash-models-zh.webp" alt="趋势页模型明细：当日 Token 构成与各模型 tok/s" /></td>
+    <td width="50%"><img src="docs/assets/readme/limits.webp" alt="Limits page: official windows per provider with reset countdowns, pace reserve and the data source in small print" /></td>
+    <td width="50%"><img src="docs/assets/readme/trends.webp" alt="Trends page: stacked daily token bars with the Apps menu, token mix and quota-consumption curves" /></td>
   </tr>
   <tr>
-    <td><b>额度</b> · 每个窗口的剩余、重置时间与节奏余量，超前时标红并给出预计用尽时间。</td>
-    <td><b>模型明细</b> · 点击任意一天：Token 构成、各模型用量占比与本机估算的输出速度。</td>
+    <td><b>Limits</b> · remaining quota, reset time and pace reserve for every window, flagged red with a run-out ETA when you're ahead of budget.</td>
+    <td><b>Trends</b> · daily tokens or cost stacked by app (pick them in the Apps menu), the token mix, and how fast each quota window is being used.</td>
   </tr>
 </table>
 
 <details>
-<summary><b>更多截图</b>：趋势页、iPhone、Apple Watch 与小组件</summary>
+<summary><b>More screenshots</b>: iPhone, Apple Watch and widgets</summary>
 <br/>
 
 <p align="center">
-  <img src="site/assets/dash-trends-zh.webp" width="80%" alt="趋势页：按服务商堆叠的每日 Token 柱状图、Token 构成与额度消耗曲线" />
+  <img src="site/assets/phone-overview.jpg" width="24%" alt="iPhone overview page, aggregating up to 16 Macs" />
+  <img src="site/assets/phone-trends.jpg" width="24%" alt="iPhone trends page" />
+  <img src="site/assets/phone-aifeed.jpg" width="24%" alt="iPhone AI Feed page" />
+  <img src="site/assets/watch-overview.png" width="16%" alt="Apple Watch overview" />
 </p>
 <p align="center">
-  <img src="site/assets/phone-overview-zh.jpg" width="24%" alt="iPhone 概览页，聚合最多 16 台 Mac" />
-  <img src="site/assets/phone-trends-zh.jpg" width="24%" alt="iPhone 趋势页" />
-  <img src="site/assets/phone-aifeed-zh.jpg" width="24%" alt="iPhone AI Feed 页" />
-  <img src="site/assets/watch-overview-zh.png" width="16%" alt="Apple Watch 概览" />
-</p>
-<p align="center">
-  <img src="site/assets/widget-s-zh.png" width="30%" alt="iPhone 小号桌面小组件" />
-  <img src="site/assets/widget-m-zh.png" width="60%" alt="iPhone 中号桌面小组件" />
+  <img src="site/assets/widget-s.png" width="30%" alt="Small iPhone Home Screen widget" />
+  <img src="site/assets/widget-m.png" width="60%" alt="Medium iPhone Home Screen widget" />
 </p>
 
-iPhone 版目前为 [TestFlight 公开测试](https://testflight.apple.com/join/DU3DrnhG)；数据由 Mac 单向加密发布，移动客户端源码不在本仓库开源范围内。
+The iPhone app is in [public TestFlight beta](https://testflight.apple.com/join/DU3DrnhG). Data is published one-way and encrypted by the Mac; the mobile client source is outside this repository's open-source scope.
 
 </details>
 
-## 快速上手
+## Quick start
 
-1. **安装**：[下载 DMG](https://api.tokenremain.com/v1/downloads/macos)，把 TokenRemain 拖进「应用程序」后打开。
-2. **选择工具**：欢迎页会扫描本机已安装的 AI 工具，勾选要追踪的即可。凭证沿用各工具自己的登录，无需在 TokenRemain 里再登录；Codex 可沿用官方桌面 App 的登录。
-3. **补充密钥**：Z.ai、OpenRouter 等需要 API Key 的服务，直接在对应额度卡里粘贴，或在「数据来源」页的「API Key 设置」中填写。密钥只存本机钥匙串。
-4. **按需调整**：在「设置 › 刷新与同步」调整额度刷新频率（1–30 分钟或仅手动）；在「设置 › 通用」选择 Dock 图标显示的两款应用和显示币种；在「账号管理」页管理多账号。
+1. **Install**: [download the DMG](https://api.tokenremain.com/v1/downloads/macos), drag TokenRemain into Applications and open it.
+2. **Pick your tools**: the welcome screen scans your Mac for installed AI tools — tick the ones to track. TokenRemain reuses each tool's own sign-in, so there's nothing to log into; Codex can reuse the official desktop app's sign-in.
+3. **Add keys if needed**: for services that need an API key (Z.ai, OpenRouter, …), paste it straight into that service's quota card, or under "API key settings" on the Data Sources page. Keys stay in your Mac's Keychain.
+4. **Tune it**: set the quota refresh interval (1–30 minutes or manual) in Settings › Refresh & Sync; choose the Dock icon's two apps and the display currency in Settings › General; enter what you pay on Overview › Subscriptions; pick the apps in Trends with the Apps menu.
 
 > [!NOTE]
-> Claude Code / Cowork 的本地 Token 统计无需额外安装 CLI。Claude 额度需要可读取的 Claude Code 登录，或在「数据来源」中手动配置 claude.ai 会话（见[常见问题](#常见问题)）；仅登录 Claude 桌面 App 不保证能续期 Code 凭证。
+> Local token stats for Claude Code / Cowork need no extra CLI. Claude quota needs a readable Claude Code sign-in, or a claude.ai session configured on the Data Sources page (see the [FAQ](#faq)); signing in to the Claude desktop app alone doesn't guarantee the Code credential stays renewed.
 
-## 支持接入的应用
+## Supported services
 
-🟢 **自动** = 登录对应工具即接入 · 🔑 **API Key** = 粘贴一次密钥，仅存 macOS 钥匙串
+🟢 **Auto** = connected as soon as the tool is signed in · 🔑 **API key** = paste once, stored only in the macOS Keychain
 
-| 应用 | 接入 | 读取内容 |
+| Service | Connect | What it reads |
 | :-- | :-: | :-- |
-| <img src="site/assets/providers/claude-code.svg" width="16" alt="" /> **Claude Code** | 🟢 | 5 小时 / 7 天窗口；第三方 `ANTHROPIC_BASE_URL` 标注实际 API |
-| <img src="site/assets/providers/codex-glyph.svg" width="16" alt="" /> **Codex** | 🟢 | 5 小时 / 7 天窗口、重置卡；自定义 `base_url` 标注实际 API |
-| <img src="site/assets/providers/cursor.svg" width="16" alt="" /> **Cursor** | 🟢 | 月度账期额度，Cursor 模型与其他模型分池显示 |
-| <img src="site/assets/providers/grok.svg" width="16" alt="" /> **Grok**（xAI） | 🟢 | 周池剩余额度 |
-| <img src="site/assets/providers/grok-bot.png" width="16" alt="" /> **Grok Bot** | 🟢 | 周额度；通过本机 Cursor 登录读取，需与 Grok Bot 使用同一 Cursor 账户 |
-| <img src="site/assets/providers/copilot.svg" width="16" alt="" /> **GitHub Copilot** | 🟢 | 月度 Credits |
-| <img src="site/assets/providers/devin.svg" width="16" alt="" /> **Devin** | 🟢 | 日 / 周配额 |
-| <img src="site/assets/providers/windsurf.png" width="16" alt="" /> **Windsurf** | 🟢 | 日 / 周配额 |
-| <img src="site/assets/providers/antigravity.svg" width="16" alt="" /> **Antigravity** | 🟢 | 配额池 |
-| <img src="site/assets/providers/opencode.svg" width="16" alt="" /> **OpenCode** | 🟢 | 套餐本地估算；第三方 provider 标注实际 API |
-| <img src="site/assets/providers/zai.svg" width="16" alt="" /> **Z.ai / 智谱** | 🔑 | Coding Plan 额度；macOS 国内站另支持普通 API Key 的人民币余额（中国 → API 余额） |
-| <img src="site/assets/providers/openrouter.svg" width="16" alt="" /> **OpenRouter** | 🔑 | Key 限额、Credits 与账户余额 |
+| <img src="site/assets/providers/claude-code.svg" width="16" alt="" /> **Claude Code** | 🟢 | 5-hour / 7-day windows; third-party `ANTHROPIC_BASE_URL` attributed to its real API |
+| <img src="site/assets/providers/codex-glyph.svg" width="16" alt="" /> **Codex** | 🟢 | 5-hour / 7-day windows and reset cards; custom `base_url` attributed to its real API |
+| <img src="site/assets/providers/cursor.svg" width="16" alt="" /> **Cursor** | 🟢 | Monthly billing-cycle quota, with Cursor and other models as separate pools |
+| <img src="site/assets/providers/grok.svg" width="16" alt="" /> **Grok** (xAI) | 🟢 | Weekly pool remaining |
+| <img src="site/assets/providers/grok-bot.png" width="16" alt="" /> **Grok Bot** | 🟢 | Weekly allowance, read through the local Cursor sign-in (use the same Cursor account as Grok Bot) |
+| <img src="site/assets/providers/copilot.svg" width="16" alt="" /> **GitHub Copilot** | 🟢 | Monthly credits |
+| <img src="site/assets/providers/devin.svg" width="16" alt="" /> **Devin** | 🟢 | Daily / weekly quotas |
+| <img src="site/assets/providers/windsurf.png" width="16" alt="" /> **Windsurf** | 🟢 | Daily / weekly quotas |
+| <img src="site/assets/providers/antigravity.svg" width="16" alt="" /> **Antigravity** | 🟢 | Quota pools |
+| <img src="site/assets/providers/opencode.svg" width="16" alt="" /> **OpenCode** | 🟢 | Local plan estimate; third-party providers attributed to their real API |
+| <img src="site/assets/providers/zai.svg" width="16" alt="" /> **Z.ai / BigModel** | 🔑 | Coding Plan quotas; prepaid CNY API balance on macOS (China → API Balance) |
+| <img src="site/assets/providers/openrouter.svg" width="16" alt="" /> **OpenRouter** | 🔑 | Key limits, credits and account balance |
 
 <details>
-<summary><b>另外 16 家扩展 Provider</b>与本地成本来源</summary>
+<summary><b>16 more extended providers</b> and local cost sources</summary>
 <br/>
 
-| 应用 | 接入方式 | | 应用 | 接入方式 |
+| Service | Connection | | Service | Connection |
 | :-- | :-- | :-- | :-- | :-- |
-| <img src="site/assets/providers/deepseek.svg" width="16" alt="" /> **DeepSeek** | API Key | | <img src="site/assets/providers/qoder.svg" width="16" alt="" /> **Qoder** | Cookie |
-| <img src="site/assets/providers/kimi.svg" width="16" alt="" /> **Kimi** | API Key / Cookie | | <img src="site/assets/providers/kiro.svg" width="16" alt="" /> **Kiro** | `kiro-cli /usage` 解析 |
-| <img src="site/assets/providers/minimax.svg" width="16" alt="" /> **MiniMax** | API Key | | <img src="site/assets/providers/volcengine.svg" width="16" alt="" /> **火山引擎** | AK:SK 签名 |
-| <img src="site/assets/providers/mimo.svg" width="16" alt="" /> **MiMo Code** | Cookie | | <img src="site/assets/providers/ollama.svg" width="16" alt="" /> **Ollama** | session Cookie |
-| <img src="site/assets/providers/zai.svg" width="16" alt="" /> **GLM Team** | API Key + Org + Project | | <img src="Sources/UsageDock/Resources/ProviderIcons/bailian.svg" width="16" alt="" /> **阿里云百炼 Token Plan** | 控制台 Cookie |
-| <img src="site/assets/providers/amp.svg" width="16" alt="" /> **Amp** | 自动读取 Amp CLI 的 Key，或 Cookie | | <img src="site/assets/providers/muse.png" width="16" alt="" /> **Muse** | Cookie（muse.ai） |
-| <img src="site/assets/providers/muse.png" width="16" alt="" /> **Muse Code** | Cookie（dev.meta.ai），按团队读取 | | **Factory** | Cookie（app.factory.ai） |
-| **Augment** | Cookie（app.augmentcode.com） | | **第三方 API** | New API / 自定义余额接口 |
+| <img src="site/assets/providers/deepseek.svg" width="16" alt="" /> **DeepSeek** | API key | | <img src="site/assets/providers/qoder.svg" width="16" alt="" /> **Qoder** | Cookie |
+| <img src="site/assets/providers/kimi.svg" width="16" alt="" /> **Kimi** | API key / cookie | | <img src="site/assets/providers/kiro.svg" width="16" alt="" /> **Kiro** | `kiro-cli /usage` parsing |
+| <img src="site/assets/providers/minimax.svg" width="16" alt="" /> **MiniMax** | API key | | <img src="site/assets/providers/volcengine.svg" width="16" alt="" /> **Volcengine** | AK:SK signing |
+| <img src="site/assets/providers/mimo.svg" width="16" alt="" /> **MiMo Code** | Cookie | | <img src="site/assets/providers/ollama.svg" width="16" alt="" /> **Ollama** | Session cookie |
+| <img src="site/assets/providers/zai.svg" width="16" alt="" /> **GLM Team** | API key + org + project | | <img src="Sources/UsageDock/Resources/ProviderIcons/bailian.svg" width="16" alt="" /> **Alibaba Token Plan** | Console cookie |
+| <img src="site/assets/providers/amp.svg" width="16" alt="" /> **Amp** | Amp CLI key (read automatically) or cookie | | <img src="site/assets/providers/muse.png" width="16" alt="" /> **Muse** | Cookie (muse.ai) |
+| <img src="site/assets/providers/muse.png" width="16" alt="" /> **Muse Code** | Cookie (dev.meta.ai), read per team | | **Factory** | Cookie (app.factory.ai) |
+| **Augment** | Cookie (app.augmentcode.com) | | **Third-party APIs** | New API / custom balance endpoint |
 
-**Cookie 型服务怎么接入**：在浏览器登录对应网站后，从开发者工具复制请求里的 Cookie 值（或右键请求「复制为 cURL」），粘贴到该服务的额度卡，或在接入引导里点「从剪贴板粘贴」即可（也可用 `QODER_COOKIE`、`MIMO_COOKIE`、`OLLAMA_COOKIE`、`MUSE_COOKIE`、`MUSE_CODE_COOKIE`、`AMP_COOKIE`、`FACTORY_COOKIE`、`AUGMENT_COOKIE` 环境变量提供）。Cookie 与 API Key 一样只存本机钥匙串；TokenRemain 从不读取浏览器自身的 Cookie 存储。Cookie 等同于登录凭证，请勿分享；退出网站登录后它会失效，需要重新粘贴。
+**How cookie-based services connect:** sign in to the service's website, copy the request's Cookie value from your browser's developer tools (or right-click the request → Copy as cURL), then paste it into that service's quota card or use Paste from Clipboard in its setup guide (or provide it via `QODER_COOKIE`, `MIMO_COOKIE`, `OLLAMA_COOKIE`, `MUSE_COOKIE`, `MUSE_CODE_COOKIE`, `AMP_COOKIE`, `FACTORY_COOKIE` or `AUGMENT_COOKIE`). Cookies are stored only in your Mac's Keychain, like API keys; TokenRemain never reads your browser's own cookie store. A cookie is a sign-in credential — never share it; signing out of the website invalidates it, so paste a fresh one afterwards.
 
-**本地成本来源**：内置 ccusage 动态发现 Claude Code、Codex、Gemini、Goose 等 15+ 种本地 Agent，并合并 `~/.claude`、`~/.config/claude`、`CLAUDE_CONFIG_DIR` 与 Claude Cowork 的会话目录（自动去重，可在「数据来源」页添加自定义目录）；Trae 只读取所选目录中的时间、模型与 Token 计数。托管模型按官方标价估算，Ollama 等本地模型记零成本；价格未知时仍保留 Token 数。
+**Local cost sources:** the bundled ccusage collector discovers 15+ local agents (Claude Code, Codex, Gemini, Antigravity, Goose, …) and merges `~/.claude`, `~/.config/claude`, `CLAUDE_CONFIG_DIR` and Claude Cowork session folders (deduplicated; add custom folders on the Data Sources page). Trae contributes only timestamps, model names and token counts from a folder you select. Hosted models use official list-price estimates; local models like Ollama stay at zero cost, and tokens are kept even when a price is unknown.
 
 </details>
 
-## 隐私
+## Privacy
 
 ```
-你机器上已有的凭证 ──只读──▶ 各服务商官方 API ──▶ 本地渲染并缓存
+Credentials already on your machine ──read-only──▶ Official provider APIs ──▶ Rendered & cached locally
 ```
 
-每一条都附有可核对的源码或测试：
+Every claim links to the code or test that backs it:
 
-- **只读凭证，绝不刷新**：只读各工具自己维护的 token，从不写回、不争用 refresh token；后台读取关闭钥匙串交互，不会弹出授权窗。 <sub>🔍 [契约脚本](script/verify_keychain_read_contract.sh) · [测试](Tests/UsageDockTests/KeychainReadTests.swift#L45) · [源码](Sources/UsageDock/Services/ClaudeOAuthUsageService.swift#L9)</sub>
-- **手动密钥只进本机钥匙串**：粘贴的 API Key 存入 macOS 钥匙串，且禁止同步到 iCloud 钥匙串。 <sub>🔍 [源码](Sources/UsageDock/Services/KeychainSecretStore.swift#L176) · [测试](Tests/UsageDockTests/AppOwnedKeychainTests.swift#L15)</sub>
-- **无账号、无遥测、无凭证中转**：额度查询直连各服务商官方 API；依赖只有 Sparkle 与本仓库的同步包，没有任何分析 SDK。 <sub>🔍 [依赖清单](Package.swift)</sub>
-- **价格与汇率更新不带任何本机数据**：价格表每天至多一次无 body、无参数、无认证头的 GET；只有选择 USD 以外的币种时，才向公开汇率接口发出同样固定的请求。 <sub>🔍 [价格测试](Tests/UsageDockTests/CCUsagePricingServiceTests.swift#L19) · [契约脚本](script/verify_bundled_ccusage_contract.sh#L42) · [汇率源码](Sources/UsageDock/Services/ExchangeRateService.swift)</sub>
-- **同步默认关闭，端到端加密**：开启后，只有白名单字段组成的展示快照在本机 AES-GCM 加密，再写入你自己的 iCloud 私有库。 <sub>🔍 [默认关闭测试](Tests/UsageDockTests/CrossDeviceSyncDefaultsTests.swift#L8) · [字段白名单](Sources/UsageDock/Sync/MobileSnapshotRedactor.swift#L7) · [加密实现](Packages/TokenRemainSyncKit/Sources/TokenRemainSyncKit/EncryptedSyncEnvelope.swift#L66)</sub>
+- **Read-only credentials, never refreshed** — Reads the tokens your tools already maintain, never writes back, never competes for refresh tokens; background reads disable Keychain UI, so no system prompt appears. <sub>🔍 [contract script](script/verify_keychain_read_contract.sh) · [tests](Tests/UsageDockTests/KeychainReadTests.swift#L45) · [source](Sources/UsageDock/Services/ClaudeOAuthUsageService.swift#L9)</sub>
+- **Pasted keys stay in the local Keychain** — API keys go into the macOS Keychain and are barred from syncing to iCloud Keychain. <sub>🔍 [source](Sources/UsageDock/Services/KeychainSecretStore.swift#L176) · [tests](Tests/UsageDockTests/AppOwnedKeychainTests.swift#L15)</sub>
+- **No account, no telemetry, no credential relay** — Quota queries go straight to each provider's official API; the only dependencies are Sparkle and this repo's sync package, with no analytics SDK. <sub>🔍 [dependencies](Package.swift)</sub>
+- **Price and rate updates carry no local data** — The price table is fetched by at most one GET per day with no body, query string or auth header; only when you pick a currency other than USD does an equally fixed request fetch public reference rates. <sub>🔍 [pricing tests](Tests/UsageDockTests/CCUsagePricingServiceTests.swift#L19) · [contract script](script/verify_bundled_ccusage_contract.sh#L42) · [rates source](Sources/UsageDock/Services/ExchangeRateService.swift)</sub>
+- **Sync is off by default and end-to-end encrypted** — When enabled, only an allowlisted display snapshot is AES-GCM encrypted on your Mac, then written to your own private iCloud database. <sub>🔍 [off-by-default test](Tests/UsageDockTests/CrossDeviceSyncDefaultsTests.swift#L8) · [field allowlist](Sources/UsageDock/Sync/MobileSnapshotRedactor.swift#L7) · [encryption](Packages/TokenRemainSyncKit/Sources/TokenRemainSyncKit/EncryptedSyncEnvelope.swift#L66)</sub>
 
-**其他联网行为**（均不携带凭证或用量）：AI 动态从 `api.tokenremain.com` 拉取公开内容，通知默认关闭，开启后才用随机安装 ID 注册推送；服务状态读取 `status.openai.com`、`status.claude.com` 的公开接口；非 USD 显示币种读取 `open.er-api.com` 的公开参考汇率；更新检查读取 GitHub 上签名的 appcast；局域网直连同步监听 TCP 47831，只接受已配对设备。
+**Other network activity** (never carries credentials or usage): AI Feed fetches public posts from `api.tokenremain.com`; notifications are off by default and register a random install ID only when enabled. Service status reads the public endpoints of `status.openai.com` and `status.claude.com`. A non-USD display currency reads public reference rates from `open.er-api.com`. Update checks read a signed appcast on GitHub. Direct LAN sync listens on TCP 47831 and accepts only paired devices.
 
-细节见[隐私政策](https://tokenremain.com/privacy)。
+Details in the [privacy policy](https://tokenremain.com/privacy).
 
-## 常见问题
+## FAQ
 
 <details>
-<summary><b>卡片提示「未检测到登录」</b></summary>
+<summary><b>A card says "Login not detected"</b></summary>
 <br/>
 
-TokenRemain 从不刷新 token，只读取工具自己保存的登录状态。到对应工具里重新登录并正常使用一次，数据会自动恢复；Antigravity 等工具需要先打开使用一次，凭证才会写到本机。
+TokenRemain never refreshes tokens; it only reads the sign-in state each tool saves. Sign in again in that tool and use it once, and the data comes back automatically. Some tools, such as Antigravity, need to be opened and used once before their credentials are written to disk.
 
 </details>
 
 <details>
-<summary><b>没有安装 Claude Code CLI，怎么看 Claude 额度？</b></summary>
+<summary><b>Why are only some apps in the Daily Usage Trend?</b></summary>
 <br/>
 
-在「数据来源」的 Claude 行粘贴你自己的 claude.ai `sessionKey` 或 Cookie。验证成功后只保存在本机钥匙串、不参与 iCloud 钥匙串同步；TokenRemain 不会导入浏览器 Cookie，也不会刷新第三方凭证。配置后默认 Claude 额度明确来自该网页账号，独立 CLI 账号仍使用各自凭证；移除 Cookie 即恢复本地 OAuth。多个组织无法唯一匹配时需要填写目标组织 UUID。
-
-该网页接口不是公开接口，访问质询、会话过期或网络失败都可能导致暂时无法读取，此时卡片保留上一次的额度和原更新时间。
+The chart draws per-day tokens from local logs, so only apps that write them can appear. Tools whose logs the bundled ccusage reads (Claude Code, Codex, Gemini CLI, Antigravity, OpenCode and more) can be added from the **Apps** menu even with nothing recent — their bars appear as soon as they log something. Apps TokenRemain only has quota data for, such as Cursor and Grok Bot, are listed under "Quota data only": they keep no local token logs to chart, but their quota still shows everywhere else.
 
 </details>
 
 <details>
-<summary><b>Claude 显示「用量读取超时」或「无法连接 Claude 服务」</b></summary>
+<summary><b>How do I see Claude quota without the Claude Code CLI?</b></summary>
 <br/>
 
-此时卡片显示的是最近一次成功的缓存，网络恢复后自动重试，不会要求你重新登录。官方 API 走系统代理；凭证过期需要借助 Claude Code CLI 续期时，TokenRemain 会依次尝试 App 环境变量、Claude Code `settings.json` 的 `env`、系统代理（含 PAC）和登录 shell 导出的代理变量，选第一条能连通 `api.anthropic.com` 的。仍无法恢复时，可在终端运行一次 `claude` 并执行 `/usage`。
+Paste your own claude.ai `sessionKey` or Cookie into the Claude row on the Data Sources page. Once verified it's stored only in your Mac's Keychain and excluded from iCloud Keychain sync; TokenRemain never imports browser cookies or refreshes third-party credentials. The default Claude quota then comes explicitly from that web account, while separate CLI accounts keep their own credentials; removing the cookie returns to local OAuth. If several organizations can't be matched uniquely, enter the target organization UUID.
+
+The web endpoint isn't a public API: an access challenge, an expired session or a network failure can make it temporarily unreadable, in which case the card keeps the last quota with its original timestamp.
 
 </details>
 
 <details>
-<summary><b>Claude 桌面 App / Cowork 的用量会被统计吗？</b></summary>
+<summary><b>Claude shows "usage read timed out" or "Claude is unreachable"</b></summary>
 <br/>
 
-会。本地统计自动合并 `~/.claude`、`~/.config/claude`、继承的 `CLAUDE_CONFIG_DIR` 和 Claude Cowork 的 `.claude/projects` 目录，由内置 ccusage 离线读取并去重；「数据来源」页可以查看发现的目录，也能添加包含 `projects` 的自定义配置目录。普通聊天、网页和手机会话不产生本地 Token 日志，因此不会计入。
+The card is showing the last good cached snapshot; TokenRemain retries once the network is back and never asks you to sign in over a network failure. The official API follows the system proxy. When an expired credential has to be renewed through the Claude Code CLI, TokenRemain tries, in order: the app's environment variables, the `env` block of Claude Code's `settings.json`, the system proxy (including PAC) and proxy variables exported by your login shell — and uses the first one that reaches `api.anthropic.com`. If it still doesn't recover, run `claude` in a terminal and execute `/usage` once.
 
 </details>
 
 <details>
-<summary><b>顶部预警和卡片上的百分比不一致</b></summary>
+<summary><b>Is Claude Desktop / Cowork usage counted?</b></summary>
 <br/>
 
-预警取所有窗口中最紧缺的一个（通常是 7 天窗口），卡片头行显示的是 5 小时窗口，两者不是同一个窗口。
+Yes. Local stats merge `~/.claude`, `~/.config/claude`, an inherited `CLAUDE_CONFIG_DIR` and Claude Cowork's `.claude/projects` folders, read offline and deduplicated by the bundled ccusage. The Data Sources page lists the folders it found and lets you add a custom config folder that contains `projects`. Plain chats, web and phone sessions leave no local token logs, so they aren't counted.
 
 </details>
 
 <details>
-<summary><b>今日成本和我的账单对不上</b></summary>
+<summary><b>The top alert and the card show different percentages</b></summary>
 <br/>
 
-成本按官方 API 标价估算本地 Token 用量，用于衡量用量规模，不等于订阅账单。切换显示币种只换算这部分估算值，官方账单金额与账户余额始终保持原币种。
+The alert reflects the tightest of all windows (usually the 7-day one), while the card's first row shows the shortest window — they're not the same window.
 
 </details>
 
 <details>
-<summary><b>tok/s 是怎么算的？</b></summary>
+<summary><b>Today's cost doesn't match my bill</b></summary>
 <br/>
 
-TokenRemain 在每次本地统计刷新后，增量读取 Claude Code 与 Codex 会话日志新追加的部分，只提取时间戳、模型名与 Token 计数，估算各模型的端到端输出速度（包含首 Token 延迟）。扫描在低优先级下进行，有时间和数据量上限，结果只保存在本机。
+Cost is an estimate of local token usage at official API list prices. It shows the scale of your usage, not your subscription bill — enter what you actually pay on Overview › Subscriptions. Switching the display currency converts only these estimates; official billed amounts and balances always stay in their billing currency.
 
 </details>
 
 <details>
-<summary><b>卡片标注了「第三方 API」</b></summary>
+<summary><b>How is tok/s calculated?</b></summary>
 <br/>
 
-Claude Code 设置了 `ANTHROPIC_BASE_URL`，或 Codex 配置了自定义 `base_url` 时，额度来自实际提供服务的 API，卡片会注明来源。如果你用的是官方登录却被这样标注，请[提交 issue](https://github.com/Carstin520/token-remain/issues) 并附上脱敏后的配置。
+After each local usage refresh, TokenRemain reads only the newly appended part of Claude Code and Codex session logs, extracts timestamps, model names and token counters, and estimates each model's end-to-end output speed (time to first token included). The scan runs at low priority with time and size limits, and the results stay on your Mac.
 
 </details>
 
 <details>
-<summary><b>如何彻底卸载</b></summary>
+<summary><b>A card is labeled "third-party API"</b></summary>
 <br/>
 
-退出 TokenRemain 并删除 App 后，可清理本地偏好与缓存：
+When Claude Code has `ANTHROPIC_BASE_URL` set, or Codex has a custom `base_url`, the quota comes from the API actually serving you, and the card names it. If you use the official sign-in and still see this label, please [open an issue](https://github.com/Carstin520/token-remain/issues) with your redacted configuration.
+
+</details>
+
+<details>
+<summary><b>How do I uninstall completely?</b></summary>
+<br/>
+
+Quit TokenRemain and delete the app, then remove local preferences and caches:
 
 ```bash
 defaults delete com.jamesli.usagedock
 rm -rf ~/Library/Caches/com.jamesli.usagedock ~/Library/Application\ Support/com.jamesli.usagedock
 ```
 
-手动粘贴的密钥可在「钥匙串访问」中搜索 `com.jamesli.usagedock` 删除。开启过同步的话，如需清除 iCloud 中的数据，请[联系支持](https://tokenremain.com/support)。
+Pasted keys can be removed in Keychain Access by searching for `com.jamesli.usagedock`. If you enabled sync and want the iCloud data cleared, [contact support](https://tokenremain.com/support).
 
 </details>
 
-还有问题？请[提交 issue](https://github.com/Carstin520/token-remain/issues) 或查看[支持页](https://tokenremain.com/support)。
+Still stuck? [Open an issue](https://github.com/Carstin520/token-remain/issues) or visit the [support page](https://tokenremain.com/support).
 
-## 参与开发
+## Contributing
 
-欢迎提交 issue 与 PR。构建、测试、目录结构与代码约定见 [CONTRIBUTING.md](CONTRIBUTING.md)；安全问题请按 [SECURITY.md](SECURITY.md) 私下报告，不要公开提交 issue。
+Issues and pull requests are welcome. Build steps, tests, repository layout and conventions are in [CONTRIBUTING.md](CONTRIBUTING.md); please report security issues privately as described in [SECURITY.md](SECURITY.md), not in a public issue.
 
-## 下载趋势
+## Downloads over time
 
 <div align="center">
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://api.tokenremain.com/v1/downloads/chart.svg?theme=dark&amp;lang=zh" />
-  <source media="(prefers-color-scheme: light)" srcset="https://api.tokenremain.com/v1/downloads/chart.svg?theme=light&amp;lang=zh" />
-  <img src="https://api.tokenremain.com/v1/downloads/chart.svg?theme=dark&amp;lang=zh" width="920" alt="官网累计下载趋势图，数据来自匿名聚合计数器的每日快照" />
+  <source media="(prefers-color-scheme: dark)" srcset="https://api.tokenremain.com/v1/downloads/chart.svg?theme=dark&amp;lang=en" />
+  <source media="(prefers-color-scheme: light)" srcset="https://api.tokenremain.com/v1/downloads/chart.svg?theme=light&amp;lang=en" />
+  <img src="https://api.tokenremain.com/v1/downloads/chart.svg?theme=dark&amp;lang=en" width="920" alt="Cumulative website download chart, rendered from daily snapshots of the anonymous aggregate counter" />
 </picture>
 
-<sub>基线为截至 2026-08-07 的 163 次历史下载（[明细](docs/download-baseline.md)），此后由匿名下载入口即时累计，并每小时与 GitHub 上的 DMG 下载总数对账，不含任何个人数据。</sub>
+<sub>Starts from 163 historical downloads as of 2026-08-07 ([breakdown](docs/download-baseline.md)), then grows through the anonymous download link and an hourly reconciliation with GitHub's DMG download total; no personal data involved.</sub>
 
 </div>
 
-## 致谢
+## Acknowledgments
 
-- [token-monitor](https://github.com/Javis603/token-monitor)（MIT）：扩展 Provider 的额度读取逻辑移植自此项目，桌面浮窗与偏好设计也受其启发。
-- [ccusage](https://github.com/ryoppippi/ccusage)（MIT）：随 App 内置，用于统计本地 Agent 的 Token 用量。
-- [OpenUsage](https://github.com/robinebers/openusage)（MIT）：Claude 限额 API 直查的 provider 设计参考。
-- [LiteLLM](https://github.com/BerriAI/litellm)：公开的模型价格表。
-- [ExchangeRate-API](https://www.exchangerate-api.com)：显示币种使用的公开参考汇率。
-- [Sparkle](https://github.com/sparkle-project/Sparkle)（MIT）：签名自动更新。
+- [token-monitor](https://github.com/Javis603/token-monitor) (MIT) — the extended providers' quota readers are ported from this project, which also inspired the floating window and preferences.
+- [ccusage](https://github.com/ryoppippi/ccusage) (MIT) — bundled with the app to count local agents' token usage.
+- [OpenUsage](https://github.com/robinebers/openusage) (MIT) — reference for the direct Claude quota API provider design.
+- [LiteLLM](https://github.com/BerriAI/litellm) — the public model price table.
+- [ExchangeRate-API](https://www.exchangerate-api.com) — public reference rates for display currencies.
+- [Sparkle](https://github.com/sparkle-project/Sparkle) (MIT) — signed app updates.
 
-第三方版权与许可声明见 [NOTICE](NOTICE)。
+Third-party copyright and license notices are in [NOTICE](NOTICE).
 
-## 许可
+## License
 
-源代码与源文档采用 [Apache License 2.0](LICENSE)；TokenRemain 名称、Logo、图标、机器人形象与原创设计素材不在授权范围内，详见[品牌与素材许可说明](ASSET-LICENSE.md)。
+Source code and source documentation are available under the [Apache License 2.0](LICENSE); the TokenRemain name, logos, icons, robot character and original design assets are not included — see the [brand and asset licensing terms](ASSET-LICENSE.md).
 
-<sub>TokenRemain 是独立应用，与 Anthropic、OpenAI、Anysphere、xAI、GitHub、智谱 AI 或任何服务商均无隶属、背书或赞助关系；服务名称与标识仅用于标示你可选择接入的服务。发布者与支持联系人：Dongheng Li · jamescarstin520@gmail.com · © 2026</sub>
+<sub>TokenRemain is an independent app, not affiliated with, endorsed by, or sponsored by Anthropic, OpenAI, Anysphere, xAI, GitHub, Zhipu AI, or any other provider; service names and marks appear only to identify the services you can choose to connect. Publisher and support contact: Dongheng Li · jamescarstin520@gmail.com · © 2026</sub>

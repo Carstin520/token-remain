@@ -38,7 +38,7 @@ struct PopoverWidgetHeader<Summary: View>: View {
                     Button(action: onToggleExpanded) {
                         titleLabel
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PressRippleButtonStyle.popup(cornerRadius: 6, pressedScale: 0.97))
                     .help(isExpanded ? L10n.text("widget.collapse") : L10n.text("widget.expand"))
                     .accessibilityLabel(widget.title)
                     .accessibilityHint(
@@ -127,7 +127,7 @@ struct PopoverWidgetHeader<Summary: View>: View {
                 .frame(width: 18, height: 20)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressRippleButtonStyle.popup(cornerRadius: 5, pressedScale: 0.88))
         .help(help)
         .accessibilityLabel(help)
     }

@@ -227,3 +227,12 @@
 "settings.dock_logo_top" = "التطبيق";
 
 "settings.dock_logo_bottom" = "التطبيق 2";
+
+/* 1.5 Overview window table and risk banner */
+"overview.finding.projected" = "نافذة %2$@ لدى %1$@ متقدمة على الوتيرة بنسبة %3$@ وقد تنفد خلال %4$@. %5$@.";
+"overview.kpi.runs_out_first" = "تنفد أولًا";
+"quota.windows_title" = "نوافذ الحصة";
+"quota.windows_subtitle" = "كل النوافذ الرسمية، الأكثر إلحاحًا أولًا";
+"quota.windows_pace" = "الوتيرة";
+"quota.windows_resets" = "إعادة الضبط";
+"risk.headline.window_runout" = "قد تنفد نافذة %2$@ لدى %1$@ خلال %3$@";

@@ -315,10 +315,28 @@ final class StatusBarController: NSObject {
     }
 
     private func openDashboard(_ section: DashboardSection) {
-        closeMenuBarPopup()
+        let popupWasShown = menuBarPopupIsShown
+        // Building the Dashboard's view tree holds the main thread for ~0.3s.
+        // The glass panel's hand-off fade runs on the render server, so the
+        // build starts right away and overlaps it instead of following it.
+        let overlapsFade = popupWasShown && usesLiquidGlassPopup
+        if overlapsFade {
+            liquidGlassPopupController?.performHandoffClose()
+        } else {
+            closeMenuBarPopup()
+        }
         dashboardCreated = true
         store.refreshLocalUsage()
-        dashboardController.show(section: section)
+        guard popupWasShown, !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else {
+            dashboardController.show(section: section)
+            return
+        }
+        // The classic popover's close animation is stepped on the main thread
+        // and would freeze under the build, so that path lets it finish first.
+        let delay = overlapsFade ? 0 : MotionTiming.popupFadeOut
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            self?.dashboardController.show(section: section)
+        }
     }
 
     /// 本地用量与 AI Feed 是否正被某个界面展示。仅在这些界面可见时,

@@ -25,7 +25,7 @@ struct CrossDeviceSyncSettingsCard: View {
                             .foregroundStyle(DashboardTheme.secondaryText)
                     }
                 }
-                .toggleStyle(.switch)
+                .toggleStyle(ElasticSwitchToggleStyle())
                 .tint(DashboardTheme.violet)
 
                 Toggle(isOn: usageHistoryBinding) {
@@ -38,7 +38,7 @@ struct CrossDeviceSyncSettingsCard: View {
                             .foregroundStyle(DashboardTheme.secondaryText)
                     }
                 }
-                .toggleStyle(.switch)
+                .toggleStyle(ElasticSwitchToggleStyle())
                 .tint(DashboardTheme.violet)
                 .disabled(!sync.isEnabled)
 

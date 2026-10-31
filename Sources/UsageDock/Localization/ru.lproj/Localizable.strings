@@ -227,3 +227,12 @@
 "settings.dock_logo_top" = "Приложение";
 
 "settings.dock_logo_bottom" = "Приложение 2";
+
+/* 1.5 Overview window table and risk banner */
+"overview.finding.projected" = "%1$@ %2$@ опережает темп на %3$@ и может закончиться через %4$@. %5$@.";
+"overview.kpi.runs_out_first" = "Закончится первым";
+"quota.windows_title" = "Окна квот";
+"quota.windows_subtitle" = "Все официальные окна, самые срочные первыми";
+"quota.windows_pace" = "Темп";
+"quota.windows_resets" = "Сброс";
+"risk.headline.window_runout" = "%1$@ %2$@ может закончиться через %3$@";

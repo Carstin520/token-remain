@@ -17,6 +17,12 @@ enum L10n {
         return fallback[key] ?? key
     }
 
+    /// Whether the current language translates `key` itself, without the
+    /// English and Chinese fallbacks `text` applies.
+    static func isLocalized(_ key: String, bundle: Bundle = AppResourceBundle.bundle) -> Bool {
+        bundle.localizedString(forKey: key, value: key, table: nil) != key
+    }
+
     static func format(
         _ key: String,
         _ arguments: CVarArg...,
@@ -178,6 +184,12 @@ enum L10n {
         "duration.less_than_minute": "不到 1 分钟",
         "duration.hours": "%d小时",
         "duration.days": "%d天",
+        "duration.minutes_full_one": "%d分钟",
+        "duration.minutes_full_other": "%d分钟",
+        "duration.hours_full_one": "%d小时",
+        "duration.hours_full_other": "%d小时",
+        "duration.days_full_one": "%d天",
+        "duration.days_full_other": "%d天",
         "reset.in_progress": "正在重置",
         "reset.countdown": "重置还有 %1$@",
         "reset.on": "%1$@ 重置",
@@ -553,6 +565,7 @@ enum L10n {
         "service.grok_bot.not_logged_in": "Grok Bot 用量通过 Cursor 本机登录态读取；请在 Cursor 中登录与 Grok Bot 相同的账户",
         "service.grok_bot.no_weekly_allowance": "当前 Cursor 账户没有 Grok Bot 周额度",
         "service.grok_bot.pooled_allowance": "当前账户使用团队共享额度池，Grok Bot 不提供周百分比",
+        "service.grok_bot.cursor_login_authorization": "Grok Bot 用量通过 Cursor 本机登录态读取，而 Cursor 已加密保存登录凭证。点「授权只读访问」，并在系统弹窗中选择「始终允许」，即可恢复额度刷新",
         "service.kiro.not_installed": "未检测到 kiro-cli；安装 Kiro CLI 并登录后自动接入",
         "service.opencode.no_usage": "本机还没有 OpenCode Go 用量记录；用一次 OpenCode 后出现",
         "service.opencode.not_installed": "未检测到 OpenCode；安装并登录 OpenCode Go 后自动接入",
@@ -697,6 +710,12 @@ enum L10n {
         "trends.legend_hide": "隐藏 %1$@ 用量",
         "trends.legend_hint": "点击图例显示用量",
         "trends.legend_label": "%1$@ 图例",
+        "trends.series_menu": "应用",
+        "trends.series_menu_help": "选择图表显示的应用",
+        "trends.series_no_recent": "近期没有本地记录",
+        "trends.series_quota_only": "只有额度数据",
+        "trends.choose_apps_hint": "在“应用”菜单中选择要显示的应用",
+        "trends.no_usage_in_range": "所选应用在此期间没有用量",
         "trends.legend_show": "显示 %1$@ 用量",
         "trends.legend_visible": "已显示",
         "trends.metric_cost": "成本",

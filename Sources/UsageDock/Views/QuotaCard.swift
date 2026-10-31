@@ -25,6 +25,8 @@ struct QuotaCard: View {
     /// The Dashboard owns this store; cards never create a collector.
     @ObservedObject var store: UsageStore
     @ObservedObject var preferences: PreferencesStore = .shared
+    /// Observed so a plan chosen on the subscription card retitles the pill.
+    @ObservedObject private var costStore = SubscriptionCostStore.shared
 
     /// Managed-account alerts are card-local: renaming and removal must not open
     /// another window or settings route.
@@ -147,6 +149,13 @@ struct QuotaCard: View {
         }
     }
 
+    /// The card's small print: freshness, then the data source its rows no
+    /// longer repeat ("Updated just now · Claude Web").
+    static func freshnessLine(_ freshness: String, source: QuotaAttribution?) -> String {
+        guard let source else { return freshness }
+        return "\(freshness) · \(source.displayName)"
+    }
+
     /// An isolated CLI account owns a local login folder; a keychain account
     /// owns one Keychain item. Say which one removal actually deletes.
     private func removeMessageKey(for id: ProviderAccountID) -> String {
@@ -249,8 +258,11 @@ struct QuotaCard: View {
             TimelineView(.periodic(from: .now, by: 60)) { context in
                 let isStale = context.date.timeIntervalSince(quota.capturedAt) >= 600
                 Label {
-                    Text(UsageFormatting.freshnessDescription(since: quota.capturedAt, now: context.date))
-                        .numericFont(10)
+                    Text(Self.freshnessLine(
+                        UsageFormatting.freshnessDescription(since: quota.capturedAt, now: context.date),
+                        source: quota.attribution
+                    ))
+                    .numericFont(10)
                 } icon: {
                     Image(systemName: isStale ? "exclamationmark.circle.fill" : "checkmark.circle.fill")
                 }
@@ -349,7 +361,7 @@ struct QuotaCard: View {
                 .contentShape(Rectangle())
                 .directReorderHandle()
 
-            if let plan = quota?.planName, !plan.isEmpty {
+            if let plan = planLabel, !plan.isEmpty {
                 TagPill(text: plan)
                     .padding(.top, 2)
                     .directReorderHandle()
@@ -362,6 +374,20 @@ struct QuotaCard: View {
             alignment: .top
         )
         .contentShape(Rectangle())
+    }
+
+    /// The tier the subscription card names for the shown account (or for
+    /// all of them, when they agree); otherwise the source's own label in
+    /// its catalog spelling. Claude Web reports no plan, so a tier chosen on
+    /// the card is the only one the pill can show.
+    private var planLabel: String? {
+        let summary = SubscriptionCostSummary.make(
+            accounts: store.subscriptionAccounts(for: provider),
+            overrides: costStore.overrides,
+            rates: nil
+        )
+        return summary.catalogPlanName(for: provider, account: selectedAccount?.id)
+            ?? quota.flatMap { SubscriptionPlanCatalog.displayName(provider: provider, planName: $0.planName) }
     }
 
     // MARK: - Multi-account
@@ -1157,6 +1183,7 @@ struct QuotaWindowRow: View {
     /// label ("Others") replaces the pool name, so callers never pass one
     /// when an account name labels the row.
     var vendorSummary: ModelVendorSummary? = nil
+    @Environment(\.quotaDetailFontSize) private var detailFontSize
 
     /// Scoped rows are named by their call site; a general window can also
     /// name itself when it represents one pool of a split cycle (Cursor).
@@ -1189,8 +1216,7 @@ struct QuotaWindowRow: View {
                     if let summary = displayedVendorSummary {
                         let parts = Self.vendorTitleParts(
                             windowMinutes: window.windowMinutes,
-                            name: summary.label ?? effectiveScopeName,
-                            attribution: attribution
+                            name: summary.label ?? effectiveScopeName
                         )
                         HStack(alignment: .center, spacing: 5) {
                             Text(verbatim: parts.leading)
@@ -1217,7 +1243,7 @@ struct QuotaWindowRow: View {
                             .help(L10n.text("pace.ahead_warning"))
                             .accessibilityLabel(L10n.text("pace.ahead_warning"))
                     }
-                    Text(remainingText)
+                    RollingText(remainingText)
                         .numericFont(14, .bold)
                         .usageDockAdaptiveForeground(.primary)
                 }
@@ -1233,7 +1259,7 @@ struct QuotaWindowRow: View {
                 if showsDetails {
                     HStack(spacing: 5) {
                         Image(systemName: "arrow.clockwise")
-                            .font(.system(size: 9))
+                            .font(.system(size: detailFontSize - 1))
                         if let resetsAt = window.resetsAt {
                             QuotaResetLabel(resetsAt: resetsAt, referenceDate: context.date)
                                 .layoutPriority(1)
@@ -1246,7 +1272,7 @@ struct QuotaWindowRow: View {
                             ModelSpeedLabel(speed: modelSpeed)
                         }
                     }
-                    .font(.system(size: 10))
+                    .font(.system(size: detailFontSize))
                     .usageDockAdaptiveForeground(.secondary)
                     .transition(.opacity.combined(with: .move(edge: .top)))
 
@@ -1292,35 +1318,27 @@ struct QuotaWindowRow: View {
     }
 
     private var windowTitle: String {
-        Self.displayTitle(
-            windowMinutes: window.windowMinutes,
-            scopeName: effectiveScopeName,
-            attribution: attribution
-        )
+        Self.displayTitle(windowMinutes: window.windowMinutes, scopeName: effectiveScopeName)
     }
 
-    static func displayTitle(
-        windowMinutes: Int,
-        scopeName: String?,
-        attribution: QuotaAttribution?
-    ) -> String {
-        let duration = L10n.format("quota.window", UsageFormatting.windowName(minutes: windowMinutes))
-        let scoped = scopeName.map { "\($0) · \(duration)" } ?? duration
-        guard let source = attribution?.displayName else { return scoped }
-        return "\(source) · \(scoped)"
+    /// The pool's name, if any, then just the length, spelled out ("5 hours",
+    /// "7 days") now that the row has the room. The data source ("Claude Web", a billing API) is
+    /// not part of a row: repeated on every bar it is noise, so the Dashboard
+    /// names it once in small print and the menu-bar panel leaves it out.
+    static func displayTitle(windowMinutes: Int, scopeName: String?) -> String {
+        let duration = UsageFormatting.windowFullName(minutes: windowMinutes)
+        return scopeName.map { "\($0) · \(duration)" } ?? duration
     }
 
-    /// Title around the vendor logos: `Others [logos] · 31-day window` for a
-    /// named pool, `Total [logos]` for an unnamed account window.
+    /// Title around the vendor logos: `Others [logos] · 31 d` for a named
+    /// pool, `Total [logos]` for an unnamed account window.
     static func vendorTitleParts(
         windowMinutes: Int,
-        name: String?,
-        attribution: QuotaAttribution?
+        name: String?
     ) -> (leading: String, trailing: String?) {
-        let duration = L10n.format("quota.window", UsageFormatting.windowName(minutes: windowMinutes))
-        let source = attribution.map { "\($0.displayName) · " } ?? ""
-        guard let name else { return (source + duration, nil) }
-        return (source + name, "· \(duration)")
+        let duration = UsageFormatting.windowFullName(minutes: windowMinutes)
+        guard let name else { return (duration, nil) }
+        return (name, "· \(duration)")
     }
 
     private var windowAccessibilityDescriptor: String {
@@ -1347,6 +1365,7 @@ struct QuotaWindowRow: View {
 /// tight; the speed itself never truncates.
 private struct ModelSpeedLabel: View {
     let speed: ModelSpeedSummary
+    @Environment(\.quotaDetailFontSize) private var fontSize
 
     var body: some View {
         let help = L10n.format("quota.model_speed_help", speed.displayName, ModelSpeedSummary.windowDays)
@@ -1356,11 +1375,11 @@ private struct ModelSpeedLabel: View {
                 .truncationMode(.middle)
             Text("·")
             Text(L10n.format("trends.model_tps_format", TrendModelBreakdownPanel.speedLabel(speed.tokensPerSecond)))
-                .numericFont(10, .medium)
+                .numericFont(fontSize, .medium)
                 .usageDockAdaptiveForeground(.primary)
                 .fixedSize()
         }
-        .font(.system(size: 10))
+        .font(.system(size: fontSize))
         .usageDockAdaptiveForeground(.secondary)
         .help(help)
         .accessibilityElement(children: .ignore)
@@ -1373,16 +1392,17 @@ private struct QuotaResetLabel: View {
     let resetsAt: Date
     /// 外层 60 秒时间线的当前时刻,同时决定秒级/分钟级两种模式的切换。
     let referenceDate: Date
+    @Environment(\.quotaDetailFontSize) private var fontSize
 
     var body: some View {
         if UsageFormatting.showsLiveSecondCountdown(to: resetsAt, now: referenceDate) {
             TimelineView(.periodic(from: .now, by: 1)) { context in
                 Text(UsageFormatting.resetDescription(to: resetsAt, now: context.date))
-                    .numericFont(10)
+                    .numericFont(fontSize)
             }
         } else {
             Text(UsageFormatting.resetDescription(to: resetsAt, now: referenceDate))
-                .numericFont(10)
+                .numericFont(fontSize)
         }
     }
 }
@@ -1390,6 +1410,7 @@ private struct QuotaResetLabel: View {
 private struct QuotaPaceRow: View {
     let pace: UsagePace
     let now: Date
+    @Environment(\.quotaDetailFontSize) private var fontSize
 
     private var fixedTint: Color? {
         switch pace.status {
@@ -1422,15 +1443,29 @@ private struct QuotaPaceRow: View {
     var body: some View {
         HStack(spacing: 5) {
             Image(systemName: pace.willLastUntilReset ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                .font(.system(size: 9))
+                .font(.system(size: fontSize - 1))
             Text(paceLabel)
-                .numericFont(10, .medium)
+                .numericFont(fontSize, .medium)
             Spacer(minLength: 8)
             Text(outcomeLabel)
-                .numericFont(10)
+                .numericFont(fontSize)
         }
-        .font(.system(size: 10))
+        .font(.system(size: fontSize))
         .usageDockAdaptiveForeground(.secondary, fixedColor: fixedTint)
         .accessibilityElement(children: .combine)
+    }
+}
+
+/// Size of the reset, pace and model-speed lines under a quota window. The
+/// Dashboard keeps 10 pt; the menu-bar popup raises them to 11 pt because
+/// they sit on glass there, where 10 pt grey was hard to read.
+private struct QuotaDetailFontSizeKey: EnvironmentKey {
+    static let defaultValue: CGFloat = 10
+}
+
+extension EnvironmentValues {
+    var quotaDetailFontSize: CGFloat {
+        get { self[QuotaDetailFontSizeKey.self] }
+        set { self[QuotaDetailFontSizeKey.self] = newValue }
     }
 }

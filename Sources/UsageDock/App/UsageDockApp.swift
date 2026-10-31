@@ -68,7 +68,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             queue: .main
         ) { [weak self] _ in
             Task { @MainActor [weak self] in
-                self?.statusBarController?.showDashboard(section: .overview)
+                self?.statusBarController?.showDashboard(section: .aiFeed)
             }
         }
         dataSourcesNotificationObserver = NotificationCenter.default.addObserver(

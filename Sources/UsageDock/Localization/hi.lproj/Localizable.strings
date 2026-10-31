@@ -227,3 +227,12 @@
 "settings.dock_logo_top" = "ऐप";
 
 "settings.dock_logo_bottom" = "ऐप 2";
+
+/* 1.5 Overview window table and risk banner */
+"overview.finding.projected" = "%1$@ %2$@ गति से %3$@ आगे है और %4$@ में समाप्त हो सकता है। %5$@।";
+"overview.kpi.runs_out_first" = "सबसे पहले समाप्त";
+"quota.windows_title" = "कोटा विंडो";
+"quota.windows_subtitle" = "सभी आधिकारिक विंडो, सबसे ज़रूरी पहले";
+"quota.windows_pace" = "गति";
+"quota.windows_resets" = "रीसेट";
+"risk.headline.window_runout" = "%1$@ %2$@ %3$@ में समाप्त हो सकता है";

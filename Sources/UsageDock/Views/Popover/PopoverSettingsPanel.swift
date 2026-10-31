@@ -29,7 +29,7 @@ struct PopoverSettingsPanel: View {
                         .frame(width: 24, height: 24)
                         .contentShape(Circle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PressRippleButtonStyle.popup(cornerRadius: 12, pressedScale: 0.88))
                 .background(Circle().fill(Color.white.opacity(0.08)))
                 .overlay(Circle().stroke(DashboardSurface.border, lineWidth: 1))
                 .help(L10n.text("action.close"))
@@ -102,7 +102,7 @@ struct PopoverSettingsPanel: View {
 
                 Toggle(L10n.text("action.launch_at_login"), isOn: launchAtLoginBinding)
                     .labelsHidden()
-                    .toggleStyle(.switch)
+                    .toggleStyle(ElasticSwitchToggleStyle(showsLabel: false))
                     .controlSize(.small)
                     .tint(DashboardTheme.violet)
             }
@@ -186,7 +186,7 @@ struct PopoverSettingsPanel: View {
                 .padding(.vertical, 5)
                 .contentShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressRippleButtonStyle.popup(cornerRadius: 7))
         .background(
             RoundedRectangle(cornerRadius: 7, style: .continuous)
                 .fill(isSelected ? DashboardTheme.violet : Color.clear)
@@ -354,7 +354,7 @@ private extension PopoverSettingsPanel {
                 .padding(.vertical, 6)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressRippleButtonStyle.popup(cornerRadius: 9))
         .background(
             RoundedRectangle(cornerRadius: 9, style: .continuous)
                 .fill(Color.white.opacity(0.06))

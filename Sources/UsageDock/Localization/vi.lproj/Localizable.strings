@@ -227,3 +227,12 @@
 "settings.dock_logo_top" = "Ứng dụng";
 
 "settings.dock_logo_bottom" = "Ứng dụng 2";
+
+/* 1.5 Overview window table and risk banner */
+"overview.finding.projected" = "%1$@ %2$@ đang vượt nhịp %3$@ và có thể cạn sau %4$@. %5$@.";
+"overview.kpi.runs_out_first" = "Cạn sớm nhất";
+"quota.windows_title" = "Cửa sổ hạn mức";
+"quota.windows_subtitle" = "Mọi cửa sổ chính thức, gấp nhất lên trước";
+"quota.windows_pace" = "Nhịp";
+"quota.windows_resets" = "Đặt lại";
+"risk.headline.window_runout" = "%1$@ %2$@ có thể cạn sau %3$@";

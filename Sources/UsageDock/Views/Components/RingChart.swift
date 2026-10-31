@@ -17,10 +17,14 @@ struct RingChart: View {
     var centerTextSize: CGFloat = 16
     var highlightedSegmentID: String?
     var onHoverSegment: ((String?) -> Void)?
+    /// During a page entrance the arcs draw in from twelve o'clock.
+    @Environment(\.pageRevealed) private var revealed
 
     private var total: Double {
         max(segments.reduce(0) { $0 + $1.value }, 0)
     }
+
+    private var drawn: Double { revealed ? 1 : 0 }
 
     /// Running start fraction for each segment.
     private var arcs: [(segment: Segment, start: Double, end: Double)] {
@@ -44,7 +48,7 @@ struct RingChart: View {
                     let isDimmed = highlightedSegmentID != nil && highlightedSegmentID != arc.segment.id
                     Circle()
                         .inset(by: lineWidth / 2 + 1)
-                        .trim(from: arc.start, to: arc.end)
+                        .trim(from: arc.start * drawn, to: arc.end * drawn)
                         .stroke(
                             arc.segment.color.opacity(isDimmed ? 0.32 : 1),
                             style: StrokeStyle(
@@ -57,7 +61,7 @@ struct RingChart: View {
 
                 if let centerText {
                     VStack(spacing: 0) {
-                        Text(centerText)
+                        RollingText(centerText)
                             .numericFont(centerTextSize, .semibold)
                             .usageDockAdaptiveForeground(.primary)
 

@@ -16,7 +16,7 @@ import Foundation
 /// one clear sign of running out. Lowering one needs ten days of short-window
 /// history plus a completed or mostly elapsed long window, and the busiest
 /// window must still fit the cheaper tier with 20% to spare. Tier capacity
-/// is the vendor's stated multiple (Max 20x = 20× Pro), so lowering advice is
+/// is the vendor's stated multiple (Claude Ultra = 20× Pro), so lowering advice is
 /// an estimate, and tiers without a published multiple are never a target.
 struct SubscriptionAdvice: Sendable, Equatable {
     enum Kind: Sendable, Equatable {

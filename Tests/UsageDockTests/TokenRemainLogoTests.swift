@@ -1,8 +1,23 @@
 import AppKit
+import QuartzCore
 import XCTest
 @testable import UsageDock
 
 final class TokenRemainLogoTests: XCTestCase {
+    /// The idle bounce moved from a SwiftUI timeline to Core Animation; the
+    /// four stepped poses and their 0.22 s rhythm must stay what they were.
+    func testRobotIdleBounceKeepsItsFourSteppedPoses() {
+        XCTAssertEqual(RobotIdlePose.stepDuration, 0.22)
+        XCTAssertEqual(RobotIdlePose.cycle.map(\.lift), [0, 1, 1, 0])
+        XCTAssertEqual(RobotIdlePose.cycle.map(\.scaleX), [1, 1.004, 1.008, 1.004])
+        XCTAssertEqual(RobotIdlePose.cycle.map(\.scaleY), [1, 0.996, 0.992, 0.996])
+        let squashed = RobotIdlePose.cycle[2].transform
+        XCTAssertEqual(squashed.m11, 1.008, accuracy: 1e-9)
+        XCTAssertEqual(squashed.m22, 0.992, accuracy: 1e-9)
+        XCTAssertEqual(squashed.m42, 1, accuracy: 1e-9)
+        XCTAssertTrue(CATransform3DIsIdentity(RobotIdlePose.cycle[0].transform))
+    }
+
     func testDockRenderKeyDependsOnDotsAndMissingState() {
         let key: (Double?, Double?) -> String = { TokenRemainHeadLogoArtwork.renderKey(claudeRemaining: $0, codexRemaining: $1) }
         XCTAssertEqual(key(45, nil), key(nil, 45))

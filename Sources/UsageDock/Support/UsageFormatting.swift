@@ -79,6 +79,28 @@ enum UsageFormatting {
         return L10n.format("freshness.days", Int(age / 86_400))
     }
 
+    /// The window's length spelled out ("5 hours", "1 day", "7 days") for
+    /// quota rows, whose title is now only the length. A language that has
+    /// not translated the long forms keeps its short ones rather than
+    /// switching to English mid-sentence.
+    static func windowFullName(minutes: Int) -> String {
+        guard minutes > 0 else { return L10n.text("duration.total") }
+        let (count, unit): (Int, String) = if minutes % 1_440 == 0 {
+            (minutes / 1_440, "days")
+        } else if minutes % 60 == 0 {
+            (minutes / 60, "hours")
+        } else {
+            (minutes, "minutes")
+        }
+        let key = windowFullNameKey(unit: unit, count: count)
+        guard L10n.isLocalized(key) else { return windowName(minutes: minutes) }
+        return L10n.format(key, count)
+    }
+
+    static func windowFullNameKey(unit: String, count: Int) -> String {
+        "duration.\(unit)_full_\(count == 1 ? "one" : "other")"
+    }
+
     static func windowName(minutes: Int) -> String {
         switch minutes {
         // 0 哨兵 = 无滚动窗口的累计额度(如 OpenRouter 预充积分)。

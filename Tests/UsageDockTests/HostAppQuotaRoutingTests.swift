@@ -410,19 +410,17 @@ struct HostAppQuotaRoutingTests {
         #expect(!UsageStore.quotaRoutesMatch(quota(routeID: "one"), quota(routeID: "two")))
     }
 
-    @Test("Quota UI names the billing API without replacing the host header")
-    func quotaRowTitleIncludesSource() {
+    @Test("Quota rows leave the billing source to the Dashboard card's small print")
+    func quotaSourceInSmallPrint() {
         let source = QuotaAttribution(
             provider: .deepseek,
             displayName: "DeepSeek API",
             routeIdentifier: "route"
         )
-        let title = QuotaWindowRow.displayTitle(
-            windowMinutes: 0,
-            scopeName: nil,
-            attribution: source
-        )
-        #expect(title.contains("DeepSeek API"))
+        let title = QuotaWindowRow.displayTitle(windowMinutes: 0, scopeName: nil)
+        #expect(!title.contains("DeepSeek API"))
+        #expect(QuotaCard.freshnessLine("Updated just now", source: source) == "Updated just now · DeepSeek API")
+        #expect(QuotaCard.freshnessLine("Updated just now", source: nil) == "Updated just now")
     }
 
     @Test("OpenCode reads the newest provider and JSONC base URL safely")

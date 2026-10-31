@@ -4,11 +4,16 @@ import UserNotifications
 struct AIFeedSection: View {
     @ObservedObject var store: AIFeedStore
 
+    /// The page is one centred reading column, so a post reads at a
+    /// comfortable line length (roughly 75 characters) instead of one line
+    /// across the canvas; narrower windows shrink it.
+    static let columnMaxWidth: CGFloat = 580
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             SectionTitleHeader(
-                title: "AI Feed",
-                subtitle: L10n.text("feed.section_subtitle"),
+                title: DashboardSection.aiFeed.title,
+                subtitle: DashboardSection.aiFeed.subtitle,
                 trailing: updatedText
             )
 
@@ -46,6 +51,8 @@ struct AIFeedSection: View {
                 )
             }
         }
+        .frame(maxWidth: Self.columnMaxWidth)
+        .frame(maxWidth: .infinity)
         .onAppear { store.start() }
     }
 
@@ -89,7 +96,7 @@ struct AIFeedSection: View {
                     )
                 )
                 .labelsHidden()
-                .toggleStyle(.switch)
+                .toggleStyle(ElasticSwitchToggleStyle(showsLabel: false))
                 .controlSize(.small)
                 .tint(DashboardTheme.violet)
                 .accessibilityLabel(L10n.text("feed.notify_accessibility"))
