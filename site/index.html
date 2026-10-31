@@ -609,7 +609,7 @@ html[lang^="zh"] .pop{--donut:12.7%;--lg1:var(--pop-x);--lg2:var(--pop-c)}
 .stat b em{font-style:normal;color:var(--cyan)}
 .stat>span{display:block;margin-top:4px;color:var(--text-dim);font-size:13px;line-height:1.45}
 
-/* ============ what's new in 1.4 — bento ============ */
+/* ============ what's new in 1.5 — bento ============ */
 .new-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
 .new-card{
   position:relative;overflow:hidden;
@@ -623,31 +623,33 @@ html[lang^="zh"] .pop{--donut:12.7%;--lg1:var(--pop-x);--lg2:var(--pop-c)}
 .new-card h3{font-size:17px;font-weight:700;margin-bottom:6px;letter-spacing:-.005em}
 .new-card p{color:var(--text-dim);font-size:13.5px;line-height:1.65}
 .new-card p code{font-family:var(--mono);font-size:12px;color:var(--cyan-dim)}
-/* token mix demo: same four series and order as the app's composition strip */
-.mix{margin-top:18px;padding:14px 16px;background:rgba(7,11,18,.45);border:1px solid color-mix(in srgb,var(--border) 70%,transparent);border-radius:10px}
-.mix-head{display:flex;justify-content:space-between;align-items:baseline;font-size:12.5px;color:var(--text-dim);margin-bottom:9px}
-.mix-head b{color:var(--text);font-weight:600;font-variant-numeric:tabular-nums}
-.mix-bar{display:flex;height:8px;border-radius:4px;overflow:hidden;background:#3A4252;gap:2px}
-.mix-bar i{display:block;height:100%}
-.mix-legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:10px;font-size:12px;color:var(--text-dim)}
-.mix-legend>span{display:inline-flex;align-items:center;gap:6px;font-variant-numeric:tabular-nums}
-.mix-legend>span::before{content:"";width:8px;height:8px;border-radius:2px;background:var(--c)}
-.mix-legend b{color:var(--text);font-weight:600}
-.mix-rows{display:grid;gap:9px;margin-top:14px;padding-top:12px;border-top:1px solid color-mix(in srgb,var(--border) 60%,transparent)}
-.mix-row{display:grid;grid-template-columns:120px minmax(0,1fr) 52px;gap:12px;align-items:center;font-size:12px}
-.mix-row .nm{display:flex;align-items:center;gap:7px;color:var(--text);font-weight:600;white-space:nowrap}
-.mix-row .nm i{width:3px;height:12px;border-radius:2px}
-.mix-row .mix-bar{height:5px}
-.mix-row b{text-align:right;font-weight:600;color:var(--text);font-variant-numeric:tabular-nums}
-.models{margin-top:16px;display:grid;gap:9px}
-.model{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;font-size:12.5px}
-.model .nm{font-weight:600;color:var(--text)}
-.model .tps{justify-self:start;font-size:11px;color:var(--text-dim);background:var(--surface3);border-radius:6px;padding:1px 7px;font-variant-numeric:tabular-nums}
-.model .tk{color:var(--text);font-weight:600;font-variant-numeric:tabular-nums}
-.model .bar{grid-column:1/-1;height:3px;border-radius:2px;background:#3A4252;overflow:hidden;margin-top:-4px}
-.model .bar i{display:block;height:100%;border-radius:2px}
+/* Quota Windows demo: the 1.5 Overview table's columns, apps ordered by their
+   most urgent window and each app's windows from shortest to longest */
+.qw{margin-top:18px;padding:10px 16px 4px;background:rgba(7,11,18,.45);border:1px solid color-mix(in srgb,var(--border) 70%,transparent);border-radius:10px;font-size:12px}
+.qw-head,.qw-row{display:grid;grid-template-columns:132px 40px minmax(0,1fr) 46px 64px;gap:10px;align-items:center}
+.qw-head{color:var(--text-mute);font-size:11px;padding-bottom:8px;border-bottom:1px solid color-mix(in srgb,var(--border) 60%,transparent)}
+.qw-head .rem{grid-column:3/5}
+.qw-head .rs,.qw-row .r{text-align:right}
+.qw-head .wn,.qw-row .w{text-align:right}
+.qw-row{padding:6px 0}
+.qw-row.first{border-top:1px solid color-mix(in srgb,var(--border) 40%,transparent);padding-top:9px}
+.qw-head+.qw-row.first{border-top:none}
+.qw-row .nm{display:flex;align-items:center;gap:7px;color:var(--text);font-weight:600;white-space:nowrap;min-width:0}
+.qw-row .nm img{width:14px;height:14px;flex:none}
+.qw-row .nm em{font-style:normal;font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.06em;color:var(--text-dim);border:1px solid var(--border);border-radius:4px;padding:0 4px}
+.qw-row .w{color:var(--text-dim);font-variant-numeric:tabular-nums}
+.qw-row .bar{height:5px;border-radius:3px;background:#3A4252;overflow:hidden}
+.qw-row .bar i{display:block;height:100%;border-radius:3px}
+.qw-row b{text-align:right;font-weight:600;color:var(--text);font-variant-numeric:tabular-nums}
+.qw-row b.warn{color:var(--warning)}
+.qw-row .r{color:var(--text-dim);font-variant-numeric:tabular-nums}
+@media (max-width:560px){
+  .qw-head,.qw-row{grid-template-columns:78px 44px minmax(0,1fr) 44px;gap:8px}
+  .qw-head .rs,.qw-row .r,.qw-row .nm em{display:none}
+}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:16px}
 .chips span{font-size:11.5px;font-weight:600;color:var(--text-dim);background:var(--surface3);border:1px solid color-mix(in srgb,var(--border) 70%,transparent);border-radius:6px;padding:2px 8px;font-variant-numeric:tabular-nums}
+.chips span b{color:var(--text);font-weight:700}
 .chips span.on{color:var(--ink);background:var(--cyan);border-color:var(--cyan)}
 .acct{margin-top:16px;display:grid;gap:8px}
 .acct div{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--text);padding:7px 10px;background:rgba(7,11,18,.4);border-radius:8px}
@@ -657,11 +659,14 @@ html[lang^="zh"] .pop{--donut:12.7%;--lg1:var(--pop-x);--lg2:var(--pop-c)}
 .acct .tg.off{background:var(--surface3)}
 .acct .tg.off::after{right:auto;left:2px;background:var(--text-mute)}
 .acct .dim{color:var(--text-mute)}
-.dockmeter{margin-top:16px;display:flex;align-items:center;gap:14px}
-.dockmeter img{width:58px;height:58px;border-radius:13px;flex:none}
-.dockmeter .sel{display:grid;gap:6px;font-size:12px;color:var(--text-dim)}
-.dockmeter .sel>span{display:flex;align-items:center;gap:7px}
-.dockmeter .sel b{color:var(--text);font-weight:600;background:var(--surface3);border-radius:6px;padding:1px 8px}
+.acct .note{font-size:11px;color:var(--text-mute)}
+/* menu bar panel rows: pool plus full window length, account caption above */
+.qrows{margin-top:16px;display:grid;gap:10px;padding:12px 14px;background:rgba(7,11,18,.4);border-radius:10px}
+.qrows .cap{font-size:11px;font-weight:600;color:var(--text-mute)}
+.qrows .q{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;color:var(--text)}
+.qrows .q b{font-weight:650;font-variant-numeric:tabular-nums}
+.qrows .bar{height:5px;border-radius:3px;background:#3A4252;overflow:hidden;margin-top:5px}
+.qrows .bar i{display:block;height:100%;border-radius:3px}
 
 /* frameless window screenshots: the captured macOS window already has its own
    rounded corners and transparency, so it sits directly on the page */
@@ -1407,9 +1412,9 @@ html.motion .feed-panel.seen .feed-item.pinned::after{
 html.motion .feed-panel.seen .feed-item.pinned:nth-child(3)::after{animation-delay:1.2s}
 html.motion .feed-head .live i{animation:pulse 2.4s ease-in-out infinite,live-ring 2s ease-out infinite}
 
-/* release bento: the token-mix and speed bars grow in once the card lands */
-html.motion .new-card .mix-bar i,html.motion .new-card .model .bar i{transform-origin:0 50%;transition:transform 1.1s cubic-bezier(.2,.7,.2,1) .35s}
-html.motion .new-card:not(.seen) .mix-bar i,html.motion .new-card:not(.seen) .model .bar i{transform:scaleX(0)}
+/* release bento: the quota bars sweep in once the card lands, as in the app */
+html.motion .new-card .qw-row .bar i,html.motion .new-card .qrows .bar i{transform-origin:0 50%;transition:transform 1.1s cubic-bezier(.2,.7,.2,1) .35s}
+html.motion .new-card:not(.seen) .qw-row .bar i,html.motion .new-card:not(.seen) .qrows .bar i{transform:scaleX(0)}
 
 /* install steps: the connectors draw once the cards land */
 html.motion .step:not(:last-child)::after{transform:scaleX(0);transform-origin:0 50%;transition:transform .8s cubic-bezier(.2,.7,.2,1) .5s}
@@ -1488,7 +1493,7 @@ html.motion .lab-stage img{transition:transform .25s ease,rotate .5s cubic-bezie
   <!-- ================= hero ================= -->
   <header class="hero" id="download">
     <div class="hero-copy">
-      <span class="badge" data-i18n="h-badge"><span class="dot"></span>Version 1.4 · Mac release + iPhone beta</span>
+      <span class="badge" data-i18n="h-badge"><span class="dot"></span>Version 1.5 · Mac release + iPhone beta</span>
       <h1 data-i18n="h-h1">Your AI quotas,<br><span class="accent"><span class="fw">right</span> <span class="fw">in the</span></span> <span class="nowrap"><span class="accent"><span class="fw">menu bar</span></span>.</span></h1>
       <p class="sub" data-i18n="h-sub">
         Remaining quota and reset countdowns for <strong>Claude Code, Codex, Cursor, Windsurf, Grok, GLM</strong>
@@ -1511,7 +1516,7 @@ html.motion .lab-stage img{transition:transform .25s ease,rotate .5s cubic-bezie
       <p class="req-line">
         <span>macOS 14+</span><span class="sep">·</span>
         <span>Universal (Apple Silicon + Intel)</span><span class="sep">·</span>
-        <span id="releaseVersion" data-release-version="1.4.7" aria-live="polite">Version 1.4.7 · Universal Mac</span>
+        <span id="releaseVersion" data-release-version="1.5.1" aria-live="polite">Version 1.5.1 · Universal Mac</span>
       </p>
       <p class="releases-hint"><span data-i18n="h-hint">Mac: Developer ID signed and notarized. iPhone beta: iOS 18+, with the Mac companion and the same iCloud account.</span></p>
     </div>
@@ -1549,14 +1554,14 @@ html.motion .lab-stage img{transition:transform .25s ease,rotate .5s cubic-bezie
             <div class="pop-list">
             <div class="pop-card pop-q pop-claude" data-w="claude">
               <div class="pop-row pop-hd"><button class="pop-pn pop-toggle" type="button" aria-expanded="false"><img src="assets/providers/claude-code.svg" alt=""><span data-title>Claude</span><span class="chev"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 1.8 6.7 5 3.5 8.2"/></svg></span></button><button class="pop-pin" type="button" aria-pressed="false" aria-label="Keep expanded / 保持展开"><svg class="off" width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2h6M6.5 2v4.2L4 9.3h8L9.5 6.2V2M8 9.3V14"/></svg><svg class="on" width="11" height="11" viewBox="0 0 16 16" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2h6M6.5 2v4.2L4 9.3h8L9.5 6.2V2Z"/><path d="M8 9.3V14" fill="none"/></svg></button></div>
-              <div class="qrow"><div class="pop-row pop-meta"><span class="w" data-i18n="pop-cwin">5 hr window</span><span class="r"><svg class="rw" data-show="0" data-show-zh="0" width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.6 15.2 14H.8L8 1.6Zm0 3.7a.8.8 0 0 0-.8.85l.25 3.3a.55.55 0 0 0 1.1 0l.25-3.3A.8.8 0 0 0 8 5.3Zm0 5.4a.85.85 0 1 0 0 1.7.85.85 0 0 0 0-1.7Z"/></svg><span data-i18n="pop-crem">89% remaining</span></span></div><div class="pop-seg" data-n="12" data-n-zh="14"><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b></div><div class="qdet"><div class="qclip"><div class="qd"><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 8a5.5 5.5 0 1 1-1.7-3.95"/><path d="M13.2 1.9v2.6h-2.6"/></svg><span data-i18n="pop-c1r">Resets in 2 hr 14 min</span><span class="sp"><span>opus-5-5</span><span>·</span><b>≈100 tok/s</b></span></div><div class="qd pace" data-tone="ok" data-tone-zh="ok"><svg class="ok" width="9" height="9" viewBox="0 0 16 16" fill="currentColor"><path d="M8 .5a7.5 7.5 0 1 0 0 15A7.5 7.5 0 0 0 8 .5Zm3.6 5.4-4.3 4.8a.9.9 0 0 1-1.3 0L4.4 9a.9.9 0 1 1 1.3-1.2l1 1 3.6-4.1a.9.9 0 0 1 1.3 1.2Z"/></svg><svg class="bad" width="9" height="9" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.6 15.2 14H.8L8 1.6Zm0 3.7a.8.8 0 0 0-.8.85l.25 3.3a.55.55 0 0 0 1.1 0l.25-3.3A.8.8 0 0 0 8 5.3Zm0 5.4a.85.85 0 1 0 0 1.7.85.85 0 0 0 0-1.7Z"/></svg><span class="lbl" data-i18n="pop-c1p">44.3% reserve</span><span class="o" data-i18n="pop-lasts">Lasts until reset</span></div></div></div></div>
-              <div class="qx"><div class="qclip"><div class="qrow sep"><div class="pop-row pop-meta"><span class="w" data-i18n="pop-c2w">7 d window</span><span class="r"><svg class="rw" data-show="1" data-show-zh="0" width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.6 15.2 14H.8L8 1.6Zm0 3.7a.8.8 0 0 0-.8.85l.25 3.3a.55.55 0 0 0 1.1 0l.25-3.3A.8.8 0 0 0 8 5.3Zm0 5.4a.85.85 0 1 0 0 1.7.85.85 0 0 0 0-1.7Z"/></svg><span data-i18n="pop-c2rem">86% remaining</span></span></div><div class="pop-seg" data-n="12" data-n-zh="11"><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b></div><div class="qdet"><div class="qclip"><div class="qd"><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 8a5.5 5.5 0 1 1-1.7-3.95"/><path d="M13.2 1.9v2.6h-2.6"/></svg><span data-i18n="pop-c2r">Resets Mon 09:00</span></div><div class="qd pace" data-tone="bad" data-tone-zh="ok"><svg class="ok" width="9" height="9" viewBox="0 0 16 16" fill="currentColor"><path d="M8 .5a7.5 7.5 0 1 0 0 15A7.5 7.5 0 0 0 8 .5Zm3.6 5.4-4.3 4.8a.9.9 0 0 1-1.3 0L4.4 9a.9.9 0 1 1 1.3-1.2l1 1 3.6-4.1a.9.9 0 0 1 1.3 1.2Z"/></svg><svg class="bad" width="9" height="9" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.6 15.2 14H.8L8 1.6Zm0 3.7a.8.8 0 0 0-.8.85l.25 3.3a.55.55 0 0 0 1.1 0l.25-3.3A.8.8 0 0 0 8 5.3Zm0 5.4a.85.85 0 1 0 0 1.7.85.85 0 0 0 0-1.7Z"/></svg><span class="lbl" data-i18n="pop-c2p">4.7% ahead</span><span class="o" data-i18n="pop-c2o">Projected to run out in 4 d 0 hr</span></div></div></div></div></div></div>
-              <div class="qrow sep"><div class="pop-row pop-meta"><span class="w" data-i18n="pop-c3w">Fable · 7 d window</span><span class="r"><svg class="rw" data-show="0" data-show-zh="0" width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.6 15.2 14H.8L8 1.6Zm0 3.7a.8.8 0 0 0-.8.85l.25 3.3a.55.55 0 0 0 1.1 0l.25-3.3A.8.8 0 0 0 8 5.3Zm0 5.4a.85.85 0 1 0 0 1.7.85.85 0 0 0 0-1.7Z"/></svg><span data-i18n="pop-c3rem">92% remaining</span></span></div><div class="pop-seg" data-n="13" data-n-zh="13"><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b></div><div class="qdet"><div class="qclip"><div class="qd"><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 8a5.5 5.5 0 1 1-1.7-3.95"/><path d="M13.2 1.9v2.6h-2.6"/></svg><span data-i18n="pop-c2r">Resets Mon 09:00</span></div><div class="qd pace" data-tone="ok" data-tone-zh="ok"><svg class="ok" width="9" height="9" viewBox="0 0 16 16" fill="currentColor"><path d="M8 .5a7.5 7.5 0 1 0 0 15A7.5 7.5 0 0 0 8 .5Zm3.6 5.4-4.3 4.8a.9.9 0 0 1-1.3 0L4.4 9a.9.9 0 1 1 1.3-1.2l1 1 3.6-4.1a.9.9 0 0 1 1.3 1.2Z"/></svg><svg class="bad" width="9" height="9" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.6 15.2 14H.8L8 1.6Zm0 3.7a.8.8 0 0 0-.8.85l.25 3.3a.55.55 0 0 0 1.1 0l.25-3.3A.8.8 0 0 0 8 5.3Zm0 5.4a.85.85 0 1 0 0 1.7.85.85 0 0 0 0-1.7Z"/></svg><span class="lbl" data-i18n="pop-c3p">1.3% reserve</span><span class="o" data-i18n="pop-lasts">Lasts until reset</span></div></div></div></div>
+              <div class="qrow"><div class="pop-row pop-meta"><span class="w" data-i18n="pop-cwin">5 hours</span><span class="r"><svg class="rw" data-show="0" data-show-zh="0" width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.6 15.2 14H.8L8 1.6Zm0 3.7a.8.8 0 0 0-.8.85l.25 3.3a.55.55 0 0 0 1.1 0l.25-3.3A.8.8 0 0 0 8 5.3Zm0 5.4a.85.85 0 1 0 0 1.7.85.85 0 0 0 0-1.7Z"/></svg><span data-i18n="pop-crem">89% remaining</span></span></div><div class="pop-seg" data-n="12" data-n-zh="14"><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b></div><div class="qdet"><div class="qclip"><div class="qd"><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 8a5.5 5.5 0 1 1-1.7-3.95"/><path d="M13.2 1.9v2.6h-2.6"/></svg><span data-i18n="pop-c1r">Resets in 2 hr 14 min</span><span class="sp"><span>opus-5-5</span><span>·</span><b>≈100 tok/s</b></span></div><div class="qd pace" data-tone="ok" data-tone-zh="ok"><svg class="ok" width="9" height="9" viewBox="0 0 16 16" fill="currentColor"><path d="M8 .5a7.5 7.5 0 1 0 0 15A7.5 7.5 0 0 0 8 .5Zm3.6 5.4-4.3 4.8a.9.9 0 0 1-1.3 0L4.4 9a.9.9 0 1 1 1.3-1.2l1 1 3.6-4.1a.9.9 0 0 1 1.3 1.2Z"/></svg><svg class="bad" width="9" height="9" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.6 15.2 14H.8L8 1.6Zm0 3.7a.8.8 0 0 0-.8.85l.25 3.3a.55.55 0 0 0 1.1 0l.25-3.3A.8.8 0 0 0 8 5.3Zm0 5.4a.85.85 0 1 0 0 1.7.85.85 0 0 0 0-1.7Z"/></svg><span class="lbl" data-i18n="pop-c1p">44.3% reserve</span><span class="o" data-i18n="pop-lasts">Lasts until reset</span></div></div></div></div>
+              <div class="qx"><div class="qclip"><div class="qrow sep"><div class="pop-row pop-meta"><span class="w" data-i18n="pop-c2w">7 days</span><span class="r"><svg class="rw" data-show="1" data-show-zh="0" width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.6 15.2 14H.8L8 1.6Zm0 3.7a.8.8 0 0 0-.8.85l.25 3.3a.55.55 0 0 0 1.1 0l.25-3.3A.8.8 0 0 0 8 5.3Zm0 5.4a.85.85 0 1 0 0 1.7.85.85 0 0 0 0-1.7Z"/></svg><span data-i18n="pop-c2rem">86% remaining</span></span></div><div class="pop-seg" data-n="12" data-n-zh="11"><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b></div><div class="qdet"><div class="qclip"><div class="qd"><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 8a5.5 5.5 0 1 1-1.7-3.95"/><path d="M13.2 1.9v2.6h-2.6"/></svg><span data-i18n="pop-c2r">Resets Mon 09:00</span></div><div class="qd pace" data-tone="bad" data-tone-zh="ok"><svg class="ok" width="9" height="9" viewBox="0 0 16 16" fill="currentColor"><path d="M8 .5a7.5 7.5 0 1 0 0 15A7.5 7.5 0 0 0 8 .5Zm3.6 5.4-4.3 4.8a.9.9 0 0 1-1.3 0L4.4 9a.9.9 0 1 1 1.3-1.2l1 1 3.6-4.1a.9.9 0 0 1 1.3 1.2Z"/></svg><svg class="bad" width="9" height="9" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.6 15.2 14H.8L8 1.6Zm0 3.7a.8.8 0 0 0-.8.85l.25 3.3a.55.55 0 0 0 1.1 0l.25-3.3A.8.8 0 0 0 8 5.3Zm0 5.4a.85.85 0 1 0 0 1.7.85.85 0 0 0 0-1.7Z"/></svg><span class="lbl" data-i18n="pop-c2p">4.7% ahead</span><span class="o" data-i18n="pop-c2o">Projected to run out in 4 d 0 hr</span></div></div></div></div></div></div>
+              <div class="qrow sep"><div class="pop-row pop-meta"><span class="w" data-i18n="pop-c3w">Fable · 7 days</span><span class="r"><svg class="rw" data-show="0" data-show-zh="0" width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.6 15.2 14H.8L8 1.6Zm0 3.7a.8.8 0 0 0-.8.85l.25 3.3a.55.55 0 0 0 1.1 0l.25-3.3A.8.8 0 0 0 8 5.3Zm0 5.4a.85.85 0 1 0 0 1.7.85.85 0 0 0 0-1.7Z"/></svg><span data-i18n="pop-c3rem">92% remaining</span></span></div><div class="pop-seg" data-n="13" data-n-zh="13"><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b></div><div class="qdet"><div class="qclip"><div class="qd"><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 8a5.5 5.5 0 1 1-1.7-3.95"/><path d="M13.2 1.9v2.6h-2.6"/></svg><span data-i18n="pop-c2r">Resets Mon 09:00</span></div><div class="qd pace" data-tone="ok" data-tone-zh="ok"><svg class="ok" width="9" height="9" viewBox="0 0 16 16" fill="currentColor"><path d="M8 .5a7.5 7.5 0 1 0 0 15A7.5 7.5 0 0 0 8 .5Zm3.6 5.4-4.3 4.8a.9.9 0 0 1-1.3 0L4.4 9a.9.9 0 1 1 1.3-1.2l1 1 3.6-4.1a.9.9 0 0 1 1.3 1.2Z"/></svg><svg class="bad" width="9" height="9" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.6 15.2 14H.8L8 1.6Zm0 3.7a.8.8 0 0 0-.8.85l.25 3.3a.55.55 0 0 0 1.1 0l.25-3.3A.8.8 0 0 0 8 5.3Zm0 5.4a.85.85 0 1 0 0 1.7.85.85 0 0 0 0-1.7Z"/></svg><span class="lbl" data-i18n="pop-c3p">1.3% reserve</span><span class="o" data-i18n="pop-lasts">Lasts until reset</span></div></div></div></div>
               <div class="qx"><div class="qclip"><div class="qfresh"><svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M8 .5a7.5 7.5 0 1 0 0 15A7.5 7.5 0 0 0 8 .5Zm3.6 5.4-4.3 4.8a.9.9 0 0 1-1.3 0L4.4 9a.9.9 0 1 1 1.3-1.2l1 1 3.6-4.1a.9.9 0 0 1 1.3 1.2Z"/></svg><span data-i18n="pop-when">Updated just now</span></div></div></div>
             </div>
             <div class="pop-card pop-q pop-codex" data-w="codex">
               <div class="pop-row pop-hd"><button class="pop-pn pop-toggle" type="button" aria-expanded="false"><img src="assets/providers/codex-glyph.svg" alt=""><span data-title>Codex</span><span class="chev"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 1.8 6.7 5 3.5 8.2"/></svg></span></button><button class="pop-pin" type="button" aria-pressed="false" aria-label="Keep expanded / 保持展开"><svg class="off" width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2h6M6.5 2v4.2L4 9.3h8L9.5 6.2V2M8 9.3V14"/></svg><svg class="on" width="11" height="11" viewBox="0 0 16 16" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2h6M6.5 2v4.2L4 9.3h8L9.5 6.2V2Z"/><path d="M8 9.3V14" fill="none"/></svg></button></div>
-              <div class="qrow"><div class="pop-row pop-meta"><span class="w" data-i18n="pop-xwin">7 d window</span><span class="r"><svg class="rw" data-show="0" data-show-zh="1" width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.6 15.2 14H.8L8 1.6Zm0 3.7a.8.8 0 0 0-.8.85l.25 3.3a.55.55 0 0 0 1.1 0l.25-3.3A.8.8 0 0 0 8 5.3Zm0 5.4a.85.85 0 1 0 0 1.7.85.85 0 0 0 0-1.7Z"/></svg><span data-i18n="pop-xrem">91% remaining</span></span></div><div class="pop-seg" data-n="13" data-n-zh="4"><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b></div><div class="qdet"><div class="qclip"><div class="qd"><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 8a5.5 5.5 0 1 1-1.7-3.95"/><path d="M13.2 1.9v2.6h-2.6"/></svg><span data-i18n="pop-x1r">Resets Thu 20:00</span><span class="sp"><span>gpt-6-astra</span><span>·</span><b>≈27.8 tok/s</b></span></div><div class="qd pace" data-tone="ok" data-tone-zh="bad"><svg class="ok" width="9" height="9" viewBox="0 0 16 16" fill="currentColor"><path d="M8 .5a7.5 7.5 0 1 0 0 15A7.5 7.5 0 0 0 8 .5Zm3.6 5.4-4.3 4.8a.9.9 0 0 1-1.3 0L4.4 9a.9.9 0 1 1 1.3-1.2l1 1 3.6-4.1a.9.9 0 0 1 1.3 1.2Z"/></svg><svg class="bad" width="9" height="9" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.6 15.2 14H.8L8 1.6Zm0 3.7a.8.8 0 0 0-.8.85l.25 3.3a.55.55 0 0 0 1.1 0l.25-3.3A.8.8 0 0 0 8 5.3Zm0 5.4a.85.85 0 1 0 0 1.7.85.85 0 0 0 0-1.7Z"/></svg><span class="lbl" data-i18n="pop-x1p">51.0% reserve</span><span class="o" data-i18n="pop-x1o">Lasts until reset</span></div></div></div></div>
+              <div class="qrow"><div class="pop-row pop-meta"><span class="w" data-i18n="pop-xwin">7 days</span><span class="r"><svg class="rw" data-show="0" data-show-zh="1" width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.6 15.2 14H.8L8 1.6Zm0 3.7a.8.8 0 0 0-.8.85l.25 3.3a.55.55 0 0 0 1.1 0l.25-3.3A.8.8 0 0 0 8 5.3Zm0 5.4a.85.85 0 1 0 0 1.7.85.85 0 0 0 0-1.7Z"/></svg><span data-i18n="pop-xrem">91% remaining</span></span></div><div class="pop-seg" data-n="13" data-n-zh="4"><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b></div><div class="qdet"><div class="qclip"><div class="qd"><svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 8a5.5 5.5 0 1 1-1.7-3.95"/><path d="M13.2 1.9v2.6h-2.6"/></svg><span data-i18n="pop-x1r">Resets Thu 20:00</span><span class="sp"><span>gpt-6-astra</span><span>·</span><b>≈27.8 tok/s</b></span></div><div class="qd pace" data-tone="ok" data-tone-zh="bad"><svg class="ok" width="9" height="9" viewBox="0 0 16 16" fill="currentColor"><path d="M8 .5a7.5 7.5 0 1 0 0 15A7.5 7.5 0 0 0 8 .5Zm3.6 5.4-4.3 4.8a.9.9 0 0 1-1.3 0L4.4 9a.9.9 0 1 1 1.3-1.2l1 1 3.6-4.1a.9.9 0 0 1 1.3 1.2Z"/></svg><svg class="bad" width="9" height="9" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.6 15.2 14H.8L8 1.6Zm0 3.7a.8.8 0 0 0-.8.85l.25 3.3a.55.55 0 0 0 1.1 0l.25-3.3A.8.8 0 0 0 8 5.3Zm0 5.4a.85.85 0 1 0 0 1.7.85.85 0 0 0 0-1.7Z"/></svg><span class="lbl" data-i18n="pop-x1p">51.0% reserve</span><span class="o" data-i18n="pop-x1o">Lasts until reset</span></div></div></div></div>
               <div class="qx"><div class="qclip"><div class="qfresh"><svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M8 .5a7.5 7.5 0 1 0 0 15A7.5 7.5 0 0 0 8 .5Zm3.6 5.4-4.3 4.8a.9.9 0 0 1-1.3 0L4.4 9a.9.9 0 1 1 1.3-1.2l1 1 3.6-4.1a.9.9 0 0 1 1.3 1.2Z"/></svg><span data-i18n="pop-when">Updated just now</span></div></div></div>
             </div>
             <div class="pop-card pop-usage" data-w="usage">
@@ -1639,77 +1644,68 @@ html.motion .lab-stage img{transition:transform .25s ease,rotate .5s cubic-bezie
     <div class="mq-row rev"><div class="mq-track"></div></div>
   </div>
 
-  <!-- ================= 1.4 release ================= -->
+  <!-- ================= 1.5 release ================= -->
   <section id="new">
-    <p class="eyebrow" data-num="1.4">Latest Release</p>
-    <h2 data-i18n="n-h2">See where every token goes</h2>
-    <p class="lede" data-i18n="n-lede">TokenRemain 1.4 adds a token-level view of your usage — what was input, output and cache, and how fast each model answered — plus an Account Management page, display currencies and Dock meters you choose. All of it computed on your Mac.</p>
+    <p class="eyebrow" data-num="1.5">Latest Release</p>
+    <h2 data-i18n="n-h2">See what runs out first</h2>
+    <p class="lede" data-i18n="n-lede">TokenRemain 1.5 rebuilds the Dashboard Overview around the window that runs out first, lets you choose which apps the usage trend draws, and adds motion that follows Reduce Motion. Quota rows get quieter too: just the pool and the full window length.</p>
     <div class="new-grid">
       <div class="new-card wide lift">
-        <div class="glyph">TOKEN MIX <i>1.4.2</i></div>
-        <h3 data-i18n="n1t">Input, output and cache, counted apart</h3>
-        <p data-i18n="n1d">Trends splits every range — or any day you click — into input, output, cache write and cache read, and each model row gets its own composition bar. Older history keeps an unsplit cache total instead of guessing.</p>
-        <div class="mix" aria-hidden="true">
-          <div class="mix-head"><span data-i18n="n1-mix">Token mix · last 14 days</span><b>1.39B</b></div>
-          <div class="mix-bar"><i style="width:3.3%;min-width:4px;background:var(--violet)"></i><i style="width:.4%;min-width:3px;background:var(--cyan)"></i><i style="width:.2%;min-width:3px;background:var(--warning)"></i><i style="flex:1;background:#5A6475"></i></div>
-          <div class="mix-legend">
-            <span style="--c:var(--violet)"><span data-i18n="n1-in">Input</span> <b>3.3%</b></span>
-            <span style="--c:var(--cyan)"><span data-i18n="n1-out">Output</span> <b>0.4%</b></span>
-            <span style="--c:var(--warning)"><span data-i18n="n1-cw">Cache write</span> <b>0.2%</b></span>
-            <span style="--c:#5A6475"><span data-i18n="n1-cr">Cache read</span> <b>96.1%</b></span>
-          </div>
-          <div class="mix-rows">
-            <div class="mix-row"><span class="nm"><i style="background:#BF8471"></i>opus-5-5</span><span class="mix-bar"><i style="width:.5%;min-width:3px;background:var(--cyan)"></i><i style="width:2.9%;min-width:3px;background:var(--warning)"></i><i style="flex:1;background:#5A6475"></i></span><b>52.3M</b></div>
-            <div class="mix-row"><span class="nm"><i style="background:#6687C5"></i>gpt-6-astra</span><span class="mix-bar"><i style="width:2.3%;min-width:3px;background:var(--violet)"></i><i style="width:.4%;min-width:3px;background:var(--cyan)"></i><i style="flex:1;background:#5A6475"></i></span><b>91.5M</b></div>
-            <div class="mix-row"><span class="nm"><i style="background:#6687C5"></i>gpt-5.6-luna</span><span class="mix-bar"><i style="width:8.8%;min-width:3px;background:var(--violet)"></i><i style="width:.5%;min-width:3px;background:var(--cyan)"></i><i style="flex:1;background:#5A6475"></i></span><b>1.5M</b></div>
-          </div>
+        <div class="glyph">OVERVIEW <i>1.5.1</i></div>
+        <h3 data-i18n="n1t">Every quota window in one table</h3>
+        <p data-i18n="n1d">A summary strip names what runs out first, the lowest remaining quota, today's tokens and estimated cost. Below it, one Quota Windows table lists every official window, most urgent first — in two columns on wide windows, with each app's plan badge and data source.</p>
+        <div class="qw" aria-hidden="true">
+          <div class="qw-head"><span data-i18n="n1-app">App</span><span class="wn" data-i18n="n1-win">Window</span><span class="rem" data-i18n="n1-rem">Remaining quota</span><span class="rs" data-i18n="n1-rst">Resets</span></div>
+          <div class="qw-row first"><span class="nm"><img src="assets/providers/codex-glyph.svg" alt="">Codex<em>PLUS</em></span><span class="w" data-i18n="n1-w5">5 hr</span><span class="bar"><i style="width:64%;background:#6687C5"></i></span><b>64%</b><span class="r">2:41</span></div>
+          <div class="qw-row"><span class="nm"></span><span class="w" data-i18n="n1-w7">7 d</span><span class="bar"><i style="width:8%;background:var(--warning)"></i></span><b class="warn">8%</b><span class="r" data-i18n="n1-r2">2 d 9 hr</span></div>
+          <div class="qw-row first"><span class="nm"><img src="assets/providers/claude-code.svg" alt="">Claude<em>MAX</em></span><span class="w" data-i18n="n1-w5">5 hr</span><span class="bar"><i style="width:31%;background:#BF8471"></i></span><b>31%</b><span class="r">1:12</span></div>
+          <div class="qw-row"><span class="nm"></span><span class="w" data-i18n="n1-w7">7 d</span><span class="bar"><i style="width:72%;background:#BF8471"></i></span><b>72%</b><span class="r" data-i18n="n1-r4">4 d 3 hr</span></div>
+          <div class="qw-row first"><span class="nm"><img class="brand-logo mono" src="assets/providers/cursor.svg" alt="">Cursor<em>PRO+</em></span><span class="w" data-i18n="n1-w31">31 d</span><span class="bar"><i style="width:73.6%;background:#8D7FD6"></i></span><b>73.6%</b><span class="r" data-i18n="n1-r5">8 d 6 hr</span></div>
         </div>
       </div>
       <div class="new-card lift">
-        <div class="glyph">TOK/S <i>1.4.2</i></div>
-        <h3 data-i18n="n2t">Output speed, measured locally</h3>
-        <p data-i18n="n2d">End-to-end tokens per second for each model, estimated from Claude Code and Codex session timestamps. Only appended log bytes are read, with a time and size budget.</p>
-        <div class="models" aria-hidden="true">
-          <div class="model"><span class="nm">opus-5-5</span><span class="tps">≈100 tok/s</span><span class="tk">52.3M</span><span class="bar"><i style="width:100%;background:#BF8471"></i></span></div>
-          <div class="model"><span class="nm">gpt-6-astra</span><span class="tps">≈27.8 tok/s</span><span class="tk">91.5M</span><span class="bar"><i style="width:60.6%;background:#6687C5"></i></span></div>
-          <div class="model"><span class="nm">gpt-5.6-luna</span><span class="tps">≈76.3 tok/s</span><span class="tk">1.5M</span><span class="bar"><i style="width:4%;background:#6687C5"></i></span></div>
-        </div>
-      </div>
-      <div class="new-card lift">
-        <div class="glyph">ACCOUNTS <i>1.4.1</i></div>
-        <h3 data-i18n="n3t">Account Management</h3>
-        <p data-i18n="n3d">One page for every tracked app: switch monitoring per app, pause or rename accounts, update credentials, and opt in to a combined view for same-plan accounts.</p>
+        <div class="glyph">TRENDS <i>1.5.1</i></div>
+        <h3 data-i18n="n2t">Choose the apps in the trend</h3>
+        <p data-i18n="n2d">An Apps menu on the Daily Usage Trend adds or removes apps and remembers your choice. Tools whose local logs TokenRemain reads stay selectable without recent records; apps with quota data only are listed with the reason.</p>
         <div class="acct" aria-hidden="true">
-          <div><img src="assets/providers/claude-code.svg" alt="">Claude · <span data-i18n="n3-a">Work</span><span class="tg"></span></div>
-          <div><img src="assets/providers/claude-code.svg" alt="">Claude · <span data-i18n="n3-b">Personal</span><span class="tg"></span></div>
-          <div><img src="assets/providers/codex-glyph.svg" alt=""><span class="dim">Codex · <span data-i18n="n3-c">Side project</span></span><span class="tg off"></span></div>
+          <div><img src="assets/providers/claude-code.svg" alt="">Claude<span class="tg"></span></div>
+          <div><img src="assets/providers/codex-glyph.svg" alt="">Codex<span class="tg"></span></div>
+          <div><img src="assets/providers/antigravity.svg" alt="">Antigravity <span class="note" data-i18n="n2-quiet">no recent records</span><span class="tg off"></span></div>
+          <div><img class="brand-logo mono" src="assets/providers/cursor.svg" alt=""><span class="dim">Cursor</span> <span class="note" data-i18n="n2-quota">quota data only</span></div>
         </div>
       </div>
       <div class="new-card lift">
-        <div class="glyph">CURRENCY <i>1.4.2</i></div>
-        <h3 data-i18n="n4t">Costs in your currency</h3>
-        <p data-i18n="n4d">Show API list-price estimates in 13 currencies using daily public reference rates. Official bills and balances always stay in their billing currency; with USD selected, no rate request is made.</p>
-        <div class="chips" aria-hidden="true"><span>USD</span><span class="on">CNY</span><span>EUR</span><span>JPY</span><span>GBP</span><span>HKD</span><span>TWD</span><span>KRW</span><span>AUD</span><span>CAD</span><span>SGD</span><span>CHF</span><span>INR</span></div>
+        <div class="glyph">MOTION <i>1.5.1</i></div>
+        <h3 data-i18n="n3t">Motion that respects your settings</h3>
+        <p data-i18n="n3d">Buttons spring and ripple from the pointer, switches stretch, figures roll and bars sweep in on first open. The menu bar panel fades in and out, and the Dashboard fades in when opened from it. All of it follows Reduce Motion.</p>
+        <div class="chips" aria-hidden="true"><span data-i18n="n3-c1">Press spring</span><span data-i18n="n3-c2">Ripple</span><span data-i18n="n3-c3">Elastic switch</span><span data-i18n="n3-c4">Rolling figures</span><span data-i18n="n3-c5">Panel fade</span><span class="on" data-i18n="n3-c6">Reduce Motion</span></div>
       </div>
       <div class="new-card lift">
-        <div class="glyph">DOCK <i>1.4.1</i></div>
-        <h3 data-i18n="n5t">Dock meters you pick</h3>
-        <p data-i18n="n5d">The Dock icon's two meters can follow any tracked apps, with a live preview in Settings. Claude and Codex remain the default pair.</p>
-        <div class="dockmeter" aria-hidden="true">
-          <img src="assets/brand/appicon-mac.png" width="512" height="512" alt="" loading="lazy">
-          <div class="sel"><span><span data-i18n="n5-top">Top</span> <b>Claude</b></span><span><span data-i18n="n5-bot">Bottom</span> <b>Cursor</b></span></div>
+        <div class="glyph">ROWS <i>1.5.1</i></div>
+        <h3 data-i18n="n4t">Quieter quota rows</h3>
+        <p data-i18n="n4d">The menu bar panel, its alert banner and Limits cards show just the pool and the full window length. The data source moves to the Dashboard's small print, and an app with several accounts names non-default ones above their rows.</p>
+        <div class="qrows" aria-hidden="true">
+          <span class="cap" data-i18n="n4-acct">Work</span>
+          <div><div class="q"><span data-i18n="n4-r1">5 hours</span><b>97%</b></div><div class="bar"><i style="width:97%;background:#BF8471"></i></div></div>
+          <div><div class="q"><span data-i18n="n4-r2">Fable · 7 days</span><b>90%</b></div><div class="bar"><i style="width:90%;background:#BF8471"></i></div></div>
         </div>
+      </div>
+      <div class="new-card lift">
+        <div class="glyph">PLANS <i>1.5.1</i></div>
+        <h3 data-i18n="n5t">Plan badges that match</h3>
+        <p data-i18n="n5d">Plan badges on Overview and Limits follow the Subscriptions card. Claude's renamed plans appear as Max and Ultra at the same prices, and saved price overrides keep working.</p>
+        <div class="chips" aria-hidden="true"><span>Max 5x → <b>Max</b></span><span>Max 20x → <b>Ultra</b></span></div>
       </div>
       <div class="new-card full lift">
         <div>
-          <div class="glyph">CLAUDE <i>1.4.0</i></div>
-          <h3 data-i18n="n6t">Claude Desktop and Cowork, counted</h3>
-          <p data-i18n="n6d">Local totals now merge Claude Desktop and Cowork session logs with your Claude Code folders, deduplicated, with custom log folders on the Data Sources page.</p>
+          <div class="glyph">ENERGY <i>1.5.1</i></div>
+          <h3 data-i18n="n6t">Lighter in the background</h3>
+          <p data-i18n="n6d">Far fewer background wake-ups while TokenRemain sits in the menu bar, and an idle Dashboard no longer redraws for the robot's bounce, which now runs on Core Animation.</p>
         </div>
         <div>
-          <div class="glyph">WEB SESSION <i>1.4.0</i></div>
-          <h3 data-i18n="n7t">Claude quota without the CLI</h3>
-          <p data-i18n="n7d">Paste your own claude.ai session on the Data Sources page to read Claude quota directly — kept in the local Keychain, with organization selection, cancellation, timeouts and retry backoff.</p>
+          <div class="glyph">GROK BOT <i>1.5.1</i></div>
+          <h3 data-i18n="n7t">Grok Bot reads Cursor's login</h3>
+          <p data-i18n="n7d">Grok Bot usage is read through Cursor's encrypted login after the same one-time Keychain approval as Cursor, instead of being reported as signed out.</p>
         </div>
       </div>
     </div>
@@ -1719,7 +1715,7 @@ html.motion .lab-stage img{transition:transform .25s ease,rotate .5s cubic-bezie
   <section id="screens">
     <p class="eyebrow" data-num="01">Real UI</p>
     <h2 data-i18n="s-h2">Mac, iPhone, wrist — one design language</h2>
-    <p class="lede" data-i18n="s-lede">You've met the menu bar popover above — rendered live in your browser, not a screenshot. Everything below is a <strong style="color:var(--text)">real screenshot</strong>: the Mac Dashboard is TokenRemain 1.4.2 running on real usage data; the iPhone and Apple Watch shots run the built-in demo scenario, so they carry its DEMO mark. Numbers use tabular system digits, and hierarchy comes from type rather than decoration.</p>
+    <p class="lede" data-i18n="s-lede">You've met the menu bar popover above — rendered live in your browser, not a screenshot. Everything below is a <strong style="color:var(--text)">real screenshot</strong>: the Mac Dashboard is TokenRemain 1.5.1 running on real usage data; the iPhone and Apple Watch shots run the built-in demo scenario, so they carry its DEMO mark. Numbers use tabular system digits, and hierarchy comes from type rather than decoration.</p>
     <div class="shot-grid">
       <div class="pin-track" id="dashTrack">
         <div class="pin-stage">
@@ -1727,21 +1723,21 @@ html.motion .lab-stage img{transition:transform .25s ease,rotate .5s cubic-bezie
           <div class="pin-zoom dash-zoom">
             <figure class="shot bare">
               <span class="dash-viewport">
-                <img class="on" src="assets/dash-overview.webp" width="2360" height="1520" alt="TokenRemain Dashboard overview page: lowest remaining quota, today's tokens and estimated cost, usage donut by provider, official quotas and risk notes" loading="lazy"
+                <img class="on" src="assets/dash-overview.webp" width="2360" height="1581" alt="TokenRemain Dashboard overview page: a summary strip with what runs out first, the lowest remaining quota, today's tokens and estimated cost, above a Quota Windows table listing every official window, most urgent first" loading="lazy"
                      data-shot-en="assets/dash-overview.webp" data-shot-zh="assets/dash-overview-zh.webp">
-                <img src="assets/dash-limits.webp" width="2360" height="1520" alt="TokenRemain Dashboard limits page: per-provider official quota windows with segment bars, reset countdowns and pace reserve" loading="lazy"
+                <img src="assets/dash-limits.webp" width="2360" height="1581" alt="TokenRemain Dashboard limits page: per-provider official quota windows with segment bars, reset countdowns and pace reserve" loading="lazy"
                      data-shot-en="assets/dash-limits.webp" data-shot-zh="assets/dash-limits-zh.webp">
-                <img src="assets/dash-trends.webp" width="2360" height="1520" alt="TokenRemain Dashboard trends page: stacked daily token bars per provider, a token-mix strip and quota-consumption curves" loading="lazy"
+                <img src="assets/dash-trends.webp" width="2360" height="1581" alt="TokenRemain Dashboard trends page: stacked daily token bars for the apps chosen in the Apps menu, a token-mix strip and quota-consumption curves" loading="lazy"
                      data-shot-en="assets/dash-trends.webp" data-shot-zh="assets/dash-trends-zh.webp">
-                <img src="assets/dash-models.webp" width="2360" height="1520" alt="TokenRemain Dashboard model detail for one day: token mix plus per-model usage with locally estimated tokens per second" loading="lazy"
+                <img src="assets/dash-models.webp" width="2360" height="1581" alt="TokenRemain Dashboard model detail for one day: token mix plus per-model usage with locally estimated tokens per second" loading="lazy"
                      data-shot-en="assets/dash-models.webp" data-shot-zh="assets/dash-models-zh.webp">
               </span>
               <figcaption class="stage-cap dash-cap">
                 <div class="stage-dots" aria-hidden="true"><i class="on"></i><i></i><i></i><i></i></div>
                 <div class="stage-slides">
-                  <p class="slide on"><span class="tag" data-i18n="cap-dash-t">Dashboard · Overview</span><span class="cap" data-i18n="cap-dash-c">Real local usage: today's tokens and estimated cost split by provider, with official quota progress, the projected runway and risk notes beside them.</span></p>
+                  <p class="slide on"><span class="tag" data-i18n="cap-dash-t">Dashboard · Overview</span><span class="cap" data-i18n="cap-dash-c">What runs out first sits on top, beside the lowest remaining quota, today's tokens and estimated cost. Below, every official quota window in one table, most urgent first.</span></p>
                   <p class="slide"><span class="tag" data-i18n="cap-dash2-t">Dashboard · Limits</span><span class="cap" data-i18n="cap-dash2-c">Every provider's official windows — 5-hour, 7-day and monthly pools — with reset countdowns and a pace reserve that turns red, with a run-out ETA, when you're ahead of budget.</span></p>
-                  <p class="slide"><span class="tag" data-i18n="cap-dash3-t">Dashboard · Trends</span><span class="cap" data-i18n="cap-dash3-c">Stacked daily token bars per provider, the token mix for the range and quota-consumption curves, so weekly rhythm and spikes stand out at a glance.</span></p>
+                  <p class="slide"><span class="tag" data-i18n="cap-dash3-t">Dashboard · Trends</span><span class="cap" data-i18n="cap-dash3-c">Stacked daily token bars for the apps you choose in the Apps menu, the token mix for the range and quota-consumption curves, so weekly rhythm and spikes stand out at a glance.</span></p>
                   <p class="slide"><span class="tag" data-i18n="cap-dash4-t">Trends · Model detail</span><span class="cap" data-i18n="cap-dash4-c">Click any day: input, output, cache write and cache read for that day, each model's share, and its output speed estimated from local session logs.</span></p>
                 </div>
               </figcaption>
@@ -2170,16 +2166,16 @@ html.motion .lab-stage img{transition:transform .25s ease,rotate .5s cubic-bezie
 <script>
 /* ---------- i18n: English inline (default), Chinese dictionary ---------- */
 var ZH={
-  "nav-dl":"下载","nav-new":"1.4 新功能","nav-screens":"界面","nav-providers":"支持的服务","nav-feed":"AI 动态","nav-privacy":"隐私","nav-brand":"品牌","nav-policy":"隐私政策","nav-support":"支持","nav-limits":"限制",
-  "h-badge":"<span class=\"dot\"></span>1.4 正式版 · Mac 发布 + iPhone 测试",
+  "nav-dl":"下载","nav-new":"1.5 新功能","nav-screens":"界面","nav-providers":"支持的服务","nav-feed":"AI 动态","nav-privacy":"隐私","nav-brand":"品牌","nav-policy":"隐私政策","nav-support":"支持","nav-limits":"限制",
+  "h-badge":"<span class=\"dot\"></span>1.5 正式版 · Mac 发布 + iPhone 测试",
   "h-h1":"你的 AI 额度，<br><span class=\"accent\"><span class=\"fw\">常驻</span></span><span class=\"nowrap\"><span class=\"accent\"><span class=\"fw\">菜单栏</span></span>。</span>",
   "h-sub":"一处看全 <strong>Claude Code、Codex、Cursor、Windsurf、Grok、GLM</strong> 等 <strong>27+ 服务</strong>的剩余额度与重置倒计时，还能看清今天的 Token 花在哪、每个模型跑得多快、折合多少钱。Provider 凭证始终留在 Mac；启用 Apple 设备同步后，只有经过白名单过滤并使用 AES-256-GCM 加密的额度快照会通过你自己的 iCloud 账户传输。",
   "h-dl":"下载 Mac 版","h-ios":"加入 iPhone TestFlight","h-gh":"GitHub 仓库",
   "h-hint":"Mac 版已签名并通过 Apple 公证；iPhone 测试版需 iOS 18+、Mac 伴侣 App 与同一 iCloud 账号。",
   "pop-when":"4 分钟前更新",
   "pop-sev":"中","pop-ban1":"当前节奏可能提前用尽","pop-ban2":"Codex 剩余 29%",
-  "pop-cwin":"5 小时窗口","pop-crem":"剩余 97%",
-  "pop-xwin":"7 天窗口","pop-xrem":"剩余 29%",
+  "pop-cwin":"5小时","pop-crem":"剩余 97%",
+  "pop-xwin":"7天","pop-xrem":"剩余 29%",
   "pop-usage":"今日本地统计","pop-total":"$189.11",
   "pop-l1n":"Codex","pop-l1t":"176.50M","pop-l1p":"87.3%",
   "pop-l2n":"Claude","pop-l2t":"25.66M","pop-l2p":"12.7%",
@@ -2193,8 +2189,8 @@ var ZH={
   "pop-f2s":"Simon Willison","pop-f2t":"7 小时 27 分钟","pop-f2x":"I wrote about the completely …",
   "pop-open":"打开 Dashboard","pop-set":"设置","pop-quit":"退出",
   "pop-c1r":"重置还有 3小时 40分","pop-c1p":"节奏余量 23.7%","pop-lasts":"可持续到重置",
-  "pop-c2w":"7 天窗口","pop-c2rem":"剩余 81%","pop-c2r":"周二 09:00 重置","pop-c2p":"节奏余量 69.0%","pop-c2o":"可持续到重置",
-  "pop-c3w":"Fable · 7 天窗口","pop-c3rem":"剩余 90%","pop-c3p":"节奏余量 78.0%",
+  "pop-c2w":"7天","pop-c2rem":"剩余 81%","pop-c2r":"周二 09:00 重置","pop-c2p":"节奏余量 69.0%","pop-c2o":"可持续到重置",
+  "pop-c3w":"Fable · 7天","pop-c3rem":"剩余 90%","pop-c3p":"节奏余量 78.0%",
   "pop-x1r":"周四 20:00 重置","pop-x1p":"用量超前 18.4%","pop-x1o":"预计 1天 12小时 后用尽",
   "pop-fsub2":"热门内容全文",
   "pop-f1xf":"The Claude Security plugin for Claude Code is now available.",
@@ -2205,23 +2201,25 @@ var ZH={
   "pop-hint":"试试：展开卡片、固定、右键，或长按拖动",
   "mq-label":"接入你已在用的 AI 工具",
   "st-a":"家 AI 编码工具与服务的额度窗口","st-b":"种本地编码 Agent，由 ccusage 离线统计","st-c":"种显示币种，用于 API 标价估算","st-d":"个凭证被刷新、复制或上传",
-  "n-h2":"每个 Token 去了哪，一目了然",
-  "n-lede":"TokenRemain 1.4 带来 Token 级的用量视图——哪些是输入、输出与缓存，每个模型回答得多快——再加上账号管理页、显示币种和可自选的 Dock 仪表。全部在你的 Mac 本地计算。",
-  "n1t":"输入、输出与缓存，分开统计","n1d":"趋势页把任意时间范围——或你点击的那一天——拆成输入、输出、缓存写入与缓存读取，每个模型行也有自己的构成条。旧历史保留未拆分的缓存总量，不做猜测。",
-  "n1-mix":"Token 构成 · 近 14 天","n1-in":"输入","n1-out":"输出","n1-cw":"缓存写入","n1-cr":"缓存读取",
-  "n2t":"输出速度，本机实测","n2d":"根据 Claude Code 与 Codex 会话时间戳，估算每个模型的端到端每秒输出 Token 数。只读取日志新追加的部分，并有时间与数据量上限。",
-  "n3t":"账号管理","n3d":"所有追踪应用集中在一页：按应用开关监控，暂停或重命名账号、更新凭证；同套餐账号可选合并查看。",
-  "n3-a":"工作","n3-b":"个人","n3-c":"副业项目",
-  "n4t":"用你的币种看成本","n4d":"API 标价估算支持 13 种显示币种，使用每日公开参考汇率换算。官方账单与余额始终保持原币种；选择 USD 时不会请求汇率。",
-  "n5t":"Dock 仪表由你挑","n5d":"Dock 图标上的两条仪表可以跟随任意已追踪应用，设置里实时预览；默认仍是 Claude 与 Codex。",
-  "n5-top":"上方","n5-bot":"下方",
-  "n6t":"Claude 桌面版与 Cowork 计入统计","n6d":"本地统计合并 Claude 桌面版、Cowork 会话日志与 Claude Code 目录并自动去重；「数据来源」页可添加自定义日志目录。",
-  "n7t":"没有 CLI 也能看 Claude 额度","n7d":"在「数据来源」页粘贴你自己的 claude.ai 会话即可直接读取 Claude 额度——只存本机钥匙串，支持组织选择、取消、超时与退避重试。",
+  "n-h2":"最先用完的，一眼看到",
+  "n-lede":"TokenRemain 1.5 围绕最先用完的额度窗口重做了 Dashboard 概览，每日用量趋势可以自选要画的应用，并加入遵循「减弱动态效果」的动效。额度行也更简洁：只显示额度池和完整的窗口时长。",
+  "n1t":"所有额度窗口，一张表看完","n1d":"顶部摘要条列出最先用完的窗口、最低剩余额度、今日 Token 与估算成本；下面的「额度窗口」表列出每一个官方窗口，最紧急的排在最前——宽窗口下分两栏，并标出各应用的套餐与数据来源。",
+  "n1-app":"应用","n1-win":"窗口","n1-rem":"剩余额度","n1-rst":"重置",
+  "n1-w5":"5小时","n1-w7":"7天","n1-w31":"31天","n1-r2":"2天 9小时","n1-r4":"4天 3小时","n1-r5":"8天 6小时",
+  "n2t":"趋势图里画哪些应用，你来选","n2d":"每日用量趋势新增「应用」菜单，可添加或移除应用，并记住你的选择。TokenRemain 能读取本地日志的工具即使近期没有记录也可以选；只有额度数据的应用会单独列出并说明原因。",
+  "n2-quiet":"近期无记录","n2-quota":"仅有额度数据",
+  "n3t":"动效，也听你的设置","n3d":"按钮按下会回弹、从指针处泛起涟漪，开关带弹性，首次打开时数字滚动、进度条扫入。菜单栏面板淡入淡出，从面板打开 Dashboard 时也会淡入。全部遵循「减弱动态效果」。",
+  "n3-c1":"按压回弹","n3-c2":"涟漪","n3-c3":"弹性开关","n3-c4":"数字滚动","n3-c5":"面板淡入淡出","n3-c6":"减弱动态效果",
+  "n4t":"更简洁的额度行","n4d":"菜单栏面板、提醒横幅与额度卡片只显示额度池和完整的窗口时长。数据来源移到 Dashboard 的小字里；一个应用有多个账号时，非默认账号的名称会以小字显示在对应行上方。",
+  "n4-acct":"工作","n4-r1":"5小时","n4-r2":"Fable · 7天",
+  "n5t":"套餐标签保持一致","n5d":"概览与额度页的套餐标签跟随「订阅」卡片。Claude 改名后的套餐显示为 Max 与 Ultra，价格不变，已保存的自定义价格继续有效。",
+  "n6t":"后台更省电","n6d":"TokenRemain 待在菜单栏时的后台唤醒大幅减少；Dashboard 空闲时不再为机器人的弹跳重绘，弹跳改由 Core Animation 驱动。",
+  "n7t":"Grok Bot 读取 Cursor 登录态","n7d":"Grok Bot 用量改为通过 Cursor 的加密登录态读取，只需与 Cursor 相同的一次性钥匙串授权，不再显示为未登录。",
   "s-h2":"Mac、iPhone、手腕，同一套设计语言",
-  "s-lede":"菜单栏弹窗在上方已经见过——那是浏览器实时渲染的真实组件，不是截图。下面全部是<strong style=\"color:var(--text)\">真实截图</strong>：Mac Dashboard 来自运行真实用量数据的 TokenRemain 1.4.2；iPhone 与 Apple Watch 截图跑的是内置演示场景，所以带着 DEMO 标记。数字使用等宽的系统数字，层级来自字号与留白，而不是装饰。",
-  "cap-dash-t":"Dashboard · 概览","cap-dash-c":"真实本地用量：今日 Token 与估算成本按服务商拆分，旁边是官方额度进度、预计可用时长与风险提示。",
+  "s-lede":"菜单栏弹窗在上方已经见过——那是浏览器实时渲染的真实组件，不是截图。下面全部是<strong style=\"color:var(--text)\">真实截图</strong>：Mac Dashboard 来自运行真实用量数据的 TokenRemain 1.5.1；iPhone 与 Apple Watch 截图跑的是内置演示场景，所以带着 DEMO 标记。数字使用等宽的系统数字，层级来自字号与留白，而不是装饰。",
+  "cap-dash-t":"Dashboard · 概览","cap-dash-c":"最先用完的窗口放在最上方，旁边是最低剩余额度、今日 Token 与估算成本；下方用一张表列出每个官方额度窗口，最紧急的排在最前。",
   "cap-dash2-t":"Dashboard · 额度","cap-dash2-c":"每个服务商的官方窗口——5 小时、7 天与月度额度池——附重置倒计时；用量超前时节奏余量变红，并给出预计用尽时间。",
-  "cap-dash3-t":"Dashboard · 趋势","cap-dash3-c":"按服务商堆叠的每日 Token 柱状图、所选范围的 Token 构成与额度消耗曲线，一眼看出每周节奏与用量高峰。",
+  "cap-dash3-t":"Dashboard · 趋势","cap-dash3-c":"按你在「应用」菜单中选择的应用堆叠的每日 Token 柱状图、所选范围的 Token 构成与额度消耗曲线，一眼看出每周节奏与用量高峰。",
   "cap-dash4-t":"趋势 · 模型明细","cap-dash4-c":"点击任意一天：当天的输入、输出、缓存写入与缓存读取，各模型用量占比，以及根据本机会话日志估算的输出速度。",
   "cap-pov-t":"iPhone · 概览","cap-pov-c":"今日 Token 完整数字领衔，配估算成本与「超过全球 N% 用户」评价；额度结论与风险徽章紧随其后。长按拖拽任意卡片即可重排页面。",
   "cap-paf-t":"iPhone · AI 资讯","cap-paf-c":"精选动态升级为独立标签页：时间线阅读流，额度/Token 与重大更新芯片置顶，本机归档你见过的每条动态。",
