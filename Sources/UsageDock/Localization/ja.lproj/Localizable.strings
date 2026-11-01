@@ -43,6 +43,12 @@
 "duration.less_than_minute" = "1分未満";
 "duration.hours" = "%d時間";
 "duration.days" = "%d日";
+"duration.minutes_full_one" = "%d分";
+"duration.minutes_full_other" = "%d分";
+"duration.hours_full_one" = "%d時間";
+"duration.hours_full_other" = "%d時間";
+"duration.days_full_one" = "%d日";
+"duration.days_full_other" = "%d日";
 "reset.in_progress" = "リセット中";
 "reset.countdown" = "%1$@ 後にリセット";
 "reset.on" = "%1$@ にリセット";
@@ -406,6 +412,7 @@
 "service.grok_bot.not_logged_in" = "Grok Bot の使用量は Cursor のログイン状態から読み取ります。Grok Bot と同じアカウントで Cursor にログインしてください";
 "service.grok_bot.no_weekly_allowance" = "この Cursor アカウントには Grok Bot の週次枠がありません";
 "service.grok_bot.pooled_allowance" = "このアカウントはチーム共有の枠を使用しており、Grok Bot は週次の割合を提供しません";
+"service.grok_bot.cursor_login_authorization" = "Grok Bot の使用量は Cursor のログイン状態から読み取りますが、Cursor はこのログイン情報を暗号化するようになりました。「読み取りアクセスを許可」をクリックし、macOS のダイアログで「常に許可」を選ぶとクォータの更新が再開します";
 "service.kiro.not_installed" = "kiro-cli が見つかりません。Kiro CLI をインストールしてログインすると自動的に接続されます";
 "service.opencode.no_usage" = "この Mac にはまだ OpenCode Go の使用記録がありません。OpenCode を一度使うと表示されます";
 "service.opencode.not_installed" = "OpenCode が見つかりません。OpenCode Go をインストールしてログインすると自動的に接続されます";
@@ -574,6 +581,12 @@
 "trends.metric_cost" = "コスト";
 "trends.no_local_usage_today" = "今日のローカル使用量はまだありません。";
 "trends.no_provider_selected" = "プロバイダー未選択";
+"trends.series_menu" = "アプリ";
+"trends.series_menu_help" = "グラフに表示するアプリを選択";
+"trends.series_no_recent" = "最近のローカル記録なし";
+"trends.series_quota_only" = "クォータデータのみ";
+"trends.choose_apps_hint" = "「アプリ」メニューから表示するアプリを選択";
+"trends.no_usage_in_range" = "選択したアプリのこの期間の使用量はありません";
 "trends.quota_accumulating_message" = "割り当ての更新に成功すると TokenRemain が記録を開始します。接続済みのすべてのプロバイダーが自動的に表示され、過去のデータは遡って取得できません。";
 "trends.quota_accumulating_title" = "割り当て推移を蓄積中";
 "trends.quota_history" = "推移";
@@ -990,3 +1003,12 @@
 "subscription.advice.item_upgrade_generic" = "%@：上位プラン";
 "subscription.advice.item_top_tier" = "%@：最上位プラン、アカウント追加";
 "subscription.advice.item_cancel" = "%@：解約";
+
+/* 1.5 Overview window table and risk banner */
+"overview.finding.projected" = "%1$@ の %2$@ ウィンドウはペースを %3$@ 超過しており、%4$@ 後に尽きる見込みです。%5$@。";
+"overview.kpi.runs_out_first" = "最初に尽きる";
+"quota.windows_title" = "上限ウィンドウ";
+"quota.windows_subtitle" = "すべての公式ウィンドウ（緊急度順）";
+"quota.windows_pace" = "ペース";
+"quota.windows_resets" = "リセット";
+"risk.headline.window_runout" = "%1$@ の %2$@ ウィンドウは %3$@ 後に尽きる見込み";

@@ -1,10 +1,14 @@
 import SwiftUI
 
-/// Dashboard Overview: risk-first KPIs and today's real ccusage composition plus
-/// live official quotas. Every value is derived from `UsageInsights`; anything
-/// that would require multi-day history lives in the Trends section instead.
+/// Dashboard Overview: the screen answers "will any quota run out before it
+/// resets?" first. The title row states the finding once (window, pace gap,
+/// run-out time, reset), the KPI strip leads with the window that runs out
+/// first, and the window table lists every official window by urgency.
+/// Every value is derived from `UsageInsights`; anything that would require
+/// multi-day history lives in the Trends section instead.
 struct OverviewSection: View {
     let insights: UsageInsights
+    let notices: [ProviderQuota.Provider: String]
     let subscriptionAccounts: [SubscriptionAccountInput]
     let localUsageStatus: UsageStore.LocalUsageStatus
     let isCCUsageRefreshing: Bool
@@ -12,28 +16,36 @@ struct OverviewSection: View {
     @ObservedObject var feedStore: AIFeedStore
     @ObservedObject var preferences: PreferencesStore = .shared
     @ObservedObject private var currencyStore = CurrencyStore.shared
+    /// Observed so a plan chosen on the subscription card also changes the
+    /// window table's badge.
+    @ObservedObject private var costStore = SubscriptionCostStore.shared
     let errorMessage: String?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            SectionTitleHeader(
-                title: DashboardSection.overview.title,
-                subtitle: DashboardSection.overview.subtitle,
-                trailing: updatedText
-            )
+        // One gutter for every gap on the screen, vertical and horizontal.
+        VStack(alignment: .leading, spacing: DashboardOverviewLayout.gridSpacing) {
+            TimelineView(.periodic(from: .now, by: 60)) { context in
+                VStack(alignment: .leading, spacing: DashboardOverviewLayout.gridSpacing) {
+                    titleRow(at: context.date)
 
-            kpiRow
+                    OverviewKPIStrip(
+                        insights: insights,
+                        now: context.date,
+                        tokens: tokensCell,
+                        cost: costCell
+                    )
 
-            LazyVGrid(columns: overviewPanelColumns, alignment: .leading, spacing: DashboardOverviewLayout.gridSpacing) {
-                UsageCostCompositionCard(
-                    insights: insights,
-                    localUsageStatus: localUsageStatus,
-                    isRefreshing: isCCUsageRefreshing,
-                    onRetry: onRetryCCUsage
-                )
-                officialQuotaPanel
-                TrendingStoriesCard(posts: feedStore.topStories)
-                riskDetailPanel
+                    mainRow(now: context.date, windows: QuotaWindowsPanel(
+                        groups: QuotaWindowTable.groups(
+                            quotas: insights.quotas,
+                            notices: notices,
+                            plans: planLabels,
+                            refreshInterval: preferences.refreshInterval,
+                            now: context.date
+                        ),
+                        now: context.date
+                    ))
+                }
             }
 
             SubscriptionCostCard(
@@ -41,252 +53,139 @@ struct OverviewSection: View {
                 history: insights.quotaUsageHistory,
                 tokenHistory: insights.history
             )
-
-            AIFeedSection(store: feedStore)
         }
+        .pageReveal()
+    }
+
+    /// The window table spans the canvas and is exactly as tall as the
+    /// tracked apps need, so one or two apps make a short band instead of a
+    /// half-empty column. Today's usage and the trending stories share the
+    /// row below at one height; narrower than `cardRowWidth` they stack.
+    private static let cardRowWidth: CGFloat = 640
+
+    private func mainRow(now: Date, windows: QuotaWindowsPanel) -> some View {
+        let usage = UsageCostCompositionCard(
+            insights: insights,
+            localUsageStatus: localUsageStatus,
+            isRefreshing: isCCUsageRefreshing,
+            onRetry: onRetryCCUsage
+        )
+        let trending = TrendingStoriesCard(posts: feedStore.topStories, now: now)
+        return VStack(spacing: DashboardOverviewLayout.gridSpacing) {
+            windows
+            // Side by side at the taller card's height, so the row ends on
+            // one line whatever today's usage or the feed holds; stacked when
+            // narrower. One copy of each card either way.
+            AdaptiveRowLayout(minimumWidth: Self.cardRowWidth, spacing: DashboardOverviewLayout.gridSpacing) {
+                usage
+                trending
+            }
+            .environment(\.overviewPanelFillsHeight, true)
+        }
+    }
+
+    /// The same summary the subscription card draws; prices play no part.
+    private var planLabels: [ProviderQuota.Provider: String] {
+        QuotaWindowTable.planLabels(from: SubscriptionCostSummary.make(
+            accounts: subscriptionAccounts,
+            overrides: costStore.overrides,
+            rates: nil
+        ))
     }
 
     private var updatedText: String? {
         insights.lastUpdated.map { L10n.format("common.updated_at", $0.formatted(date: .omitted, time: .standard)) }
     }
 
-    private var overviewPanelColumns: [GridItem] {
-        [
-            GridItem(
-                .flexible(minimum: 280),
-                spacing: DashboardOverviewLayout.gridSpacing,
-                alignment: .top
-            ),
-            GridItem(.flexible(minimum: 280), alignment: .top)
-        ]
-    }
+    // MARK: - Title row
 
-    // MARK: - KPIs (all real)
-
-    private var kpiRow: some View {
-        TimelineView(.periodic(from: .now, by: 60)) { context in
-            let risk = insights.riskLevel(at: context.date)
-
-            HStack(alignment: .top, spacing: 13) {
-                MetricCard(
-                    label: L10n.text("overview.kpi.min_remaining"),
-                    value: insights.minRemainingPercent.map { UsageFormatting.percent($0) } ?? "—",
-                    caption: "\(risk.badge) RISK",
-                    captionColor: risk.tint,
-                    valueColor: risk == .unknown ? DashboardTheme.text : risk.tint,
-                    source: minRemainingSource
-                )
-                MetricCard(
-                    label: L10n.text("usage.today_tokens"),
-                    value: insights.totalTokens.map { UsageFormatting.compactNumber($0) } ?? "—",
-                    caption: L10n.text("usage.ccusage_local"),
-                    captionColor: DashboardTheme.secondaryText
-                )
-                MetricCard(
-                    label: L10n.text("usage.today_est_cost"),
-                    value: insights.totalCost.map { currencyStore.display.amount(usd: $0) } ?? "—",
-                    caption: insights.unpricedModels.isEmpty
-                        ? L10n.text("usage.api_price_estimate")
-                        : L10n.text("usage.price_unavailable"),
-                    captionColor: insights.unpricedModels.isEmpty
-                        ? DashboardTheme.secondaryText
-                        : DashboardTheme.warning
-                )
-                sustainabilityMetric(at: context.date)
+    /// With a projected run-out the subtitle becomes the finding, led by the
+    /// risk badge — the only place the risk level appears on this screen.
+    /// Without one the page keeps its descriptive subtitle.
+    @ViewBuilder
+    private func titleRow(at now: Date) -> some View {
+        if let finding = finding(at: now) {
+            let risk = insights.riskLevel(at: now)
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(DashboardSection.overview.title)
+                        .font(.system(size: 25, weight: .bold))
+                        .foregroundStyle(DashboardTheme.text)
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        PixelBadge(text: risk.badge, color: risk.tint, filled: risk == .high)
+                            .alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] + 4 }
+                        Text(finding)
+                            .numericFont(12)
+                            .foregroundStyle(DashboardTheme.secondaryText)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                Spacer(minLength: 12)
+                if let updatedText {
+                    Text(updatedText)
+                        .numericFont(12)
+                        .foregroundStyle(DashboardTheme.secondaryText)
+                }
             }
-            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isHeader)
+        } else {
+            SectionTitleHeader(
+                title: DashboardSection.overview.title,
+                subtitle: DashboardSection.overview.subtitle,
+                trailing: updatedText
+            )
         }
     }
 
-    /// Names the window behind the lowest percentage. `constrainingWindow` is
-    /// the same minimum `minRemainingPercent` reports, so the label always
-    /// matches the number shown above it.
-    private var minRemainingSource: MetricCard.Source? {
-        guard let window = insights.constrainingWindow else { return nil }
-        return MetricCard.Source(
-            provider: window.provider,
-            text: "\(window.displayName) · \(UsageFormatting.windowName(minutes: window.windowMinutes))"
-        )
-    }
-
-    private func sustainabilityMetric(at now: Date) -> MetricCard {
+    private func finding(at now: Date) -> String? {
         guard let assessment = insights.paceAssessment(at: now),
               let runOutAt = assessment.pace.estimatedRunOutAt
-        else {
-            return MetricCard(
-                label: L10n.text("overview.kpi.sustainability"),
-                value: insights.riskLevel(at: now) == .unknown ? "—" : L10n.text("overview.kpi.until_reset"),
-                caption: L10n.text("overview.kpi.pace_basis"),
-                captionColor: insights.riskLevel(at: now) == .unknown
-                    ? DashboardTheme.secondaryText
-                    : DashboardTheme.success,
-                valueColor: DashboardTheme.text
-            )
+        else { return nil }
+        let window = assessment.window
+        // A used-up window reports `now` as its run-out time; say so plainly
+        // instead of projecting "runs out in less than a minute".
+        if assessment.pace.isExhausted {
+            var parts = [
+                "\(window.displayName) \(UsageFormatting.windowName(minutes: window.windowMinutes))",
+                L10n.text("pace.exhausted"),
+            ]
+            if let reset = window.resetsAt {
+                parts.append(UsageFormatting.resetDescription(to: reset, now: now))
+            }
+            return parts.joined(separator: " · ")
         }
-
-        let provider = assessment.window.displayName
-        let window = UsageFormatting.windowName(minutes: assessment.window.windowMinutes)
-        return MetricCard(
-            label: L10n.text("overview.kpi.projected_available"),
-            value: UsageFormatting.durationUntil(runOutAt, now: now),
-            caption: L10n.format("overview.kpi.window_before_reset", provider, window),
-            captionColor: DashboardTheme.warning,
-            valueColor: DashboardTheme.warning
+        guard let reset = window.resetsAt else { return insights.decisionSummary(at: now) }
+        return L10n.format(
+            "overview.finding.projected",
+            window.displayName,
+            UsageFormatting.windowName(minutes: window.windowMinutes),
+            UsageFormatting.percent(abs(assessment.pace.deltaPercent)),
+            UsageFormatting.durationUntil(runOutAt, now: now),
+            UsageFormatting.resetDescription(to: reset, now: now)
         )
     }
 
-    // MARK: - Official quota (real, live)
+    // MARK: - KPI cells (all real)
 
-    private var officialQuotaPanel: some View {
-        OverviewPanelCard(contentSpacing: 10) {
-            PanelHeader(title: L10n.text("quota.official_title"), subtitle: L10n.text("quota.official_subtitle")) {
-                TagPill(text: "LIVE", color: DashboardTheme.codex, background: DashboardTheme.surface2)
-            }
-        } content: {
-            let rows = officialQuotaProviders.compactMap { summaryWindow(for: $0) }
-
-            if rows.isEmpty {
-                EmptyStateView(
-                    icon: "gauge.with.dots.needle.bottom.0percent",
-                    title: L10n.text("quota.loading_official_title"),
-                    message: L10n.text("quota.loading_official_message")
-                )
-            } else {
-                ForEach(rows) { window in
-                    OfficialQuotaRow(window: window)
-                }
-                Divider().overlay(DashboardSurface.border)
-                HStack {
-                    Text(L10n.text("overview.risk_level"))
-                        .font(.system(size: 11))
-                        .foregroundStyle(DashboardTheme.secondaryText)
-                    Spacer()
-                    PixelBadge(
-                        text: insights.riskLevel.badge,
-                        color: insights.riskLevel.tint,
-                        filled: insights.riskLevel == .high
-                    )
-                }
-            }
-        }
-    }
-
-    /// 今日 token 用量最高的两个 provider;没有本地统计时默认 Claude / Codex。
-    /// 排名靠前但没有官方额度快照的候选会被顺延,保证只要有数据就凑满两行。
-    private var officialQuotaProviders: [ProviderQuota.Provider] {
-        var candidates = insights.providersByTokenUsage
-        let fallbacks = [ProviderQuota.Provider.claude, .codex] + insights.quotas.map(\.provider)
-        for fallback in fallbacks where !candidates.contains(fallback) {
-            candidates.append(fallback)
-        }
-        return Array(candidates.filter { summaryWindow(for: $0) != nil }.prefix(2))
-    }
-
-    private func summaryWindow(for provider: ProviderQuota.Provider) -> UsageInsights.Window? {
-        insights.summaryGeneralWindow(
-            for: provider,
-            strategy: preferences.quotaSummaryStrategy
+    private var tokensCell: OverviewKPIStrip.Cell {
+        OverviewKPIStrip.Cell(
+            label: L10n.text("usage.today_tokens"),
+            value: insights.totalTokens.map { UsageFormatting.compactNumber($0) } ?? "—",
+            caption: L10n.text("usage.ccusage_local")
         )
     }
 
-    // MARK: - Risk detail (real)
-
-    private var riskDetailPanel: some View {
-        OverviewPanelCard(contentSpacing: 6, scrollsContent: false) {
-            PanelHeader(title: L10n.text("overview.risk_panel_title"), subtitle: L10n.text("overview.risk_panel_subtitle"))
-        } content: {
-            let now = Date()
-            let risk = insights.riskLevel(at: now)
-            let paceAssessment = insights.paceAssessment(at: now)
-
-            HStack(spacing: 7) {
-                PixelBadge(text: risk.badge, color: risk.tint, filled: risk == .high)
-                Text(insights.decisionHeadline(at: now))
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(DashboardTheme.text)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.85)
-            }
-
-            Text(insights.decisionSummary(at: now))
-                .font(.system(size: 11))
-                .foregroundStyle(DashboardTheme.secondaryText)
-                .fixedSize(horizontal: false, vertical: true)
-
-            if let window = paceAssessment?.window ?? insights.constrainingWindow {
-                Divider().overlay(DashboardSurface.border)
-                InfoRow(
-                    label: L10n.text("overview.scarcest_window"),
-                    value: "\(window.displayName) · \(UsageFormatting.windowName(minutes: window.windowMinutes))",
-                    fontSize: 11
-                )
-                InfoRow(
-                    label: L10n.text("overview.remaining_quota"),
-                    value: UsageFormatting.percent(window.remainingPercent),
-                    valueColor: risk.tint,
-                    fontSize: 11
-                )
-                if let runOutAt = paceAssessment?.pace.estimatedRunOutAt {
-                    InfoRow(
-                        label: L10n.text("overview.projected_depletion"),
-                        value: L10n.format("overview.in_duration", UsageFormatting.durationUntil(runOutAt, now: now)),
-                        valueColor: DashboardTheme.warning,
-                        fontSize: 11
-                    )
-                }
-                if let reset = window.resetsAt {
-                    InfoRow(
-                        label: L10n.text("overview.projected_reset"),
-                        value: UsageFormatting.resetDescription(to: reset),
-                        fontSize: 11
-                    )
-                }
-            }
-        }
-    }
-}
-
-/// A provider's selected account-level window shown as a mini progress summary.
-private struct OfficialQuotaRow: View {
-    let window: UsageInsights.Window
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            HStack {
-                BrandIcon(provider: window.provider)
-                    .frame(width: 18, height: 18)
-                Text(window.displayName)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(DashboardTheme.text)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.85)
-                    .layoutPriority(1)
-                Spacer()
-                Text(UsageFormatting.percent(window.remainingPercent))
-                    .numericFont(13, .bold)
-                    .foregroundStyle(DashboardTheme.text)
-            }
-            SegmentBar(
-                value: window.remainingPercent / 100,
-                accent: DashboardTheme.quotaAccent(
-                    for: window.accentProvider,
-                    remainingPercent: window.remainingPercent
-                ),
-                height: 5
-            )
-            HStack {
-                Text(L10n.format("quota.window", UsageFormatting.windowName(minutes: window.windowMinutes)))
-                    .font(.system(size: 10))
-                    .foregroundStyle(DashboardTheme.mutedText)
-                Spacer()
-                if let reset = window.resetsAt {
-                    Text(UsageFormatting.resetDescription(to: reset))
-                        .numericFont(10)
-                        .foregroundStyle(DashboardTheme.mutedText)
-                }
-            }
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(L10n.format("quota.provider_remaining", window.displayName, UsageFormatting.percent(window.remainingPercent)))
+    private var costCell: OverviewKPIStrip.Cell {
+        OverviewKPIStrip.Cell(
+            label: L10n.text("usage.today_est_cost"),
+            value: insights.totalCost.map { currencyStore.display.amount(usd: $0) } ?? "—",
+            caption: insights.unpricedModels.isEmpty
+                ? L10n.text("usage.api_price_estimate")
+                : L10n.text("usage.price_unavailable"),
+            captionColor: insights.unpricedModels.isEmpty
+                ? DashboardTheme.secondaryText
+                : DashboardTheme.warning
+        )
     }
 }

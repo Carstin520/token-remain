@@ -35,6 +35,9 @@ struct UsageCostCompositionCard: View {
             } else {
                 HStack(alignment: .center, spacing: 18) {
                     ring
+                    // Rows carry a 6 pt inset for their hover highlight; pull
+                    // the column out by it so the figures end on the same
+                    // edge as the period rows below while the highlight bleeds.
                     VStack(alignment: .leading, spacing: 10) {
                         ForEach(entries) { entry in
                             ProviderUsageRow(
@@ -51,6 +54,7 @@ struct UsageCostCompositionCard: View {
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.trailing, -6)
                 }
 
                 if !insights.unpricedModels.isEmpty {
@@ -61,14 +65,57 @@ struct UsageCostCompositionCard: View {
                         ),
                         systemImage: "exclamationmark.triangle.fill"
                     )
-                    .font(.system(size: 10, weight: .medium))
+                    .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(DashboardTheme.warning)
                     .fixedSize(horizontal: false, vertical: true)
                 }
 
-                Text(L10n.text("usage.snapshot_note"))
-                    .font(.system(size: 10))
-                    .foregroundStyle(DashboardTheme.mutedText)
+                periodSection
+            }
+        }
+    }
+
+    /// Today, yesterday and the last 30 days, plus the daily token trend —
+    /// the same figures as the menu-bar card, so the two never disagree.
+    /// Without history yet, the card keeps its pointer to Trends instead.
+    @ViewBuilder
+    private var periodSection: some View {
+        let tiles = insights.spendTiles()
+        let trend = insights.dailyTokenTrend
+        if tiles.isEmpty && trend.count < 2 {
+            Text(L10n.text("usage.snapshot_note"))
+                .font(.system(size: 11))
+                .foregroundStyle(DashboardTheme.secondaryText)
+        } else {
+            Divider().overlay(DashboardSurface.border)
+            VStack(alignment: .leading, spacing: 7) {
+                ForEach(tiles) { tile in
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(L10n.text(tile.labelKey))
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(DashboardTheme.secondaryText)
+                        Spacer(minLength: 8)
+                        RollingText("\(tile.cost.map { currencyStore.display.compact(usd: $0) } ?? L10n.text("usage.price_unavailable")) · \(UsageFormatting.compactNumber(tile.tokens)) tokens")
+                            .numericFont(12)
+                            .foregroundStyle(DashboardTheme.text)
+                    }
+                    .accessibilityElement(children: .combine)
+                }
+                if trend.count >= 2 {
+                    HStack(alignment: .bottom, spacing: 12) {
+                        Text(L10n.text("usage.trend"))
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(DashboardTheme.secondaryText)
+                        Spacer(minLength: 8)
+                        MiniBarChart(values: trend)
+                            .revealGrow()
+                            .frame(maxWidth: 240)
+                            .frame(height: 28)
+                    }
+                    .padding(.top, 3)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(L10n.text("usage.trend"))
+                }
             }
         }
     }
@@ -121,7 +168,7 @@ struct UsageCostCompositionCard: View {
             onHoverSegment: { hoveredRingSegmentID = $0 }
         )
         .frame(width: 88, height: 88)
-        .padding(10)
+        .padding(.vertical, 10)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(L10n.format("usage.today_est_cost_accessibility", insights.totalCost.map { costAccessibility($0) } ?? L10n.text("common.no_data")))
     }
@@ -187,12 +234,12 @@ private struct ProviderUsageRow: View {
 
             Spacer(minLength: 6)
 
-            Text("\(UsageFormatting.compactNumber(usage.tokens)) · \(costText)")
-                .numericFont(10)
+            RollingText("\(UsageFormatting.compactNumber(usage.tokens)) · \(costText)")
+                .numericFont(11)
                 .foregroundStyle(DashboardTheme.secondaryText)
                 .lineLimit(1)
 
-            Text(share.map(UsageFormatting.percent) ?? "—")
+            RollingText(share.map(UsageFormatting.percent) ?? "—")
                 .numericFont(12, .bold)
                 .foregroundStyle(DashboardTheme.text)
                 .frame(width: 46, alignment: .trailing)

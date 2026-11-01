@@ -3,6 +3,49 @@
 All notable product changes are recorded here. TokenRemain uses Semantic
 Versioning for public releases.
 
+## 1.5.1 (build 48) — 2026-11-01
+
+### Added
+
+- Redesign the Dashboard Overview around what runs out first: a summary strip
+  (runs out first, lowest remaining quota, today's tokens and estimated cost)
+  above one Quota Windows table that lists every official window, most urgent
+  first, in two columns on wide windows, with each app's plan badge and data
+  source.
+- Add an Apps menu to the Daily Usage Trend for adding or removing apps. The
+  choice is remembered; tools whose local logs TokenRemain reads stay
+  selectable with no recent records, and apps with quota data only are listed
+  with the reason they cannot be charted.
+- Add motion: press springs, ripples that follow the pointer and elastic
+  switches; figures roll and bars sweep in on first open; the menu bar panel
+  fades in and out, its height follows expanding cards, and the Dashboard
+  fades in when opened from it. All of it follows Reduce Motion.
+- Name non-default accounts in small print above their rows in the menu bar
+  panel when an app has several accounts.
+
+### Changed
+
+- Quota rows show only the pool and the full window length ("5 hours",
+  "Fable · 7 days") in the menu bar panel, its alert banner and Limits cards.
+  The data source (for example Claude Web) moves to the Dashboard's small
+  print: the Limits card footer, under the app name in Quota Consumption
+  Trend, and beside the plan badge on Overview.
+- Plan badges on Overview and Limits follow the Subscriptions card.
+- Show Claude's renamed plans, Max 5x as Max and Max 20x as Ultra, at the same
+  prices; saved price overrides keep working.
+- Show AI Feed posts in a narrower centered column instead of the full width,
+  and more of each post in Overview's Trending card.
+- Use less energy: far fewer background wake-ups while TokenRemain sits in the
+  menu bar, and an idle Dashboard no longer redraws for the robot's bounce,
+  which now runs on Core Animation.
+- Update the bundled Universal ccusage helper to 20.0.46 with verified official
+  package integrity, architecture and license metadata.
+
+### Fixed
+
+- Read Grok Bot usage through Cursor's encrypted login after the same one-time
+  Keychain approval as Cursor, instead of reporting it as signed out.
+
 ## 1.4.7 (build 47) — 2026-10-31
 
 ### Fixed

@@ -5,6 +5,23 @@ import UserNotifications
 
 @Suite("AI Feed")
 struct AIFeedTests {
+    @Test("Trending post ages are plain text in two short units")
+    func trendingAgeIsStatic() {
+        let now = Date(timeIntervalSince1970: 2_000_000_000)
+        let age = TrendingStoriesCard.age(of: now.addingTimeInterval(-(86_400 + 3_600 + 59)), now: now)
+        #expect(!age.isEmpty)
+        #expect(age == TrendingStoriesCard.age(of: now.addingTimeInterval(-(86_400 + 3_600)), now: now))
+        #expect(!TrendingStoriesCard.age(of: now, now: now).isEmpty)
+    }
+
+    @Test("Trending text drops blank lines so they never take a visible line")
+    func trendingTextCompactsParagraphs() {
+        #expect(TrendingStoriesCard.compactText("during training.\n\nhttps://t.co/x") == "during training.\nhttps://t.co/x")
+        #expect(TrendingStoriesCard.compactText("a\n \n\t\nb") == "a\nb")
+        #expect(TrendingStoriesCard.compactText("one\ntwo") == "one\ntwo")
+        #expect(TrendingStoriesCard.compactText("  padded\n\n") == "padded")
+    }
+
     @Test("Background polling follows the injected Feed UI visibility")
     func backgroundPollingRequiresVisibleUI() {
         #expect(AIFeedStore.shouldRefreshWhilePolling(uiIsVisible: nil))

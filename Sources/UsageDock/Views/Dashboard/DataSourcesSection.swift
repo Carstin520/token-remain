@@ -319,7 +319,7 @@ private struct LocalUsageSourceRow: View {
             VStack(alignment: .trailing, spacing: 3) {
                 Toggle("", isOn: $enabled)
                     .labelsHidden()
-                    .toggleStyle(.switch)
+                    .toggleStyle(ElasticSwitchToggleStyle(showsLabel: false))
                     .controlSize(.small)
                     .accessibilityLabel(
                         L10n.format(

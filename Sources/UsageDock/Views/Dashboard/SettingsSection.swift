@@ -735,7 +735,7 @@ struct SettingsSection: View {
             Spacer(minLength: 16)
             Toggle(title, isOn: isOn)
                 .labelsHidden()
-                .toggleStyle(.switch)
+                .toggleStyle(ElasticSwitchToggleStyle(showsLabel: false))
                 .tint(DashboardTheme.violet)
                 .accessibilityHint(detail)
         }

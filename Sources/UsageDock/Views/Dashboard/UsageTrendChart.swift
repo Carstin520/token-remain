@@ -48,8 +48,12 @@ struct UsageTrendCard: View {
     var capturedAt: Date?
     let preferredAgentIDs: Set<String>?
     var excludedAgentIDs: Set<String> = []
+    /// Tracked apps, so the Apps menu can say which of them have no local
+    /// token logs to chart.
+    var trackedProviders: [ProviderQuota.Provider] = []
     var throughput: ModelThroughputSnapshot = .empty
     @ObservedObject private var currencyStore = CurrencyStore.shared
+    @ObservedObject private var preferences = PreferencesStore.shared
 
     @State private var range: TrendRange = .twoWeeks
     @State private var metric: TrendMetric = .tokens
@@ -59,13 +63,66 @@ struct UsageTrendCard: View {
         Self.agentIDs(in: days)
     }
 
+    private var unavailableApps: (noRecentLogs: [ProviderQuota.Provider], quotaOnly: [ProviderQuota.Provider]) {
+        Self.appsWithoutLocalLogs(tracked: trackedProviders, available: availableAgentIDs)
+    }
+
+    /// Tracked apps whose logs TokenRemain reads but that have nothing in
+    /// this history yet. They stay selectable: their bars appear as soon as
+    /// they log something.
+    private var quietAgentIDs: [String] {
+        unavailableApps.noRecentLogs.map(\.ccusageAgentID).filter { !excludedAgentIDs.contains($0) }
+    }
+
     private var visibleAgentIDs: Set<String> {
-        Set(availableAgentIDs.filter { agentID in
-            guard !excludedAgentIDs.contains(agentID) else { return false }
-            guard let preferredAgentIDs else { return true }
-            return preferredAgentIDs.contains(agentID)
-                || UsageInsights.provider(for: agentID) == nil
-        })
+        let choices = preferences.trendSeriesVisibility
+        let withHistory = availableAgentIDs.filter {
+            Self.isVisible(agentID: $0, excluded: excludedAgentIDs, preferred: preferredAgentIDs, choices: choices)
+        }
+        let quiet = quietAgentIDs.filter {
+            Self.isVisible(
+                agentID: $0,
+                hasHistory: false,
+                excluded: excludedAgentIDs,
+                preferred: preferredAgentIDs,
+                choices: choices
+            )
+        }
+        return Set(withHistory + quiet)
+    }
+
+    /// A source switched off in Data Sources stays out. Otherwise the user's
+    /// choice in the Apps menu wins. Without one, tracked apps (and agents
+    /// TokenRemain has no provider for) are shown, unless the history has
+    /// nothing for them yet: an empty legend entry waits to be asked for.
+    static func isVisible(
+        agentID: String,
+        hasHistory: Bool = true,
+        excluded: Set<String>,
+        preferred: Set<String>?,
+        choices: [String: Bool]
+    ) -> Bool {
+        guard !excluded.contains(agentID) else { return false }
+        if let choice = choices[agentID] { return choice }
+        guard hasHistory else { return false }
+        guard let preferred else { return true }
+        return preferred.contains(agentID) || UsageInsights.provider(for: agentID) == nil
+    }
+
+    /// Tracked apps with nothing in the local history, split by why: a tool
+    /// whose logs TokenRemain can read but that has not run lately
+    /// (Antigravity), or an app it only has quota data for (Cursor, Grok Bot).
+    static func appsWithoutLocalLogs(
+        tracked: [ProviderQuota.Provider],
+        available: [String]
+    ) -> (noRecentLogs: [ProviderQuota.Provider], quotaOnly: [ProviderQuota.Provider]) {
+        let present = Set(available)
+        let readable = Set(LocalUsageSourceCatalog.supported.map(\.id))
+        let missing = tracked.filter { !present.contains($0.ccusageAgentID) }
+        return (
+            missing.filter { readable.contains($0.ccusageAgentID) },
+            missing.filter { !readable.contains($0.ccusageAgentID) }
+        )
     }
 
     /// Most recent `range` days (or everything, if less history exists).
@@ -142,7 +199,10 @@ struct UsageTrendCard: View {
     private var controls: some View {
         HStack(alignment: .center, spacing: 12) {
             ScrollView(.horizontal, showsIndicators: false) {
-                TrendLegend(agentIDs: availableAgentIDs.filter(visibleAgentIDs.contains))
+                HStack(spacing: 10) {
+                    TrendLegend(agentIDs: (availableAgentIDs + quietAgentIDs).filter(visibleAgentIDs.contains))
+                    seriesMenu
+                }
             }
             Spacer(minLength: 8)
             PixelSegmentedControl(
@@ -154,6 +214,50 @@ struct UsageTrendCard: View {
                 selection: $metric
             )
         }
+    }
+
+    /// Adds or removes apps from the chart. Apps with local logs can be
+    /// chosen, including ones with nothing recent; apps TokenRemain only has
+    /// quota data for are listed, disabled, so it is clear why.
+    private var seriesMenu: some View {
+        Menu {
+            ForEach(availableAgentIDs.filter { !excludedAgentIDs.contains($0) }, id: \.self) { agentID in
+                seriesToggle(agentID)
+            }
+            if !quietAgentIDs.isEmpty {
+                Section(L10n.text("trends.series_no_recent")) {
+                    ForEach(quietAgentIDs, id: \.self) { agentID in
+                        seriesToggle(agentID)
+                    }
+                }
+            }
+            let quotaOnly = unavailableApps.quotaOnly
+            if !quotaOnly.isEmpty {
+                Section(L10n.text("trends.series_quota_only")) {
+                    ForEach(quotaOnly, id: \.self) { provider in
+                        Text(provider.displayName)
+                    }
+                }
+                .disabled(true)
+            }
+        } label: {
+            Label(L10n.text("trends.series_menu"), systemImage: "plus.forwardslash.minus")
+        }
+        .font(.system(size: 11, weight: .medium))
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .help(L10n.text("trends.series_menu_help"))
+    }
+
+    private func seriesToggle(_ agentID: String) -> some View {
+        Toggle(
+            UsageInsights.displayName(for: agentID),
+            isOn: Binding(
+                get: { visibleAgentIDs.contains(agentID) },
+                set: { preferences.setTrendSeriesVisible($0, agentID: agentID) }
+            )
+        )
     }
 
     private static func agentIDs(in days: [DailyUsageHistory.Day]) -> [String] {
@@ -295,7 +399,8 @@ struct UsageTrendChart: View {
                 }
 
                 if !hasVisibleSeries {
-                    Text(L10n.text("trends.legend_hint"))
+                    // Nothing chosen, or only apps with nothing in this range.
+                    Text(L10n.text(visibleAgentIDs.isEmpty ? "trends.choose_apps_hint" : "trends.no_usage_in_range"))
                         .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(DashboardTheme.mutedText)
                         .frame(width: plotW, height: plotH)
@@ -329,7 +434,7 @@ struct UsageTrendChart: View {
         .onMoveCommand(perform: movePinnedDay)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(
-            hasVisibleSeries ? L10n.text("trends.chart_accessibility") : L10n.text("trends.chart_accessibility_empty")
+            visibleAgentIDs.isEmpty ? L10n.text("trends.chart_accessibility_empty") : L10n.text("trends.chart_accessibility")
         )
     }
 
@@ -519,7 +624,7 @@ struct UsageTrendChart: View {
         if hasVisibleSeries {
             parts.append(L10n.format("trends.total_format", valueLabel(total(day))))
         } else {
-            parts.append(L10n.text("trends.no_provider_selected"))
+            parts.append(L10n.text(visibleAgentIDs.isEmpty ? "trends.no_provider_selected" : "trends.no_usage_in_range"))
         }
         return parts.joined(separator: " · ")
     }
@@ -639,9 +744,8 @@ private struct BarColumn: View {
 
 // MARK: - Legend
 
-/// Static series legend for agents discovered in the user's real ccusage
-/// history. Series selection belongs on the tracked-app surface, so the trend
-/// card no longer exposes a misleading add-app control.
+/// Static series legend for the agents the chart shows. Adding or removing
+/// one is the Apps menu beside it, which lists only apps with local logs.
 struct TrendLegend: View {
     let agentIDs: [String]
 

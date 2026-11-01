@@ -24,7 +24,7 @@ struct CombinedAccountControl: View {
                         else { preferences.setCombinedAccountConsent(nil, for: provider) }
                     }
                 ))
-                .toggleStyle(.switch)
+                .toggleStyle(ElasticSwitchToggleStyle())
                 .controlSize(.small)
                 .font(.system(size: 11))
                 .disabled(!requested && candidate == nil)

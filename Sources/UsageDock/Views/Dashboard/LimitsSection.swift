@@ -102,6 +102,7 @@ struct LimitsSection: View {
             }
         }
         .coordinateSpace(name: Self.reorderCoordinateSpace)
+        .pageReveal()
     }
 }
 
@@ -172,6 +173,28 @@ struct QuotaGridLayout: Layout {
             ?? grid.columnWidth * CGFloat(usedColumns) + spacing * CGFloat(usedColumns - 1)
         let height = grid.rowHeights.reduce(0, +) + spacing * CGFloat(max(0, grid.rowHeights.count - 1))
         return CGSize(width: width, height: height)
+    }
+
+    // No alignment guides pass through. The default answers an alignment
+    // query by placing — re-measuring every card — once more per query.
+    func explicitAlignment(
+        of guide: HorizontalAlignment,
+        in bounds: CGRect,
+        proposal: ProposedViewSize,
+        subviews: Subviews,
+        cache: inout ()
+    ) -> CGFloat? {
+        nil
+    }
+
+    func explicitAlignment(
+        of guide: VerticalAlignment,
+        in bounds: CGRect,
+        proposal: ProposedViewSize,
+        subviews: Subviews,
+        cache: inout ()
+    ) -> CGFloat? {
+        nil
     }
 
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {

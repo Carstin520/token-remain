@@ -66,6 +66,9 @@ enum MenuBarPopupSizing {
 @MainActor
 private final class MenuBarPopupChromeModel: ObservableObject {
     @Published var arrowCenterX: CGFloat = 190
+    /// The content entrance (rolling figures, filling bars), replayed on
+    /// each opening and reset while the popup is hidden.
+    @Published var isRevealed = false
 }
 
 @MainActor
@@ -93,9 +96,22 @@ final class MenuBarPopupWindowController: NSWindowController {
     private var resignKeyObserver: NSObjectProtocol?
     private var pendingContentSize: NSSize?
     private var contentSizeUpdateScheduled = false
+    /// True while the close animation plays. The panel is still on screen
+    /// then, but counts as closed: a click on the status item reopens it.
+    private var isClosing = false
+    /// Bumped by every open and close, so a finished fade-out never hides a
+    /// popup that was reopened while it was fading.
+    private var presentationGeneration = 0
+    /// A pending window shrink, held back until the shell has finished
+    /// collapsing inside the larger window.
+    private var deferredShrink: DispatchWorkItem?
+
+    private var animatesPresentation: Bool {
+        !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+    }
 
     var isShown: Bool {
-        window?.isVisible == true
+        window?.isVisible == true && !isClosing
     }
 
     init<Content: View>(
@@ -147,7 +163,9 @@ final class MenuBarPopupWindowController: NSWindowController {
         // turn, and clicks on ordinary content never reclaimed it — so the
         // glass came and went depending on which control was last touched.
         panel.becomesKeyOnlyIfNeeded = false
-        panel.animationBehavior = .utilityWindow
+        // The popup animates itself (alpha plus a content transform), so the
+        // window server adds nothing on top.
+        panel.animationBehavior = .none
 
         hosting.view.wantsLayer = true
         hosting.view.layer?.masksToBounds = false
@@ -218,6 +236,15 @@ final class MenuBarPopupWindowController: NSWindowController {
         if activateForVisualTesting {
             NSApp.activate(ignoringOtherApps: true)
         }
+        let wasOnScreen = window.isVisible
+        isClosing = false
+        presentationGeneration += 1
+        // Reopened during a hand-off fade, the content would stay faded.
+        restoreAfterHandoff(window)
+        let animates = animatesPresentation
+        if animates, !wasOnScreen {
+            window.alphaValue = 0
+        }
         // Always open as the key window, not merely front. macOS renders
         // Liquid Glass and materials in a flat, opaque fallback inside windows
         // it considers inactive — `orderFrontRegardless()` left the panel in
@@ -242,11 +269,100 @@ final class MenuBarPopupWindowController: NSWindowController {
         DispatchQueue.main.async { [weak self] in
             _ = self?.positionWindow()
         }
+
+        // Entrance: fade in, then let the figures roll up. Only window alpha
+        // animates; the frame never does, so the resize path above stays
+        // untouched.
+        guard animates else {
+            window.alphaValue = 1
+            chromeModel.isRevealed = true
+            return
+        }
+        DispatchQueue.main.async { [weak self] in
+            guard let self, let window = self.window, self.isShown else { return }
+            withAnimation(MotionTiming.reveal.delay(0.06)) { self.chromeModel.isRevealed = true }
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = MotionTiming.popupFadeIn
+                context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+                window.animator().alphaValue = 1
+            }
+        }
     }
 
     func performClose() {
         removeEventMonitors()
-        window?.orderOut(nil)
+        guard let window, window.isVisible, !isClosing else { return }
+        presentationGeneration += 1
+        let generation = presentationGeneration
+        guard animatesPresentation else {
+            finishClose(window)
+            return
+        }
+        isClosing = true
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = MotionTiming.popupFadeOut
+            context.timingFunction = CAMediaTimingFunction(name: .easeIn)
+            window.animator().alphaValue = 0
+        }, completionHandler: { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self, self.presentationGeneration == generation, let window = self.window else { return }
+                self.finishClose(window)
+            }
+        })
+    }
+
+    /// Closes for the hand-off to the Dashboard, whose build holds the main
+    /// thread for ~0.3s right after this call. `performClose` fades the
+    /// window's alpha, which AppKit steps on the main thread, so it would
+    /// freeze for that long. The content view's layer fades on the render
+    /// server instead, so the fade plays through the build.
+    func performHandoffClose() {
+        guard animatesPresentation, let window, window.isVisible, !isClosing,
+              let content = window.contentView else {
+            performClose()
+            return
+        }
+        removeEventMonitors()
+        presentationGeneration += 1
+        let generation = presentationGeneration
+        isClosing = true
+        // The window server draws the panel's shadow, not the layer; left on
+        // it would outlast the faded glass until the panel is ordered out.
+        window.hasShadow = false
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = MotionTiming.popupFadeOut
+            context.timingFunction = CAMediaTimingFunction(name: .easeIn)
+            content.animator().alphaValue = 0
+        }, completionHandler: { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self, self.presentationGeneration == generation, let window = self.window else { return }
+                self.finishClose(window)
+            }
+        })
+        // Hand the animation to the render server before the caller takes
+        // the main thread.
+        CATransaction.flush()
+    }
+
+    private func restoreAfterHandoff(_ window: NSWindow) {
+        guard let content = window.contentView, content.alphaValue < 1 || !window.hasShadow else { return }
+        content.layer?.removeAllAnimations()
+        content.alphaValue = 1
+        window.hasShadow = true
+    }
+
+    /// Hides the panel and puts it back at rest off screen: opaque, with its
+    /// figures at zero for the next opening's roll-up.
+    private func finishClose(_ window: NSWindow) {
+        isClosing = false
+        window.orderOut(nil)
+        window.alphaValue = 1
+        restoreAfterHandoff(window)
+        var reset = Transaction()
+        reset.disablesAnimations = true
+        withTransaction(reset) {
+            chromeModel.isRevealed = false
+        }
     }
 
     private func windowDidResignKey() {
@@ -280,6 +396,31 @@ final class MenuBarPopupWindowController: NSWindowController {
     private func applyContentSize(_ size: NSSize) {
         guard let window else { return }
         let currentSize = window.contentView?.bounds.size ?? window.frame.size
+        deferredShrink?.cancel()
+        deferredShrink = nil
+        guard MenuBarPopupSizing.requiresResize(from: currentSize, to: size) else {
+            return
+        }
+        // The shell animates its height inside the window (`UsageMenuView`).
+        // Growing, the window takes the new size at once and the transparent
+        // margin fills as the shell grows; shrinking, the window waits until
+        // the shell is done so it never cuts the collapse short. Either way
+        // the window resizes once, never per animation frame.
+        if isShown, size.height < currentSize.height, animatesPresentation {
+            let shrink = DispatchWorkItem { [weak self] in
+                guard let self else { return }
+                self.deferredShrink = nil
+                self.resizeWindow(window, to: size)
+            }
+            deferredShrink = shrink
+            DispatchQueue.main.asyncAfter(deadline: .now() + MotionTiming.popupShrinkDelay, execute: shrink)
+            return
+        }
+        resizeWindow(window, to: size)
+    }
+
+    private func resizeWindow(_ window: NSWindow, to size: NSSize) {
+        let currentSize = window.contentView?.bounds.size ?? window.frame.size
         guard MenuBarPopupSizing.requiresResize(from: currentSize, to: size) else {
             return
         }
@@ -299,6 +440,11 @@ final class MenuBarPopupWindowController: NSWindowController {
         )
         if let placement {
             chromeModel.arrowCenterX = placement.arrowCenterX
+        }
+        // The shadow follows the shell's alpha; refresh it once the shell
+        // has settled at its new height.
+        DispatchQueue.main.asyncAfter(deadline: .now() + MotionTiming.popupShrinkDelay) { [weak window] in
+            window?.invalidateShadow()
         }
     }
 
@@ -391,9 +537,12 @@ private struct MenuBarPopupChrome<Content: View>: View {
     @ObservedObject private var preferences: PreferencesStore = .shared
     @ViewBuilder let content: () -> Content
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
         let shape = MenuBarPopupShellShape(beakCenterX: model.arrowCenterX)
         content()
+            .environment(\.pageRevealed, model.isRevealed || reduceMotion)
             // The shell silhouette knows about the beak; the content does not.
             // Let the chrome own the whole backdrop so the glass covers both.
             .environment(\.usageDockPopoverShellProvidesBackdrop, true)

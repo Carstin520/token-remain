@@ -207,6 +207,35 @@ struct DailyUsageHistoryTests {
         #expect(UsageInsights.displayName(for: "gemini") == "Gemini")
     }
 
+    @Test("The Apps menu choice wins over the tracked default, but not over a disabled source")
+    func trendSeriesChoice() {
+        let tracked: Set<String> = ["claude"]
+        // Without a choice: tracked apps and provider-less agents are shown.
+        #expect(UsageTrendCard.isVisible(agentID: "claude", excluded: [], preferred: tracked, choices: [:]))
+        #expect(!UsageTrendCard.isVisible(agentID: "codex", excluded: [], preferred: tracked, choices: [:]))
+        #expect(UsageTrendCard.isVisible(agentID: "goose", excluded: [], preferred: tracked, choices: [:]))
+        // A choice adds an untracked app or removes a tracked one.
+        #expect(UsageTrendCard.isVisible(agentID: "codex", excluded: [], preferred: tracked, choices: ["codex": true]))
+        #expect(!UsageTrendCard.isVisible(agentID: "claude", excluded: [], preferred: tracked, choices: ["claude": false]))
+        // A source switched off in Data Sources stays out either way.
+        #expect(!UsageTrendCard.isVisible(agentID: "codex", excluded: ["codex"], preferred: tracked, choices: ["codex": true]))
+        // A tracked app with nothing in the history waits to be chosen, then shows.
+        let tracked2: Set<String> = ["claude", "antigravity"]
+        #expect(!UsageTrendCard.isVisible(agentID: "antigravity", hasHistory: false, excluded: [], preferred: tracked2, choices: [:]))
+        #expect(UsageTrendCard.isVisible(agentID: "antigravity", hasHistory: false, excluded: [], preferred: tracked2, choices: ["antigravity": true]))
+    }
+
+    @Test("Tracked apps missing from the history are split into no recent logs and quota-only")
+    func appsWithoutLocalLogs() {
+        let missing = UsageTrendCard.appsWithoutLocalLogs(
+            tracked: [.claude, .codex, .cursor, .grokBot, .antigravity],
+            available: ["claude", "codex"]
+        )
+        // Antigravity writes logs TokenRemain can read; it just has not run lately.
+        #expect(missing.noRecentLogs == [.antigravity])
+        #expect(missing.quotaOnly == [.cursor, .grokBot])
+    }
+
     @Test("An empty successful report is no-usage, not an endless loading state")
     func emptyReportState() throws {
         let snapshot = try CCUsageService.parseSnapshot(payload(""))

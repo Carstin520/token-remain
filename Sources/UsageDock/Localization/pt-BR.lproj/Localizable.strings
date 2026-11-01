@@ -227,3 +227,12 @@
 "settings.dock_logo_top" = "App";
 
 "settings.dock_logo_bottom" = "App 2";
+
+/* 1.5 Overview window table and risk banner */
+"overview.finding.projected" = "%1$@ %2$@ está %3$@ adiantado em relação ao ritmo e pode se esgotar em %4$@. %5$@.";
+"overview.kpi.runs_out_first" = "Esgota primeiro";
+"quota.windows_title" = "Janelas de cota";
+"quota.windows_subtitle" = "Todas as janelas oficiais, a mais urgente primeiro";
+"quota.windows_pace" = "Ritmo";
+"quota.windows_resets" = "Redefinição";
+"risk.headline.window_runout" = "%1$@ %2$@ pode se esgotar em %3$@";

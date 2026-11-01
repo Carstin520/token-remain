@@ -307,26 +307,30 @@ final class UsageStore: ObservableObject {
     /// for the subscription cost card. An account that has not answered yet
     /// stays listed with a nil quota so a price the user entered still counts.
     var subscriptionAccounts: [SubscriptionAccountInput] {
-        ProviderQuota.Provider.displayOrder.flatMap { provider -> [SubscriptionAccountInput] in
-            guard tracked.isEnabled(provider) else { return [] }
-            let snapshots = accountSnapshots(for: provider).filter(\.profile.isEnabled)
-            guard !snapshots.isEmpty else {
-                guard let quota = quotaValue(for: provider) else { return [] }
-                return [SubscriptionAccountInput(
-                    accountID: .system(provider),
-                    provider: provider,
-                    accountName: "",
-                    quota: quota
-                )]
-            }
-            return snapshots.map { snapshot in
-                SubscriptionAccountInput(
-                    accountID: snapshot.id,
-                    provider: provider,
-                    accountName: snapshot.profile.isSystem ? "" : snapshot.profile.displayName,
-                    quota: snapshot.quota
-                )
-            }
+        ProviderQuota.Provider.displayOrder.flatMap(subscriptionAccounts(for:))
+    }
+
+    /// One provider's share of `subscriptionAccounts`, for a card that only
+    /// needs its own (every Limits card asks on each redraw).
+    func subscriptionAccounts(for provider: ProviderQuota.Provider) -> [SubscriptionAccountInput] {
+        guard tracked.isEnabled(provider) else { return [] }
+        let snapshots = accountSnapshots(for: provider).filter(\.profile.isEnabled)
+        guard !snapshots.isEmpty else {
+            guard let quota = quotaValue(for: provider) else { return [] }
+            return [SubscriptionAccountInput(
+                accountID: .system(provider),
+                provider: provider,
+                accountName: "",
+                quota: quota
+            )]
+        }
+        return snapshots.map { snapshot in
+            SubscriptionAccountInput(
+                accountID: snapshot.id,
+                provider: provider,
+                accountName: snapshot.profile.isSystem ? "" : snapshot.profile.displayName,
+                quota: snapshot.quota
+            )
         }
     }
 
@@ -1560,6 +1564,11 @@ final class UsageStore: ObservableObject {
                         now: now,
                         keychainInteraction: .allowed
                     )
+                case .grokBot:
+                    return try await GrokBotUsageService().fetch(
+                        now: now,
+                        keychainInteraction: .allowed
+                    )
                 default:
                     guard Self.supportsPastedCredential(provider),
                           let credential = try Self.storedPastedCredential(
@@ -1588,6 +1597,12 @@ final class UsageStore: ObservableObject {
             keychainAuthorizationRequired.remove(provider)
             quotaCache.save(currentSnapshot())
             logger.info("Explicit read-only credential authorization succeeded for \(provider.rawValue, privacy: .public)")
+            // One approval of Cursor's sealed login unblocks every card that
+            // reads it, so those refresh now instead of on the next cycle.
+            for sibling in Self.cursorLoginReaders
+            where sibling != provider && keychainAuthorizationRequired.contains(sibling) {
+                await refreshKeyProvider(sibling, preservingCachedQuota: true)
+            }
             return true
         } catch {
             guard revision == credentialRevisions[provider, default: 0] else { return false }
@@ -1927,8 +1942,14 @@ final class UsageStore: ObservableObject {
         error is HostAppQuotaRoutingError
     }
 
+    /// Cards that read Cursor IDE's sealed login and share its one approval.
+    nonisolated static let cursorLoginReaders: [ProviderQuota.Provider] = [.cursor, .grokBot]
+
     nonisolated static func requiresKeychainAuthorization(_ error: Error) -> Bool {
         if case .encryptedLoginNeedsAuthorization? = error as? CursorUsageService.ServiceError {
+            return true
+        }
+        if case .cursorLoginNeedsAuthorization? = error as? GrokBotUsageService.ServiceError {
             return true
         }
         return false

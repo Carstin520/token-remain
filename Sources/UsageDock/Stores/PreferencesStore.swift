@@ -58,6 +58,9 @@ final class PreferencesStore: ObservableObject {
     /// 键不存在 = 用户从未动过开关,由 `resolvedScopedPoolVisibility`
     /// 按"该池是否在用"给出智能默认。
     static let scopedPoolVisibilityKey = "tokenRemain.scopedPoolVisibility.v1"
+    /// Daily Usage Trend series the user showed or hid from the chart's Apps
+    /// menu: [ccusage agent ID: visible]. A missing key keeps the default.
+    static let trendSeriesVisibilityKey = "tokenRemain.trendSeriesVisibility.v1"
     static let refreshKey = "tokenRemain.refreshMinutes.v1"
     static let floatingKey = "tokenRemain.floatingWidget.v1"
     static let dockIconHiddenKey = "tokenRemain.dockIconHidden.v1"
@@ -96,6 +99,8 @@ final class PreferencesStore: ObservableObject {
     /// 附加池可见性 tri-state 存储(键见 `scopedPoolStorageKey`)。
     /// @Published 让任何池开关变化都能驱动挂件/卡片刷新。
     @Published private(set) var scopedPoolVisibilityByKey: [String: Bool]
+    /// Explicit Daily Usage Trend choices; see `trendSeriesVisibilityKey`.
+    @Published private(set) var trendSeriesVisibility: [String: Bool]
     /// Claude 与各直查 provider 的自动刷新间隔(分钟);0 = 仅手动。
     @Published private(set) var refreshMinutes: Int
     /// 桌面浮窗(置顶的挂件面板)。
@@ -136,6 +141,7 @@ final class PreferencesStore: ObservableObject {
         cursorHeadlinePool = defaults.string(forKey: Self.cursorHeadlinePoolKey)
             .flatMap(CursorHeadlinePool.init(rawValue:)) ?? .busiest
         scopedPoolVisibilityByKey = Self.loadScopedPoolVisibility(migratingFrom: defaults)
+        trendSeriesVisibility = defaults.dictionary(forKey: Self.trendSeriesVisibilityKey) as? [String: Bool] ?? [:]
         let storedMinutes = defaults.object(forKey: Self.refreshKey) as? Int
         refreshMinutes = storedMinutes.map { Self.refreshChoices.contains($0) ? $0 : 5 } ?? 5
         floatingWidgetEnabled = defaults.bool(forKey: Self.floatingKey)
@@ -232,6 +238,11 @@ final class PreferencesStore: ObservableObject {
     func setCursorHeadlinePool(_ pool: CursorHeadlinePool) {
         cursorHeadlinePool = pool
         defaults.set(pool.rawValue, forKey: Self.cursorHeadlinePoolKey)
+    }
+
+    func setTrendSeriesVisible(_ visible: Bool, agentID: String) {
+        trendSeriesVisibility[agentID.lowercased()] = visible
+        defaults.set(trendSeriesVisibility, forKey: Self.trendSeriesVisibilityKey)
     }
 
     // MARK: - 附加池可见性(通用 tri-state 存储 + 智能默认)

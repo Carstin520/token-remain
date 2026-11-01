@@ -350,16 +350,25 @@ struct BrandIcon: View {
         return nil
     }
 
+    /// Decoded bundle artwork. Views draw these on every body evaluation,
+    /// and reading the file each time put disk I/O on the main thread during
+    /// layout. Raw artwork does not depend on appearance, and callers that
+    /// change an image copy it first (`image(for:size:)`).
+    private static let loadedArtwork = NSCache<NSString, NSImage>()
+
     private static func providerImage(
         _ artwork: Artwork,
         provider: ProviderQuota.Provider
     ) -> NSImage {
+        let key = "\(provider.rawValue)|\(artwork.resourceName)" as NSString
+        if let cached = loadedArtwork.object(forKey: key) { return cached }
         guard let url = resourceURL(for: artwork),
               let image = NSImage(contentsOf: url) else {
             return fallbackImage(for: provider, size: 32)
         }
         image.isTemplate = artwork.isTemplate
         image.accessibilityDescription = provider.rawValue
+        loadedArtwork.setObject(image, forKey: key)
         return image
     }
 
@@ -381,12 +390,15 @@ struct BrandIcon: View {
     }
 
     private static func claudeImage() -> NSImage {
-        claudeResourceURL()
-            .flatMap(NSImage.init(contentsOf:))
-            ?? NSImage(
-                systemSymbolName: "questionmark.circle",
-                accessibilityDescription: ProviderQuota.Provider.claude.rawValue
-            )
+        if let cached = loadedArtwork.object(forKey: "claude") { return cached }
+        if let image = claudeResourceURL().flatMap(NSImage.init(contentsOf:)) {
+            loadedArtwork.setObject(image, forKey: "claude")
+            return image
+        }
+        return NSImage(
+            systemSymbolName: "questionmark.circle",
+            accessibilityDescription: ProviderQuota.Provider.claude.rawValue
+        )
             ?? NSImage(size: NSSize(width: 32, height: 32))
     }
 

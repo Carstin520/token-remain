@@ -227,3 +227,12 @@
 "settings.dock_logo_top" = "Uygulama";
 
 "settings.dock_logo_bottom" = "Uygulama 2";
+
+/* 1.5 Overview window table and risk banner */
+"overview.finding.projected" = "%1$@ %2$@ hızın %3$@ önünde ve %4$@ içinde tükenebilir. %5$@.";
+"overview.kpi.runs_out_first" = "İlk tükenecek";
+"quota.windows_title" = "Kota pencereleri";
+"quota.windows_subtitle" = "Tüm resmî pencereler, en acil olan önce";
+"quota.windows_pace" = "Hız";
+"quota.windows_resets" = "Sıfırlama";
+"risk.headline.window_runout" = "%1$@ %2$@ %3$@ içinde tükenebilir";

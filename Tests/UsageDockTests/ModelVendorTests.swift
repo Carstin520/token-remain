@@ -166,14 +166,13 @@ struct ModelVendorTests {
         #expect(hosted.modelVendorSummary(for: hosted.primary)?.marks.count == 2)
     }
 
-    @Test("An account-labeled popover row drops the Others label but keeps relay logos")
+    @Test("Popover rows keep the Others label and relay logos; accounts are named above the rows")
     func popoverAccountRows() throws {
         var cursor = try CursorAPIUsageParser.parse(Data("""
         {"enabled": true, "planUsage": {"autoPercentUsed": 10, "apiPercentUsed": 90}}
         """.utf8), now: now)
         cursor.modelUsage = [usage("gpt-5", tokens: 200)]
-        #expect(PopoverQuotaWidget.vendorSummary(in: cursor, window: cursor.primary, accountName: nil) != nil)
-        #expect(PopoverQuotaWidget.vendorSummary(in: cursor, window: cursor.primary, accountName: "Work") == nil)
+        #expect(cursor.modelVendorSummary(for: cursor.primary) != nil)
 
         var relay = ProviderQuota(
             provider: .thirdParty,
@@ -183,25 +182,34 @@ struct ModelVendorTests {
             capturedAt: now
         )
         relay.modelUsage = [usage("deepseek-v3.1", tokens: 50)]
-        #expect(PopoverQuotaWidget.vendorSummary(in: relay, window: relay.primary, accountName: "Work") != nil)
+        #expect(relay.modelVendorSummary(for: relay.primary) != nil)
     }
 
     @Test("The title puts the name before the logos and the window after them")
     func vendorTitleParts() {
-        let named = QuotaWindowRow.vendorTitleParts(windowMinutes: 300, name: "Others", attribution: nil)
+        let named = QuotaWindowRow.vendorTitleParts(windowMinutes: 300, name: "Others")
         #expect(named.leading == "Others")
         #expect(named.trailing?.hasPrefix("· ") == true)
+        // Just the length, spelled out, without a trailing "window".
+        #expect(named.trailing == "· " + UsageFormatting.windowFullName(minutes: 300))
+        #expect(QuotaWindowRow.displayTitle(windowMinutes: 10_080, scopeName: "Fable")
+            == "Fable · " + UsageFormatting.windowFullName(minutes: 10_080))
 
-        let unnamed = QuotaWindowRow.vendorTitleParts(windowMinutes: 0, name: nil, attribution: nil)
+        let unnamed = QuotaWindowRow.vendorTitleParts(windowMinutes: 0, name: nil)
         #expect(unnamed.trailing == nil)
-        #expect(!unnamed.leading.isEmpty)
+        #expect(unnamed.leading == UsageFormatting.windowFullName(minutes: 0))
+    }
 
-        let hosted = QuotaWindowRow.vendorTitleParts(
-            windowMinutes: 0,
-            name: nil,
-            attribution: QuotaAttribution(provider: .openrouter, displayName: "OpenRouter", routeIdentifier: "openrouter")
-        )
-        #expect(hosted.leading.hasPrefix("OpenRouter · "))
+    @Test("Spelled-out windows pick singular or plural and fall back to the short form")
+    func windowFullNames() {
+        #expect(UsageFormatting.windowFullNameKey(unit: "days", count: 1) == "duration.days_full_one")
+        #expect(UsageFormatting.windowFullNameKey(unit: "days", count: 7) == "duration.days_full_other")
+        #expect(UsageFormatting.windowFullNameKey(unit: "hours", count: 5) == "duration.hours_full_other")
+        for (minutes, key, count) in [(300, "duration.hours_full_other", 5), (1_440, "duration.days_full_one", 1), (10_080, "duration.days_full_other", 7)] {
+            let expected = L10n.isLocalized(key) ? L10n.format(key, count) : UsageFormatting.windowName(minutes: minutes)
+            #expect(UsageFormatting.windowFullName(minutes: minutes) == expected)
+        }
+        #expect(UsageFormatting.windowFullName(minutes: 0) == UsageFormatting.windowName(minutes: 0))
     }
 
     @Test("The bundled OpenAI mark resolves for tests and debug builds")

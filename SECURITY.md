@@ -25,7 +25,7 @@ You'll get an acknowledgment as soon as possible, and updates as the report is i
 - The local-network direct sync listener (TCP 47831) and its pairing.
 - Update integrity: Sparkle appcast signing and release artifacts.
 - The `broadcast/` Worker (`api.tokenremain.com`): device registration, the AI Feed and download counts.
-- Any network request that carries local usage data or identifiers beyond what the [README's privacy section](README.en.md#privacy) describes.
+- Any network request that carries local usage data or identifiers beyond what the [README's privacy section](README.md#privacy) describes.
 
 ## Out of scope
 

@@ -27,15 +27,25 @@ struct SegmentBar: View {
         return min(segments, Int(raw.rounded()))
     }
 
+    /// The lit segments sit on their own layer over the track, so a page
+    /// entrance can sweep them in without touching the track.
     var body: some View {
-        HStack(spacing: gap) {
-            ForEach(0..<segments, id: \.self) { index in
-                RoundedRectangle(cornerRadius: 2, style: .continuous)
-                    .fill(index < filledCount ? accent : (track ?? surfaces.track))
-                    .frame(maxWidth: .infinity)
-            }
+        ZStack {
+            segmentRow { _ in track ?? surfaces.track }
+            segmentRow { index in index < filledCount ? accent : .clear }
+                .revealSweep()
         }
         .frame(height: height)
         .accessibilityHidden(true)
+    }
+
+    private func segmentRow(_ color: @escaping (Int) -> Color) -> some View {
+        HStack(spacing: gap) {
+            ForEach(0..<segments, id: \.self) { index in
+                RoundedRectangle(cornerRadius: 2, style: .continuous)
+                    .fill(color(index))
+                    .frame(maxWidth: .infinity)
+            }
+        }
     }
 }

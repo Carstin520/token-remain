@@ -99,7 +99,7 @@ struct PanelHeader<Accessory: View>: View {
                     .foregroundStyle(DashboardTheme.text)
                 if let subtitle {
                     Text(subtitle)
-                        .font(.system(size: 10))
+                        .font(.system(size: 11))
                         .foregroundStyle(DashboardTheme.secondaryText)
                 }
             }

@@ -93,8 +93,8 @@ struct GrokBotUsageServiceTests {
     func requestShape() async throws {
         let recorder = GrokBotRequestRecorder()
         var service = GrokBotUsageService()
-        service.loadAuth = { [now] in
-            CursorAuthReader.Auth(accessToken: Self.fixtureToken(expiry: now.addingTimeInterval(3600)), membershipType: "pro")
+        service.loadAuth = { [now] _, _ in
+            .token(CursorAuthReader.Auth(accessToken: Self.fixtureToken(expiry: now.addingTimeInterval(3600)), membershipType: "pro"))
         }
         service.transport = { request in
             await recorder.append(request)
@@ -117,7 +117,7 @@ struct GrokBotUsageServiceTests {
     func notLoggedIn() async {
         let recorder = GrokBotRequestRecorder()
         var service = GrokBotUsageService()
-        service.loadAuth = { nil }
+        service.loadAuth = { _, _ in .missing }
         service.transport = { request in
             await recorder.append(request)
             return (Data(), Self.response(request, status: 200))
@@ -128,12 +128,45 @@ struct GrokBotUsageServiceTests {
         #expect(await recorder.values.isEmpty)
     }
 
+    @Test("A sealed Cursor login asks for the shared read approval, not a sign-in")
+    func sealedLoginNeedsAuthorization() async {
+        let recorder = GrokBotRequestRecorder()
+        let interactions = GrokBotInteractionRecorder()
+        var service = GrokBotUsageService()
+        service.loadAuth = { _, interaction in
+            await interactions.append(interaction)
+            return .sealed(.authorizationRequired)
+        }
+        service.transport = { request in
+            await recorder.append(request)
+            return (Data(), Self.response(request, status: 200))
+        }
+
+        await #expect(throws: GrokBotUsageService.ServiceError.cursorLoginNeedsAuthorization) {
+            try await service.fetch(now: now)
+        }
+        await #expect(throws: GrokBotUsageService.ServiceError.cursorLoginNeedsAuthorization) {
+            try await service.fetch(now: now, keychainInteraction: .allowed)
+        }
+        #expect(await recorder.values.isEmpty)
+        // Background refresh never prompts; only the explicit action may.
+        #expect(await interactions.values == [.disallowed, .allowed])
+        #expect(UsageStore.requiresKeychainAuthorization(GrokBotUsageService.ServiceError.cursorLoginNeedsAuthorization))
+        #expect(!UsageStore.requiresKeychainAuthorization(GrokBotUsageService.ServiceError.notLoggedIn))
+        #expect(UsageStore.cursorLoginReaders.contains(.grokBot))
+
+        service.loadAuth = { _, _ in .sealed(.unreadable) }
+        await #expect(throws: GrokBotUsageService.ServiceError.cursorLoginUnreadable) {
+            try await service.fetch(now: now)
+        }
+    }
+
     @Test("An expired Cursor token is stale and is never sent or refreshed")
     func expiredTokenIsStale() async {
         let recorder = GrokBotRequestRecorder()
         var service = GrokBotUsageService()
-        service.loadAuth = { [now] in
-            CursorAuthReader.Auth(accessToken: Self.fixtureToken(expiry: now.addingTimeInterval(-60)), membershipType: nil)
+        service.loadAuth = { [now] _, _ in
+            .token(CursorAuthReader.Auth(accessToken: Self.fixtureToken(expiry: now.addingTimeInterval(-60)), membershipType: nil))
         }
         service.transport = { request in
             await recorder.append(request)
@@ -153,7 +186,7 @@ struct GrokBotUsageServiceTests {
             (500, .requestFailed(500))
         ] {
             var service = GrokBotUsageService()
-            service.loadAuth = { CursorAuthReader.Auth(accessToken: "opaque-fixture", membershipType: nil) }
+            service.loadAuth = { _, _ in .token(CursorAuthReader.Auth(accessToken: "opaque-fixture", membershipType: nil)) }
             service.transport = { request in (Data(), Self.response(request, status: status)) }
             await #expect(throws: expected) {
                 try await service.fetch(now: now)
@@ -221,4 +254,12 @@ struct GrokBotProviderWiringTests {
 private actor GrokBotRequestRecorder {
     var values: [URLRequest] = []
     func append(_ request: URLRequest) { values.append(request) }
+}
+
+private actor GrokBotInteractionRecorder {
+    private(set) var values: [KeychainRead.Interaction] = []
+
+    func append(_ value: KeychainRead.Interaction) {
+        values.append(value)
+    }
 }

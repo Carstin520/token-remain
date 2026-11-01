@@ -43,6 +43,12 @@
 "duration.less_than_minute" = "少於 1 分鐘";
 "duration.hours" = "%d小時";
 "duration.days" = "%d天";
+"duration.minutes_full_one" = "%d分鐘";
+"duration.minutes_full_other" = "%d分鐘";
+"duration.hours_full_one" = "%d小時";
+"duration.hours_full_other" = "%d小時";
+"duration.days_full_one" = "%d天";
+"duration.days_full_other" = "%d天";
 "reset.in_progress" = "正在重置";
 "reset.countdown" = "距離重置 %1$@";
 "reset.on" = "%1$@ 重置";
@@ -410,6 +416,7 @@
 "service.grok_bot.not_logged_in" = "Grok Bot 用量透過 Cursor 本機登入狀態讀取；請在 Cursor 中登入與 Grok Bot 相同的帳戶";
 "service.grok_bot.no_weekly_allowance" = "目前 Cursor 帳戶沒有 Grok Bot 週額度";
 "service.grok_bot.pooled_allowance" = "目前帳戶使用團隊共用額度池，Grok Bot 不提供週百分比";
+"service.grok_bot.cursor_login_authorization" = "Grok Bot 用量透過 Cursor 本機登入狀態讀取，而 Cursor 已加密儲存登入憑證。點「授權唯讀存取」，並在系統彈窗中選擇「永遠允許」，即可恢復額度重新整理";
 "service.kiro.not_installed" = "未偵測到 kiro-cli；安裝 Kiro CLI 並登入後即自動接入";
 "service.opencode.no_usage" = "這台 Mac 尚無 OpenCode Go 用量紀錄；使用一次 OpenCode 後就會出現";
 "service.opencode.not_installed" = "未偵測到 OpenCode；安裝並登入 OpenCode Go 後即自動接入";
@@ -578,6 +585,12 @@
 "trends.metric_cost" = "成本";
 "trends.no_local_usage_today" = "今日暫無本機用量。";
 "trends.no_provider_selected" = "未選擇服務商";
+"trends.series_menu" = "應用程式";
+"trends.series_menu_help" = "選擇圖表顯示的應用程式";
+"trends.series_no_recent" = "近期沒有本機記錄";
+"trends.series_quota_only" = "只有額度資料";
+"trends.choose_apps_hint" = "在「應用程式」選單中選擇要顯示的應用程式";
+"trends.no_usage_in_range" = "所選應用程式在此期間沒有用量";
 "trends.quota_accumulating_message" = "TokenRemain 會在額度成功重新整理後開始記錄；所有已連接應用都會自動出現，過往資料無法回填。";
 "trends.quota_accumulating_title" = "額度趨勢正在累積";
 "trends.quota_history" = "趨勢";
@@ -990,3 +1003,12 @@
 "subscription.advice.item_upgrade_generic" = "%@：提高等級";
 "subscription.advice.item_top_tier" = "%@：已是最高等級，可加帳戶";
 "subscription.advice.item_cancel" = "%@：取消";
+
+/* 1.5 Overview window table and risk banner */
+"overview.finding.projected" = "%1$@ %2$@ 視窗用量超前 %3$@，依目前節奏預計在 %4$@ 後用盡。%5$@。";
+"overview.kpi.runs_out_first" = "最先用盡";
+"quota.windows_title" = "額度視窗";
+"quota.windows_subtitle" = "所有官方視窗，最緊迫的在前";
+"quota.windows_pace" = "節奏";
+"quota.windows_resets" = "重置";
+"risk.headline.window_runout" = "%1$@ %2$@ 視窗預計在 %3$@ 後用盡";

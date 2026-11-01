@@ -227,3 +227,12 @@
 "settings.dock_logo_top" = "Aplikasi";
 
 "settings.dock_logo_bottom" = "Aplikasi 2";
+
+/* 1.5 Overview window table and risk banner */
+"overview.finding.projected" = "%1$@ %2$@ %3$@ lebih cepat dari laju dan bisa habis dalam %4$@. %5$@.";
+"overview.kpi.runs_out_first" = "Habis paling awal";
+"quota.windows_title" = "Jendela kuota";
+"quota.windows_subtitle" = "Semua jendela resmi, yang paling mendesak lebih dulu";
+"quota.windows_pace" = "Laju";
+"quota.windows_resets" = "Reset";
+"risk.headline.window_runout" = "%1$@ %2$@ bisa habis dalam %3$@";

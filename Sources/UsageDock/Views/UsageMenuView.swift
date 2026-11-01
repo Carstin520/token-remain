@@ -22,6 +22,7 @@ struct UsageMenuView: View {
     @State private var reorderInteraction = DirectReorderInteraction<PopoverWidget>()
     @State private var isSettingsPresented = false
     @State private var footerHeight: CGFloat = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var insights: UsageInsights {
         UsageInsights(
@@ -39,6 +40,18 @@ struct UsageMenuView: View {
         (NSScreen.main?.visibleFrame.height ?? 900) - 48
     }
 
+    private var resolvedHeight: CGFloat {
+        min(measuredHeight, maxHeight)
+    }
+
+    /// Only the menu-bar panel animates its height: it sizes its own window
+    /// from `onResolvedHeightChange`. Popover and widget hosts keep the
+    /// height change immediate.
+    private var heightAnimation: Animation? {
+        guard onResolvedHeightChange != nil, !reduceMotion else { return nil }
+        return MotionTiming.popupResize
+    }
+
     private var combinedError: String? {
         [store.errorMessage, launchAtLogin.errorMessage]
             .compactMap { $0 }
@@ -46,6 +59,9 @@ struct UsageMenuView: View {
             .nonEmpty
     }
 
+    /// Exactly the user's own order. Cards are never moved for risk: the
+    /// risk strip above names the window at risk, and a drag must land where
+    /// the user drops it.
     private var visibleWidgets: [PopoverWidget] {
         layout.visibleWidgets.filter(isTracked)
     }
@@ -110,10 +126,10 @@ struct UsageMenuView: View {
         // this is re-enabled even if AppKit loses the normal gesture end.
         .scrollDisabled(reorderInteraction.isActive)
         .frame(width: 380)
-        .frame(height: min(measuredHeight, maxHeight))
-        .onGeometryChange(for: CGFloat.self) { proxy in
-            proxy.size.height
-        } action: { height in
+        .frame(height: resolvedHeight)
+        // The panel gets the target height once, not every frame of the
+        // animation above, so its window resizes once per change.
+        .onChange(of: resolvedHeight, initial: true) { _, height in
             onResolvedHeightChange?(height)
         }
         // The settings editor floats over the whole popup, OUTSIDE the
@@ -161,7 +177,13 @@ struct UsageMenuView: View {
         // 本视图为根,在链尾注入一次即覆盖设置浮层与画布背景;玻璃不透明
         // 度仍由弹窗自己的滑块管,两者正交。
         .dashboardSurfaces(lightness: preferences.dashboardBackgroundLightness)
-        .onPreferenceChange(PopoverHeightKey.self) { measuredHeight = $0 }
+        // An expanding card changes the measured height in one step. Setting
+        // it inside the card's spring animates everything that follows from
+        // it — the shell's glass and clip in the panel chrome included, which
+        // sit outside this view — so shell, footer and cards move together.
+        .onPreferenceChange(PopoverHeightKey.self) { height in
+            withAnimation(heightAnimation) { measuredHeight = height }
+        }
         .task {
             store.start()
             feedStore.start()
@@ -186,7 +208,7 @@ struct UsageMenuView: View {
                 posts: feedStore.topStories,
                 isExpanded: layout.isExpanded(.aiFeed),
                 layout: layout,
-                onViewAll: { onOpenDashboard(.overview) }
+                onViewAll: { onOpenDashboard(.aiFeed) }
             )
         default:
             // 其余挂件都是 provider 额度卡,provider 映射必然非空。
@@ -212,7 +234,7 @@ struct UsageMenuView: View {
 
                 TimelineView(.periodic(from: .now, by: 60)) { context in
                     Text(updatedSubtitle(at: context.date))
-                        .font(.system(size: 10))
+                        .font(.system(size: 11))
                         .usageDockAdaptiveForeground(.muted)
                 }
             }
@@ -289,7 +311,7 @@ struct UsageMenuView: View {
             .usageDockGlassSurface(cornerRadius: 13, interactive: true)
             .contentShape(Circle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressRippleButtonStyle.popup(cornerRadius: 13, pressedScale: 0.9))
         .frame(width: 34, height: 34)
         .disabled(store.isRefreshing)
         .help(L10n.text("action.refresh_quota"))

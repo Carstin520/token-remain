@@ -65,8 +65,8 @@ done
 # 5. `.allowed` 只允许在数据源页的明确用户授权入口中构造。
 #    该方法只由 Button 动作调用;后台刷新、凭据发现和变量转发仍不能
 #    生成交互读取。注释里的 `.allowed` 先用 awk 剔除,避免误报。
-#    四处分别是 Claude、Codex、Cursor(Safe Storage 密钥,Cursor 3.27+
-#    加密登录)和粘贴凭据的显式授权。
+#    五处分别是 Claude、Codex、Cursor(Safe Storage 密钥,Cursor 3.27+
+#    加密登录)、Grok Bot(读取同一份 Cursor 加密登录)和粘贴凭据的显式授权。
 ALLOWED_LITERALS="$(/usr/bin/grep -rn --include='*.swift' '\.allowed\b' Sources Packages \
   | /usr/bin/grep -v 'Support/KeychainRead.swift' \
   | /usr/bin/awk -F'//' '$1 ~ /\.allowed/ { print }' || true)"
@@ -82,11 +82,11 @@ ALLOWED_LITERAL_COUNT="$(printf '%s\n' "$ALLOWED_LITERALS" \
   | /usr/bin/tr -d '[:space:]')"
 METHOD_ALLOWED_COUNT="$(printf '%s\n' "$INTERACTIVE_METHOD" \
   | /usr/bin/awk -F'//' '$1 ~ /\.allowed/ { count++ } END { print count + 0 }')"
-if [[ "$ALLOWED_LITERAL_COUNT" != "4" \
-  || "$METHOD_ALLOWED_COUNT" != "4" \
+if [[ "$ALLOWED_LITERAL_COUNT" != "5" \
+  || "$METHOD_ALLOWED_COUNT" != "5" \
   || "$(printf '%s\n' "$ALLOWED_LITERALS" | /usr/bin/cut -d: -f1 | /usr/bin/sort -u)" != "$INTERACTIVE_ENTRY" ]]; then
   echo "$ALLOWED_LITERALS" >&2
-  fail "Interaction.allowed must appear exactly four times inside UsageStore.authorizeProviderCredentials"
+  fail "Interaction.allowed must appear exactly five times inside UsageStore.authorizeProviderCredentials"
 fi
 /usr/bin/grep -Fq 'await store.authorizeProviderCredentials(provider)' \
   Sources/UsageDock/Views/Dashboard/DataSourcesSection.swift \

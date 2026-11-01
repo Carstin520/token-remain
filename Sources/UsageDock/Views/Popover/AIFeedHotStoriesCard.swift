@@ -89,7 +89,7 @@ struct AIFeedHotStoriesCard: View {
             }
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressRippleButtonStyle.popup(cornerRadius: 8, pressedScale: 0.985))
         .accessibilityLabel(L10n.format("feed.post_accessibility", post.displayName, post.text))
         .accessibilityHint(L10n.text("feed.open_x_hint"))
     }

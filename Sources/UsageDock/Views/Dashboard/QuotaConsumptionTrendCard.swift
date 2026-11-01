@@ -79,9 +79,12 @@ struct QuotaTrendRowData: Identifiable {
 
     var id: ProviderQuota.Provider { provider }
     var latest: QuotaUsageHistory.Sample { samples[samples.count - 1] }
-    var displayName: String {
-        latest.attribution.map { "\(provider.displayName) · \($0.displayName)" }
-            ?? provider.displayName
+    var displayName: String { provider.displayName }
+    /// The data source ("Claude Web"), in small print under the name rather
+    /// than joined onto it.
+    var sourceName: String? { latest.attribution?.displayName }
+    var accessibilityName: String {
+        sourceName.map { "\(displayName) · \($0)" } ?? displayName
     }
     var accentProvider: ProviderQuota.Provider {
         latest.attribution?.provider ?? provider
@@ -100,10 +103,18 @@ private struct QuotaTrendRow: View {
                 BrandIcon(provider: row.provider)
                     .foregroundStyle(color)
                     .frame(width: 16, height: 16)
-                Text(row.displayName)
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(DashboardTheme.text)
-                    .lineLimit(1)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(row.displayName)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(DashboardTheme.text)
+                        .lineLimit(1)
+                    if let source = row.sourceName {
+                        Text(source)
+                            .font(.system(size: 10))
+                            .foregroundStyle(DashboardTheme.mutedText)
+                            .lineLimit(1)
+                    }
+                }
             }
             .frame(width: 138, alignment: .leading)
 
@@ -128,7 +139,7 @@ private struct QuotaTrendRow: View {
         .accessibilityLabel(
             L10n.format(
                 "trends.quota_row_accessibility",
-                row.displayName,
+                row.accessibilityName,
                 UsageFormatting.windowName(minutes: row.latest.windowMinutes),
                 UsageFormatting.percent(row.latest.usedPercent)
             )

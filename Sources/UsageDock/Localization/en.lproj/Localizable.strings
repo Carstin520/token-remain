@@ -43,6 +43,12 @@
 "duration.less_than_minute" = "Less than 1 min";
 "duration.hours" = "%d hr";
 "duration.days" = "%d d";
+"duration.minutes_full_one" = "%d minute";
+"duration.minutes_full_other" = "%d minutes";
+"duration.hours_full_one" = "%d hour";
+"duration.hours_full_other" = "%d hours";
+"duration.days_full_one" = "%d day";
+"duration.days_full_other" = "%d days";
 "reset.in_progress" = "Resetting";
 "reset.countdown" = "Resets in %1$@";
 "reset.on" = "Resets %1$@";
@@ -407,6 +413,7 @@
 "service.grok_bot.not_logged_in" = "Grok Bot usage is read through the Cursor IDE login; sign in to Cursor with the same account you use in Grok Bot";
 "service.grok_bot.no_weekly_allowance" = "This Cursor account has no Grok Bot weekly allowance";
 "service.grok_bot.pooled_allowance" = "This account uses a pooled team allowance, which Grok Bot doesn't report as a weekly percentage";
+"service.grok_bot.cursor_login_authorization" = "Grok Bot usage is read through the Cursor IDE login, which Cursor now encrypts. Click Authorize Read Access and choose Always Allow in the macOS prompt to resume quota refresh";
 "service.kiro.not_installed" = "kiro-cli not detected; install the Kiro CLI and sign in to connect automatically";
 "service.opencode.no_usage" = "No OpenCode Go usage recorded on this Mac yet; it appears after you use OpenCode once";
 "service.opencode.not_installed" = "OpenCode not detected; install and sign in to OpenCode Go to connect automatically";
@@ -575,6 +582,12 @@
 "trends.metric_cost" = "Cost";
 "trends.no_local_usage_today" = "No local usage today.";
 "trends.no_provider_selected" = "No provider selected";
+"trends.series_menu" = "Apps";
+"trends.series_menu_help" = "Choose which apps the chart shows";
+"trends.series_no_recent" = "No recent local logs";
+"trends.series_quota_only" = "Quota data only";
+"trends.choose_apps_hint" = "Choose apps to show from the Apps menu";
+"trends.no_usage_in_range" = "No usage from the selected apps in this period";
 "trends.quota_accumulating_message" = "TokenRemain starts recording after a successful quota refresh. Every connected provider will appear automatically; past data cannot be backfilled.";
 "trends.quota_accumulating_title" = "Quota trend is accumulating";
 "trends.quota_history" = "Trend";
@@ -990,3 +1003,12 @@
 "subscription.advice.item_upgrade_generic" = "%@: higher plan";
 "subscription.advice.item_top_tier" = "%@: top plan, add an account";
 "subscription.advice.item_cancel" = "%@: cancel";
+
+/* 1.5 Overview window table and risk banner */
+"overview.finding.projected" = "%1$@ %2$@ is %3$@ ahead of pace and may run out in %4$@. %5$@.";
+"overview.kpi.runs_out_first" = "Runs out first";
+"quota.windows_title" = "Quota Windows";
+"quota.windows_subtitle" = "Every official window, most urgent first";
+"quota.windows_pace" = "Pace";
+"quota.windows_resets" = "Resets";
+"risk.headline.window_runout" = "%1$@ %2$@ may run out in %3$@";

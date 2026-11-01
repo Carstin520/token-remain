@@ -43,6 +43,12 @@
 "duration.less_than_minute" = "Weniger als 1 Min";
 "duration.hours" = "%d Std";
 "duration.days" = "%d T";
+"duration.minutes_full_one" = "%d Minute";
+"duration.minutes_full_other" = "%d Minuten";
+"duration.hours_full_one" = "%d Stunde";
+"duration.hours_full_other" = "%d Stunden";
+"duration.days_full_one" = "%d Tag";
+"duration.days_full_other" = "%d Tage";
 "reset.in_progress" = "Wird zurückgesetzt";
 "reset.countdown" = "Zurücksetzung in %1$@";
 "reset.on" = "Zurücksetzung %1$@";
@@ -406,6 +412,7 @@
 "service.grok_bot.not_logged_in" = "Die Grok-Bot-Nutzung wird über die Cursor-Anmeldung gelesen; in Cursor mit demselben Konto wie in Grok Bot anmelden";
 "service.grok_bot.no_weekly_allowance" = "Dieses Cursor-Konto hat kein wöchentliches Grok-Bot-Kontingent";
 "service.grok_bot.pooled_allowance" = "Dieses Konto nutzt ein gemeinsames Team-Kontingent, das Grok Bot nicht als Wochenprozentsatz ausweist";
+"service.grok_bot.cursor_login_authorization" = "Die Grok-Bot-Nutzung wird über die Cursor-Anmeldung gelesen, die Cursor jetzt verschlüsselt. Klicke auf Lesezugriff erlauben und wähle in der macOS-Abfrage Immer erlauben, um die Kontingentaktualisierung fortzusetzen";
 "service.kiro.not_installed" = "kiro-cli nicht erkannt; Kiro CLI installieren und anmelden – Verbindung erfolgt automatisch";
 "service.opencode.no_usage" = "Noch keine OpenCode-Go-Nutzung auf diesem Mac; erscheint nach der ersten OpenCode-Nutzung";
 "service.opencode.not_installed" = "OpenCode nicht erkannt; OpenCode Go installieren und anmelden – Verbindung erfolgt automatisch";
@@ -574,6 +581,12 @@
 "trends.metric_cost" = "Kosten";
 "trends.no_local_usage_today" = "Heute noch keine lokale Nutzung.";
 "trends.no_provider_selected" = "Kein Anbieter ausgewählt";
+"trends.series_menu" = "Apps";
+"trends.series_menu_help" = "Auswählen, welche Apps das Diagramm zeigt";
+"trends.series_no_recent" = "Keine aktuellen lokalen Protokolle";
+"trends.series_quota_only" = "Nur Kontingentdaten";
+"trends.choose_apps_hint" = "Apps zum Anzeigen im Apps-Menü auswählen";
+"trends.no_usage_in_range" = "Keine Nutzung der ausgewählten Apps in diesem Zeitraum";
 "trends.quota_accumulating_message" = "TokenRemain zeichnet nach einer erfolgreichen Kontingentaktualisierung auf. Alle verbundenen Anbieter erscheinen automatisch; frühere Daten können nicht nachgetragen werden.";
 "trends.quota_accumulating_title" = "Kontingenttrend wird aufgebaut";
 "trends.quota_history" = "Trend";
@@ -990,3 +1003,12 @@
 "subscription.advice.item_upgrade_generic" = "%@: höherer Tarif";
 "subscription.advice.item_top_tier" = "%@: höchster Tarif, Konto hinzufügen";
 "subscription.advice.item_cancel" = "%@: kündigen";
+
+/* 1.5 Overview window table and risk banner */
+"overview.finding.projected" = "%1$@ %2$@ liegt %3$@ vor dem Plan und könnte in %4$@ aufgebraucht sein. %5$@.";
+"overview.kpi.runs_out_first" = "Zuerst aufgebraucht";
+"quota.windows_title" = "Kontingentfenster";
+"quota.windows_subtitle" = "Alle offiziellen Fenster, dringendstes zuerst";
+"quota.windows_pace" = "Tempo";
+"quota.windows_resets" = "Zurücksetzung";
+"risk.headline.window_runout" = "%1$@ %2$@ könnte in %3$@ aufgebraucht sein";
