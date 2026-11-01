@@ -42,11 +42,12 @@ struct AccountLoginProcessTests {
 
     @Test("Timeout kills a login that ignores SIGTERM")
     func loginTimeout() async throws {
-        let fixture = try Fixture(login: "echo $$ > \"$CLAUDE_CONFIG_DIR/pid\"\ntrap '' TERM\nexec /bin/sleep 20")
+        let fixture = try Fixture(login: "trap '' TERM\necho $$ > \"$CLAUDE_CONFIG_DIR/pid\"\nexec /bin/sleep 20")
         defer { fixture.remove() }
         let start = Date()
-        await expectTimeout { try await fixture.claude(timeout: 0.15).login(configurationDirectory: fixture.root) }
-        #expect(Date().timeIntervalSince(start) < 2)
+        await expectTimeout { try await fixture.claude(timeout: Fixture.startBudget).login(configurationDirectory: fixture.root) }
+        // The SIGTERM grace must end in SIGKILL soon after the deadline; the 20 s sleep is never awaited.
+        #expect(Date().timeIntervalSince(start) < Fixture.startBudget + 1.85)
         try fixture.expectChildStopped()
     }
 
@@ -54,13 +55,13 @@ struct AccountLoginProcessTests {
     func statusTimeout() async throws {
         let fixture = try Fixture(status: "echo $$ > \"$CLAUDE_CONFIG_DIR/pid\"\nexec /bin/sleep 20")
         defer { fixture.remove() }
-        await expectTimeout { try await fixture.claude(statusTimeout: 0.1).login(configurationDirectory: fixture.root) }
+        await expectTimeout { try await fixture.claude(statusTimeout: Fixture.startBudget).login(configurationDirectory: fixture.root) }
         try fixture.expectChildStopped()
     }
 
     @Test("Cancelling an active login propagates to the child process")
     func cancellation() async throws {
-        let fixture = try Fixture(login: "echo $$ > \"$CLAUDE_CONFIG_DIR/pid\"\ntrap '' TERM\nexec /bin/sleep 20")
+        let fixture = try Fixture(login: "trap '' TERM\necho $$ > \"$CLAUDE_CONFIG_DIR/pid\"\nexec /bin/sleep 20")
         defer { fixture.remove() }
         let task = Task { try await fixture.claude().login(configurationDirectory: fixture.root) }
         defer { task.cancel() }
@@ -129,6 +130,7 @@ struct AccountLoginProcessTests {
         let fixture = try Fixture()
         defer { fixture.remove() }
         try "#!/bin/sh\nif [ \"$2\" = status ]; then printf 'Logged in using ChatGPT' >&2; fi\n".write(to: fixture.executable, atomically: true, encoding: .utf8)
+        try fixture.warmUp()
         try await CodexAccountLoginService(executableURL: fixture.executable, loginTimeout: 3)
             .login(configurationDirectory: fixture.root)
     }
@@ -166,30 +168,54 @@ struct AccountLoginProcessTests {
             root = FileManager.default.temporaryDirectory.appending(path: "tokenremain-login-\(UUID().uuidString)")
             try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
             executable = root.appending(path: "fake-cli")
-            let script = "#!/bin/sh\nif [ \"$2\" = login ]; then\n\(login)\nelse\n\(status)\nfi\n"
+            let script = "#!/bin/sh\n[ $# -gt 0 ] || exit 0\nif [ \"$2\" = login ]; then\n\(login)\nelse\n\(status)\nfi\n"
             try script.write(to: executable, atomically: true, encoding: .utf8)
             try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+            try warmUp()
         }
 
-        func claude(timeout: TimeInterval = 5, statusTimeout: TimeInterval = 1) -> ClaudeAccountLoginService {
+        /// The first exec of a freshly written executable is slow and uneven
+        /// (about 0.1 s, sometimes far longer); later execs take milliseconds.
+        /// Paying it here keeps it out of every deadline under test. The fake CLI
+        /// exits at once when it has no arguments.
+        func warmUp() throws {
+            let process = try Process.run(executable, arguments: [])
+            process.waitUntilExit()
+        }
+
+        /// Runner deadlines start before the fake CLI is spawned, so a deadline a
+        /// test lets expire must also cover the CLI reaching its first lines
+        /// while the parallel test run loads the machine.
+        static let startBudget: TimeInterval = 1
+
+        func claude(timeout: TimeInterval = 5, statusTimeout: TimeInterval = Fixture.startBudget) -> ClaudeAccountLoginService {
             ClaudeAccountLoginService(executable: executable, loginTimeout: timeout, statusTimeout: statusTimeout)
         }
 
+        /// The file exists from the moment `echo` opens it, but `echo` writes the
+        /// line in one call: a parsed PID means every script line before it ran.
+        func recordedPID() -> Int32? {
+            guard let text = try? String(contentsOf: pidFile, encoding: .utf8) else { return nil }
+            return Int32(text.trimmingCharacters(in: .whitespacesAndNewlines))
+        }
+
         func pid() throws -> Int32 {
-            try #require(Int32(String(contentsOf: pidFile, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines)))
+            try #require(recordedPID(), "The fake CLI was stopped before it recorded its PID")
         }
 
         func waitForPID() async throws {
             let deadline = Date().addingTimeInterval(2)
-            while !FileManager.default.fileExists(atPath: pidFile.path), Date() < deadline {
+            while recordedPID() == nil, Date() < deadline {
                 try await Task.sleep(for: .milliseconds(10))
             }
-            #expect(FileManager.default.fileExists(atPath: pidFile.path))
+            #expect(recordedPID() != nil)
         }
 
         func expectChildStopped() throws {
-            #expect(Darwin.kill(try pid(), 0) == -1)
-            #expect(errno == ESRCH)
+            let result = Darwin.kill(try pid(), 0)
+            let error = errno
+            #expect(result == -1)
+            #expect(error == ESRCH)
         }
 
         func remove() { try? FileManager.default.removeItem(at: root) }
