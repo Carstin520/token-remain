@@ -71,6 +71,29 @@ private struct PageRevealedKey: EnvironmentKey {
     static let defaultValue = true
 }
 
+/// Which page of one Dashboard window session plays the entrance: the first
+/// one shown after the window opens. Pages reached from the sidebar after
+/// that show their figures at once.
+///
+/// Replaying the entrance on every sidebar switch kept the main thread
+/// re-rendering the whole page for the length of the spring and the roll
+/// (~1.3 s) on each switch: eight switches took 4.2 s of CPU against 0.95 s
+/// with motion removed, same build and window (Dev build, issue #102).
+@MainActor
+final class PageEntranceLedger {
+    private var played = false
+
+    /// True for the first page that asks, false for every page after it.
+    func claim() -> Bool {
+        defer { played = true }
+        return !played
+    }
+}
+
+private struct PageEntranceLedgerKey: EnvironmentKey {
+    static let defaultValue: PageEntranceLedger? = nil
+}
+
 extension EnvironmentValues {
     /// False while a page plays its entrance: figures read as zeros and
     /// bars as empty, then animate to their values when it turns true.
@@ -79,11 +102,19 @@ extension EnvironmentValues {
         get { self[PageRevealedKey.self] }
         set { self[PageRevealedKey.self] = newValue }
     }
+
+    /// The window session's ledger. Without one, every page plays its
+    /// entrance when it appears.
+    var pageEntranceLedger: PageEntranceLedger? {
+        get { self[PageEntranceLedgerKey.self] }
+        set { self[PageEntranceLedgerKey.self] = newValue }
+    }
 }
 
 extension View {
     /// Plays the entrance when the page appears: figures roll up from zero
-    /// and bars fill in. Later data refreshes change values without it.
+    /// and bars fill in. Later data refreshes change values without it, and
+    /// under a `pageEntranceLedger` only the session's first page plays it.
     func pageReveal() -> some View {
         modifier(PageRevealModifier())
     }
@@ -101,17 +132,43 @@ extension View {
 
 private struct PageRevealModifier: ViewModifier {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.pageEntranceLedger) private var ledger
     @State private var revealed = false
+    @State private var ticket = PageEntranceTicket()
 
     func body(content: Content) -> some View {
+        // Asked on this page's first body, so a page that does not play is
+        // revealed from its first frame instead of flashing zeros.
+        let plays = ticket.plays(claiming: ledger)
         content
-            .environment(\.pageRevealed, revealed || reduceMotion)
+            .environment(\.pageRevealed, revealed || reduceMotion || !plays)
             .task {
-                guard !revealed, !reduceMotion else { return }
+                guard plays, !revealed else { return }
+                // Settled outright, so turning Reduce Motion off later does
+                // not drop the figures back to zero.
+                guard !reduceMotion else {
+                    revealed = true
+                    return
+                }
                 try? await Task.sleep(for: MotionTiming.revealDelay)
                 guard !Task.isCancelled else { return }
                 withAnimation(MotionTiming.reveal) { revealed = true }
             }
+    }
+}
+
+/// One page's answer from the ledger, asked once and kept for the page's
+/// lifetime. A plain class in `@State`: recording the answer does not
+/// invalidate the view.
+private final class PageEntranceTicket {
+    private var answer: Bool?
+
+    @MainActor
+    func plays(claiming ledger: PageEntranceLedger?) -> Bool {
+        if let answer { return answer }
+        let plays = ledger?.claim() ?? true
+        answer = plays
+        return plays
     }
 }
 

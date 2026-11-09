@@ -24,6 +24,10 @@ struct DashboardView: View {
     @ObservedObject var preferences: PreferencesStore = .shared
     @ObservedObject private var appUpdater = AppUpdateController.shared
     @State private var limitsReorderInteraction = DirectReorderInteraction<ProviderQuota.Provider>()
+    /// One per window session: `DashboardWindowRoot` rebuilds this view each
+    /// time the window opens, so the entrance plays on opening, not on every
+    /// sidebar switch.
+    @State private var pageEntrance = PageEntranceLedger()
 #if TOKENREMAIN_CLOUD_SYNC
     @ObservedObject private var cloudSync = CrossDeviceSyncController.shared
 #endif
@@ -255,7 +259,12 @@ struct DashboardView: View {
             )
             .contentShape(Rectangle())
         }
-        .buttonStyle(PressRippleButtonStyle(cornerRadius: 7))
+        // No press ripple or spring here. The selection capsule is the
+        // feedback, and a ripple cannot run smoothly: the page it opens is
+        // built on the same release, and each of its frames makes AppKit
+        // recompute the window's drag region, which walks the whole SwiftUI
+        // focus tree (~0.6 s of busy frames per click, issue #102).
+        .buttonStyle(.plain)
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
         .accessibilityValue(count > 0 ? "\(count) · \(L10n.text("pace.ahead_warning"))" : "")
     }
@@ -351,7 +360,7 @@ struct DashboardView: View {
                     )
                     .contentShape(Rectangle())
                 }
-                .buttonStyle(PressRippleButtonStyle(cornerRadius: 9))
+                .buttonStyle(.plain)
                 .help(L10n.text("update.install_help"))
                 .accessibilityLabel(L10n.format("update.available_accessibility", version))
             }
@@ -400,6 +409,7 @@ struct DashboardView: View {
                         sectionContent
                             .padding(28)
                             .frame(maxWidth: .infinity, alignment: .leading)
+                            .environment(\.pageEntranceLedger, pageEntrance)
                     }
                 }
                 .scrollDisabled(limitsReorderInteraction.isActive)
