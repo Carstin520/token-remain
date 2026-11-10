@@ -45,6 +45,17 @@ struct MotionTests {
         #expect(MotionTiming.dashboardFadeIn > MotionTiming.popupFadeIn)
     }
 
+    @Test("Only the first page of a Dashboard window session plays the entrance")
+    @MainActor
+    func entrancePlaysOncePerSession() {
+        let session = PageEntranceLedger()
+        #expect(session.claim())
+        #expect(!session.claim())
+        #expect(!session.claim())
+        // Reopening the window builds a new session, which plays it again.
+        #expect(PageEntranceLedger().claim())
+    }
+
     @Test("A ripple reaches the farthest corner from where it starts")
     func rippleCoversButton() {
         let size = CGSize(width: 200, height: 40)
