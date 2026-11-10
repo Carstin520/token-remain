@@ -54,7 +54,6 @@ struct OverviewSection: View {
                 tokenHistory: insights.history
             )
         }
-        .pageReveal()
     }
 
     /// The window table spans the canvas and is exactly as tall as the

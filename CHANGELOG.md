@@ -3,6 +3,19 @@
 All notable product changes are recorded here. TokenRemain uses Semantic
 Versioning for public releases.
 
+## Unreleased
+
+### Changed
+
+- Bring motion back to Dashboard page switches without the cost: the sidebar's
+  selection capsule slides to the clicked row, the row answers before the page
+  is built, and pages cross-dissolve. All of it runs in Core Animation, so a
+  switch uses the same CPU as in 1.5.2, and it follows Reduce Motion.
+- Quota bars sweep in and their remaining percentages roll up every time
+  Overview or Limits opens, and each time the menu bar panel opens. Other
+  figures (summary strip, costs, tokens, ring, usage trend) now appear without
+  an entrance, which also makes opening the Dashboard lighter.
+
 ## 1.5.2 (build 49) — 2026-11-10
 
 ### Fixed
