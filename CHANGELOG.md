@@ -3,6 +3,22 @@
 All notable product changes are recorded here. TokenRemain uses Semantic
 Versioning for public releases.
 
+## 1.5.2 (build 49) — 2026-11-10
+
+### Fixed
+
+- Stop the Dashboard from stuttering when switching pages from the sidebar.
+  Figures roll up and bars sweep in when the Dashboard opens, not on every
+  page switch, and sidebar rows no longer play a press ripple, so a switch
+  takes about a quarter of the CPU time it did in 1.5.1.
+- Keep figures in place when Reduce Motion is turned off while a page that
+  opened under Reduce Motion is on screen; they no longer drop to zero.
+
+### Changed
+
+- Update the bundled Universal ccusage helper to 20.0.48 with verified official
+  package integrity, architecture and license metadata.
+
 ## 1.5.1 (build 48) — 2026-11-01
 
 ### Added
