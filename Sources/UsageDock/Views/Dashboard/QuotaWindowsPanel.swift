@@ -230,8 +230,12 @@ struct QuotaWindowsPanel: View {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.system(size: 10))
             }
-            RollingText(row.remainingText)
-                .numericFont(13, .semibold)
+            RollingFigure(
+                row.remainingText,
+                size: 13,
+                weight: .semibold,
+                color: row.runsOutBeforeReset ? DashboardTheme.warning : DashboardTheme.text
+            )
         }
         .foregroundStyle(row.runsOutBeforeReset ? DashboardTheme.warning : DashboardTheme.text)
         .lineLimit(1)
@@ -318,7 +322,8 @@ struct QuotaWindowsPanel: View {
 
 /// One continuous bar per window. The table packs many rows close together,
 /// where segmented bars read as a dense grid; a solid fill keeps each row to
-/// one shape. Sizes come from the proposal only, so nothing feeds back.
+/// one shape. Drawn in Core Animation, which also sweeps it in when the page
+/// appears.
 private struct SolidBar: View {
     let value: Double
     let accent: Color
@@ -328,18 +333,8 @@ private struct SolidBar: View {
     private var surfaces
 
     var body: some View {
-        GeometryReader { proxy in
-            let fraction = min(1, max(0, value))
-            // Any remainder keeps a visible sliver, so a nearly empty window
-            // never reads as fully used.
-            let width = fraction > 0 ? max(height, proxy.size.width * fraction) : 0
-            ZStack(alignment: .leading) {
-                Capsule().fill(surfaces.track)
-                Capsule().fill(accent).frame(width: width)
-                    .revealSweep()
-            }
-        }
-        .frame(height: height)
-        .accessibilityHidden(true)
+        QuotaBarLayer(fraction: value, litSegments: 0, shape: .solid, accent: accent, track: surfaces.track)
+            .frame(height: height)
+            .accessibilityHidden(true)
     }
 }

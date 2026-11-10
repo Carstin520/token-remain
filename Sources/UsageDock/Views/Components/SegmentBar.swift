@@ -27,25 +27,17 @@ struct SegmentBar: View {
         return min(segments, Int(raw.rounded()))
     }
 
-    /// The lit segments sit on their own layer over the track, so a page
-    /// entrance can sweep them in without touching the track.
+    /// Drawn in Core Animation: the lit segments sit on their own layer over
+    /// the track, so the entrance sweeps them in without touching the track.
     var body: some View {
-        ZStack {
-            segmentRow { _ in track ?? surfaces.track }
-            segmentRow { index in index < filledCount ? accent : .clear }
-                .revealSweep()
-        }
+        QuotaBarLayer(
+            fraction: clamped,
+            litSegments: filledCount,
+            shape: .segmented(count: segments, gap: gap),
+            accent: accent,
+            track: track ?? surfaces.track
+        )
         .frame(height: height)
         .accessibilityHidden(true)
-    }
-
-    private func segmentRow(_ color: @escaping (Int) -> Color) -> some View {
-        HStack(spacing: gap) {
-            ForEach(0..<segments, id: \.self) { index in
-                RoundedRectangle(cornerRadius: 2, style: .continuous)
-                    .fill(color(index))
-                    .frame(maxWidth: .infinity)
-            }
-        }
     }
 }

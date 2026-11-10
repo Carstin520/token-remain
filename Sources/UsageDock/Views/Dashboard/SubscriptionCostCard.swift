@@ -168,7 +168,7 @@ struct SubscriptionCostCard: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .firstTextBaseline, spacing: 5) {
-                RollingText(display.amount(usd: summary.monthlyUSD))
+                Text(verbatim: display.amount(usd: summary.monthlyUSD))
                     .numericFont(26, .bold)
                     .foregroundStyle(DashboardTheme.text)
                     .lineLimit(1)

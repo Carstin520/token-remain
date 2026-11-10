@@ -5,21 +5,27 @@ import Testing
 
 @Suite("Motion")
 struct MotionTests {
-    @Test("Rolling figures start from zeros of the same width")
-    func zeroedKeepsShape() {
-        #expect(RollingText.zeroed("$94.50") == "$00.00")
-        #expect(RollingText.zeroed("73.6%") == "00.0%")
-        #expect(RollingText.zeroed("294.15M · $94.50") == "000.00M · $00.00")
-        #expect(RollingText.zeroed("Used up") == "Used up")
-        #expect(RollingText.zeroed("98% remaining").count == "98% remaining".count)
+    @Test("A quota bar or figure plays on first appearance and each time the page is revealed")
+    func quotaEntranceRule() {
+        // A Dashboard page: revealed from the start, so it plays on appearing.
+        #expect(QuotaEntrance.next(previous: nil, revealed: true, animates: true) == .play)
+        #expect(QuotaEntrance.next(previous: true, revealed: true, animates: true) == nil)
+        // The popup: zeros while closed, plays on every opening.
+        #expect(QuotaEntrance.next(previous: nil, revealed: false, animates: true) == .zero)
+        #expect(QuotaEntrance.next(previous: false, revealed: true, animates: true) == .play)
+        #expect(QuotaEntrance.next(previous: true, revealed: false, animates: true) == .zero)
+        // Reduce Motion: the value, never zeros or motion.
+        #expect(QuotaEntrance.next(previous: nil, revealed: false, animates: false) == .still)
+        #expect(QuotaEntrance.next(previous: false, revealed: true, animates: false) == .still)
+        #expect(QuotaEntrance.next(previous: true, revealed: true, animates: false) == nil)
     }
 
     @Test("Odometer columns split digits from the text around them")
     func odometerSegments() {
-        #expect(RollingText.segments("$94.50") == [.run("$"), .digit(9), .digit(4), .run("."), .digit(5), .digit(0)])
-        #expect(RollingText.segments("98% remaining") == [.digit(9), .digit(8), .run("% remaining")])
-        #expect(RollingText.segments("Used up") == [.run("Used up")])
-        #expect(RollingText.segments("") == [])
+        #expect(RollingFigure.segments("$94.50") == [.run("$"), .digit(9), .digit(4), .run("."), .digit(5), .digit(0)])
+        #expect(RollingFigure.segments("98% remaining") == [.digit(9), .digit(8), .run("% remaining")])
+        #expect(RollingFigure.segments("Used up") == [.run("Used up")])
+        #expect(RollingFigure.segments("") == [])
     }
 
     @Test("The detail shield answers only the zero-size minimum query itself")
@@ -43,17 +49,6 @@ struct MotionTests {
         #expect(!DashboardWindowController.opensWithAnimation(wasOnScreen: true, reduceMotion: false))
         #expect(!DashboardWindowController.opensWithAnimation(wasOnScreen: false, reduceMotion: true))
         #expect(MotionTiming.dashboardFadeIn > MotionTiming.popupFadeIn)
-    }
-
-    @Test("Only the first page of a Dashboard window session plays the entrance")
-    @MainActor
-    func entrancePlaysOncePerSession() {
-        let session = PageEntranceLedger()
-        #expect(session.claim())
-        #expect(!session.claim())
-        #expect(!session.claim())
-        // Reopening the window builds a new session, which plays it again.
-        #expect(PageEntranceLedger().claim())
     }
 
     @Test("A ripple reaches the farthest corner from where it starts")

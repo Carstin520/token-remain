@@ -61,7 +61,7 @@ struct RingChart: View {
 
                 if let centerText {
                     VStack(spacing: 0) {
-                        RollingText(centerText)
+                        Text(verbatim: centerText)
                             .numericFont(centerTextSize, .semibold)
                             .usageDockAdaptiveForeground(.primary)
 
