@@ -14,7 +14,7 @@ struct QuotaConsumptionTrendCard: View {
 
     private var rows: [QuotaTrendRowData] {
         enabledProviders.compactMap { provider in
-            let samples = history.samples(for: provider, since: cutoff)
+            let samples = history.trendSamples(for: provider, since: cutoff)
             guard !samples.isEmpty else { return nil }
             return QuotaTrendRowData(provider: provider, samples: samples)
         }
