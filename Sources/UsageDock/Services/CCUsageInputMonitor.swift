@@ -105,8 +105,19 @@ final class CCUsageInputMonitor: @unchecked Sendable {
         ("GEMINI_DATA_DIR", [".gemini"]),
         ("ANTIGRAVITY_DATA_DIR", [".gemini", ".config/antigravity"]),
         ("GROK_HOME", [".grok"]),
-        ("ZCODE_HOME", [".zcode"])
+        ("ZCODE_HOME", [".zcode"]),
+        ("CLINE_DATA_DIR", clineDefaults)
     ]
+    /// Cline keeps a CLI home plus one extension store per VS Code-family
+    /// editor. The list mirrors ccusage 20.0.51 (`adapters/cline/src/paths.rs`),
+    /// including the `AppData/Roaming` branch it falls back to under the home
+    /// directory when `APPDATA` is unset.
+    private static let clineDefaults: [String] = [".cline"]
+        + ["Code", "Code - Insiders", "Cursor", "Windsurf", "VSCodium"].flatMap { editor in
+            ["Library/Application Support", ".config", "AppData/Roaming"].map { base in
+                "\(base)/\(editor)/User/globalStorage/saoudrizwan.claude-dev"
+            }
+        }
     static let fileVariables = ["COPILOT_OTEL_FILE_EXPORTER_PATH"]
     /// Every path variable the vendored helper reads. Besides the tables
     /// above: Claude directories come from the app's own discovery, Codex has
