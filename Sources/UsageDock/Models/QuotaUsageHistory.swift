@@ -98,6 +98,39 @@ struct QuotaUsageHistory: Sendable, Codable, Equatable {
         }
     }
 
+    /// The system account's series as one trend row: every point measures the
+    /// same window length as the latest sample. A provider whose primary
+    /// window changed length (a Claude plan without the five-hour cap reports
+    /// its weekly window as primary) would otherwise join two unrelated
+    /// percentages into one line labelled by the newest window. An older
+    /// sample whose secondary reading has the current length contributes that
+    /// reading instead, so the weekly series continues across the change.
+    /// Stored samples are untouched; this is a read-time view.
+    func trendSamples(
+        for provider: ProviderQuota.Provider,
+        since cutoff: Date? = nil
+    ) -> [Sample] {
+        let series = samples(for: provider, since: cutoff)
+        guard let minutes = series.last?.windowMinutes else { return [] }
+        return series.compactMap { sample in
+            if sample.windowMinutes == minutes { return sample }
+            guard let secondary = sample.secondary, secondary.windowMinutes == minutes else {
+                return nil
+            }
+            return Sample(
+                provider: sample.provider,
+                usedPercent: secondary.usedPercent,
+                windowMinutes: secondary.windowMinutes,
+                resetsAt: secondary.resetsAt,
+                capturedAt: sample.capturedAt,
+                attribution: sample.attribution,
+                accountID: sample.accountID,
+                secondary: nil,
+                planKey: sample.planKey
+            )
+        }
+    }
+
     func recording(
         _ quota: ProviderQuota,
         account: ProviderAccountID? = nil,

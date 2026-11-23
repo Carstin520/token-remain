@@ -255,7 +255,8 @@ struct ClaudeUsageService {
 
     /// PTY 降级一次要付出最多 45 秒的进程成本,只在探针可能修复问题时
     /// 才值得:凭证类失败让 Claude Code 自己续期,`invalidResponse` 覆盖
-    /// API 不返回订阅会话行的账户(此时 /usage 画面是唯一数据源)。
+    /// API 不返回任何账户级额度行的账户(此时 /usage 画面是唯一数据源)。
+    /// 只有周窗、没有 5 小时窗的响应是有效额度,不走这里。
     /// 服务端明确拒绝(429/5xx)时换个入口没有意义——探针读的是同一个
     /// 接口,只会把服务端故障拖成一条"读取超时"。
     static func probeCanRecover(
@@ -408,8 +409,15 @@ enum ClaudeCLIUsageParser {
         let accountSessionReadings = sessionReadings.filter { $0.scopeName == nil }
         let weeklyReadings = weeklyReadings(in: text)
         let generalWeeklyReadings = weeklyReadings.filter(\.isGeneral)
-        guard let sessionReading = accountSessionReadings.last,
-              let generalWeeklyReading = generalWeeklyReadings.last else {
+        guard let generalWeeklyReading = generalWeeklyReadings.last else {
+            throw ClaudeUsageService.ServiceError.invalidUsageOutput
+        }
+        // 没有 5 小时会话窗的套餐,/usage 画面直接不画 `Current session` 行
+        // (Claude Code 2.1.330:窗口为 null 的行整行省略)。只有画面上完全
+        // 没有这个标签才按"仅周窗"处理;标签在、读数却解析不出来说明这
+        // 一帧画坏了,仍然判为失败,不把残帧当成套餐变化。
+        let sessionReading = accountSessionReadings.last
+        guard sessionReading != nil || !showsSessionRow(in: text) else {
             throw ClaudeUsageService.ServiceError.invalidUsageOutput
         }
 
@@ -514,18 +522,23 @@ enum ClaudeCLIUsageParser {
 
         // 会话窗在前、周窗在后,呼应主卡 5h+7d 的堆叠顺序。
         let scopedWindows = scopedSessionWindows + scopedWeeklyWindows
-        return ProviderQuota(
-            provider: .claude,
-            primary: QuotaWindow(
-                usedPercent: sessionReading.usedPercent,
+        let weeklyWindow = QuotaWindow(
+            usedPercent: generalWeeklyReading.usedPercent,
+            windowMinutes: 10_080,
+            resetsAt: secondaryReset
+        )
+        let sessionWindow = sessionReading.map {
+            QuotaWindow(
+                usedPercent: $0.usedPercent,
                 windowMinutes: 300,
                 resetsAt: primaryReset
-            ),
-            secondary: QuotaWindow(
-                usedPercent: generalWeeklyReading.usedPercent,
-                windowMinutes: 10_080,
-                resetsAt: secondaryReset
-            ),
+            )
+        }
+        return ProviderQuota(
+            provider: .claude,
+            // 与 API 解析一致:没有会话窗时周窗就是唯一的账户级额度。
+            primary: sessionWindow ?? weeklyWindow,
+            secondary: sessionWindow == nil ? nil : weeklyWindow,
             planName: nil,
             capturedAt: now,
             scopedWindows: scopedWindows.isEmpty ? nil : scopedWindows
@@ -536,11 +549,56 @@ enum ClaudeCLIUsageParser {
         let text = reconstructedTerminalText(data)
         // 完整性只看账户级读数:一条带 scope 的会话行不能代表账户 5h 窗
         // 已经画全。
-        guard let session = sessionReadings(in: text).last(where: { $0.scopeName == nil }),
-              let weekly = weeklyReadings(in: text).last(where: \.isGeneral) else {
+        guard let weekly = weeklyReadings(in: text).last(where: \.isGeneral),
+              weekly.resetDescription != nil else {
             return false
         }
-        return session.resetDescription != nil && weekly.resetDescription != nil
+        guard let session = sessionReadings(in: text).last(where: { $0.scopeName == nil }) else {
+            // 会话行在周行之上、同一帧输出,周行画全而画面上完全没有
+            // `Current session` 标签,说明这个账户没有 5 小时窗。否则探针会
+            // 为一个永远不会出现的行等满 45 秒再报超时。
+            return !showsSessionRow(in: text)
+        }
+        return session.resetDescription != nil
+    }
+
+    /// 画面上是否出现过任何形式的 `Current session` 标签(含带 scope 的行和
+    /// 丢了空格的残帧)。
+    private static func showsSessionLabel(in text: String) -> Bool {
+        text.components(separatedBy: .whitespacesAndNewlines)
+            .joined()
+            .lowercased()
+            .contains("currentsession")
+    }
+
+    /// 判"仅周窗"之前用:除了标签,还要排除标签丢字的会话行。
+    ///
+    /// 重绘会在标签任意位置丢字(`Curent sesion`),这时标签认不出来,但会话
+    /// 行的百分比还在。会话行画在周额度区块之上,所以第一个周额度锚点
+    /// (`Current week` / `Weekly limits`)之前出现的读数只能来自会话行——
+    /// 有这样的读数就不能判成"仅周窗"。只在已经解析出账户级周行时调用,
+    /// 锚点必然存在;发送 /usage 的判断不用它,启动画面上的零散百分比不能
+    /// 让探针停发命令。
+    private static func showsSessionRow(in text: String) -> Bool {
+        guard !showsSessionLabel(in: text) else { return true }
+        let anchor = firstWeeklyAnchor(in: text) ?? text.endIndex
+        return !percentReadings(in: String(text[..<anchor])).isEmpty
+    }
+
+    /// 周额度区块的起点:旧版式的第一个 `Current week` 标签,或新版式的
+    /// `Weekly limits` 标题行,取靠前者。
+    private static func firstWeeklyAnchor(in text: String) -> String.Index? {
+        var anchors: [String.Index] = []
+        if let range = text.range(of: #"(?i)Current[ \t]*week"#, options: .regularExpression) {
+            anchors.append(range.lowerBound)
+        }
+        text.enumerateSubstrings(in: text.startIndex..., options: .byLines) { line, range, _, stop in
+            if let line, canonicalLine(line) == "weeklylimits" {
+                anchors.append(range.lowerBound)
+                stop = true
+            }
+        }
+        return anchors.min()
     }
 
     static func containsTrustPrompt(in data: Data) -> Bool {
@@ -554,7 +612,12 @@ enum ClaudeCLIUsageParser {
         now: Date,
         retryInterval: TimeInterval = 5
     ) -> Bool {
-        guard !whitespaceCollapsedTerminalText(data).contains("currentsession") else {
+        let text = reconstructedTerminalText(data)
+        // /usage 画面已经打开就不再重发。没有 5 小时窗的账户不画
+        // `Current session`,这时以解析出的账户级周行为准——只认读数、不认
+        // "weekly limits" 字样,启动画面上的提示文案不会被误当成用量画面。
+        guard !showsSessionLabel(in: text),
+              !weeklyReadings(in: text).contains(where: \.isGeneral) else {
             return false
         }
         return now.timeIntervalSince(lastSentAt ?? startedAt) >= retryInterval

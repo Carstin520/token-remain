@@ -432,6 +432,38 @@ struct ClaudeCLIUsageProbeDecisionTests {
         )
     }
 
+    @Test("Stops sending once a weekly-only usage screen is showing")
+    func stopsSendingOnWeeklyOnlyScreen() {
+        let lastSentAt = startedAt.addingTimeInterval(5)
+        // 没有 5 小时窗的账户不画 `Current session`;只盯这个标签会每 5 秒
+        // 往已经打开的用量画面里再敲一次 /usage。
+        let output = Data("Current week (all models)\n31% used\nResets Nov 27 at 1pm".utf8)
+
+        #expect(
+            !ClaudeCLIUsageParser.shouldSendUsageCommand(
+                in: output,
+                startedAt: startedAt,
+                lastSentAt: lastSentAt,
+                now: lastSentAt.addingTimeInterval(5)
+            )
+        )
+    }
+
+    @Test("Startup copy that merely mentions weekly limits does not count as the usage screen")
+    func weeklyLimitCopyIsNotTheUsageScreen() {
+        let lastSentAt = startedAt.addingTimeInterval(5)
+        let output = Data("Tip: weekly limits reset every 7 days\nLearn more about usage limits".utf8)
+
+        #expect(
+            ClaudeCLIUsageParser.shouldSendUsageCommand(
+                in: output,
+                startedAt: startedAt,
+                lastSentAt: lastSentAt,
+                now: lastSentAt.addingTimeInterval(5)
+            )
+        )
+    }
+
     @Test("Stops sending once the current session section appears")
     func stopsSendingUsageCommand() {
         let lastSentAt = startedAt.addingTimeInterval(5)
@@ -590,6 +622,82 @@ struct ClaudePTYScopedSessionRowTests {
                 now: try morning(),
                 calendar: try shanghai()
             )
+        }
+    }
+
+    @Test("A screen without any session row is a complete weekly-only reading")
+    func weeklyOnlyScreenParses() throws {
+        // Claude Code 对值为 null 的窗口整行不画。两种 /usage 版式都要认。
+        let legacy = """
+        Current week (all models)
+        31% used
+        Resets Aug 15 at 1pm
+        Current week (Fable)
+        64% used
+        Resets Aug 15 at 1pm
+        """
+        let modern = """
+        Plan usage limits
+        Weekly limits
+        All models
+        Resets Aug 15 at 1pm      31% used
+        Fable
+        Resets Aug 15 at 1pm      64% used
+        """
+        for output in [legacy, modern] {
+            let data = Data(output.utf8)
+            #expect(ClaudeCLIUsageParser.hasCompleteUsage(in: data))
+
+            let quota = try ClaudeCLIUsageParser.parse(data, now: try morning(), calendar: try shanghai())
+
+            #expect(quota.primary.windowMinutes == 10_080)
+            #expect(quota.primary.usedPercent == 31)
+            #expect(quota.primary.resetsAt != nil)
+            #expect(quota.secondary == nil)
+            #expect(quota.fableWindow?.window.usedPercent == 64)
+        }
+    }
+
+    @Test("A session label whose reading was lost is a damaged frame, not a plan change")
+    func damagedSessionRowIsNotWeeklyOnly() throws {
+        // 标签画出来了、百分比却丢了:这一帧不可信,不能据此把 5 小时窗摘掉。
+        let output = """
+        Current session
+        Current week (all models)
+        60% used
+        Resets Aug 15 at 1pm
+        """
+
+        #expect(!ClaudeCLIUsageParser.hasCompleteUsage(in: Data(output.utf8)))
+    }
+
+    @Test("A session row whose label lost glyphs is a damaged frame, not a plan change")
+    func garbledSessionLabelIsNotWeeklyOnly() throws {
+        // 重绘会在标签任意位置丢字(见 `all odels` 一类残帧)。会话行的读数
+        // 还在、标签却认不出来时,周行之上多出一条无主的百分比——这一帧不能
+        // 判成"仅周窗",否则 5 小时窗会被摘掉、周窗顶到主槽位。
+        let legacy = """
+        Curent sesion
+        12% used
+        Resets 3pm
+        Current week (all models)
+        60% used
+        Resets Aug 15 at 1pm
+        """
+        let modern = """
+        Plan usage limits
+        Curent session
+        Resets 3pm                12% used
+        Weekly limits
+        All models
+        Resets Aug 15 at 1pm      60% used
+        """
+        for output in [legacy, modern] {
+            let data = Data(output.utf8)
+            #expect(!ClaudeCLIUsageParser.hasCompleteUsage(in: data))
+            #expect(throws: ClaudeUsageService.ServiceError.self) {
+                try ClaudeCLIUsageParser.parse(data, now: try morning(), calendar: try shanghai())
+            }
         }
     }
 

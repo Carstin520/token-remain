@@ -344,8 +344,15 @@ struct ProviderQuota: Sendable, Codable {
 
     /// Claude currently names this model-scoped weekly cap `fable`, but keep
     /// the lookup tolerant of a future version suffix such as `fable_5`.
+    ///
+    /// Sources also report slices of it (`fable_session`, a per-surface
+    /// `fable_claude_code`) and may list them first, so the plain weekly row
+    /// wins, then any weekly Fable row, then whatever Fable row exists.
     var fableWindow: ScopedQuotaWindow? {
-        uniqueScopedWindows.first(where: \.isFable)
+        let fable = uniqueScopedWindows.filter(\.isFable)
+        return fable.first { $0.scopeID.lowercased() == "fable" }
+            ?? fable.first { $0.window.windowMinutes == 10_080 }
+            ?? fable.first
     }
 
     /// Keeps the authoritative primary/all-model values while filling model-
