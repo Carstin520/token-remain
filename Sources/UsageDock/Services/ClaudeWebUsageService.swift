@@ -168,7 +168,16 @@ struct ClaudeWebUsageService: Sendable {
             }
             guard UUID(uuidString: organization.uuid) != nil else { throw ServiceError.invalidResponse }
             let data = try await read("organizations/\(organization.uuid)/usage")
-            var quota = try ClaudeOAuthUsageParser.parse(data, now: now)
+            var quota: ProviderQuota
+            do {
+                quota = try ClaudeOAuthUsageParser.parse(data, now: now)
+            } catch is ClaudeOAuthUsageService.APIError {
+                // The shared parser reports in OAuth terms. Left as-is, a web
+                // payload it cannot read was named after the wrong source and,
+                // not being a web `ServiceError`, skipped the retry backoff:
+                // claude.ai was polled again on every refresh cycle.
+                throw ServiceError.invalidResponse
+            }
             // This source marker also prevents retaining scoped windows from an
             // earlier OAuth account when the user changes the system source.
             quota.attribution = QuotaAttribution(provider: .claude, displayName: "Claude Web", routeIdentifier: "claude-web:\(organization.uuid)")

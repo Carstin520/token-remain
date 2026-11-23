@@ -122,6 +122,39 @@ struct ClaudeDesktopUsageTests {
         #expect(quota.attribution?.displayName == "Claude Web")
     }
 
+    private func webQuota(usagePayload: String) async throws -> ProviderQuota {
+        let id = "11111111-1111-4111-8111-111111111111"
+        return try await ClaudeWebUsageService().fetch(configuration: "fixture-session") { request in
+            let payload = request.url!.path == "/api/organizations"
+                ? "[{\"uuid\":\"\(id)\",\"capabilities\":[\"chat\"]}]"
+                : usagePayload
+            return (Data(payload.utf8), HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
+        }
+    }
+
+    @Test func webQuotaAcceptsAnAccountWithoutASessionCap() async throws {
+        let quota = try await webQuota(
+            usagePayload: #"{"five_hour":null,"seven_day":{"utilization":14,"resets_at":"2026-11-27T05:00:00Z"}}"#
+        )
+        #expect(quota.primary.windowMinutes == 10_080)
+        #expect(quota.primary.usedPercent == 14)
+        #expect(quota.secondary == nil)
+        #expect(quota.attribution?.displayName == "Claude Web")
+    }
+
+    @Test func unreadableWebUsageIsAWebErrorThatBacksOff() async throws {
+        do {
+            _ = try await webQuota(usagePayload: #"{"five_hour":null,"seven_day":null}"#)
+            Issue.record("Expected an unreadable usage payload")
+        } catch let error as ClaudeWebUsageService.ServiceError {
+            guard case .invalidResponse = error else { Issue.record("Unexpected \(error)"); return }
+            // 共享解析器抛的是 OAuth 侧的错误类型;原样冒出去既报错来源,
+            // 又没有退避,每轮刷新都会再打一次 claude.ai。
+            #expect(UsageStore.claudeRetryBackoff(for: error) != nil)
+            #expect(!ProviderSessionAlerts.requiresSignIn(error))
+        }
+    }
+
     @Test func multipleOrganizationsNeverChooseAnArbitraryAccount() async throws {
         do {
             _ = try await ClaudeWebUsageService().fetch(configuration: "fixture-session") { request in

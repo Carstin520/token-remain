@@ -1,5 +1,6 @@
 import CryptoKit
 import Foundation
+import OSLog
 import Security
 
 /// Claude 限额 API 直查。参考 OpenUsage(MIT)的 provider pipeline:
@@ -177,9 +178,20 @@ struct ClaudeOAuthUsageService {
     }
 }
 
-/// oauth/usage 响应 → ProviderQuota。兼容旧的 `five_hour` / `seven_day` /
-/// `seven_day_<scope>` 字段和新的结构化 `limits` 数组。旧窗口使用
-/// `utilization`,新窗口使用 `percent`;两者都是 0–100 已用百分比。
+/// oauth/usage 响应 → ProviderQuota。claude.ai 网页会话的
+/// `organizations/<id>/usage` 返回同一结构,共用本解析器。
+///
+/// 解析按"服务端报了哪些额度行"自适应,不写死套餐或字段名:
+/// - 旧字段按键名里的时长归类:`five_hour`、`seven_day`、`seven_day_<scope>`,
+///   以及同一命名规则下任何新的时长(`one_day`、`thirty_day_<scope>` …)。
+/// - 结构化 `limits[]` 按 `kind` / `group` 归类时长,按 `scope` 区分账户级
+///   与分项(模型、使用入口)。Claude Code 自己的说明是"which meters apply
+///   … are the server's … a new meter needs no client release"。
+/// - 账户级窗口按时长从短到长填 `primary` / `secondary`;没有 5 小时窗的
+///   套餐只剩周窗,周窗即 `primary`。其余行进 `scopedWindows`。
+/// - 认不出的行只跳过那一行并留一条脱敏的结构日志,不拖累认得出的行。
+///
+/// 旧窗口使用 `utilization`,新窗口使用 `percent`;两者都是 0–100 已用百分比。
 enum ClaudeOAuthUsageParser {
     static func parse(
         _ data: Data,
@@ -188,37 +200,62 @@ enum ClaudeOAuthUsageParser {
         now: Date = .now
     ) throws -> ProviderQuota {
         guard let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
+            ClaudeUsageSchemaLog.report("response is not a JSON object", outcome: .rejected)
             throw ClaudeOAuthUsageService.APIError.invalidResponse
         }
-        let structured = structuredLimits(object["limits"], now: now)
-        // Some accounts have moved these values into `limits`; require a real
-        // session row from either schema so inference-only tokens still fall
-        // through to the PTY instead of inventing subscription quota.
-        guard let primary = window(object["five_hour"], windowMinutes: 300, now: now)
-            ?? structured.primary else {
-            throw ClaudeOAuthUsageService.APIError.invalidResponse
-        }
-        let secondary = window(object["seven_day"], windowMinutes: 10_080, now: now)
-            ?? structured.secondary
-        let legacyScopedWindows = object.keys.sorted().compactMap { key -> ScopedQuotaWindow? in
-            let prefix = "seven_day_"
-            guard key.hasPrefix(prefix), key.count > prefix.count,
-                  let value = window(object[key], windowMinutes: 10_080, now: now) else {
-                return nil
+        var meters = Meters()
+        // Sorted so the scoped order, and therefore the card, is stable.
+        for key in object.keys.sorted() {
+            guard let shape = durationKey(key) else { continue }
+            guard let window = meterWindow(object[key], windowMinutes: shape.minutes) else {
+                continue
             }
-            let scopeID = String(key.dropFirst(prefix.count)).lowercased()
-            return ScopedQuotaWindow(
-                scopeID: scopeID,
-                displayName: displayName(forScopeID: scopeID),
-                window: value,
-                observedAt: now
+            if let scope = shape.scope {
+                meters.addScoped(
+                    id: scope,
+                    name: displayName(forScopeID: scope),
+                    window: window,
+                    now: now
+                )
+            } else {
+                meters.addGeneral(window)
+            }
+        }
+        for row in object["limits"] as? [Any] ?? [] {
+            classify(row, into: &meters, now: now)
+        }
+
+        // Every window is nullable in the schema Claude Code 2.1.330 validates
+        // against, and its /usage screen simply omits a row whose value is
+        // null: plans without a 5-hour session cap answer with the weekly
+        // window alone. Whatever general windows the server did report are the
+        // account's quota — never synthesize a 0% window for a missing one.
+        //
+        // A payload with no general window at all is still rejected, so
+        // inference-only tokens fall through to the PTY instead of inventing
+        // subscription quota.
+        let general = meters.general.values.sorted { $0.windowMinutes < $1.windowMinutes }
+        guard let primary = general.first else {
+            ClaudeUsageSchemaLog.report(schemaSummary(of: object), outcome: .rejected)
+            throw ClaudeOAuthUsageService.APIError.invalidResponse
+        }
+        if !meters.skipped.isEmpty {
+            ClaudeUsageSchemaLog.report(
+                schemaSummary(of: object),
+                outcome: .partiallyRecognized(meters.skipped)
             )
         }
-        let scopedWindows = uniqueScopedWindows(legacyScopedWindows + structured.scopedWindows)
+        // The card has two general slots. A third account-wide cap (the help
+        // center reserves the right to add monthly ones) still has to be
+        // visible, so it rides along as a named row instead of being dropped.
+        for extra in general.dropFirst(2) {
+            meters.addScoped(id: "overall", name: "Overall", window: extra, now: now)
+        }
+        let scopedWindows = meters.scopedWindows
         return ProviderQuota(
             provider: .claude,
             primary: primary,
-            secondary: secondary,
+            secondary: general.dropFirst().first,
             planName: planName(subscriptionType: subscriptionType, rateLimitTier: rateLimitTier),
             capturedAt: now,
             extraUsage: extraUsage(object["extra_usage"]),
@@ -226,77 +263,197 @@ enum ClaudeOAuthUsageParser {
         )
     }
 
+    /// What one response contributed, before it is laid out as a quota.
+    private struct Meters {
+        /// Account-wide windows by duration. The first source to report a
+        /// duration keeps it: legacy keys are read before `limits[]`, and they
+        /// carry the unrounded value.
+        var general: [Int: QuotaWindow] = [:]
+        private var scopedOrder: [String] = []
+        private var scopedByID: [String: ScopedQuotaWindow] = [:]
+        /// Sanitized `kind/group` of rows that carried a reading but could not
+        /// be classified. Never contains values.
+        var skipped: [String] = []
+
+        var scopedWindows: [ScopedQuotaWindow] { scopedOrder.compactMap { scopedByID[$0] } }
+
+        mutating func addGeneral(_ window: QuotaWindow) {
+            if general[window.windowMinutes] == nil {
+                general[window.windowMinutes] = window
+            }
+        }
+
+        /// Weekly rows keep the bare ID (`fable`), the convention every cache
+        /// and synced snapshot already uses. Other durations get a suffix so a
+        /// session and a weekly row for one model stay two rows; `_session`
+        /// matches what the `/usage` screen parser emits.
+        mutating func addScoped(id: String, name: String, window: QuotaWindow, now: Date) {
+            guard let base = ClaudeOAuthUsageParser.normalizedScopeID(id) else { return }
+            let suffix: String
+            switch window.windowMinutes {
+            case 10_080: suffix = ""
+            case 300: suffix = "_session"
+            default: suffix = "_" + ClaudeOAuthUsageParser.compactDuration(window.windowMinutes)
+            }
+            let scopeID = suffix.isEmpty ? base : String(base.prefix(32 - suffix.count)) + suffix
+            if scopedByID[scopeID] == nil { scopedOrder.append(scopeID) }
+            // A later source wins for the same row, as before: `limits[]`
+            // carries the server's display name.
+            scopedByID[scopeID] = ScopedQuotaWindow(
+                scopeID: scopeID,
+                displayName: name,
+                window: window,
+                observedAt: now
+            )
+        }
+    }
+
+    /// One `limits[]` row. Banners and help links share the array but carry no
+    /// reading, so a row without a numeric percentage is not a meter at all.
+    private static func classify(_ value: Any, into meters: inout Meters, now: Date) {
+        guard let row = value as? [String: Any],
+              let used = number(row["percent"]) ?? number(row["utilization"]) else {
+            return
+        }
+        let kind = (row["kind"] as? String)?.lowercased() ?? ""
+        let group = (row["group"] as? String)?.lowercased() ?? ""
+        // What the kind says beyond its period: `weekly_all` → `all`,
+        // `seven_day_opus` → `opus`, `session` → nothing.
+        let qualifiers: Set<String>
+        if let shape = durationKey(kind) {
+            qualifiers = Set((shape.scope ?? "").split(separator: "_").map(String.init))
+        } else {
+            qualifiers = Set(kind.split(separator: "_").map(String.init))
+                .subtracting(periodWords.keys)
+        }
+        // `weekly_notice` is the one non-meter kind seen so far: a banner that
+        // happens to carry a percentage.
+        guard !qualifiers.contains("notice") else { return }
+        let tag = [kind, group].map(schemaToken).joined(separator: "/")
+        guard let minutes = windowMinutes(kind: kind, group: group) else {
+            meters.skipped.append(tag)
+            return
+        }
+        let window = QuotaWindow(
+            usedPercent: min(100, max(0, used)),
+            windowMinutes: minutes,
+            resetsAt: resetDate(row["resets_at"])
+        )
+        // A kind that spells out "all" is the account-wide row whatever its
+        // scope object carries, as it was before rows were classified by scope.
+        let isExplicitlyGeneral = !qualifiers.isEmpty && qualifiers.isSubset(of: generalQualifiers)
+        let scope = isExplicitlyGeneral ? nil : scopeLabel(row["scope"])
+        if let scope, qualifiers.isSubset(of: scopedQualifiers) {
+            // `all models` under a scope is the general weekly cap restated.
+            guard !ScopedQuotaWindow.isGeneralWeeklyLabel(scope.name) else { return }
+            meters.addScoped(id: scope.id, name: scope.name, window: window, now: now)
+        } else if scope == nil, qualifiers.isSubset(of: generalQualifiers) {
+            meters.addGeneral(window)
+        } else {
+            // A scoped row without a name, or a qualifier this build has never
+            // seen. It could be a slice of the account, or a second meter for
+            // a model that already has one: shown as the account-wide window
+            // it would misstate the whole account, and shown under the model's
+            // name it would overwrite that model's real row. Skip it and say
+            // so in the log; new periods, models and surfaces need no such
+            // guess and are shown as they arrive.
+            meters.skipped.append(tag)
+        }
+    }
+
+    private static let scopedQualifiers: Set<String> = ["scoped"]
+
+    /// `weekly_all` is the account-wide weekly cap and `session` carries no
+    /// qualifier at all. These are the spellings accepted as "the whole
+    /// account" for any period.
+    private static let generalQualifiers: Set<String> = ["all", "models", "overall", "total", "general"]
+
+    private static let periodWords: [String: Int] = [
+        "session": 300, "hourly": 60, "daily": 1_440, "day": 1_440,
+        "weekly": 10_080, "week": 10_080, "monthly": 43_200, "month": 43_200
+    ]
+
+    /// The window a row meters, from the server's own classification. `kind`
+    /// is consulted before `group` because it is the more specific of the two.
+    private static func windowMinutes(kind: String, group: String) -> Int? {
+        for source in [kind, group] {
+            if let shape = durationKey(source) { return shape.minutes }
+            for token in source.split(whereSeparator: { !$0.isLetter && !$0.isNumber }) {
+                if let minutes = periodWords[String(token)] { return minutes }
+            }
+        }
+        return nil
+    }
+
+    /// `five_hour` → 300 minutes, account-wide. `seven_day_opus` → 10 080
+    /// minutes scoped to `opus`. Any other `<count>_<unit>[_<scope>]` key
+    /// follows the same rule, so a new window length needs no release.
+    private static func durationKey(_ key: String) -> (minutes: Int, scope: String?)? {
+        let parts = key.lowercased().split(separator: "_", omittingEmptySubsequences: false)
+        guard parts.count >= 2,
+              let count = countWords[String(parts[0])] ?? Int(parts[0]),
+              let unit = unitMinutes[String(parts[1])],
+              count > 0 else {
+            return nil
+        }
+        let minutes = count * unit
+        // Longer than a year is not a rate-limit window.
+        guard minutes <= 366 * 1_440 else { return nil }
+        let scope = parts.dropFirst(2).joined(separator: "_")
+        return (minutes, scope.isEmpty ? nil : scope)
+    }
+
+    private static let countWords: [String: Int] = [
+        "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6,
+        "seven": 7, "eight": 8, "nine": 9, "ten": 10, "twelve": 12,
+        "fourteen": 14, "fifteen": 15, "twenty": 20, "thirty": 30,
+        "sixty": 60, "ninety": 90
+    ]
+
+    private static let unitMinutes: [String: Int] = [
+        "minute": 1, "minutes": 1, "hour": 60, "hours": 60,
+        "day": 1_440, "days": 1_440, "week": 10_080, "weeks": 10_080,
+        "month": 43_200, "months": 43_200
+    ]
+
+    private static func compactDuration(_ minutes: Int) -> String {
+        if minutes % 1_440 == 0 { return "\(minutes / 1_440)d" }
+        if minutes % 60 == 0 { return "\(minutes / 60)h" }
+        return "\(minutes)m"
+    }
+
+    /// What a scoped row is for. Today that is a model or a surface; any other
+    /// dimension the server adds is named the same way. A model ID may be
+    /// null (Fable's is), so the display name doubles as the stable ID.
+    private static func scopeLabel(_ value: Any?) -> (id: String, name: String)? {
+        guard let scope = value as? [String: Any] else { return nil }
+        let known = ["model", "surface"]
+        var ids: [String] = []
+        var names: [String] = []
+        for key in known + scope.keys.filter({ !known.contains($0) }).sorted() {
+            guard let part = scope[key] as? [String: Any] else { continue }
+            let rawID = nonEmpty(part["id"] as? String)
+            let rawName = nonEmpty(part["display_name"] as? String)
+            guard let name = rawName ?? rawID.map(displayName(forScopeID:)) else { continue }
+            ids.append(rawID ?? name)
+            names.append(name)
+        }
+        guard !names.isEmpty else { return nil }
+        return (ids.joined(separator: "_"), names.joined(separator: " · "))
+    }
+
+    private static func nonEmpty(_ value: String?) -> String? {
+        guard let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !trimmed.isEmpty else {
+            return nil
+        }
+        return trimmed
+    }
+
     private static func displayName(forScopeID scopeID: String) -> String {
         scopeID.split(separator: "_")
             .map { $0.prefix(1).uppercased() + $0.dropFirst().lowercased() }
             .joined(separator: " ")
-    }
-
-    private struct StructuredLimits {
-        var primary: QuotaWindow?
-        var secondary: QuotaWindow?
-        var scopedWindows: [ScopedQuotaWindow] = []
-    }
-
-    /// The current API represents Fable as a `weekly_scoped` row whose model
-    /// ID may be null. Derive a stable ID from the display name in that case;
-    /// banners and help links are not rows in this schema and are ignored.
-    private static func structuredLimits(_ value: Any?, now: Date) -> StructuredLimits {
-        guard let rows = value as? [[String: Any]] else { return StructuredLimits() }
-        var result = StructuredLimits()
-        for row in rows {
-            switch (row["kind"] as? String)?.lowercased() {
-            case "session":
-                if let window = limitWindow(row, windowMinutes: 300) {
-                    result.primary = window
-                }
-            case "weekly_all":
-                if let window = limitWindow(row, windowMinutes: 10_080) {
-                    result.secondary = window
-                }
-            case "weekly_scoped":
-                guard let window = limitWindow(row, windowMinutes: 10_080),
-                      let scope = row["scope"] as? [String: Any],
-                      let model = scope["model"] as? [String: Any] else {
-                    continue
-                }
-                let rawID = (model["id"] as? String)?
-                    .trimmingCharacters(in: .whitespacesAndNewlines)
-                let rawName = (model["display_name"] as? String)?
-                    .trimmingCharacters(in: .whitespacesAndNewlines)
-                let resolvedDisplayName = rawName.flatMap { $0.isEmpty ? nil : $0 }
-                    ?? rawID.flatMap { $0.isEmpty ? nil : Self.displayName(forScopeID: $0) }
-                guard let resolvedDisplayName,
-                      !ScopedQuotaWindow.isGeneralWeeklyLabel(resolvedDisplayName),
-                      let scopeID = normalizedScopeID(
-                          rawID.flatMap { $0.isEmpty ? nil : $0 } ?? resolvedDisplayName
-                      ) else {
-                    continue
-                }
-                result.scopedWindows.append(
-                    ScopedQuotaWindow(
-                        scopeID: scopeID,
-                        displayName: resolvedDisplayName,
-                        window: window,
-                        observedAt: now
-                    )
-                )
-            default:
-                continue
-            }
-        }
-        return result
-    }
-
-    private static func limitWindow(_ object: [String: Any], windowMinutes: Int) -> QuotaWindow? {
-        guard let used = number(object["percent"]) ?? number(object["utilization"]) else {
-            return nil
-        }
-        return QuotaWindow(
-            usedPercent: min(100, max(0, used)),
-            windowMinutes: windowMinutes,
-            resetsAt: resetDate(object["resets_at"])
-        )
     }
 
     private static func normalizedScopeID(_ value: String) -> String? {
@@ -306,15 +463,50 @@ enum ClaudeOAuthUsageParser {
         return normalized.isEmpty ? nil : String(normalized.prefix(32))
     }
 
-    private static func uniqueScopedWindows(_ windows: [ScopedQuotaWindow]) -> [ScopedQuotaWindow] {
-        var order: [String] = []
-        var latestByID: [String: ScopedQuotaWindow] = [:]
-        for window in windows {
-            let key = window.scopeID.lowercased()
-            if latestByID[key] == nil { order.append(key) }
-            latestByID[key] = window
+    /// Field names and row kinds only — never a value — so a response the
+    /// parser could not use can be diagnosed from the log without capturing
+    /// it. `five_hour=null seven_day={} limits=[3] | weekly_all/weekly …`.
+    static func schemaSummary(of object: [String: Any]) -> String {
+        let keys = object.keys.sorted().prefix(40).map { key -> String in
+            let shape: String
+            switch object[key] {
+            case is NSNull: shape = "null"
+            case let value as [String: Any]:
+                let reading = number(value["utilization"]) ?? number(value["percent"])
+                shape = reading == nil ? "{}" : "{%}"
+            case let value as [Any]: shape = "[\(value.count)]"
+            case is String: shape = "str"
+            case is NSNumber: shape = "num"
+            default: shape = "?"
+            }
+            return "\(schemaToken(key))=\(shape)"
         }
-        return order.compactMap { latestByID[$0] }
+        let rows = (object["limits"] as? [Any] ?? []).prefix(32).map { value -> String in
+            guard let row = value as? [String: Any] else { return "?" }
+            var text = [row["kind"], row["group"]]
+                .map { schemaToken($0 as? String ?? "") }
+                .joined(separator: "/")
+            if let scope = row["scope"] as? [String: Any] {
+                let dimensions = scope.keys.sorted().filter { scope[$0] is [String: Any] }
+                if !dimensions.isEmpty {
+                    text += "[" + dimensions.map(schemaToken).joined(separator: ",") + "]"
+                }
+            }
+            if number(row["percent"]) ?? number(row["utilization"]) == nil { text += "!" }
+            return text
+        }
+        return keys.joined(separator: " ") + (rows.isEmpty ? "" : " | " + rows.joined(separator: " "))
+    }
+
+    /// Schema identifiers are short ASCII words. Anything that is not one is
+    /// replaced outright rather than trimmed, so no fragment of free text can
+    /// reach the log through a field name or a row kind.
+    private static func schemaToken(_ value: String) -> String {
+        guard !value.isEmpty else { return "-" }
+        let isIdentifier = value.unicodeScalars.count <= 32 && value.unicodeScalars.allSatisfy { scalar in
+            scalar.isASCII && (CharacterSet.alphanumerics.contains(scalar) || scalar == "_" || scalar == "-")
+        }
+        return isIdentifier ? value : "?"
     }
 
     /// `extra_usage {is_enabled, used_credits, monthly_limit}`(美分)→ 附加
@@ -345,9 +537,11 @@ enum ClaudeOAuthUsageParser {
         return "\(base) \(tier[match])"
     }
 
-    private static func window(_ value: Any?, windowMinutes: Int, now: Date) -> QuotaWindow? {
+    /// A legacy top-level window: `{utilization, resets_at}`. A null
+    /// utilization means the window does not apply to this account.
+    private static func meterWindow(_ value: Any?, windowMinutes: Int) -> QuotaWindow? {
         guard let object = value as? [String: Any],
-              let used = number(object["utilization"]) else {
+              let used = number(object["utilization"]) ?? number(object["percent"]) else {
             return nil
         }
         return QuotaWindow(
@@ -379,6 +573,42 @@ enum ClaudeOAuthUsageParser {
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return formatter
     }()
+}
+
+/// 解析器遇到认不全的响应时留痕。只写字段名、行类型和形状,不写任何数值、
+/// 账号或组织信息,所以可以用 `.public` 落到 unified log:
+///
+///     /usr/bin/log show --last 1h --predicate 'subsystem == "com.jamesli.usagedock" AND category == "ClaudeUsageSchema"'
+///
+/// 同一种结构每个进程只记一次——解析每分钟都会跑,重复的行没有信息量。
+enum ClaudeUsageSchemaLog {
+    enum Outcome {
+        /// 没有任何账户级额度行,整个响应被拒绝。
+        case rejected
+        /// 额度照常产出,但有带读数的行没能归类(附它们的 kind/group)。
+        case partiallyRecognized([String])
+    }
+
+    private static let logger = Logger(subsystem: "com.jamesli.usagedock", category: "ClaudeUsageSchema")
+    private static let reported = OSAllocatedUnfairLock(initialState: Set<String>())
+
+    static func report(_ summary: String, outcome: Outcome) {
+        let line: String
+        switch outcome {
+        case .rejected:
+            line = "rejected: no account-wide window; schema: \(summary)"
+        case .partiallyRecognized(let skipped):
+            line = "skipped rows: \(skipped.prefix(16).joined(separator: " ")); schema: \(summary)"
+        }
+        let isNew = reported.withLock { seen -> Bool in
+            // Bounded: a server that varies its shape on every call must not
+            // grow this set, or the log, without limit.
+            guard seen.count < 32 else { return false }
+            return seen.insert(line).inserted
+        }
+        guard isNew else { return }
+        logger.notice("Claude usage \(line, privacy: .public)")
+    }
 }
 
 /// 只读发现 Claude Code 的 OAuth 凭证。查找顺序:
