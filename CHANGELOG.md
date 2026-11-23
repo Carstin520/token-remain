@@ -23,7 +23,9 @@ Versioning for public releases.
 ### Changed
 
 - Update the bundled Universal ccusage helper to 20.0.51 with verified official
-  package integrity, architecture and license metadata.
+  package integrity, architecture and license metadata. It also reads Cline
+  usage logs, and TokenRemain watches Cline's data directories so new Cline
+  activity refreshes local usage.
 
 ## 1.5.2 (build 49) — 2026-11-10
 

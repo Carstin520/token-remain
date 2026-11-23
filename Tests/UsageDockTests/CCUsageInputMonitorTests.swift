@@ -139,6 +139,41 @@ struct CCUsageInputMonitorTests {
         #expect(directories.contains("desktop/.claude/projects"))
     }
 
+    @Test("Cline's CLI home and editor extension stores are watched")
+    func clineDirectoriesAreWatched() throws {
+        let home = try Self.makeHome()
+        defer { try? FileManager.default.removeItem(at: home) }
+        let store = "User/globalStorage/saoudrizwan.claude-dev"
+        // ccusage 20.0.51 reads `~/.cline` and one store per VS Code-family
+        // editor, under Application Support and under the XDG config base.
+        try Self.write("[]", to: home.appending(path: ".cline/data/tasks/t/ui_messages.json"))
+        try Self.write("[]", to: home.appending(
+            path: "Library/Application Support/Cursor/\(store)/tasks/t/ui_messages.json"
+        ))
+        try Self.write("[]", to: home.appending(path: "xdg/VSCodium/\(store)/tasks/t/ui_messages.json"))
+        let custom = home.appending(path: "cline-custom", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: custom, withIntermediateDirectories: true)
+
+        let inputs = CCUsageInputMonitor.inputs(
+            for: Self.invocation(environment: [
+                "XDG_CONFIG_HOME": home.appending(path: "xdg").path,
+                "CLINE_DATA_DIR": custom.path
+            ]),
+            additionalDirectories: [],
+            now: Self.now,
+            home: home
+        )
+        let directories = inputs.groups[.others]?.directories ?? []
+
+        #expect(directories.contains { $0.hasSuffix("/.cline") })
+        #expect(directories.contains { $0.hasSuffix("/Library/Application Support/Cursor/\(store)") })
+        #expect(directories.contains { $0.hasSuffix("/xdg/VSCodium/\(store)") })
+        #expect(directories.contains { $0.hasSuffix("/cline-custom") })
+        // The extension store is watched, not the editor's whole data directory.
+        #expect(!directories.contains { $0.hasSuffix("/Library/Application Support/Cursor") })
+        #expect(inputs.groups[.codex]?.directories.contains { $0.contains("cline") } == false)
+    }
+
     private static func fixedInputs(
         day: String = "2027-01-15",
         codexStamp: String = "codex|1",
