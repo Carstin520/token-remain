@@ -347,12 +347,313 @@ struct ClaudeOAuthUsageParserTests {
         #expect(quota.secondary?.resetsAt == expected)
     }
 
-    @Test("A payload without the five hour window is rejected for PTY fallback")
-    func missingFiveHourThrows() {
-        let payload = #"{"seven_day": {"utilization": 40}}"#
-        #expect(throws: (any Error).self) {
+    @Test("A payload with no general window is rejected for PTY fallback")
+    func missingGeneralWindowsThrow() {
+        // 推理专用 token 的响应里两个账户级窗口都没有:仍然交给 PTY,
+        // 不凭空造出订阅额度。只有模型级窗口也不算账户额度。
+        for payload in [
+            #"{}"#,
+            #"{"five_hour": null, "seven_day": null, "extra_usage": {"is_enabled": false}}"#,
+            #"{"five_hour": {"utilization": null}, "seven_day": {"utilization": null}}"#,
+            #"{"seven_day_opus": {"utilization": 12}}"#,
+            #"{"limits": []}"#
+        ] {
+            #expect(throws: ClaudeOAuthUsageService.APIError.self) {
+                try ClaudeOAuthUsageParser.parse(Data(payload.utf8))
+            }
+        }
+    }
+
+    /// 2026-11 起部分套餐不再有 5 小时会话窗(公开报道为已验证的 Ultra)。
+    /// Claude Code 2.1.330 校验的响应结构里每个窗口都可空,/usage 画面对
+    /// 空窗口整行省略。此前解析器把这种响应整体判为"无法识别"。
+    @Test("An account without a session cap reports its weekly window as the only general quota")
+    func weeklyOnlyLegacyPayload() throws {
+        for payload in [
+            #"{"five_hour": null, "seven_day": {"utilization": 40, "resets_at": "2026-11-27T05:00:00Z"}}"#,
+            #"{"seven_day": {"utilization": 40, "resets_at": "2026-11-27T05:00:00Z"}}"#,
+            // `five_hour` 对象还在、数值为 null:同样是"没有这个窗口"。
+            #"{"five_hour": {"utilization": null, "resets_at": null}, "seven_day": {"utilization": 40, "resets_at": "2026-11-27T05:00:00Z"}}"#
+        ] {
+            let quota = try ClaudeOAuthUsageParser.parse(Data(payload.utf8))
+
+            #expect(quota.primary.windowMinutes == 10_080)
+            #expect(quota.primary.usedPercent == 40)
+            #expect(quota.primary.resetsAt == ISO8601DateFormatter().date(from: "2026-11-27T05:00:00Z"))
+            // 周窗不能同时出现在两个槽位,也不能补一条 0% 的假会话窗。
+            #expect(quota.secondary == nil)
+            #expect(quota.generalQuotaSummary.window.windowMinutes == 10_080)
+        }
+    }
+
+    @Test("Structured limits without a session row keep the weekly and model-scoped rows")
+    func weeklyOnlyStructuredLimits() throws {
+        // 字段与 Claude Code 2.1.330 的 limits[] 结构一致,含本解析器不使用的
+        // severity / is_active / scope.surface。
+        let payload = """
+        {
+          "five_hour": null,
+          "seven_day": null,
+          "limits": [
+            {"kind":"weekly_all","group":"weekly","percent":31,"resets_at":"2026-11-27T05:00:00Z",
+             "severity":"normal","is_active":true,"scope":null},
+            {"kind":"weekly_scoped","group":"weekly","percent":64,"resets_at":"2026-11-27T05:00:00Z",
+             "severity":"warning","is_active":false,
+             "scope":{"model":{"display_name":"Fable"},"surface":null}},
+            {"kind":"weekly_scoped","group":"weekly","percent":9,"resets_at":"2026-11-27T05:00:00Z",
+             "severity":"normal","is_active":false,
+             "scope":{"model":null,"surface":{"display_name":"Claude Code"}}}
+          ]
+        }
+        """
+
+        let quota = try ClaudeOAuthUsageParser.parse(Data(payload.utf8))
+
+        #expect(quota.primary.windowMinutes == 10_080)
+        #expect(quota.primary.usedPercent == 31)
+        #expect(quota.secondary == nil)
+        // 分项行按服务端给的名字原样展示,模型和使用入口同样对待。
+        #expect(quota.uniqueScopedWindows.map(\.scopeID) == ["fable", "claude_code"])
+        #expect(quota.uniqueScopedWindows.map(\.displayName) == ["Fable", "Claude Code"])
+        #expect(quota.fableWindow?.window.usedPercent == 64)
+    }
+
+    // MARK: 自适应:服务端再调整额度行时不需要发版
+
+    @Test("A window length this build has never seen is read from its key")
+    func unknownLegacyDurationIsAGeneralWindow() throws {
+        let payload = #"{"one_day": {"utilization": 20, "resets_at": "2026-11-24T05:00:00Z"}, "seven_day": {"utilization": 40}, "thirty_day_opus": {"utilization": 5}}"#
+        let quota = try ClaudeOAuthUsageParser.parse(Data(payload.utf8))
+
+        #expect(quota.primary.windowMinutes == 1_440)
+        #expect(quota.primary.usedPercent == 20)
+        #expect(quota.secondary?.windowMinutes == 10_080)
+        // 非周窗的分项带时长后缀,不会和同名的周分项撞 ID。
+        #expect(quota.uniqueScopedWindows.map(\.scopeID) == ["opus_30d"])
+        #expect(quota.uniqueScopedWindows.first?.window.windowMinutes == 43_200)
+    }
+
+    @Test("A third account-wide cap stays visible as a named row")
+    func thirdGeneralWindowIsNotDropped() throws {
+        let payload = """
+        {
+          "five_hour": {"utilization": 10},
+          "seven_day": {"utilization": 40},
+          "limits": [
+            {"kind":"monthly_all","group":"monthly","percent":72,"resets_at":"2026-12-01T00:00:00Z",
+             "severity":"warning","is_active":false,"scope":null}
+          ]
+        }
+        """
+        let quota = try ClaudeOAuthUsageParser.parse(Data(payload.utf8))
+
+        #expect(quota.primary.windowMinutes == 300)
+        #expect(quota.secondary?.windowMinutes == 10_080)
+        let overall = try #require(quota.uniqueScopedWindows.first)
+        #expect(overall.scopeID == "overall_30d")
+        #expect(overall.window.windowMinutes == 43_200)
+        #expect(overall.window.usedPercent == 72)
+        // 这一行要能过同步白名单,否则手机端看不到它。
+        #expect(MobileSnapshotRedactor.isWireSafe(overall))
+    }
+
+    @Test("Session-scoped and unknown scope dimensions become their own rows")
+    func scopedRowsOfAnyPeriodAndDimension() throws {
+        let payload = """
+        {
+          "limits": [
+            {"kind":"session","group":"session","percent":7},
+            {"kind":"weekly_all","group":"weekly","percent":57},
+            {"kind":"session_scoped","group":"session","percent":88,
+             "scope":{"model":{"display_name":"Fable"}}},
+            {"kind":"weekly_scoped","group":"weekly","percent":98,
+             "scope":{"model":{"display_name":"Fable"}}},
+            {"kind":"weekly_scoped","group":"weekly","percent":12,
+             "scope":{"feature":{"display_name":"Cowork"}}}
+          ]
+        }
+        """
+        let quota = try ClaudeOAuthUsageParser.parse(Data(payload.utf8))
+
+        // `fable_session` 与 /usage 画面解析器产出的 ID 一致,两个来源能合并。
+        #expect(quota.uniqueScopedWindows.map(\.scopeID) == ["fable_session", "fable", "cowork"])
+        #expect(quota.uniqueScopedWindows.map(\.window.windowMinutes) == [300, 10_080, 10_080])
+        #expect(quota.primary.usedPercent == 7)
+        #expect(quota.secondary?.usedPercent == 57)
+    }
+
+    @Test("A five-hour window that disappeared is not carried over from the cached quota")
+    func vanishedSessionWindowIsNotResurrected() throws {
+        let now = try #require(ISO8601DateFormatter().date(from: "2026-11-23T08:00:00Z"))
+        let cached = try ClaudeOAuthUsageParser.parse(
+            Data(#"{"five_hour": {"utilization": 70}, "seven_day": {"utilization": 30}, "seven_day_opus": {"utilization": 5}}"#.utf8),
+            now: now.addingTimeInterval(-60)
+        )
+        let fresh = try ClaudeOAuthUsageParser.parse(
+            Data(#"{"five_hour": null, "seven_day": {"utilization": 31}}"#.utf8),
+            now: now
+        )
+
+        let merged = fresh.retainingActiveScopedWindows(from: cached, now: now)
+
+        #expect(merged.primary.windowMinutes == 10_080)
+        #expect(merged.primary.usedPercent == 31)
+        #expect(merged.secondary == nil)
+        // 分项行仍按原有的 15 分钟保留规则补回,账户级窗口不在其列。
+        #expect(merged.uniqueScopedWindows.map(\.scopeID) == ["opus"])
+        #expect(!merged.uniqueScopedWindows.contains { $0.window.windowMinutes == 300 })
+    }
+
+    @Test("The Fable lookup is the weekly model cap, not a session or surface slice of it")
+    func fableWindowPrefersTheWeeklyModelCap() throws {
+        // 服务端把会话分项和入口分项排在周分项前面时,`fableWindow` 仍要指向
+        // 文档约定的那一条:模型级周额度 `fable`。
+        let payload = """
+        {
+          "limits": [
+            {"kind":"weekly_all","group":"weekly","percent":57},
+            {"kind":"session_scoped","group":"session","percent":88,
+             "scope":{"model":{"display_name":"Fable"}}},
+            {"kind":"weekly_scoped","group":"weekly","percent":40,
+             "scope":{"model":{"display_name":"Fable"},"surface":{"display_name":"Claude Code"}}},
+            {"kind":"weekly_scoped","group":"weekly","percent":98,
+             "scope":{"model":{"display_name":"Fable"}}}
+          ]
+        }
+        """
+        let quota = try ClaudeOAuthUsageParser.parse(Data(payload.utf8))
+
+        #expect(quota.uniqueScopedWindows.map(\.scopeID) == ["fable_session", "fable_claude_code", "fable"])
+        #expect(quota.uniqueScopedWindows.map(\.displayName) == ["Fable", "Fable · Claude Code", "Fable"])
+        let fable = try #require(quota.fableWindow)
+        #expect(fable.scopeID == "fable")
+        #expect(fable.window.windowMinutes == 10_080)
+        #expect(fable.window.usedPercent == 98)
+    }
+
+    @Test("A row that cannot be classified never stands in for an account-wide window")
+    func unclassifiableRowsAreSkippedNotPromoted() throws {
+        // 三种都带百分比:横幅、没有名字的分项、没见过的限定词。它们排在真正的
+        // 周总量之前,任何一条被当成账户级窗口都会把周额度显示错。
+        let payload = """
+        {
+          "limits": [
+            {"kind":"weekly_notice","group":"weekly","percent":100,"label":"Learn more"},
+            {"kind":"weekly_scoped","group":"weekly","percent":99,"scope":null},
+            {"kind":"weekly_bonus","group":"weekly","percent":98},
+            {"kind":"mystery","group":"unknown","percent":97},
+            {"kind":"weekly_all","group":"weekly","percent":31},
+            {"kind":"weekly_scoped","group":"weekly","percent":64,
+             "scope":{"model":{"display_name":"Fable"}}},
+            {"kind":"weekly_promo","group":"weekly","percent":3,
+             "scope":{"model":{"display_name":"Fable"}}}
+          ]
+        }
+        """
+        let quota = try ClaudeOAuthUsageParser.parse(Data(payload.utf8))
+
+        #expect(quota.primary.windowMinutes == 10_080)
+        #expect(quota.primary.usedPercent == 31)
+        #expect(quota.secondary == nil)
+        // 没见过的 kind 即使带着模型名,也不能覆盖这个模型真正的额度行。
+        #expect(quota.uniqueScopedWindows.map(\.scopeID) == ["fable"])
+        #expect(quota.fableWindow?.window.usedPercent == 64)
+    }
+
+    @Test("An explicit all-models row stays account-wide even with a scope attached")
+    func explicitGeneralRowIgnoresScope() throws {
+        let payload = """
+        {"limits": [
+          {"kind":"session","group":"session","percent":7},
+          {"kind":"weekly_all","group":"weekly","percent":57,
+           "scope":{"surface":{"display_name":"All surfaces"}}}
+        ]}
+        """
+        let quota = try ClaudeOAuthUsageParser.parse(Data(payload.utf8))
+
+        #expect(quota.primary.usedPercent == 7)
+        #expect(quota.secondary?.usedPercent == 57)
+        #expect(quota.uniqueScopedWindows.isEmpty)
+    }
+
+    @Test("A structured row may name its period the legacy way")
+    func structuredRowWithDurationKind() throws {
+        let payload = #"{"limits": [{"kind":"one_day","group":"daily","percent":20}, {"kind":"weekly_all","group":"weekly","percent":40}]}"#
+        let quota = try ClaudeOAuthUsageParser.parse(Data(payload.utf8))
+
+        #expect(quota.primary.windowMinutes == 1_440)
+        #expect(quota.secondary?.windowMinutes == 10_080)
+    }
+
+    @Test("Only unclassifiable rows is still an unrecognized response")
+    func onlyUnclassifiableRowsReject() {
+        let payload = #"{"limits": [{"kind":"weekly_bonus","group":"weekly","percent":98}, {"kind":"mystery","percent":97}]}"#
+        #expect(throws: ClaudeOAuthUsageService.APIError.self) {
             try ClaudeOAuthUsageParser.parse(Data(payload.utf8))
         }
+    }
+
+    @Test("Legacy and structured sources agree on one window instead of doubling it")
+    func legacyValueWinsForTheSameWindow() throws {
+        let payload = """
+        {
+          "five_hour": {"utilization": 12.5, "resets_at": "2026-11-23T12:00:00Z"},
+          "seven_day": {"utilization": 34.25},
+          "limits": [
+            {"kind":"session","group":"session","percent":13},
+            {"kind":"weekly_all","group":"weekly","percent":34}
+          ]
+        }
+        """
+        let quota = try ClaudeOAuthUsageParser.parse(Data(payload.utf8))
+
+        // 旧字段带未取整的值和重置时间,保持原有显示。
+        #expect(quota.primary.usedPercent == 12.5)
+        #expect(quota.primary.resetsAt != nil)
+        #expect(quota.secondary?.usedPercent == 34.25)
+        #expect(quota.uniqueScopedWindows.isEmpty)
+    }
+
+    @Test("The schema summary names fields and row kinds but never a value")
+    func schemaSummaryCarriesNoValues() throws {
+        let payload = """
+        {
+          "five_hour": null,
+          "seven_day": {"utilization": 41.75, "resets_at": "2026-11-27T05:00:00Z"},
+          "account_email": "person@example.com",
+          "weird key with spaces and 中文": 987654,
+          "extra_usage": {"is_enabled": true, "used_credits": 123456, "monthly_limit": 500000},
+          "limits": [
+            {"kind":"weekly_all","group":"weekly","percent":41,"resets_at":"2026-11-27T05:00:00Z"},
+            {"kind":"weekly_scoped","group":"weekly","percent":63,
+             "scope":{"model":{"display_name":"Secret Model 777"}}},
+            {"kind":"person@example.com","group":"weekly"}
+          ]
+        }
+        """
+        let object = try #require(
+            JSONSerialization.jsonObject(with: Data(payload.utf8)) as? [String: Any]
+        )
+        let summary = ClaudeOAuthUsageParser.schemaSummary(of: object)
+
+        #expect(summary.contains("five_hour=null"))
+        #expect(summary.contains("seven_day={%}"))
+        #expect(summary.contains("limits=[3]"))
+        #expect(summary.contains("weekly_scoped/weekly[model]"))
+        for leaked in ["41", "63", "123456", "500000", "987654", "2026", "@", "Secret", "777", "中文", "weird", "person", "example"] {
+            #expect(!summary.contains(leaked), "leaked \(leaked) in \(summary)")
+        }
+    }
+
+    @Test("A session window still leads when both general windows are present")
+    func sessionStillLeadsWhenPresent() throws {
+        let payload = #"{"five_hour": {"utilization": 0, "resets_at": null}, "seven_day": {"utilization": 40}}"#
+        let quota = try ClaudeOAuthUsageParser.parse(Data(payload.utf8))
+
+        // 刚重置的 0% 会话窗是真实读数,不能被当成"没有会话窗"。
+        #expect(quota.primary.windowMinutes == 300)
+        #expect(quota.primary.usedPercent == 0)
+        #expect(quota.secondary?.windowMinutes == 10_080)
     }
 
     @Test("Utilization is clamped into 0...100")

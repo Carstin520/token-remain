@@ -161,6 +161,40 @@ struct QuotaUsageHistoryTests {
         ))
     }
 
+    /// 2026-11 起部分 Claude 套餐没有 5 小时窗,主窗口从 5 小时变成 7 天。
+    /// 趋势表一行只画一种时长:不能把旧的 5 小时读数和新的周读数连成一条线、
+    /// 再整行标成"7 天"。
+    @Test("A trend row keeps one window length when the primary window changes")
+    func trendRowDoesNotMixWindowLengths() {
+        let start = Date(timeIntervalSince1970: 1_800_000)
+        let before = ProviderQuota(
+            provider: .claude,
+            primary: QuotaWindow(usedPercent: 80, windowMinutes: 300, resetsAt: nil),
+            secondary: QuotaWindow(usedPercent: 20, windowMinutes: 10_080, resetsAt: nil),
+            planName: "Max 20x",
+            capturedAt: start
+        )
+        let fiveHourOnly = quota(.claude, used: 90, windowMinutes: 300, at: start.addingTimeInterval(1_000))
+        let after = quota(.claude, used: 25, windowMinutes: 10_080, at: start.addingTimeInterval(2_000))
+        let history = QuotaUsageHistory.empty
+            .recording(before)
+            .recording(fiveHourOnly)
+            .recording(after)
+
+        let row = history.trendSamples(for: .claude)
+        // 旧样本里的周读数接上新序列;没有周读数的旧样本不进这一行。
+        #expect(row.map(\.windowMinutes) == [10_080, 10_080])
+        #expect(row.map(\.usedPercent) == [20, 25])
+        // 原始样本与持久化格式不变,订阅建议仍能读到两种窗口。
+        #expect(history.samples(for: .claude).map(\.windowMinutes) == [300, 300, 10_080])
+
+        // 反过来(重新出现 5 小时窗)时,只有周读数的旧样本同样被排除。
+        let restored = history.recording(
+            quota(.claude, used: 5, windowMinutes: 300, at: start.addingTimeInterval(3_000))
+        )
+        #expect(restored.trendSamples(for: .claude).map(\.usedPercent) == [80, 90, 5])
+    }
+
     @Test("The cache contains display values only and round-trips every provider")
     func cacheRoundTrip() throws {
         let directory = FileManager.default.temporaryDirectory

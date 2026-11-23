@@ -16,6 +16,30 @@ Versioning for public releases.
   figures (summary strip, costs, tokens, ring, usage trend) now appear without
   an entrance, which also makes opening the Dashboard lighter.
 
+## 1.5.3 (build 50) — 2026-11-23
+
+### Fixed
+
+- Show Claude quota for plans without a five-hour session limit. Verified
+  Claude Ultra accounts now report only a weekly limit and a weekly Fable
+  limit; TokenRemain showed "Claude usage API returned an unrecognized
+  response" for them and now shows those weekly windows.
+- Follow whatever usage windows Claude reports. New window lengths, models and
+  usage surfaces appear as Claude adds them, and a row TokenRemain cannot
+  classify is skipped instead of failing the whole card.
+- Name the right source when a claude.ai web session returns usage that cannot
+  be read, and wait before retrying instead of asking claude.ai again on every
+  refresh.
+- Keep one window length in each Quota Trend row, so a plan change no longer
+  joins five-hour and weekly readings into one line.
+
+### Changed
+
+- Update the bundled Universal ccusage helper to 20.0.51 with verified official
+  package integrity, architecture and license metadata. It also reads Cline
+  usage logs, and TokenRemain watches Cline's data directories so new Cline
+  activity refreshes local usage.
+
 ## 1.5.2 (build 49) — 2026-11-10
 
 ### Fixed
