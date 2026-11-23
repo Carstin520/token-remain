@@ -24,10 +24,6 @@ struct DashboardView: View {
     @ObservedObject var preferences: PreferencesStore = .shared
     @ObservedObject private var appUpdater = AppUpdateController.shared
     @State private var limitsReorderInteraction = DirectReorderInteraction<ProviderQuota.Provider>()
-    /// One per window session: `DashboardWindowRoot` rebuilds this view each
-    /// time the window opens, so the entrance plays on opening, not on every
-    /// sidebar switch.
-    @State private var pageEntrance = PageEntranceLedger()
 #if TOKENREMAIN_CLOUD_SYNC
     @ObservedObject private var cloudSync = CrossDeviceSyncController.shared
 #endif
@@ -188,29 +184,10 @@ struct DashboardView: View {
                 .padding(.top, 18)
                 .padding(.bottom, 12)
 
-            // Custom nav list: SwiftUI `.tint` does not recolor the macOS
-            // NSTableView sidebar selection (it follows the system accent), so
-            // selection is rendered here as an explicit violet capsule to stay
-            // on the pixel-tech brand.
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    ForEach(DashboardSection.Group.allCases) { group in
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(group.title)
-                                .font(.system(size: 10, weight: .semibold))
-                                .tracking(0.6)
-                                .foregroundStyle(DashboardTheme.secondaryText)
-                                .padding(.horizontal, 10)
-                                .padding(.bottom, 3)
-                            ForEach(DashboardSection.sections(in: group)) { section in
-                                sidebarRow(section)
-                            }
-                        }
-                    }
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-            }
+            DashboardSidebarList(
+                navigator: navigator,
+                limitsAttention: insights.projectedRunOuts().count
+            )
 
             // The status card spans the same width as the selection capsule;
             // its text lands on the shared 20 pt edge.
@@ -224,64 +201,6 @@ struct DashboardView: View {
     /// Brand mark, group titles, icons and the footer share one left edge:
     /// the list's 10 pt inset plus each row's 10 pt padding.
     private static let sidebarInset: CGFloat = 20
-    /// Every row is the same height whatever its icon or trailing count, and
-    /// every icon sits in the same fixed column, so all labels start on one line.
-    private static let sidebarRowHeight: CGFloat = 28
-    private static let sidebarIconWidth: CGFloat = 18
-
-    /// One sidebar row with an explicit violet selection capsule and white
-    /// (HIG-style) selected-label text, replacing the system-blue highlight.
-    private func sidebarRow(_ section: DashboardSection) -> some View {
-        let isSelected = navigator.selection == section
-        let count = section == .limits ? insights.projectedRunOuts().count : 0
-        return Button {
-            // Re-publishing the current page would rebuild it for nothing.
-            if navigator.selection != section { navigator.selection = section }
-        } label: {
-            HStack(spacing: 9) {
-                Image(systemName: section.systemImage)
-                    .frame(width: Self.sidebarIconWidth, alignment: .center)
-                    .accessibilityHidden(true)
-                Text(section.title)
-                    .lineLimit(1)
-                Spacer(minLength: 4)
-                if count > 0 {
-                    attentionCount(count, onSelection: isSelected)
-                }
-            }
-            .font(.system(size: 12, weight: isSelected ? .semibold : .regular))
-            .foregroundStyle(isSelected ? Color.white : DashboardTheme.secondaryText)
-            .padding(.horizontal, 10)
-            .frame(maxWidth: .infinity, minHeight: Self.sidebarRowHeight, maxHeight: Self.sidebarRowHeight, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: 7, style: .continuous)
-                    .fill(isSelected ? DashboardTheme.violet : Color.clear)
-            )
-            .contentShape(Rectangle())
-        }
-        // No press ripple or spring here. The selection capsule is the
-        // feedback, and a ripple cannot run smoothly: the page it opens is
-        // built on the same release, and each of its frames makes AppKit
-        // recompute the window's drag region, which walks the whole SwiftUI
-        // focus tree (~0.6 s of busy frames per click, issue #102).
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
-        .accessibilityValue(count > 0 ? "\(count) · \(L10n.text("pace.ahead_warning"))" : "")
-    }
-
-    /// How many windows are projected to run out before reset — the queue
-    /// the Limits page exists for. Hidden at zero.
-    private func attentionCount(_ count: Int, onSelection: Bool) -> some View {
-        Text("\(count)")
-            .numericFont(11, .bold)
-            .foregroundStyle(onSelection ? Color.white : DashboardTheme.warning)
-            .padding(.horizontal, 6)
-            .frame(minWidth: 18, minHeight: 18)
-            .background(
-                Capsule().fill(onSelection ? Color.white.opacity(0.22) : DashboardTheme.warning.opacity(0.16))
-            )
-            .help(L10n.text("pace.ahead_warning"))
-    }
 
     private var brandMark: some View {
         HStack(spacing: 10) {
@@ -395,8 +314,12 @@ struct DashboardView: View {
 
     // MARK: - Detail
 
-    @ViewBuilder
     private var detail: some View {
+        detailPage.pageDissolve(on: navigator.selection)
+    }
+
+    @ViewBuilder
+    private var detailPage: some View {
         if navigator.selection == .settings {
             SettingsSection(store: store, launchAtLogin: launchAtLogin)
                 .padding(28)
@@ -409,7 +332,6 @@ struct DashboardView: View {
                         sectionContent
                             .padding(28)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .environment(\.pageEntranceLedger, pageEntrance)
                     }
                 }
                 .scrollDisabled(limitsReorderInteraction.isActive)

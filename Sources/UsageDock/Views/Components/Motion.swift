@@ -1,8 +1,9 @@
 import SwiftUI
 
 /// The dashboard's motion vocabulary: buttons that press in and spring back
-/// with a ripple from the pointer, a switch with a springy knob, and a page
-/// entrance where figures roll up and bars fill in.
+/// with a ripple from the pointer and a switch with a springy knob. The
+/// entrance (quota bars sweeping in, their figures rolling up) lives in
+/// `QuotaMotion.swift` and runs in Core Animation.
 ///
 /// Everything here is event-driven and render-only, so no animation re-lays
 /// out the page on every frame and nothing runs while the app is idle.
@@ -37,6 +38,12 @@ enum MotionTiming {
     /// Starts gently, so the part of the fade spent in that first composite
     /// is not most of it (an ease-out was ~50% opaque by the first frame).
     static let dashboardFadeCurve = CAMediaTimingFunction(controlPoints: 0.25, 0.1, 0.25, 1)
+    /// The sidebar's selection capsule slides to a clicked row as a Core
+    /// Animation spring, so it costs the app no frames.
+    static let sidebarSlide: TimeInterval = 0.3
+    static let sidebarSlideBounce: CGFloat = 0.2
+    /// The detail column cross-dissolves to a new page in the render server.
+    static let pageDissolve: TimeInterval = 0.16
     /// The popup's height follows an expanding or collapsing card with the
     /// same spring the card uses, so shell and card move together.
     static let popupResize = Animation.snappy
@@ -71,243 +78,14 @@ private struct PageRevealedKey: EnvironmentKey {
     static let defaultValue = true
 }
 
-/// Which page of one Dashboard window session plays the entrance: the first
-/// one shown after the window opens. Pages reached from the sidebar after
-/// that show their figures at once.
-///
-/// Replaying the entrance on every sidebar switch kept the main thread
-/// re-rendering the whole page for the length of the spring and the roll
-/// (~1.3 s) on each switch: eight switches took 4.2 s of CPU against 0.95 s
-/// with motion removed, same build and window (Dev build, issue #102).
-@MainActor
-final class PageEntranceLedger {
-    private var played = false
-
-    /// True for the first page that asks, false for every page after it.
-    func claim() -> Bool {
-        defer { played = true }
-        return !played
-    }
-}
-
-private struct PageEntranceLedgerKey: EnvironmentKey {
-    static let defaultValue: PageEntranceLedger? = nil
-}
-
 extension EnvironmentValues {
-    /// False while a page plays its entrance: figures read as zeros and
-    /// bars as empty, then animate to their values when it turns true.
-    /// Outside a revealing page it is always true.
+    /// False while a surface waits to play its entrance (the menu-bar popup
+    /// between openings). Quota bars and figures show their zero state, then
+    /// animate when it turns true; see `QuotaMotion.swift`. Elsewhere it is
+    /// always true.
     var pageRevealed: Bool {
         get { self[PageRevealedKey.self] }
         set { self[PageRevealedKey.self] = newValue }
-    }
-
-    /// The window session's ledger. Without one, every page plays its
-    /// entrance when it appears.
-    var pageEntranceLedger: PageEntranceLedger? {
-        get { self[PageEntranceLedgerKey.self] }
-        set { self[PageEntranceLedgerKey.self] = newValue }
-    }
-}
-
-extension View {
-    /// Plays the entrance when the page appears: figures roll up from zero
-    /// and bars fill in. Later data refreshes change values without it, and
-    /// under a `pageEntranceLedger` only the session's first page plays it.
-    func pageReveal() -> some View {
-        modifier(PageRevealModifier())
-    }
-
-    /// Sweeps this view in from its leading edge during the page entrance.
-    func revealSweep() -> some View {
-        modifier(RevealSweepModifier())
-    }
-
-    /// Grows this view up from its bottom edge during the page entrance.
-    func revealGrow() -> some View {
-        modifier(RevealGrowModifier())
-    }
-}
-
-private struct PageRevealModifier: ViewModifier {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.pageEntranceLedger) private var ledger
-    @State private var revealed = false
-    @State private var ticket = PageEntranceTicket()
-
-    func body(content: Content) -> some View {
-        // Asked on this page's first body, so a page that does not play is
-        // revealed from its first frame instead of flashing zeros.
-        let plays = ticket.plays(claiming: ledger)
-        content
-            .environment(\.pageRevealed, revealed || reduceMotion || !plays)
-            .task {
-                guard plays, !revealed else { return }
-                // Settled outright, so turning Reduce Motion off later does
-                // not drop the figures back to zero.
-                guard !reduceMotion else {
-                    revealed = true
-                    return
-                }
-                try? await Task.sleep(for: MotionTiming.revealDelay)
-                guard !Task.isCancelled else { return }
-                withAnimation(MotionTiming.reveal) { revealed = true }
-            }
-    }
-}
-
-/// One page's answer from the ledger, asked once and kept for the page's
-/// lifetime. A plain class in `@State`: recording the answer does not
-/// invalidate the view.
-private final class PageEntranceTicket {
-    private var answer: Bool?
-
-    @MainActor
-    func plays(claiming ledger: PageEntranceLedger?) -> Bool {
-        if let answer { return answer }
-        let plays = ledger?.claim() ?? true
-        answer = plays
-        return plays
-    }
-}
-
-private struct RevealSweepModifier: ViewModifier {
-    @Environment(\.pageRevealed) private var revealed
-
-    func body(content: Content) -> some View {
-        // A rectangle scaled from the leading edge: no geometry reader per
-        // bar, and the scale applies to a plain shape, never to text.
-        content.mask(alignment: .leading) {
-            Rectangle()
-                .visualEffect { content, _ in
-                    content.scaleEffect(x: revealed ? 1 : 0.001, y: 1, anchor: .leading)
-                }
-        }
-    }
-}
-
-private struct RevealGrowModifier: ViewModifier {
-    @Environment(\.pageRevealed) private var revealed
-
-    func body(content: Content) -> some View {
-        content.visualEffect { content, _ in
-            content.scaleEffect(x: 1, y: revealed ? 1 : 0.02, anchor: .bottom)
-        }
-    }
-}
-
-/// A figure that rolls its digits up from zero during the page entrance, like
-/// an odometer: each digit is a 0–9 column that slides to its value.
-///
-/// Translation only. The system's `.numericText()` transition blurs and
-/// scales every glyph, which sends each animation frame through software
-/// rendering and leaves glyph bitmaps at a new size in CoreGraphics'
-/// process-wide font cache — measured at ~18,000 entries (~46 MB) per
-/// Overview visit, never released. Sliding columns rasterize each digit
-/// once per font size. Once settled, the figure is plain `Text` again.
-struct RollingText: View {
-    let text: String
-    @Environment(\.pageRevealed) private var revealed
-    /// The columns are only on screen while the figure is at zero or
-    /// rolling; afterwards the plain text (identical pixels) takes over.
-    @State private var settled = false
-
-    init(_ text: String) {
-        self.text = text
-    }
-
-    var body: some View {
-        Text(text)
-            .opacity(settled ? 1 : 0)
-            .overlay {
-                if !settled {
-                    odometer.accessibilityHidden(true)
-                }
-            }
-            .onAppear {
-                // Outside an entrance there is nothing to roll.
-                if revealed { settled = true }
-            }
-            .task(id: revealed) {
-                guard revealed else {
-                    settled = false
-                    return
-                }
-                guard !settled else { return }
-                try? await Task.sleep(for: MotionTiming.rollSettle)
-                guard !Task.isCancelled else { return }
-                settled = true
-            }
-    }
-
-    private var odometer: some View {
-        HStack(spacing: 0) {
-            ForEach(Array(Self.segments(text).enumerated()), id: \.offset) { _, segment in
-                switch segment {
-                case .digit(let value):
-                    DigitColumn(digit: revealed ? value : 0)
-                case .run(let run):
-                    Text(run)
-                }
-            }
-        }
-        .fixedSize()
-    }
-
-    enum Segment: Equatable {
-        case digit(Int)
-        case run(String)
-    }
-
-    /// `$94.50` → `$`, 9, 4, `.`, 5, 0: each ASCII digit is its own column,
-    /// everything between digits stays one run.
-    static func segments(_ text: String) -> [Segment] {
-        var segments: [Segment] = []
-        var run = ""
-        for character in text {
-            if let value = character.wholeNumberValue, ("0"..."9").contains(character) {
-                if !run.isEmpty {
-                    segments.append(.run(run))
-                    run = ""
-                }
-                segments.append(.digit(value))
-            } else {
-                run.append(character)
-            }
-        }
-        if !run.isEmpty { segments.append(.run(run)) }
-        return segments
-    }
-
-    /// `$94.50` → `$00.00`, `73.6%` → `00.0%`; words stay as they are.
-    static func zeroed(_ text: String) -> String {
-        String(text.map { ("0"..."9").contains($0) ? "0" : $0 })
-    }
-}
-
-/// One odometer digit: the ten digits stacked in a column, clipped to one
-/// line and offset to `digit`. Only the offset animates.
-private struct DigitColumn: View {
-    let digit: Int
-
-    var body: some View {
-        // A hidden "0" sizes the window: digits are monospaced here. Each
-        // row of the column is one line, so a row is a tenth of its height.
-        Text(verbatim: "0")
-            .hidden()
-            .overlay(alignment: .top) {
-                VStack(spacing: 0) {
-                    ForEach(0..<10, id: \.self) { value in
-                        Text(verbatim: "\(value)")
-                    }
-                }
-                .fixedSize()
-                .visualEffect { content, proxy in
-                    content.offset(y: -CGFloat(digit) * proxy.size.height / 10)
-                }
-            }
-            .clipped()
     }
 }
 

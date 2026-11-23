@@ -109,7 +109,7 @@ struct OverviewKPIStrip: View {
     private func cellView(_ cell: Cell) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             label(cell.label)
-            RollingText(cell.value)
+            Text(verbatim: cell.value)
                 .numericFont(20, .semibold)
                 .foregroundStyle(cell.valueColor)
                 .lineLimit(1)

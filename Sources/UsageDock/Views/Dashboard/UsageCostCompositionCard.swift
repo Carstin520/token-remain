@@ -95,7 +95,7 @@ struct UsageCostCompositionCard: View {
                             .font(.system(size: 12, weight: .medium))
                             .foregroundStyle(DashboardTheme.secondaryText)
                         Spacer(minLength: 8)
-                        RollingText("\(tile.cost.map { currencyStore.display.compact(usd: $0) } ?? L10n.text("usage.price_unavailable")) · \(UsageFormatting.compactNumber(tile.tokens)) tokens")
+                        Text(verbatim: "\(tile.cost.map { currencyStore.display.compact(usd: $0) } ?? L10n.text("usage.price_unavailable")) · \(UsageFormatting.compactNumber(tile.tokens)) tokens")
                             .numericFont(12)
                             .foregroundStyle(DashboardTheme.text)
                     }
@@ -108,7 +108,6 @@ struct UsageCostCompositionCard: View {
                             .foregroundStyle(DashboardTheme.secondaryText)
                         Spacer(minLength: 8)
                         MiniBarChart(values: trend)
-                            .revealGrow()
                             .frame(maxWidth: 240)
                             .frame(height: 28)
                     }
@@ -234,12 +233,12 @@ private struct ProviderUsageRow: View {
 
             Spacer(minLength: 6)
 
-            RollingText("\(UsageFormatting.compactNumber(usage.tokens)) · \(costText)")
+            Text(verbatim: "\(UsageFormatting.compactNumber(usage.tokens)) · \(costText)")
                 .numericFont(11)
                 .foregroundStyle(DashboardTheme.secondaryText)
                 .lineLimit(1)
 
-            RollingText(share.map(UsageFormatting.percent) ?? "—")
+            Text(verbatim: share.map(UsageFormatting.percent) ?? "—")
                 .numericFont(12, .bold)
                 .foregroundStyle(DashboardTheme.text)
                 .frame(width: 46, alignment: .trailing)

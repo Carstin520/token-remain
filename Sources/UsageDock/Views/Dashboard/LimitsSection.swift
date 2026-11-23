@@ -102,7 +102,6 @@ struct LimitsSection: View {
             }
         }
         .coordinateSpace(name: Self.reorderCoordinateSpace)
-        .pageReveal()
     }
 }
 

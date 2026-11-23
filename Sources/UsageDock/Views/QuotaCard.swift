@@ -1184,6 +1184,8 @@ struct QuotaWindowRow: View {
     /// when an account name labels the row.
     var vendorSummary: ModelVendorSummary? = nil
     @Environment(\.quotaDetailFontSize) private var detailFontSize
+    /// The popup's glass style, for the ink of the rolling figure.
+    @Environment(\.usageDockPopoverGlassStyle) private var popoverGlassStyle
 
     /// Scoped rows are named by their call site; a general window can also
     /// name itself when it represents one pool of a split cycle (Cursor).
@@ -1243,9 +1245,14 @@ struct QuotaWindowRow: View {
                             .help(L10n.text("pace.ahead_warning"))
                             .accessibilityLabel(L10n.text("pace.ahead_warning"))
                     }
-                    RollingText(remainingText)
-                        .numericFont(14, .bold)
-                        .usageDockAdaptiveForeground(.primary)
+                    RollingFigure(
+                        remainingText,
+                        size: 14,
+                        weight: .bold,
+                        color: UsageDockPopoverAppearance.foregroundColor(.primary, glassStyle: popoverGlassStyle),
+                        shadowOpacity: UsageDockPopoverAppearance.glassShadowOpacity(.primary, glassStyle: popoverGlassStyle)
+                    )
+                    .usageDockAdaptiveForeground(.primary)
                 }
 
                 SegmentBar(
